@@ -1,15 +1,15 @@
 import Agent from '@sre/AgentManager/Agent.class';
-import SmythRuntime from './SmythRuntime.class';
-import { uid } from '../utils';
-import AgentSettings from '@sre/AgentManager/AgentSettings.class';
 import AgentRequest from '@sre/AgentManager/AgentRequest.class';
+import AgentSettings from '@sre/AgentManager/AgentSettings.class';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
+import { uid } from '../utils';
 
 import { parseCLIArgs } from '@sre/utils/cli.utils';
-import path from 'path';
-import fs from 'fs';
 import * as FileType from 'file-type';
+import fs from 'fs';
 import mime from 'mime';
+import path from 'path';
+import { ConnectorService } from './ConnectorsService';
 export class AgentProcess {
     public agent: Agent;
 
@@ -38,7 +38,8 @@ export class AgentProcess {
 
             //We are loading from an agentId
             if (agentId) {
-                data = await SmythRuntime.Instance.AgentData.getAgentData(agentId, 'latest');
+                const agentDataConnector = ConnectorService.getAgentDataConnector();
+                data = await agentDataConnector.getAgentData(agentId, 'latest');
             }
 
             //we are loading an agent from provided data

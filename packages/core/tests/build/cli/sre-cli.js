@@ -22,14 +22,15 @@ const sre = SmythRuntime.Instance.init({
             password: process.env.REDIS_PASSWORD || '',
         },
     },
+    AgentData: {
+        Connector: 'CLI',
+    },
 });
-
-ConnectorService.register('AgentData', 'CLI', CLIAgentDataConnector);
-ConnectorService.init('AgentData', 'CLI', { args: process.argv });
 
 async function main() {
     try {
-        const data = await sre.AgentData.getAgentData('test', '1.0');
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+        const data = await agentDataConnector.getAgentData('test', '1.0');
         //console.log(data);
         //const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Hello World' } });
         //const request = new AgentRequest(process.argv);

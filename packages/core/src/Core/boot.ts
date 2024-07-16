@@ -6,6 +6,7 @@ import { createLogger } from './Logger';
 import { TServiceRegistry } from '@sre/types/SRE.types';
 import { VaultService } from '@sre/Security/Vault.service';
 import { AccountService } from '@sre/Security/Account.service';
+import { AgentDataService } from '@sre/AgentManager/AgentData.service';
 const console = createLogger('Boot');
 
 export function boot() {
@@ -16,6 +17,7 @@ export function boot() {
     service.LLM = new LLMService();
     service.Vault = new VaultService();
     service.Account = new AccountService();
+    service.AgentData = new AgentDataService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

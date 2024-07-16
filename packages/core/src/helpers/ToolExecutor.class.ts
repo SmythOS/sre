@@ -200,22 +200,18 @@ export default class ToolExecutor {
     }
 
     private async prepareData(model) {
-        const spec = await this.getOpenAPISpecJSON();
+        this._spec = await this.getOpenAPISpecJSON();
 
-        if (!spec) {
+        if (!this._spec) {
             throw new Error('Failed to parse the OpenAPI specification');
         }
 
-        const reqMethods = OpenAPIParser.mapReqMethods(spec?.paths);
-        const toolsConfig = await this.toolsConfig(model);
-        const endpoints = OpenAPIParser.mapEndpoints(spec?.paths);
-        const baseUrl = spec?.servers?.[0].url;
+        this._reqMethods = OpenAPIParser.mapReqMethods(this._spec?.paths);
+        this._toolsConfig = await this.toolsConfig(model);
+        this._endpoints = OpenAPIParser.mapEndpoints(this._spec?.paths);
+        this._baseUrl = this._spec?.servers?.[0].url;
 
-        this._spec = spec;
-        this._reqMethods = reqMethods;
-        this._toolsConfig = toolsConfig;
-        this._endpoints = endpoints;
-        this._baseUrl = baseUrl;
+        this._ready = true;
     }
 
     private getOpenAPISpecJSON() {
@@ -227,7 +223,7 @@ export default class ToolExecutor {
     }
 
     private async functionDeclarations(): Promise<FunctionDeclaration[]> {
-        await this.ready;
+        if (!this._spec) throw new Error('OpenAPI spec not found');
         const spec = this._spec;
         const paths = spec?.paths;
         const reqMethods = OpenAPIParser.mapReqMethods(paths);

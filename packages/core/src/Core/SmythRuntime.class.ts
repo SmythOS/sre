@@ -1,13 +1,13 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import AgentRequest from '@sre/AgentManager/AgentRequest.class';
 import AgentSettings from '@sre/AgentManager/AgentSettings.class';
-import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
-import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnector';
+//import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
+//import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
+//import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnector';
 import { SREConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
-import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+//import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 
 //const CInstance = ConnectorService.Instance;
 const CInstance = ConnectorService;
@@ -16,21 +16,22 @@ export default class SmythRuntime {
     //protected static _instances: any = {};
 
     public started = false;
-    protected static _agentDataProviderInstance: IAgentDataConnector;
+    //protected static _agentDataProviderInstance: IAgentDataConnector;
 
-    public get Storage(): StorageConnector {
-        return CInstance.getInstance<StorageConnector>(TConnectorService.Storage);
-    }
-    public get Cache(): ICacheConnector {
-        return CInstance.getInstance<ICacheConnector>(TConnectorService.Cache);
-    }
-    public get AgentData(): IAgentDataConnector {
-        return CInstance.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
-    }
+    //Moved to connectorSerive
+    // public get Storage(): StorageConnector {
+    //     return CInstance.getInstance<StorageConnector>(TConnectorService.Storage);
+    // }
+    // public get Cache(): ICacheConnector {
+    //     return CInstance.getInstance<ICacheConnector>(TConnectorService.Cache);
+    // }
+    // public get AgentData(): IAgentDataConnector {
+    //     return CInstance.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
+    // }
 
-    public get Vault(): VaultConnector {
-        return CInstance.getInstance<VaultConnector>(TConnectorService.Vault);
-    }
+    // public get Vault(): VaultConnector {
+    //     return CInstance.getInstance<VaultConnector>(TConnectorService.Vault);
+    // }
     protected constructor() {
         this.started = true;
     }

@@ -8,7 +8,7 @@ import { AgentDataConnector } from './AgentDataConnector';
 export class AgentDataService extends ConnectorServiceProvider {
     public register() {
         //FIXME : register an actual account connector, not the abstract one
-        ConnectorService.register(TConnectorService.AgentData, 'AgentDataConnector', AgentDataConnector);
-        ConnectorService.register(TConnectorService.AgentData, 'CLIAgentDataConnector', CLIAgentDataConnector);
+        ConnectorService.register(TConnectorService.AgentData, 'AgentData', AgentDataConnector);
+        ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
     }
 }
