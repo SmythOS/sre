@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { TConnectorService } from '@sre/types/SRE.types';
-import { LLMConnector } from './LLM.service/connectors/LLMConnector.class';
+import { LLMConnector } from './LLM.service/LLMConnector';
 import models from './models';
 import Agent from '@sre/AgentManager/Agent.class';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -12,7 +12,7 @@ export class LLMHelper {
     constructor(private model: string) {
         const llmName = models[model]?.llm;
         this._modelId = models[model]?.alias || model;
-        this._llmConnector = ConnectorService.getInstance(TConnectorService.LLM, llmName);
+        this._llmConnector = ConnectorService.getLLMConnector(llmName);
     }
 
     static load(model: string) {
@@ -31,8 +31,8 @@ export class LLMHelper {
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);
             let response = await this._llmConnector.chatRequest(prompt, params);
-            response = this._llmConnector.postProcess(response);
-            return response.result;
+
+            return this._llmConnector.postProcess(response);
         } catch (error: any) {
             return { error: 'LLM request failed', details: error?.message || error?.toString() };
         }
@@ -46,8 +46,8 @@ export class LLMHelper {
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);
             let response = await this._llmConnector.visionRequest(prompt, params, agent);
-            response = this._llmConnector.postProcess(response);
-            return response.result;
+
+            return this._llmConnector.postProcess(response);
         } catch (error: any) {
             return { error: 'LLM request failed', details: error?.message || error?.toString() };
         }

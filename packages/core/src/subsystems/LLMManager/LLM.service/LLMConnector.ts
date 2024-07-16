@@ -1,16 +1,29 @@
+import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { createLogger } from '@sre/Core/Logger';
-import { ILLMConnector } from '@sre/LLMManager/LLM.service/ILLMConnector'; //'../ILLMConnector';
 import models from '@sre/LLMManager/models';
 import paramMappings from '@sre/LLMManager/paramMappings';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMParams } from '@sre/types/LLM.types';
-import { isBase64FileUrl, isUrl, parseRepairJson } from '@sre/utils';
-import imageSize from 'image-size';
-import { encode } from 'gpt-tokenizer';
+import { isBase64FileUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
-import Agent from '@sre/AgentManager/Agent.class';
+import { encode } from 'gpt-tokenizer';
+import imageSize from 'image-size';
 const console = createLogger('LLMConnector');
+
+export interface ILLMConnector {
+    chatRequest(prompt, params: any, agent?: Agent): Promise<any>;
+    visionRequest(prompt, params: any, agent?: Agent): Promise<any>;
+    toolRequest(params: any): Promise<any>;
+
+    extractLLMComponentParams(config): Promise<any>;
+    extractVisionLLMParams(config: any): Promise<any>;
+    postProcess(response: any): any;
+    enhancePrompt(prompt: string, config: any): string;
+    formatToolsConfig({ type, toolDefinitions, toolChoice });
+    //toolStreamRequest(prompt, model, params: any);
+}
 
 export abstract class LLMConnector extends Connector implements ILLMConnector {
     public abstract name: string;
@@ -213,7 +226,7 @@ export abstract class LLMConnector extends Connector implements ILLMConnector {
     }
     public postProcess(response: any) {
         try {
-            return parseRepairJson(response);
+            return JSONContent(response).tryParse();
         } catch (error) {
             return {
                 error: 'Invalid JSON response',

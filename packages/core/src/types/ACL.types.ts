@@ -91,3 +91,13 @@ export type TAccessTicket = {
     request: IAccessRequest;
     access: TAccessResult;
 };
+
+//custom errors
+
+//access denied error
+export class ACLAccessDeniedError extends Error {
+    constructor(message?: string) {
+        super(message);
+        this.name = 'ACLAccessDeniedError';
+    }
+}

@@ -2,8 +2,6 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import EmbodimentSettings from './EmbodimentSettings.class';
 
 import { createLogger } from '@sre/Core/Logger';
-import { TConnectorService } from '@sre/types/SRE.types';
-import { IAgentDataConnector } from './AgentData.service/IAgentDataConnector';
 const console = createLogger('AgentSettings');
 
 export default class AgentSettings {
@@ -18,7 +16,7 @@ export default class AgentSettings {
     }
 
     async init(agentId) {
-        const agentDataConnector = ConnectorService.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
         this._settings = (await agentDataConnector.getAgentSettings(agentId)) || {};
         this.embodiments = new EmbodimentSettings(this._settings.embodiments);
         this._ready = true;

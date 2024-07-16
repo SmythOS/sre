@@ -2,7 +2,7 @@ import IORedis from 'ioredis';
 import { createLogger } from '@sre/Core/Logger';
 import { IAccessRequest, IACL } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
-import { ICacheConnector } from '../ICacheConnector';
+import { CacheConnector, ICacheConnector } from '../CacheConnector';
 
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { RedisConfig } from '@sre/types/Redis.types';
@@ -11,7 +11,7 @@ import { Connector } from '@sre/Core/Connector.class';
 
 const console = createLogger('RedisCache');
 
-export class RedisCache extends Connector implements ICacheConnector {
+export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
     private redis: IORedis;
     private prefix: string = 'CACHE';

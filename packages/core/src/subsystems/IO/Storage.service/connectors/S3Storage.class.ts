@@ -4,7 +4,7 @@ import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectComm
 import { createLogger } from '@sre/Core/Logger';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { S3Config } from '@sre/types/AWS.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { streamToBuffer } from '@sre/utils';
@@ -211,10 +211,7 @@ export class S3Storage extends StorageConnector {
     //the connector should check if the resource exists or not
     //if the resource exists we read it's ACL and return it
     //if the resource does not exist we return an write access ACL for the candidate
-    public async getResourceACL(acRequest: AccessRequest) {
-        const resourceId = acRequest.resourceId;
-        const candidate = acRequest.candidate;
-
+    public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const s3Metadata = await this.getS3Metadata(resourceId);
         const exists = s3Metadata !== undefined; //undefined metadata means the resource does not exist
         //let acl: ACL = ACL.from(s3Metadata?.['x-amz-meta-acl'] as IACL);

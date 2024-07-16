@@ -1,7 +1,6 @@
-import { parseRepairJson } from '@sre/utils';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ILLMConnector } from '../ILLMConnector';
-import { LLMConnector } from './LLMConnector.class';
-import Agent from '@sre/AgentManager/Agent.class';
+import { LLMConnector } from '../LLMConnector';
 
 export class EchoConnector extends LLMConnector implements ILLMConnector {
     public name = 'LLM:Echo';
@@ -22,7 +21,7 @@ export class EchoConnector extends LLMConnector implements ILLMConnector {
 
     public postProcess(response: any) {
         try {
-            return parseRepairJson(response);
+            return JSONContent(response).tryParse();
         } catch (error) {
             return response;
         }

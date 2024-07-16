@@ -4,6 +4,8 @@ import SystemEvents from './SystemEvents';
 import { CacheService } from '@sre/MemoryManager/Cache.service';
 import { createLogger } from './Logger';
 import { TServiceRegistry } from '@sre/types/SRE.types';
+import { VaultService } from '@sre/Security/Vault.service';
+import { AccountService } from '@sre/Security/Account.service';
 const console = createLogger('Boot');
 
 export function boot() {
@@ -12,6 +14,8 @@ export function boot() {
     service.Storage = new StorageService();
     service.Cache = new CacheService();
     service.LLM = new LLMService();
+    service.Vault = new VaultService();
+    service.Account = new AccountService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

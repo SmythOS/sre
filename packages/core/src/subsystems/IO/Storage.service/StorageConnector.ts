@@ -2,7 +2,7 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IACL } from '@sre/types/ACL.types';
+import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 
 export interface IStorageRequest {
@@ -17,7 +17,7 @@ export interface IStorageRequest {
 }
 
 export abstract class StorageConnector extends SecureConnector {
-    public abstract getResourceACL(request: AccessRequest): Promise<ACL>;
+    public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract user(candidate: AccessCandidate): IStorageRequest;
     protected abstract read(resourceId: string, acRequest: AccessRequest): Promise<StorageData>;
     protected abstract write(resourceId: string, acRequest: AccessRequest, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void>;

@@ -6,8 +6,6 @@
     "type": "module",
     "scripts": {
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
-        "test:coverage": "cross-env TEST_ENV=true nyc --reporter=html --reporter=text --report-dir=./coverage vitest",
-        "test:coverage2": "cross-env TEST_ENV=true vitest run --coverage --config vitest.config.ts",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "build:dev": "cross-env BUILD=dev rollup -c",
         "build:prod": "cross-env BUILD=prod rollup -c",

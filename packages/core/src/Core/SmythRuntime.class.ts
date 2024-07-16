@@ -7,6 +7,7 @@ import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnecto
 import { SREConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
+import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 
 //const CInstance = ConnectorService.Instance;
 const CInstance = ConnectorService;
@@ -27,6 +28,9 @@ export default class SmythRuntime {
         return CInstance.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
     }
 
+    public get Vault(): VaultConnector {
+        return CInstance.getInstance<VaultConnector>(TConnectorService.Vault);
+    }
     protected constructor() {
         this.started = true;
     }

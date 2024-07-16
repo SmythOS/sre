@@ -1,8 +1,6 @@
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { TConnectorService } from '@sre/types/SRE.types';
 import axios from 'axios';
 import * as FileType from 'file-type';
 import mime from 'mime';
@@ -169,8 +167,8 @@ export class BinaryInput {
         try {
             this._uploading = true;
             if (!this.url) {
-                const agentDataProvider = ConnectorService.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
-                const teamId = await agentDataProvider.getCandidateTeam(candidate);
+                const accountConnector = ConnectorService.getAccountConnector();
+                const teamId = await accountConnector.getCandidateTeam(candidate);
 
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
                 await SmythFS.Instance.write(this.url, this._source, candidate);

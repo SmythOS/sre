@@ -1,11 +1,10 @@
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
 import { Connector } from '@sre/Core/Connector.class';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
-import { TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
-import { ACL } from './AccessControl/ACL.class';
-import { AccessRequest } from './AccessControl/AccessRequest.class';
-import { AccessCandidate } from './AccessControl/AccessCandidate.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { createLogger } from '@sre/Core/Logger';
+import { ACLAccessDeniedError, IAccessCandidate, TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
+import { ACL } from './AccessControl/ACL.class';
+import { AccessCandidate } from './AccessControl/AccessCandidate.class';
+import { AccessRequest } from './AccessControl/AccessRequest.class';
 
 const console = createLogger('SecureConnector');
 
@@ -14,9 +13,9 @@ export abstract class SecureConnector extends Connector {
 
     //this determines the access rights for the requested resource
     //the connector should check if the resource exists or not
-    //if the resource exists we read it's ACL and return it
+    //if the resource exists we read its ACL and return it
     //if the resource does not exist we return an write access ACL for the candidate
-    public abstract getResourceACL(acRequest: AccessRequest): Promise<ACL>;
+    public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
 
     public async start() {
         console.info(`Starting ${this.name} connector ...`);
@@ -27,7 +26,7 @@ export abstract class SecureConnector extends Connector {
     }
 
     private async hasAccess(acRequest: AccessRequest) {
-        const aclHelper = await this.getResourceACL(acRequest);
+        const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
 
         //const aclHelper = ACLHelper.from(acl);
 
@@ -45,8 +44,8 @@ export abstract class SecureConnector extends Connector {
         if (publicAccess) return true;
 
         // if the public access is denied, we check if the candidate's team has access
-        const agentDataConnector = SmythRuntime.Instance.AgentData as IAgentDataConnector;
-        const teamId = await agentDataConnector.getCandidateTeam(acRequest.candidate);
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const teamRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
         const teamAccess = aclHelper.checkExactAccess(teamRequest);
         if (teamAccess) return true;
@@ -80,7 +79,7 @@ export abstract class SecureConnector extends Connector {
 
             // Inject the access control logic
             const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-            if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
+            if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError('Access Denied');
 
             // Call the original method with the original arguments
             return originalMethod.apply(this, args);

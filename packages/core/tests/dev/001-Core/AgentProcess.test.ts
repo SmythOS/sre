@@ -25,7 +25,7 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 });
-describe('SRE Basic Tests', () => {
+describe('AgentProcess Tests', () => {
     it('Runs Agent From data with run() method', async () => {
         let error;
         try {

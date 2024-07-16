@@ -7,4 +7,3 @@ export * from './data.utils';
 export * from './base64.utils';
 export * from './cli.utils';
 export * from './numbers.utils';
-export * from './json.utils';

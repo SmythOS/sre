@@ -1,11 +1,10 @@
+import { parseCLIArgs } from '@sre/utils/cli.utils';
 import fs from 'fs';
 import path from 'path';
-import { IAgentDataConnector } from '../IAgentDataConnector';
-import { AbstractAgentDataConnector } from './AbstractAgentDataConnector.class';
-import { parseCLIArgs } from '@sre/utils/cli.utils';
+import { AgentDataConnector } from '../AgentDataConnector';
 
 type TArgs = { args: Record<string, any> };
-export class CLIAgentDataConnector extends AbstractAgentDataConnector implements IAgentDataConnector {
+export class CLIAgentDataConnector extends AgentDataConnector {
     public name: string = 'CLIAgentDataConnector';
     private argv;
     constructor(settings: TArgs) {

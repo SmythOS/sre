@@ -9,6 +9,7 @@ import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { uid } from '../utils';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 // Utility function to check for empty values
 function isEmpty(value: any): boolean {
@@ -27,16 +28,6 @@ function isTemplateVar(str: string = ''): boolean {
 function isKeyTemplateVar(str: string = ''): boolean {
     if (!str || typeof str !== 'string') return false;
     return (str?.match(/{{KEY\((.*?)\)}}/g) ?? []).length > 0;
-}
-
-function parseTemplate(str: string = '', data: any = {}, options: { escapeString?: boolean } = {}): string {
-    return str.replace(/{{(.*?)}}/g, (match, key) => {
-        const value = data[key.trim()];
-        if (options.escapeString) {
-            return value ? value.toString().replace(/"/g, '\\"') : '';
-        }
-        return value || '';
-    });
 }
 
 function parseKey(str: string = '', teamId: string): string {
@@ -78,7 +69,8 @@ export default class APIEndpoint extends Component {
             if (isKeyTemplateVar(value as string)) {
                 body[key] = await parseKey(value as string, agent?.teamId);
             } else if (isTemplateVar(value as string)) {
-                body[key] = parseTemplate(value as string, input, { escapeString: false });
+                //body[key] = parseTemplate(value as string, input, { escapeString: false });
+                body[key] = TemplateString(value as string).parse(input).result;
             }
         }
 
@@ -86,7 +78,8 @@ export default class APIEndpoint extends Component {
             if (isKeyTemplateVar(value as string)) {
                 query[key] = await parseKey(value as string, agent?.teamId);
             } else if (isTemplateVar(value as string)) {
-                query[key] = parseTemplate(value as string, input, { escapeString: false });
+                //query[key] = parseTemplate(value as string, input, { escapeString: false });
+                query[key] = TemplateString(value as string).parse(input).result;
             }
         }
 

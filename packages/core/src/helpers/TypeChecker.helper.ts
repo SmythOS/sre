@@ -1,4 +1,3 @@
-import { parseJson } from '@sre/services/utils';
 import { isBase64, isBase64FileUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isBinaryData, isBuffer, isPlainObject, isSmythFileObject, isUrl, uid } from '../utils';
@@ -6,10 +5,12 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { JSONContent } from './JsonContent.helper';
 
 export const inputErrMsg = (type, name) => `Invalid ${type} value for Input: ${name}`;
 
 const InferenceStrategies = {
+    any: inferAnyType,
     string: inferStringType,
     number: inferNumberType,
     integer: inferIntegerType,
@@ -18,7 +19,6 @@ const InferenceStrategies = {
     object: inferObjectType,
     binary: inferBinaryType,
     date: inferDateType,
-    any: inferAnyType,
 };
 
 export async function performTypeInference(
@@ -117,7 +117,7 @@ async function inferArrayType(value: any, key?: string, agent?: Agent) {
 
         try {
             // We need to consider array with comma separated values like "item1, item2, item3", as it's provided by Swagger UI
-            return value.trim().startsWith('[') ? parseJson(value) : value.split(',');
+            return value.trim().startsWith('[') ? JSONContent(value).tryParse() : value.split(',');
         } catch {
             throw new Error('Invalid Array value');
         }
@@ -129,7 +129,7 @@ async function inferArrayType(value: any, key?: string, agent?: Agent) {
 async function inferObjectType(value: any, key?: string, agent?: Agent) {
     try {
         // use parseJson instead of JSON.parse because the data may come from LLM responses
-        const obj = isPlainObject(value) ? value : parseJson(value);
+        const obj = isPlainObject(value) ? value : JSONContent(value).tryParse();
         if (!isPlainObject(obj)) throw new Error('Invalid Object value');
         return obj;
     } catch (error) {

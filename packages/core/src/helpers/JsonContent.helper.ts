@@ -1,5 +1,5 @@
 import { jsonrepair } from 'jsonrepair';
-import { isNumber, isValidNumber } from '@sre/utils';
+import { isDigits, isSafeNumber } from '@sre/utils';
 
 export class JSONContentHelper {
     private _current: string;
@@ -15,22 +15,27 @@ export class JSONContentHelper {
         return new JSONContentHelper(dataString);
     }
 
-    public async parse() {
+    /**
+     * This function tries to extract and parse a JSON object from a string. If it fails, it returns the original string.
+     * if the string is not a JSON representation, but contains a JSON object, it will extract and parse it.
+     * @returns
+     */
+    public tryParse() {
         const strInput = this._current;
         if (!strInput) return strInput;
         let str = (this.extractJsonFromString(strInput) || strInput).trim();
 
-        if ((isNumber(str) && !isValidNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
+        if ((isDigits(str) && !isSafeNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
 
         try {
-            return { result: JSON.parse(str) };
+            return JSON.parse(str);
         } catch (e) {
             try {
-                return { result: JSON.parse(jsonrepair(str)) };
+                return JSON.parse(jsonrepair(str));
             } catch (e: any) {
                 console.warn('Error on parseJson: ', e.toString());
                 console.warn('   Tried to parse: ', str);
-                throw new Error('Failed to parse JSON ' + e.toString());
+                return strInput;
             }
         }
     }

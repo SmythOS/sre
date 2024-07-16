@@ -49,6 +49,7 @@ export class TemplateStringHelper {
      * unmatched placeholders will be left as is
      */
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
+        if (typeof this._current !== 'string') return this;
         this._current = this._current.replace(regex, (match, token) => {
             return data[token] || match;
         });
@@ -62,6 +63,7 @@ export class TemplateStringHelper {
      * If the processor function returns undefined, the token will be left as is
      */
     public process(processor: Function, regex: TemplateStringMatch = Match.default) {
+        if (typeof this._current !== 'string') return this;
         this._current = this._current.replace(regex, (match, token) => {
             let result = processor(token);
             if (result === undefined) {
@@ -78,6 +80,7 @@ export class TemplateStringHelper {
      * This is useful when you want to clean up a template string that has placeholders that were not parsed
      */
     public clean(regex: TemplateStringMatch = Match.default) {
+        if (typeof this._current !== 'string') return this;
         this._current = this._current.replace(regex, '');
         return this;
     }

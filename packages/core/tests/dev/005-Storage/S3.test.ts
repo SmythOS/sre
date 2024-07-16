@@ -5,10 +5,24 @@ import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-import SREInstance from './SREInstance';
+
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+
+import config from '@sre/config';
+import { SmythRuntime } from '@sre/index';
+const SREInstance = SmythRuntime.Instance.init({
+    Storage: {
+        Connector: 'S3',
+        Settings: {
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+    },
+});
 
 const s3Storage: StorageConnector = SREInstance.Storage;
 

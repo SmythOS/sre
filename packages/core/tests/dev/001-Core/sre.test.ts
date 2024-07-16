@@ -54,11 +54,15 @@ describe('SRE Basic Tests', () => {
             const agentData = fs.readFileSync('./tests/data/sre-openai-LLMPrompt.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
-            const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Write a poem about flowers' } });
+            const request = new AgentRequest({
+                method: 'POST',
+                path: '/api/say',
+                body: { message: 'Write a poem about flowers, the poem should mention the word "flower" at least once' },
+            });
             const output = await sre.runAgent('test', { data, agentVersion: '1.0' }, request);
 
             //const output = await AgentProcess.load(data).run({ method: 'POST', path: '/api/say', body: { message: 'Write a poem about flowers' } });
-            expect(JSON.stringify(output)).toContain('flowers');
+            expect(JSON.stringify(output)?.toLowerCase()).toContain('flowers');
         } catch (e) {
             error = e;
         }

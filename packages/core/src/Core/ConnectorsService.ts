@@ -4,6 +4,12 @@ import { createLogger } from './Logger';
 import { Connector } from './Connector.class';
 import { isSubclassOf } from '@sre/utils';
 import SystemEvents from './SystemEvents';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
+import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
 const console = createLogger('ConnectorService');
 
 const Connectors = {};
@@ -108,6 +114,38 @@ export class ConnectorService {
         }
         return instance;
     }
+
+    // Storage?: StorageService;
+    // Cache?: CacheService;
+    // LLM?: LLMService;
+    // Vault?: VaultService;
+    // Account?: AccountService;
+
+    static getStorageConnector(name?: string): StorageConnector {
+        return ConnectorService.getInstance<StorageConnector>(TConnectorService.Storage, name);
+    }
+
+    static getCacheConnector(name?: string): CacheConnector {
+        return ConnectorService.getInstance<any>(TConnectorService.Cache, name);
+    }
+
+    static getLLMConnector(name?: string): LLMConnector {
+        return ConnectorService.getInstance<LLMConnector>(TConnectorService.LLM, name);
+    }
+
+    static getVaultConnector(name?: string): VaultConnector {
+        return ConnectorService.getInstance<VaultConnector>(TConnectorService.Vault, name);
+    }
+
+    static getAccountConnector(name?: string): AccountConnector {
+        return ConnectorService.getInstance<AccountConnector>(TConnectorService.Account, name);
+    }
+
+    static getAgentDataConnector(name?: string): AgentDataConnector {
+        return ConnectorService.getInstance<AgentDataConnector>(TConnectorService.AgentData, name);
+    }
+
+    //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...
 
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorInstances[connectorType]?.[connectorName];

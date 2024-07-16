@@ -1,4 +1,4 @@
-export function isNumber(str: string): boolean {
+export function isDigits(str: string): boolean {
     if (typeof str === 'number') return true;
 
     if (typeof str !== 'string') return false;
@@ -7,7 +7,7 @@ export function isNumber(str: string): boolean {
     return numRegex.test(str.trim());
 }
 
-export function isValidNumber(str: string): boolean {
+export function isSafeNumber(str: string): boolean {
     const num = parseFloat(str);
     return !isNaN(num) && num <= Number.MAX_SAFE_INTEGER && num >= Number.MIN_SAFE_INTEGER && num.toString() === str.trim();
 }

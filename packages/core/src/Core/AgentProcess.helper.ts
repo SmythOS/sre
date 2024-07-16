@@ -12,11 +12,10 @@ import * as FileType from 'file-type';
 import mime from 'mime';
 export class AgentProcess {
     public agent: Agent;
-    private agentRequest: AgentRequest;
 
     private _loadPromise: Promise<any>;
 
-    private constructor(agentData: any) {
+    private constructor(private agentData: any) {
         this.initAgent(agentData);
     }
     private async initAgent(agentData: any) {
@@ -101,6 +100,13 @@ export class AgentProcess {
         const result: any = await this.agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
         return result;
+    }
+
+    public reset() {
+        //the current version of agent cannot be used to run multiple requests
+        //as a workaround we provide this function to reset AgentProcess state by generating a new Agent
+        //TODO: refactor Agent.class in order to allow multiple consecutive requests running
+        this.initAgent(this.agentData);
     }
 
     private parseReqConfig(reqConfig: TAgentProcessParams | Array<string> | AgentRequest): AgentRequest {

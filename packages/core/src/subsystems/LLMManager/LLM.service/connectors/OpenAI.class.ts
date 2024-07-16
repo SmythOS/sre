@@ -1,7 +1,7 @@
 import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
 import { ILLMConnector } from '../ILLMConnector';
-import { LLMConnector } from './LLMConnector.class';
+import { LLMConnector } from '../LLMConnector';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';

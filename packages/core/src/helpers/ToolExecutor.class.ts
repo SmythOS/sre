@@ -1,24 +1,12 @@
-import { concurrentAsyncProcess } from '@sre/utils/general.utils';
-import { deepCopy, parseRepairJson } from '@sre/utils/json.utils';
-import axios, { AxiosRequestConfig } from 'axios';
-import { OpenAPIParser } from './OpenApiParser.helper';
-import { isUrl } from '@sre/utils/data.utils';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
+import { createLogger } from '@sre/Core/Logger';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { ToolsConfig } from '@sre/types/LLM.types';
-import { createLogger } from '@sre/Core/Logger';
+import { isUrl } from '@sre/utils/data.utils';
+import axios, { AxiosRequestConfig } from 'axios';
+import { JSONContent } from './JsonContent.helper';
+import { OpenAPIParser } from './OpenApiParser.helper';
 const console = createLogger('ToolExecutor');
-
-type Step = {
-    index: number;
-    details: {
-        type: string;
-        message: string;
-        NB?: string;
-    };
-    arguments?: Record<string, any>;
-    response?: Record<string, any>;
-};
 
 type UseToolParams = {
     type: string;
@@ -51,20 +39,54 @@ const cleanUrl = (urlString: string): string => {
 };
 
 export default class ToolExecutor {
-    constructor(private model: string, private openAPISource: string) {}
+    private _spec;
+    private _reqMethods;
+    private _toolsConfig;
+    private _endpoints;
+    private _baseUrl;
+
+    private _ready = false;
+    private _currentWaitPromise;
+
+    constructor(private model: string, private openAPISource: string) {
+        this.prepareData(this.model);
+    }
+
+    private get ready() {
+        if (this._currentWaitPromise) return this._currentWaitPromise;
+        return new Promise((resolve, reject) => {
+            const maxWaitTime = 30000;
+            let waitTime = 0;
+            const interval = 100;
+
+            const wait = setInterval(() => {
+                if (this._ready) {
+                    clearInterval(wait);
+                    resolve(true);
+                } else {
+                    waitTime += interval;
+                    if (waitTime >= maxWaitTime) {
+                        clearInterval(wait);
+                        reject('Timeout: Failed to prepare data');
+                    }
+                }
+            }, interval);
+        });
+    }
 
     public async run({ messages, toolHeaders = {}, teamId = '' }) {
-        const { reqMethods, toolsConfig, endpoints, baseUrl } = await this.prepareData(this.model);
+        await this.ready;
+
+        const reqMethods = this._reqMethods;
+        const toolsConfig = this._toolsConfig;
+        const endpoints = this._endpoints;
+        const baseUrl = this._baseUrl;
 
         /* ==================== STEP ENTRY ==================== */
-        console.debug({
-            type: 'LLMRequest',
-            message: 'Request to LLM with the given model, messages and functions properties.',
-            arguments: {
-                model: this.model || TOOL_USE_DEFAULT_MODEL,
-                messages: deepCopy(messages),
-                ...deepCopy(toolsConfig),
-            },
+        console.debug('Request to LLM with the given model, messages and functions properties.', {
+            model: this.model || TOOL_USE_DEFAULT_MODEL,
+            messages,
+            toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
@@ -101,8 +123,8 @@ export default class ToolExecutor {
             for (const tool of llmResponse?.toolsInfo) {
                 const endpoint = endpoints?.get(tool?.name);
                 // Sometimes we have object response from the LLM such as Anthropic
-                const parsedArgs = parseRepairJson(tool?.arguments);
-                let args = typeof tool?.arguments === 'string' ? parsedArgs?.result || {} : tool?.arguments;
+                const parsedArgs = JSONContent(tool?.arguments).tryParse();
+                let args = typeof tool?.arguments === 'string' ? parsedArgs || {} : tool?.arguments;
 
                 if (args?.error) {
                     throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
@@ -164,8 +186,7 @@ export default class ToolExecutor {
             return this.run({ messages, toolHeaders, teamId });
         }
 
-        let content = parseRepairJson(llmResponse?.content);
-        content = content?.result || content;
+        let content = JSONContent(llmResponse?.content).tryParse();
 
         /* ==================== STEP ENTRY ==================== */
         console.debug({
@@ -190,7 +211,11 @@ export default class ToolExecutor {
         const endpoints = OpenAPIParser.mapEndpoints(spec?.paths);
         const baseUrl = spec?.servers?.[0].url;
 
-        return { spec, reqMethods, toolsConfig, endpoints, baseUrl };
+        this._spec = spec;
+        this._reqMethods = reqMethods;
+        this._toolsConfig = toolsConfig;
+        this._endpoints = endpoints;
+        this._baseUrl = baseUrl;
     }
 
     private getOpenAPISpecJSON() {
@@ -202,7 +227,8 @@ export default class ToolExecutor {
     }
 
     private async functionDeclarations(): Promise<FunctionDeclaration[]> {
-        const spec = await this.getOpenAPISpecJSON();
+        await this.ready;
+        const spec = this._spec;
         const paths = spec?.paths;
         const reqMethods = OpenAPIParser.mapReqMethods(paths);
 

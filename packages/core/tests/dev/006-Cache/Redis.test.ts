@@ -4,11 +4,33 @@ import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCac
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
-import SREInstance from './SREInstance';
+
+import config from '@sre/config';
+import { SmythRuntime } from '@sre/index';
+
+const sre = SmythRuntime.Instance.init({
+    Storage: {
+        Connector: 'S3',
+        Settings: {
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+});
 
 //import SRE, { AgentRequest } from '../../dist';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-let redisCache: ICacheConnector = SREInstance.Cache;
+let redisCache: ICacheConnector = sre.Cache;
 
 const testFile = 'unit-tests/test.txt';
 const testAdditionalACLMetadata = {

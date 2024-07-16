@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
-import SREInstance from './SREInstance';
+
+import config from '@sre/config';
+import { SmythRuntime } from '@sre/index';
+const SREInstance = SmythRuntime.Instance.init({
+    Storage: {
+        Connector: 'S3',
+        Settings: {
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+    },
+});
 
 if (!SREInstance.ready()) {
     process.exit(1);

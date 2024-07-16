@@ -1,16 +1,17 @@
 import Component from '@sre/Components/Component.class';
 import componentInstance from '@sre/Components/index';
-import AgentRuntime from './AgentRuntime.class';
-import AgentSettings from './AgentSettings.class';
 import AgentLogger from './AgentLogger.class';
 import AgentRequest from './AgentRequest.class';
+import AgentRuntime from './AgentRuntime.class';
+import AgentSettings from './AgentSettings.class';
 import OSResourceMonitor from './OSResourceMonitor';
 
 import config from '@sre/config';
 import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { createLogger } from '@sre/Core/Logger';
-import { parseKey, parseTemplate } from '@sre/services/utils';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { parseKey } from '@sre/services/utils';
 
 const console = createLogger('___FILENAME___');
 const idPromise = (id) => id;
@@ -799,7 +800,8 @@ export default class Agent {
 
         for (let input of componentData.inputs) {
             if (input.defaultVal && _input[input.name] === undefined) {
-                _input[input.name] = parseTemplate(input.defaultVal, this.agentVariables, { escapeString: false, processUnmatched: false });
+                _input[input.name] = TemplateString(input.defaultVal).parse(this.agentVariables).result;
+                //parseTemplate(input.defaultVal, this.agentVariables, { escapeString: false, processUnmatched: false });
             }
         }
         return _input;
