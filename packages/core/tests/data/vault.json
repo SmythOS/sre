@@ -1,7 +1,8 @@
 {
     "default": {
         "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY",
-        "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1"
+        "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
+        "OpenAI": "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"
     },
     "Team1": {
         "Team1_API": "THIS_IS_A_FAKE_TEAM1_API_KEY"

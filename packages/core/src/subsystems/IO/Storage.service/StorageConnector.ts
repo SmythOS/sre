@@ -18,15 +18,15 @@ export interface IStorageRequest {
 
 export abstract class StorageConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
-    public abstract user(candidate: AccessCandidate): IStorageRequest;
-    protected abstract read(resourceId: string, acRequest: AccessRequest): Promise<StorageData>;
-    protected abstract write(resourceId: string, acRequest: AccessRequest, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void>;
-    protected abstract delete(resourceId: string, acRequest: AccessRequest): Promise<void>;
-    protected abstract exists(resourceId: string, acRequest: AccessRequest): Promise<boolean>;
+    public abstract user(candidate: IAccessCandidate): IStorageRequest;
+    protected abstract read(acRequest: AccessRequest, resourceId: string): Promise<StorageData>;
+    protected abstract write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void>;
+    protected abstract delete(acRequest: AccessRequest, resourceId: string): Promise<void>;
+    protected abstract exists(acRequest: AccessRequest, resourceId: string): Promise<boolean>;
 
-    protected abstract getMetadata(resourceId: string, acRequest: AccessRequest): Promise<StorageMetadata | undefined>;
-    protected abstract setMetadata(resourceId: string, acRequest: AccessRequest, metadata: StorageMetadata): Promise<void>;
+    protected abstract getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined>;
+    protected abstract setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata): Promise<void>;
 
-    protected abstract getACL(resourceId: string, acRequest: AccessRequest): Promise<ACL | undefined>;
-    protected abstract setACL(resourceId: string, acRequest: AccessRequest, acl: IACL): Promise<void>;
+    protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
+    protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
 }

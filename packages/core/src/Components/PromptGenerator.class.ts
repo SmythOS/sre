@@ -50,7 +50,7 @@ export default class PromptGenerator extends Component {
 
             // request to LLM
             //const response: any = await componentLLMRequest(prompt, model, config).catch((error) => ({ error: error }));
-            const response: any = await llmHelper.promptRequest(prompt, config).catch((error) => ({ error: error }));
+            const response: any = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null

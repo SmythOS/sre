@@ -25,7 +25,7 @@ export abstract class SecureConnector extends Connector {
         console.info(`Stopping ${this.name} connector ...`);
     }
 
-    private async hasAccess(acRequest: AccessRequest) {
+    protected async hasAccess(acRequest: AccessRequest) {
         const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
 
         //const aclHelper = ACLHelper.from(acl);
@@ -75,7 +75,7 @@ export abstract class SecureConnector extends Connector {
         // Modify the descriptor's value to wrap the original method
         descriptor.value = async function (...args: any[]) {
             // Extract the method arguments
-            const [resourceId, acRequest] = args;
+            const [acRequest, resourceId] = args;
 
             // Inject the access control logic
             const accessTicket = await this.getAccessTicket(resourceId, acRequest);

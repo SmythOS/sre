@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import config from '@sre/config';
-import { AgentRequest, SmythRuntime } from '@sre/index';
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
-import { AgentProcess } from '@sre/Core/AgentProcess.helper';
+import { AgentRequest, ConnectorService, SmythRuntime } from '@sre/index';
+import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
+
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -30,7 +30,7 @@ describe('SRE Basic Tests', () => {
         expect(sre).toBeInstanceOf(SmythRuntime);
     });
     it('SRE exposes storage', async () => {
-        const storageFromSRE = SmythRuntime.Instance.Storage;
+        const storageFromSRE = ConnectorService.getStorageConnector();
         expect(storageFromSRE).toBeInstanceOf(S3Storage);
         // expect(storageFromSRE.read).toBeTypeOf('function');
         // expect(storageFromSRE.write).toBeTypeOf('function');
@@ -38,12 +38,12 @@ describe('SRE Basic Tests', () => {
         // expect(storageFromSRE.exists).toBeTypeOf('function');
     });
     it('SRE exposes cache', async () => {
-        const cacheFromSRE = SmythRuntime.Instance.Cache;
+        const cacheFromSRE = ConnectorService.getCacheConnector();
         expect(cacheFromSRE).toBeInstanceOf(RedisCache);
     });
 
     it('SRE returns Dummy Instance if not configured', async () => {
-        const agentData: IAgentDataConnector = SmythRuntime.Instance.AgentData;
+        const agentData: AgentDataConnector = ConnectorService.getAgentDataConnector();
         const result = agentData.getAgentData('test', '1.0');
         expect(result).toBeUndefined();
     });

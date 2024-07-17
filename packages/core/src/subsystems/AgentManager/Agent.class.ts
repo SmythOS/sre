@@ -466,6 +466,7 @@ export default class Agent {
                     try {
                         await this.parseVariables(); //make sure that any vault variable is loaded before processing the component
                         output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
+                        console.log(output);
                     } catch (error: any) {
                         //this are fatal errors requiring to cancel the execution of this component.
                         console.error('Error on component process: ', { componentId, name: componentData.name, input: _input }, error);
