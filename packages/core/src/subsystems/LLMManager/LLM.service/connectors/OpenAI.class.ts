@@ -1,19 +1,58 @@
 import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
-import { ILLMConnector } from '../ILLMConnector';
-import { LLMConnector } from '../LLMConnector';
+import { ILLMConnectorRequest, LLMConnector } from '../LLMConnector';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import models from '@sre/LLMManager/models';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
-export class OpenAIConnector extends LLMConnector implements ILLMConnector {
+export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
-    async chatRequest(prompt, params) {
+
+    public user(candidate: AccessCandidate): ILLMConnectorRequest {
+        if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
+        const vaultConnector = ConnectorService.getVaultConnector();
+        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+        return {
+            chatRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.chatRequest(candidate.readRequest, prompt, params);
+            },
+            visionRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            toolRequest: async (params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.toolRequest(candidate.readRequest, params);
+            },
+        };
+    }
+
+    protected async chatRequest(acRequest: AccessRequest, prompt, params) {
         // if (!model) model = 'gpt-3.5-turbo';
 
-        if (!params.model) params.model = 'gpt-4-turbo';
+        //if (!params.model) params.model = 'gpt-4-turbo';
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!params.messages) params.messages = [];
@@ -38,6 +77,7 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
         delete params.apiKey; // Remove apiKey from params
 
         const openai = new OpenAI({
+            //FIXME: use config.env instead of process.env
             apiKey: apiKey || process.env.OPENAI_API_KEY,
         });
 
@@ -63,8 +103,8 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
 
         return data;
     }
-    async visionRequest(prompt, params, agent?: Agent) {
-        if (!params.model) params.model = 'gpt-4-vision-preview';
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
+        //if (!params.model) params.model = 'gpt-4-vision-preview';
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!params.messages || params.messages?.length === 0) params.messages = [];
@@ -81,9 +121,10 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
 
         //const imageData = await prepareImageData(sources, 'OpenAI', agent);
 
+        const agentId = agent instanceof Agent ? agent.id : agent;
         const imageData = [];
         for (let source of sources) {
-            const bufferData = await source.readData(AccessCandidate.agent(agent.id));
+            const bufferData = await source.readData(AccessCandidate.agent(agentId));
             const base64Data = bufferData.toString('base64');
             const url = `data:${source.mimetype};base64,${base64Data}`;
             imageData.push({
@@ -131,7 +172,10 @@ export class OpenAIConnector extends LLMConnector implements ILLMConnector {
         }
     }
 
-    async toolRequest({ model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }): Promise<any> {
+    protected async toolRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<any> {
         try {
             // We provide
             const openai = new OpenAI({

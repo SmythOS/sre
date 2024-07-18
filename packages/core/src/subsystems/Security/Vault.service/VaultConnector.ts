@@ -14,8 +14,8 @@ export interface IVaultRequest {
 export abstract class VaultConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract user(candidate: AccessCandidate): IVaultRequest;
-    protected abstract get(keyId: string, acRequest: AccessRequest): Promise<string>;
-    protected abstract set(keyId: string, acRequest: AccessRequest, value: string): Promise<void>;
-    protected abstract delete(keyId: string, acRequest: AccessRequest): Promise<void>;
-    protected abstract exists(keyId: string, acRequest: AccessRequest): Promise<boolean>;
+    protected abstract get(acRequest: AccessRequest, keyId: string): Promise<string>;
+    protected abstract set(acRequest: AccessRequest, keyId: string, value: string): Promise<void>;
+    protected abstract delete(acRequest: AccessRequest, keyId: string): Promise<void>;
+    protected abstract exists(acRequest: AccessRequest, keyId: string): Promise<boolean>;
 }

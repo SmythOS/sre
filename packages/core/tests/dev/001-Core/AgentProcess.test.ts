@@ -1,11 +1,8 @@
+import { AgentProcess } from '@sre/Core/AgentProcess.helper';
+import config from '@sre/config';
+import { SmythRuntime } from '@sre/index';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
-import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
-import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
-import config from '@sre/config';
-import { AgentRequest, SmythRuntime } from '@sre/index';
-import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/IAgentDataConnector';
-import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -24,7 +21,14 @@ const sre = SmythRuntime.Instance.init({
             password: config.env.REDIS_PASSWORD || '',
         },
     },
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
+
 describe('AgentProcess Tests', () => {
     it('Runs Agent From data with run() method', async () => {
         let error;

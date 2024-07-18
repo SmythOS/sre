@@ -74,7 +74,7 @@ export default class ToolExecutor {
         });
     }
 
-    public async run({ messages, toolHeaders = {}, teamId = '' }) {
+    public async run({ messages, toolHeaders = {}, agentId = '' }) {
         await this.ready;
 
         const reqMethods = this._reqMethods;
@@ -91,12 +91,14 @@ export default class ToolExecutor {
         /* ==================== STEP ENTRY ==================== */
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 
-        const { data: llmResponse, error } = await llmHelper.toolRequest({
-            model: this.model,
-            messages,
-            toolsConfig,
-            apiKey: '', //await getLLMApiKey(this.model, teamId),
-        });
+        const { data: llmResponse, error } = await llmHelper.toolRequest(
+            {
+                model: this.model,
+                messages,
+                toolsConfig,
+            },
+            agentId
+        );
 
         if (error) {
             throw new Error(
@@ -183,7 +185,7 @@ export default class ToolExecutor {
 
             messages.push(...messagesWithToolResult);
 
-            return this.run({ messages, toolHeaders, teamId });
+            return this.run({ messages, toolHeaders, agentId });
         }
 
         let content = JSONContent(llmResponse?.content).tryParse();

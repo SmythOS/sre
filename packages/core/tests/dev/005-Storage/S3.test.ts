@@ -11,7 +11,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, SmythRuntime } from '@sre/index';
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -23,8 +23,6 @@ const SREInstance = SmythRuntime.Instance.init({
         },
     },
 });
-
-const s3Storage: StorageConnector = SREInstance.Storage;
 
 const testFile = 'unit-tests/test.txt';
 const testAdditionalACLMetadata = {
@@ -60,12 +58,12 @@ const testOriginalMetadata = {
 
 describe('S3 Storage Tests', () => {
     it('Create S3Storage', async () => {
-        const s3Storage: StorageConnector = SREInstance.Storage;
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         expect(s3Storage).toBeInstanceOf(S3Storage);
     });
 
     it('Read Legacy Metadata', async () => {
-        const s3Storage: StorageConnector = SREInstance.Storage;
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const legacyFile = 'teams/9/logs/closz0vak00009tsctm7e8xzs/2024-05-12/LLW3FLB08WIE';
 
         const metadata = await s3Storage.user(agentCandidate).getMetadata(legacyFile);
@@ -79,6 +77,7 @@ describe('S3 Storage Tests', () => {
         let error;
 
         try {
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             await s3Storage.user(agentCandidate).write(testFile, 'Hello World!');
         } catch (e) {
             console.error(e);
@@ -92,6 +91,7 @@ describe('S3 Storage Tests', () => {
         let error;
 
         try {
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             await s3Storage.user(agentCandidate).write(testFileWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
 
             const storageReq = await s3Storage.user(agentCandidate);
@@ -105,6 +105,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Does the files exist ?', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const files = [testFile, testFileWithMeta];
 
         const promises = files.map((file) => {
@@ -117,6 +118,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Is Metadata present', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const metadata = await s3Storage.user(agentCandidate).getMetadata(testFileWithMeta);
 
         expect(metadata).toBeDefined();
@@ -125,6 +127,7 @@ describe('S3 Storage Tests', () => {
     it('Set ACL Metadata', async () => {
         let error;
         try {
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             //we set the metadata for the file created in the previous test
 
             await s3Storage.user(agentCandidate).setACL(testFile, testAdditionalACLMetadata);
@@ -137,6 +140,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Does ACL metadata exist ?', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         //here we need to build an access request for the agent1 because we changed the ACL metadata to have agent1 as owner
         const agent = AccessCandidate.agent('agent1');
         let metadata: any = await s3Storage.user(agent).getACL(testFile);
@@ -145,6 +149,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Are Metadata ACL valid', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const agent = AccessCandidate.agent('agent1');
         const accessRights = await s3Storage.user(agent).getACL(testFile);
 
@@ -152,6 +157,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Read files from S3Storage', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const agent = AccessCandidate.agent('agent1');
 
         const data = await s3Storage.user(agent).read(testFile);
@@ -167,6 +173,7 @@ describe('S3 Storage Tests', () => {
         let error;
 
         try {
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             const agent = AccessCandidate.agent('agent1');
             await Promise.all([s3Storage.user(agent).delete(testFile), s3Storage.user(agentCandidate).delete(testFileWithMeta)]);
         } catch (e) {
@@ -178,6 +185,7 @@ describe('S3 Storage Tests', () => {
     });
 
     it('The file should be deleted', async () => {
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const files = [testFile, testFileWithMeta];
 
         const promises = files.map((file) => {

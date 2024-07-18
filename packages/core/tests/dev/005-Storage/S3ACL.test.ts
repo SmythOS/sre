@@ -11,7 +11,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, SmythRuntime } from '@sre/index';
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -28,7 +28,7 @@ const testFile = 'unit-tests/acl-test.txt';
 
 describe('S3 Storage Advanced Access Rights', () => {
     it('Create S3Storage', async () => {
-        const s3Storage: StorageConnector = SREInstance.Storage;
+        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         expect(s3Storage).toBeInstanceOf(S3Storage);
     });
 
@@ -36,7 +36,7 @@ describe('S3 Storage Advanced Access Rights', () => {
         let error;
 
         try {
-            const s3Storage: StorageConnector = SREInstance.Storage;
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
 
             const agent = AccessCandidate.agent('agent-123456');
 
@@ -54,7 +54,7 @@ describe('S3 Storage Advanced Access Rights', () => {
         let error;
 
         try {
-            const s3Storage: StorageConnector = SREInstance.Storage;
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             const strangerAgent = AccessCandidate.agent('agent-stranger');
 
             await s3Storage.user(strangerAgent).write(testFile, 'Hello World!');
@@ -70,7 +70,7 @@ describe('S3 Storage Advanced Access Rights', () => {
         let error;
 
         try {
-            const s3Storage: StorageConnector = SREInstance.Storage;
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
 
             const agentNoAccess = AccessCandidate.agent('agent-no-access');
 
@@ -89,7 +89,7 @@ describe('S3 Storage Advanced Access Rights', () => {
         let error;
 
         try {
-            const s3Storage: StorageConnector = SREInstance.Storage;
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             const agent = AccessCandidate.agent('agent-123456');
 
             const result = await s3Storage.user(agent).read(testFile);
@@ -114,7 +114,7 @@ describe('S3 Storage Advanced Access Rights', () => {
         let error;
 
         try {
-            const s3Storage: StorageConnector = SREInstance.Storage;
+            const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             const agent = AccessCandidate.agent('agent-123456');
             await s3Storage.user(agent).delete(testFile);
         } catch (e) {

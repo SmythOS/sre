@@ -4,6 +4,7 @@ import { LLMConnector } from './LLM.service/LLMConnector';
 import models from './models';
 import Agent from '@sre/AgentManager/Agent.class';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class LLMHelper {
     private _llmConnector: LLMConnector;
@@ -16,36 +17,39 @@ export class LLMHelper {
     }
 
     static load(model: string) {
+        //TODO: cache instances
         return new LLMHelper(model);
     }
     public get connector(): LLMConnector {
         return this._llmConnector;
     }
 
-    public async promptRequest(prompt, config: any = {}) {
+    public async promptRequest(prompt, config: any = {}, agent: string | Agent) {
         if (!this._llmConnector) return { error: 'LLM request failed', details: `Model ${this.model} not supported` };
-
+        const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractLLMComponentParams(config);
         params.model = this._modelId;
 
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);
-            let response = await this._llmConnector.chatRequest(prompt, params);
+
+            let response = await this._llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
 
             return this._llmConnector.postProcess(response);
         } catch (error: any) {
-            return { error: 'LLM request failed', details: error?.message || error?.toString() };
+            return { error: { error: 'LLM request failed', details: error?.message || error?.toString() } };
         }
     }
 
-    public async visionRequest(prompt, sources: BinaryInput[], config: any = {}, agent: Agent) {
+    public async visionRequest(prompt, sources: BinaryInput[], config: any = {}, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractVisionLLMParams(config);
         params.model = this._modelId;
         params.sources = sources;
 
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);
-            let response = await this._llmConnector.visionRequest(prompt, params, agent);
+            let response = await this._llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
 
             return this._llmConnector.postProcess(response);
         } catch (error: any) {
@@ -53,7 +57,8 @@ export class LLMHelper {
         }
     }
 
-    public async toolRequest(params: any) {
-        return this._llmConnector.toolRequest(params);
+    public async toolRequest(params: any, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
     }
 }

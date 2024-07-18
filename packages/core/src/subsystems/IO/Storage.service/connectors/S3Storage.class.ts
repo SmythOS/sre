@@ -38,28 +38,28 @@ export class S3Storage extends StorageConnector {
     public user(candidate: AccessCandidate): IStorageRequest {
         return {
             write: async (resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata) => {
-                return await this.write(resourceId, candidate.writeRequest, value, acl, metadata);
+                return await this.write(candidate.writeRequest, resourceId, value, acl, metadata);
             },
             read: async (resourceId: string) => {
-                return await this.read(resourceId, candidate.readRequest);
+                return await this.read(candidate.readRequest, resourceId);
             },
             delete: async (resourceId: string) => {
-                await this.delete(resourceId, candidate.writeRequest);
+                await this.delete(candidate.readRequest, resourceId);
             },
             exists: async (resourceId: string) => {
-                return await this.exists(resourceId, candidate.readRequest);
+                return await this.exists(candidate.readRequest, resourceId);
             },
             getMetadata: async (resourceId: string) => {
-                return await this.getMetadata(resourceId, candidate.readRequest);
+                return await this.getMetadata(candidate.readRequest, resourceId);
             },
             setMetadata: async (resourceId: string, metadata: StorageMetadata) => {
-                await this.setMetadata(resourceId, candidate.writeRequest, metadata);
+                await this.setMetadata(candidate.writeRequest, resourceId, metadata);
             },
             getACL: async (resourceId: string) => {
-                return await this.getACL(resourceId, candidate.readRequest);
+                return await this.getACL(candidate.readRequest, resourceId);
             },
             setACL: async (resourceId: string, acl: IACL) => {
-                return await this.setACL(resourceId, candidate.writeRequest, acl);
+                return await this.setACL(candidate.writeRequest, resourceId, acl);
             },
         } as IStorageRequest;
     }
@@ -71,7 +71,7 @@ export class S3Storage extends StorageConnector {
      */
 
     @SecureConnector.AccessControl
-    public async read(resourceId: string, acRequest: AccessRequest) {
+    public async read(acRequest: AccessRequest, resourceId: string) {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -94,7 +94,7 @@ export class S3Storage extends StorageConnector {
     }
 
     @SecureConnector.AccessControl
-    async getMetadata(resourceId: string, acRequest: AccessRequest): Promise<StorageMetadata | undefined> {
+    async getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -108,7 +108,7 @@ export class S3Storage extends StorageConnector {
     }
 
     @SecureConnector.AccessControl
-    async setMetadata(resourceId: string, acRequest: AccessRequest, metadata: StorageMetadata) {
+    async setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata) {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -132,7 +132,7 @@ export class S3Storage extends StorageConnector {
      * @returns {Promise<void>} - A promise that resolves when the object has been written.
      */
     @SecureConnector.AccessControl
-    async write(resourceId: string, acRequest: AccessRequest, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
+    async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -168,7 +168,7 @@ export class S3Storage extends StorageConnector {
      * @returns {Promise<void>} - A promise that resolves when the object has been deleted.
      */
     @SecureConnector.AccessControl
-    async delete(resourceId: string, acRequest: AccessRequest): Promise<void> {
+    async delete(acRequest: AccessRequest, resourceId: string): Promise<void> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -186,7 +186,7 @@ export class S3Storage extends StorageConnector {
     }
 
     @SecureConnector.AccessControl
-    async exists(resourceId: string, acRequest: AccessRequest): Promise<boolean> {
+    async exists(acRequest: AccessRequest, resourceId: string): Promise<boolean> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
         const command = new HeadObjectCommand({
@@ -224,7 +224,7 @@ export class S3Storage extends StorageConnector {
     }
 
     @SecureConnector.AccessControl
-    async getACL(resourceId: string, acRequest: AccessRequest): Promise<ACL | undefined> {
+    async getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 
@@ -238,7 +238,7 @@ export class S3Storage extends StorageConnector {
     }
 
     @SecureConnector.AccessControl
-    async setACL(resourceId: string, acRequest: AccessRequest, acl: IACL) {
+    async setACL(acRequest: AccessRequest, resourceId: string, acl: IACL) {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
 

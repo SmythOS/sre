@@ -1,12 +1,12 @@
 import { xxh3 } from '@node-rs/xxhash';
-import { ICacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector, ICacheConnector } from '@sre/MemoryManager/Cache.service';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
 
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, SmythRuntime } from '@sre/index';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -30,7 +30,7 @@ const sre = SmythRuntime.Instance.init({
 
 //import SRE, { AgentRequest } from '../../dist';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-let redisCache: ICacheConnector = sre.Cache;
+let redisCache: CacheConnector = ConnectorService.getCacheConnector();
 
 const testFile = 'unit-tests/test.txt';
 const testAdditionalACLMetadata = {

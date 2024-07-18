@@ -6,7 +6,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { JSONFileVault } from '@sre/Security/Vault.service/connectors/JSONFileVault.class';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, SmythRuntime } from '@sre/index';
 
 const SREInstance = SmythRuntime.Instance.init({
     Vault: {
@@ -19,12 +19,12 @@ const SREInstance = SmythRuntime.Instance.init({
 
 describe('Vault Tests', () => {
     it('Vault loaded', async () => {
-        const vault: VaultConnector = SREInstance.Vault;
+        const vault: VaultConnector = ConnectorService.getVaultConnector();
         expect(vault).toBeInstanceOf(JSONFileVault);
     });
 
     it('Read vault key', async () => {
-        const vault: VaultConnector = SREInstance.Vault;
+        const vault: VaultConnector = ConnectorService.getVaultConnector();
 
         //by default current team resolver resolves every user team to "default"
         const value = await vault.user(AccessCandidate.user('test')).get('DIFFBOT_API');
@@ -33,7 +33,7 @@ describe('Vault Tests', () => {
     });
 
     it('Do not allow reading key from different team', async () => {
-        const vault: VaultConnector = SREInstance.Vault;
+        const vault: VaultConnector = ConnectorService.getVaultConnector();
 
         //we use a team candidate here in order to test another team access
         const value = await vault

@@ -3,8 +3,11 @@ import { Connector } from '@sre/Core/Connector.class';
 import { createLogger } from '@sre/Core/Logger';
 import models from '@sre/LLMManager/models';
 import paramMappings from '@sre/LLMManager/paramMappings';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
+import { IAccessCandidate } from '@sre/types/ACL.types';
 import { LLMParams } from '@sre/types/LLM.types';
 import { isBase64FileUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
@@ -12,24 +15,18 @@ import { encode } from 'gpt-tokenizer';
 import imageSize from 'image-size';
 const console = createLogger('LLMConnector');
 
-export interface ILLMConnector {
-    chatRequest(prompt, params: any, agent?: Agent): Promise<any>;
-    visionRequest(prompt, params: any, agent?: Agent): Promise<any>;
+export interface ILLMConnectorRequest {
+    chatRequest(prompt, params: any): Promise<any>;
+    visionRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
-
-    extractLLMComponentParams(config): Promise<any>;
-    extractVisionLLMParams(config: any): Promise<any>;
-    postProcess(response: any): any;
-    enhancePrompt(prompt: string, config: any): string;
-    formatToolsConfig({ type, toolDefinitions, toolChoice });
-    //toolStreamRequest(prompt, model, params: any);
 }
 
-export abstract class LLMConnector extends Connector implements ILLMConnector {
+export abstract class LLMConnector extends Connector {
     public abstract name: string;
-    abstract chatRequest(prompt, params: any): Promise<any>;
-    abstract visionRequest(prompt, params: any, agent: Agent): Promise<any>;
-    abstract toolRequest(params: any): Promise<any>;
+    public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
+    protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<any>;
+    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any>;
+    protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
 
     private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
         const alias = models[model]?.alias || model;
