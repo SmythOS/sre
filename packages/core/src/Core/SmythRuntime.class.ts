@@ -103,28 +103,28 @@ export default class SmythRuntime {
         return this.initialized;
     }
 
-    async runAgent(id, JSONData, request: AgentRequest) {
-        try {
-            const agentData = JSONData;
+    // async runAgent(id, JSONData, request: AgentRequest) {
+    //     try {
+    //         const agentData = JSONData;
 
-            const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
-            if (!pathMatches || !pathMatches[2]) {
-                return { status: 404, data: { error: 'Endpoint not found' } };
-            }
-            const endpointPath = pathMatches[2];
-            const input = request.method == 'GET' ? request.query : request.body;
+    //         const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
+    //         if (!pathMatches || !pathMatches[2]) {
+    //             return { status: 404, data: { error: 'Endpoint not found' } };
+    //         }
+    //         const endpointPath = pathMatches[2];
+    //         const input = request.method == 'GET' ? request.query : request.body;
 
-            const agentSettings = new AgentSettings(id);
+    //         const agentSettings = new AgentSettings(id);
 
-            const agent = new Agent(id, agentData, agentSettings, request);
-            const result: any = await agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
+    //         const agent = new Agent(id, agentData, agentSettings, request);
+    //         const result: any = await agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
-            return result;
-        } catch (error) {
-            console.error('Error running agent', error.message);
-            return { error: 'Error running agent' };
-        }
-    }
+    //         return result;
+    //     } catch (error) {
+    //         console.error('Error running agent', error.message);
+    //         return { error: 'Error running agent' };
+    //     }
+    // }
 
     public async _stop() {
         console.info('Shutting Down SmythRuntime ...');
