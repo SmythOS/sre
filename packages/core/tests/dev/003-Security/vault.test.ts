@@ -7,6 +7,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { JSONFileVault } from '@sre/Security/Vault.service/connectors/JSONFileVault.class';
 import { ConnectorService, SmythRuntime } from '@sre/index';
+import { Match, TemplateString, TPLProcessor } from '@sre/helpers/TemplateString.helper';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 
 const SREInstance = SmythRuntime.Instance.init({
     Vault: {
@@ -42,5 +44,18 @@ describe('Vault Tests', () => {
             .catch((e) => undefined);
 
         expect(value).toBeUndefined();
+    });
+
+    it('Parse a template string containing vault keys', async () => {
+        const tpl = `using a vault key : {{KEY(DIFFBOT_API)}} and a simple template variable : {{MyVAR}}`;
+        const teamId = 'default';
+
+        //prettier-ignore
+        const result = await TemplateString(tpl)
+            .parse({ MyVAR: 'Hello' })            
+            .parseTeamKeys(teamId)
+            .asyncResult; //since parseTeamKeys is async, we use asyncResult with await to wait for the result
+
+        expect(result).toEqual('using a vault key : THIS_IS_A_FAKE_DIFFBOT_API_KEY and a simple template variable : Hello');
     });
 });

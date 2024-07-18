@@ -1,3 +1,6 @@
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import { asyncReplace } from '../utils';
+
 export type TemplateStringMatch = RegExp;
 
 export const Match = {
@@ -24,6 +27,12 @@ export const Match = {
     },
 };
 
+export const TPLProcessor = {
+    vaultTeam(teamId: string): (token) => Promise<string> {
+        return async (token) => await VaultHelper.getTeamKey(token, teamId);
+    },
+};
+
 /**
  * Provides a chainable to manipulate template strings
  *
@@ -33,9 +42,23 @@ export const Match = {
 export class TemplateStringHelper {
     private _current: string;
 
+    //this queue is used to wait for asyncronous results when async processors are used
+    //if all processors are synchronous, this queue will be empty and .result getter can be used
+    //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
+    private _promiseQueue: Promise<any>[] = [];
+
     public get result() {
-        return this._current;
+        if (this._promiseQueue.length <= 0) return this._current;
+        throw new Error('This template object has async results, you should use .asyncResult with await instead of .result');
     }
+
+    public get asyncResult() {
+        return new Promise(async (resolve, reject) => {
+            await Promise.all(this._promiseQueue);
+            resolve(this._current);
+        });
+    }
+
     private constructor(private templateString: string) {
         this._current = templateString;
     }
@@ -58,19 +81,64 @@ export class TemplateStringHelper {
     }
 
     /**
+     * This is a shortcut function that parses vault key values and replace them with corresponding values from team vault
+     * @param teamId
+     * @returns
+     */
+    public parseTeamKeys(teamId: string) {
+        return this.process(TPLProcessor.vaultTeam(teamId), Match.fn('KEY'));
+    }
+
+    /**
      * Processes a template string by replacing the placeholders with the result of the provided processor function
      * The processor function receives the token as an argument and should return the value to replace the token with
      * If the processor function returns undefined, the token will be left as is
      */
-    public process(processor: Function, regex: TemplateStringMatch = Match.default) {
+    public process(processor: (token) => Promise<string> | string, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string') return this;
-        this._current = this._current.replace(regex, (match, token) => {
-            let result = processor(token);
-            if (result === undefined) {
-                return match;
+        //first build a json object with all matching tokens
+        let tokens = {};
+        let match;
+
+        const prosessorPromises = [];
+        while ((match = regex.exec(this._current)) !== null) {
+            const token = match[1];
+            tokens[token] = match[0];
+
+            const _processor = processor(token);
+
+            //if an async processor is used, the TemplateStringHelper switches to async mode
+            if (_processor instanceof Promise) {
+                _processor.then((result) => {
+                    if (result === undefined) {
+                        return match[0];
+                    }
+                    tokens[token] = result;
+                });
+                prosessorPromises.push(_processor);
+            } else {
+                tokens[token] = _processor;
             }
-            return result;
-        });
+        }
+
+        if (prosessorPromises.length > 0) {
+            const promise = new Promise(async (resolve, reject) => {
+                await Promise.all(prosessorPromises);
+                this.parse(tokens, regex);
+                resolve(true);
+            });
+            this._promiseQueue.push(Promise.all(prosessorPromises));
+        } else {
+            this.parse(tokens, regex);
+        }
+
+        // this._current = await asyncReplace(this._current, regex, async (match, token) => {
+        //     let result = await processor(token);
+        //     if (result === undefined) {
+        //         return match;
+        //     }
+        //     return result;
+        // });
 
         return this;
     }
@@ -85,9 +153,13 @@ export class TemplateStringHelper {
         return this;
     }
 
-    public toString() {
-        return this._current;
-    }
+    // public toString() {
+    //     if (this._promiseQueue.length <= 0) return this._current;
+    //     return new Promise(async (resolve, reject) => {
+    //         await Promise.all(this._promiseQueue);
+    //         resolve(this._current);
+    //     });
+    // }
 }
 
 export function TemplateString(templateString: string) {
