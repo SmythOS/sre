@@ -4,6 +4,10 @@ import APIOutput from './APIOutput.class';
 import PromptGenerator from './PromptGenerator.class';
 import APICall from './APICall.class';
 import VisionLLM from './VisionLLM.class';
+import FSleep from './FSleep.class';
+import FHash from './FHash.class';
+import FEncDec from './FEncDec.class';
+import FTimestamp from './FTimestamp.class';
 
 const components = {
     Component: new Component(),
@@ -14,6 +18,11 @@ const components = {
     LLMPrompt: new PromptGenerator(),
     APICall: new APICall(),
     VisionLLM: new VisionLLM(),
+    FSleep: new FSleep(),
+    FHash: new FHash(),
+    FEncDec: new FEncDec(),
+    // FSign: new FSign(), // TODO: Implement FSign
+    FTimestamp: new FTimestamp(),
 };
 
 export default components;
