@@ -46,6 +46,7 @@
         "@aws-sdk/client-s3": "^3.596.0",
         "@google/generative-ai": "^0.14.1",
         "@node-rs/xxhash": "^1.7.3",
+        "@pinecone-database/pinecone": "^3.0.0",
         "axios": "^1.7.2",
         "dayjs": "^1.11.11",
         "dotenv": "^16.4.5",
