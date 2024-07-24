@@ -8,7 +8,7 @@ import { VaultService } from '@sre/Security/Vault.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
-    VectorDB: VectorDBService;
+    VectorDB?: VectorDBService;
     Cache?: CacheService;
     LLM?: LLMService;
     Vault?: VaultService;

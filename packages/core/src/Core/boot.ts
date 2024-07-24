@@ -7,12 +7,14 @@ import { TServiceRegistry } from '@sre/types/SRE.types';
 import { VaultService } from '@sre/Security/Vault.service';
 import { AccountService } from '@sre/Security/Account.service';
 import { AgentDataService } from '@sre/AgentManager/AgentData.service';
+import { VectorDBService } from '@sre/IO/VectorDB.service';
 const console = createLogger('Boot');
 
 export function boot() {
     console.debug('SRE Boot sequence started');
     const service: TServiceRegistry = {};
     service.Storage = new StorageService();
+    service.VectorDB = new VectorDBService();
     service.Cache = new CacheService();
     service.LLM = new LLMService();
     service.Vault = new VaultService();

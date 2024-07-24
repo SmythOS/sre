@@ -48,6 +48,8 @@ const config = {
         MAX_LATENCY_PAID_USER: process.env.MAX_LATENCY_PAID_USER || 10,
 
         GOOGLEAI_API_KEY: process.env.GOOGLEAI_API_KEY,
+        PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+        PINCECONE_INDEX_NAME: process.env.PINCECONE_INDEX_NAME,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

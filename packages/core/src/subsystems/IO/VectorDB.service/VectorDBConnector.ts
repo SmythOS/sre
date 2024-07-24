@@ -3,35 +3,51 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
-import { VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
+import { IDocument, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
+import { Document } from '@langchain/core/documents';
 
+//fixme: REPLACE data wrapper with args
 export interface IVectorDBRequest {
-    search(data: { namespace: string; query: string; topK: string }): Promise<VectorsResultData>;
-    insertVectors(data: { namespace: string; vectors: { id: string; vector: number[] }[]; acl?: IACL; metadata?: VectorDBMetadata }): Promise<void>;
-    deleteVectors(data: { ids: string[]; namespace?: string }): Promise<void>;
+    query(namespace: string, query: string, topK: number): Promise<VectorsResultData>;
+    searchByVector(namespace: string, vector: number[], topK: number): Promise<VectorsResultData>;
+    insert(namespace: string, vectors: { id: string; values: number[]; metadata?: VectorDBMetadata }[]): Promise<void>;
+    fromDocuments(namespace: string, documents: IDocument[]): Promise<void>;
+    delete(namespace: string, ids: string[]): Promise<void>;
+    createNamespace(namespace: string): Promise<void>;
+    deleteNamespace(namespace: string): Promise<void>;
 }
 
 export abstract class VectorDBConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract user(candidate: IAccessCandidate): IVectorDBRequest;
 
-    protected abstract search(
+    protected abstract query(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; query: string; topK: string }
+        data: { indexName: string; namespace: string; query: string; topK: number }
     ): Promise<{ [key: string]: any }[]>;
 
-    protected abstract insertVectors(
+    protected abstract searchByVector(
+        acRequest: AccessRequest,
+        data: { indexName: string; namespace: string; vector: number[]; topK: number }
+    ): Promise<{ [key: string]: any }[]>;
+
+    protected abstract insert(
         acRequest: AccessRequest,
         data: {
             indexName: string;
             namespace: string;
-            vectors: { id: string; vector: number[] }[];
+            vectors: { id: string; values: number[]; metadata?: VectorDBMetadata }[];
             acl?: IACL;
-            metadata?: VectorDBMetadata;
         }
     ): Promise<void>;
 
-    protected abstract deleteVectors(acRequest: AccessRequest, data: { ids: string[]; indexName: string; namespace?: string }): Promise<void>;
+    protected abstract delete(acRequest: AccessRequest, data: { ids: string[]; indexName: string; namespace: string }): Promise<void>;
+
+    protected abstract fromDocuments(acRequest: AccessRequest, namespace: string, documents: IDocument[]): Promise<void>;
+
+    protected abstract createNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
+
+    protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
 
     // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
 
