@@ -13,6 +13,12 @@ const sre = SmythRuntime.Instance.init({
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 describe('LLM Tools', () => {
     it('Call tools from openAPI url', async () => {

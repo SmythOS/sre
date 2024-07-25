@@ -19,7 +19,7 @@ const sre = SmythRuntime.Instance.init({
 
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
-describe('Strong Data typing Features', () => {
+describe('APIEndpoint Component', () => {
     it('APIEndpoint : nominal case', async () => {
         let error;
         try {
