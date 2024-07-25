@@ -1,6 +1,11 @@
 export type VectorDBMetadata = Record<string, any> | undefined;
 
-export type VectorsResultData = { [key: string]: any }[];
+export type VectorsResultData = {
+    id: string;
+    score?: number;
+    values: number[];
+    metadata?: VectorDBMetadata;
+}[];
 
 export type PineconeConfig = {
     pineconeApiKey: string;

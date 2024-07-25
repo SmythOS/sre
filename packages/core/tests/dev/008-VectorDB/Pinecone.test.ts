@@ -26,7 +26,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
         //* Cleanup
         afterAll(async () => {
-            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone');
             const team = AccessCandidate.team('team-123456');
 
             for (const id of idsToClean) {

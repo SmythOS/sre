@@ -75,11 +75,19 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         return {
             query: async (namespace: string, query: string, topK: number) => {
-                return await this.query(candidate.readRequest, { indexName: this.indexName, namespace, query, topK });
+                return (await this.query(candidate.readRequest, { indexName: this.indexName, namespace, query, topK })).map((match) => ({
+                    id: match.id,
+                    values: match.values,
+                    metadata: match.metadata,
+                }));
             },
 
             searchByVector: async (namespace: string, vector: number[], topK: number) => {
-                return await this.searchByVector(candidate.readRequest, { indexName: this.indexName, namespace, vector, topK });
+                return (await this.searchByVector(candidate.readRequest, { indexName: this.indexName, namespace, vector, topK })).map((match) => ({
+                    id: match.id,
+                    values: match.values,
+                    metadata: match.metadata,
+                }));
             },
 
             insert: async (namespace: string, vectors: { id: string; values: number[]; metadata?: VectorDBMetadata }[]) => {
@@ -120,10 +128,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async query(
-        acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; query: string; topK: number }
-    ): Promise<{ [key: string]: any }[]> {
+    protected async query(acRequest: AccessRequest, data: { indexName: string; namespace: string; query: string; topK: number }) {
         const pineconeIndex = this.client.Index(data.indexName).namespace(data.namespace);
 
         /* Search the vector DB independently with metadata filters */
@@ -136,14 +141,15 @@ export class PineconeVectorDB extends VectorDBConnector {
             includeValues: true,
         });
 
-        return results.matches;
+        return results.matches.map((match) => ({
+            id: match.id,
+            values: match.values,
+            metadata: match.metadata,
+        }));
     }
 
     @SecureConnector.AccessControl
-    protected async searchByVector(
-        acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; vector: number[]; topK: number }
-    ): Promise<{ [key: string]: any }[]> {
+    protected async searchByVector(acRequest: AccessRequest, data: { indexName: string; namespace: string; vector: number[]; topK: number }) {
         const results = await this.client.Index(data.indexName).namespace(data.namespace).query({
             topK: data.topK,
             vector: data.vector,
@@ -151,7 +157,11 @@ export class PineconeVectorDB extends VectorDBConnector {
             includeValues: true,
         });
 
-        return results.matches;
+        return results.matches.map((match) => ({
+            id: match.id,
+            values: match.values,
+            metadata: match.metadata,
+        }));
     }
 
     @SecureConnector.AccessControl

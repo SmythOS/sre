@@ -24,12 +24,12 @@ export abstract class VectorDBConnector extends SecureConnector {
     protected abstract query(
         acRequest: AccessRequest,
         data: { indexName: string; namespace: string; query: string; topK: number }
-    ): Promise<{ [key: string]: any }[]>;
+    ): Promise<VectorsResultData>;
 
     protected abstract searchByVector(
         acRequest: AccessRequest,
         data: { indexName: string; namespace: string; vector: number[]; topK: number }
-    ): Promise<{ [key: string]: any }[]>;
+    ): Promise<VectorsResultData>;
 
     protected abstract insert(
         acRequest: AccessRequest,
