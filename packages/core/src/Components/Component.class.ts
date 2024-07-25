@@ -13,7 +13,7 @@ export default class Component {
     init() {}
 
     createComponentLogger(agent: Agent, name: string) {
-        const logger = createLogger(name || this.constructor.name, agent.agentRuntime?.debug);
+        const logger = createLogger(name || this.constructor.name, agent?.agentRuntime?.debug);
 
         return logger;
     }

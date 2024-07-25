@@ -4,7 +4,7 @@ import AgentSettings from '@sre/AgentManager/AgentSettings.class';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { uid } from '../utils';
 
-import { parseCLIArgs } from '@sre/utils/cli.utils';
+import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import * as FileType from 'file-type';
 import fs from 'fs';
 import mime from 'mime';
@@ -100,7 +100,7 @@ export class AgentProcess {
         const input = request.method == 'GET' ? request.query : request.body;
         const result: any = await this.agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
-        return result;
+        return { data: result };
     }
 
     public reset() {
@@ -117,8 +117,10 @@ export class AgentProcess {
     }
 
     private parseCLI(argList: Array<string>): AgentRequest {
+        const cliConnector: CLIConnector = ConnectorService.getCLIConnector();
         const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options'];
-        const cli = parseCLIArgs(['endpoint', 'post', 'get', 'put', 'delete', 'patch', 'head', 'options', 'headers', 'session'], argList);
+        const cli: any = cliConnector.parse(argList, ['endpoint', 'post', 'get', 'put', 'delete', 'patch', 'head', 'options', 'headers', 'session']);
+
         const usedMethod = methods.find((method) => cli[method]);
 
         const req: AgentRequest = new AgentRequest();

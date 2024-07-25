@@ -8,6 +8,7 @@ import FSleep from './FSleep.class';
 import FHash from './FHash.class';
 import FEncDec from './FEncDec.class';
 import FTimestamp from './FTimestamp.class';
+import AgentPlugin from './AgentPlugin.class';
 
 const components = {
     Component: new Component(),
@@ -23,6 +24,7 @@ const components = {
     FEncDec: new FEncDec(),
     // FSign: new FSign(), // TODO: Implement FSign
     FTimestamp: new FTimestamp(),
+    AgentPlugin: new AgentPlugin(),
 };
 
 export default components;

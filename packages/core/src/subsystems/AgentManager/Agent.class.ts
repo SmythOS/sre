@@ -11,7 +11,6 @@ import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { createLogger } from '@sre/Core/Logger';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { parseKey } from '@sre/services/utils';
 
 const console = createLogger('___FILENAME___');
 const idPromise = (id) => id;
@@ -33,7 +32,7 @@ export default class Agent {
     public debugSessionEnabled = false;
     public circularLimit = 100; //TODO : make it configurable from agent settings
     public version = '';
-    public baseUrl = '';
+    //public baseUrl = '';
     public agentVariables: any = {};
     private _kill = false;
     //public agentRequest: Request | AgentRequest | any;
@@ -76,8 +75,8 @@ export default class Agent {
         // }
 
         // Base URL required to serve binary data
-        this.baseUrl = `https://${id}.${config.env.AGENT_DOMAIN}`;
-        if (config.env.AGENT_DOMAIN_PORT) this.baseUrl += `:${config.env.AGENT_DOMAIN_PORT}`;
+        //this.baseUrl = `https://${id}.${config.env.AGENT_DOMAIN}`;
+        //if (config.env.AGENT_DOMAIN_PORT) this.baseUrl += `:${config.env.AGENT_DOMAIN_PORT}`;
 
         const endpoints = this.data.components.filter((c) => c.name == 'APIEndpoint');
         for (let endpoint of endpoints) {
@@ -147,7 +146,8 @@ export default class Agent {
             for (let key in this.agentVariables) {
                 const value = this.agentVariables[key];
                 if (value.startsWith('{{') && value.endsWith('}}')) {
-                    this.agentVariables[key] = (await parseKey(value, this.teamId)) || '';
+                    //this.agentVariables[key] = (await parseKey(value, this.teamId)) || '';
+                    this.agentVariables[key] = await TemplateString(value).parseTeamKeys(this.teamId).asyncResult;
                 }
             }
         }
@@ -211,7 +211,7 @@ export default class Agent {
             step = await this.agentRuntime.runCycle();
 
             //adjust latency based on cpu load
-            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * this.planInfo.maxLatency);
+            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * this.planInfo?.maxLatency || 0);
 
             await delay(30 + qosLatency);
         } while (!step?.finalResult && !this._kill);

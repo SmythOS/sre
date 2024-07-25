@@ -5,6 +5,9 @@ process.env.LOG_LEVEL = 'none';
 import { AgentRequest, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../../dist/index.dev.js';
 
 const sre = SmythRuntime.Instance.init({
+    CLI: {
+        Connector: 'CLI',
+    },
     Storage: {
         Connector: 'S3',
         Settings: {
@@ -22,6 +25,12 @@ const sre = SmythRuntime.Instance.init({
             password: process.env.REDIS_PASSWORD || '',
         },
     },
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
     AgentData: {
         Connector: 'CLI',
     },
@@ -29,6 +38,9 @@ const sre = SmythRuntime.Instance.init({
 
 async function main() {
     try {
+        // const cliConnector = ConnectorService.getCLIConnector();
+        // console.log('CLI Connector:', cliConnector);
+        // process.exit(0);
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         const data = await agentDataConnector.getAgentData('test', '1.0');
         //console.log(data);

@@ -48,3 +48,21 @@ export function parseCLIArgs(argList: string | Array<string>, argv?: Array<strin
 
     return result;
 }
+
+/**
+ * List all cli main arguments
+ * example : node index.js --file ./path/to/file.txt --settings key1=value1 key2=value2
+ * calling getMainArgs(process.argv) will return ['file', 'settings']
+ */
+export function getMainArgs(argv?: Array<string>): Array<string> {
+    if (!argv) argv = process.argv;
+    const args = argv;
+    const result = [];
+    for (let i = 2; i < args.length; i++) {
+        if (args[i].startsWith('--')) {
+            result.push(args[i].replace(/^--/, ''));
+        }
+    }
+
+    return result;
+}

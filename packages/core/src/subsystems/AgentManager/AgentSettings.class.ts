@@ -17,7 +17,7 @@ export default class AgentSettings {
 
     async init(agentId) {
         const agentDataConnector = ConnectorService.getAgentDataConnector();
-        this._settings = (await agentDataConnector.getAgentSettings(agentId)) || {};
+        this._settings = (await agentDataConnector.getAgentSettings(agentId).catch((e) => {})) || {};
         this.embodiments = new EmbodimentSettings(this._settings.embodiments);
         this._ready = true;
     }

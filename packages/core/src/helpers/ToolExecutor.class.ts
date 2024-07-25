@@ -6,6 +6,8 @@ import { isUrl } from '@sre/utils/data.utils';
 import axios, { AxiosRequestConfig } from 'axios';
 import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
+import { AgentProcess } from '@sre/Core/AgentProcess.helper';
+import { TAgentProcessParams } from '@sre/types/Agent.types';
 const console = createLogger('ToolExecutor');
 
 type UseToolParams = {
@@ -54,7 +56,7 @@ export default class ToolExecutor {
 
     private get ready() {
         if (this._currentWaitPromise) return this._currentWaitPromise;
-        return new Promise((resolve, reject) => {
+        this._currentWaitPromise = new Promise((resolve, reject) => {
             const maxWaitTime = 30000;
             let waitTime = 0;
             const interval = 100;
@@ -72,6 +74,8 @@ export default class ToolExecutor {
                 }
             }, interval);
         });
+
+        return this._currentWaitPromise;
     }
 
     public async run({ messages, toolHeaders = {}, agentId = '' }) {
@@ -346,12 +350,17 @@ export default class ToolExecutor {
             }
 
             try {
-                //TODO: if it's a local agent, invoke it directly without axios
+                console.debug('Calling tool: ', reqConfig);
+                if (reqConfig.url.includes('localhost')) {
+                    //if it's a local agent, invoke it directly
+                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID']).run(reqConfig as TAgentProcessParams);
+                    return { data: response.data, error: null };
+                } else {
+                    //if it's a remote agent, call the API via HTTP
+                    const response = await axios.request(reqConfig);
 
-                console.log('Calling tool: ', reqConfig);
-                const response = await axios.request(reqConfig);
-
-                return { data: response.data, error: null };
+                    return { data: response.data, error: null };
+                }
             } catch (error: any) {
                 console.error('Error calling Tool: ', reqConfig);
                 console.error('  ====>', error);
