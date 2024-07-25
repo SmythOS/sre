@@ -5,20 +5,22 @@ import { VectorDBConnector } from './VectorDBConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import crypto from 'crypto';
 import { Document } from '@langchain/core/documents';
-import { IDocument } from '@sre/types/VectorDB.types';
+import { IVectorDataSource, Source } from '@sre/types/VectorDB.types';
 
 export class VectorsHelper {
     private _connector: VectorDBConnector;
+    private embeddingsProvider: OpenAIEmbeddings;
 
     constructor() {
         this._connector = ConnectorService.getVectorDBConnector();
+        this.embeddingsProvider = new OpenAIEmbeddings();
     }
 
     public static load() {
         return new VectorsHelper();
     }
 
-    public static async chunkTextToDocuments(
+    public static async chunkText(
         text: string,
         {
             chunkSize = 4000,
@@ -27,49 +29,48 @@ export class VectorsHelper {
             chunkSize?: number;
             chunkOverlap?: number;
         } = {}
-    ) {
-        const preContentPerChunk = '';
-        const postContentPerChunk = '';
-
+    ): Promise<string[]> {
         const textSplitter = new RecursiveCharacterTextSplitter({
             chunkSize,
             chunkOverlap,
         });
-        let output = await textSplitter.createDocuments([text]);
-
-        output = output.map((chunk) => ({
-            ...chunk,
-            pageContent: `${preContentPerChunk} ${chunk.pageContent} ${postContentPerChunk}`.replace(/\s\s+/g, ' '),
-        }));
+        let output = await textSplitter.splitText(text);
 
         return output;
     }
 
-    public async splitAndIngestContent(
+    public async ingestText(
         text: string,
         namespace: string,
-
         {
-            chunkSize = 4000,
-            chunkOverlap = 500,
             teamId,
             metadata,
+            chunkSize = 4000,
+            chunkOverlap = 500,
         }: {
-            chunkSize?: number;
-            chunkOverlap?: number;
             teamId?: string;
             metadata?: Record<string, any>;
+            chunkSize?: number;
+            chunkOverlap?: number;
         } = {}
     ) {
-        const documents = await VectorsHelper.chunkTextToDocuments(text, { chunkSize, chunkOverlap });
-        const ids = Array.from({ length: documents.length }, (_, i) => crypto.randomUUID());
-        const documentObjects: IDocument[] = documents.map((doc, i) => {
+        const chunkedText = await VectorsHelper.chunkText(text, { chunkSize, chunkOverlap });
+        const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
+        const source: IVectorDataSource<string>[] = chunkedText.map((doc, i) => {
             return {
-                metadata,
                 id: ids[i],
-                text: doc.pageContent,
+                source: doc,
+                metadata: {},
             };
         });
-        await this._connector.user(AccessCandidate.team(teamId)).fromDocuments(namespace, documentObjects);
+        await this._connector.user(AccessCandidate.team(teamId)).insert(namespace, source);
+    }
+
+    public async embedText(text: string) {
+        return this.embeddingsProvider.embedQuery(text);
+    }
+
+    public async embedTexts(texts: string[]) {
+        return this.embeddingsProvider.embedDocuments(texts);
     }
 }

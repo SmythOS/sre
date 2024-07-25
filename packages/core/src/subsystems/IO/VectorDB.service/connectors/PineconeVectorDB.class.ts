@@ -10,18 +10,21 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IVectorDBRequest, VectorDBConnector } from '../VectorDBConnector';
-import { IDocument, PineconeConfig, VectorDBMetadata } from '@sre/types/VectorDB.types';
+import { IVectorDataSource, PineconeConfig, QueryOptions, Source, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { VectorsHelper } from '../Vectors.helper';
+import { isUrl } from '@sre/utils/data.utils';
 
 const console = createLogger('Pinecone VectorDB');
+
+type SupportedSources = 'text' | 'vector' | 'url';
 
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
     private _client: Pinecone;
     private indexName: string;
-    private _embeddingsProvider: OpenAIEmbeddings;
 
     constructor(private config: PineconeConfig) {
         super();
@@ -29,18 +32,12 @@ export class PineconeVectorDB extends VectorDBConnector {
         this._client = new Pinecone({
             apiKey: config.pineconeApiKey,
         });
-        this._embeddingsProvider = new OpenAIEmbeddings({
-            apiKey: config.openaiApiKey,
-        });
+
         this.indexName = config.indexName;
     }
 
     public get client() {
         return this._client;
-    }
-
-    public get embeddings() {
-        return this._embeddingsProvider;
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -60,44 +57,23 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     // @SecureConnector.AccessControl
     public user(candidate: AccessCandidate): IVectorDBRequest {
-        // check the index exists
-
-        // const indexExists = await this._client
-        //     .Index(this.indexName)
-        //     .describeIndexStats()
-        //     .catch((err) => {
-        //         return false;
-        //     });
-
-        // if (!indexExists) {
-        //     throw new Error(`Index ${this.indexName} does not exist`);
-        // }
-
+        // search: async (namespace: string, query: string, options: QueryOptions) => {
+        //     return (await this.search(candidate.readRequest, { indexName: this.indexName, namespace, query }, options)).map((match) => ({
+        //         id: match.id,
+        //         values: match.values,
+        //         metadata: match.metadata,
+        //     }));
+        // },
         return {
-            query: async (namespace: string, query: string, topK: number) => {
-                return (await this.query(candidate.readRequest, { indexName: this.indexName, namespace, query, topK })).map((match) => ({
-                    id: match.id,
-                    values: match.values,
-                    metadata: match.metadata,
-                }));
+            search: async (namespace: string, query: string | number[], options: QueryOptions) => {
+                return await this.search(candidate.readRequest, { indexName: this.indexName, namespace, query }, options);
             },
 
-            searchByVector: async (namespace: string, vector: number[], topK: number) => {
-                return (await this.searchByVector(candidate.readRequest, { indexName: this.indexName, namespace, vector, topK })).map((match) => ({
-                    id: match.id,
-                    values: match.values,
-                    metadata: match.metadata,
-                }));
+            insert: async (namespace: string, source: IVectorDataSource<Source> | IVectorDataSource<Source>[]) => {
+                await this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, source });
             },
-
-            insert: async (namespace: string, vectors: { id: string; values: number[]; metadata?: VectorDBMetadata }[]) => {
-                await this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, vectors });
-            },
-            fromDocuments: async (namespace: string, documents: IDocument[]) => {
-                await this.fromDocuments(candidate.writeRequest, namespace, documents);
-            },
-            delete: async (namespace: string, ids: string[]) => {
-                await this.delete(candidate.writeRequest, { ids, indexName: this.indexName, namespace });
+            delete: async (namespace: string, id: string | string[]) => {
+                await this.delete(candidate.writeRequest, { id, indexName: this.indexName, namespace });
             },
             createNamespace: async (namespace: string) => {
                 await this.createNamespace(candidate.writeRequest, namespace, this.indexName);
@@ -128,81 +104,56 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async query(acRequest: AccessRequest, data: { indexName: string; namespace: string; query: string; topK: number }) {
-        const pineconeIndex = this.client.Index(data.indexName).namespace(data.namespace);
-
-        /* Search the vector DB independently with metadata filters */
-        // const results = await vectorStore.similaritySearch(data.query, data.topK);
-        const v = await this._embeddingsProvider.embedQuery(data.query);
-        const results = await pineconeIndex.query({
-            topK: data.topK,
-            vector: v,
-            includeMetadata: true,
-            includeValues: true,
-        });
-
-        return results.matches.map((match) => ({
-            id: match.id,
-            values: match.values,
-            metadata: match.metadata,
-        }));
-    }
-
-    @SecureConnector.AccessControl
-    protected async searchByVector(acRequest: AccessRequest, data: { indexName: string; namespace: string; vector: number[]; topK: number }) {
-        const results = await this.client.Index(data.indexName).namespace(data.namespace).query({
-            topK: data.topK,
-            vector: data.vector,
-            includeMetadata: true,
-            includeValues: true,
-        });
-
-        return results.matches.map((match) => ({
-            id: match.id,
-            values: match.values,
-            metadata: match.metadata,
-        }));
-    }
-
-    @SecureConnector.AccessControl
-    protected async insert(
+    protected async search(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; vectors: { id: string; values: number[]; metadata?: VectorDBMetadata }[] }
-    ): Promise<void> {
-        const embeddingsNow = process.hrtime.bigint();
-        // await pineconeStore.addDocuments(chunks, ids);
-        await this._client.Index(data.indexName).namespace(data.namespace).upsert(data.vectors);
-        const embeddingsAfter = process.hrtime.bigint();
-        const embeddingsTime = Number(embeddingsAfter - embeddingsNow) / 1e6;
-        console.info(`Added ${data.vectors.length} vectors in ${embeddingsTime}ms`);
-    }
+        data: { indexName: string; namespace: string; query: string | number[] },
+        options: QueryOptions
+    ): Promise<VectorsResultData> {
+        const pineconeIndex = this.client.Index(data.indexName).namespace(data.namespace);
+        let _vector = data.query;
+        if (typeof data.query === 'string') {
+            _vector = await VectorsHelper.load().embedText(data.query);
+        }
 
-    @SecureConnector.AccessControl
-    protected async fromDocuments(acRequest: AccessRequest, namespace: string, documents: IDocument[]): Promise<void> {
-        // await PineconeStore.fromDocuments(documents, this._embeddingsProvider, {
-        //     pineconeIndex: this._client.Index(this.indexName).namespace(namespace),
-        //     namespace,
-        //     maxConcurrency: 5, // Maximum number of batch requests to allow at once. Each batch is 1000 vectors.
-        // });
-
-        const texts = documents.map(({ text }) => text);
-        return this.insert(acRequest, {
-            indexName: this.indexName,
-            namespace,
-            vectors: (await this.embeddings.embedDocuments(texts)).map((vector, i) => ({
-                id: documents[i].id,
-                values: vector,
-                metadata: {
-                    ...documents[i].metadata,
-                    text: texts[i],
-                },
-            })),
+        const results = await pineconeIndex.query({
+            topK: options.topK,
+            vector: _vector as number[],
+            includeMetadata: options.includeMetadata || true, // default to true
+            includeValues: true,
         });
+
+        return results.matches.map((match) => ({
+            id: match.id,
+            values: match.values,
+            metadata: match.metadata,
+        }));
     }
 
     @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, data: { ids: string[]; indexName: string; namespace?: string }): Promise<void> {
-        const res = await this._client.Index(data.indexName).namespace(data.namespace).deleteMany(data.ids);
+    protected async insert<T extends Source>(
+        acRequest: AccessRequest,
+        data: { indexName: string; namespace: string; source: IVectorDataSource<T> | IVectorDataSource<T>[] }
+    ): Promise<void> {
+        let { source } = data;
+        source = Array.isArray(source) ? source : [source];
+
+        const sourceType = this.detectSourceType(source[0].source);
+        if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
+        const transformedSource = await this.transformSource(source, sourceType);
+        const preparedSource = transformedSource.map((s) => ({
+            id: s.id,
+            values: s.source as number[],
+            metadata: s.metadata,
+        }));
+
+        // await pineconeStore.addDocuments(chunks, ids);
+        await this._client.Index(data.indexName).namespace(data.namespace).upsert(preparedSource);
+    }
+
+    @SecureConnector.AccessControl
+    protected async delete(acRequest: AccessRequest, data: { id: string | string[]; indexName: string; namespace?: string }): Promise<void> {
+        const _ids = Array.isArray(data.id) ? data.id : [data.id];
+        const res = await this._client.Index(data.indexName).namespace(data.namespace).deleteMany(_ids);
     }
 
     private async getNamespaceMetadata(namespaceId: string): Promise<Record<string, any>> {
@@ -211,5 +162,37 @@ export class PineconeVectorDB extends VectorDBConnector {
         const metadata = await cache.get(namespaceId);
 
         return metadata;
+    }
+
+    private detectSourceType(source: Source): SupportedSources | 'unknown' {
+        if (typeof source === 'string') {
+            return isUrl(source) ? 'url' : 'text';
+        } else if (Array.isArray(source) && source.every((v) => typeof v === 'number')) {
+            return 'vector';
+        } else {
+            return 'unknown';
+        }
+    }
+
+    private transformSource<T extends Source>(source: IVectorDataSource<T>[], sourceType: SupportedSources) {
+        //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
+        switch (sourceType) {
+            case 'text': {
+                const texts = source.map((s) => s.source as string);
+
+                return VectorsHelper.load()
+                    .embedTexts(texts)
+                    .then((vectors) => {
+                        return source.map((s, i) => ({
+                            ...s,
+                            source: vectors[i],
+                            metadata: { ...s.metadata, text: texts[i] },
+                        }));
+                    });
+            }
+            case 'vector': {
+                return source;
+            }
+        }
     }
 }

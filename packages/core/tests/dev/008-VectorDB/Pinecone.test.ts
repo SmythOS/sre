@@ -5,8 +5,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
 import { Document } from '@langchain/core/documents';
-import { IDocument } from '@sre/types/VectorDB.types';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { IVectorDataSource, SourceTypes } from '@sre/types/VectorDB.types';
 const SREInstance = SmythRuntime.Instance.init({
     VectorDB: {
         Connector: 'Pinecone',
@@ -48,17 +48,17 @@ describe('Integration: Pinecone VectorDB', () => {
         });
 
         it('insert as raw vectors', async () => {
-            const dummyVectors = [
+            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
                 {
                     id: '1',
-                    values: Array.from({ length: 1536 }, () => Math.random()),
+                    source: Array.from({ length: 1536 }, () => Math.random()),
                     metadata: {
                         metafield: 'Hello World!',
                     },
                 },
                 {
                     id: '2',
-                    values: Array.from({ length: 1536 }, () => Math.random()),
+                    source: Array.from({ length: 1536 }, () => Math.random()),
                     metadata: {
                         metafield: 'Hello World!',
                     },
@@ -76,22 +76,19 @@ describe('Integration: Pinecone VectorDB', () => {
             // search for the inserted vectors
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResult = await vectorDB.user(team).searchByVector(namespace, dummyVectors[0].values, 10);
+            const searchResult = await vectorDB.user(team).search(namespace, dummyVectors[0].source, { topK: 10 });
 
             expect(searchResult).toHaveLength(2);
 
             expect(searchResult[0].id).toBe(dummyVectors[0].id);
-            expect(searchResult[0].metadata?.metafield).toBe(dummyVectors[0].metadata.metafield); // metadata test
         });
 
         it('insert vectors from text documents', async () => {
-            const dummyDocuments: IDocument[] = [
+            const dummyDocuments: IVectorDataSource<string>[] = [
                 {
                     id: '1',
-                    text: 'Hello World!',
-                    metadata: {
-                        metafield: 'Hello World!',
-                    },
+                    source: 'Hello World!',
+                    metadata: {},
                 },
             ];
 
@@ -100,17 +97,16 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const namespace = faker.lorem.slug();
             idsToClean.push({ id: '1', namespace });
-            await vectorDB.user(team).fromDocuments(namespace, dummyDocuments);
+            await vectorDB.user(team).insert(namespace, dummyDocuments);
 
             // search for the inserted vectors
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResult = await vectorDB.user(team).query(namespace, 'Hello World!', 10);
+            const searchResult = await vectorDB.user(team).search(namespace, 'Hello World!', { topK: 10 });
 
             expect(searchResult).toHaveLength(1);
 
             expect(searchResult[0].id).toBe(dummyDocuments[0].id);
-            expect(searchResult[0].metadata?.metafield).toBe(dummyDocuments[0].metadata.metafield);
         });
 
         it('similiarty search by query', async () => {
@@ -121,17 +117,17 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const text = 'Best car in the world';
 
-            const dummyVectors = [
+            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
                 {
                     id: faker.string.uuid(),
-                    values: await vectorDB.embeddings.embedQuery(text),
+                    source: await VectorsHelper.load().embedText(text),
                     metadata: {
                         text,
                     },
                 },
                 {
                     id: faker.string.uuid(),
-                    values: await vectorDB.embeddings.embedQuery(text),
+                    source: await VectorsHelper.load().embedText(text),
                     metadata: {
                         text,
                     },
@@ -145,7 +141,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResult = await vectorDB.user(team).query(namespace, text, 10);
+            const searchResult = await vectorDB.user(team).search(namespace, text, { topK: 10 });
 
             expect(searchResult).toHaveLength(2);
 
@@ -164,11 +160,11 @@ describe('Integration: Pinecone VectorDB', () => {
             const dummyText = 'Best car in the world';
             const id = faker.string.uuid();
             const namespace = faker.string.uuid();
-            const v = await vectorDB.embeddings.embedQuery(dummyText);
+            const v = await VectorsHelper.load().embedText(dummyText);
 
             await vectorDB.user(team).insert(namespace, [
                 {
-                    values: v,
+                    source: v,
                     id: id,
                 },
             ]);
@@ -177,12 +173,45 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResult = await vectorDB.user(team).searchByVector(namespace, v, 10);
+            const searchResult = await vectorDB.user(team).search(namespace, v, { topK: 10 });
             expect(searchResult).toHaveLength(1);
             expect(searchResult[0].id).toBe(id);
 
             // delete the inserted vector
             await vectorDB.user(team).delete(namespace, [id]);
+        });
+
+        it('metadata should be returned with the search result', async () => {
+            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+            const team = AccessCandidate.team('team-123456');
+
+            // insert some dummy vectors to search
+            const dummyText = 'Best car in the world';
+            const id = faker.string.uuid();
+            const namespace = faker.string.uuid();
+
+            const v = Array.from({ length: 1536 }, () => Math.random());
+
+            await vectorDB.user(team).insert(namespace, [
+                {
+                    source: v,
+                    id: id,
+                    metadata: {
+                        text: dummyText,
+                        anotherField: 'another value',
+                    },
+                },
+            ]);
+
+            idsToClean.push({ id, namespace });
+
+            await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
+
+            const searchResult = await vectorDB.user(team).search(namespace, v, { topK: 10, includeMetadata: true });
+            expect(searchResult).toHaveLength(1);
+            expect(searchResult[0].id).toBe(id);
+            expect(searchResult[0].metadata?.text).toBe(dummyText);
+            expect(searchResult[0].metadata?.anotherField).toBe('another value');
         });
 
         it('delete vectors', async () => {
@@ -193,11 +222,11 @@ describe('Integration: Pinecone VectorDB', () => {
             const dummyText = 'Best car in the world';
             const id = faker.string.uuid();
             const namespace = faker.string.uuid();
-            const v = await vectorDB.embeddings.embedQuery(dummyText);
+            const v = await VectorsHelper.load().embedText(dummyText);
 
             await vectorDB.user(team).insert(namespace, [
                 {
-                    values: v,
+                    source: v,
                     id: id,
                     metadata: {
                         text: dummyText,
@@ -209,7 +238,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResult = await vectorDB.user(team).searchByVector(namespace, v, 10);
+            const searchResult = await vectorDB.user(team).search(namespace, v, { topK: 10 });
             expect(searchResult).toHaveLength(1);
             expect(searchResult[0].id).toBe(id);
 
@@ -235,7 +264,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await vectorDB.user(team).insert(namespace1, [
                 {
-                    values: v1,
+                    source: v1,
                     id: id1,
                     metadata: {
                         text: 'Best car in the world',
@@ -244,7 +273,7 @@ describe('Integration: Pinecone VectorDB', () => {
             ]);
             await vectorDB.user(team).insert(namespace2, [
                 {
-                    values: v2,
+                    source: v2,
                     id: id2,
                     metadata: {
                         text: 'Elephants gardens beatiful',
@@ -254,13 +283,13 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const searchResultArr = await vectorDB.user(team).searchByVector(namespace1, v2, 10);
+            const searchResultArr = await vectorDB.user(team).search(namespace1, v2, { topK: 10 });
             const result1Ids = searchResultArr.map((r) => r.id);
             // expect that the search result would not contain v2 id
 
             expect(result1Ids).not.toContain(id2);
 
-            const searchResult2 = await vectorDB.user(team).searchByVector(namespace2, v1, 10);
+            const searchResult2 = await vectorDB.user(team).search(namespace2, v1, { topK: 10 });
             const result2Ids = searchResult2.map((r) => r.id);
             // expect that the search result would not contain v1 id
             expect(result2Ids).not.toContain(id1);
@@ -271,17 +300,17 @@ describe('Integration: Pinecone VectorDB', () => {
             const team = AccessCandidate.team('team-123456');
 
             // insert some dummy vectors to search
-            const dummyVectors = [
+            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
                 {
                     id: faker.string.uuid(),
-                    values: Array.from({ length: 1536 }, () => Math.random()),
+                    source: Array.from({ length: 1536 }, () => Math.random()),
                     metadata: {
                         metafield: 'Hello World!',
                     },
                 },
                 {
                     id: faker.string.uuid(),
-                    values: Array.from({ length: 1536 }, () => Math.random()),
+                    source: Array.from({ length: 1536 }, () => Math.random()),
                     metadata: {
                         metafield: 'Hello World!',
                     },
@@ -302,18 +331,18 @@ describe('Integration: Pinecone VectorDB', () => {
         it('chunk large texts and insert them as separate vectors', async () => {
             const hugeText = faker.lorem.paragraphs(30);
             const namespace = faker.lorem.slug();
-            await VectorsHelper.load().splitAndIngestContent(hugeText, namespace, { teamId: 'team-123' });
+            await VectorsHelper.load().ingestText(hugeText, namespace, { teamId: 'team-123' });
 
-            const expectedVectorsSize = (await VectorsHelper.chunkTextToDocuments(hugeText)).length;
+            const expectedVectorsSize = (await VectorsHelper.chunkText(hugeText)).length;
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
             const results = await ConnectorService.getVectorDBConnector('Pinecone')
                 .user(AccessCandidate.team('team-123'))
-                .searchByVector(
+                .search(
                     namespace,
                     Array.from({ length: 1536 }, () => Math.random()),
-                    expectedVectorsSize
+                    { topK: expectedVectorsSize }
                 );
 
             expect(results).toHaveLength(expectedVectorsSize);
