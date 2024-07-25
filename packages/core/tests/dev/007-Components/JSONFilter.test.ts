@@ -1,71 +1,91 @@
-import { AgentProcess } from '@sre/Core/AgentProcess.helper';
-import config from '@sre/config';
-import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
-import { TConnectorService } from '@sre/types/SRE.types';
-import fs from 'fs';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { describe, expect, it } from 'vitest';
-const sre = SmythRuntime.Instance.init({
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
+import JSONFilter from '@sre/Components/JSONFilter.class';
+
+import Agent from '@sre/AgentManager/Agent.class';
+
+// Mock Agent class as we just need to have agent.agentRuntime?.debug inside createComponentLogger()
+vi.mock('@sre/AgentManager/Agent.class', () => {
+    const MockedAgent = vi.fn().mockImplementation(() => ({
+        agentRuntime: { debug: true },
+    }));
+    return { default: MockedAgent };
 });
 
-ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-ConnectorService.init(TConnectorService.AgentData, 'CLI');
-describe('JSONFilter: filter some specific properties from a JSON Object', () => {
+describe('jsonFilter: filter some specific properties from a JSON Object', () => {
+    /* Ignore TypeScript's argument requirements for the Agent constructor.
+       This is acceptable in this context because we're using a mocked version of Agent,
+       which does not require any arguments to function as intended in our tests. */
+    // @ts-ignore
+    const agent = new Agent();
+
+    const jsonFilter = new JSONFilter();
+
+    const jsonDataFull = {
+        id: 1,
+        name: 'John Doe',
+        email: 'johndoe@example.com',
+        profile: {
+            age: 30,
+            gender: 'male',
+            location: {
+                city: 'New York',
+                state: 'NY',
+                country: 'USA',
+            },
+        },
+    };
+
+    const jsonDataPartial = {
+        id: 3,
+        name: 'Alex Smith',
+        profile: {
+            age: 35,
+        },
+    };
+
+    const config = {
+        id: 1,
+        name: 'JSONFilter',
+        data: {
+            fields: 'name,email',
+        },
+    };
+
+    const configWithNestedFields = {
+        id: 1,
+        name: 'JSONFilter',
+        data: {
+            fields: 'name,email,profile,location,city,state',
+        },
+    };
+
+    // ⚠️ Warning from vitest doc (https://vitest.dev/guide/mocking#mocking) - "Always remember to clear or restore mocks before or after each test run to undo mock state changes between runs!"
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     // Test case: Filtering with top level fields
     it('should return object with top level properties', async () => {
         let error;
+
         try {
-            const agentData = fs.readFileSync('./tests/data/test-jsonfilter-component-by-Forhad.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
-            const date = new Date();
-
-            const agentProcess = AgentProcess.load(data);
-
-            let output = await agentProcess.run({
-                method: 'POST',
-                path: '/api/filter_top_level_properties',
-                body: {
-                    json_data: {
-                        id: 1,
-                        name: 'John Doe',
-                        email: 'johndoe@example.com',
-                        profile: {
-                            age: 30,
-                            gender: 'male',
-                            location: {
-                                city: 'New York',
-                                state: 'NY',
-                                country: 'USA',
-                            },
-                            preferences: {
-                                newsletter: true,
-                                notifications: ['email', 'sms'],
-                            },
-                        },
-                    },
-                },
-            });
-
-            let filteredOutput = output.result.Output;
-            expect(filteredOutput).toBeDefined();
-
-            expect(filteredOutput).toEqual({
+            const expected = {
                 name: 'John Doe',
                 email: 'johndoe@example.com',
-            });
+            };
+            const result = await jsonFilter.process({ Input: jsonDataFull }, config, agent);
+
+            let output = result.Output;
+
+            expect(output).toBeDefined();
+
+            expect(output).toEqual(expected);
         } catch (e) {
             error = e;
             console.error(e.message);
         }
+
         expect(error).toBeUndefined();
     });
 
@@ -73,52 +93,28 @@ describe('JSONFilter: filter some specific properties from a JSON Object', () =>
     it('should correctly filter nested properties', async () => {
         let error;
         try {
-            const inputData = {
-                id: 2,
-                name: 'Jane Doe',
-                email: 'janedoe@example.com',
+            const expected = {
+                name: 'John Doe',
+                email: 'johndoe@example.com',
                 profile: {
-                    age: 28,
-                    gender: 'female',
                     location: {
-                        city: 'Los Angeles',
-                        state: 'CA',
-                        country: 'USA',
-                    },
-                    preferences: {
-                        newsletter: false,
-                        notifications: ['email'],
+                        city: 'New York',
+                        state: 'NY',
                     },
                 },
             };
+            const result = await jsonFilter.process({ Input: jsonDataFull }, configWithNestedFields, agent);
 
-            const agentProcess = AgentProcess.load(inputData);
+            let output = result.Output;
 
-            let output = await agentProcess.run({
-                method: 'POST',
-                path: '/api/filter_nested_properties',
-                body: {
-                    json_data: inputData,
-                },
-            });
+            expect(output).toBeDefined();
 
-            let filteredOutput = output.result.Output;
-            expect(filteredOutput).toBeDefined();
-
-            expect(filteredOutput).toEqual({
-                name: 'Jane Doe',
-                email: 'janedoe@example.com',
-                profile: {
-                    location: {
-                        city: 'Los Angeles',
-                        state: 'CA',
-                    },
-                },
-            });
+            expect(output).toEqual(expected);
         } catch (e) {
             error = e;
             console.error(e.message);
         }
+
         expect(error).toBeUndefined();
     });
 
@@ -126,46 +122,21 @@ describe('JSONFilter: filter some specific properties from a JSON Object', () =>
     it('should handle missing properties gracefully', async () => {
         let error;
         try {
-            const inputData = {
-                id: 3,
-                name: 'Alex Smith',
-                // email is intentionally missing
-                profile: {
-                    age: 35,
-                    // gender is intentionally missing
-                    location: {
-                        city: 'Chicago',
-                        state: 'IL',
-                        country: 'USA',
-                    },
-                    preferences: {
-                        newsletter: true,
-                        notifications: ['sms'],
-                    },
-                },
-            };
+            const result = await jsonFilter.process({ Input: jsonDataPartial }, configWithNestedFields, agent);
 
-            const agentProcess = AgentProcess.load(inputData);
-
-            let output = await agentProcess.run({
-                method: 'POST',
-                path: '/api/filter_missing_properties',
-                body: {
-                    json_data: inputData,
-                },
-            });
-
-            let filteredOutput = output.result.Output;
-            expect(filteredOutput).toBeDefined();
+            let output = result.Output;
+            expect(output).toBeDefined();
 
             // Expected to only return the name, as email is missing
-            expect(filteredOutput).toEqual({
+            expect(output).toEqual({
                 name: 'Alex Smith',
+                profile: {}, // TODO: It could be improved by removing empty parent objects when nested properties are missing.
             });
         } catch (e) {
             error = e;
             console.error(e.message);
         }
+
         expect(error).toBeUndefined();
     });
 
@@ -173,27 +144,81 @@ describe('JSONFilter: filter some specific properties from a JSON Object', () =>
     it('should return an empty object when input is empty', async () => {
         let error;
         try {
-            const inputData = {};
+            const result = await jsonFilter.process({ Input: {} }, config, agent);
 
-            const agentProcess = AgentProcess.load(inputData);
-
-            let output = await agentProcess.run({
-                method: 'POST',
-                path: '/api/filter_empty_input',
-                body: {
-                    json_data: inputData,
-                },
-            });
-
-            let filteredOutput = output.result.Output;
-            expect(filteredOutput).toBeDefined();
+            let output = result.Output;
+            expect(output).toBeDefined();
 
             // Expected to return an empty object
-            expect(filteredOutput).toEqual({});
+            expect(output).toEqual({});
         } catch (e) {
             error = e;
             console.error(e.message);
         }
         expect(error).toBeUndefined();
     });
+
+    it('should filter fields in an array', async () => {
+        const input = {
+            Input: [
+                { id: 1, name: 'John Doe' },
+                { email: 'johndoe@example.com', phone: '+1826234343' },
+            ],
+        };
+        const expected = [{ name: 'John Doe' }, { email: 'johndoe@example.com' }];
+        const result = await jsonFilter.process(input, config, agent);
+        expect(result.Output).toEqual(expected);
+    });
+
+    it('should return the input if it is not an object or array', async () => {
+        const input = { Input: 'string' };
+        const expected = 'string';
+        const result = await jsonFilter.process(input, config, agent);
+        expect(result.Output).toEqual(expected);
+    });
+
+    // Test case: Empty config.data.fields
+    it('should handle empty config.data.fields gracefully', async () => {
+        const input = { Input: {} };
+        const _config = { id: 1, name: 'JSONFilter', data: { fields: '' } };
+        const expected = {};
+
+        const result = await jsonFilter.process(input, _config, agent);
+        expect(result.Output).toEqual(expected);
+    });
+
+    it('should return null if the Input is null', async () => {
+        const input = { Input: null };
+        const expected = null;
+        const result = await jsonFilter.process(input, config, agent);
+        expect(result.Output).toEqual(expected);
+    });
+
+    // Test case: throw error for null input
+    it('should throw an Error if the Input is null', async () => {
+        const _config = {
+            id: 1,
+            name: 'JSONFilter',
+            data: {
+                fields: 'name,email',
+            },
+        };
+        await expect(jsonFilter.process(null, _config, agent)).rejects.toThrowError();
+    });
+
+    // * to have this test agent.agentRuntime?.debug must be 'true', as we expect something in the '_debug' property
+    if (agent.agentRuntime?.debug) {
+        // Test case: Missing config.data.fields
+        it('should handle missing config.data.fields gracefully', async () => {
+            const input = { Input: {} };
+            const _config = { id: 1, name: 'JSONFilter', data: {} };
+            const expected = {
+                Output: {},
+                _error: null,
+                _debug: expect.anything(),
+            };
+
+            await expect(jsonFilter.process(input, _config, agent)).resolves.toEqual(expect.objectContaining(expected));
+        });
+    }
 });

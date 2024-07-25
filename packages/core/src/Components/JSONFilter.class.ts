@@ -34,7 +34,7 @@ export default class JSONFilter extends Component {
 }
 
 function filterFields(obj, fields) {
-    const fieldList = fields.split(',').map((field) => field.trim());
+    const fieldList = fields?.split(',').map((field) => field.trim());
 
     function filterObject(obj) {
         if (Array.isArray(obj)) {
