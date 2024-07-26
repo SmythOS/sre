@@ -3,12 +3,15 @@
 import blessed from 'blessed';
 import dotenv from 'dotenv';
 import { GlobalKeyboardListener } from 'node-global-key-listener';
-import { Conversation, SmythRuntime } from '../../../dist/index.dev.js';
+import { Conversation, SmythRuntime, ConnectorService } from '../../../dist/index.dev.js';
+import { clear } from 'console';
 dotenv.config();
-process.env.LOG_LEVEL = '';
-console.log(process.env);
+process.env.LOG_LEVEL = 'debug';
 
 const sre = SmythRuntime.Instance.init({
+    CLI: {
+        Connector: 'CLI',
+    },
     Storage: {
         Connector: 'S3',
         Settings: {
@@ -36,6 +39,8 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'CLI',
     },
 });
+
+let conv;
 
 const v = new GlobalKeyboardListener();
 
@@ -152,10 +157,6 @@ inputBox.focus();
 screen.key(['escape', 'C-c'], function (ch, key) {
     return process.exit(0);
 });
-function status(message) {
-    spinnerBox.setContent(message);
-    screen.render();
-}
 async function submit() {
     const message = inputBox.getValue().trim();
     if (message.length > 0) {
@@ -163,7 +164,7 @@ async function submit() {
         const content = `\n{blue-fg}Me:{/blue-fg}:${message}`;
         outputBox.setContent(`${currentContent}${content}`);
 
-        status('Processing...');
+        animaStatus('Thinking');
 
         screen.render();
 
@@ -177,44 +178,83 @@ async function submit() {
         screen.render();
     }
 }
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+let statusAnimItv;
+function animaStatus(message) {
+    if (statusAnimItv) clearInterval(statusAnimItv);
+    let i = 0;
+    statusAnimItv = setInterval(() => {
+        spinnerBox.setContent(`${message} ${Array(i).fill('.').join('')}`);
+        screen.render();
+        i++;
+        if (i > 3) {
+            i = 0;
+        }
+    }, 300);
+    return statusAnimItv;
+}
 
-const conv = new Conversation('gpt-3.5-turbo', specUrl);
-
-let streamResult = '';
-conv.on('beforeToolCall', (args) => {
-    //console.log('beforeToolCall', args);
-});
-conv.on('content', (content) => {
-    //console.log('data', content);
-    streamResult += content;
-
-    const currentContent = outputBox.getContent();
-    outputBox.setContent(`${currentContent}${content}`);
+function status(message) {
+    if (statusAnimItv) clearInterval(statusAnimItv);
+    spinnerBox.setContent(message);
     screen.render();
-});
-conv.on('start', (content) => {
-    const currentContent = outputBox.getContent();
-    outputBox.setContent(`${currentContent}\n{green-fg}Assistant:{/green-fg} `);
-    screen.render();
-});
-conv.on('end', (content) => {
-    outputBox.log('');
+}
 
-    screen.render();
-});
-
-conv.on('beforeToolCall', (info) => {
+async function main() {
     try {
-        status('Using tool : ' + info.tool.name);
-    } catch (error) {}
-});
-conv.on('beforeToolCall', (info) => {
-    try {
-        status('Got response from tool : ' + info.tool.name);
-    } catch (error) {}
-});
+        const cliConnector = ConnectorService.getCLIConnector();
+
+        //const agent = cliConnector.params?.agent;
+
+        //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = cliConnector.params?.agent;
+        conv = new Conversation('gpt-3.5-turbo', specUrl);
+
+        let streamResult = '';
+        conv.on('beforeToolCall', (args) => {
+            //console.log('beforeToolCall', args);
+        });
+        conv.on('content', (content) => {
+            //console.log('data', content);
+            streamResult += content;
+
+            const currentContent = outputBox.getContent();
+            outputBox.setContent(`${currentContent}${content}`);
+            screen.render();
+        });
+        conv.on('start', (content) => {
+            status('Writing');
+            const currentContent = outputBox.getContent();
+            outputBox.setContent(`${currentContent}\n{green-fg}Assistant:{/green-fg} `);
+            screen.render();
+        });
+        conv.on('end', (content) => {
+            outputBox.log('');
+
+            screen.render();
+        });
+
+        conv.on('beforeToolCall', (info) => {
+            try {
+                status('Using tool : ' + info.tool.name);
+            } catch (error) {}
+        });
+        conv.on('beforeToolCall', async (info) => {
+            try {
+                status('Got response from tool : ' + info.tool.name);
+                await delay(500);
+                animaStatus('Thinking');
+            } catch (error) {}
+        });
+    } catch (error) {
+        console.error(error);
+    } finally {
+        await sre._stop();
+    }
+}
+
+main();
 
 //const result = await conv.streamPrompt('Do we have a documentation about logto ?');
 

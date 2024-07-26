@@ -465,6 +465,7 @@ export default class Agent {
                 } else {
                     try {
                         await this.parseVariables(); //make sure that any vault variable is loaded before processing the component
+                        //TODO: apply type inference here instead of in the component .process method
                         output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
                         console.log(output);
                     } catch (error: any) {

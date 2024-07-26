@@ -79,7 +79,9 @@ async function inferStringType(value: any, key?: string, agent?: Agent) {
 async function inferNumberType(value: any, key?: string, agent?: Agent) {
     const floatVal = parseFloat(value);
 
-    if (isNaN(floatVal)) throw new Error('Invalid Number value');
+    if (isNaN(floatVal)) {
+        throw new Error('Invalid Number value');
+    }
 
     return floatVal;
 }

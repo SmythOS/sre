@@ -1,15 +1,15 @@
-import { encodeChat } from 'gpt-tokenizer';
-import OpenAI from 'openai';
-import { ILLMConnectorRequest, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import Agent from '@sre/AgentManager/Agent.class';
-import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
+import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
+import { createLogger } from '@sre/Core/Logger';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
-import { IAccessCandidate } from '@sre/types/ACL.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import models from '@sre/LLMManager/models';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
+import { encodeChat } from 'gpt-tokenizer';
+import OpenAI from 'openai';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+
+const console = createLogger('OpenAIConnector');
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';

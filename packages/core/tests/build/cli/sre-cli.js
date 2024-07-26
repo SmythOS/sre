@@ -38,9 +38,8 @@ const sre = SmythRuntime.Instance.init({
 
 async function main() {
     try {
-        // const cliConnector = ConnectorService.getCLIConnector();
-        // console.log('CLI Connector:', cliConnector);
-        // process.exit(0);
+        //const cliConnector = ConnectorService.getCLIConnector();
+        //console.log('CLI Connector:', cliConnector.params);
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         const data = await agentDataConnector.getAgentData('test', '1.0');
         //console.log(data);
