@@ -6,10 +6,8 @@ import Component from './Component.class';
 export default class LogicAtMost extends Component {
     protected configSchema = Joi.object({
         // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
-        maxSetInputs: Joi.number()
-            .min(0)
-            .max(9)
-            // .custom(validateInteger({ min: 0, max: 9 }), 'custom range validation')
+        maxSetInputs: Joi.string()
+            .custom(validateInteger({ min: 0, max: 9 }), 'custom range validation')
             .label('Maximum Inputs'),
     });
     constructor() {
@@ -52,4 +50,37 @@ export default class LogicAtMost extends Component {
 
         return result;
     }
+}
+interface RangeValidationArgs {
+    min?: number;
+    max?: number;
+}
+
+function validateInteger(args: RangeValidationArgs) {
+    return (value: string, helpers: any) => {
+        const numValue = Number(value);
+        const fieldName = helpers.schema._flags.label || helpers.state.path[helpers.state.path.length - 1];
+
+        // Check if the value is a number
+        if (isNaN(numValue)) {
+            throw new Error(`The value for '${fieldName}' must be a number`);
+        }
+
+        // Range validations
+        if (args.min !== undefined && args.max !== undefined) {
+            if (numValue < args.min || numValue > args.max) {
+                throw new Error(`The value for '${fieldName}' must be from ${args.min} to ${args.max}`);
+            }
+        } else if (args.min !== undefined) {
+            if (numValue < args.min) {
+                throw new Error(`The value for '${fieldName}' must be greater or equal to ${args.min}`);
+            }
+        } else if (args.max !== undefined) {
+            if (numValue > args.max) {
+                throw new Error(`The value for '${fieldName}' must be less or equal to ${args.max}`);
+            }
+        }
+
+        return value; // Value is valid
+    };
 }
