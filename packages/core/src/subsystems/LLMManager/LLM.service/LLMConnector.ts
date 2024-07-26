@@ -1,5 +1,6 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { createLogger } from '@sre/Core/Logger';
 import models from '@sre/LLMManager/models';
 import paramMappings from '@sre/LLMManager/paramMappings';
@@ -19,14 +20,65 @@ export interface ILLMConnectorRequest {
     chatRequest(prompt, params: any): Promise<any>;
     visionRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
+    streamToolRequest(params: any): Promise<any>;
 }
+
+export type LLMChatResponse = {
+    content: string;
+    finishReason: string;
+};
 
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
-    public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<any>;
-    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any>;
+    //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
+    protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<LLMChatResponse>;
+    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
+    protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
+
+    public user(candidate: AccessCandidate): ILLMConnectorRequest {
+        if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
+        const vaultConnector = ConnectorService.getVaultConnector();
+        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+        return {
+            chatRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.chatRequest(candidate.readRequest, prompt, params);
+            },
+            visionRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            toolRequest: async (params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.toolRequest(candidate.readRequest, params);
+            },
+            streamToolRequest: async (params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.streamToolRequest(candidate.readRequest, params);
+            },
+        };
+    }
 
     private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
         const alias = models[model]?.alias || model;
@@ -221,7 +273,7 @@ export abstract class LLMConnector extends Connector {
 
         return params;
     }
-    public postProcess(response: any) {
+    public postProcess(response: string) {
         try {
             return JSONContent(response).tryParse();
         } catch (error) {

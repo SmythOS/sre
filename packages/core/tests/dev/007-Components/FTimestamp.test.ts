@@ -36,7 +36,7 @@ describe('FTimestamp Component', () => {
                 body: {},
             });
 
-            let outputResult = output?.result;
+            let outputResult = output?.data?.result;
             expect(outputResult).toBeDefined();
 
             expect(outputResult?.Timestamp).toBeDefined();

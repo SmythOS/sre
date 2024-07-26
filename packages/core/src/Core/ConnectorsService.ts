@@ -10,6 +10,7 @@ import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
+import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 const console = createLogger('ConnectorService');
 
 const Connectors = {};
@@ -143,6 +144,10 @@ export class ConnectorService {
 
     static getAgentDataConnector(name?: string): AgentDataConnector {
         return ConnectorService.getInstance<AgentDataConnector>(TConnectorService.AgentData, name);
+    }
+
+    static getCLIConnector(name?: string): CLIConnector {
+        return ConnectorService.getInstance<CLIConnector>(TConnectorService.CLI, name);
     }
 
     //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...

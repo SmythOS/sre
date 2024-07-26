@@ -8,7 +8,8 @@ import { boot } from './Core/boot';
 import { ConnectorService } from './Core/ConnectorsService';
 import { CLIAgentDataConnector } from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 import { AgentProcess } from './Core/AgentProcess.helper';
+import { Conversation } from './helpers/Conversation.helper';
 
 boot();
 
-export { Agent, AgentRequest, AgentSettings, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector };
+export { Agent, AgentRequest, AgentSettings, AgentProcess, SmythRuntime, Conversation, ConnectorService, CLIAgentDataConnector };

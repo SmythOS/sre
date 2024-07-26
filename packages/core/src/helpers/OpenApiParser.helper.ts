@@ -53,13 +53,14 @@ export class OpenAPIParser {
 
         return schema;
     }
-    static getJson(data: string | Record<string, any>): Promise<Record<string, any>> {
+    static async getJson(data: string | Record<string, any>): Promise<Record<string, any>> {
         try {
             let _data = data;
             if (typeof data === 'string') {
                 _data = JSON.parse(_data as string);
             }
-            return swaggerParser.dereference(_data as any);
+            const result = swaggerParser.dereference(_data as any);
+            return result;
         } catch (error) {
             try {
                 return OpenAPIParser.yamlToJson(data as string);
@@ -73,5 +74,9 @@ export class OpenAPIParser {
         const data = response.data;
 
         return OpenAPIParser.getJson(data);
+    }
+
+    static isValidOpenAPI(data: Record<string, any>): boolean {
+        return data?.openapi && data?.paths && data?.servers;
     }
 }

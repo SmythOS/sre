@@ -1,10 +1,9 @@
-import { parseCLIArgs } from '@sre/utils/cli.utils';
 import fs from 'fs';
 import path from 'path';
 import { AgentDataConnector } from '../AgentDataConnector';
 import { uid } from '@sre/utils/general.utils';
 
-type LocalAgentDataSettings = { directory: string };
+export type LocalAgentDataSettings = { devDir: string; prodDir: string };
 
 /**
  * This connector loads Agent data and settings from a provided directory, it then indexes the loaded agents and settings by agent IDs.
@@ -14,19 +13,24 @@ type LocalAgentDataSettings = { directory: string };
  */
 export class LocalAgentDataConnector extends AgentDataConnector {
     public name: string = 'LocalAgentDataConnector';
-    private directory;
-    private agentsData = {};
-    private agentSettings = {};
+    private devDir;
+    private prodDir;
+    private agentsData = { dev: {}, prod: {} };
+    private agentSettings = { dev: {}, prod: {} };
 
     constructor(settings: LocalAgentDataSettings) {
         super();
-        this.directory = settings.directory;
+        this.devDir = settings.devDir;
+        this.prodDir = settings.prodDir;
     }
-    private indexAgentsData() {
-        const agents = fs.readdirSync(this.directory);
 
+    private indexDir(dir: string) {
+        const agents = fs.readdirSync(dir);
+
+        const agentsData = {};
+        const agentSettings = {};
         for (const agent of agents) {
-            const agentData = fs.readFileSync(path.join(this.directory, agent), 'utf8');
+            const agentData = fs.readFileSync(path.join(dir, agent), 'utf8');
             let jsonData;
             try {
                 jsonData = JSON.parse(agentData);
@@ -40,26 +44,46 @@ export class LocalAgentDataConnector extends AgentDataConnector {
             }
 
             //is this an agent data file?
-            if (jsonData.components) this.agentsData[jsonData.id] = jsonData;
+            if (jsonData.components) agentsData[jsonData.id] = jsonData;
 
             //does this file contain settings?
-            if (jsonData.settings) this.agentSettings[jsonData.id] = jsonData.settings;
+            if (jsonData.settings) agentSettings[jsonData.id] = jsonData.settings;
         }
+
+        return { agentsData, agentSettings };
     }
+    private indexAgentsData() {
+        const { agentsData: devAgentsData, agentSettings: devAgentSettings } = this.indexDir(this.devDir);
+        const { agentsData: prodAgentsData, agentSettings: prodAgentSettings } = this.indexDir(this.prodDir);
+        this.agentsData = { dev: devAgentsData, prod: prodAgentsData };
+        this.agentSettings = { dev: devAgentSettings, prod: prodAgentSettings };
+    }
+
     public async start() {
         super.start();
         this.started = false;
         this.indexAgentsData();
         this.started = true;
     }
+
+    /**
+     * returns the agent data for the provided agent ID
+     * if the version is not provided, it defaults to the dev version
+     * otherwise it loads the corresponding prod version
+     * @param agentId
+     * @param version
+     * @returns
+     */
     public async getAgentData(agentId: string, version?: string) {
         const ready = await this.ready();
         if (!ready) {
             throw new Error('Connector not ready');
         }
 
-        if (this.agentsData[agentId]) {
-            return { data: this.agentsData[agentId], version: version || '1.0' };
+        const data = version ? this.agentsData.prod[agentId] : this.agentsData.dev[agentId];
+
+        if (data) {
+            return { data, version: version || '1.0' };
         } else {
             throw new Error(`Agent with id ${agentId} not found`);
         }
@@ -68,16 +92,31 @@ export class LocalAgentDataConnector extends AgentDataConnector {
     public getAgentIdByDomain(domain: string): Promise<string> {
         return Promise.resolve('');
     }
+
+    /**
+     * returns the agent settings for the provided agent ID
+     * if the version is not provided, it defaults to the dev version
+     * otherwise it loads the corresponding prod version
+     * @param agentId
+     * @param version
+     * @returns
+     */
     public async getAgentSettings(agentId: string, version?: string) {
         const ready = await this.ready();
         if (!ready) {
             throw new Error('Connector not ready');
         }
 
-        if (this.agentSettings[agentId]) {
-            return this.agentSettings[agentId];
+        const settings = version ? this.agentSettings.prod[agentId] : this.agentSettings.dev[agentId];
+
+        if (settings) {
+            return settings;
         } else {
             throw new Error(`Settings for agent with id ${agentId} not found`);
         }
+    }
+
+    public async isDeployed(agentId: string): Promise<boolean> {
+        return !!this.agentsData.prod[agentId];
     }
 }

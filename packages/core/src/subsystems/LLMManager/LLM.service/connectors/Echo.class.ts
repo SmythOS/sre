@@ -1,19 +1,21 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { ILLMConnector } from '../ILLMConnector';
-import { LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
-export class EchoConnector extends LLMConnector implements ILLMConnector {
+export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    async chatRequest(prompt, params) {
-        return prompt;
+    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    async visionRequest(prompt, params) {
-        return prompt;
+    protected async visionRequest(acRequest: AccessRequest, prompt, params) {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    async toolRequest(params) {
-        return prompt;
+    protected async toolRequest(acRequest: AccessRequest, params) {
+        throw new Error('Echo model does not support tool requests');
     }
-
+    protected async streamToolRequest(acRequest: AccessRequest, params) {
+        throw new Error('Echo model does not support tool requests');
+    }
     public enhancePrompt(prompt: string, config: any) {
         //Echo model does not require enhancements, because we are just echoing the prompt as is.
         return prompt;

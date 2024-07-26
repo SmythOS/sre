@@ -1,4 +1,5 @@
-import { parseCLIArgs } from '@sre/utils/cli.utils';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import fs from 'fs';
 import path from 'path';
 import { AgentDataConnector } from '../AgentDataConnector';
@@ -12,7 +13,9 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         this.argv = settings.args || process.argv;
     }
     public async getAgentData(agentId: string, version?: string) {
-        const params: any = parseCLIArgs('agent', this.argv);
+        const cliConnector: CLIConnector = ConnectorService.getCLIConnector();
+
+        const params: any = cliConnector.get('agent');
 
         //get current directory
         const __dirname = fs.realpathSync(process.cwd());
@@ -29,7 +32,9 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         return Promise.resolve('');
     }
     public async getAgentSettings(agentId: string, version?: string) {
-        const params: any = parseCLIArgs('settings', this.argv);
+        const cliConnector: CLIConnector = ConnectorService.getCLIConnector();
+
+        const params: any = cliConnector.get('settings');
         let settings: any;
 
         if (typeof params.settings === 'string') {
@@ -40,5 +45,8 @@ export class CLIAgentDataConnector extends AgentDataConnector {
             settings = params.settings;
         }
         return settings;
+    }
+    public async isDeployed(agentId: string): Promise<boolean> {
+        return true;
     }
 }

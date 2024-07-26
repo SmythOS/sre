@@ -1,4 +1,5 @@
 import { AgentDataService } from '@sre/AgentManager/AgentData.service';
+import { CLIService } from '@sre/IO/CLI.service';
 import { StorageService } from '@sre/IO/Storage.service';
 import { LLMService } from '@sre/LLMManager/LLM.service';
 import { CacheService } from '@sre/MemoryManager/Cache.service';
@@ -12,6 +13,7 @@ export type TServiceRegistry = {
     Vault?: VaultService;
     Account?: AccountService;
     AgentData?: AgentDataService;
+    CLI?: CLIService;
 };
 
 export enum TConnectorService {
@@ -21,6 +23,7 @@ export enum TConnectorService {
     Vault = 'Vault',
     Account = 'Account',
     AgentData = 'AgentData',
+    CLI = 'CLI',
 }
 
 export type SREConnectorConfig = {

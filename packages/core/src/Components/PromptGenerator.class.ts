@@ -61,7 +61,7 @@ export default class PromptGenerator extends Component {
             if (response?.error) {
                 logger.error(` LLM Error=${JSON.stringify(response.error)}`);
 
-                return { Reply: response?.data, _error: response?.error?.error + ' ' + response?.error?.details, _debug: logger.output };
+                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
             }
 
             const result = { Reply: response };

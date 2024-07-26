@@ -1,6 +1,6 @@
 import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
-import { ILLMConnectorRequest, LLMConnector } from '../LLMConnector';
+import { ILLMConnectorRequest, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -14,42 +14,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    public user(candidate: AccessCandidate): ILLMConnectorRequest {
-        if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
-        const vaultConnector = ConnectorService.getVaultConnector();
-        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
-        return {
-            chatRequest: async (prompt, params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.chatRequest(candidate.readRequest, prompt, params);
-            },
-            visionRequest: async (prompt, params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
-            },
-            toolRequest: async (params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.toolRequest(candidate.readRequest, params);
-            },
-        };
-    }
-
-    protected async chatRequest(acRequest: AccessRequest, prompt, params) {
+    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         // if (!model) model = 'gpt-3.5-turbo';
 
         //if (!params.model) params.model = 'gpt-4-turbo';
@@ -93,15 +58,11 @@ export class OpenAIConnector extends LLMConnector {
 
         if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
 
-        const response: any = await openai.chat.completions.create(params);
+        const response: any = await openai.chat.completions.create(params as OpenAI.ChatCompletionCreateParamsNonStreaming);
 
-        const data =
-            response?.choices?.[0]?.text ||
-            response?.choices?.[0]?.message.content ||
-            response?.data?.choices?.[0]?.text || //Legacy openai format
-            response?.data?.choices?.[0]?.message.content; //Legacy openai format
+        const content = response?.choices?.[0]?.message.content;
 
-        return data;
+        return { content, finishReason: response?.choices?.[0]?.finish_reason };
     }
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         //if (!params.model) params.model = 'gpt-4-vision-preview';
@@ -136,8 +97,8 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         // Add user message
-        const content = [{ type: 'text', text: prompt }, ...imageData];
-        params.messages.push({ role: 'user', content });
+        const promptData = [{ type: 'text', text: prompt }, ...imageData];
+        params.messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
@@ -149,7 +110,7 @@ export class OpenAIConnector extends LLMConnector {
             });
 
             // Check token limit
-            const promptTokens = await this.countVisionPromptTokens(content);
+            const promptTokens = await this.countVisionPromptTokens(promptData);
 
             const tokenLimit = this.checkTokensLimit({
                 model: params.model,
@@ -162,9 +123,9 @@ export class OpenAIConnector extends LLMConnector {
 
             const response: any = await openai.chat.completions.create({ ...params });
 
-            const data = response?.choices?.[0]?.text || response?.choices?.[0]?.message.content;
+            const content = response?.choices?.[0]?.message.content;
 
-            return data;
+            return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
             console.log('Error in visionLLMRequest: ', error);
 
@@ -218,6 +179,99 @@ export class OpenAIConnector extends LLMConnector {
 
             return {
                 data: { useTool, message: message, content: message?.content ?? '', toolsInfo },
+            };
+        } catch (error: any) {
+            console.log('Error on toolUseLLMRequest: ', error);
+            return { error };
+        }
+    }
+
+    protected async streamToolRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<any> {
+        try {
+            // We provide
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.OPENAI_API_KEY,
+            });
+
+            // sanity check
+            if (!Array.isArray(messages) || !messages?.length) {
+                return { error: new Error('Invalid messages argument for chat completion.') };
+            }
+
+            let args: OpenAI.ChatCompletionCreateParamsStreaming = {
+                model,
+                messages,
+                stream: true,
+            };
+
+            if (tools && tools.length > 0) args.tools = tools;
+            if (tool_choice) args.tool_choice = tool_choice;
+
+            const stream: any = await openai.chat.completions.create(args);
+
+            // consumed stream will not be available for further use, so we need to clone it
+            const [toolCallsStream, contentStream] = stream.tee();
+
+            let useTool = false;
+            let delta: Record<string, any> = {};
+            let toolsInfo: any = [];
+            let _stream;
+
+            let message = {
+                role: '',
+                content: '',
+                tool_calls: [],
+            };
+
+            for await (const part of toolCallsStream) {
+                delta = part.choices[0].delta;
+
+                message.role += delta?.role || '';
+                message.content += delta?.content || '';
+
+                //if it's not a tools call, stop processing the stream immediately in order to allow streaming the text content
+                //FIXME: OpenAI API returns empty content as first message for content reply, and null content for tool reply,
+                //       this doesn't seem to be a very accurate way but it's the only solution to detect tool calls early enough (without reading the whole stream)
+                if (!delta?.tool_calls && delta?.content === '') {
+                    _stream = contentStream;
+                    break;
+                }
+
+                if (delta?.tool_calls) {
+                    const toolCall = delta?.tool_calls?.[0];
+                    const index = toolCall?.index;
+
+                    toolsInfo[index] = {
+                        index,
+                        role: 'tool',
+                        id: (toolsInfo?.[index]?.id || '') + (toolCall?.id || ''),
+                        type: (toolsInfo?.[index]?.type || '') + (toolCall?.type || ''),
+                        name: (toolsInfo?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                        arguments: (toolsInfo?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                    };
+                }
+            }
+
+            if (toolsInfo?.length > 0) {
+                useTool = true;
+            }
+
+            message.tool_calls = toolsInfo.map((tool) => {
+                return {
+                    id: tool.id,
+                    type: tool.type,
+                    function: {
+                        name: tool.name,
+                        arguments: tool.arguments,
+                    },
+                };
+            });
+
+            return {
+                data: { useTool, message, stream: _stream, toolsInfo },
             };
         } catch (error: any) {
             console.log('Error on toolUseLLMRequest: ', error);
