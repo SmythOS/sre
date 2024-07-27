@@ -9,10 +9,10 @@ import OSResourceMonitor from './OSResourceMonitor';
 import config from '@sre/config';
 import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
-const console = createLogger('___FILENAME___');
+const console = Logger('Agent');
 const idPromise = (id) => id;
 export default class Agent {
     public name: any;

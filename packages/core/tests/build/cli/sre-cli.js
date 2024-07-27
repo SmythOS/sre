@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 process.env.LOG_LEVEL = 'none';
 
-import { AgentRequest, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../../dist/index.dev.js';
+import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../../dist/index.dev.js';
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -42,6 +42,11 @@ async function main() {
         //console.log('CLI Connector:', cliConnector.params);
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         const data = await agentDataConnector.getAgentData('test', '1.0');
+
+        setTimeout(() => {
+            console.log('============ Debug Off ============');
+            config.env.LOG_LEVEL = 'none';
+        }, 1000);
         //console.log(data);
         //const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Hello World' } });
         //const request = new AgentRequest(process.argv);

@@ -1,10 +1,9 @@
-import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { TConnectorService } from '@sre/types/SRE.types';
-import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
-import models from './models';
 import Agent from '@sre/AgentManager/Agent.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
+import models from './models';
 
 export class LLMHelper {
     private _llmConnector: LLMConnector;

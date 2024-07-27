@@ -11,10 +11,10 @@ import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { concurrentAsyncProcess } from '@sre/utils/general.utils';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 
-const console = createLogger('ConversationHelper');
+const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
     name: string;
     description: string;
@@ -555,8 +555,8 @@ export class Conversation extends EventEmitter {
             const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
             if (!agentData) return null;
             this._agentId = agentId;
-            this.systemPrompt = agentData?.behavior || this.systemPrompt;
-            this.assistantName = agentData?.name || agentData?.templateInfo?.name || this.assistantName;
+            this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+            this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
             if (this.assistantName) {
                 this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
             }

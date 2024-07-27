@@ -3,6 +3,9 @@ dotenv.config();
 //FIXME : this is a legacy structure from Smyth SaaS we need to convert it to a Service/Connector structure
 const config = {
     env: {
+        LOG_LEVEL: process.env.LOG_LEVEL || 'none',
+        LOG_FILTER: process.env.LOG_FILTER || '',
+
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 
@@ -24,11 +27,6 @@ const config = {
         AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
         AWS_S3_REGION: process.env.AWS_S3_REGION,
         AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
-
-        GOOGLEAI_API_KEY: process.env.GOOGLEAI_API_KEY,
-    },
-    agent: {
-        ENDPOINT_PREFIX: '/api',
     },
 };
 

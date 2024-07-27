@@ -1,6 +1,6 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -9,7 +9,7 @@ import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
-const console = createLogger('OpenAIConnector');
+const console = Logger('OpenAIConnector');
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';

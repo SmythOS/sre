@@ -2,10 +2,10 @@ import Joi from 'joi';
 
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import ToolExecutor from '@sre/helpers/ToolExecutor.class';
 
-import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
+import { Conversation } from '@sre/helpers/Conversation.helper';
+import Component from './Component.class';
 
 export default class AgentPlugin extends Component {
     protected configSchema = Joi.object({
@@ -81,23 +81,13 @@ export default class AgentPlugin extends Component {
                 }
             }
 
-            const spec = await agentDataConnector.getOpenAPIJSON(subAgentId, 'http://localhost/', version, true);
-            logger.debug(`Model : ${model}`);
+            const conv = new Conversation(config?.data?.openAiModel, subAgentId);
 
-            const toolExecutor = new ToolExecutor(config?.data?.openAiModel, spec);
-
-            const result = await toolExecutor.run({
-                messages: [
-                    { role: 'system', content: descForModel || spec?.info?.description || '' },
-                    { role: 'user', content: prompt },
-                ],
-                toolHeaders: {
-                    'X-AGENT-ID': subAgentId,
-                    'X-AGENT-VERSION': version,
-                    'X-REQUEST-TAG': reqTag, //request Tag identifies the request and tells the called agent that the call comes from internal agent
-                    'x-caller-session-id': agent.callerSessionId,
-                },
-                agentId: agent.id,
+            const result = await conv.prompt(prompt, {
+                'X-AGENT-ID': subAgentId,
+                'X-AGENT-VERSION': version,
+                'X-REQUEST-TAG': reqTag, //request Tag identifies the request and tells the called agent that the call comes from internal agent
+                'x-caller-session-id': agent.callerSessionId,
             });
 
             logger.debug(`Response:\n`, result, '\n');

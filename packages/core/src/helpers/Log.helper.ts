@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import winston from 'winston';
 import Transport from 'winston-transport';
+import { parseCLIArgs } from '../utils';
+import config from '@sre/config';
 
 winston.addColors({
     error: 'red',
@@ -9,13 +11,18 @@ winston.addColors({
     debug: 'blue',
 });
 
+let logLevel = parseCLIArgs('debug')?.debug || config.env.LOG_LEVEL || 'info';
+if (!['none', 'error', 'warn', 'info', 'debug'].includes(logLevel)) {
+    logLevel = 'none';
+}
+
 // Retrieve the DEBUG environment variable and split it into an array of namespaces
-const namespaces = (process.env.LOG_FILTER || '').split(',');
+const namespaces = (config.env.LOG_FILTER || '').split(',');
 
 // Create a Winston format that filters messages based on namespaces
 const namespaceFilter = winston.format((info) => {
     // If DEBUG is not set, log everything
-    if (!process.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
+    if (!config.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
         return info;
     }
     return false; // Filter out messages that do not match the namespace
@@ -43,7 +50,7 @@ class ArrayTransport extends Transport {
     }
 }
 
-export class Logger {
+export class LogHelper {
     public startTime = Date.now();
     public get output() {
         return Array.isArray(this.data) ? this.data.join('\n') : undefined;
@@ -51,7 +58,7 @@ export class Logger {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(private _logger, public data, private labels: { [key: string]: any }) {}
+    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {}
 
     public log(...args) {
         this._logger.log('info', formatLogMessage(...args), this.labels);
@@ -74,6 +81,11 @@ export class Logger {
 
         this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack });
     }
+
+    public close() {
+        this._logger.clear();
+        this._logger.close();
+    }
 }
 
 const colorizedFormat = winston.format.printf((info) => {
@@ -87,6 +99,11 @@ function createBaseLogger(memoryStore?: any[]) {
         //level: 'info', // log level
 
         format: winston.format.combine(
+            winston.format((info) => {
+                if (config.env.LOG_LEVEL == 'none') return false; // skip logging if log level is none
+
+                return info;
+            })(),
             winston.format.timestamp(),
             winston.format.errors({
                 stack: true,
@@ -109,7 +126,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
             new winston.transports.Console({
-                level: process.env.LOG_LEVEL || 'info',
+                level: logLevel,
                 format: winston.format.combine(
                     namespaceFilter,
                     winston.format.printf((info) => {
@@ -158,11 +175,11 @@ function createLabeledLogger(labels: { [key: string]: any }, memoryStore?: any[]
 
     _logger.defaultMeta = labels;
 
-    const logger = new Logger(_logger, memoryStore, labels);
+    const logger = new LogHelper(_logger, memoryStore, labels);
 
     return logger;
 }
 
-export function createLogger(module: string, withMemoryStore = false) {
+export function Logger(module: string, withMemoryStore = false) {
     return createLabeledLogger({ module }, withMemoryStore ? [] : undefined);
 }

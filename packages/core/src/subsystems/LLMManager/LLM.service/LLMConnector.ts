@@ -1,7 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import models from '@sre/LLMManager/models';
 import paramMappings from '@sre/LLMManager/paramMappings';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -14,7 +14,7 @@ import { isBase64FileUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
 import imageSize from 'image-size';
-const console = createLogger('LLMConnector');
+const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
     chatRequest(prompt, params: any): Promise<any>;

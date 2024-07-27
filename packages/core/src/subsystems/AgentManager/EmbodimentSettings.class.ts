@@ -1,5 +1,5 @@
-import { createLogger } from '@sre/Core/Logger';
-const console = createLogger('___FILENAME___');
+import { Logger } from '@sre/helpers/Log.helper';
+const console = Logger('EmbodimentSettings');
 
 export default class EmbodimentSettings {
     private _embodiments: any;

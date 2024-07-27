@@ -1,5 +1,5 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -10,7 +10,7 @@ import { JSONFileVaultConfig } from '@sre/types/Security.types';
 import fs from 'fs';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 
-const console = createLogger('JSONFileVault');
+const console = Logger('JSONFileVault');
 export class JSONFileVault extends VaultConnector {
     public name: string = 'JSONFileVault';
     private vaultData: any;

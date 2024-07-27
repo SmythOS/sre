@@ -1,6 +1,6 @@
 import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { DummyConnector } from './DummyConnector';
-import { createLogger } from './Logger';
+import { Logger } from '../helpers/Log.helper';
 import { Connector } from './Connector.class';
 import { isSubclassOf } from '@sre/utils';
 import SystemEvents from './SystemEvents';
@@ -11,7 +11,7 @@ import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
-const console = createLogger('ConnectorService');
+const console = Logger('ConnectorService');
 
 const Connectors = {};
 

@@ -4,9 +4,9 @@ import path from 'path';
 import config from '@sre/config';
 import { delay, uid } from '@sre/utils';
 import AgentRuntime from '@sre/AgentManager/AgentRuntime.class';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 
-const console = createLogger('RuntimeContext');
+const console = Logger('RuntimeContext');
 
 type TRuntimeData = {
     input?: { [key: string]: any };

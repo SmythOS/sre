@@ -4,11 +4,11 @@ import Agent from './Agent.class';
 import Component from '@sre/Components/Component.class';
 import componentInstance from '@sre/Components/index';
 
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
 import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
 
-const console = createLogger('___FILENAME___');
+const console = Logger('AgentRuntime');
 const AgentRuntimeUnavailable = new Proxy(
     {},
     {

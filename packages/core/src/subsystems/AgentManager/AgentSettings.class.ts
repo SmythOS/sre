@@ -1,8 +1,8 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import EmbodimentSettings from './EmbodimentSettings.class';
 
-import { createLogger } from '@sre/Core/Logger';
-const console = createLogger('AgentSettings');
+import { Logger } from '@sre/helpers/Log.helper';
+const console = Logger('AgentSettings');
 
 export default class AgentSettings {
     private _settings: any;

@@ -1,5 +1,5 @@
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { ToolsConfig } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
@@ -8,7 +8,7 @@ import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
-const console = createLogger('ToolExecutor');
+const console = Logger('ToolExecutor');
 
 type UseToolParams = {
     type: string;

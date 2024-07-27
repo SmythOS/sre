@@ -1,37 +1,14 @@
-import Agent from '@sre/AgentManager/Agent.class';
-import AgentRequest from '@sre/AgentManager/AgentRequest.class';
-import AgentSettings from '@sre/AgentManager/AgentSettings.class';
-//import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-//import { IAgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
-//import { ICacheConnector } from '@sre/MemoryManager/Cache.service/ICacheConnector';
-import { SREConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
+import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
-//import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { Logger } from '../helpers/Log.helper';
 
-//const CInstance = ConnectorService.Instance;
+const logger = Logger('SRE');
 const CInstance = ConnectorService;
 
 export default class SmythRuntime {
-    //protected static _instances: any = {};
-
     public started = false;
-    //protected static _agentDataProviderInstance: IAgentDataConnector;
 
-    //Moved to connectorSerive
-    // public get Storage(): StorageConnector {
-    //     return CInstance.getInstance<StorageConnector>(TConnectorService.Storage);
-    // }
-    // public get Cache(): ICacheConnector {
-    //     return CInstance.getInstance<ICacheConnector>(TConnectorService.Cache);
-    // }
-    // public get AgentData(): IAgentDataConnector {
-    //     return CInstance.getInstance<IAgentDataConnector>(TConnectorService.AgentData);
-    // }
-
-    // public get Vault(): VaultConnector {
-    //     return CInstance.getInstance<VaultConnector>(TConnectorService.Vault);
-    // }
     protected constructor() {
         this.started = true;
     }
@@ -103,31 +80,8 @@ export default class SmythRuntime {
         return this.initialized;
     }
 
-    // async runAgent(id, JSONData, request: AgentRequest) {
-    //     try {
-    //         const agentData = JSONData;
-
-    //         const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
-    //         if (!pathMatches || !pathMatches[2]) {
-    //             return { status: 404, data: { error: 'Endpoint not found' } };
-    //         }
-    //         const endpointPath = pathMatches[2];
-    //         const input = request.method == 'GET' ? request.query : request.body;
-
-    //         const agentSettings = new AgentSettings(id);
-
-    //         const agent = new Agent(id, agentData, agentSettings, request);
-    //         const result: any = await agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
-
-    //         return result;
-    //     } catch (error) {
-    //         console.error('Error running agent', error.message);
-    //         return { error: 'Error running agent' };
-    //     }
-    // }
-
     public async _stop() {
-        console.info('Shutting Down SmythRuntime ...');
+        logger.info('Shutting Down SmythRuntime ...');
         CInstance._stop();
         SmythRuntime.instance = undefined;
         this.started = false;

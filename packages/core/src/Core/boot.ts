@@ -2,13 +2,13 @@ import { StorageService } from '@sre/IO/Storage.service';
 import { LLMService } from '@sre/LLMManager/LLM.service';
 import SystemEvents from './SystemEvents';
 import { CacheService } from '@sre/MemoryManager/Cache.service';
-import { createLogger } from './Logger';
+import { Logger } from '../helpers/Log.helper';
 import { TServiceRegistry } from '@sre/types/SRE.types';
 import { VaultService } from '@sre/Security/Vault.service';
 import { AccountService } from '@sre/Security/Account.service';
 import { AgentDataService } from '@sre/AgentManager/AgentData.service';
 import { CLIService } from '@sre/IO/CLI.service';
-const console = createLogger('Boot');
+const console = Logger('Boot');
 
 export function boot() {
     console.debug('SRE Boot sequence started');
