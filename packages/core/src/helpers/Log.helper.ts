@@ -119,7 +119,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 format: winston.format.combine(
                     winston.format.printf((info) => {
                         let message = info.message;
-                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
                     })
                 ),
@@ -134,7 +134,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         const ns = winston.format.colorize().colorize(info.level, `${info.level}${module}`);
 
                         let message = info.message;
-                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
                     })

@@ -96,7 +96,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         conv.on('afterToolCall', (toolArgs, functionResponse) => {
             console.log('afterToolCall', toolArgs, functionResponse);
         });
-        const result = await conv.streamPrompt('what is the engineering team working on ?');
+        const result = await conv.streamPrompt('Analyze smyth runtime dependencies and tell me what S3Storage.class.ts depends on');
 
         expect(result).toBeDefined();
     }, 30000);
@@ -123,4 +123,46 @@ if the user asks any question, use /ask endpoint to get information and be able 
         console.log(streamResult);
         expect(result).toBeDefined();
     }, 30000);
+
+    it('runs successive tools calls', async () => {
+        //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+        const conv = new Conversation('gpt-4o', specUrl);
+
+        let streamResult = '';
+        conv.on('beforeToolCall', (args) => {
+            //console.log('beforeToolCall', args);
+        });
+
+        conv.on('data', (data) => {
+            //console.log('===== data =====');
+            //console.log('>>', data);
+        });
+        conv.on('content', (content) => {
+            console.log(content);
+            streamResult += content;
+        });
+        conv.on('start', (content) => {
+            console.log('============== Start ====================');
+        });
+        conv.on('end', (content) => {
+            console.log('============== End ====================');
+        });
+
+        conv.on('beforeToolCall', (info) => {
+            try {
+                console.log('Using tool : ' + info.tool.name);
+            } catch (error) {}
+        });
+        conv.on('beforeToolCall', async (info) => {
+            try {
+                console.log('Got response from tool : ' + info.tool.name);
+            } catch (error) {}
+        });
+
+        const result = await conv.streamPrompt(
+            'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it, then search S3Storage.class.ts in smyth runtime repo, then write the first 3 lines of its code. make the operations successively and not in parallel'
+        );
+        expect(result).toBeDefined();
+    }, 120000);
 });
