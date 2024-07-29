@@ -29,10 +29,15 @@ export class PineconeVectorDB extends VectorDBConnector {
     constructor(private config: PineconeConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        if (!config.pineconeApiKey) throw new Error('Pinecone API key is required');
+        if (!config.indexName) throw new Error('Pinecone index name is required');
+
         this._client = new Pinecone({
             apiKey: config.pineconeApiKey,
         });
 
+        console.info('Pinecone client initialized');
+        console.info('Pinecone index name:', config.indexName);
         this.indexName = config.indexName;
     }
 
@@ -153,6 +158,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         }));
 
         // await pineconeStore.addDocuments(chunks, ids);
+        const index = await this._client.describeIndex(data.indexName);
         await this._client.Index(data.indexName).namespace(data.namespace).upsert(preparedSource);
 
         return preparedSource.map((s) => s.id);

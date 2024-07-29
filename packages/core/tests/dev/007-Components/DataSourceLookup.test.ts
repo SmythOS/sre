@@ -14,7 +14,7 @@ const SREInstance = SmythRuntime.Instance.init({
         Settings: {
             pineconeApiKey: config.env.PINECONE_API_KEY || '',
             openaiApiKey: config.env.OPENAI_API_KEY || '',
-            indexName: config.env.PINCECONE_INDEX_NAME || '',
+            indexName: config.env.PINECONE_INDEX_NAME || '',
         },
     },
 });
