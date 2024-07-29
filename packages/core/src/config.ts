@@ -27,6 +27,12 @@ const config = {
         AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
         AWS_S3_REGION: process.env.AWS_S3_REGION,
         AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
+
+        PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+        PINCECONE_INDEX_NAME: process.env.PINCECONE_INDEX_NAME,
+    },
+    agent: {
+        ENDPOINT_PREFIX: '/api',
     },
 };
 

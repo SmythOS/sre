@@ -10,6 +10,7 @@ import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
+import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 const console = Logger('ConnectorService');
 
@@ -128,6 +129,10 @@ export class ConnectorService {
 
     static getCacheConnector(name?: string): CacheConnector {
         return ConnectorService.getInstance<any>(TConnectorService.Cache, name);
+    }
+
+    static getVectorDBConnector(name?: string): VectorDBConnector {
+        return ConnectorService.getInstance<VectorDBConnector>(TConnectorService.VectorDB, name);
     }
 
     static getLLMConnector(name?: string): LLMConnector {

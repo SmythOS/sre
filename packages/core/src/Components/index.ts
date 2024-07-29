@@ -8,6 +8,9 @@ import FSleep from './FSleep.class';
 import FHash from './FHash.class';
 import FEncDec from './FEncDec.class';
 import FTimestamp from './FTimestamp.class';
+import DataSourceLookup from './DataSourceLookup.class';
+import DataSourceIndexer from './DataSourceIndexer.class';
+import DataSourceCleaner from './DataSourceCleaner.class';
 import JSONFilter from './JSONFilter.class';
 import LogicAND from './LogicAND.class';
 import LogicOR from './LogicOR.class';
@@ -30,6 +33,9 @@ const components = {
     FEncDec: new FEncDec(),
     // FSign: new FSign(), // TODO: Implement FSign
     FTimestamp: new FTimestamp(),
+    DataSourceLookup: new DataSourceLookup(),
+    DataSourceIndexer: new DataSourceIndexer(),
+    DataSourceCleaner: new DataSourceCleaner(),
     JSONFilter: new JSONFilter(),
     LogicAND: new LogicAND(),
     LogicOR: new LogicOR(),
