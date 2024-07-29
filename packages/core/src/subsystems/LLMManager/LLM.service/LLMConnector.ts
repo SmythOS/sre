@@ -9,7 +9,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMParams } from '@sre/types/LLM.types';
+import { LLMParams, LLMInputMessage } from '@sre/types/LLM.types';
 import { isBase64FileUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
@@ -141,6 +141,7 @@ export abstract class LLMConnector extends Connector {
         return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
     }
 
+    // ! DEPRECATED: will be removed in favor of validateTokensLimit
     public checkTokensLimit({
         model,
         promptTokens,
@@ -165,6 +166,38 @@ export abstract class LLMConnector extends Connector {
         }
 
         return { isExceeded: false, error: '' };
+    }
+
+    /**
+     * Validates if the total tokens (prompt input token + maximum output token) exceed the allowed context tokens for a given model.
+     *
+     * @param {Object} params - The function parameters.
+     * @param {string} params.model - The model identifier.
+     * @param {number} params.promptTokens - The number of tokens in the input prompt.
+     * @param {number} params.completionTokens - The number of tokens in the output completion.
+     * @param {boolean} [params.hasTeamAPIKey=false] - Indicates if the user has a team API key.
+     * @throws {Error} - Throws an error if the total tokens exceed the allowed context tokens.
+     */
+    public validateTokensLimit({
+        model,
+        promptTokens,
+        completionTokens,
+        hasTeamAPIKey = false,
+    }: {
+        model: string;
+        promptTokens: number;
+        completionTokens: number;
+        hasTeamAPIKey?: boolean;
+    }): void {
+        const allowedContextTokens = this.getAllowedContextTokens(model, hasTeamAPIKey);
+        const totalTokens = promptTokens + completionTokens;
+
+        const teamAPIKeyExceededMessage = `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`;
+        const noAPIKeyExceededMessage = `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`;
+
+        if (totalTokens > allowedContextTokens) {
+            throw new Error(hasTeamAPIKey ? teamAPIKeyExceededMessage : noAPIKeyExceededMessage);
+        }
     }
 
     public enhancePrompt(prompt: string, config: any) {
@@ -286,6 +319,22 @@ export abstract class LLMConnector extends Connector {
     }
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         throw new Error('This model does not support tools');
+    }
+
+    public hasSystemMessage(messages: any) {
+        if (!Array.isArray(messages)) return false;
+
+        return messages?.some((message) => message.role === 'system');
+    }
+
+    public separateSystemMessages(messages: LLMInputMessage[]): {
+        systemMessage: LLMInputMessage | {};
+        otherMessages: LLMInputMessage[];
+    } {
+        const systemMessage = messages.find((message) => message.role === 'system' && message.content) || {};
+        const otherMessages = messages.filter((message) => message.role !== 'system' && message.content);
+
+        return { systemMessage, otherMessages };
     }
 }
 

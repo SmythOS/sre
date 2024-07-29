@@ -78,3 +78,8 @@ export interface ToolsConfig {
 }
 
 //#endregion
+
+export type LLMInputMessage = {
+    role: string;
+    content: string;
+};
