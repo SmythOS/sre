@@ -1,6 +1,6 @@
 //==[ SRE: S3Storage ]======================
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
 import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -26,13 +26,16 @@ export class S3Storage extends StorageConnector {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.bucket = config.bucket;
-        this.client = new S3Client({
-            region: config.region,
-            credentials: {
+        const clientConfig: S3ClientConfig = {};
+        if (config.region) clientConfig.region = config.region;
+        if (config.accessKeyId && config.secretAccessKey) {
+            clientConfig.credentials = {
                 accessKeyId: config.accessKeyId,
                 secretAccessKey: config.secretAccessKey,
-            },
-        });
+            };
+        }
+
+        this.client = new S3Client(clientConfig);
     }
 
     public user(candidate: AccessCandidate): IStorageRequest {

@@ -14,6 +14,8 @@ import { isBase64FileUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
 import imageSize from 'image-size';
+import EventEmitter from 'events';
+import { Readable } from 'stream';
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
@@ -21,12 +23,49 @@ export interface ILLMConnectorRequest {
     visionRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
+    streamRequest(params: any): Promise<EventEmitter>;
 }
 
 export type LLMChatResponse = {
     content: string;
     finishReason: string;
 };
+
+export class LLMStream extends Readable {
+    private dataQueue: any[];
+    private toolsInfo: any[];
+    private hasData: boolean;
+    isReading: boolean;
+    constructor(options?) {
+        super(options);
+        this.dataQueue = [];
+        this.toolsInfo = [];
+        this.isReading = true;
+    }
+
+    _read(size) {
+        if (this.dataQueue.length > 0) {
+            while (this.dataQueue.length > 0) {
+                const chunk = this.dataQueue.shift();
+                if (!this.push(chunk)) {
+                    break;
+                }
+            }
+        } else {
+            this.push(null); // No more data
+        }
+    }
+
+    enqueueData(data) {
+        this.dataQueue.push(data);
+        this.read(0); // Trigger the _read method
+    }
+
+    endStream() {
+        this.isReading = false;
+        this.push(null); // End the stream
+    }
+}
 
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
@@ -35,6 +74,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
+    protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
 
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
@@ -76,6 +116,15 @@ export abstract class LLMConnector extends Connector {
                     .get(llm)
                     .catch((e) => ''); //if vault access is denied we just return empty key
                 return this.streamToolRequest(candidate.readRequest, params);
+            },
+            streamRequest: async (params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.streamRequest(candidate.readRequest, params);
             },
         };
     }

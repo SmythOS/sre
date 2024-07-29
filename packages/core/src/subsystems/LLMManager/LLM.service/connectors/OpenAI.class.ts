@@ -7,7 +7,10 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
 import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
+import EventEmitter from 'events';
+import { delay } from '@sre/utils/date-time.utils';
+import { Readable } from 'stream';
 
 const console = Logger('OpenAIConnector');
 
@@ -201,6 +204,8 @@ export class OpenAIConnector extends LLMConnector {
                 return { error: new Error('Invalid messages argument for chat completion.') };
             }
 
+            console.log('model', model);
+            console.log('messages', messages);
             let args: OpenAI.ChatCompletionCreateParamsStreaming = {
                 model,
                 messages,
@@ -239,7 +244,7 @@ export class OpenAIConnector extends LLMConnector {
                     _stream = contentStream;
                     break;
                 }
-
+                //_stream = toolCallsStream;
                 if (delta?.tool_calls) {
                     const toolCall = delta?.tool_calls?.[0];
                     const index = toolCall?.index;
@@ -270,6 +275,8 @@ export class OpenAIConnector extends LLMConnector {
                 };
             });
 
+            //console.log('result', useTool, message, toolsInfo);
+
             return {
                 data: { useTool, message, stream: _stream, toolsInfo },
             };
@@ -277,6 +284,122 @@ export class OpenAIConnector extends LLMConnector {
             console.log('Error on toolUseLLMRequest: ', error);
             return { error };
         }
+    }
+
+    // protected async stremRequest(
+    //     acRequest: AccessRequest,
+    //     { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    // ): Promise<Readable> {
+    //     const stream = new LLMStream();
+
+    //     const openai = new OpenAI({
+    //         apiKey: apiKey || process.env.OPENAI_API_KEY,
+    //     });
+
+    //     console.log('model', model);
+    //     console.log('messages', messages);
+
+    //     let args: OpenAI.ChatCompletionCreateParamsStreaming = {
+    //         model,
+    //         messages,
+    //         stream: true,
+    //     };
+
+    //     if (tools && tools.length > 0) args.tools = tools;
+    //     if (tool_choice) args.tool_choice = tool_choice;
+
+    //     const openaiStream: any = await openai.chat.completions.create(args);
+
+    //     let toolsInfo: any = [];
+    //     stream.enqueueData({ start: true });
+    //     (async () => {
+    //         for await (const part of openaiStream) {
+    //             const delta = part.choices[0].delta;
+    //             //stream.enqueueData(delta);
+
+    //             if (!delta?.tool_calls && delta?.content) {
+    //                 stream.enqueueData({ content: delta.content, role: delta.role });
+    //             }
+
+    //             if (delta?.tool_calls) {
+    //                 const toolCall = delta.tool_calls[0];
+    //                 const index = toolCall.index;
+
+    //                 toolsInfo[index] = {
+    //                     index,
+    //                     role: 'tool',
+    //                     id: (toolsInfo[index]?.id || '') + (toolCall?.id || ''),
+    //                     type: (toolsInfo[index]?.type || '') + (toolCall?.type || ''),
+    //                     name: (toolsInfo[index]?.name || '') + (toolCall?.function?.name || ''),
+    //                     arguments: (toolsInfo[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+    //                 };
+    //             }
+    //         }
+
+    //         stream.enqueueData({ toolsInfo });
+    //         //stream.endStream();
+    //     })();
+
+    //     return stream;
+    // }
+
+    protected async streamRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const openai = new OpenAI({
+            apiKey: apiKey || process.env.OPENAI_API_KEY,
+        });
+
+        console.log('model', model);
+        console.log('messages', messages);
+        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model,
+            messages,
+            stream: true,
+        };
+
+        if (tools && tools.length > 0) args.tools = tools;
+        if (tool_choice) args.tool_choice = tool_choice;
+        const stream: any = await openai.chat.completions.create(args);
+
+        (async () => {
+            let delta: Record<string, any> = {};
+
+            let toolsInfo: any = [];
+
+            for await (const part of stream) {
+                delta = part.choices[0].delta;
+                emitter.emit('data', delta);
+
+                if (!delta?.tool_calls && delta?.content) {
+                    emitter.emit('content', delta?.content, delta?.role);
+                }
+                //_stream = toolCallsStream;
+                if (delta?.tool_calls) {
+                    const toolCall = delta?.tool_calls?.[0];
+                    const index = toolCall?.index;
+
+                    toolsInfo[index] = {
+                        index,
+                        role: 'tool',
+                        id: (toolsInfo?.[index]?.id || '') + (toolCall?.id || ''),
+                        type: (toolsInfo?.[index]?.type || '') + (toolCall?.type || ''),
+                        name: (toolsInfo?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                        arguments: (toolsInfo?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                    };
+                }
+            }
+            if (toolsInfo?.length > 0) {
+                emitter.emit('toolsInfo', toolsInfo);
+            }
+
+            setTimeout(() => {
+                emitter.emit('end', toolsInfo);
+            }, 100);
+        })();
+        return emitter;
     }
 
     public async extractVisionLLMParams(config: any) {

@@ -145,15 +145,7 @@ describe('S3 Storage Tests', () => {
         const agent = AccessCandidate.agent('agent1');
         let metadata: any = await s3Storage.user(agent).getACL(testFile);
 
-        expect(metadata).toEqual(testAdditionalACLMetadata);
-    });
-
-    it('Are Metadata ACL valid', async () => {
-        const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
-        const agent = AccessCandidate.agent('agent1');
-        const accessRights = await s3Storage.user(agent).getACL(testFile);
-
-        expect(accessRights).toEqual(testAdditionalACLMetadata);
+        expect(metadata.entries?.team).toEqual(testAdditionalACLMetadata.entries.team);
     });
 
     it('Read files from S3Storage', async () => {

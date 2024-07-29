@@ -33,8 +33,8 @@ export class JSONContentHelper {
             try {
                 return JSON.parse(jsonrepair(str));
             } catch (e: any) {
-                console.warn('Error on parseJson: ', e.toString());
-                console.warn('   Tried to parse: ', str);
+                //console.warn('Error on parseJson: ', e.toString());
+                //console.warn('   Tried to parse: ', str);
                 return strInput;
             }
         }

@@ -8,6 +8,7 @@ import { VaultService } from '@sre/Security/Vault.service';
 import { AccountService } from '@sre/Security/Account.service';
 import { AgentDataService } from '@sre/AgentManager/AgentData.service';
 import { CLIService } from '@sre/IO/CLI.service';
+import { NKVService } from '@sre/IO/NKV.service';
 const console = Logger('Boot');
 
 export function boot() {
@@ -20,6 +21,7 @@ export function boot() {
     service.Account = new AccountService();
     service.AgentData = new AgentDataService();
     service.CLI = new CLIService();
+    service.NKV = new NKVService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

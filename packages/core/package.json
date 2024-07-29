@@ -9,7 +9,7 @@
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "build:dev": "cross-env BUILD=dev rollup -c",
         "build:prod": "cross-env BUILD=prod rollup -c",
-        "doc:graphgen": "npx depcruise src --config ./doc/.dependency-cruiser.cjs --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
+        "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.cjs --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "knip": "knip"
     },
     "author": "Alaa-eddine KADDOURI",
@@ -28,6 +28,7 @@
         "dependency-cruiser": "^16.3.3",
         "keypress": "^0.2.1",
         "knip": "^5.23.1",
+        "neo-blessed": "^0.2.0",
         "node-global-key-listener": "^0.3.0",
         "nyc": "^17.0.0",
         "ora": "^8.0.1",

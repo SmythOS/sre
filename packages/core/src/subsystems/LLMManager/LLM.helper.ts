@@ -78,4 +78,9 @@ export class LLMHelper {
         const agentId = agent instanceof Agent ? agent.id : agent;
         return this._llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
+
+    public async streamRequest(params: any, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        return this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+    }
 }
