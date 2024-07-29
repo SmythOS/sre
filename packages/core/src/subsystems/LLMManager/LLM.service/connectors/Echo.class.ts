@@ -18,7 +18,7 @@ export class EchoConnector extends LLMConnector {
     protected async streamToolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
     }
-    protected async stremRequest(acRequest: AccessRequest, params: any): Promise<Readable> {
+    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<Readable> {
         throw new Error('Echo model does not support streaming');
     }
 

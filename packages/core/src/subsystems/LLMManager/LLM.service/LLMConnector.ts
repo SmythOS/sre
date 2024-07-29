@@ -74,7 +74,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
-    protected abstract stremRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
 
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
@@ -124,7 +124,7 @@ export abstract class LLMConnector extends Connector {
                     .user(candidate)
                     .get(llm)
                     .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.stremRequest(candidate.readRequest, params);
+                return this.streamRequest(candidate.readRequest, params);
             },
         };
     }

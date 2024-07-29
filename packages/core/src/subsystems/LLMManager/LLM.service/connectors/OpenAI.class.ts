@@ -343,7 +343,7 @@ export class OpenAIConnector extends LLMConnector {
     //     return stream;
     // }
 
-    protected async stremRequest(
+    protected async streamRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
