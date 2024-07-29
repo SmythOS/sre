@@ -2,9 +2,16 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { INKVRequest, NKVConnector } from '../NKVConnector';
 import { IAccessCandidate, TAccessLevel } from '@sre/types/ACL.types';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 export class NKVRedis extends NKVConnector {
     public name = 'Redis';
+    private redisCacheConnector: CacheConnector;
+    constructor() {
+        super();
+        this.redisCacheConnector = ConnectorService.getCacheConnector('Redis');
+    }
 
     public user(candidate: IAccessCandidate): INKVRequest {
         throw new Error('Method not implemented.');

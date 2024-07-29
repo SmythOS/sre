@@ -2,9 +2,10 @@
 
 import { ConnectorService, ConnectorServiceProvider } from '@sre/Core/ConnectorsService';
 import { TConnectorService } from '@sre/types/SRE.types';
+import { NKVRedis } from './connectors/NKVRedis.class';
 
 export class NKVService extends ConnectorServiceProvider {
     public register() {
-        //ConnectorService.register(TConnectorService.Storage, 'S3', S3Storage);
+        ConnectorService.register(TConnectorService.NKV, 'Redis', NKVRedis);
     }
 }
