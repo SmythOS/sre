@@ -1,6 +1,5 @@
 //==[ SRE: S3Storage ]======================
 
-import { createLogger } from '@sre/Core/Logger';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
@@ -16,8 +15,9 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { VectorsHelper } from '../Vectors.helper';
 import { isUrl } from '@sre/utils/data.utils';
+import { Logger } from '@sre/helpers/Log.helper';
 
-const console = createLogger('Pinecone VectorDB');
+const console = Logger('Pinecone VectorDB');
 
 type SupportedSources = 'text' | 'vector' | 'url';
 
@@ -69,7 +69,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 return await this.search(candidate.readRequest, { indexName: this.indexName, namespace, query }, options);
             },
 
-            insert: async (namespace: string, source: IVectorDataSourceDto<Source> | IVectorDataSourceDto<Source>[]) => {
+            insert: async (namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]) => {
                 return this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, source });
             },
 
@@ -131,16 +131,21 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async insert<T extends Source>(
+    protected async insert(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; source: IVectorDataSourceDto<T> | IVectorDataSourceDto<T>[] }
+        data: { indexName: string; namespace: string; source: IVectorDataSourceDto | IVectorDataSourceDto[] }
     ): Promise<string[]> {
-        let { source } = data;
-        source = Array.isArray(source) ? source : [source];
+        let { source: sourceWrapper } = data;
+        sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
 
-        const sourceType = this.detectSourceType(source[0].source);
+        // make sure that all sources are of the same type (source.source)
+        if (sourceWrapper.some((s) => this.detectSourceType(s.source) !== this.detectSourceType(sourceWrapper[0].source))) {
+            throw new Error('All sources must be of the same type');
+        }
+
+        const sourceType = this.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
-        const transformedSource = await this.transformSource(source, sourceType);
+        const transformedSource = await this.transformSource(sourceWrapper, sourceType);
         const preparedSource = transformedSource.map((s) => ({
             id: s.id,
             values: s.source as number[],
@@ -159,13 +164,13 @@ export class PineconeVectorDB extends VectorDBConnector {
         const res = await this._client.Index(data.indexName).namespace(data.namespace).deleteMany(_ids);
     }
 
-    private async getNamespaceMetadata(namespaceId: string): Promise<Record<string, any>> {
-        const cache = ConnectorService.getCacheConnector();
+    // private async getNamespaceMetadata(namespaceId: string): Promise<Record<string, any>> {
+    //     const cache = ConnectorService.getCacheConnector();
 
-        const metadata = await cache.get(namespaceId);
+    //     const metadata = await cache.get(namespaceId);
 
-        return metadata;
-    }
+    //     return metadata;
+    // }
 
     private detectSourceType(source: Source): SupportedSources | 'unknown' {
         if (typeof source === 'string') {
@@ -177,7 +182,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
     }
 
-    private transformSource<T extends Source>(source: IVectorDataSourceDto<T>[], sourceType: SupportedSources) {
+    private transformSource<T extends Source>(source: IVectorDataSourceDto[], sourceType: SupportedSources) {
         //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
         switch (sourceType) {
             case 'text': {

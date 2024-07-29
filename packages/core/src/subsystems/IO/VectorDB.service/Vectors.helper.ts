@@ -67,7 +67,7 @@ export class VectorsHelper {
     ) {
         const chunkedText = await VectorsHelper.chunkText(text, { chunkSize, chunkOverlap });
         const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
-        const source: IVectorDataSourceDto<string>[] = chunkedText.map((doc, i) => {
+        const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
             return {
                 id: ids[i],
                 source: doc,

@@ -8,7 +8,7 @@ import { Document } from '@langchain/core/documents';
 
 export interface IVectorDBRequest {
     search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorsResultData>;
-    insert<T extends Source>(namespace: string, source: IVectorDataSourceDto<T> | IVectorDataSourceDto<T>[]): Promise<string[]>;
+    insert(namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
     delete(namespace: string, id: string | string[]): Promise<void>;
     createNamespace(namespace: string): Promise<void>;
     deleteNamespace(namespace: string): Promise<void>;
@@ -24,12 +24,12 @@ export abstract class VectorDBConnector extends SecureConnector {
         options: QueryOptions
     ): Promise<VectorsResultData>;
 
-    protected abstract insert<T extends Source>(
+    protected abstract insert(
         acRequest: AccessRequest,
         data: {
             indexName: string;
             namespace: string;
-            source: IVectorDataSourceDto<T> | IVectorDataSourceDto<T>[];
+            source: IVectorDataSourceDto | IVectorDataSourceDto[];
         }
     ): Promise<string[]>;
 

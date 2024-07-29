@@ -31,10 +31,16 @@ export interface SourceTypes {
 
 export type Source = SourceTypes[keyof SourceTypes];
 
-export interface IVectorDataSourceDto<T extends Source> {
+// export interface IVectorDataSourceDto<T extends Source> {
+//     id: string;
+//     // source: url | text | document | vector;
+//     source: T;
+//     metadata?: VectorDBMetadata;
+// }
+
+export interface IVectorDataSourceDto {
     id: string;
-    // source: url | text | document | vector;
-    source: T;
+    source: number[] | string;
     metadata?: VectorDBMetadata;
 }
 

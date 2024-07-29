@@ -48,7 +48,7 @@ describe('Integration: Pinecone VectorDB', () => {
         });
 
         it('insert as raw vectors', async () => {
-            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto[] = [
                 {
                     id: '1',
                     source: Array.from({ length: 1536 }, () => Math.random()),
@@ -84,7 +84,7 @@ describe('Integration: Pinecone VectorDB', () => {
         });
 
         it('insert vectors from text documents', async () => {
-            const dummyDocuments: IVectorDataSourceDto<string>[] = [
+            const dummyDocuments: IVectorDataSourceDto[] = [
                 {
                     id: '1',
                     source: 'Hello World!',
@@ -117,7 +117,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const text = 'Best car in the world';
 
-            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto[] = [
                 {
                     id: faker.string.uuid(),
                     source: await VectorsHelper.load().embedText(text),
@@ -300,7 +300,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const team = AccessCandidate.team('team-123456');
 
             // insert some dummy vectors to search
-            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto[] = [
                 {
                     id: faker.string.uuid(),
                     source: Array.from({ length: 1536 }, () => Math.random()),
