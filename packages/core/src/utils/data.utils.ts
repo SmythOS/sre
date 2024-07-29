@@ -93,8 +93,11 @@ export const isBinaryData = (data): boolean => {
     }
 };
 export function isUrl(str: string): boolean {
+    if (typeof str !== 'string') return false;
     // This regex checks for protocol, hostname, domain, port (optional), path (optional), and query string (optional)
-    const regex = /^(https?:\/\/)([^\s.]+\.[^\s]{2,})(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+    //const regex = /^(https?:\/\/)([^\s.]+\.[^\s]{2,})(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+    const regex = /^([a-zA-Z0-9]+:\/\/)([^\s.]+\.[^\s]{2,})(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+
     return regex.test(str);
 }
 

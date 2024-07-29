@@ -1,0 +1,70 @@
+import { encode, encodeChat } from 'gpt-tokenizer';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
+
+//content, name, role, tool_call_id, tool_calls, function_call
+export class LLMContext {
+    private _llmHelper;
+    public get llmHelper() {
+        return this._llmHelper;
+    }
+
+    public get messages() {
+        return this._messages;
+    }
+    /**
+     *
+     * @param source a messages[] object, or smyth file system uri (smythfs://...)
+     */
+    constructor(private _model, private _systemPrompt: string = '', private _messages: any[] = []) {
+        //TODO:allow configuring a storage service
+        this._llmHelper = LLMHelper.load(this._model);
+    }
+
+    public push(...message: any[]) {
+        this._messages.push(...message);
+
+        //TODO: persist to storage
+    }
+    public addUserMessage(content: string) {
+        this.push({ role: 'user', content });
+    }
+
+    public getContextWindow(maxTokens: number): any[] {
+        const max = Math.min(maxTokens, this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 0);
+
+        const messages = [];
+
+        const systemMessage = { role: 'system', content: this._systemPrompt };
+        //loop through messages from last to first and use encodeChat to calculate token lengths
+
+        let tokens = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
+        for (let i = this._messages.length - 1; i >= 0; i--) {
+            const message = this._messages[i] as ChatMessage;
+
+            //skip system messages because we will add our own
+
+            if (message.role === 'system') continue;
+
+            //skip empty messages
+            if (!message.content) {
+                //FIXME: tool call messages does not have a content but have a tool field do we need to count them as tokens ?
+                messages.unshift(message);
+                continue;
+            }
+
+            delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
+
+            const encoded = encodeChat([message], 'gpt-4');
+            tokens += encoded.length;
+            if (tokens > max) {
+                break;
+            }
+            messages.unshift(message);
+        }
+        //add system message as first message in the context window
+        messages.unshift(systemMessage);
+
+        return messages;
+    }
+}

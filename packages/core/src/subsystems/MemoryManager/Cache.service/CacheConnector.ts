@@ -1,8 +1,12 @@
 import { Connector } from '@sre/Core/Connector.class';
-import { IACL, IAccessRequest } from '@sre/types/ACL.types';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { SecureConnector } from '@sre/Security/SecureConnector.class';
+import { IACL, IAccessCandidate, IAccessRequest } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
 
-export interface ICacheConnector {
+export interface ICacheRequest {
     get: (key: string) => Promise<any>;
     set: (key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number) => Promise<boolean>;
     delete: (key: string) => Promise<void>;
@@ -14,24 +18,58 @@ export interface ICacheConnector {
     updateTTL: (key: string, ttl?: number) => Promise<void>;
     getTTL: (key: string) => Promise<number>;
 
-    hasAccess: (request: IAccessRequest) => Promise<boolean>;
-    getACL: (resourceId: string) => Promise<IACL | undefined>;
-    setACL: (resourceId: string, acl: IACL) => Promise<void>;
+    getACL: (key: string) => Promise<IACL | undefined>;
+    setACL: (key: string, acl: IACL) => Promise<void>;
 }
 
-export abstract class CacheConnector extends Connector implements ICacheConnector {
-    abstract get(key: string): Promise<any>;
-    abstract set(key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean>;
-    abstract delete(key: string): Promise<void>;
-    abstract exists(key: string): Promise<boolean>;
+export abstract class CacheConnector extends SecureConnector {
+    public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
+    public user(candidate: AccessCandidate): ICacheRequest {
+        return {
+            get: async (key: string) => {
+                return await this.get(candidate.readRequest, key);
+            },
+            set: async (key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number) => {
+                return await this.set(candidate.writeRequest, key, data, acl, metadata, ttl);
+            },
+            delete: async (key: string) => {
+                await this.delete(candidate.writeRequest, key);
+            },
+            exists: async (key: string) => {
+                return await this.exists(candidate.readRequest, key);
+            },
+            getMetadata: async (key: string) => {
+                return await this.getMetadata(candidate.readRequest, key);
+            },
+            setMetadata: async (key: string, metadata: CacheMetadata) => {
+                await this.setMetadata(candidate.writeRequest, key, metadata);
+            },
+            updateTTL: async (key: string, ttl?: number) => {
+                await this.updateTTL(candidate.writeRequest, key, ttl);
+            },
+            getTTL: async (key: string) => {
+                return await this.getTTL(candidate.readRequest, key);
+            },
+            getACL: async (key: string) => {
+                return await this.getACL(candidate.readRequest, key);
+            },
+            setACL: async (key: string, acl: IACL) => {
+                await this.setACL(candidate.writeRequest, key, acl);
+            },
+        };
+    }
 
-    abstract getMetadata(key: string): Promise<CacheMetadata | undefined>;
-    abstract setMetadata(key: string, metadata: CacheMetadata): Promise<void>;
+    abstract get(acRequest: AccessRequest, key: string): Promise<any>;
+    abstract set(acRequest: AccessRequest, key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean>;
+    abstract delete(acRequest: AccessRequest, key: string): Promise<void>;
+    abstract exists(acRequest: AccessRequest, key: string): Promise<boolean>;
 
-    abstract updateTTL(key: string, ttl?: number): Promise<void>;
-    abstract getTTL(key: string): Promise<number>;
+    abstract getMetadata(acRequest: AccessRequest, key: string): Promise<CacheMetadata | undefined>;
+    abstract setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void>;
 
-    abstract hasAccess(request: IAccessRequest): Promise<boolean>;
-    abstract getACL(resourceId: string): Promise<IACL | undefined>;
-    abstract setACL(resourceId: string, acl: IACL): Promise<void>;
+    abstract updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void>;
+    abstract getTTL(acRequest: AccessRequest, key: string): Promise<number>;
+
+    abstract getACL(acRequest: AccessRequest, key: string): Promise<IACL | undefined>;
+    abstract setACL(acRequest: AccessRequest, key: string, acl: IACL): Promise<void>;
 }

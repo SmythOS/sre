@@ -1,12 +1,12 @@
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { ACLAccessDeniedError, IAccessCandidate, TAccessLevel, TAccessResult, TAccessTicket } from '@sre/types/ACL.types';
 import { ACL } from './AccessControl/ACL.class';
 import { AccessCandidate } from './AccessControl/AccessCandidate.class';
 import { AccessRequest } from './AccessControl/AccessRequest.class';
 
-const console = createLogger('SecureConnector');
+const console = Logger('SecureConnector');
 
 export abstract class SecureConnector extends Connector {
     public abstract name: string;

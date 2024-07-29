@@ -1,15 +1,16 @@
-import IORedis from 'ioredis';
-import { createLogger } from '@sre/Core/Logger';
-import { IAccessRequest, IACL } from '@sre/types/ACL.types';
+import { Logger } from '@sre/helpers/Log.helper';
+import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
-import { CacheConnector, ICacheConnector } from '../CacheConnector';
+import IORedis from 'ioredis';
+import { CacheConnector } from '../CacheConnector';
 
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { RedisConfig } from '@sre/types/Redis.types';
 
-import { Connector } from '@sre/Core/Connector.class';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { SecureConnector } from '@sre/Security/SecureConnector.class';
 
-const console = createLogger('RedisCache');
+const console = Logger('RedisCache');
 
 export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
@@ -35,40 +36,46 @@ export class RedisCache extends CacheConnector {
         });
     }
 
-    public async get(key: string): Promise<string | null> {
+    @SecureConnector.AccessControl
+    public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
         return this.redis.get(`${this.prefix}:${key}`);
     }
 
-    public async set(key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
+    @SecureConnector.AccessControl
+    public async set(acRequest: AccessRequest, key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
+        const accessCandidate = acRequest.candidate;
         const promises: any[] = [];
 
         promises.push(this.redis.set(`${this.prefix}:${key}`, data));
 
         if (metadata || acl) {
             const newMetadata: CacheMetadata = metadata || {};
-            newMetadata.acl = acl || {};
-            promises.push(this.setMetadata(key, newMetadata));
+            newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
+            promises.push(this.setMetadata(acRequest, key, newMetadata));
         }
 
         if (ttl) {
-            promises.push(this.updateTTL(key, ttl));
+            promises.push(this.updateTTL(acRequest, key, ttl));
         }
 
         await Promise.all(promises);
         return true;
     }
 
-    public async delete(key: string): Promise<void> {
+    @SecureConnector.AccessControl
+    public async delete(acRequest: AccessRequest, key: string): Promise<void> {
         //delete both the key and its metadata
         await Promise.all([this.redis.del(`${this.prefix}:${key}`), this.redis.del(`${this.prefix}:${key}:metadata`)]);
     }
 
-    public async exists(key: string): Promise<boolean> {
+    @SecureConnector.AccessControl
+    public async exists(acRequest: AccessRequest, key: string): Promise<boolean> {
         return !!(await this.redis.exists(`${this.prefix}:${key}`));
     }
 
-    public async getMetadata(key: string): Promise<CacheMetadata> {
-        if (!this.exists(key)) throw new Error(`Resource ${key} not found`);
+    @SecureConnector.AccessControl
+    public async getMetadata(acRequest: AccessRequest, key: string): Promise<CacheMetadata> {
+        if (!this.exists(acRequest, key)) return undefined;
         try {
             const metadata = await this.redis.get(`${this.prefix}:${key}:metadata`);
             return metadata ? (this.deserializeRedisMetadata(metadata) as CacheMetadata) : {};
@@ -77,37 +84,53 @@ export class RedisCache extends CacheConnector {
         }
     }
 
-    public async setMetadata(key: string, metadata: CacheMetadata): Promise<void> {
+    @SecureConnector.AccessControl
+    public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
         await this.redis.set(`${this.prefix}:${key}:metadata`, this.serializeRedisMetadata(metadata));
     }
 
-    public async updateTTL(key: string, ttl?: number): Promise<void> {
+    @SecureConnector.AccessControl
+    public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
         if (ttl) {
             await Promise.all([this.redis.expire(`${this.prefix}:${key}`, ttl), this.redis.expire(`${this.prefix}:${key}:metadata`, ttl)]);
         }
     }
 
-    public async getTTL(key: string): Promise<number> {
+    @SecureConnector.AccessControl
+    public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
         return this.redis.ttl(`${this.prefix}:${key}`);
     }
 
-    async hasAccess(request: IAccessRequest): Promise<boolean> {
-        try {
-            const metadata = await this.getMetadata(request.resourceId);
-            const acl: IACL = metadata?.acl as IACL;
-            return ACL.from(acl).checkExactAccess(request);
-        } catch (error) {
-            if (error.name === 'NotFound') {
-                return false;
-            }
-            console.error(`Error checking access rights in S3`, error.name, error.message);
-            throw error;
+    public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
+        const _metadata: any = await this.redis.get(`${this.prefix}:${resourceId}:metadata`).catch((error) => {});
+        const exists = _metadata !== undefined && _metadata !== null; //null or undefined metadata means the resource does not exist
+        const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
+
+        if (!exists) {
+            //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
+            return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
         }
+        return ACL.from(metadata?.acl as IACL);
     }
 
-    async getACL(resourceId: string): Promise<IACL> {
+    // async hasAccess(request: IAccessRequest): Promise<boolean> {
+    //     try {
+    //         const metadata = await this.getMetadata(request.resourceId);
+    //         const acl: IACL = metadata?.acl as IACL;
+    //         return ACL.from(acl).checkExactAccess(request);
+    //     } catch (error) {
+    //         if (error.name === 'NotFound') {
+    //             return false;
+    //         }
+    //         console.error(`Error checking access rights in S3`, error.name, error.message);
+    //         throw error;
+    //     }
+    // }
+
+    @SecureConnector.AccessControl
+    async getACL(acRequest: AccessRequest, key: string): Promise<IACL> {
         try {
-            const metadata = await this.getMetadata(resourceId);
+            const metadata = await this.getMetadata(acRequest, key);
             return (metadata?.acl as IACL) || {};
         } catch (error) {
             console.error(`Error getting access rights in S3`, error.name, error.message);
@@ -115,12 +138,14 @@ export class RedisCache extends CacheConnector {
         }
     }
 
-    async setACL(resourceId: string, acl: IACL) {
+    @SecureConnector.AccessControl
+    async setACL(acRequest: AccessRequest, key: string, acl: IACL) {
         try {
-            let metadata = await this.getMetadata(resourceId);
+            let metadata = await this.getMetadata(acRequest, key);
             if (!metadata) metadata = {};
-            metadata.acl = acl;
-            await this.setMetadata(resourceId, metadata);
+            //when setting ACL make sure to not lose ownership
+            metadata.acl = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            await this.setMetadata(acRequest, key, metadata);
         } catch (error) {
             console.error(`Error setting access rights in S3`, error);
             throw error;

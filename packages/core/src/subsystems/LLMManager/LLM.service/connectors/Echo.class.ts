@@ -1,17 +1,25 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { ILLMConnector } from '../ILLMConnector';
-import { LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import EventEmitter from 'events';
+import { Readable } from 'stream';
 
-export class EchoConnector extends LLMConnector implements ILLMConnector {
+export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    async chatRequest(prompt, params) {
-        return prompt;
+    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    async visionRequest(prompt, params) {
-        return prompt;
+    protected async visionRequest(acRequest: AccessRequest, prompt, params) {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    async toolRequest(params) {
-        return prompt;
+    protected async toolRequest(acRequest: AccessRequest, params) {
+        throw new Error('Echo model does not support tool requests');
+    }
+    protected async streamToolRequest(acRequest: AccessRequest, params) {
+        throw new Error('Echo model does not support tool requests');
+    }
+    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<Readable> {
+        throw new Error('Echo model does not support streaming');
     }
 
     public enhancePrompt(prompt: string, config: any) {

@@ -1,5 +1,5 @@
-import { createLogger } from './Logger';
-const console = createLogger('DummyConnector');
+import { Logger } from '../helpers/Log.helper';
+const logger = Logger('DummyConnector');
 /**
  * DummyConnector is a placeholder for unimplemented connectors, it logs a warning when a method is called in order to help developers identify missing connectors
  */
@@ -13,7 +13,7 @@ export const DummyConnector: any = new Proxy(
             } else {
                 // Return a function that logs "unavailable"
                 return function (...args: any[]) {
-                    console.warn(`[!!] Unimplemented Connector tried to call : ${prop.toString()} with arguments:`, args);
+                    logger.warn(`[!!] Unimplemented Connector tried to call : ${prop.toString()} with arguments:`, args);
                 };
             }
         },

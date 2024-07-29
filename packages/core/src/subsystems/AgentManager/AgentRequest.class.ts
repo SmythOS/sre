@@ -1,10 +1,3 @@
-import { uid } from '@sre/utils';
-import { parseCLIArgs } from '@sre/utils/cli.utils';
-import path from 'path';
-import fs from 'fs';
-import * as FileType from 'file-type';
-import mime from 'mime';
-
 export default class AgentRequest {
     public headers: any;
     public body: any;
@@ -20,11 +13,18 @@ export default class AgentRequest {
     constructor(req?: AgentRequest | string[] | any) {
         if (!req) return;
         this.headers = JSON.parse(JSON.stringify(req.headers || {}));
-        this.body = JSON.parse(JSON.stringify(req.body || {}));
+        this.body = JSON.parse(JSON.stringify(req.body || req.data || {}));
         this.query = JSON.parse(JSON.stringify(req.query || {}));
         this.params = JSON.parse(JSON.stringify(req.params || {}));
+
+        if (req.url) {
+            const parsedUrl = new URL(req.url || '');
+            this.path = parsedUrl.pathname;
+        }
+        if (req.path) this.path = req.path;
+
         this.method = req.method;
-        this.path = req.path;
+
         this.sessionID = req.sessionID;
         this.files = req.files || [];
         this._agent_authinfo = req._agent_authinfo;

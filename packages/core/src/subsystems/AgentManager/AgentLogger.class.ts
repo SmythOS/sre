@@ -1,9 +1,9 @@
 import Agent from './Agent.class';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
 
-const console = createLogger('___FILENAME___');
+const console = Logger('AgentLogger');
 
 export default class AgentLogger {
     private static transactions: any = {};

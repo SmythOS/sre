@@ -11,6 +11,13 @@ import FTimestamp from './FTimestamp.class';
 import DataSourceLookup from './DataSourceLookup.class';
 import DataSourceIndexer from './DataSourceIndexer.class';
 import DataSourceCleaner from './DataSourceCleaner.class';
+import JSONFilter from './JSONFilter.class';
+import LogicAND from './LogicAND.class';
+import LogicOR from './LogicOR.class';
+import LogicXOR from './LogicXOR.class';
+import LogicAtLeast from './LogicAtLeast.class';
+import LogicAtMost from './LogicAtMost.class';
+import AgentPlugin from './AgentPlugin.class';
 
 const components = {
     Component: new Component(),
@@ -29,6 +36,13 @@ const components = {
     DataSourceLookup: new DataSourceLookup(),
     DataSourceIndexer: new DataSourceIndexer(),
     DataSourceCleaner: new DataSourceCleaner(),
+    JSONFilter: new JSONFilter(),
+    LogicAND: new LogicAND(),
+    LogicOR: new LogicOR(),
+    LogicXOR: new LogicXOR(),
+    LogicAtLeast: new LogicAtLeast(),
+    LogicAtMost: new LogicAtMost(),
+    AgentPlugin: new AgentPlugin(),
 };
 
 export default components;

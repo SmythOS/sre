@@ -4,6 +4,9 @@ import { SmythRuntime } from '@sre/index';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 const sre = SmythRuntime.Instance.init({
+    CLI: {
+        Connector: 'CLI',
+    },
     Storage: {
         Connector: 'S3',
         Settings: {
@@ -21,6 +24,13 @@ const sre = SmythRuntime.Instance.init({
             password: config.env.REDIS_PASSWORD || '',
         },
     },
+    AgentData: {
+        Connector: 'Local',
+        Settings: {
+            devDir: './tests/data/AgentData',
+            prodDir: './tests/data/AgentData',
+        },
+    },
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {
@@ -33,7 +43,6 @@ describe('AgentProcess Tests', () => {
     it('Runs Agent From data with run() method', async () => {
         let error;
         try {
-            const sre = SmythRuntime.Instance;
             const agentData = fs.readFileSync('./tests/data/sre-openai-LLMPrompt.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
@@ -42,7 +51,42 @@ describe('AgentProcess Tests', () => {
                 path: '/api/say',
                 body: { message: 'Write a poem about flowers, the word "Rose" should be mentioned at least once' },
             });
-            expect(JSON.stringify(output)?.toLowerCase()).toContain('rose');
+            expect(JSON.stringify(output?.data)?.toLowerCase()).toContain('rose');
+        } catch (e) {
+            error = e;
+        }
+        expect(error).toBeUndefined();
+    });
+
+    it('Runs Agent by ID', async () => {
+        let error;
+        try {
+            //the id here is loaded by the LocalAgentDataConnector when reading the agent data from the agents directory
+            const agentId = 'clxjao3wr030tewtu2rk2zh0d';
+            const output = await AgentProcess.load(agentId).run({
+                method: 'POST',
+                path: '/api/say',
+                body: { message: 'Write a poem about flowers, the word "Rose" should be mentioned at least once' },
+            });
+            expect(JSON.stringify(output?.data)?.toLowerCase()).toContain('rose');
+        } catch (e) {
+            error = e;
+        }
+        expect(error).toBeUndefined();
+    });
+    it('Runs Agent by ID, call a sub-agent', async () => {
+        let error;
+        try {
+            //the id here is loaded by the LocalAgentDataConnector when reading the agent data from the agents directory
+            const agentId = 'clp1tnwli001h9tq56c9m6i7j';
+            const output = await AgentProcess.load(agentId).run({
+                method: 'POST',
+                path: '/api/ask',
+                body: { question: 'What is SmythOS' },
+            });
+
+            //TODO: verify a specific response from the sub-agent
+            expect(output?.data).toBeDefined();
         } catch (e) {
             error = e;
         }
@@ -59,7 +103,7 @@ describe('AgentProcess Tests', () => {
             const output = await AgentProcess.load(data).post('/api/say', {
                 message: 'Write a poem about flowers, the word "Rose" should be mentioned at least once',
             });
-            expect(JSON.stringify(output)?.toLowerCase()).toContain('rose');
+            expect(JSON.stringify(output?.data)?.toLowerCase()).toContain('rose');
         } catch (e) {
             error = e;
         }
@@ -81,8 +125,8 @@ describe('AgentProcess Tests', () => {
             const agentData = fs.readFileSync('./tests/data/sre-APIEndpoint-test.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
-            const output = await AgentProcess.load(data).run(argv);
-            expect(output?.binary?.url).toBeDefined();
+            const output: any = await AgentProcess.load(data).run(argv);
+            expect(output?.data?.binary?.url).toBeDefined();
         } catch (e) {
             error = e;
         }

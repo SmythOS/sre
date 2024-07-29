@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 
 export default class Component {
@@ -13,7 +13,7 @@ export default class Component {
     init() {}
 
     createComponentLogger(agent: Agent, name: string) {
-        const logger = createLogger(name || this.constructor.name, agent.agentRuntime?.debug);
+        const logger = Logger(name || this.constructor.name, agent?.agentRuntime?.debug);
 
         return logger;
     }

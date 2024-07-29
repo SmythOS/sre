@@ -1,6 +1,6 @@
 import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { DummyConnector } from './DummyConnector';
-import { createLogger } from './Logger';
+import { Logger } from '../helpers/Log.helper';
 import { Connector } from './Connector.class';
 import { isSubclassOf } from '@sre/utils';
 import SystemEvents from './SystemEvents';
@@ -11,7 +11,8 @@ import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
-const console = createLogger('ConnectorService');
+import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
+const console = Logger('ConnectorService');
 
 const Connectors = {};
 
@@ -148,6 +149,10 @@ export class ConnectorService {
 
     static getAgentDataConnector(name?: string): AgentDataConnector {
         return ConnectorService.getInstance<AgentDataConnector>(TConnectorService.AgentData, name);
+    }
+
+    static getCLIConnector(name?: string): CLIConnector {
+        return ConnectorService.getInstance<CLIConnector>(TConnectorService.CLI, name);
     }
 
     //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...

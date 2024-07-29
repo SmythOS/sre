@@ -1,7 +1,7 @@
 //==[ SRE: S3Storage ]======================
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { createLogger } from '@sre/Core/Logger';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
+import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
@@ -15,7 +15,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 
-const console = createLogger('S3Storage');
+const console = Logger('S3Storage');
 
 export class S3Storage extends StorageConnector {
     public name = 'S3Storage';
@@ -26,13 +26,16 @@ export class S3Storage extends StorageConnector {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.bucket = config.bucket;
-        this.client = new S3Client({
-            region: config.region,
-            credentials: {
+        const clientConfig: S3ClientConfig = {};
+        if (config.region) clientConfig.region = config.region;
+        if (config.accessKeyId && config.secretAccessKey) {
+            clientConfig.credentials = {
                 accessKeyId: config.accessKeyId,
                 secretAccessKey: config.secretAccessKey,
-            },
-        });
+            };
+        }
+
+        this.client = new S3Client(clientConfig);
     }
 
     public user(candidate: AccessCandidate): IStorageRequest {
@@ -245,7 +248,8 @@ export class S3Storage extends StorageConnector {
         try {
             let s3Metadata = await this.getS3Metadata(resourceId);
             if (!s3Metadata) s3Metadata = {};
-            s3Metadata['x-amz-meta-acl'] = ACL.from(acl).serializedACL;
+            //when setting ACL make sure to not lose ownership
+            s3Metadata['x-amz-meta-acl'] = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
             await this.setS3Metadata(resourceId, s3Metadata);
         } catch (error) {
             console.error(`Error setting access rights in S3`, error);

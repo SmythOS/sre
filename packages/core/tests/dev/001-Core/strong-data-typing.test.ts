@@ -45,7 +45,7 @@ describe('Strong Data typing Features', () => {
                 },
             });
 
-            let outputBody = output?.result?.body;
+            let outputBody = output?.data?.result?.body;
             expect(outputBody).toBeDefined();
 
             expect(outputBody?.string).toBeTypeOf('string');
@@ -84,7 +84,7 @@ describe('Strong Data typing Features', () => {
                 },
             });
 
-            let outputBody = output?.result?.body;
+            let outputBody = output?.data?.result?.body;
             expect(outputBody).toBeDefined();
 
             expect(outputBody?.array).toBeInstanceOf(Array);
@@ -137,12 +137,12 @@ describe('Strong Data typing Features', () => {
                 });
                 agentProcess.reset();
 
-                if (!output?.result?._error) {
+                if (!output?.data?.result?._error) {
                     console.log(testCase.message, testCase.fields);
-                    console.log('Received', output?.result?.body);
+                    console.log('Received', output?.data?.result?.body);
                 }
 
-                expect(output?.result?._error).toBeDefined();
+                expect(output?.data?.result?._error).toBeDefined();
             }
         } catch (e) {
             error = e;
@@ -165,7 +165,7 @@ describe('Strong Data typing Features', () => {
                 body: {},
             });
 
-            let outputBody = output?.result?.body;
+            let outputBody = output?.data?.result?.body;
 
             console.log('>>>>>>', outputBody);
             expect(outputBody.string).toBe('Hello world');

@@ -1,9 +1,9 @@
 import Agent from './Agent.class';
 import AgentRequest from './AgentRequest.class';
 
-import { createLogger } from '@sre/Core/Logger';
+import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
-const console = createLogger('___FILENAME___');
+const console = Logger('ForkedAgent');
 
 /**
  * This class creates a forked agent from a parent agent branch, it allows running a sub-branch of the parent agent asynchrounously by providing a separate agent context

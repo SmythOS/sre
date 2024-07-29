@@ -6,7 +6,8 @@ export type TemplateStringMatch = RegExp;
 export const Match = {
     default: /{{(.*?)}}/g,
     //matches all placeholders
-    all: /{{(.*?)}}/g,
+    doubleCurly: /{{(.*?)}}/g,
+    singleCurly: /{(.*?)}/g,
     //matches only the placeholders that have a specific prefix
     prefix(prefix: string) {
         return new RegExp(`{{${prefix}(.*?)}}`, 'g');
@@ -160,6 +161,15 @@ export class TemplateStringHelper {
     //         resolve(this._current);
     //     });
     // }
+}
+
+/**
+ * a helper function that takes a string and escape it
+ * This is useful when you have a stringified json and want to replace one of its values while making sure it won't break the json structure (e.g new lines, double quotes ...etc)
+ */
+export function escapeString(str?: string) {
+    if (!str) return str;
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
 }
 
 export function TemplateString(templateString: string) {

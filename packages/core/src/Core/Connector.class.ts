@@ -1,6 +1,6 @@
-import { createLogger } from './Logger';
+import { Logger } from '../helpers/Log.helper';
 
-const console = createLogger('Connector');
+const console = Logger('Connector');
 
 export abstract class Connector {
     public abstract name: string;
