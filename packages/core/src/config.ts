@@ -29,7 +29,7 @@ const config = {
         AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
 
         PINECONE_API_KEY: process.env.PINECONE_API_KEY,
-        PINCECONE_INDEX_NAME: process.env.PINCECONE_INDEX_NAME,
+        PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

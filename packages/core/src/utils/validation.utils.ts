@@ -6,22 +6,9 @@ interface RangeValidationArgs {
 /**
  * Custom validation function to check if a string contains only specified characters.
  * @param {string} value - The string to validate.
- * @param {object} helpers - Joi's helper object for custom validations.
  * @returns {string} - The validated string.
  */
-export function validateCharacterSet(value, helpers) {
-    // // Regular expression for allowed characters
-    // const allowedCharsPattern = /^[a-zA-Z0-9\-_.]+$/;
-
-    // if (!allowedCharsPattern.test(value)) {
-    //   // If validation fails, return a custom error message
-    //   const fieldName = helpers.schema._flags.label || helpers.state.path[helpers.state.path.length - 1];
-    //   throw new Error(`The value for '${fieldName}' contains invalid characters`);
-
-    // }
-
-    // return value; // Return the value if it is valid
-
+export function validateCharacterSet(value: string): boolean {
     if (value === '') return true;
     // Check for {{sometext}} structures and split the string
     const parts = value.split(/(\{\{[^}]+\}\})/).filter(Boolean);
