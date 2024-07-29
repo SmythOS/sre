@@ -158,7 +158,6 @@ export class PineconeVectorDB extends VectorDBConnector {
         }));
 
         // await pineconeStore.addDocuments(chunks, ids);
-        const index = await this._client.describeIndex(data.indexName);
         await this._client.Index(data.indexName).namespace(data.namespace).upsert(preparedSource);
 
         return preparedSource.map((s) => s.id);
