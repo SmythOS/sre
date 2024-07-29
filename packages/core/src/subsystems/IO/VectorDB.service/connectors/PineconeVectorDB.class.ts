@@ -10,7 +10,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IVectorDBRequest, VectorDBConnector } from '../VectorDBConnector';
-import { IVectorDataSource, PineconeConfig, QueryOptions, Source, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
+import { IVectorDataSourceDto, PineconeConfig, QueryOptions, Source, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { OpenAIEmbeddings } from '@langchain/openai';
@@ -69,9 +69,10 @@ export class PineconeVectorDB extends VectorDBConnector {
                 return await this.search(candidate.readRequest, { indexName: this.indexName, namespace, query }, options);
             },
 
-            insert: async (namespace: string, source: IVectorDataSource<Source> | IVectorDataSource<Source>[]) => {
-                await this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, source });
+            insert: async (namespace: string, source: IVectorDataSourceDto<Source> | IVectorDataSourceDto<Source>[]) => {
+                return this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, source });
             },
+
             delete: async (namespace: string, id: string | string[]) => {
                 await this.delete(candidate.writeRequest, { id, indexName: this.indexName, namespace });
             },
@@ -107,7 +108,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async search(
         acRequest: AccessRequest,
         data: { indexName: string; namespace: string; query: string | number[] },
-        options: QueryOptions
+        options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const pineconeIndex = this.client.Index(data.indexName).namespace(data.namespace);
         let _vector = data.query;
@@ -116,9 +117,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
 
         const results = await pineconeIndex.query({
-            topK: options.topK,
+            topK: options?.topK || 10,
             vector: _vector as number[],
-            includeMetadata: options.includeMetadata || true, // default to true
+            includeMetadata: true,
             includeValues: true,
         });
 
@@ -132,8 +133,8 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async insert<T extends Source>(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; source: IVectorDataSource<T> | IVectorDataSource<T>[] }
-    ): Promise<void> {
+        data: { indexName: string; namespace: string; source: IVectorDataSourceDto<T> | IVectorDataSourceDto<T>[] }
+    ): Promise<string[]> {
         let { source } = data;
         source = Array.isArray(source) ? source : [source];
 
@@ -148,6 +149,8 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         // await pineconeStore.addDocuments(chunks, ids);
         await this._client.Index(data.indexName).namespace(data.namespace).upsert(preparedSource);
+
+        return preparedSource.map((s) => s.id);
     }
 
     @SecureConnector.AccessControl
@@ -174,7 +177,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
     }
 
-    private transformSource<T extends Source>(source: IVectorDataSource<T>[], sourceType: SupportedSources) {
+    private transformSource<T extends Source>(source: IVectorDataSourceDto<T>[], sourceType: SupportedSources) {
         //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
         switch (sourceType) {
             case 'text': {

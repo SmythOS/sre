@@ -6,7 +6,7 @@ import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVe
 import { faker } from '@faker-js/faker';
 import { Document } from '@langchain/core/documents';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
-import { IVectorDataSource, SourceTypes } from '@sre/types/VectorDB.types';
+import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
 const SREInstance = SmythRuntime.Instance.init({
     VectorDB: {
         Connector: 'Pinecone',
@@ -48,7 +48,7 @@ describe('Integration: Pinecone VectorDB', () => {
         });
 
         it('insert as raw vectors', async () => {
-            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
                 {
                     id: '1',
                     source: Array.from({ length: 1536 }, () => Math.random()),
@@ -84,7 +84,7 @@ describe('Integration: Pinecone VectorDB', () => {
         });
 
         it('insert vectors from text documents', async () => {
-            const dummyDocuments: IVectorDataSource<string>[] = [
+            const dummyDocuments: IVectorDataSourceDto<string>[] = [
                 {
                     id: '1',
                     source: 'Hello World!',
@@ -117,7 +117,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const text = 'Best car in the world';
 
-            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
                 {
                     id: faker.string.uuid(),
                     source: await VectorsHelper.load().embedText(text),
@@ -300,7 +300,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const team = AccessCandidate.team('team-123456');
 
             // insert some dummy vectors to search
-            const dummyVectors: IVectorDataSource<SourceTypes['Vector']>[] = [
+            const dummyVectors: IVectorDataSourceDto<SourceTypes['Vector']>[] = [
                 {
                     id: faker.string.uuid(),
                     source: Array.from({ length: 1536 }, () => Math.random()),
@@ -328,7 +328,7 @@ describe('Integration: Pinecone VectorDB', () => {
             await vectorDB.user(team).deleteNamespace(namespace);
         });
 
-        it('chunk large texts and insert them as separate vectors', async () => {
+        it('Helper: chunk large texts and insert them as separate vectors', async () => {
             const hugeText = faker.lorem.paragraphs(30);
             const namespace = faker.lorem.slug();
             await VectorsHelper.load().ingestText(hugeText, namespace, { teamId: 'team-123' });

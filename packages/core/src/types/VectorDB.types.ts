@@ -1,10 +1,10 @@
-export type VectorDBMetadata = ({ text?: string } & Record<string, any>) | undefined;
+export type VectorDBMetadata = ({ text?: string; user?: string } & Record<string, string>) | undefined;
 
 export type VectorsResultData = {
     id: string;
     score?: number;
     values: number[];
-    metadata?: VectorDBMetadata;
+    metadata?: ({ text?: string; user?: Record<string, string> } & Record<string, any>) | undefined;
 }[];
 
 export type PineconeConfig = {
@@ -31,9 +31,19 @@ export interface SourceTypes {
 
 export type Source = SourceTypes[keyof SourceTypes];
 
-export interface IVectorDataSource<T extends Source> {
+export interface IVectorDataSourceDto<T extends Source> {
     id: string;
     // source: url | text | document | vector;
     source: T;
-    metadata?: Record<string, string>;
+    metadata?: VectorDBMetadata;
+}
+
+export interface IStorageVectorDataSource {
+    namespaceId: string;
+    // indexName: string;
+    teamId: string;
+    name: string;
+    metadata: string;
+    text: string;
+    embeddingIds: string[];
 }
