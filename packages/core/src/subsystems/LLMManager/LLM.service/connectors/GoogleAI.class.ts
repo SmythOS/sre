@@ -4,7 +4,6 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
@@ -15,23 +14,19 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
-import {
-    processWithConcurrencyLimit,
-    isDataUrl,
-    isSmythFileObject,
-    isUrl,
-    getMimeTypeFromUrl,
-    isRawBase64,
-    parseBase64,
-    isValidString,
-} from '@sre/utils';
+import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
 import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
-const console = Logger('OpenAIConnector');
+const console = Logger('GoogleAIConnector');
+
+type FileObject = {
+    url: string;
+    mimetype: string;
+};
 
 const DEFAULT_MODEL = 'gemini-pro';
 
@@ -101,7 +96,10 @@ export type GetGenerativeModelArgs = {
     systemInstruction?: string;
 };
 export class GoogleAIConnector extends LLMConnector {
-    public name = 'LLM:OpenAI';
+    public name = 'LLM:GoogleAI';
+
+    private validMimeTypes = VALID_MIME_TYPES;
+    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         try {
@@ -193,21 +191,18 @@ export class GoogleAIConnector extends LLMConnector {
 
             const apiKey = params?.apiKey;
 
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
             const fileSources = params?.fileSources || [];
 
             const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentCandidate = AccessCandidate.agent(agentId);
 
-            const candidate = AccessCandidate.agent(agentId);
-
-            const validFiles = await _processValidFiles({ fileSources, candidate, validMimeTypes: VALID_IMAGE_MIME_TYPES });
+            const validFiles = await this.processValidFiles(fileSources, agentCandidate);
 
             const uploadedFiles = await processWithConcurrencyLimit({
                 items: validFiles,
                 itemProcessor: async (file: FileObject) => {
                     try {
-                        const uploadedFile = await _uploadFile({ file, apiKey });
+                        const uploadedFile = await this.uploadFile({ file, apiKey });
 
                         return { url: uploadedFile.url, mimetype: file.mimetype };
                     } catch {
@@ -217,10 +212,11 @@ export class GoogleAIConnector extends LLMConnector {
             });
 
             // We throw error when there are no valid uploaded files,
-            if (uploadedFiles?.length === 0)
+            if (uploadedFiles?.length === 0) {
                 throw new Error(
-                    `Unsupported file(s). Please make sure your file is one of the following types: ${VALID_IMAGE_MIME_TYPES.join(', ')}`
+                    `Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`
                 );
+            }
 
             const fileDataObjectsArray = uploadedFiles.map((file: FileObject) => ({
                 fileData: {
@@ -241,6 +237,7 @@ export class GoogleAIConnector extends LLMConnector {
                 topK: params.topK,
             };
 
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel({ model, generationConfig });
 
             const responseFormat = params?.responseFormat || 'json';
@@ -350,128 +347,108 @@ export class GoogleAIConnector extends LLMConnector {
             tool_config: toolConfig,
         };
     }
-}
 
-type FileObject = {
-    url: string;
-    mimetype: string;
-};
+    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
+        const validFiles = await processWithConcurrencyLimit({
+            items: fileSources,
+            itemProcessor: async (fileSource: string | Record<string, any>) => {
+                if (!fileSource) return null;
 
-async function _processValidFiles({
-    fileSources,
-    candidate,
-    validMimeTypes,
-}: {
-    fileSources: string[] | Record<string, any>[];
-    candidate: IAccessCandidate;
-    validMimeTypes: string[];
-}): Promise<FileObject[]> {
-    const allFiles = await processWithConcurrencyLimit({
-        items: fileSources,
-        itemProcessor: async (fileSource: string | Record<string, any>) => {
-            if (!fileSource) return null;
+                if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
+                    return this.processObjectFileSource(fileSource);
+                } else if (isValidString(fileSource as string)) {
+                    return this.processStringFileSource(fileSource as string, candidate);
+                }
+            },
+        });
 
-            if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
-                const { mimetype, url } = fileSource as Record<string, any>;
+        return validFiles as FileObject[];
+    }
 
-                if (!validMimeTypes.includes(mimetype)) return null;
+    private processObjectFileSource(fileSource: Record<string, string>) {
+        const { mimetype, url } = fileSource as Record<string, any>;
 
-                return { url, mimetype };
-            } else if (isValidString(fileSource as string)) {
-                return _processStringFileSource({ fileSource: fileSource as string, candidate, validMimeTypes });
+        if (!this.validImageMimeTypes.includes(mimetype)) return null;
+
+        return { url, mimetype };
+    }
+
+    private async processStringFileSource(fileSource: string, candidate: IAccessCandidate): Promise<FileObject | null> {
+        if (isUrl(fileSource)) {
+            const mimetype = await getMimeTypeFromUrl(fileSource);
+            return this.validImageMimeTypes.includes(mimetype) ? { url: fileSource, mimetype } : null;
+        }
+
+        if (isDataUrl(fileSource) || isRawBase64(fileSource)) {
+            const { mimetype } = await parseBase64(fileSource);
+
+            if (!this.validImageMimeTypes.includes(mimetype)) return null;
+
+            const binaryInput = new BinaryInput(fileSource);
+
+            const fileData = await binaryInput.getJsonData(candidate);
+
+            return { url: fileData.url, mimetype };
+        }
+
+        return null;
+    }
+
+    private async uploadFile({ file, apiKey }: { file: FileObject; apiKey: string }): Promise<{ url: string }> {
+        try {
+            if (!apiKey || !file?.url || !file?.mimetype) {
+                throw new Error('Missing required parameters to save file for Google AI!');
             }
-        },
-    });
 
-    const filteredFiles = allFiles?.filter(Boolean); // * Although filter() method is used inside the concurrentAsyncProcess() function, we will remove that
+            // Download the file from source URL to a temp directory
+            const tempDir = os.tmpdir();
+            const fileName = path.basename(new URL(file.url).pathname);
+            const tempFilePath = path.join(tempDir, fileName);
 
-    return filteredFiles as FileObject[];
-}
+            const response = await axios.get(file.url, { responseType: 'stream' });
 
-async function _processStringFileSource({
-    fileSource,
-    candidate,
-    validMimeTypes,
-}: {
-    fileSource: string;
-    candidate: IAccessCandidate;
-    validMimeTypes: string[];
-}): Promise<FileObject | null> {
-    if (isUrl(fileSource)) {
-        const mimetype = await getMimeTypeFromUrl(fileSource);
-        return validMimeTypes.includes(mimetype) ? { url: fileSource, mimetype } : null;
-    }
+            const writer = fs.createWriteStream(tempFilePath);
+            response.data.pipe(writer);
 
-    if (isDataUrl(fileSource) || isRawBase64(fileSource)) {
-        const { mimetype } = await parseBase64(fileSource);
+            await new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+            });
 
-        if (!validMimeTypes.includes(mimetype)) return null;
+            // Upload the file to the Google File Manager
+            const fileManager = new GoogleAIFileManager(apiKey);
 
-        const binaryInput = new BinaryInput(fileSource);
+            const uploadResponse = await fileManager.uploadFile(tempFilePath, {
+                mimeType: file.mimetype,
+                displayName: fileName,
+            });
 
-        const fileData = await binaryInput.getJsonData(candidate);
+            const name = uploadResponse.file.name;
 
-        return { url: fileData.url, mimetype };
-    }
+            // Poll getFile() on a set interval (10 seconds here) to check file state.
+            let uploadedFile = await fileManager.getFile(name);
+            while (uploadedFile.state === FileState.PROCESSING) {
+                process.stdout.write('.');
+                // Sleep for 10 seconds
+                await new Promise((resolve) => setTimeout(resolve, 10_000));
+                // Fetch the file from the API again
+                uploadedFile = await fileManager.getFile(name);
+            }
 
-    return null;
-}
+            if (uploadedFile.state === FileState.FAILED) {
+                throw new Error('File processing failed.');
+            }
 
-async function _uploadFile({ file, apiKey }: { file: FileObject; apiKey: string }): Promise<{ url: string }> {
-    try {
-        if (!apiKey || !file?.url || !file?.mimetype) {
-            throw new Error('Missing required parameters to save file for Google AI!');
+            // Clean up temp file
+            fs.unlink(tempFilePath, (err) => {
+                if (err) console.error('Error deleting temp file: ', err);
+            });
+
+            return {
+                url: uploadResponse.file.uri || '',
+            };
+        } catch (error) {
+            throw new Error(`Error uploading file for Google AI ${error.message}`);
         }
-
-        // Download the file from source URL to a temp directory
-        const tempDir = os.tmpdir();
-        const fileName = path.basename(new URL(file.url).pathname);
-        const tempFilePath = path.join(tempDir, fileName);
-
-        const response = await axios.get(file.url, { responseType: 'stream' });
-
-        const writer = fs.createWriteStream(tempFilePath);
-        response.data.pipe(writer);
-
-        await new Promise((resolve, reject) => {
-            writer.on('finish', resolve);
-            writer.on('error', reject);
-        });
-
-        // Upload the file to the Google File Manager
-        const fileManager = new GoogleAIFileManager(apiKey);
-
-        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-            mimeType: file.mimetype,
-            displayName: fileName,
-        });
-
-        const name = uploadResponse.file.name;
-
-        // Poll getFile() on a set interval (10 seconds here) to check file state.
-        let uploadedFile = await fileManager.getFile(name);
-        while (uploadedFile.state === FileState.PROCESSING) {
-            process.stdout.write('.');
-            // Sleep for 10 seconds
-            await new Promise((resolve) => setTimeout(resolve, 10_000));
-            // Fetch the file from the API again
-            uploadedFile = await fileManager.getFile(name);
-        }
-
-        if (uploadedFile.state === FileState.FAILED) {
-            throw new Error('File processing failed.');
-        }
-
-        // Clean up temp file
-        fs.unlink(tempFilePath, (err) => {
-            if (err) console.error('Error deleting temp file: ', err);
-        });
-
-        return {
-            url: uploadResponse.file.uri || '',
-        };
-    } catch (error) {
-        console.error('Error in googleAI _uploadFile', error);
-        throw error;
     }
 }

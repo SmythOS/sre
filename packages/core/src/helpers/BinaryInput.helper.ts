@@ -197,4 +197,10 @@ export class BinaryInput {
         const data = await SmythFS.Instance.read(this.url, candidate);
         return data;
     }
+
+    public async getBuffer() {
+        await this.ready();
+
+        return this._source;
+    }
 }
