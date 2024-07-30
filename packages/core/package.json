@@ -57,7 +57,7 @@
         "dayjs": "^1.11.11",
         "dotenv": "^16.4.5",
         "file-type": "^19.0.0",
-        "gpt-tokenizer": "^2.1.2",
+        "gpt-tokenizer": "^2.2.1",
         "image-size": "^1.1.1",
         "ioredis": "^5.4.1",
         "isbinaryfile": "^5.0.2",

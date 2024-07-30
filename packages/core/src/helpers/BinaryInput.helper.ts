@@ -84,7 +84,7 @@ export class BinaryInput {
             return;
         }
 
-        // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isBase64FileUrl(data));
+        // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isDataUrl(data));
         const base64FileInfo = await this.getBase64FileInfo(data);
         if (base64FileInfo) {
             this.mimetype = base64FileInfo.mimetype;

@@ -1,5 +1,5 @@
 import { Readable } from 'stream';
-import { isBase64 } from './base64.utils';
+import { isRawBase64 } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
 
 // Helper function to convert stream to buffer
@@ -114,5 +114,5 @@ export const isBufferObject = (data: Record<string, any>): boolean => {
 export const isBase64Object = (data: Record<string, any>): boolean => {
     if (!data) return false;
 
-    return typeof data === 'object' && data !== null && data?.base64 && isBase64(data.base64) && 'size' in data && 'mimetype' in data;
+    return typeof data === 'object' && data !== null && data?.base64 && isRawBase64(data.base64) && 'size' in data && 'mimetype' in data;
 };

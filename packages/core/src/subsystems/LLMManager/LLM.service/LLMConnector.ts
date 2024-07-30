@@ -10,7 +10,7 @@ import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { LLMParams, LLMInputMessage } from '@sre/types/LLM.types';
-import { isBase64FileUrl, isUrl } from '@sre/utils';
+import { isDataUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
 import imageSize from 'image-size';
@@ -414,7 +414,7 @@ async function _getImageDimensions(url: string): Promise<{ width: number; height
     try {
         let buffer: Buffer;
 
-        if (isBase64FileUrl(url)) {
+        if (isDataUrl(url)) {
             const base64Data = url.replace(/^data:image\/\w+;base64,/, '');
 
             // Create a buffer from the base64-encoded string

@@ -36,3 +36,7 @@ export async function asyncReplace(str, regex, asyncFn) {
 
     return result;
 }
+
+export function isValidString(str: string): boolean {
+    return str && typeof str === 'string';
+}
