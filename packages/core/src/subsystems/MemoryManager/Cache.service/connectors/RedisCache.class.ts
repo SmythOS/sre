@@ -15,7 +15,7 @@ const console = Logger('RedisCache');
 export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
     private redis: IORedis;
-    private prefix: string = 'CACHE';
+    private prefix: string = 'smyth:cache';
 
     constructor(settings: RedisConfig) {
         super();
@@ -38,7 +38,8 @@ export class RedisCache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
-        return this.redis.get(`${this.prefix}:${key}`);
+        const value = await this.redis.get(`${this.prefix}:${key}`);
+        return value;
     }
 
     @SecureConnector.AccessControl

@@ -9,3 +9,4 @@ export * from './cli.utils';
 export * from './numbers.utils';
 export * from './string.utils';
 export * from './url.utils';
+export * from './validation.utils';

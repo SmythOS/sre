@@ -44,6 +44,9 @@ export class Conversation extends EventEmitter {
     private _currentWaitPromise;
 
     private _context: LLMContext;
+    private _maxContextSize = 1024 * 16;
+    private _maxOutputTokens = 1024;
+
     public get context() {
         return this._context;
     }
@@ -75,9 +78,14 @@ export class Conversation extends EventEmitter {
     public get model() {
         return this._model;
     }
-    constructor(private _model: string, private _specSource?: string | Record<string, any>) {
+    constructor(
+        private _model: string,
+        private _specSource?: string | Record<string, any>,
+        private _settings?: { maxContextSize: number; maxOutputTokens: number }
+    ) {
         super();
-
+        if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
+        if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
         if (_specSource) {
             this.loadSpecFromSource(_specSource).then((spec) => {
                 if (!spec) {
@@ -124,6 +132,7 @@ export class Conversation extends EventEmitter {
         return this._currentWaitPromise;
     }
 
+    //TODO : handle attachments
     public async prompt(message?: string, toolHeaders = {}) {
         await this.ready;
 
@@ -142,12 +151,15 @@ export class Conversation extends EventEmitter {
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 
         if (message) this._context.addUserMessage(message);
-        const contextWindow = this._context.getContextWindow(4096); //FIXME: handle configurable context window size
+
+        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+
         const { data: llmResponse, error } = await llmHelper.toolRequest(
             {
                 model: this.model,
                 messages: contextWindow,
                 toolsConfig,
+                max_tokens: this._maxOutputTokens,
             },
             this._agentId
         );
@@ -256,149 +268,8 @@ export class Conversation extends EventEmitter {
 
         return content;
     }
-    // public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
-    //     await this.ready;
 
-    //     let promises = [];
-    //     let _content = '';
-    //     const reqMethods = this._reqMethods;
-    //     const toolsConfig = this._toolsConfig;
-    //     const endpoints = this._endpoints;
-    //     const baseUrl = this._baseUrl;
-
-    //     const llmHelper: LLMHelper = LLMHelper.load(this.model);
-
-    //     if (message) this._context.addUserMessage(message);
-    //     const contextWindow = this._context.getContextWindow(1024 * 16); //FIXME: handle configurable context window size
-
-    //     const stream = await llmHelper
-    //         .streamRequest(
-    //             {
-    //                 model: this.model,
-    //                 messages: contextWindow,
-    //                 toolsConfig,
-    //             },
-    //             this._agentId
-    //         )
-    //         .catch((error) => {});
-
-    //     if (!stream) {
-    //         throw new Error('[LLM Request Error]');
-    //     }
-
-    //     stream.on('data', (data) => {
-    //         console.log('Data ==>', data);
-    //         this.emit('data', data);
-    //     });
-    //     this.emit('start');
-    //     for await (const part of stream) {
-    //         this.emit('data', part);
-    //         if (part.content) {
-    //             _content += part.content;
-    //             this.emit('content', part.content);
-    //             continue;
-    //         }
-
-    //         if (part.toolsInfo) {
-    //             const toolsInfo = part.toolsInfo;
-
-    //             let llmMessage: any = {
-    //                 role: '',
-    //                 content: '',
-    //                 tool_calls: [],
-    //             };
-    //             llmMessage.tool_calls = toolsInfo.map((tool) => {
-    //                 return {
-    //                     id: tool.id,
-    //                     type: tool.type,
-    //                     function: {
-    //                         name: tool.name,
-    //                         arguments: tool.arguments,
-    //                     },
-    //                 };
-    //             });
-
-    //             let toolsData: any[] = [];
-    //             //const llmMessage = llmResponse?.message;
-
-    //             /* ==================== STEP ENTRY ==================== */
-    //             // console.debug({
-    //             //     type: 'ToolsInfo',
-    //             //     message: 'Tool(s) is available for use.',
-    //             //     toolsInfo: llmResponse?.toolsInfo,
-    //             // });
-    //             /* ==================== STEP ENTRY ==================== */
-
-    //             this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
-
-    //             toolsData = await processWithConcurrencyLimit({
-    //                 items: toolsInfo,
-    //                 itemProcessor: async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
-    //                     const endpoint = endpoints?.get(tool?.name);
-    //                     // Sometimes we have object response from the LLM such as Anthropic
-
-    //                     let args = typeof tool?.arguments === 'string' ? JSONContent(tool?.arguments).tryParse() || {} : tool?.arguments;
-
-    //                     if (args?.error) {
-    //                         throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
-    //                     }
-
-    //                     //await beforeFunctionCall(llmMessage, toolsInfo[tool.index]);
-    //                     this.emit('beforeToolCall', { tool, args });
-
-    //                     const toolArgs = {
-    //                         type: tool?.type,
-    //                         method: reqMethods?.get(tool?.name),
-    //                         endpoint,
-    //                         args,
-    //                         baseUrl,
-    //                         headers: toolHeaders,
-    //                     };
-
-    //                     let { data: functionResponse, error } = await this.useTool(toolArgs);
-
-    //                     if (error) {
-    //                         functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
-    //                     }
-
-    //                     functionResponse =
-    //                         typeof functionResponse === 'object' && typeof functionResponse !== null
-    //                             ? JSON.stringify(functionResponse)
-    //                             : functionResponse;
-
-    //                     //await afterFunctionCall(functionResponse, toolsInfo[tool.index]);
-    //                     this.emit('afterToolCall', { tool, args }, functionResponse);
-
-    //                     return { ...tool, result: functionResponse };
-    //                 },
-    //                 maxConcurrentItems: concurrentToolCalls,
-    //             });
-
-    //             const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-    //             //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-    //             toolsData.forEach((toolData) => {
-    //                 messagesWithToolResult.push({
-    //                     tool_call_id: toolData.id,
-    //                     role: toolData.role,
-    //                     name: toolData.name,
-    //                     content: toolData.result, // we have error when the content is an object
-    //                 });
-    //             });
-
-    //             this._context.push(...messagesWithToolResult);
-
-    //             _content += await this.streamPrompt(null, toolHeaders, concurrentToolCalls);
-    //         }
-    //     }
-
-    //     this.emit('end');
-
-    //     let content = JSONContent(_content).tryParse();
-
-    //     //return content;
-    //     return content;
-    // }
-
+    //TODO : handle attachments
     public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
         await this.ready;
 
@@ -419,7 +290,8 @@ export class Conversation extends EventEmitter {
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 
         if (message) this._context.addUserMessage(message);
-        const contextWindow = this._context.getContextWindow(1024 * 16); //FIXME: handle configurable context window size
+
+        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
         const eventEmitter: any = await llmHelper
             .streamRequest(
@@ -427,6 +299,7 @@ export class Conversation extends EventEmitter {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig,
+                    max_tokens: this._maxOutputTokens,
                 },
                 this._agentId
             )
@@ -580,7 +453,7 @@ export class Conversation extends EventEmitter {
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 
         if (message) this._context.addUserMessage(message);
-        const contextWindow = this._context.getContextWindow(1024 * 16); //FIXME: handle configurable context window size
+        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
         const { data: llmResponse, error } = await llmHelper.streamToolRequest(
             {

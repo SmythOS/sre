@@ -8,6 +8,16 @@ import { CacheMetadata } from '@sre/types/Cache.types';
 
 export interface ICacheRequest {
     get: (key: string) => Promise<any>;
+
+    /**
+     * Set a value in the cache
+     * @param key
+     * @param data
+     * @param acl
+     * @param metadata
+     * @param ttl Cache time to live in seconds
+     * @returns
+     */
     set: (key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number) => Promise<boolean>;
     delete: (key: string) => Promise<void>;
     exists: (key: string) => Promise<boolean>;

@@ -21,6 +21,7 @@ export class LLMHelper {
         //TODO: cache instances
         return new LLMHelper(model);
     }
+
     public get modelInfo(): any {
         return this._modelInfo;
     }
@@ -28,11 +29,14 @@ export class LLMHelper {
         return this._llmConnector;
     }
 
-    public async promptRequest(prompt, config: any = {}, agent: string | Agent) {
+    public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
         if (!this._llmConnector) return { error: 'LLM request failed', details: `Model ${this.model} not supported` };
         const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractLLMComponentParams(config);
         params.model = this._modelId;
+
+        //override params with customParams
+        Object.assign(params, customParams);
 
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);

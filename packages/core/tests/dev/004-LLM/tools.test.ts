@@ -161,7 +161,8 @@ if the user asks any question, use /ask endpoint to get information and be able 
         });
 
         const result = await conv.streamPrompt(
-            'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it, then search S3Storage.class.ts in smyth runtime repo, then write the first 3 lines of its code. make the operations successively and not in parallel'
+            'read smyth runtime dependency graph doc/dep-graph.dot and list the component that you find there'
+            //'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it, then search S3Storage.class.ts in smyth runtime repo, then write the first 3 lines of its code. make the operations successively and not in parallel'
         );
         expect(result).toBeDefined();
     }, 120000);

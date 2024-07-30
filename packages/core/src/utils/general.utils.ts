@@ -81,3 +81,24 @@ export async function processWithConcurrencyLimit<T, R>({
 
     return validResults;
 }
+
+export const detectURLSourceType = (url: string) => {
+    const urlObj = new URL(url);
+    const ext = urlObj.pathname.split('.').pop();
+
+    switch (ext) {
+        case 'pdf':
+            return 'PDF';
+        case 'xml':
+            return 'SITEMAP';
+        case 'html':
+        case 'htm':
+        case 'txt':
+            return 'WEBPAGE';
+        case 'doc':
+        case 'docx':
+            return 'WORD';
+        default:
+            return 'WEBPAGE';
+    }
+};

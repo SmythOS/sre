@@ -283,7 +283,7 @@ async function submit() {
         }
 
         const currentContent = outputBox.getContent();
-        const content = `\n{blue-fg}Me:{/blue-fg}:${message}`;
+        const content = `\n{blue-fg}Me:{/blue-fg}${message}`;
         outputBox.setContent(`${currentContent}${content}`);
         inputBox.clearValue();
         animaStatus('Thinking');
@@ -330,7 +330,7 @@ async function main() {
         const cliConnector = ConnectorService.getCLIConnector();
 
         const specUrl = cliConnector.params?.agent;
-        conv = new Conversation('gpt-4o', specUrl);
+        conv = new Conversation('gpt-4o', specUrl, { maxContextSize: 128000, maxOutputTokens: 4096 });
 
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {});
@@ -355,6 +355,15 @@ async function main() {
         conv.on('beforeToolCall', (info) => {
             try {
                 animaStatus('Using tool : ' + info.tool.name);
+                const currentContent = outputBox.getContent();
+                let newContent = currentContent;
+                newContent +=
+                    '{magenta-fg}' +
+                    '\n─────────────────────────────────────\n' +
+                    `Calling tool ${JSON.stringify(info.tool, null, 2)}` +
+                    '\n_____________________\n' +
+                    '{/magenta-fg}';
+                outputBox.setContent(newContent);
             } catch (error) {}
         });
 
