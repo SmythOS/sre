@@ -217,6 +217,7 @@ export abstract class LLMConnector extends Connector {
     }
 
     public enhancePrompt(prompt: string, config: any) {
+        if (!prompt) return prompt;
         let newPrompt = prompt;
         const outputs = {};
         for (let con of config.outputs) {

@@ -351,5 +351,5 @@ describe('Integration: Pinecone VectorDB', () => {
         });
     });
 
-    describe('Security', () => {});
+    //describe('Security', () => {});
 });

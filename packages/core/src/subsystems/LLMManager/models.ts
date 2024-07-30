@@ -11,7 +11,19 @@ export default {
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
 
-    // GPT-4o
+    'gpt-4o-mini': {
+        llm: 'OpenAI',
+        alias: 'gpt-4o-mini-2024-07-18',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+        tags: ['new'],
+    },
+    'gpt-4o-mini-2024-07-18': {
+        llm: 'OpenAI',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        keyOptions: { tokens: 128000, completionTokens: 16383 },
+    },
     'gpt-4o': {
         llm: 'OpenAI',
         alias: 'gpt-4o-2024-05-13',
@@ -25,6 +37,7 @@ export default {
         enabled: true,
         keyOptions: { tokens: 128000, completionTokens: 4096 },
     },
+
     // GPT-4-turbo
     'gpt-4-turbo-latest': {
         llm: 'OpenAI',
@@ -35,7 +48,7 @@ export default {
         llm: 'OpenAI',
         alias: 'gpt-4-turbo-2024-04-09',
         components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
-        tags: ['stable'],
+        tags: ['legacy'],
     },
     'gpt-4-turbo-2024-04-09': {
         llm: 'OpenAI',
@@ -44,6 +57,7 @@ export default {
         enabled: true,
         keyOptions: { tokens: 128000, completionTokens: 4096 },
     },
+
     // GPT-4
     'gpt-4-latest': {
         llm: 'OpenAI',
@@ -58,7 +72,7 @@ export default {
         enabled: true,
         keyOptions: { tokens: 8192, completionTokens: 8192 },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
-        tags: ['stable'],
+        tags: ['legacy'],
     },
     'gpt-4-0613': {
         llm: 'OpenAI',
@@ -94,7 +108,7 @@ export default {
         llm: 'OpenAI',
         alias: 'gpt-3.5-turbo-0125',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
-        tags: ['stable'],
+        tags: ['legacy'],
     },
     'gpt-3.5-turbo-0125': {
         llm: 'OpenAI',
@@ -204,19 +218,19 @@ export default {
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true },
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
-        tags: ['new'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+        tags: ['legacy'],
     },
     'gemini-1.5-pro-latest-stable': {
         llm: 'GoogleAI',
         alias: 'gemini-1.5-pro',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
         tags: ['new'],
     },
     'gemini-1.5-pro-stable': {
         llm: 'GoogleAI',
         alias: 'gemini-1.5-pro-001',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
         tags: ['new'],
     },
     'gemini-1.5-pro': {
@@ -241,19 +255,19 @@ export default {
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true },
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
-        tags: ['new'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+        tags: ['legacy'],
     },
     'gemini-1.5-flash-latest-stable': {
         llm: 'GoogleAI',
         alias: 'gemini-1.5-flash',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
-        tags: ['new'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+        tags: ['legacy'],
     },
     'gemini-1.5-flash-stable': {
         llm: 'GoogleAI',
         alias: 'gemini-1.5-flash-001',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
         tags: ['new'],
     },
     'gemini-1.5-flash': {
@@ -314,11 +328,68 @@ export default {
     },
 
     /* Groq */
+    'groq-llama-3.1-405b-reasoning': {
+        llm: 'Groq',
+        alias: 'llama-3.1-405b-reasoning',
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
+    'llama-3.1-405b-reasoning': {
+        llm: 'Groq',
+        tokens: 16000,
+        completionTokens: 16000,
+        enabled: false,
+        keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+    },
+    'groq-llama-3.1-70b-versatile': {
+        llm: 'Groq',
+        alias: 'llama-3.1-70b-versatile',
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
+    'llama-3.1-70b-versatile': {
+        llm: 'Groq',
+        tokens: 8000,
+        completionTokens: 8000,
+        enabled: false,
+        keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+    },
+    'groq-llama-3.1-8b-instant': {
+        llm: 'Groq',
+        alias: 'llama-3.1-8b-instant',
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
+    'llama-3.1-8b-instant': {
+        llm: 'Groq',
+        tokens: 8000,
+        completionTokens: 8000,
+        enabled: false,
+        keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+    },
+    'llama3-groq-70b-tool-use-preview': {
+        llm: 'Groq',
+        tokens: 8192,
+        completionTokens: 8192,
+        enabled: false,
+        keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
+    'llama3-groq-8b-tool-use-preview': {
+        llm: 'Groq',
+        tokens: 8192,
+        completionTokens: 8192,
+        enabled: false,
+        keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
     'groq-llama3-8b': {
         llm: 'Groq',
         alias: 'llama3-8b-8192',
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'llama3-8b-8192': {
         llm: 'Groq',
@@ -331,7 +402,7 @@ export default {
         llm: 'Groq',
         alias: 'llama3-70b-8192',
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'llama3-70b-8192': {
         llm: 'Groq',
@@ -344,7 +415,7 @@ export default {
         llm: 'Groq',
         alias: 'llama2-70b-4096',
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'llama2-70b-4096': {
         llm: 'Groq',
@@ -395,6 +466,55 @@ export default {
     },
 
     // Meta
+    'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 128000, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 128000, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 4096, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3-8B-Instruct-Turbo': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 8192, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3-70B-Instruct-Turbo': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 8192, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3-8B-Instruct-Lite': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 8192, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
+    'meta-llama/Meta-Llama-3-70B-Instruct-Lite': {
+        llm: 'togetherAI',
+        tokens: 4096,
+        enabled: false,
+        keyOptions: { tokens: 8192, enabled: true },
+        components: ['LLMAssistant', 'PromptGenerator'],
+    },
     'togethercomputer/CodeLlama-13b-Instruct': {
         // ! DEPRECATED: will be removed (replace with codellama/CodeLlama-13b-Instruct-hf)
         llm: 'togetherAI',
@@ -429,7 +549,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'togethercomputer/CodeLlama-7b-Instruct': {
         // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-7b-Instruct-hf)
@@ -493,7 +613,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'meta-llama/Llama-3-70b-chat-hf': {
         llm: 'togetherAI',
@@ -501,7 +621,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     'DiscoResearch/DiscoLM-mixtral-8x7b-v2': {
@@ -561,7 +681,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'mistralai/Mixtral-8x7B-Instruct-v0.1': {
         llm: 'togetherAI',
@@ -576,7 +696,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 65536, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     'Gryphe/MythoMax-L2-13b': {
@@ -608,7 +728,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
         llm: 'togetherAI',
@@ -616,7 +736,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT': {
         llm: 'togetherAI',
@@ -624,7 +744,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'NousResearch/Nous-Hermes-2-Yi-34B': {
         llm: 'togetherAI',
@@ -632,7 +752,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'NousResearch/Nous-Hermes-llama-2-7b': {
         llm: 'togetherAI',
@@ -766,7 +886,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'allenai/OLMo-7B': {
         llm: 'togetherAI',
@@ -774,7 +894,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     // Qwen
@@ -784,7 +904,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-1.8B-Chat': {
         llm: 'togetherAI',
@@ -792,7 +912,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-4B-Chat': {
         llm: 'togetherAI',
@@ -800,7 +920,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-7B-Chat': {
         llm: 'togetherAI',
@@ -808,7 +928,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-14B-Chat': {
         llm: 'togetherAI',
@@ -816,7 +936,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-32B-Chat': {
         llm: 'togetherAI',
@@ -824,7 +944,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-72B-Chat': {
         llm: 'togetherAI',
@@ -832,7 +952,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Qwen/Qwen1.5-110B-Chat': {
         llm: 'togetherAI',
@@ -840,7 +960,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     // DeepSeek
@@ -850,7 +970,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 16384, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'deepseek-ai/deepseek-llm-67b-chat': {
         llm: 'togetherAI',
@@ -858,7 +978,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     // Google
@@ -868,7 +988,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'google/gemma-7b-it': {
         llm: 'togetherAI',
@@ -876,7 +996,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     // Undi95
@@ -893,7 +1013,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
 
     // Others
@@ -903,7 +1023,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'databricks/dbrx-instruct': {
         llm: 'togetherAI',
@@ -911,7 +1031,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Open-Orca/Mistral-7B-OpenOrca': {
         llm: 'togetherAI',
@@ -926,7 +1046,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has some other text)
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'Snowflake/snowflake-arctic-instruct': {
         llm: 'togetherAI',
@@ -934,7 +1054,7 @@ export default {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-        tags: ['new'],
+        tags: ['legacy'],
     },
     'togethercomputer/alpaca-7b': {
         llm: 'togetherAI',

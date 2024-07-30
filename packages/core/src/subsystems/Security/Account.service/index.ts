@@ -11,7 +11,7 @@ export class AccountService extends ConnectorServiceProvider {
     }
 
     public init() {
-        //auto initialize builting models
+        //auto initialize builtin account connector
         ConnectorService.init(TConnectorService.Account, 'Account');
     }
 }

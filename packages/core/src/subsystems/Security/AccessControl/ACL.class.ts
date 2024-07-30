@@ -3,7 +3,7 @@ import { IACL, IAccessRequest, LevelMap, ReverseLevelMap, ReverseRoleMap, RoleMa
 
 const ACLHashAlgo = {
     none: (source) => source,
-    xxh3: (source) => xxh3.xxh64(source).toString(16),
+    xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
 };
 
 export class ACL implements IACL {

@@ -2,7 +2,7 @@ import { xxh3 } from '@node-rs/xxhash';
 import { describe, expect, it } from 'vitest';
 
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
-import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 //import SRE, { AgentRequest } from '../../dist';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 
@@ -12,6 +12,8 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
+import { TConnectorService } from '@sre/types/SRE.types';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -63,14 +65,31 @@ describe('S3 Storage Tests', () => {
     });
 
     it('Read Legacy Metadata', async () => {
+        //Expected to not work, will only work if we associate the candidate "agent-123456" with the team "9"
+        //here we create a custom connector just to test this case
+
+        class CustomAccountConnector extends AccountConnector {
+            public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+                if (candidate.id === 'agent-123456') {
+                    return Promise.resolve('9');
+                }
+                return super.getCandidateTeam(candidate);
+            }
+        }
+        ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
+
+        //initialize the custom account connector and force it to be default AccountConnector
+        ConnectorService.init(TConnectorService.Account, 'MyCustomAccountConnector', {}, true);
+
         const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const legacyFile = 'teams/9/logs/closz0vak00009tsctm7e8xzs/2024-05-12/LLW3FLB08WIE';
 
         const metadata = await s3Storage.user(agentCandidate).getMetadata(legacyFile);
 
-        //Expected to not work, will only work if we associate the candidate "agent-123456" with the team "9"
-        //TODO: once custom data provider is implemented, hardcode the team association in this test
-        expect(metadata).toBe(true);
+        expect(metadata.ContentType).toEqual('text/plain');
+
+        const acl = await s3Storage.user(agentCandidate).getACL(legacyFile);
+        expect(acl.migrated).toBe(true);
     });
 
     it('Write a file in S3Storage', async () => {

@@ -47,6 +47,6 @@
         "types": ["node"],
         "allowSyntheticDefaultImports": true
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts"],
+    "include": ["src/**/*.ts", "tests/**/*.ts", "tests/dev/008-VectorDB/Pinecone.test.bak"],
     "exclude": ["node_modules"]
 }

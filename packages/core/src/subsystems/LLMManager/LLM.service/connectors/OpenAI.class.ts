@@ -24,6 +24,8 @@ export class OpenAIConnector extends LLMConnector {
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!params.messages) params.messages = [];
+
+        //FIXME: We probably need to separate the json system from default chatRequest
         if (params.messages[0]?.role !== 'system') {
             params.messages.unshift({
                 role: 'system',
@@ -35,7 +37,7 @@ export class OpenAIConnector extends LLMConnector {
             }
         }
 
-        if (params.messages.length === 1) {
+        if (prompt && params.messages.length === 1) {
             params.messages.push({ role: 'user', content: prompt });
         }
         delete params.prompt;
@@ -138,7 +140,7 @@ export class OpenAIConnector extends LLMConnector {
 
     protected async toolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
         try {
             // We provide
@@ -154,6 +156,7 @@ export class OpenAIConnector extends LLMConnector {
             let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
                 model,
                 messages,
+                max_tokens,
             };
 
             if (tools && tools.length > 0) args.tools = tools;
@@ -345,7 +348,7 @@ export class OpenAIConnector extends LLMConnector {
 
     protected async streamRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const openai = new OpenAI({
@@ -357,6 +360,7 @@ export class OpenAIConnector extends LLMConnector {
         let args: OpenAI.ChatCompletionCreateParamsStreaming = {
             model,
             messages,
+            max_tokens,
             stream: true,
         };
 

@@ -5,6 +5,7 @@ import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
     private _llmHelper;
+    public contextLength: number;
     public get llmHelper() {
         return this._llmHelper;
     }
@@ -30,8 +31,14 @@ export class LLMContext {
         this.push({ role: 'user', content });
     }
 
-    public getContextWindow(maxTokens: number): any[] {
-        const max = Math.min(maxTokens, this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 0);
+    public getContextWindow(maxTokens: number, maxOutputTokens: number = 256): any[] {
+        //TODO: handle non key accounts (limit tokens)
+        const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
+        let maxInputContext = Math.min(maxTokens, maxModelContext);
+
+        if (maxInputContext + maxOutputTokens > maxModelContext) {
+            maxInputContext -= maxInputContext + maxOutputTokens - maxModelContext;
+        }
 
         const messages = [];
 
@@ -57,8 +64,19 @@ export class LLMContext {
 
             const encoded = encodeChat([message], 'gpt-4');
             tokens += encoded.length;
-            if (tokens > max) {
-                break;
+            if (tokens > maxInputContext) {
+                //handle context window overflow
+                //FIXME: the logic here is weak, we need a better one
+                const diff = tokens - maxInputContext;
+                const excessPercentage = diff / encoded.length;
+
+                //truncate message content
+                message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
+                message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
+
+                tokens -= encoded.length;
+                tokens += encodeChat([message], 'gpt-4').length;
+                //break;
             }
             messages.unshift(message);
         }

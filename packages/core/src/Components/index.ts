@@ -18,6 +18,7 @@ import LogicXOR from './LogicXOR.class';
 import LogicAtLeast from './LogicAtLeast.class';
 import LogicAtMost from './LogicAtMost.class';
 import AgentPlugin from './AgentPlugin.class';
+import LLMAssistant from './LLMAssistant.class';
 
 const components = {
     Component: new Component(),
@@ -43,6 +44,7 @@ const components = {
     LogicAtLeast: new LogicAtLeast(),
     LogicAtMost: new LogicAtMost(),
     AgentPlugin: new AgentPlugin(),
+    LLMAssistant: new LLMAssistant(),
 };
 
 export default components;
