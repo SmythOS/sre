@@ -5,7 +5,7 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { isUrl } from '@sre/utils/data.utils';
-import { concurrentAsyncProcess } from '@sre/utils/general.utils';
+import { processWithConcurrencyLimit } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
 import EventEmitter from 'events';
 import { JSONContent } from './JsonContent.helper';
@@ -347,9 +347,9 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
 
-                toolsData = await concurrentAsyncProcess(
-                    toolsInfo,
-                    async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
+                toolsData = await processWithConcurrencyLimit({
+                    items: toolsInfo,
+                    itemProcessor: async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
                         const endpoint = endpoints?.get(tool?.name);
                         // Sometimes we have object response from the LLM such as Anthropic
 
@@ -387,8 +387,8 @@ export class Conversation extends EventEmitter {
 
                         return { ...tool, result: functionResponse };
                     },
-                    concurrentToolCalls
-                );
+                    maxConcurrentItems: concurrentToolCalls,
+                });
 
                 const messagesWithToolResult = llmMessage ? [llmMessage] : [];
                 //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
@@ -490,9 +490,9 @@ export class Conversation extends EventEmitter {
 
             this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
 
-            toolsData = await concurrentAsyncProcess(
-                toolsInfo,
-                async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
+            toolsData = await processWithConcurrencyLimit({
+                items: toolsInfo,
+                itemProcessor: async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
                     const endpoint = endpoints?.get(tool?.name);
                     // Sometimes we have object response from the LLM such as Anthropic
 
@@ -530,8 +530,8 @@ export class Conversation extends EventEmitter {
 
                     return { ...tool, result: functionResponse };
                 },
-                concurrentToolCalls
-            );
+                maxConcurrentItems: concurrentToolCalls,
+            });
 
             const messagesWithToolResult = llmMessage ? [llmMessage] : [];
             //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });

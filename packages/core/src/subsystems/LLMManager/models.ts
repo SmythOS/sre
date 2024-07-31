@@ -140,58 +140,58 @@ export default {
         tags: ['deprecated'],
     },
 
-    // Claude
+    // AnthropicAI
     'claude-3-opus': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         alias: 'claude-3-opus-20240229',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3.5-sonnet': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         alias: 'claude-3-5-sonnet-20240620',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
         tags: ['new'],
     },
     'claude-3-sonnet': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         alias: 'claude-3-sonnet-20240229',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-haiku': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         alias: 'claude-3-haiku-20240307',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-opus-20240229': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     },
     'claude-3-5-sonnet-20240620': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     },
     'claude-3-sonnet-20240229': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     },
     'claude-3-haiku-20240307': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     },
     'claude-2.1': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 1024,
         completionTokens: 1024,
         enabled: false,
@@ -200,7 +200,7 @@ export default {
         tags: ['legacy'],
     },
     'claude-instant-1.2': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 1024,
         completionTokens: 1024,
         enabled: false,
