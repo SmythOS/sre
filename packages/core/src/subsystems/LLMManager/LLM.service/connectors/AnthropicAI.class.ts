@@ -42,7 +42,7 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         if (this.hasSystemMessage(params.messages)) {
-            // in Claude we need to provide system message separately
+            // in AnthropicAI we need to provide system message separately
             const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
 
             params.messages = otherMessages;
@@ -59,7 +59,7 @@ export class AnthropicAIConnector extends LLMConnector {
         // We do not provide default API key for claude, so user/team must provide their own API key
         const apiKey = params?.apiKey;
 
-        if (!apiKey) throw new Error('Please provide an API key for Claude');
+        if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
         const anthropic = new Anthropic({
             apiKey: apiKey,
@@ -88,7 +88,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in componentLLMRequest in Claude: ', error);
+            console.error('Error in componentLLMRequest in AnthropicAI: ', error);
 
             if (error instanceof Anthropic.APIError) {
                 throw error;
@@ -132,7 +132,7 @@ export class AnthropicAIConnector extends LLMConnector {
         // We do not provide default API key for claude, so user/team must provide their own API key
         const apiKey = params?.apiKey;
 
-        if (!apiKey) throw new Error('Please provide an API key for Claude');
+        if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
         const anthropic = new Anthropic({
             apiKey: apiKey,
@@ -189,7 +189,7 @@ export class AnthropicAIConnector extends LLMConnector {
             };
 
             if (this.hasSystemMessage(messages)) {
-                // in Claude we need to provide system message separately
+                // in AnthropicAI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
                 messageCreateParams.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
@@ -215,14 +215,14 @@ export class AnthropicAIConnector extends LLMConnector {
             if ((stopReason as 'tool_use') === 'tool_use') {
                 const toolInfo: any = result?.content?.find((c) => (c.type as 'tool_use') === 'tool_use');
 
-                // Set the tool information for the message content when a tool is used. This is necessary because Claude returns an additional text block describing the process, which leads to incorrect responses.
+                // Set the tool information for the message content when a tool is used. This is necessary because AnthropicAI returns an additional text block describing the process, which leads to incorrect responses.
                 message.content = [toolInfo];
 
                 toolsInfo = [
                     {
                         index: 0,
                         id: toolInfo?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though AnthropicAI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolInfo?.name,
                         arguments: toolInfo?.input,
                         role: 'user',
@@ -264,7 +264,7 @@ export class AnthropicAIConnector extends LLMConnector {
             };
 
             if (this.hasSystemMessage(messages)) {
-                // in Claude we need to provide system message separately
+                // in AnthropicAI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
                 messageCreateParams.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
@@ -277,7 +277,7 @@ export class AnthropicAIConnector extends LLMConnector {
             // TODO (Forhad): implement claude specific token counting properly
             // this.validateTokenLimit(params);
 
-            /* Send request to Claude */
+            /* Send request to AnthropicAI */
             const result = await anthropic.messages.create(messageCreateParams);
             const stopReason = result?.stop_reason;
 
@@ -292,14 +292,14 @@ export class AnthropicAIConnector extends LLMConnector {
             if ((stopReason as 'tool_use') === 'tool_use') {
                 const toolInfo: any = result?.content?.find((c) => (c.type as 'tool_use') === 'tool_use');
 
-                // Set the tool information for the message content when a tool is used. This is necessary because Claude returns an additional text block describing the process, which leads to incorrect responses.
+                // Set the tool information for the message content when a tool is used. This is necessary because AnthropicAI returns an additional text block describing the process, which leads to incorrect responses.
                 message.content = [toolInfo];
 
                 toolsInfo = [
                     {
                         index: 0,
                         id: toolInfo?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though AnthropicAI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolInfo?.name,
                         arguments: toolInfo?.input,
                         role: 'user',
