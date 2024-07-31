@@ -52,7 +52,7 @@ export interface ToolInfo {
     id: string;
     type: 'function';
     name: string;
-    arguments: string;
+    arguments: string | Record<string, any>;
     role: 'user' | 'tool';
 }
 

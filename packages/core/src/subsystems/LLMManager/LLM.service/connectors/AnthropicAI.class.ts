@@ -8,9 +8,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
-import { Readable } from 'stream';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
@@ -23,7 +22,7 @@ type FileObject = {
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const TOOL_USE_DEFAULT_MODEL = 'claude-3-opus-20240229';
+const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-sonnet-20240620';
 
 export class AnthropicAIConnector extends LLMConnector {
     public name = 'LLM:AnthropicAI';
@@ -69,7 +68,7 @@ export class AnthropicAIConnector extends LLMConnector {
         // this.validateTokenLimit(params);
 
         try {
-            const messageCreateParams = {
+            const messageCreateArgs = {
                 model: params.model,
                 messages: params.messages,
                 max_tokens: params.max_tokens,
@@ -78,7 +77,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 top_p: params.top_p,
                 top_k: params.top_k,
             };
-            const response = await anthropic.messages.create(messageCreateParams);
+            const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
 
@@ -142,7 +141,7 @@ export class AnthropicAIConnector extends LLMConnector {
         // this.validateTokenLimit(params);
 
         try {
-            const messageCreateParams = {
+            const messageCreateArgs = {
                 model: params.model,
                 messages: params.messages,
                 max_tokens: params.max_tokens,
@@ -152,7 +151,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 top_k: params.top_k,
             };
 
-            const response = await anthropic.messages.create(messageCreateParams);
+            const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
 
@@ -181,7 +180,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
             });
 
-            const messageCreateParams: Anthropic.MessageCreateParamsNonStreaming = {
+            const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model,
                 messages: [],
                 // TODO (Forhad): Need to set max dynamically based on the model
@@ -192,17 +191,17 @@ export class AnthropicAIConnector extends LLMConnector {
                 // in AnthropicAI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
-                messageCreateParams.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
 
-                messageCreateParams.messages = otherMessages as Anthropic.MessageParam[];
+                messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
             }
 
-            if (tools && tools.length > 0) messageCreateParams.tools = tools;
+            if (tools && tools.length > 0) messageCreateArgs.tools = tools;
 
             // TODO (Forhad): implement claude specific token counting properly
             // this.validateTokenLimit(params);
 
-            const result = await anthropic.messages.create(messageCreateParams);
+            const result = await anthropic.messages.create(messageCreateArgs);
             const message = {
                 role: result?.role || 'user',
                 content: result?.content || '',
@@ -213,21 +212,22 @@ export class AnthropicAIConnector extends LLMConnector {
             let useTool = false;
 
             if ((stopReason as 'tool_use') === 'tool_use') {
-                const toolInfo: any = result?.content?.find((c) => (c.type as 'tool_use') === 'tool_use');
+                const toolUseContentBlocks = result?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
 
-                // Set the tool information for the message content when a tool is used. This is necessary because AnthropicAI returns an additional text block describing the process, which leads to incorrect responses.
-                message.content = [toolInfo];
+                if (toolUseContentBlocks?.length === 0) return;
 
-                toolsInfo = [
-                    {
-                        index: 0,
-                        id: toolInfo?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though AnthropicAI returns the type as 'tool_use', it should be interpreted as 'function'.
-                        name: toolInfo?.name,
-                        arguments: toolInfo?.input,
+                message.content = toolUseContentBlocks;
+
+                toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                    toolsInfo.push({
+                        index,
+                        id: toolUseBlock?.id,
+                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        name: toolUseBlock?.name,
+                        arguments: toolUseBlock?.input,
                         role: 'user',
-                    },
-                ];
+                    });
+                });
 
                 useTool = true;
             }
@@ -251,78 +251,7 @@ export class AnthropicAIConnector extends LLMConnector {
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
-        try {
-            const anthropic = new Anthropic({
-                apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-            });
-
-            const messageCreateParams: Anthropic.MessageCreateParamsNonStreaming = {
-                model,
-                messages: [],
-                // TODO (Forhad): Need to set max dynamically based on the model
-                max_tokens: 4096, // * max token is required
-            };
-
-            if (this.hasSystemMessage(messages)) {
-                // in AnthropicAI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
-
-                messageCreateParams.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
-
-                messageCreateParams.messages = otherMessages as Anthropic.MessageParam[];
-            }
-
-            if (tools && tools.length > 0) messageCreateParams.tools = tools;
-
-            // TODO (Forhad): implement claude specific token counting properly
-            // this.validateTokenLimit(params);
-
-            /* Send request to AnthropicAI */
-            const result = await anthropic.messages.create(messageCreateParams);
-            const stopReason = result?.stop_reason;
-
-            const message = {
-                role: result?.role || 'user',
-                content: result?.content || '',
-            };
-
-            let toolsInfo: ToolInfo[] = [];
-            let useTool = false;
-
-            if ((stopReason as 'tool_use') === 'tool_use') {
-                const toolInfo: any = result?.content?.find((c) => (c.type as 'tool_use') === 'tool_use');
-
-                // Set the tool information for the message content when a tool is used. This is necessary because AnthropicAI returns an additional text block describing the process, which leads to incorrect responses.
-                message.content = [toolInfo];
-
-                toolsInfo = [
-                    {
-                        index: 0,
-                        id: toolInfo?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though AnthropicAI returns the type as 'tool_use', it should be interpreted as 'function'.
-                        name: toolInfo?.name,
-                        arguments: toolInfo?.input,
-                        role: 'user',
-                    },
-                ];
-
-                useTool = true;
-            }
-
-            const content = (result?.content?.[0] as Anthropic.TextBlock)?.text;
-
-            return {
-                data: {
-                    useTool,
-                    message,
-                    content,
-                    toolsInfo,
-                },
-            };
-        } catch (error: any) {
-            console.log('Error in toolUseLLMRequest: ', error);
-            return { error };
-        }
+        throw new Error('streamToolRequest() is Deprecated!');
     }
 
     protected async streamRequest(
@@ -330,8 +259,67 @@ export class AnthropicAIConnector extends LLMConnector {
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
         try {
-            throw new Error('Stream request is not implemented for AnthropicAI');
-        } catch (error) {
+            const emitter = new EventEmitter();
+            const anthropic = new Anthropic({
+                apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
+            });
+
+            const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
+                model,
+                messages: [],
+                // TODO (Forhad): Need to set max dynamically based on the model
+                max_tokens: 4096, // * max token is required
+            };
+
+            if (this.hasSystemMessage(messages)) {
+                // in Claude we need to provide system message separately
+                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
+
+                messageCreateArgs.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
+
+                messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
+            }
+
+            if (tools && tools.length > 0) messageCreateArgs.tools = tools;
+
+            /* Send request to Claude */
+            const stream = await anthropic.messages.stream(messageCreateArgs);
+
+            stream.on('error', (error) => {
+                emitter.emit('error', error);
+            });
+
+            let toolsInfo: ToolInfo[] = [];
+
+            stream.on('text', (text: string) => {
+                emitter.emit('content', text);
+            });
+
+            stream.on('finalMessage', (finalMessage) => {
+                const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
+
+                if (toolUseContentBlocks?.length === 0) return;
+
+                toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                    toolsInfo.push({
+                        index,
+                        id: toolUseBlock?.id,
+                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        name: toolUseBlock?.name,
+                        arguments: toolUseBlock?.input,
+                        role: 'user',
+                    });
+                });
+
+                emitter.emit('toolsInfo', toolsInfo);
+            });
+
+            setTimeout(() => {
+                emitter.emit('end', toolsInfo);
+            }, 100);
+
+            return emitter;
+        } catch (error: any) {
             throw error;
         }
     }
