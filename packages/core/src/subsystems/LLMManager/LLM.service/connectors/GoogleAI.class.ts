@@ -198,18 +198,17 @@ export class GoogleAIConnector extends LLMConnector {
 
             const validFiles = await this.processValidFiles(fileSources, agentCandidate);
 
-            const uploadedFiles = await processWithConcurrencyLimit({
-                items: validFiles,
-                itemProcessor: async (file: FileObject) => {
-                    try {
-                        const uploadedFile = await this.uploadFile({ file, apiKey });
+            const fileUploadingTasks = validFiles.map((file) => async () => {
+                try {
+                    const uploadedFile = await this.uploadFile({ file, apiKey });
 
-                        return { url: uploadedFile.url, mimetype: file.mimetype };
-                    } catch {
-                        return null;
-                    }
-                },
+                    return { url: uploadedFile.url, mimetype: file.mimetype };
+                } catch {
+                    return null;
+                }
             });
+
+            const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
             // We throw error when there are no valid uploaded files,
             if (uploadedFiles?.length === 0) {
@@ -349,18 +348,21 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const validFiles = await processWithConcurrencyLimit({
-            items: fileSources,
-            itemProcessor: async (fileSource: string | Record<string, any>) => {
-                if (!fileSource) return null;
+        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
+            if (!fileSource) return null;
 
-                if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
-                    return this.processObjectFileSource(fileSource);
-                } else if (isValidString(fileSource as string)) {
-                    return this.processStringFileSource(fileSource as string, candidate);
-                }
-            },
+            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
+                return await this.processObjectFileSource(fileSource);
+            }
+
+            if (isValidString(fileSource as string)) {
+                return await this.processStringFileSource(fileSource as string, candidate);
+            }
+
+            return null;
         });
+
+        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
 
         return validFiles as FileObject[];
     }

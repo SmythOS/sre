@@ -247,7 +247,6 @@ export class AnthropicAIConnector extends LLMConnector {
         }
     }
 
-    // TODO (Forhad): Now Anthropic support streaming for tool use. Need to implement it.
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -374,18 +373,21 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const validFiles = await processWithConcurrencyLimit({
-            items: fileSources,
-            itemProcessor: async (fileSource: string | Record<string, any>) => {
-                if (!fileSource) return null;
+        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
+            if (!fileSource) return null;
 
-                if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
-                    return this.processObjectFileSource(fileSource, candidate);
-                } else if (isValidString(fileSource as string)) {
-                    return this.processStringFileSource(fileSource as string, candidate);
-                }
-            },
+            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
+                return await this.processObjectFileSource(fileSource, candidate);
+            }
+
+            if (isValidString(fileSource as string)) {
+                return await this.processStringFileSource(fileSource as string, candidate);
+            }
+
+            return null;
         });
+
+        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
 
         return validFiles as FileObject[];
     }
