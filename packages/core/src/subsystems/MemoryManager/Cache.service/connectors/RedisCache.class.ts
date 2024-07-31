@@ -9,6 +9,8 @@ import { RedisConfig } from '@sre/types/Redis.types';
 
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('RedisCache');
 
@@ -16,6 +18,7 @@ export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
     private redis: IORedis;
     private prefix: string = 'smyth:cache';
+    private accountConnector: AccountConnector;
 
     constructor(settings: RedisConfig) {
         super();
@@ -34,10 +37,13 @@ export class RedisCache extends CacheConnector {
         this.redis.on('connect', () => {
             console.log('Redis connected!');
         });
+
+        this.accountConnector = ConnectorService.getAccountConnector();
     }
 
     @SecureConnector.AccessControl
     public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const value = await this.redis.get(`${this.prefix}:${key}`);
         return value;
     }

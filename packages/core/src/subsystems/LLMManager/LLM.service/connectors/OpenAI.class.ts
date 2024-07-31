@@ -355,6 +355,7 @@ export class OpenAIConnector extends LLMConnector {
             apiKey: apiKey || process.env.OPENAI_API_KEY,
         });
 
+        //TODO: check token limits for non api key users
         console.log('model', model);
         console.log('messages', messages);
         let args: OpenAI.ChatCompletionCreateParamsStreaming = {

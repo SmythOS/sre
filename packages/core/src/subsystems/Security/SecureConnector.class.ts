@@ -50,6 +50,11 @@ export abstract class SecureConnector extends Connector {
         const teamAccess = aclHelper.checkExactAccess(teamRequest);
         if (teamAccess) return true;
 
+        // if the team access is denied, we check if the team has a higher access
+        const teamOwnerRequest = AccessRequest.clone(teamRequest).setLevel(TAccessLevel.Owner);
+        const teamOwnerAccess = aclHelper.checkExactAccess(teamOwnerRequest);
+        if (teamOwnerAccess) return true;
+
         return false;
     }
     public async getAccessTicket(resourceId: string, request: AccessRequest): Promise<TAccessTicket> {

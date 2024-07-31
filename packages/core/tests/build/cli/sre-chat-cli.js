@@ -220,7 +220,17 @@ kbListener.addListener(function (e, down) {
             if (inputBox.style.border.fg == boxFocusColor) inputBox.scroll(1);
             else outputBox.scroll(1);
         }
+
+        if (e.rawKey.name === 'PRIOR' && e.state === 'DOWN') {
+            if (inputBox.style.border.fg == boxFocusColor) inputBox.scroll(-1);
+            else outputBox.scroll(-10);
+        }
+        if (e.rawKey.name === 'NEXT' && e.state === 'DOWN') {
+            if (inputBox.style.border.fg == boxFocusColor) inputBox.scroll(1);
+            else outputBox.scroll(10);
+        }
     }
+
     if (e.rawKey.name === 'LCONTROL' || e.rawKey.name === 'RCONTROL') {
         ctrl = e.state === 'DOWN';
     }
