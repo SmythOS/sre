@@ -55,14 +55,12 @@ export class AnthropicAIConnector extends LLMConnector {
             params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
 
-        // We do not provide default API key for claude, so user/team must provide their own API key
         const apiKey = params?.apiKey;
 
+        // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
-        const anthropic = new Anthropic({
-            apiKey: apiKey,
-        });
+        const anthropic = new Anthropic({ apiKey });
 
         // TODO: implement claude specific token counting to validate token limit
         // this.validateTokenLimit(params);
@@ -128,14 +126,12 @@ export class AnthropicAIConnector extends LLMConnector {
             params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
 
-        // We do not provide default API key for claude, so user/team must provide their own API key
         const apiKey = params?.apiKey;
 
+        // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
-        const anthropic = new Anthropic({
-            apiKey: apiKey,
-        });
+        const anthropic = new Anthropic({ apiKey });
 
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
@@ -176,9 +172,10 @@ export class AnthropicAIConnector extends LLMConnector {
         { model = 'claude-3-opus-20240229', messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
         try {
-            const anthropic = new Anthropic({
-                apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-            });
+            // We do not provide default API key for claude, so user/team must provide their own API key
+            if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
+
+            const anthropic = new Anthropic({ apiKey });
 
             const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model,
@@ -247,6 +244,7 @@ export class AnthropicAIConnector extends LLMConnector {
         }
     }
 
+    // ! DEPRECATED METHOD
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -260,9 +258,11 @@ export class AnthropicAIConnector extends LLMConnector {
     ): Promise<EventEmitter> {
         try {
             const emitter = new EventEmitter();
-            const anthropic = new Anthropic({
-                apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-            });
+
+            // We do not provide default API key for claude, so user/team must provide their own API key
+            if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
+
+            const anthropic = new Anthropic({ apiKey });
 
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
                 model,
