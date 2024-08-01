@@ -48,6 +48,7 @@ export abstract class CacheConnector extends SecureConnector {
             exists: async (key: string) => {
                 return await this.exists(candidate.readRequest, key);
             },
+
             getMetadata: async (key: string) => {
                 return await this.getMetadata(candidate.readRequest, key);
             },
