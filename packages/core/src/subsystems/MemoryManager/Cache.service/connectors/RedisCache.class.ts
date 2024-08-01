@@ -17,8 +17,8 @@ const console = Logger('RedisCache');
 export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
     private redis: IORedis;
-    private prefix: string = 'smyth:cache';
-    private mdPrefix: string = 'smyth:metadata';
+    private _prefix: string = 'smyth:cache';
+    private _mdPrefix: string = 'smyth:metadata';
 
     constructor(settings: RedisConfig) {
         super();
@@ -43,17 +43,17 @@ export class RedisCache extends CacheConnector {
         return this.redis;
     }
 
-    public key(...parts: string[]) {
-        return `${this.prefix}:${parts.join(':')}`;
+    public get prefix() {
+        return this._prefix;
     }
 
-    public mdKey(...parts: string[]) {
-        return `${this.mdPrefix}:${parts.join(':')}`;
+    public get mdPrefix() {
+        return this._mdPrefix;
     }
 
     @SecureConnector.AccessControl
     public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
-        const value = await this.redis.get(`${this.prefix}:${key}`);
+        const value = await this.redis.get(`${this._prefix}:${key}`);
         return value;
     }
 
@@ -62,7 +62,7 @@ export class RedisCache extends CacheConnector {
         const accessCandidate = acRequest.candidate;
         const promises: any[] = [];
 
-        promises.push(this.redis.set(`${this.prefix}:${key}`, data));
+        promises.push(this.redis.set(`${this._prefix}:${key}`, data));
 
         const newMetadata: CacheMetadata = metadata || {};
         newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
@@ -79,19 +79,19 @@ export class RedisCache extends CacheConnector {
     @SecureConnector.AccessControl
     public async delete(acRequest: AccessRequest, key: string): Promise<void> {
         //delete both the key and its metadata
-        await Promise.all([this.redis.del(`${this.prefix}:${key}`), this.redis.del(`${this.mdPrefix}:${key}`)]);
+        await Promise.all([this.redis.del(`${this._prefix}:${key}`), this.redis.del(`${this._mdPrefix}:${key}`)]);
     }
 
     @SecureConnector.AccessControl
     public async exists(acRequest: AccessRequest, key: string): Promise<boolean> {
-        return !!(await this.redis.exists(`${this.prefix}:${key}`));
+        return !!(await this.redis.exists(`${this._prefix}:${key}`));
     }
 
     @SecureConnector.AccessControl
     public async getMetadata(acRequest: AccessRequest, key: string): Promise<CacheMetadata> {
         if (!this.exists(acRequest, key)) return undefined;
         try {
-            const metadata = await this.redis.get(`${this.mdPrefix}:${key}`);
+            const metadata = await this.redis.get(`${this._mdPrefix}:${key}`);
             return metadata ? (this.deserializeRedisMetadata(metadata) as CacheMetadata) : {};
         } catch (error) {
             return {};
@@ -100,23 +100,23 @@ export class RedisCache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
-        await this.redis.set(`${this.mdPrefix}:${key}`, this.serializeRedisMetadata(metadata));
+        await this.redis.set(`${this._mdPrefix}:${key}`, this.serializeRedisMetadata(metadata));
     }
 
     @SecureConnector.AccessControl
     public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
         if (ttl) {
-            await Promise.all([this.redis.expire(`${this.prefix}:${key}`, ttl), this.redis.expire(`${this.mdPrefix}:${key}`, ttl)]);
+            await Promise.all([this.redis.expire(`${this._prefix}:${key}`, ttl), this.redis.expire(`${this._mdPrefix}:${key}`, ttl)]);
         }
     }
 
     @SecureConnector.AccessControl
     public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
-        return this.redis.ttl(`${this.prefix}:${key}`);
+        return this.redis.ttl(`${this._prefix}:${key}`);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
-        const _metadata: any = await this.redis.get(`${this.mdPrefix}:${resourceId}`).catch((error) => {});
+        const _metadata: any = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => {});
         const exists = _metadata !== undefined && _metadata !== null; //null or undefined metadata means the resource does not exist
         const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
 

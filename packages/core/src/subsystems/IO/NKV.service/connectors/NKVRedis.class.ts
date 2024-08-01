@@ -15,22 +15,25 @@ export class NKVRedis extends NKVConnector {
     public name = 'Redis';
     private redisCacheConnector: RedisCache;
     private accountConnector: AccountConnector;
-    private schemaValidator: Joi.ObjectSchema;
     constructor() {
         super();
         this.redisCacheConnector = ConnectorService.getCacheConnector('Redis') as RedisCache;
         this.accountConnector = ConnectorService.getAccountConnector();
-        this.schemaValidator = Joi.object().keys({
-            namespace: Joi.string().min(1).required(),
-            key: Joi.string().min(1).required(),
-        });
+    }
+
+    public key(...parts: string[]) {
+        return parts.join(':');
+    }
+
+    public mdKey(...parts: string[]) {
+        return parts.join(':');
     }
 
     @NKVRedis.Validate
     @NKVRedis.NamespaceAccessControl
     protected async get(acRequest: AccessRequest, namespace: string, key: string): Promise<StorageData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).get(`${namespace}:${key}`);
+        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).get(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.Validate
@@ -38,11 +41,12 @@ export class NKVRedis extends NKVConnector {
     protected async set(acRequest: AccessRequest, namespace: string, key: string, value: any) {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
-        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(`${namespace}:${key}`, value);
+        const setKey = this.key(`team_${teamId}`, namespace, key);
+        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(setKey, value);
         // to set namespace ownership
         const isNewNs = !(await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(namespace));
         if (isNewNs) {
-            await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(namespace, '', undefined, { ns: true });
+            await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(this.key(`team_${teamId}`, namespace), '', undefined, { ns: true });
         }
     }
 
@@ -50,24 +54,24 @@ export class NKVRedis extends NKVConnector {
     @NKVRedis.NamespaceAccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, key: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).delete(`${namespace}:${key}`);
+        await this.redisCacheConnector.user(AccessCandidate.team(teamId)).delete(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.Validate
     @NKVRedis.NamespaceAccessControl
     protected async exists(acRequest: AccessRequest, namespace: string, key: string): Promise<boolean> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(`${namespace}:${key}`);
+        return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(this.key(`team_${teamId}`, namespace, key));
     }
 
     @NKVRedis.NamespaceAccessControl
     public async list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
+        let keys = await this.fetchKeysByPrefix(this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace));
 
         // filter out metadata keys & namespace sentinel keys
         keys = keys.filter(
-            (key) => key !== `${this.redisCacheConnector.prefix(teamId)}:${namespace}` // if not the namespace sentinel key
+            (key) => key !== this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace) // if not the namespace sentinel key
         );
 
         if (keys.length <= 0) return [];
@@ -85,7 +89,7 @@ export class NKVRedis extends NKVConnector {
         // Combine the keys and their corresponding values
         return keys.map((key, index) => {
             return {
-                key: key.replace(`${this.redisCacheConnector.prefix(teamId)}:${namespace}:`, ''),
+                key: key.replace(`${this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)}:`, ''),
                 data: results[index][1] as StorageData,
             };
         });
@@ -94,10 +98,10 @@ export class NKVRedis extends NKVConnector {
     @NKVRedis.NamespaceAccessControl
     public async deleteAll(acRequest: AccessRequest, namespace: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
+        let keys = await this.fetchKeysByPrefix(this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace));
         // filter out namespace sentinel key + namespace metadata key metadata key
         keys = keys.filter((key) => {
-            return ![`${this.redisCacheConnector.prefix(teamId)}:${namespace}`].includes(key);
+            return ![this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)].includes(key);
         });
         await this.redisCacheConnector.client.del(keys);
     }
@@ -133,7 +137,7 @@ export class NKVRedis extends NKVConnector {
             // Inject the access control logic
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
             const resourceId = isNamespaceSearch ? namespace : `${namespace}:${key}`;
-            const finalKey = `${this.redisCacheConnector.prefix(teamId)}:${resourceId}`;
+            const finalKey = this.key(this.redisCacheConnector.prefix, `team_${teamId}`, resourceId);
             const accessTicket = await this.getAccessTicket(finalKey, acRequest);
 
             if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError('Access Denied');
@@ -156,7 +160,11 @@ export class NKVRedis extends NKVConnector {
             let [acRequest, namespace, key] = args;
 
             // Validate the arguments
-            const validationResult = this.schemaValidator.validate({ namespace, key });
+            const schemaValidator = Joi.object().keys({
+                namespace: Joi.string().min(1).required(),
+                key: Joi.string().min(1).required(),
+            });
+            const validationResult = schemaValidator.validate({ namespace, key });
 
             if (validationResult.error) {
                 throw new Error(`Validation Error: ${validationResult.error.message}`);
