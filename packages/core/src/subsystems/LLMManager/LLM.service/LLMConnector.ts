@@ -9,7 +9,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMParams, LLMInputMessage } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock, LLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { isDataUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
@@ -33,13 +33,13 @@ export type LLMChatResponse = {
 
 export class LLMStream extends Readable {
     private dataQueue: any[];
-    private toolsInfo: any[];
+    private toolsData: any[];
     private hasData: boolean;
     isReading: boolean;
     constructor(options?) {
         super(options);
         this.dataQueue = [];
-        this.toolsInfo = [];
+        this.toolsData = [];
         this.isReading = true;
     }
 
@@ -371,15 +371,25 @@ export abstract class LLMConnector extends Connector {
         throw new Error('This model does not support tools');
     }
 
+    public prepareInputMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: LLMMessageBlock;
+        toolsData: ToolData[];
+    }): LLMToolResultMessageBlock[] {
+        throw new Error('This model does not support tools');
+    }
+
     public hasSystemMessage(messages: any) {
         if (!Array.isArray(messages)) return false;
 
         return messages?.some((message) => message.role === 'system');
     }
 
-    public separateSystemMessages(messages: LLMInputMessage[]): {
-        systemMessage: LLMInputMessage | {};
-        otherMessages: LLMInputMessage[];
+    public separateSystemMessages(messages: LLMMessageBlock[]): {
+        systemMessage: LLMMessageBlock | {};
+        otherMessages: LLMMessageBlock[];
     } {
         const systemMessage = messages.find((message) => message.role === 'system' && message.content) || {};
         const otherMessages = messages.filter((message) => message.role !== 'system' && message.content);

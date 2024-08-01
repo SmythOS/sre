@@ -1,5 +1,4 @@
-import ToolExecutor from '@sre/helpers/ToolExecutor.class';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
@@ -28,28 +27,14 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 });
-describe('LLM Tools', () => {
-    //     it('Call tools from openAPI url', async () => {
-    //         const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
-    //         const system = `You are a helpful assistant that can answer questions about SmythOS.
-    // if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-    //         const toolExecutor = new ToolExecutor('gpt-3.5-turbo', specUrl);
-    //         const result = await toolExecutor.run({
-    //             messages: [
-    //                 { role: 'system', content: system },
-    //                 { role: 'user', content: 'What can you help me with ?' },
-    //             ],
-    //         });
 
-    //         expect(result).toBeDefined();
-    //     }, 30000);
-
-    it('runs a conversation with tool use', async () => {
+function runTestCases(model: string) {
+    it(`runs a conversation with tool use with Model: ${model}`, async () => {
         const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
-        const conv = new Conversation('gpt-3.5-turbo', specUrl);
+        const conv = new Conversation(model, specUrl);
         conv.systemPrompt = system;
         conv.on('beforeToolCall', (args) => {
             console.log('beforeToolCall', args);
@@ -59,12 +44,12 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation with tool use in stream mode', async () => {
+    it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
         const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
-        const conv = new Conversation('gpt-3.5-turbo', specUrl);
+        const conv = new Conversation(model, specUrl);
         conv.systemPrompt = system;
 
         let streamResult = '';
@@ -80,10 +65,10 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation with remote sentinel agent', async () => {
+    it(`runs a conversation with remote sentinel agent with Model: ${model}`, async () => {
         const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
 
-        const conv = new Conversation('gpt-3.5-turbo', specUrl);
+        const conv = new Conversation(model, specUrl);
 
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {
@@ -101,11 +86,11 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation remote weather openAPI.json', async () => {
+    it(`runs a conversation remote weather openAPI.json with Model: ${model}`, async () => {
         //TODO: test invalid yaml and json urls
         const specUrl = 'https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/xkcd.com/1.0.0/openapi.yaml';
 
-        const conv = new Conversation('gpt-3.5-turbo', specUrl);
+        const conv = new Conversation(model, specUrl);
 
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {
@@ -124,10 +109,10 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs successive tools calls', async () => {
+    it(`runs successive tools calls with Model: ${model}`, async () => {
         //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
         const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-        const conv = new Conversation('gpt-4o', specUrl);
+        const conv = new Conversation(model, specUrl);
 
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {
@@ -166,4 +151,12 @@ if the user asks any question, use /ask endpoint to get information and be able 
         );
         expect(result).toBeDefined();
     }, 120000);
-});
+}
+
+const models = ['gpt-4o', 'claude-3-5-sonnet-20240620'];
+
+for (const model of models) {
+    describe(`LLM Tools use for Model: ${model}`, () => {
+        runTestCases(model);
+    });
+}

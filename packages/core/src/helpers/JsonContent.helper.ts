@@ -1,5 +1,5 @@
 import { jsonrepair } from 'jsonrepair';
-import { isDigits, isSafeNumber } from '@sre/utils';
+import { isDigits, isSafeNumber, isValidString } from '@sre/utils';
 
 export class JSONContentHelper {
     private _current: string;
@@ -22,7 +22,7 @@ export class JSONContentHelper {
      */
     public tryParse() {
         const strInput = this._current;
-        if (!strInput) return strInput;
+        if (!isValidString(strInput)) return strInput;
         let str = (this.extractJsonFromString(strInput) || strInput).trim();
 
         if ((isDigits(str) && !isSafeNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;

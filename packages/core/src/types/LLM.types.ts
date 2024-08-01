@@ -7,12 +7,12 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 export type LLMParams = {
     apiKey?: string; // for all
     temperature?: number; // for all
-    max_tokens?: number; // for OpenAI, cohere, together.ai, Claude
+    max_tokens?: number; // for OpenAI, cohere, together.ai, AnthropicAI
     maxOutputTokens?: number; // for GoogleAI
     stop?: string[] | null; // for OpenAI, together.ai
-    stop_sequences?: string[] | null; // for cohere, Claude
-    top_p?: number; // for OpenAI, together.ai, Claude
-    top_k?: number; // for together.ai, Claude
+    stop_sequences?: string[] | null; // for cohere, AnthropicAI
+    top_p?: number; // for OpenAI, together.ai, AnthropicAI
+    top_k?: number; // for together.ai, AnthropicAI
     topP?: number; // for GoogleAI
     topK?: number; // for GoogleAI
     p?: number; // Top P for cohere
@@ -47,17 +47,14 @@ export type TLLMModel = {
 };
 
 //#region === LLM Tools ===========================
-export interface ToolInfo {
+export type ToolData = {
     index: number;
     id: string;
-    type: 'function';
+    type: string;
     name: string;
-    arguments: string;
+    arguments: string | Record<string, any>;
     role: 'user' | 'tool';
-}
-
-export interface ToolData extends ToolInfo {
-    result: string;
+    result?: string; // result string from the used tool
 }
 
 export interface AnthropicToolDefinition {
@@ -78,8 +75,12 @@ export interface ToolsConfig {
 }
 
 //#endregion
-
-export type LLMInputMessage = {
+export type LLMMessageBlock = {
     role: string;
     content: string;
+};
+
+export type LLMToolResultMessageBlock = LLMMessageBlock & {
+    tool_call_id?: string; // for tool result message block of OpenAI
+    name?: string; // for tool result message block of OpenAI
 };

@@ -4,7 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, ToolInfo } from '@sre/types/LLM.types';
+import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { encodeChat } from 'gpt-tokenizer';
 import OpenAI from 'openai';
 import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
@@ -166,11 +166,11 @@ export class OpenAIConnector extends LLMConnector {
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
-            let toolsInfo: ToolInfo[] = [];
+            let toolsData: ToolData[] = [];
             let useTool = false;
 
             if (finishReason === 'tool_calls') {
-                toolsInfo =
+                toolsData =
                     message?.tool_calls?.map((tool, index) => ({
                         index,
                         id: tool?.id,
@@ -184,7 +184,7 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             return {
-                data: { useTool, message: message, content: message?.content ?? '', toolsInfo },
+                data: { useTool, message: message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
             console.log('Error on toolUseLLMRequest: ', error);
@@ -225,7 +225,7 @@ export class OpenAIConnector extends LLMConnector {
 
             let useTool = false;
             let delta: Record<string, any> = {};
-            let toolsInfo: any = [];
+            let toolsData: ToolData[] = [];
             let _stream;
 
             let message = {
@@ -252,22 +252,22 @@ export class OpenAIConnector extends LLMConnector {
                     const toolCall = delta?.tool_calls?.[0];
                     const index = toolCall?.index;
 
-                    toolsInfo[index] = {
+                    toolsData[index] = {
                         index,
                         role: 'tool',
-                        id: (toolsInfo?.[index]?.id || '') + (toolCall?.id || ''),
-                        type: (toolsInfo?.[index]?.type || '') + (toolCall?.type || ''),
-                        name: (toolsInfo?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                        arguments: (toolsInfo?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                        type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                        name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                        arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
                     };
                 }
             }
 
-            if (toolsInfo?.length > 0) {
+            if (toolsData?.length > 0) {
                 useTool = true;
             }
 
-            message.tool_calls = toolsInfo.map((tool) => {
+            message.tool_calls = toolsData.map((tool) => {
                 return {
                     id: tool.id,
                     type: tool.type,
@@ -278,10 +278,10 @@ export class OpenAIConnector extends LLMConnector {
                 };
             });
 
-            //console.log('result', useTool, message, toolsInfo);
+            //console.log('result', useTool, message, toolsData);
 
             return {
-                data: { useTool, message, stream: _stream, toolsInfo },
+                data: { useTool, message, stream: _stream, toolsData },
             };
         } catch (error: any) {
             console.log('Error on toolUseLLMRequest: ', error);
@@ -313,7 +313,7 @@ export class OpenAIConnector extends LLMConnector {
 
     //     const openaiStream: any = await openai.chat.completions.create(args);
 
-    //     let toolsInfo: any = [];
+    //     let toolsData: any = [];
     //     stream.enqueueData({ start: true });
     //     (async () => {
     //         for await (const part of openaiStream) {
@@ -328,18 +328,18 @@ export class OpenAIConnector extends LLMConnector {
     //                 const toolCall = delta.tool_calls[0];
     //                 const index = toolCall.index;
 
-    //                 toolsInfo[index] = {
+    //                 toolsData[index] = {
     //                     index,
     //                     role: 'tool',
-    //                     id: (toolsInfo[index]?.id || '') + (toolCall?.id || ''),
-    //                     type: (toolsInfo[index]?.type || '') + (toolCall?.type || ''),
-    //                     name: (toolsInfo[index]?.name || '') + (toolCall?.function?.name || ''),
-    //                     arguments: (toolsInfo[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+    //                     id: (toolsData[index]?.id || '') + (toolCall?.id || ''),
+    //                     type: (toolsData[index]?.type || '') + (toolCall?.type || ''),
+    //                     name: (toolsData[index]?.name || '') + (toolCall?.function?.name || ''),
+    //                     arguments: (toolsData[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
     //                 };
     //             }
     //         }
 
-    //         stream.enqueueData({ toolsInfo });
+    //         stream.enqueueData({ toolsData });
     //         //stream.endStream();
     //     })();
 
@@ -372,7 +372,7 @@ export class OpenAIConnector extends LLMConnector {
         (async () => {
             let delta: Record<string, any> = {};
 
-            let toolsInfo: any = [];
+            let toolsData: any = [];
 
             for await (const part of stream) {
                 delta = part.choices[0].delta;
@@ -386,22 +386,22 @@ export class OpenAIConnector extends LLMConnector {
                     const toolCall = delta?.tool_calls?.[0];
                     const index = toolCall?.index;
 
-                    toolsInfo[index] = {
+                    toolsData[index] = {
                         index,
                         role: 'tool',
-                        id: (toolsInfo?.[index]?.id || '') + (toolCall?.id || ''),
-                        type: (toolsInfo?.[index]?.type || '') + (toolCall?.type || ''),
-                        name: (toolsInfo?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                        arguments: (toolsInfo?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                        type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                        name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                        arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
                     };
                 }
             }
-            if (toolsInfo?.length > 0) {
-                emitter.emit('toolsInfo', toolsInfo);
+            if (toolsData?.length > 0) {
+                emitter.emit('toolsData', toolsData);
             }
 
             setTimeout(() => {
-                emitter.emit('end', toolsInfo);
+                emitter.emit('end', toolsData);
             }, 100);
         })();
         return emitter;
@@ -436,5 +436,32 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
+    }
+
+    public prepareInputMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: LLMMessageBlock;
+        toolsData: ToolData[];
+    }): LLMToolResultMessageBlock[] {
+        const messageBlocks: LLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const transformedMessageBlock = {
+                ...messageBlock,
+                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
+            };
+            messageBlocks.push(transformedMessageBlock);
+        }
+
+        const transformedToolsData = toolsData.map((toolData) => ({
+            tool_call_id: toolData.id,
+            role: toolData.role,
+            name: toolData.name,
+            content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
+        }));
+
+        return [...messageBlocks, ...transformedToolsData];
     }
 }

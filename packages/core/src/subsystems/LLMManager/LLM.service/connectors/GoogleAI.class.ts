@@ -16,7 +16,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -112,7 +112,7 @@ export class GoogleAIConnector extends LLMConnector {
             let messages = params?.messages || [];
 
             let systemInstruction;
-            let systemMessage: LLMInputMessage | {} = {};
+            let systemMessage: LLMMessageBlock | {} = {};
 
             if (this.hasSystemMessage(params?.messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
@@ -121,9 +121,9 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-                systemInstruction = (systemMessage as LLMInputMessage)?.content || '';
+                systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
             } else {
-                prompt = `${prompt}\n${(systemMessage as LLMInputMessage)?.content || ''}`;
+                prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
             }
 
             if (params?.messages) {
@@ -198,18 +198,17 @@ export class GoogleAIConnector extends LLMConnector {
 
             const validFiles = await this.processValidFiles(fileSources, agentCandidate);
 
-            const uploadedFiles = await processWithConcurrencyLimit({
-                items: validFiles,
-                itemProcessor: async (file: FileObject) => {
-                    try {
-                        const uploadedFile = await this.uploadFile({ file, apiKey });
+            const fileUploadingTasks = validFiles.map((file) => async () => {
+                try {
+                    const uploadedFile = await this.uploadFile({ file, apiKey });
 
-                        return { url: uploadedFile.url, mimetype: file.mimetype };
-                    } catch {
-                        return null;
-                    }
-                },
+                    return { url: uploadedFile.url, mimetype: file.mimetype };
+                } catch {
+                    return null;
+                }
             });
+
+            const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
             // We throw error when there are no valid uploaded files,
             if (uploadedFiles?.length === 0) {
@@ -349,18 +348,21 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const validFiles = await processWithConcurrencyLimit({
-            items: fileSources,
-            itemProcessor: async (fileSource: string | Record<string, any>) => {
-                if (!fileSource) return null;
+        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
+            if (!fileSource) return null;
 
-                if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
-                    return this.processObjectFileSource(fileSource);
-                } else if (isValidString(fileSource as string)) {
-                    return this.processStringFileSource(fileSource as string, candidate);
-                }
-            },
+            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
+                return await this.processObjectFileSource(fileSource);
+            }
+
+            if (isValidString(fileSource as string)) {
+                return await this.processStringFileSource(fileSource as string, candidate);
+            }
+
+            return null;
         });
+
+        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
 
         return validFiles as FileObject[];
     }
