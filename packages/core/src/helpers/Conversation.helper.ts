@@ -4,6 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
+import { ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -178,15 +179,15 @@ export class Conversation extends EventEmitter {
         if (llmResponse?.useTool) {
             /* ==================== STEP ENTRY ==================== */
             console.debug({
-                type: 'ToolsInfo',
+                type: 'ToolsData',
                 message: 'Tool(s) is available for use.',
-                toolsInfo: llmResponse?.toolsInfo,
+                toolsData: llmResponse?.toolsData,
             });
             /* ==================== STEP ENTRY ==================== */
 
-            const toolsData: any[] = [];
+            const toolsData: ToolData[] = [];
 
-            for (const tool of llmResponse?.toolsInfo) {
+            for (const tool of llmResponse?.toolsData) {
                 const endpoint = endpoints?.get(tool?.name);
                 // Sometimes we have object response from the LLM such as Anthropic
                 const parsedArgs = JSONContent(tool?.arguments).tryParse();
@@ -238,18 +239,7 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const llmMessage = llmResponse?.message;
-
-            const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-            //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-            toolsData.forEach((toolData) => {
-                messagesWithToolResult.push({
-                    tool_call_id: toolData.id,
-                    role: toolData.role,
-                    name: toolData.name,
-                    content: toolData.result, // we have error when the content is an object
-                });
-            });
+            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
@@ -323,14 +313,14 @@ export class Conversation extends EventEmitter {
 
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
-            eventEmitter.on('toolsInfo', async (toolsInfo) => {
+            eventEmitter.on('toolsData', async (toolsData) => {
                 hasTools = true;
                 let llmMessage: any = {
                     role: 'assistant',
                     content: _content,
                     tool_calls: [],
                 };
-                llmMessage.tool_calls = toolsInfo.map((tool) => {
+                llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
                         id: tool.id,
                         type: tool.type,
@@ -343,11 +333,9 @@ export class Conversation extends EventEmitter {
 
                 //if (llmMessage.tool_calls?.length <= 0) return;
 
-                let toolsData: any[] = [];
+                this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-                this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
-
-                const toolProcessingTasks = toolsInfo.map(
+                const toolProcessingTasks = toolsData.map(
                     (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                         const endpoint = endpoints?.get(tool?.name);
                         // Sometimes we have object response from the LLM such as Anthropic
@@ -358,7 +346,7 @@ export class Conversation extends EventEmitter {
                             throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
                         }
 
-                        //await beforeFunctionCall(llmMessage, toolsInfo[tool.index]);
+                        //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                         this.emit('beforeToolCall', { tool, args });
 
                         const toolArgs = {
@@ -381,24 +369,18 @@ export class Conversation extends EventEmitter {
                                 ? JSON.stringify(functionResponse)
                                 : functionResponse;
 
-                        //await afterFunctionCall(functionResponse, toolsInfo[tool.index]);
+                        //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse);
 
                         return { ...tool, result: functionResponse };
                     }
                 );
 
-                toolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
+                const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-                //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-                toolsData.forEach((toolData) => {
-                    messagesWithToolResult.push({
-                        tool_call_id: toolData.id,
-                        role: toolData.role,
-                        name: toolData.name,
-                        content: toolData.result, // we have error when the content is an object
-                    });
+                const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                    messageBlock: llmMessage,
+                    toolsData: processedToolsData,
                 });
 
                 this._context.push(...messagesWithToolResult);
@@ -406,7 +388,7 @@ export class Conversation extends EventEmitter {
                 resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
             });
 
-            eventEmitter.on('end', async (toolsInfo) => {
+            eventEmitter.on('end', async (toolsData) => {
                 if (!hasTools) {
                     resolve('');
                 }
@@ -476,21 +458,20 @@ export class Conversation extends EventEmitter {
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {
-            let toolsData: any[] = [];
             const llmMessage = llmResponse?.message;
-            const toolsInfo = llmResponse?.toolsInfo;
+            const toolsData = llmResponse?.toolsData;
 
             /* ==================== STEP ENTRY ==================== */
             // console.debug({
-            //     type: 'ToolsInfo',
+            //     type: 'ToolsData',
             //     message: 'Tool(s) is available for use.',
-            //     toolsInfo: llmResponse?.toolsInfo,
+            //     toolsData: llmResponse?.toolsData,
             // });
             /* ==================== STEP ENTRY ==================== */
 
-            this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
+            this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-            const toolProcessingTasks = toolsInfo.map(
+            const toolProcessingTasks = toolsData.map(
                 (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                     const endpoint = endpoints?.get(tool?.name);
                     // Sometimes we have object response from the LLM such as Anthropic
@@ -501,7 +482,7 @@ export class Conversation extends EventEmitter {
                         throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
                     }
 
-                    //await beforeFunctionCall(llmMessage, toolsInfo[tool.index]);
+                    //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                     this.emit('beforeToolCall', { tool, args });
 
                     const toolArgs = {
@@ -524,24 +505,18 @@ export class Conversation extends EventEmitter {
                             ? JSON.stringify(functionResponse)
                             : functionResponse;
 
-                    //await afterFunctionCall(functionResponse, toolsInfo[tool.index]);
+                    //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                     this.emit('afterToolCall', { tool, args }, functionResponse);
 
                     return { ...tool, result: functionResponse };
                 }
             );
 
-            toolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
+            const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-            //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-            toolsData.forEach((toolData) => {
-                messagesWithToolResult.push({
-                    tool_call_id: toolData.id,
-                    role: toolData.role,
-                    name: toolData.name,
-                    content: toolData.result, // we have error when the content is an object
-                });
+            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                messageBlock: llmMessage,
+                toolsData: processedToolsData,
             });
 
             this._context.push(...messagesWithToolResult);

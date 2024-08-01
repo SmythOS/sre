@@ -6,7 +6,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
+import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
@@ -46,7 +46,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             params.messages = otherMessages;
 
-            params.system = (systemMessage as LLMInputMessage)?.content;
+            params.system = (systemMessage as LLMMessageBlock)?.content;
         }
 
         const responseFormat = params?.responseFormat || 'json';
@@ -191,7 +191,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 // in AnthropicAI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
-                messageCreateArgs.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as LLMMessageBlock)?.content as string) || '';
 
                 messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
             }
@@ -208,7 +208,7 @@ export class AnthropicAIConnector extends LLMConnector {
             };
             const stopReason = result?.stop_reason;
 
-            let toolsInfo: ToolInfo[] = [];
+            let toolsData: ToolData[] = [];
             let useTool = false;
 
             if ((stopReason as 'tool_use') === 'tool_use') {
@@ -219,10 +219,10 @@ export class AnthropicAIConnector extends LLMConnector {
                 message.content = toolUseContentBlocks;
 
                 toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
-                    toolsInfo.push({
+                    toolsData.push({
                         index,
                         id: toolUseBlock?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
                         role: 'user',
@@ -239,7 +239,7 @@ export class AnthropicAIConnector extends LLMConnector {
                     useTool,
                     message,
                     content,
-                    toolsInfo,
+                    toolsData,
                 },
             };
         } catch (error) {
@@ -272,24 +272,23 @@ export class AnthropicAIConnector extends LLMConnector {
             };
 
             if (this.hasSystemMessage(messages)) {
-                // in Claude we need to provide system message separately
+                // in Anthropic AI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
-                messageCreateArgs.system = ((systemMessage as LLMInputMessage)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as LLMMessageBlock)?.content as string) || '';
 
                 messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
             }
 
             if (tools && tools.length > 0) messageCreateArgs.tools = tools;
 
-            /* Send request to Claude */
             const stream = await anthropic.messages.stream(messageCreateArgs);
 
             stream.on('error', (error) => {
                 emitter.emit('error', error);
             });
 
-            let toolsInfo: ToolInfo[] = [];
+            let toolsData: ToolData[] = [];
 
             stream.on('text', (text: string) => {
                 emitter.emit('content', text);
@@ -301,21 +300,21 @@ export class AnthropicAIConnector extends LLMConnector {
                 if (toolUseContentBlocks?.length === 0) return;
 
                 toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
-                    toolsInfo.push({
+                    toolsData.push({
                         index,
                         id: toolUseBlock?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
                         role: 'user',
                     });
                 });
 
-                emitter.emit('toolsInfo', toolsInfo);
+                emitter.emit('toolsData', toolsData);
             });
 
             setTimeout(() => {
-                emitter.emit('end', toolsInfo);
+                emitter.emit('end', toolsData);
             }, 100);
 
             return emitter;
@@ -358,6 +357,37 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         return tools?.length > 0 ? { tools } : {};
+    }
+
+    public prepareInputMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: LLMMessageBlock;
+        toolsData: ToolData[];
+    }): LLMToolResultMessageBlock[] {
+        const messageBlocks: LLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const transformedMessageBlock = {
+                ...messageBlock,
+                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
+            };
+            messageBlocks.push(transformedMessageBlock);
+        }
+
+        const transformedToolsData = toolsData.map((toolData) => ({
+            role: 'user',
+            content: JSON.stringify([
+                {
+                    type: 'tool_result',
+                    tool_use_id: toolData.id,
+                    content: toolData.result,
+                },
+            ]),
+        }));
+
+        return [...messageBlocks, ...transformedToolsData];
     }
 
     private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {

@@ -62,9 +62,6 @@ export class LLMContext {
 
             delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
 
-            // The response message from Anthropic AI contains an array within the content for the 'assistant' role. This array causes errors, so it needs to be stringified.
-            if (message?.content && typeof message?.content === 'object') message.content = JSON.stringify(message.content);
-
             const encoded = encodeChat([message], 'gpt-4');
             tokens += encoded.length;
             if (tokens > maxInputContext) {

@@ -16,7 +16,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -112,7 +112,7 @@ export class GoogleAIConnector extends LLMConnector {
             let messages = params?.messages || [];
 
             let systemInstruction;
-            let systemMessage: LLMInputMessage | {} = {};
+            let systemMessage: LLMMessageBlock | {} = {};
 
             if (this.hasSystemMessage(params?.messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
@@ -121,9 +121,9 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-                systemInstruction = (systemMessage as LLMInputMessage)?.content || '';
+                systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
             } else {
-                prompt = `${prompt}\n${(systemMessage as LLMInputMessage)?.content || ''}`;
+                prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
             }
 
             if (params?.messages) {

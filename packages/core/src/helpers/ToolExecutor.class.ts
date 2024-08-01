@@ -118,15 +118,15 @@ export default class ToolExecutor {
         if (llmResponse?.useTool) {
             /* ==================== STEP ENTRY ==================== */
             console.debug({
-                type: 'ToolsInfo',
+                type: 'ToolsData',
                 message: 'Tool(s) is available for use.',
-                toolsInfo: llmResponse?.toolsInfo,
+                toolsData: llmResponse?.toolsData,
             });
             /* ==================== STEP ENTRY ==================== */
 
             const toolsData: any[] = [];
 
-            for (const tool of llmResponse?.toolsInfo) {
+            for (const tool of llmResponse?.toolsData) {
                 const endpoint = endpoints?.get(tool?.name);
                 // Sometimes we have object response from the LLM such as Anthropic
                 const parsedArgs = JSONContent(tool?.arguments).tryParse();
