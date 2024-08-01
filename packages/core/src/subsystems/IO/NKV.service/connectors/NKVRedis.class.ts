@@ -61,15 +61,13 @@ export class NKVRedis extends NKVConnector {
     }
 
     @NKVRedis.NamespaceAccessControl
-    public async list(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: StorageData }[]> {
+    public async list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
 
         // filter out metadata keys & namespace sentinel keys
         keys = keys.filter(
-            (key) =>
-                !key.endsWith(`:${this.redisCacheConnector.metadataSuffix}`) && // if doesn't end with metadata suffix
-                key !== `${this.redisCacheConnector.prefix(teamId)}:${namespace}` // if not the namespace sentinel key
+            (key) => key !== `${this.redisCacheConnector.prefix(teamId)}:${namespace}` // if not the namespace sentinel key
         );
 
         if (keys.length <= 0) return [];
@@ -87,7 +85,7 @@ export class NKVRedis extends NKVConnector {
         // Combine the keys and their corresponding values
         return keys.map((key, index) => {
             return {
-                id: key.replace(`${this.redisCacheConnector.prefix(teamId)}:${namespace}:`, ''),
+                key: key.replace(`${this.redisCacheConnector.prefix(teamId)}:${namespace}:`, ''),
                 data: results[index][1] as StorageData,
             };
         });
@@ -99,10 +97,7 @@ export class NKVRedis extends NKVConnector {
         let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
         // filter out namespace sentinel key + namespace metadata key metadata key
         keys = keys.filter((key) => {
-            return ![
-                `${this.redisCacheConnector.prefix(teamId)}:${namespace}`,
-                `${this.redisCacheConnector.prefix(teamId)}:${namespace}:${this.redisCacheConnector.metadataSuffix}`,
-            ].includes(key);
+            return ![`${this.redisCacheConnector.prefix(teamId)}:${namespace}`].includes(key);
         });
         await this.redisCacheConnector.client.del(keys);
     }

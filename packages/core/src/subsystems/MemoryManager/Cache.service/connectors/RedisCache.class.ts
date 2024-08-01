@@ -18,7 +18,7 @@ export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
     private redis: IORedis;
     private _prefix: string = 'smyth:cache';
-    private _metadataSuffix: string = '__metadata__';
+    private _mdPrefix: string = 'smyth:metadata';
     private accountConnector: AccountConnector;
 
     constructor(settings: RedisConfig) {
@@ -50,8 +50,8 @@ export class RedisCache extends CacheConnector {
         return `${this._prefix}:team_${teamId}`;
     }
 
-    public get metadataSuffix() {
-        return this._metadataSuffix;
+    public mdPrefix(teamId: string) {
+        return `${this._mdPrefix}:team_${teamId}`;
     }
 
     @SecureConnector.AccessControl
@@ -85,7 +85,7 @@ export class RedisCache extends CacheConnector {
     public async delete(acRequest: AccessRequest, key: string): Promise<void> {
         //delete both the key and its metadata
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        await Promise.all([this.redis.del(`${this.prefix(teamId)}:${key}`), this.redis.del(`${this.prefix(teamId)}:${key}:${this.metadataSuffix}`)]);
+        await Promise.all([this.redis.del(`${this.prefix(teamId)}:${key}`), this.redis.del(`${this.mdPrefix(teamId)}:${key}`)]);
     }
 
     @SecureConnector.AccessControl
@@ -99,7 +99,7 @@ export class RedisCache extends CacheConnector {
         if (!this.exists(acRequest, key)) return undefined;
         try {
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-            const metadata = await this.redis.get(`${this.prefix(teamId)}:${key}:${this.metadataSuffix}`);
+            const metadata = await this.redis.get(`${this.mdPrefix(teamId)}:${key}`);
             return metadata ? (this.deserializeRedisMetadata(metadata) as CacheMetadata) : {};
         } catch (error) {
             return {};
@@ -109,17 +109,14 @@ export class RedisCache extends CacheConnector {
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        await this.redis.set(`${this.prefix(teamId)}:${key}:${this.metadataSuffix}`, this.serializeRedisMetadata(metadata));
+        await this.redis.set(`${this.mdPrefix(teamId)}:${key}`, this.serializeRedisMetadata(metadata));
     }
 
     @SecureConnector.AccessControl
     public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
         if (ttl) {
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-            await Promise.all([
-                this.redis.expire(`${this.prefix(teamId)}:${key}`, ttl),
-                this.redis.expire(`${this.prefix(teamId)}:${key}:${this.metadataSuffix}`, ttl),
-            ]);
+            await Promise.all([this.redis.expire(`${this.prefix(teamId)}:${key}`, ttl), this.redis.expire(`${this.mdPrefix(teamId)}:${key}`, ttl)]);
         }
     }
 
@@ -131,7 +128,7 @@ export class RedisCache extends CacheConnector {
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         const teamId = await this.accountConnector.getCandidateTeam(candidate);
-        const _metadata: any = await this.redis.get(`${this.prefix(teamId)}:${resourceId}:${this.metadataSuffix}`).catch((error) => {});
+        const _metadata: any = await this.redis.get(`${this.mdPrefix(teamId)}:${resourceId}`).catch((error) => {});
         const exists = _metadata !== undefined && _metadata !== null; //null or undefined metadata means the resource does not exist
         const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
 

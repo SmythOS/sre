@@ -11,7 +11,7 @@ export interface INKVRequest {
     delete(namespace: string, key: string): Promise<void>;
     exists(namespace: string, key: string): Promise<boolean>;
     deleteAll(namespace: string): Promise<void>;
-    list(namespace: string): Promise<{ id: string; data: StorageData }[]>;
+    list(namespace: string): Promise<{ key: string; data: StorageData }[]>;
 }
 
 /**
@@ -37,5 +37,5 @@ export abstract class NKVConnector extends SecureConnector {
     protected abstract delete(acRequest: AccessRequest, namespace: string, key: string): Promise<void>;
     protected abstract exists(acRequest: AccessRequest, namespace: string, key: string): Promise<boolean>;
     protected abstract deleteAll(acRequest: AccessRequest, namespace: string): Promise<void>;
-    protected abstract list(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: StorageData }[]>;
+    protected abstract list(acRequest: AccessRequest, namespace: string): Promise<{ key: string; data: StorageData }[]>;
 }
