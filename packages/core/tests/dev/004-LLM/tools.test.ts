@@ -29,7 +29,7 @@ const sre = SmythRuntime.Instance.init({
 });
 
 function runTestCases(model: string) {
-    it('runs a conversation with tool use', async () => {
+    it(`runs a conversation with tool use with Model: ${model}`, async () => {
         const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
@@ -44,7 +44,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation with tool use in stream mode', async () => {
+    it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
         const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
@@ -65,7 +65,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation with remote sentinel agent', async () => {
+    it(`runs a conversation with remote sentinel agent with Model: ${model}`, async () => {
         const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
 
         const conv = new Conversation(model, specUrl);
@@ -86,7 +86,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs a conversation remote weather openAPI.json', async () => {
+    it(`runs a conversation remote weather openAPI.json with Model: ${model}`, async () => {
         //TODO: test invalid yaml and json urls
         const specUrl = 'https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/xkcd.com/1.0.0/openapi.yaml';
 
@@ -109,7 +109,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it('runs successive tools calls', async () => {
+    it(`runs successive tools calls with Model: ${model}`, async () => {
         //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
         const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
         const conv = new Conversation(model, specUrl);
