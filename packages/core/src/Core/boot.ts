@@ -15,15 +15,15 @@ const console = Logger('Boot');
 export function boot() {
     console.debug('SRE Boot sequence started');
     const service: TServiceRegistry = {};
+    service.NKV = new NKVService();
     service.Account = new AccountService();
     service.Storage = new StorageService();
-    service.VectorDB = new VectorDBService();
     service.Cache = new CacheService();
     service.LLM = new LLMService();
     service.Vault = new VaultService();
     service.AgentData = new AgentDataService();
     service.CLI = new CLIService();
-    service.NKV = new NKVService();
+    service.VectorDB = new VectorDBService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

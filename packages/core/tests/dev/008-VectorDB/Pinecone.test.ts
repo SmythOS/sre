@@ -7,7 +7,40 @@ import { faker } from '@faker-js/faker';
 import { Document } from '@langchain/core/documents';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TConnectorService } from '@sre/types/SRE.types';
+
+class CustomAccountConnector extends AccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
+
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+
+    NKV: {
+        Connector: 'Redis',
+        Settings: {},
+    },
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
@@ -351,5 +384,37 @@ describe('Integration: Pinecone VectorDB', () => {
         });
     });
 
-    //describe('Security', () => {});
+    describe('Security', () => {
+        const ownerAgent = AccessCandidate.agent('agent-123456');
+        // const ownerTeam = AccessCandidate.team('9');
+        const strangerAgent = AccessCandidate.agent('agent-654321');
+
+        it('should isolate namespaces with same names for different teams', async () => {
+            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+
+            const namespace = faker.lorem.slug();
+
+            const v = Array.from({ length: 1536 }, () => Math.random());
+
+            await vectorDB.user(ownerAgent).insert(namespace, [
+                {
+                    source: v,
+                    id: faker.string.uuid(),
+                    metadata: {
+                        text: 'Best car in the world',
+                    },
+                },
+            ]);
+
+            await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
+
+            // expect that the search result would contain the inserted vector for the owner
+            const ownerSearchResult = await vectorDB.user(ownerAgent).search(namespace, v, { topK: 10 });
+            expect(ownerSearchResult).toHaveLength(1);
+
+            // expect that the search result would not contain the inserted vector for the stranger
+            const strangerSearchResult = await vectorDB.user(strangerAgent).search(namespace, v, { topK: 10 });
+            expect(strangerSearchResult).toHaveLength(0);
+        });
+    });
 });

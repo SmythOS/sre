@@ -20,20 +20,20 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract search(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; query: string | number[] },
+        namespace: string,
+        query: string | number[],
+        indexName: string,
         options: QueryOptions
     ): Promise<VectorsResultData>;
 
     protected abstract insert(
         acRequest: AccessRequest,
-        data: {
-            indexName: string;
-            namespace: string;
-            source: IVectorDataSourceDto | IVectorDataSourceDto[];
-        }
+        namespace: string,
+        source: IVectorDataSourceDto | IVectorDataSourceDto[],
+        indexName: string
     ): Promise<string[]>;
 
-    protected abstract delete(acRequest: AccessRequest, data: { id: string | string[]; indexName: string; namespace: string }): Promise<void>;
+    protected abstract delete(acRequest: AccessRequest, namespace: string, id: string | string[], indexName: string): Promise<void>;
 
     protected abstract createNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
 
