@@ -109,51 +109,55 @@ if the user asks any question, use /ask endpoint to get information and be able 
         expect(result).toBeDefined();
     }, 30000);
 
-    it(`runs successive tools calls with Model: ${model}`, async () => {
-        //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-        const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-        const conv = new Conversation(model, specUrl);
+    it(
+        `runs successive tools calls with Model: ${model}`,
+        async () => {
+            //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+            const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+            const conv = new Conversation(model, specUrl);
 
-        let streamResult = '';
-        conv.on('beforeToolCall', (args) => {
-            //console.log('beforeToolCall', args);
-        });
+            let streamResult = '';
+            conv.on('beforeToolCall', (args) => {
+                //console.log('beforeToolCall', args);
+            });
 
-        conv.on('data', (data) => {
-            //console.log('===== data =====');
-            //console.log('>>', data);
-        });
-        conv.on('content', (content) => {
-            console.log(content);
-            streamResult += content;
-        });
-        conv.on('start', (content) => {
-            console.log('============== Start ====================');
-        });
-        conv.on('end', (content) => {
-            console.log('============== End ====================');
-        });
+            conv.on('data', (data) => {
+                //console.log('===== data =====');
+                //console.log('>>', data);
+            });
+            conv.on('content', (content) => {
+                console.log(content);
+                streamResult += content;
+            });
+            conv.on('start', (content) => {
+                console.log('============== Start ====================');
+            });
+            conv.on('end', (content) => {
+                console.log('============== End ====================');
+            });
 
-        conv.on('beforeToolCall', (info) => {
-            try {
-                console.log('Using tool : ' + info.tool.name);
-            } catch (error) {}
-        });
-        conv.on('beforeToolCall', async (info) => {
-            try {
-                console.log('Got response from tool : ' + info.tool.name);
-            } catch (error) {}
-        });
+            conv.on('beforeToolCall', (info) => {
+                try {
+                    console.log('Using tool : ' + info.tool.name);
+                } catch (error) {}
+            });
+            conv.on('beforeToolCall', async (info) => {
+                try {
+                    console.log('Got response from tool : ' + info.tool.name);
+                } catch (error) {}
+            });
 
-        const result = await conv.streamPrompt(
-            'read smyth runtime dependency graph doc/dep-graph.dot and list the component that you find there'
-            //'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it, then search S3Storage.class.ts in smyth runtime repo, then write the first 3 lines of its code. make the operations successively and not in parallel'
-        );
-        expect(result).toBeDefined();
-    }, 120000);
+            const result = await conv.streamPrompt(
+                //'analyze smyth runtime code, implement a Google Cloud storage connector, register it in the storage service, implement the unit tests, and then write a documentation.\n\nif you get stuck somewhere or need confirmation, you can ask me'
+                'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
+            );
+            expect(result).toBeDefined();
+        },
+        60000 * 10
+    );
 }
 
-const models = ['gpt-4o', 'claude-3-5-sonnet-20240620'];
+const models = ['claude-3-5-sonnet-20240620', 'gpt-4o'];
 
 for (const model of models) {
     describe(`LLM Tools use for Model: ${model}`, () => {

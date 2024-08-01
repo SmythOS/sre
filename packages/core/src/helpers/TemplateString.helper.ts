@@ -1,5 +1,4 @@
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
-import { asyncReplace } from '../utils';
 
 export type TemplateStringMatch = RegExp;
 
@@ -30,6 +29,7 @@ export const Match = {
 
 export const TPLProcessor = {
     vaultTeam(teamId: string): (token) => Promise<string> {
+        //the token here represents the vault key name
         return async (token) => await VaultHelper.getTeamKey(token, teamId);
     },
 };

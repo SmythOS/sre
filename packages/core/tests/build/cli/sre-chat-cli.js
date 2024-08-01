@@ -336,12 +336,15 @@ function status(message) {
 
 async function main() {
     try {
-        config.env.LOG_LEVEL = 'none';
         const cliConnector = ConnectorService.getCLIConnector();
 
         const specUrl = cliConnector.params?.agent;
-        conv = new Conversation('gpt-4o', specUrl, { maxContextSize: 128000, maxOutputTokens: 4096 });
-
+        const model = cliConnector.params?.model || 'gpt-4o';
+        const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 2048);
+        const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 1024);
+        conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
+        console.log(model, { maxContextSize, maxOutputTokens });
+        config.env.LOG_LEVEL = 'none';
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {});
 

@@ -55,7 +55,7 @@ export type ToolData = {
     arguments: string | Record<string, any>;
     role: 'user' | 'tool';
     result?: string; // result string from the used tool
-}
+};
 
 export interface AnthropicToolDefinition {
     name: string;
@@ -77,7 +77,8 @@ export interface ToolsConfig {
 //#endregion
 export type LLMMessageBlock = {
     role: string;
-    content: string;
+    content: string | any;
+    tool_calls?: ToolData[];
 };
 
 export type LLMToolResultMessageBlock = LLMMessageBlock & {

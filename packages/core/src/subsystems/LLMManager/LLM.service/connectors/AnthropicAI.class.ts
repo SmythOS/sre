@@ -277,7 +277,9 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messageCreateArgs.system = ((systemMessage as LLMMessageBlock)?.content as string) || '';
 
-                messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
+                messageCreateArgs.messages = this.checkMessagesConsistency(otherMessages as Anthropic.MessageParam[]);
+            } else {
+                messageCreateArgs.messages = this.checkMessagesConsistency(messages);
             }
 
             if (tools && tools.length > 0) messageCreateArgs.tools = tools;
@@ -285,7 +287,7 @@ export class AnthropicAIConnector extends LLMConnector {
             const stream = await anthropic.messages.stream(messageCreateArgs);
 
             stream.on('error', (error) => {
-                emitter.emit('error', error);
+                emitter.emit('error', error + JSON.stringify(messageCreateArgs.messages));
             });
 
             let toolsData: ToolData[] = [];
@@ -297,25 +299,26 @@ export class AnthropicAIConnector extends LLMConnector {
             stream.on('finalMessage', (finalMessage) => {
                 const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
 
-                if (toolUseContentBlocks?.length === 0) return;
-
-                toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
-                    toolsData.push({
-                        index,
-                        id: toolUseBlock?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
-                        name: toolUseBlock?.name,
-                        arguments: toolUseBlock?.input,
-                        role: 'user',
+                if (toolUseContentBlocks?.length > 0) {
+                    toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                        toolsData.push({
+                            index,
+                            id: toolUseBlock?.id,
+                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                            name: toolUseBlock?.name,
+                            arguments: toolUseBlock?.input,
+                            role: 'user',
+                        });
                     });
-                });
 
-                emitter.emit('toolsData', toolsData);
+                    emitter.emit('toolsData', toolsData);
+                }
+
+                //only emit enf event after processing the final message
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
             });
-
-            setTimeout(() => {
-                emitter.emit('end', toolsData);
-            }, 100);
 
             return emitter;
         } catch (error: any) {
@@ -323,6 +326,29 @@ export class AnthropicAIConnector extends LLMConnector {
         }
     }
 
+    private checkMessagesConsistency(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+        //handle models specific messages content consistency
+        //   identified case that need to be handled
+
+        if (messages.length <= 0) return messages;
+
+        //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
+        if (messages[0].role === 'user' && Array.isArray(messages[0].content)) {
+            const hasToolResult = messages[0].content.find((content) => content.type === 'tool_result');
+
+            //we found a tool result in the first message, so we need to remove the user message
+            if (hasToolResult) {
+                messages.shift();
+            }
+        }
+
+        //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
+        if (messages[0].role !== 'user') {
+            messages.unshift({ role: 'user', content: '' }); //add an empty user message to keep the consistency
+        }
+
+        return messages;
+    }
     public async extractVisionLLMParams(config: any) {
         const params: LLMParams = await super.extractVisionLLMParams(config);
 
@@ -369,22 +395,44 @@ export class AnthropicAIConnector extends LLMConnector {
         const messageBlocks: LLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
-            const transformedMessageBlock = {
-                ...messageBlock,
-                content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
-            };
-            messageBlocks.push(transformedMessageBlock);
+            const content = [];
+            if (typeof messageBlock.content === 'object') {
+                content.push(messageBlock.content);
+            } else {
+                content.push({ type: 'text', text: messageBlock.content });
+            }
+            if (messageBlock.tool_calls) {
+                const calls = messageBlock.tool_calls.map((toolCall: any) => ({
+                    type: 'tool_use',
+                    id: toolCall.id,
+                    name: toolCall?.function?.name,
+                    input: toolCall?.function?.arguments,
+                }));
+
+                content.push(...calls);
+            }
+
+            // const transformedMessageBlock = {
+            //     role: messageBlock.role,
+            //     content: typeof messageBlock.content === 'object' ?  messageBlock.content : ,
+            //     //...messageBlock,
+            //     //content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
+            // };
+            messageBlocks.push({
+                role: messageBlock.role,
+                content: content,
+            });
         }
 
         const transformedToolsData = toolsData.map((toolData) => ({
             role: 'user',
-            content: JSON.stringify([
+            content: [
                 {
                     type: 'tool_result',
                     tool_use_id: toolData.id,
                     content: toolData.result,
                 },
-            ]),
+            ],
         }));
 
         return [...messageBlocks, ...transformedToolsData];
