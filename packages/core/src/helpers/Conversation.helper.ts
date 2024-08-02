@@ -395,7 +395,8 @@ export class Conversation extends EventEmitter {
             });
         });
 
-        _content += await toolsPromise;
+        const toolsContent = await toolsPromise;
+        _content += toolsContent;
         let content = JSONContent(_content).tryParse();
 
         // let streamPromise = new Promise((resolve, reject) => {
@@ -412,7 +413,10 @@ export class Conversation extends EventEmitter {
         //await Promise.all(promises);
         //return content;
 
-        if (message) this.emit('end');
+        if (message) {
+            this._context.push({ role: 'assistant', content: content });
+            this.emit('end');
+        }
 
         return content;
     }

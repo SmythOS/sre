@@ -287,7 +287,7 @@ export class AnthropicAIConnector extends LLMConnector {
             const stream = await anthropic.messages.stream(messageCreateArgs);
 
             stream.on('error', (error) => {
-                emitter.emit('error', error + JSON.stringify(messageCreateArgs.messages));
+                emitter.emit('error', error);
             });
 
             let toolsData: ToolData[] = [];
@@ -344,7 +344,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
         //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
         if (messages[0].role !== 'user') {
-            messages.unshift({ role: 'user', content: '' }); //add an empty user message to keep the consistency
+            messages.unshift({ role: 'user', content: 'continue' }); //add an empty user message to keep the consistency
         }
 
         return messages;
