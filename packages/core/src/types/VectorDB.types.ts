@@ -53,3 +53,10 @@ export interface IStorageVectorDataSource {
     text: string;
     embeddingIds: string[];
 }
+
+export interface IStorageVectorNamespace {
+    namespace: string;
+    indexName: string;
+    displayName: string;
+    teamId: string;
+}
