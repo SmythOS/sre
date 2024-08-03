@@ -284,7 +284,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             if (tools && tools.length > 0) messageCreateArgs.tools = tools;
 
-            const stream = await anthropic.messages.stream(messageCreateArgs);
+            const stream = anthropic.messages.stream(messageCreateArgs);
 
             stream.on('error', (error) => {
                 emitter.emit('error', error);
