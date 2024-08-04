@@ -149,8 +149,8 @@ if the user asks any question, use /ask endpoint to get information and be able 
 
             const result = await conv.streamPrompt(
                 //'analyze smyth runtime code, implement a Google Cloud storage connector, register it in the storage service, implement the unit tests, and then write a documentation.\n\nif you get stuck somewhere or need confirmation, you can ask me'
-                //'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
-                'search documentation about ldap, then summarize it in a single sentence'
+                'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
+                //'search documentation about ldap, then summarize it in a single sentence'
             );
             expect(result).toBeDefined();
         },

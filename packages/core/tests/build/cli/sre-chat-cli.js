@@ -237,6 +237,7 @@ kbListener.addListener(function (e, down) {
     if (e.rawKey.name === 'LSHIFT' || e.rawKey.name === 'RSHIFT') {
         shift = e.state === 'DOWN';
     }
+
     if (e.rawKey.name === 'RETURN' && e.state === 'DOWN' && ctrl) {
         if (inputBox.focused) {
             submit();
@@ -344,7 +345,9 @@ async function main() {
         const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 1024);
         conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
         console.log(model, { maxContextSize, maxOutputTokens });
+
         config.env.LOG_LEVEL = 'none';
+
         let streamResult = '';
         conv.on('beforeToolCall', (args) => {});
 

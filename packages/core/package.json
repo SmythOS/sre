@@ -28,6 +28,8 @@
         "blessed-contrib": "^1.0.11",
         "cross-env": "^7.0.3",
         "dependency-cruiser": "^16.3.3",
+        "express": "^4.19.2",
+        "express-session": "^1.18.0",
         "keypress": "^0.2.1",
         "knip": "^5.23.1",
         "neo-blessed": "^0.2.0",

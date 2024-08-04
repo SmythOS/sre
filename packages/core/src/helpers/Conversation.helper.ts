@@ -52,6 +52,7 @@ export class Conversation extends EventEmitter {
         return this._context;
     }
 
+    private _lastError;
     private _spec;
     public set spec(specSource) {
         this.ready.then(() => {
@@ -84,32 +85,44 @@ export class Conversation extends EventEmitter {
         private _specSource?: string | Record<string, any>,
         private _settings?: { maxContextSize: number; maxOutputTokens: number }
     ) {
+        //TODO: handle loading previous session (messages)
         super();
+
+        //this event listener avoids unhandled errors that can cause crashes
+        this.on('error', (error) => {
+            this._lastError = error;
+            console.warn('Conversation Error: ', error);
+        });
         if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
         if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
         if (_specSource) {
-            this.loadSpecFromSource(_specSource).then((spec) => {
-                if (!spec) {
-                    this._status = 'error';
-                    this.emit('error', 'Invalid OpenAPI specification data format');
-                    throw new Error('Invalid OpenAPI specification data format');
-                }
-                this._spec = spec;
+            this.loadSpecFromSource(_specSource)
+                .then((spec) => {
+                    if (!spec) {
+                        this._status = 'error';
+                        this.emit('error', 'Unable to parse OpenAPI specifications');
+                        throw new Error('Invalid OpenAPI specification data format');
+                    }
+                    this._spec = spec;
 
-                this.updateModel(this._model);
-                this._status = 'ready';
-            });
+                    this.updateModel(this._model);
+                    this._status = 'ready';
+                })
+                .catch((error) => {
+                    this._status = 'error';
+                    this.emit('error', error);
+                });
         } else {
             this.updateModel(this._model);
             this._status = 'ready';
         }
     }
 
-    private get ready() {
+    public get ready() {
         if (this._currentWaitPromise) return this._currentWaitPromise;
         this._currentWaitPromise = new Promise((resolve, reject) => {
             if (this._status) {
-                return resolve(true);
+                return resolve(this._status);
             }
 
             const maxWaitTime = 30000;
@@ -119,7 +132,7 @@ export class Conversation extends EventEmitter {
             const wait = setInterval(() => {
                 if (this._status) {
                     clearInterval(wait);
-                    return resolve(true);
+                    return resolve(this._status);
                 } else {
                     waitTime += interval;
                     if (waitTime >= maxWaitTime) {
@@ -385,12 +398,15 @@ export class Conversation extends EventEmitter {
 
                 this._context.push(...messagesWithToolResult);
 
-                resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                //console.log('Result after tool call: ', result);
             });
 
             eventEmitter.on('end', async (toolsData) => {
                 if (!hasTools) {
-                    resolve('');
+                    //console.log(' ===> resolved content no tool', _content);
+                    this._context.push({ role: 'assistant', content: _content });
+                    resolve(_content);
                 }
             });
         });
@@ -414,8 +430,11 @@ export class Conversation extends EventEmitter {
         //return content;
 
         if (message) {
-            this._context.push({ role: 'assistant', content: content });
+            //console.log('main content', content);
+            //this._context.push({ role: 'assistant', content: content });
             this.emit('end');
+        } else {
+            //console.log('tool content', content);
         }
 
         return content;
@@ -692,6 +711,7 @@ export class Conversation extends EventEmitter {
         if (typeof specSource === 'string') {
             if (isUrl(specSource as string)) {
                 const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
+
                 if (spec.info?.description) this.systemPrompt = spec.info.description;
                 if (spec.info?.title) this.assistantName = spec.info.title;
 
