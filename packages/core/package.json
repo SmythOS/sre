@@ -54,6 +54,7 @@
         "@apidevtools/swagger-parser": "^10.1.0",
         "@aws-sdk/client-s3": "^3.529.0",
         "@google/generative-ai": "^0.14.1",
+        "@huggingface/inference": "^2.8.0",
         "@langchain/pinecone": "^0.0.8",
         "@node-rs/xxhash": "^1.7.3",
         "@pinecone-database/pinecone": "^3.0.0",
