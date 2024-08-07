@@ -23,6 +23,7 @@ import Async from './Async.class';
 import Await from './Await.class';
 import ForEach from './ForEach.class';
 import Code from './Code.class';
+import HuggingFace from './HuggingFace.class';
 
 const components = {
     Component: new Component(),
@@ -53,6 +54,7 @@ const components = {
     Await: new Await(),
     ForEach: new ForEach(),
     Code: new Code(),
+    HuggingFace: new HuggingFace(),
 };
 
 export default components;

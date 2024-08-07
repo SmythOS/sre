@@ -1,0 +1,580 @@
+{
+    "text-classification": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be classified",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "token-classification": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be classified",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "aggregation_strategy": {
+                "type": "string",
+                "default": "simple",
+                "desc": "(Default: simple). There are several aggregation strategies:",
+                "supportedValues": [
+                    {
+                        "value": "none",
+                        "desc": "Every token gets classified without further aggregation."
+                    },
+                    {
+                        "value": "simple",
+                        "desc": "Entities are grouped according to the default schema (B-, I- tags get merged when the tag is similar)."
+                    },
+                    {
+                        "value": "first",
+                        "desc": "Same as the simple strategy except words cannot end up with different tags. Words will use the tag of the first token when there is ambiguity."
+                    },
+                    {
+                        "value": "average",
+                        "desc": "Same as the simple strategy except words cannot end up with different tags. Scores are averaged across tokens and then the maximum label is applied."
+                    },
+                    {
+                        "value": "max",
+                        "desc": "Same as the simple strategy except words cannot end up with different tags. Word entity will be the token with the maximum score."
+                    }
+                ]
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "table-question-answering": {
+        "inputs": {
+            "Query": {
+                "type": "string",
+                "desc": "(required) The query in plain text that you want to ask the table",
+                "request_parameter_name": "query",
+                "request_parameter_type": "string"
+            },
+            "Table": {
+                "type": "string",
+                "desc": "(required) A table of data represented as a dict of list where entries are headers and the lists are all the values, all lists must have the same size.",
+                "request_parameter_name": "table",
+                "request_parameter_type": "Record<string, string[]>"
+            }
+        },
+        "formatRequest": "inputs: { query: \"{{query}}\", table: {{table}} }"
+    },
+    "question-answering": {
+        "inputs": {
+            "Question": {
+                "type": "string",
+                "request_parameter_name": "question",
+                "request_parameter_type": "string"
+            },
+            "Context": {
+                "type": "string",
+                "request_parameter_name": "context",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: { context: \"{{context}}\", question: \"{{question}}\" }"
+    },
+    "document-question-answering": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "image",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            },
+            "Question": {
+                "type": "string",
+                "desc": "(required) Question about document image.",
+                "request_parameter_name": "question",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: { image: {{image}}, question: \"{{question}}\" }"
+    },
+    "visual-question-answering": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "image",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            },
+            "Question": {
+                "type": "string",
+                "desc": "(required) Question about visual image.",
+                "request_parameter_name": "question",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: { image: {{image}}, question: \"{{question}}\" }"
+    },
+    "zero-shot-classification": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string or list of strings",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string | string[]"
+            }
+        },
+        "parameters": {
+            "candidate_labels": {
+                "type": "string[]",
+                "default": [],
+                "desc": "(required) a list of strings that are potential classes for inputs. (max 10 candidate_labels, for more, simply run multiple requests, results are going to be misleading if using too many candidate_labels anyway. If you want to keep the exact same, you can simply run multi_label=true and do the scaling on your end. )"
+            },
+            "multi_label": {
+                "type": "boolean",
+                "default": false,
+                "desc": "(Default: false) Boolean that is set to True if classes can overlap"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\", parameters: { candidate_labels: [{{candidate_labels}}] }"
+    },
+    "translation": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be translated in the original languages",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "summarization": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be summarized",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "min_length": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the minimum length in tokens of the output summary."
+            },
+            "max_length": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the maximum length in tokens of the output summary."
+            },
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+            },
+            "top_p": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+            },
+            "temperature": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+            },
+            "repetition_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+            },
+            "max_time": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "conversational": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) The last input from the user in the conversation.",
+                "request_parameter_name": "text",
+                "request_parameter_type": "string"
+            },
+            "Generated_responses": {
+                "type": "string[]",
+                "desc": "A list of strings corresponding to the earlier replies from the model.",
+                "request_parameter_name": "generated_responses",
+                "request_parameter_type": "string[]"
+            },
+            "Past_user_inputs": {
+                "type": "string[]",
+                "desc": "A list of strings corresponding to the earlier replies from the user. Should be of the same length of generated_responses.",
+                "request_parameter_name": "past_user_inputs",
+                "request_parameter_type": "string[]"
+            }
+        },
+        "parameters": {
+            "min_length": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the minimum length in tokens of the output summary."
+            },
+            "max_length": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the maximum length in tokens of the output summary."
+            },
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+            },
+            "top_p": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+            },
+            "temperature": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+            },
+            "repetition_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+            },
+            "max_time": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\", past_user_inputs: [{{past_user_inputs}}], generated_responses: [{{generated_responses}}] }"
+    },
+    "text-generation": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be generated from",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "do_sample": {
+                "type": "boolean",
+                "default": true,
+                "desc": "(Optional: true). Bool. Whether or not to use sampling, use greedy decoding otherwise."
+            },
+            "max_time": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+            },
+            "num_return_sequences": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1). Integer. The number of proposition you want to be returned."
+            },
+            "repetition_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+            },
+            "return_full_text": {
+                "type": "boolean",
+                "default": true,
+                "desc": "(Default: true). Bool. If set to False, the return results will not contain the original query making it easier for prompting."
+            },
+            "temperature": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+            },
+            "max_new_tokens": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Int (0-250). The amount of new tokens to be generated, this does not include the input length it is a estimate of the size of generated text you want. Each new tokens slows down the request, so look for balance between response times and length of text generated."
+            },
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+            },
+            "top_p": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+            },
+            "truncate": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer. The maximum number of tokens from the input."
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "text2text-generation": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be generated from",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "parameters": {
+            "max_time": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+            },
+            "num_return_sequences": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1). Integer. The number of proposition you want to be returned."
+            },
+            "repetition_penalty": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+            },
+            "temperature": {
+                "type": "number",
+                "default": 1,
+                "desc": "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+            },
+            "max_new_tokens": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Int (0-250). The amount of new tokens to be generated, this does not include the input length it is a estimate of the size of generated text you want. Each new tokens slows down the request, so look for balance between response times and length of text generated."
+            },
+            "top_k": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+            },
+            "top_p": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "fill-mask": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be filled from, must contain the [MASK] token (check model card for exact name of the mask)",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "sentence-similarity": {
+        "inputs": {
+            "Source_sentence": {
+                "type": "string",
+                "desc": "(required) The string that you wish to compare the other strings with. This can be a phrase, sentence, or longer passage, depending on the model being used.",
+                "request_parameter_name": "source_sentence",
+                "request_parameter_type": "string"
+            },
+            "Sentences": {
+                "type": "string[]",
+                "desc": "(required) A list of strings which will be compared against the source_sentence.",
+                "request_parameter_name": "sentences",
+                "request_parameter_type": "string[]"
+            }
+        },
+        "formatRequest": "inputs: { source_sentence: \"{{source_sentence}}\", sentences: [{{sentences}}] }"
+    },
+    "text-to-image": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) prompt to generate image from",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "image-to-text": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{image}} "
+    },
+    "image-classification": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{image}}"
+    },
+    "object-detection": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{image}}"
+    },
+    "image-segmentation": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{image}}"
+    },
+    "zero-shot-image-classification": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "image",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "parameters": {
+            "candidate_labels": {
+                "type": "string[]",
+                "desc": "A list of strings that are potential classes for inputs. (max 10)"
+            }
+        },
+        "formatRequest": "inputs: { image: {{image}}, parameters: { candidate_labels: [{{candidate_labels}}] } }"
+    },
+    "image-to-image": {
+        "inputs": {
+            "Image": {
+                "type": "URL | base64 | file | SmythFileObject",
+                "desc": "(required) image URL, base64 string, uploaded image, or linked image output",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "parameters": {
+            "prompt": {
+                "type": "string",
+                "desc": "(Optional) The text prompt to guide the image generation",
+                "default": "None"
+            },
+            "strength": {
+                "type": "number",
+                "default": 0,
+                "desc": "(Optional) The 'strength' parameter is effective only for SD img2img and alt diffusion img2img models. It conceptually indicates the extent of transformation applied to the reference 'image,' with values between 0 and 1. A higher 'strength' adds more noise to the initial 'image,' and the denoising process runs for the specified number of iterations in 'num_inference_steps.' A 'strength' of 1 ignores the 'image,' applying maximum added noise and running denoising for the full set of iterations."
+            },
+            "negative_prompt": {
+                "type": "string",
+                "default": "None",
+                "desc": "(Optional) A negative prompt for the image generation"
+            },
+            "height": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Optional) The height in pixels of the generated image"
+            },
+            "width": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Optional) The width in pixels of the generated image"
+            },
+            "num_inference_steps": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Optional) The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference."
+            },
+            "guidance_scale": {
+                "type": "number",
+                "default": "None",
+                "desc": "(Optional) Guidance scale: Higher guidance scale encourages to generate images that are closely linked to the text `prompt`, usually at the expense of lower image quality."
+            },
+            "guess_mode": {
+                "type": "boolean",
+                "default": "None",
+                "desc": "(Optional) guess_mode only works for ControlNet models, defaults to False In this mode, the ControlNet encoder will try best to recognize the content of the input image even if you remove all prompts. The `guidance_scale` between 3.0 and 5.0 is recommended."
+            }
+        },
+        "formatRequest": "inputs: {{image}}"
+    },
+    "text-to-speech": {
+        "inputs": {
+            "Text": {
+                "type": "string",
+                "desc": "(required) a string to be converted to speech",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    },
+    "automatic-speech-recognition": {
+        "inputs": {
+            "Audio": {
+                "type": "URL | base64 | SmythFileObject",
+                "desc": "(required) audio URL, base64 string, SmythFileObject",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{audio}}"
+    },
+    "audio-to-audio": {
+        "inputs": {
+            "Audio": {
+                "type": "URL | base64 | SmythFileObject",
+                "desc": "(required) audio URL, base64 string, SmythFileObject",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{audio}}"
+    },
+    "audio-classification": {
+        "inputs": {
+            "Audio": {
+                "type": "URL | base64 | SmythFileObject",
+                "desc": "(required) audio URL, base64 string, SmythFileObject",
+                "request_parameter_name": "data",
+                "request_parameter_type": "Blob | ArrayBuffer"
+            }
+        },
+        "formatRequest": "data: {{audio}}"
+    },
+    "feature-extraction": {
+        "inputs": {
+            "Text": {
+                "type": "string | string[]",
+                "desc": "(required) a string or a list of strings to get the features from.",
+                "request_parameter_name": "inputs",
+                "request_parameter_type": "string | string[]"
+            }
+        },
+        "formatRequest": "inputs: \"{{text}}\""
+    }
+}
