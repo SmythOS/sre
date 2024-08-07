@@ -22,6 +22,7 @@ import LLMAssistant from './LLMAssistant.class';
 import Async from './Async.class';
 import Await from './Await.class';
 import ForEach from './ForEach.class';
+import Code from './Code.class';
 
 const components = {
     Component: new Component(),
@@ -51,6 +52,7 @@ const components = {
     Async: new Async(),
     Await: new Await(),
     ForEach: new ForEach(),
+    Code: new Code(),
 };
 
 export default components;
