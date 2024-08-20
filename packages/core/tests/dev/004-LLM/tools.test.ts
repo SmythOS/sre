@@ -30,7 +30,7 @@ const sre = SmythRuntime.Instance.init({
 
 function runTestCases(model: string) {
     it(`runs a conversation with tool use with Model: ${model}`, async () => {
-        const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
@@ -45,7 +45,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
     }, 30000);
 
     it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
-        const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
@@ -113,7 +113,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         `runs successive tools calls with Model: ${model}`,
         async () => {
             //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-            const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+            const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
             const conv = new Conversation(model, specUrl);
 
             let streamResult = '';
