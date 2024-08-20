@@ -8,6 +8,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
+import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import DataSourceIndexer from './DataSourceIndexer.class';
 
 export default class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
@@ -42,6 +44,12 @@ export default class DataSourceCleaner extends Component {
             }
 
             const namespaceId = configSchema.value.namespaceId;
+            const vectorDB = ConnectorService.getVectorDBConnector();
+            const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            if (!nsExists) {
+                throw new Error(`Namespace ${namespaceId} does not exist`);
+            }
+
             const providedId = TemplateString(config.data.id).parse(input).result;
             const idRegex = /^[a-zA-Z0-9\-\_\.]+$/;
             if (!idRegex.test(providedId)) {
@@ -49,26 +57,9 @@ export default class DataSourceCleaner extends Component {
             }
             debugOutput += `Searching for data source with id: ${providedId}\n`;
 
-            const dsId = this.generateContextUID(providedId, teamId, namespaceId);
+            const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
 
-            // await this.deleteRecord(dsId, token);
-
-            // const vectorDB = ConnectorService.getVectorDBConnector();
-            // await vectorDB.user(AccessCandidate.team(teamId)).delete(namespaceId, providedId);
-            const dsUrl = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-
-            const dataBuffer = await SmythFS.Instance.read(dsUrl, AccessCandidate.team(teamId));
-            const data = JSONContentHelper.create(dataBuffer.toString()).tryParse() as IStorageVectorDataSource;
-
-            if (!data) {
-                throw new Error(`Data source not found with id: ${providedId}`);
-            }
-
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            await vectorDB.user(AccessCandidate.team(teamId)).delete(namespaceId, data.embeddingIds || []);
-
-            // after successfully deleting the embeddings, delete the datasource
-            await SmythFS.Instance.delete(dsUrl, AccessCandidate.team(teamId));
+            await VectorsHelper.load().deleteDatasource(teamId, namespaceId, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;
 
@@ -85,10 +76,6 @@ export default class DataSourceCleaner extends Component {
                 _error: err?.message || "Couldn't delete data source",
             };
         }
-    }
-
-    private generateContextUID(providedId: string, teamId: string, namespaceId: string) {
-        return `${teamId}::${namespaceId}::${providedId}`;
     }
 
     validateInput(input: any) {

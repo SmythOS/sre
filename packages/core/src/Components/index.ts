@@ -19,6 +19,11 @@ import LogicAtLeast from './LogicAtLeast.class';
 import LogicAtMost from './LogicAtMost.class';
 import AgentPlugin from './AgentPlugin.class';
 import LLMAssistant from './LLMAssistant.class';
+import Async from './Async.class';
+import Await from './Await.class';
+import ForEach from './ForEach.class';
+import Code from './Code.class';
+import HuggingFace from './HuggingFace.class';
 
 const components = {
     Component: new Component(),
@@ -45,6 +50,11 @@ const components = {
     LogicAtMost: new LogicAtMost(),
     AgentPlugin: new AgentPlugin(),
     LLMAssistant: new LLMAssistant(),
+    Async: new Async(),
+    Await: new Await(),
+    ForEach: new ForEach(),
+    Code: new Code(),
+    HuggingFace: new HuggingFace(),
 };
 
 export default components;

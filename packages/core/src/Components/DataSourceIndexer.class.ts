@@ -44,7 +44,12 @@ export default class DataSourceIndexer extends Component {
 
             const namespaceId = _config.namespace;
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
-            // await this.checkIfTeamOwnsNamespace(teamId, namespaceId, token);
+
+            const vectorDB = ConnectorService.getVectorDBConnector();
+            const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            if (!nsExists) {
+                throw new Error(`Namespace ${namespaceId} does not exist`);
+            }
 
             const inputSchema = this.validateInput(input);
             if (inputSchema.error) {
@@ -63,8 +68,6 @@ export default class DataSourceIndexer extends Component {
                 // Validate the provided ID if it's not auto-generated
                 throw new Error(`Invalid id. Accepted characters: 'a-z', 'A-Z', '0-9', '-', '_', '.'`);
             }
-
-            const dsId = this.generateContextUID(_config.id, teamId, namespaceId);
 
             // check if the datasource already exists with the same id
             // await this.checkForRecordDuplicate(dsId, token);
@@ -93,6 +96,8 @@ export default class DataSourceIndexer extends Component {
             //     }
             // } else
 
+            const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
+
             if (isUrl(inputSchema.value.Source)) {
                 debugOutput += `STEP: Parsing input as url\n\n`;
                 throw new Error('URLs are not supported yet');
@@ -109,11 +114,11 @@ export default class DataSourceIndexer extends Component {
                 debugOutput += `STEP: Parsing input as text\n\n`;
                 indexRes = await this.addDSFromText({
                     teamId,
-                    namespaceId,
-                    dsId,
+                    namespaceId: namespaceId,
                     text: inputSchema.value.Source,
                     name: _config.name || 'Untitled',
                     metadata: _config.metadata || null,
+                    sourceId: dsId,
                 });
             }
 
@@ -144,75 +149,22 @@ export default class DataSourceIndexer extends Component {
             .validate(input);
     }
 
-    public generateContextUID(providedId: string, teamId: string, namespaceId: string) {
-        return `${teamId}::${namespaceId}::${providedId}`;
-    }
-
-    private parseContextUID(uid: string) {
-        if (!uid) return null;
-        const parts = uid.split('::');
-        if (parts.length != 3) return null;
-        return {
-            teamId: parts[0],
-            agentId: parts[1],
-            providedId: parts[2],
-        };
-    }
-
-    private async addDSFromText({ teamId, namespaceId, dsId, text, name, metadata }) {
-        const ids = await VectorsHelper.load().ingestText(text, namespaceId, {
+    private async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
+        const id = await VectorsHelper.load().createDatasource(text, namespaceId, {
             teamId,
             metadata,
+            id: sourceId,
+            label: name,
         });
 
-        const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-        const dsData: IStorageVectorDataSource = {
-            namespaceId,
-            teamId,
-            name,
-            metadata,
-            text,
-            embeddingIds: ids,
-        };
-        await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
+        return id;
+    }
+
+    public static genDsId(providedId: string, teamId: string, namespaceId: string) {
+        return `${teamId}::${namespaceId}::${providedId}`;
     }
 
     private async addDSFromUrl({ teamId, namespaceId, dsId, type, url, name, metadata }) {
         throw new Error('URLs are not supported yet');
-        // try {
-        //     const res = await SmythAPIHelper.fromAuth(token).mwSysAPI.post(`/vectors/datasources`, {
-        //         type,
-        //         url,
-        //         name,
-        //         metadata,
-        //         id: dsId,
-        //         namespaceId,
-        //         teamId,
-        //     });
-
-        //     return res;
-        // } catch (err: any) {
-        //     console.log(err?.response?.data);
-        //     throw new Error(err?.response?.data?.message || 'Error creating datasource');
-        // }
     }
-
-    // private async checkIfTeamOwnsNamespace(teamId: string, namespaceId: string, token: string) {
-    //     try {
-    //         const res = await SmythAPIHelper.fromAuth({ token }).mwSysAPI.get(`/vectors/namespaces/${namespaceId}`);
-    //         if (res.data?.namespace?.teamId !== teamId) {
-    //             throw new Error(`Namespace does not exist`);
-    //         }
-    //         return true;
-    //     } catch (err) {
-    //         throw new Error(`Namespace does not exist`);
-    //     }
-    // }
-
-    // private async checkForRecordDuplicate(dsId: string, token: string) {
-    //     try {
-    //         // try to delete the datasource if it exists
-    //         const res = await SmythAPIHelper.fromAuth({ token }).mwSysAPI.delete(`/vectors/datasources/${dsId}`);
-    //     } catch (err) {}
-    // }
 }

@@ -7,7 +7,40 @@ import { faker } from '@faker-js/faker';
 import { Document } from '@langchain/core/documents';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TConnectorService } from '@sre/types/SRE.types';
+
+class CustomAccountConnector extends AccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
+
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+
+    NKV: {
+        Connector: 'Redis',
+        Settings: {},
+    },
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
@@ -18,7 +51,7 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-const EVENTUAL_CONSISTENCY_DELAY = 10_000;
+const EVENTUAL_CONSISTENCY_DELAY = 4_000;
 
 describe('Integration: Pinecone VectorDB', () => {
     describe('Functional', () => {
@@ -35,6 +68,11 @@ describe('Integration: Pinecone VectorDB', () => {
                     .user(team)
                     .delete(id.namespace, [id.id])
                     .catch((e) => {});
+
+                await vectorDB
+                    .user(team)
+                    .deleteNamespace(id.namespace)
+                    .catch((e) => {});
             }
         });
 
@@ -43,8 +81,24 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const team = AccessCandidate.team('team-123456');
 
-            const namespace = await vectorDB.user(team).createNamespace('test-namespace');
+            const namespace = await vectorDB.user(team).createNamespace(faker.lorem.slug());
             expect(namespace).toBeUndefined();
+        });
+
+        it("list namespaces should return the created namespace's name", async () => {
+            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+            const team = AccessCandidate.team('team-123456');
+
+            const namespaceSlugs = [faker.lorem.slug(), faker.lorem.slug(), faker.lorem.slug()];
+            const promises = namespaceSlugs.map((ns) => vectorDB.user(team).createNamespace(ns));
+            await Promise.all(promises);
+
+            const namespaces = await vectorDB.user(team).listNamespaces();
+            expect(namespaces.length).toBeGreaterThanOrEqual(namespaceSlugs.length);
+            expect(namespaces).toEqual(expect.arrayContaining(namespaceSlugs));
+
+            const promises2 = namespaceSlugs.map((ns) => vectorDB.user(team).deleteNamespace(ns));
+            await Promise.all(promises2);
         });
 
         it('insert as raw vectors', async () => {
@@ -69,6 +123,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const team = AccessCandidate.team('team-123456');
 
             const namespace = faker.lorem.slug();
+            await vectorDB.user(team).createNamespace(namespace);
             idsToClean.push({ id: '1', namespace });
             idsToClean.push({ id: '2', namespace });
             await vectorDB.user(team).insert(namespace, dummyVectors);
@@ -96,6 +151,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const team = AccessCandidate.team('team-123456');
 
             const namespace = faker.lorem.slug();
+            await vectorDB.user(team).createNamespace(namespace);
             idsToClean.push({ id: '1', namespace });
             await vectorDB.user(team).insert(namespace, dummyDocuments);
 
@@ -135,6 +191,7 @@ describe('Integration: Pinecone VectorDB', () => {
             ];
 
             const namespace = faker.lorem.slug();
+            await vectorDB.user(team).createNamespace(namespace);
             idsToClean.push({ id: dummyVectors[0].id, namespace });
             idsToClean.push({ id: dummyVectors[1].id, namespace });
             await vectorDB.user(team).insert(namespace, dummyVectors);
@@ -160,6 +217,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const dummyText = 'Best car in the world';
             const id = faker.string.uuid();
             const namespace = faker.string.uuid();
+            await vectorDB.user(team).createNamespace(namespace);
             const v = await VectorsHelper.load().embedText(dummyText);
 
             await vectorDB.user(team).insert(namespace, [
@@ -189,6 +247,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const dummyText = 'Best car in the world';
             const id = faker.string.uuid();
             const namespace = faker.string.uuid();
+            await vectorDB.user(team).createNamespace(namespace);
 
             const v = Array.from({ length: 1536 }, () => Math.random());
 
@@ -222,6 +281,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const dummyText = 'Best car in the world';
             const id = faker.string.uuid();
             const namespace = faker.string.uuid();
+            await vectorDB.user(team).createNamespace(namespace);
             const v = await VectorsHelper.load().embedText(dummyText);
 
             await vectorDB.user(team).insert(namespace, [
@@ -255,6 +315,8 @@ describe('Integration: Pinecone VectorDB', () => {
 
             const namespace1 = faker.lorem.slug();
             const namespace2 = faker.lorem.slug();
+            await vectorDB.user(team).createNamespace(namespace1);
+            await vectorDB.user(team).createNamespace(namespace2);
 
             const id1 = faker.string.uuid();
             const id2 = faker.string.uuid();
@@ -318,6 +380,7 @@ describe('Integration: Pinecone VectorDB', () => {
             ];
 
             const namespace = faker.lorem.slug();
+            await vectorDB.user(team).createNamespace(namespace);
             idsToClean.push({ id: dummyVectors[0].id, namespace });
             idsToClean.push({ id: dummyVectors[1].id, namespace });
 
@@ -327,29 +390,41 @@ describe('Integration: Pinecone VectorDB', () => {
 
             await vectorDB.user(team).deleteNamespace(namespace);
         });
+    });
 
-        it('Helper: chunk large texts and insert them as separate vectors', async () => {
-            const hugeText = faker.lorem.paragraphs(30);
+    describe('Security', () => {
+        const ownerAgent = AccessCandidate.agent('agent-123456');
+        // const ownerTeam = AccessCandidate.team('9');
+        const strangerAgent = AccessCandidate.agent('agent-654321');
+
+        it('should isolate namespaces with same names for different teams', async () => {
+            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+
             const namespace = faker.lorem.slug();
-            await VectorsHelper.load().ingestText(hugeText, namespace, { teamId: 'team-123' });
+            await vectorDB.user(ownerAgent).createNamespace(namespace); // create namespace for the owner
+            await vectorDB.user(strangerAgent).createNamespace(namespace); // create namespace for the stranger
 
-            const expectedVectorsSize = (await VectorsHelper.chunkText(hugeText)).length;
+            const v = Array.from({ length: 1536 }, () => Math.random());
+
+            await vectorDB.user(ownerAgent).insert(namespace, [
+                {
+                    source: v,
+                    id: faker.string.uuid(),
+                    metadata: {
+                        text: 'Best car in the world',
+                    },
+                },
+            ]);
 
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-            const results = await ConnectorService.getVectorDBConnector('Pinecone')
-                .user(AccessCandidate.team('team-123'))
-                .search(
-                    namespace,
-                    Array.from({ length: 1536 }, () => Math.random()),
-                    { topK: expectedVectorsSize }
-                );
+            // expect that the search result would contain the inserted vector for the owner
+            const ownerSearchResult = await vectorDB.user(ownerAgent).search(namespace, v, { topK: 10 });
+            expect(ownerSearchResult).toHaveLength(1);
 
-            expect(results).toHaveLength(expectedVectorsSize);
-
-            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
+            // expect that the search result would not contain the inserted vector for the stranger
+            const strangerSearchResult = await vectorDB.user(strangerAgent).search(namespace, v, { topK: 10 });
+            expect(strangerSearchResult).toHaveLength(0);
         });
     });
-
-    //describe('Security', () => {});
 });

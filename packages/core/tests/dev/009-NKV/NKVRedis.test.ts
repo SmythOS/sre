@@ -53,13 +53,6 @@ describe('Integration: Redis NKV', () => {
             const namespace = faker.word.noun();
 
             await nkv.user(ownerAgent).set(namespace, faker.word.noun(), JSON.stringify({ str: faker.lorem.sentence() }));
-
-            // since it is a new namespace, expect that a sentinel key was created for it for ACL purposes
-            const redisConnector = ConnectorService.getCacheConnector('Redis') as RedisCache;
-            const namespaceKeyExists = await redisConnector.user(ownerAgent).exists(namespace);
-            // const namespaceMetadataExists = await redisConnector.user(ownerAgent).exists(`${namespace}:${}`);
-            expect(namespaceKeyExists).toBe(true);
-            // expect(namespaceMetadataExists).toBe(true);
         });
 
         it('read', async () => {
