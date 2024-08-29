@@ -36,8 +36,8 @@ const conversations = {};
 
 const cliConnector = ConnectorService.getCLIConnector();
 //const specUrl = cliConnector.params?.agent || 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-const model = cliConnector.params?.model || 'claude-3-5-sonnet-20240620';
-const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 128000);
+const model = cliConnector.params?.model || 'gpt-4o';
+const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 4096);
 const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 4096);
 //const conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
 
@@ -219,4 +219,4 @@ function promptConversation(conv, message, contentCallback) {
     });
 }
 
-//http://localhost:5000/?openapi=https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json
+//http://localhost:3000/?openapi=https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json
