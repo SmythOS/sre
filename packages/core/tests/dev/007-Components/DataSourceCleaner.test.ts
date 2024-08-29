@@ -10,8 +10,40 @@ import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import DataSourceCleaner from '@sre/Components/DataSourceCleaner.class';
+import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+
+class CustomAccountConnector extends AccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+
+    NKV: {
+        Connector: 'Redis',
+        Settings: {},
+    },
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
@@ -31,79 +63,96 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-const EVENTUAL_CONSISTENCY_DELAY = 10_000;
-
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
 describe('DataSourceCleaner Component', () => {
-    it('deletes datasources created by DataSourceIndexer', async () => {
-        const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
-        const data = JSON.parse(agentData);
-        const date = new Date();
+    it(
+        'deletes datasources created by DataSourceIndexer',
+        async () => {
+            const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
+            const data = JSON.parse(agentData);
+            const date = new Date();
 
-        const agent = new Agent(10, data, new AgentSettings(10));
-        agent.teamId = 'default';
+            const agent = new Agent(10, data, new AgentSettings(10));
+            agent.teamId = 'default';
 
-        const cleaner = new DataSourceCleaner();
-        const indexer = new DataSourceIndexer();
+            const cleaner = new DataSourceCleaner();
+            const indexer = new DataSourceIndexer();
 
-        // index some data using the connector
-        const namespace = faker.lorem.word();
+            // index some data using the connector
+            const namespace = faker.lorem.word();
+            const vectorDB = ConnectorService.getVectorDBConnector();
+            await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
-        const sourceText = ['What is the capital of France?', 'Paris'];
+            const sourceText = ['What is the capital of France?', 'Paris'];
 
-        const dynamic_id = crypto.randomBytes(16).toString('hex');
+            const dynamic_id = crypto.randomBytes(16).toString('hex');
 
-        const dsUrl = `smythfs://${agent.teamId}.team/_datasources/${indexer.generateContextUID(dynamic_id, agent.teamId, namespace)}.json`;
-
-        await indexer.process(
-            {
-                Source: sourceText.join(' '),
-            },
-            {
-                data: {
-                    namespace,
-                    id: dynamic_id,
-                    name: faker.lorem.word(),
-                    metadata: faker.lorem.sentence(),
+            const res = await indexer.process(
+                {
+                    Source: sourceText.join(' '),
                 },
-                outputs: [],
-            },
-            agent
-        );
-
-        // expect that the datasource file exists now
-        const existsAfterInsert = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
-        expect(existsAfterInsert).toBe(true);
-
-        // wait for the data to be indexed
-        await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
-
-        await cleaner.process(
-            {
-                Source: sourceText.join(' '),
-            },
-            {
-                data: {
-                    namespaceId: namespace,
-                    id: dynamic_id,
+                {
+                    data: {
+                        namespace,
+                        id: dynamic_id,
+                        name: faker.lorem.word(),
+                        metadata: faker.lorem.sentence(),
+                    },
+                    outputs: [],
                 },
-                outputs: [],
-            },
-            agent
-        );
+                agent
+            );
 
-        // expect that the datasource file does not exist now
-        const existsAfterDelete = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
-        expect(existsAfterDelete).toBe(false);
+            // expect that the datasource file exists now
+            // const existsAfterInsert = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
+            const id = res.Success?.id;
 
-        // expect that all the embeddings are deleted. we can do that by doing a similar search on the data we indexed
-        const vectorDB = ConnectorService.getVectorDBConnector();
+            expect(id).toBeDefined();
 
-        const vectors = await vectorDB.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
+            const dsBeforeDel = await VectorsHelper.load().getDatasource(
+                agent.teamId,
+                namespace,
+                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
+            );
 
-        expect(vectors).toBeDefined();
-        expect(vectors.length).toBe(0);
-    });
+            expect(dsBeforeDel).toBeDefined();
+
+            await cleaner.process(
+                {
+                    Source: sourceText.join(' '),
+                },
+                {
+                    data: {
+                        namespaceId: namespace,
+                        id: dynamic_id,
+                    },
+                    outputs: [],
+                },
+                agent
+            );
+
+            // expect that the datasource file does not exist now
+            // const existsAfterDelete = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
+
+            const dsAfterDel = await VectorsHelper.load().getDatasource(
+                agent.teamId,
+                namespace,
+                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
+            );
+
+            expect(dsAfterDel).toBeUndefined();
+
+            // expect that all the embeddings are deleted. we can do that by doing a similar search on the data we indexed
+
+            const vectors = await vectorDB.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
+
+            expect(vectors).toBeDefined();
+            expect(vectors.length).toBe(0);
+        },
+        {
+            timeout: 35_000,
+        }
+    );
 });

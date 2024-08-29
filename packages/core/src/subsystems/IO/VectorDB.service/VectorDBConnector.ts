@@ -12,6 +12,8 @@ export interface IVectorDBRequest {
     delete(namespace: string, id: string | string[]): Promise<void>;
     createNamespace(namespace: string): Promise<void>;
     deleteNamespace(namespace: string): Promise<void>;
+    namespaceExists(namespace: string): Promise<boolean>;
+    listNamespaces(): Promise<string[]>;
 }
 
 export abstract class VectorDBConnector extends SecureConnector {
@@ -20,24 +22,28 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract search(
         acRequest: AccessRequest,
-        data: { indexName: string; namespace: string; query: string | number[] },
+        namespace: string,
+        query: string | number[],
+        indexName: string,
         options: QueryOptions
     ): Promise<VectorsResultData>;
 
     protected abstract insert(
         acRequest: AccessRequest,
-        data: {
-            indexName: string;
-            namespace: string;
-            source: IVectorDataSourceDto | IVectorDataSourceDto[];
-        }
+        namespace: string,
+        source: IVectorDataSourceDto | IVectorDataSourceDto[],
+        indexName: string
     ): Promise<string[]>;
 
-    protected abstract delete(acRequest: AccessRequest, data: { id: string | string[]; indexName: string; namespace: string }): Promise<void>;
+    protected abstract delete(acRequest: AccessRequest, namespace: string, id: string | string[], indexName: string): Promise<void>;
 
     protected abstract createNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
+
+    protected abstract listNamespaces(acRequest: AccessRequest): Promise<string[]>;
+
+    protected abstract namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean>;
 
     // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
 
@@ -46,4 +52,17 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     // protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
     // protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
+
+    public static constructNsName(name: string, teamId: string) {
+        return `${teamId}::${name}`;
+    }
+
+    public static parseNsName(nsName: string) {
+        const parts = nsName.split('::');
+        if (parts.length != 2) return null;
+        return {
+            teamId: parts[0],
+            name: parts[1],
+        };
+    }
 }

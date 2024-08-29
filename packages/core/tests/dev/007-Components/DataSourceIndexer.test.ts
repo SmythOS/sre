@@ -9,8 +9,40 @@ import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
+import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+
+class CustomAccountConnector extends AccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+
+    NKV: {
+        Connector: 'Redis',
+        Settings: {},
+    },
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
@@ -30,7 +62,7 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-const EVENTUAL_CONSISTENCY_DELAY = 10_000;
+const EVENTUAL_CONSISTENCY_DELAY = 5_000;
 
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
@@ -48,6 +80,8 @@ describe('DataSourceIndexer Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
+        const vectorDB = ConnectorService.getVectorDBConnector();
+        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -72,8 +106,6 @@ describe('DataSourceIndexer Component', () => {
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-        const vectorDB = ConnectorService.getVectorDBConnector();
-
         const vectors = await vectorDB.user(AccessCandidate.team('default')).search(namespace, 'Paris');
 
         expect(vectors).toBeDefined();
@@ -83,10 +115,9 @@ describe('DataSourceIndexer Component', () => {
         expect(vectors.some((result) => result.metadata?.text.includes('Paris'))).toBeTruthy();
 
         // make sure that the datasource was created
-        const url = `smythfs://${agent.teamId}.team/_datasources/${indexer.generateContextUID(dynamic_id, agent.teamId, namespace)}.json`;
 
-        const exists = await SmythFS.Instance.exists(url, AccessCandidate.team(agent.teamId));
+        const ds = await VectorsHelper.load().getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
-        expect(exists).toBeTruthy();
+        expect(ds).toBeDefined();
     });
 });

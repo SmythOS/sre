@@ -14,7 +14,7 @@ export default defineConfig({
             include: ['src/**/*.{ts,tsx}'],
             exclude: ['node_modules'],
         },
-        testTimeout: 20_000,
+        testTimeout: 30_000,
     },
 
     build: {

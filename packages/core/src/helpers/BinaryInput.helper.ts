@@ -15,6 +15,7 @@ export class BinaryInput {
 
     constructor(data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>, private _name?: string, public mimetype?: string) {
         if (!_name) _name = uid();
+        this._name = _name;
         //this._source = data;
 
         this.load(data, _name, mimetype);

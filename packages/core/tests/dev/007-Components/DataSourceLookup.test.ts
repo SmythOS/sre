@@ -2,13 +2,44 @@ import { fa, faker } from '@faker-js/faker';
 import DataSourceLookup from '@sre/Components/DataSourceLookup.class';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import config from '@sre/config';
 import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 
+class CustomAccountConnector extends AccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
+
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: config.env.REDIS_SENTINEL_HOSTS,
+            name: config.env.REDIS_MASTER_NAME || '',
+            password: config.env.REDIS_PASSWORD || '',
+        },
+    },
+
+    NKV: {
+        Connector: 'Redis',
+        Settings: {},
+    },
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
@@ -17,9 +48,18 @@ const SREInstance = SmythRuntime.Instance.init({
             indexName: config.env.PINECONE_INDEX_NAME || '',
         },
     },
+    Storage: {
+        Connector: 'S3',
+        Settings: {
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+    },
 });
 
-const EVENTUAL_CONSISTENCY_DELAY = 10_000;
+const EVENTUAL_CONSISTENCY_DELAY = 5_000;
 
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
@@ -38,10 +78,12 @@ describe('DataSourceLookup Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
+        const vectorDB = ConnectorService.getVectorDBConnector();
+        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await VectorsHelper.load().ingestText(sourceText.join(' '), namespace, {
+        await VectorsHelper.load().createDatasource(sourceText.join(' '), namespace, {
             teamId: 'default',
             chunkSize: 1000,
             chunkOverlap: 0,
@@ -94,10 +136,11 @@ describe('DataSourceLookup Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
+        const vectorDB = ConnectorService.getVectorDBConnector();
+        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        const vectorDB = ConnectorService.getVectorDBConnector();
         await vectorDB.user(AccessCandidate.team(agent.teamId)).insert(namespace, {
             id,
             source: Array.from({ length: 1536 }, () => Math.floor(Math.random() * 100)),

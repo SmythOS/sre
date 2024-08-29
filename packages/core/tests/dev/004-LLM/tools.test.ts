@@ -30,7 +30,7 @@ const sre = SmythRuntime.Instance.init({
 
 function runTestCases(model: string) {
     it(`runs a conversation with tool use with Model: ${model}`, async () => {
-        const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
@@ -45,7 +45,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
     }, 30000);
 
     it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
-        const specUrl = 'https://clp1tl4tx00129tq5owb0kfxh.agent.stage.smyth.ai/api-docs/openapi.json';
+        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
         const system = `You are a helpful assistant that can answer questions about SmythOS.
 if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
 
@@ -113,7 +113,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         `runs successive tools calls with Model: ${model}`,
         async () => {
             //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-            const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+            const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
             const conv = new Conversation(model, specUrl);
 
             let streamResult = '';
@@ -149,8 +149,8 @@ if the user asks any question, use /ask endpoint to get information and be able 
 
             const result = await conv.streamPrompt(
                 //'analyze smyth runtime code, implement a Google Cloud storage connector, register it in the storage service, implement the unit tests, and then write a documentation.\n\nif you get stuck somewhere or need confirmation, you can ask me'
-                //'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
-                'search documentation about ldap, then summarize it in a single sentence'
+                'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
+                //'search documentation about ldap, then summarize it in a single sentence'
             );
             expect(result).toBeDefined();
         },
