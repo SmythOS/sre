@@ -1,14 +1,16 @@
 import OpenAI from 'openai';
 import config from '@sre/config';
 import Agent from '@sre/AgentManager/Agent.class';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+import { JSON_RESPONSE_INSTRUCTION, TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
 
 const console = Logger('TogetherAIConnector');
+
+const TOGETHER_AI_API_URL = 'https://api.together.xyz/v1';
 
 export class TogetherAIConnector extends LLMConnector {
     public name = 'LLM:TogetherAI';
@@ -35,7 +37,7 @@ export class TogetherAIConnector extends LLMConnector {
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
-                baseURL: config.env.TOGETHER_AI_API_URL,
+                baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
             // TODO: implement together.ai specific token counting
@@ -62,16 +64,125 @@ export class TogetherAIConnector extends LLMConnector {
         throw new Error('Vision requests are not supported by TogetherAI');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
-        throw new Error('Tool requests are not yet implemented for TogetherAI');
+    protected async toolRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<any> {
+        try {
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+                baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+            });
+
+            if (!Array.isArray(messages) || !messages?.length) {
+                return { error: new Error('Invalid messages argument for chat completion.') };
+            }
+
+            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+                model,
+                messages,
+                tools,
+                tool_choice,
+            };
+
+            const result = await openai.chat.completions.create(args);
+            const message = result?.choices?.[0]?.message;
+            const finishReason = result?.choices?.[0]?.finish_reason;
+
+            let toolsData: ToolData[] = [];
+            let useTool = false;
+
+            if (finishReason === 'tool_calls') {
+                toolsData =
+                    message?.tool_calls?.map((tool, index) => ({
+                        index,
+                        id: tool?.id,
+                        type: tool?.type,
+                        name: tool?.function?.name,
+                        arguments: tool?.function?.arguments,
+                        role: 'tool',
+                    })) || [];
+
+                useTool = true;
+            }
+
+            return {
+                data: { useTool, message: message, content: message?.content ?? '', toolsData },
+            };
+        } catch (error: any) {
+            console.log('Error on toolUseLLMRequest: ', error);
+            return { error };
+        }
     }
 
-    protected async streamToolRequest(acRequest: AccessRequest, params): Promise<any> {
-        throw new Error('Stream tool requests are not yet implemented for TogetherAI');
+    protected async streamToolRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<any> {
+        throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
-        throw new Error('Stream requests are not yet implemented for TogetherAI');
+    protected async streamRequest(
+        acRequest: AccessRequest,
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+    ): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const openai = new OpenAI({
+            apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+            baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+        });
+
+        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model,
+            messages,
+            tools,
+            tool_choice,
+            stream: true,
+        };
+
+        try {
+            const stream: any = await openai.chat.completions.create(args);
+
+            let toolsData: ToolData[] = [];
+
+            (async () => {
+                for await (const part of stream) {
+                    const delta = part.choices[0].delta;
+                    emitter.emit('data', delta);
+
+                    if (!delta?.tool_calls && delta?.content) {
+                        emitter.emit('content', delta.content, delta.role);
+                    }
+
+                    if (delta?.tool_calls) {
+                        const toolCall = delta?.tool_calls?.[0];
+                        const index = toolCall?.index;
+
+                        toolsData[index] = {
+                            index,
+                            role: 'tool',
+                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        };
+                    }
+                }
+
+                if (toolsData?.length > 0) {
+                    emitter.emit('toolsData', toolsData);
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error: any) {
+            emitter.emit('error', error);
+            return emitter;
+        }
     }
 
     public async extractVisionLLMParams(config: any) {
@@ -81,7 +192,28 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        throw new Error('Tool configuration is not yet implemented for TogetherAI');
+        let tools: OpenAI.ChatCompletionTool[] = [];
+
+        if (type === 'function') {
+            tools = toolDefinitions.map((tool) => {
+                const { name, description, properties, requiredFields } = tool;
+
+                return {
+                    type: 'function',
+                    function: {
+                        name,
+                        description,
+                        parameters: {
+                            type: 'object',
+                            properties,
+                            required: requiredFields,
+                        },
+                    },
+                };
+            });
+        }
+
+        return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
     private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {

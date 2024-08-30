@@ -4,7 +4,9 @@
         "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
         "OpenAI": "OPEN_AI_API_KEY",
         "AnthropicAI": "ANTHROPIC_API_KEY",
-        "GoogleAI": "GOOGLE_AI_API_KEY"
+        "GoogleAI": "GOOGLE_AI_API_KEY",
+        "Groq": "GROQ_API_KEY",
+        "TogetherAI": "TOGETHER_AI_API_KEY"
     },
     "Team1": {
         "Team1_API": "THIS_IS_A_FAKE_TEAM1_API_KEY"

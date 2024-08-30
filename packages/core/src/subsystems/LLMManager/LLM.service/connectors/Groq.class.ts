@@ -5,7 +5,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -59,21 +59,116 @@ export class GroqConnector extends LLMConnector {
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
-        throw new Error('Tool requests are not yet implemented for Groq');
+        try {
+            const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+
+            if (!Array.isArray(messages) || !messages?.length) {
+                return { error: new Error('Invalid messages argument for chat completion.') };
+            }
+
+            let args = {
+                model,
+                messages,
+                tools,
+                tool_choice,
+            };
+
+            const result = await groq.chat.completions.create(args);
+            const message = result?.choices?.[0]?.message;
+            const toolCalls = message?.tool_calls;
+
+            let toolsData: ToolData[] = [];
+            let useTool = false;
+
+            if (toolCalls) {
+                toolsData = toolCalls.map((tool, index) => ({
+                    index,
+                    id: tool.id,
+                    type: tool.type,
+                    name: tool.function.name,
+                    arguments: tool.function.arguments,
+                    role: 'assistant',
+                }));
+                useTool = true;
+            }
+
+            return {
+                data: { useTool, message, content: message?.content ?? '', toolsData },
+            };
+        } catch (error: any) {
+            console.error('Error on toolUseLLMRequest: ', error);
+            return { error };
+        }
     }
 
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
-        throw new Error('Stream tool requests are not yet implemented for Groq');
+        throw new Error('streamToolRequest() is Deprecated!');
     }
 
     protected async streamRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
-        throw new Error('Stream requests are not yet implemented for Groq');
+        const emitter = new EventEmitter();
+        const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+
+        let args = {
+            model,
+            messages,
+            tools,
+            tool_choice,
+            stream: true,
+        };
+
+        try {
+            const stream = await groq.chat.completions.create(args);
+
+            let toolsData: ToolData[] = [];
+
+            (async () => {
+                for await (const chunk of stream as any) {
+                    const delta = chunk.choices[0]?.delta;
+                    emitter.emit('data', delta);
+
+                    if (delta?.content) {
+                        emitter.emit('content', delta.content);
+                    }
+
+                    if (delta?.tool_calls) {
+                        delta.tool_calls.forEach((toolCall, index) => {
+                            if (!toolsData[index]) {
+                                toolsData[index] = {
+                                    index,
+                                    id: toolCall.id,
+                                    type: toolCall.type,
+                                    name: toolCall.function?.name,
+                                    arguments: toolCall.function?.arguments,
+                                    role: 'assistant',
+                                };
+                            } else {
+                                toolsData[index].arguments += toolCall.function?.arguments || '';
+                            }
+                        });
+                    }
+                }
+
+                if (toolsData.length > 0) {
+                    emitter.emit('toolsData', toolsData);
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error: any) {
+            emitter.emit('error', error);
+            return emitter;
+        }
     }
 
     public async extractVisionLLMParams(config: any) {
@@ -83,7 +178,28 @@ export class GroqConnector extends LLMConnector {
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        throw new Error('Tool configuration is not yet implemented for Groq');
+        let tools = [];
+
+        if (type === 'function') {
+            tools = toolDefinitions.map((tool) => {
+                const { name, description, properties, requiredFields } = tool;
+
+                return {
+                    type: 'function',
+                    function: {
+                        name,
+                        description,
+                        parameters: {
+                            type: 'object',
+                            properties,
+                            required: requiredFields,
+                        },
+                    },
+                };
+            });
+        }
+
+        return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
     }
 
     private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {

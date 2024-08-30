@@ -21,7 +21,7 @@ import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
-// const console = Logger('GoogleAIConnector');
+const console = Logger('GoogleAIConnector');
 
 type FileObject = {
     url: string;
@@ -282,9 +282,9 @@ export class GoogleAIConnector extends LLMConnector {
             if (this.hasSystemMessage(messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
                 systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-                formattedMessages = this.formatMessages(separateMessages.otherMessages);
+                formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
             } else {
-                formattedMessages = this.formatMessages(messages);
+                formattedMessages = this.formatInputMessages(messages);
             }
 
             const $model = genAI.getGenerativeModel({ model });
@@ -347,15 +347,12 @@ export class GoogleAIConnector extends LLMConnector {
         if (this.hasSystemMessage(messages)) {
             const separateMessages = this.separateSystemMessages(messages);
             systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-            formattedMessages = this.formatMessages(separateMessages.otherMessages);
+            formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
         } else {
-            formattedMessages = this.formatMessages(messages);
+            formattedMessages = this.formatInputMessages(messages);
         }
 
         try {
-            console.log('============== formattedMessages ====================');
-            console.log(formattedMessages);
-
             const result = await $model.generateContentStream({
                 contents: formattedMessages,
                 tools,
@@ -573,7 +570,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    private formatMessages(messages: LLMMessageBlock[]): any[] {
+    private formatInputMessages(messages: LLMMessageBlock[]): any[] {
         return messages.map((message) => {
             let role = message.role;
 
