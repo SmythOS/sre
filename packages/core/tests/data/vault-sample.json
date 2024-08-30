@@ -2,8 +2,9 @@
     "default": {
         "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY",
         "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
-        "OpenAI": "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",
-        "AnthropicAI": "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"
+        "OpenAI": "OPEN_AI_API_KEY",
+        "AnthropicAI": "ANTHROPIC_API_KEY",
+        "GoogleAI": "GOOGLE_AI_API_KEY"
     },
     "Team1": {
         "Team1_API": "THIS_IS_A_FAKE_TEAM1_API_KEY"

@@ -53,7 +53,7 @@ export type ToolData = {
     type: string;
     name: string;
     arguments: string | Record<string, any>;
-    role: 'user' | 'tool';
+    role: 'user' | 'tool' | 'assistant';
     result?: string; // result string from the used tool
 };
 

@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -16,12 +16,12 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, LLMMessageBlock } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
-const console = Logger('GoogleAIConnector');
+// const console = Logger('GoogleAIConnector');
 
 type FileObject = {
     url: string;
@@ -269,38 +269,135 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
     protected async toolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
         try {
-            throw new Error('Tools are not yet implemented for Google AI.');
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+
+            let systemInstruction = '';
+            let formattedMessages;
+
+            if (this.hasSystemMessage(messages)) {
+                const separateMessages = this.separateSystemMessages(messages);
+                systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
+                formattedMessages = this.formatMessages(separateMessages.otherMessages);
+            } else {
+                formattedMessages = this.formatMessages(messages);
+            }
+
+            const $model = genAI.getGenerativeModel({ model });
+
+            const result = await $model.generateContent({
+                contents: formattedMessages,
+                tools,
+                systemInstruction,
+                toolConfig: {
+                    functionCallingConfig: { mode: tool_choice || 'auto' },
+                },
+            });
+
+            const response = await result.response;
+            const content = response.text();
+            const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+
+            let toolsData: ToolData[] = [];
+            let useTool = false;
+
+            if (toolCalls && toolCalls.length > 0) {
+                toolsData = toolCalls.map((toolCall, index) => ({
+                    index,
+                    id: `tool-${index}`,
+                    type: 'function',
+                    name: toolCall.functionCall.name,
+                    arguments: JSON.stringify(toolCall.functionCall.args),
+                    role: 'assistant',
+                }));
+                useTool = true;
+            }
+
+            return {
+                data: { useTool, message: { content }, content, toolsData },
+            };
         } catch (error: any) {
-            throw error;
+            console.log('Error on toolUseLLMRequest: ', error);
+            return { error };
         }
     }
 
-    // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
-        try {
-            throw new Error('Tools are not yet implemented for Google AI.');
-        } catch (error: any) {
-            throw error;
-        }
+        throw new Error('streamToolRequest() is Deprecated!');
     }
 
     protected async streamRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+        const $model = genAI.getGenerativeModel({ model });
+
+        let systemInstruction = '';
+        let formattedMessages;
+
+        if (this.hasSystemMessage(messages)) {
+            const separateMessages = this.separateSystemMessages(messages);
+            systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
+            formattedMessages = this.formatMessages(separateMessages.otherMessages);
+        } else {
+            formattedMessages = this.formatMessages(messages);
+        }
+
         try {
-            throw new Error('Tools are not yet implemented for Google AI.');
+            console.log('============== formattedMessages ====================');
+            console.log(formattedMessages);
+
+            const result = await $model.generateContentStream({
+                contents: formattedMessages,
+                tools,
+                systemInstruction,
+                toolConfig: {
+                    functionCallingConfig: { mode: tool_choice || 'auto' },
+                },
+            });
+
+            let toolsData: ToolData[] = [];
+
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    emitter.emit('content', chunkText);
+
+                    if (chunk.candidates[0]?.content?.parts) {
+                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
+                        if (toolCalls.length > 0) {
+                            toolsData = toolCalls.map((toolCall, index) => ({
+                                index,
+                                id: `tool-${index}`,
+                                type: 'function',
+                                name: toolCall.functionCall.name,
+                                arguments: JSON.stringify(toolCall.functionCall.args),
+                                role: 'assistant',
+                            }));
+                            emitter.emit('toolsData', toolsData);
+                        }
+                    }
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+
+            return emitter;
         } catch (error: any) {
-            throw error;
+            emitter.emit('error', error);
+            return emitter;
         }
     }
 
@@ -310,41 +407,63 @@ export class GoogleAIConnector extends LLMConnector {
         return params;
     }
 
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        const allowFunctionNames: string[] = [];
-        const functionDeclarations = toolDefinitions.map((item) => {
-            const { name, description, properties, requiredFields } = item;
+    public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
+        const tools = toolDefinitions.map((tool) => {
+            const { name, description, properties, requiredFields } = tool;
 
-            allowFunctionNames.push(name);
+            // Ensure the function name is valid
+            const validName = this.sanitizeFunctionName(name);
+
+            // Ensure properties are non-empty for OBJECT type
+            const validProperties = properties && Object.keys(properties).length > 0 ? properties : { dummy: { type: 'string' } };
 
             return {
-                name,
-                description,
-                parameters: {
-                    type: 'OBJECT',
-                    properties,
-                    required: requiredFields,
-                },
+                functionDeclarations: [
+                    {
+                        name: validName,
+                        description: description || '',
+                        parameters: {
+                            type: 'OBJECT',
+                            properties: validProperties,
+                            required: requiredFields || [],
+                        },
+                    },
+                ],
             };
         });
 
-        const tools = [
-            {
-                function_declarations: functionDeclarations,
-            },
-        ];
-
-        const toolConfig = {
-            function_calling_config: {
-                mode: toolChoice || 'AUTO',
-                allowed_function_names: allowFunctionNames,
-            },
-        };
-
         return {
             tools,
-            tool_config: toolConfig,
+            toolChoice: {
+                type: toolChoice,
+            },
         };
+    }
+
+    // Add this helper method to sanitize function names
+    private sanitizeFunctionName(name: string): string {
+        // Check if name is undefined or null
+        if (name == null) {
+            return '_unnamed_function';
+        }
+
+        // Remove any characters that are not alphanumeric, underscore, dot, or dash
+        let sanitized = name.replace(/[^a-zA-Z0-9_.-]/g, '');
+
+        // Ensure the name starts with a letter or underscore
+        if (!/^[a-zA-Z_]/.test(sanitized)) {
+            sanitized = '_' + sanitized;
+        }
+
+        // If sanitized is empty after removing invalid characters, use a default name
+        if (sanitized === '') {
+            sanitized = '_unnamed_function';
+        }
+
+        // Truncate to 64 characters if longer
+        sanitized = sanitized.slice(0, 64);
+
+        return sanitized;
     }
 
     private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
@@ -452,5 +571,21 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error) {
             throw new Error(`Error uploading file for Google AI ${error.message}`);
         }
+    }
+
+    private formatMessages(messages: LLMMessageBlock[]): any[] {
+        return messages.map((message) => {
+            let role = message.role;
+
+            // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
+            if (message.role === 'assistant') {
+                role = 'model';
+            }
+
+            return {
+                role,
+                parts: [{ text: message.content }],
+            };
+        });
     }
 }

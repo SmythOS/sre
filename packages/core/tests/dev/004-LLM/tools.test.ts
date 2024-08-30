@@ -158,7 +158,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
     );
 }
 
-const models = ['claude-3-5-sonnet-20240620', 'gpt-4o'];
+const models = ['gpt-4o', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash', 'groq-llama-3.1-405b-reasoning', 'togethercomputer/alpaca-7b'];
 
 for (const model of models) {
     describe(`LLM Tools use for Model: ${model}`, () => {

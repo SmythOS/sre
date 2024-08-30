@@ -24,7 +24,7 @@ export default {
         frequencyPenalty: 'frequency_penalty',
         presencePenalty: 'presence_penalty',
     },
-    togetherAI: {
+    TogetherAI: {
         maxTokens: 'max_tokens',
         temperature: 'temperature',
         stopSequences: 'stop',
