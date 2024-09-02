@@ -391,8 +391,8 @@ export abstract class LLMConnector extends Connector {
         systemMessage: LLMMessageBlock | {};
         otherMessages: LLMMessageBlock[];
     } {
-        const systemMessage = messages.find((message) => message.role === 'system' && message.content) || {};
-        const otherMessages = messages.filter((message) => message.role !== 'system' && message.content);
+        const systemMessage = messages.find((message) => message.role === 'system') || {};
+        const otherMessages = messages.filter((message) => message.role !== 'system');
 
         return { systemMessage, otherMessages };
     }

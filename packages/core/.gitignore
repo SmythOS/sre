@@ -134,3 +134,4 @@ dist
 .pnp.*
 
 tests/data/vault.json
+.DS_Store
