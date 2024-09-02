@@ -13,7 +13,7 @@
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
         "knip": "knip",
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model gemini-1.5-flash"
+        "start:web": "node ./tests/build/web/index.js --model meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
