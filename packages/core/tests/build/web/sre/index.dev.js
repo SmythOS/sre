@@ -24,6 +24,7 @@ import { encodeChat, encode } from 'gpt-tokenizer';
 import yaml from 'js-yaml';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
+import { HfInference } from '@huggingface/inference';
 import os from 'os';
 import 'process';
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
@@ -32,25 +33,26 @@ import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 import IORedis from 'ioredis';
 import { Pinecone } from '@pinecone-database/pinecone';
 
-var __defProp$N = Object.defineProperty;
-var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$V = Object.defineProperty;
+var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentRequest {
   constructor(req) {
-    __publicField$N(this, "headers");
-    __publicField$N(this, "body");
-    __publicField$N(this, "query");
-    __publicField$N(this, "params");
-    __publicField$N(this, "method", "GET");
-    __publicField$N(this, "path", "");
-    __publicField$N(this, "sessionID", "");
-    __publicField$N(this, "res", null);
-    __publicField$N(this, "req", null);
-    __publicField$N(this, "files", []);
-    __publicField$N(this, "_agent_authinfo");
+    __publicField$V(this, "headers");
+    __publicField$V(this, "body");
+    __publicField$V(this, "query");
+    __publicField$V(this, "params");
+    __publicField$V(this, "method", "GET");
+    __publicField$V(this, "path", "");
+    __publicField$V(this, "sessionID", "");
+    __publicField$V(this, "res", null);
+    __publicField$V(this, "req", null);
+    __publicField$V(this, "files", []);
+    __publicField$V(this, "_agent_authinfo");
     if (!req) return;
     this.headers = JSON.parse(JSON.stringify(req.headers || {}));
     this.body = JSON.parse(JSON.stringify(req.body || req.data || {}));
@@ -129,6 +131,49 @@ function delay(ms) {
 function isValidString(str) {
   return str && typeof str === "string";
 }
+const isValidNumber = (str) => {
+  const num = parseFloat(str);
+  return !isNaN(num) && num <= Number.MAX_SAFE_INTEGER && num >= Number.MIN_SAFE_INTEGER && num.toString() === str.trim();
+};
+function convertStringToRespectiveType(data) {
+  if (data === null || data === void 0) return data;
+  if (typeof data !== "object") {
+    if (typeof data === "string") {
+      if (data.toLowerCase() === "true") {
+        return true;
+      } else if (data.toLowerCase() === "false") {
+        return false;
+      } else if (isValidNumber(data)) {
+        return Number(data);
+      } else if (data.toLowerCase() === "null") {
+        return null;
+      } else if (data.toLowerCase() === "undefined") {
+        return void 0;
+      }
+    }
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => convertStringToRespectiveType(item));
+  }
+  return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, convertStringToRespectiveType(value)]));
+}
+const kebabToCamel = (input) => {
+  if (!input || typeof input !== "string") return input;
+  return input.replace(/-([a-z])/g, function(match, group) {
+    return group.toUpperCase();
+  });
+};
+const kebabToCapitalize = (input) => {
+  if (!input || typeof input !== "string") return input;
+  return input.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+};
+
+const REQUEST_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const DEFAULT_MAX_TOKENS_FOR_LLM = 2048;
+const TOOL_USE_DEFAULT_MODEL$1 = "gpt-3.5-turbo";
+const JSON_RESPONSE_INSTRUCTION = "\nAll responses should be in valid JSON format, compacted without newlines, indentations, or additional JSON syntax markers.";
 
 function cleanBase64(str) {
   return str.replace(/\s|\\n|\\s/g, "");
@@ -188,6 +233,23 @@ async function identifyMimetypeFromRawBase64(data) {
     throw new Error(`Error identifying MIME type from base64 data: ${error?.message}`);
   }
 }
+const _cleanUpBase64Data = (str) => {
+  if (typeof str !== "string" || str.length > MAX_FILE_SIZE) {
+    throw new Error("Invalid input");
+  }
+  return str.replace(/\s|\\n|\\s/g, "");
+};
+const isBase64 = (str) => {
+  if (!str || !(typeof str === "string")) return false;
+  str = _cleanUpBase64Data(str);
+  try {
+    if (str?.length < 128) return false;
+    const buffer = Buffer.from(str, "base64");
+    return buffer.toString("base64") === str;
+  } catch {
+    return false;
+  }
+};
 
 async function streamToBuffer(stream) {
   const chunks = [];
@@ -379,9 +441,9 @@ const config = {
   }
 };
 
-var __defProp$M = Object.defineProperty;
-var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$U = Object.defineProperty;
+var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
 winston.addColors({
   error: "red",
   warn: "yellow",
@@ -402,7 +464,7 @@ const namespaceFilter = winston.format((info) => {
 class ArrayTransport extends Transport {
   constructor(opts) {
     super(opts);
-    __publicField$M(this, "logs");
+    __publicField$U(this, "logs");
     this.logs = opts.logs;
   }
   log(info, callback) {
@@ -418,7 +480,7 @@ class LogHelper {
     this._logger = _logger;
     this.data = data;
     this.labels = labels;
-    __publicField$M(this, "startTime", Date.now());
+    __publicField$U(this, "startTime", Date.now());
   }
   get output() {
     return Array.isArray(this.data) ? this.data.join("\n") : void 0;
@@ -540,21 +602,21 @@ const DummyConnector = new Proxy(
   }
 );
 
-var __defProp$L = Object.defineProperty;
-var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$f = Logger("Connector");
+var __defProp$T = Object.defineProperty;
+var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$h = Logger("Connector");
 class Connector {
   constructor() {
-    __publicField$L(this, "started", false);
-    __publicField$L(this, "_readyPromise");
+    __publicField$T(this, "started", false);
+    __publicField$T(this, "_readyPromise");
   }
   async start() {
-    console$f.info(`Starting ${this.name} connector ...`);
+    console$h.info(`Starting ${this.name} connector ...`);
     this.started = true;
   }
   async stop() {
-    console$f.info(`Stopping ${this.name} connector ...`);
+    console$h.info(`Stopping ${this.name} connector ...`);
   }
   ready() {
     if (!this._readyPromise) {
@@ -584,7 +646,7 @@ class Connector {
 
 const SystemEvents = new EventEmitter();
 
-const console$e = Logger("ConnectorService");
+const console$g = Logger("ConnectorService");
 const Connectors = {};
 const ConnectorInstances = {};
 let ServiceRegistry = {};
@@ -622,7 +684,7 @@ class ConnectorService {
    */
   static register(connectorType, connectorName, connectorConstructor) {
     if (typeof connectorConstructor !== "function" || !isSubclassOf(connectorConstructor, Connector)) {
-      console$e.error(`Invalid Connector ${connectorType}:${connectorName}`);
+      console$g.error(`Invalid Connector ${connectorType}:${connectorName}`);
       return;
     }
     if (!Connectors[connectorType]) {
@@ -673,7 +735,7 @@ class ConnectorService {
       if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
         return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]];
       }
-      console$e.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+      console$g.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
       return DummyConnector;
     }
     return instance;
@@ -724,14 +786,14 @@ class ConnectorServiceProvider {
   }
 }
 
-var __defProp$K = Object.defineProperty;
-var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$S = Object.defineProperty;
+var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("EmbodimentSettings");
 class EmbodimentSettings {
   constructor(agentId) {
-    __publicField$K(this, "_embodiments");
-    __publicField$K(this, "_ready", false);
+    __publicField$S(this, "_embodiments");
+    __publicField$S(this, "_ready", false);
     this.init(agentId);
   }
   async init(data) {
@@ -763,15 +825,15 @@ class EmbodimentSettings {
   }
 }
 
-var __defProp$J = Object.defineProperty;
-var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$R = Object.defineProperty;
+var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentSettings");
 class AgentSettings {
   constructor(agentId) {
-    __publicField$J(this, "_settings");
-    __publicField$J(this, "embodiments");
-    __publicField$J(this, "_ready", false);
+    __publicField$R(this, "_settings");
+    __publicField$R(this, "embodiments");
+    __publicField$R(this, "_ready", false);
     if (agentId) {
       this.init(agentId);
     }
@@ -849,15 +911,15 @@ class ACLAccessDeniedError extends Error {
   }
 }
 
-var __defProp$I = Object.defineProperty;
-var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Q = Object.defineProperty;
+var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessRequest {
   constructor(object) {
-    __publicField$I(this, "id");
-    __publicField$I(this, "resourceId");
-    __publicField$I(this, "level", []);
-    __publicField$I(this, "candidate");
+    __publicField$Q(this, "id");
+    __publicField$Q(this, "resourceId");
+    __publicField$Q(this, "level", []);
+    __publicField$Q(this, "candidate");
     if (!object) {
       this.id = "aclR:" + uid();
     }
@@ -893,14 +955,14 @@ class AccessRequest {
   }
 }
 
-var __defProp$H = Object.defineProperty;
-var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$P = Object.defineProperty;
+var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessCandidate {
   //public _candidate: TAccessCandidate;
   constructor(candidate) {
-    __publicField$H(this, "role");
-    __publicField$H(this, "id");
+    __publicField$P(this, "role");
+    __publicField$P(this, "id");
     this.role = candidate ? candidate.role : TAccessRole.Public;
     this.id = candidate ? candidate.id : "";
   }
@@ -953,18 +1015,18 @@ class AccessCandidate {
   }
 }
 
-var __defProp$G = Object.defineProperty;
-var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$O = Object.defineProperty;
+var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
 const ACLHashAlgo = {
   none: (source) => source,
   xxh3: (source) => xxh3.xxh64(source.toString()).toString(16)
 };
 class ACL {
   constructor(acl) {
-    __publicField$G(this, "hashAlgorithm");
-    __publicField$G(this, "entries");
-    __publicField$G(this, "migrated");
+    __publicField$O(this, "hashAlgorithm");
+    __publicField$O(this, "entries");
+    __publicField$O(this, "migrated");
     if (typeof acl === "string") {
       this.deserializeACL(acl);
     } else {
@@ -1108,12 +1170,12 @@ class ACL {
   }
 }
 
-var __defProp$F = Object.defineProperty;
-var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$N = Object.defineProperty;
+var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _SmythFS = class _SmythFS {
   constructor() {
-    __publicField$F(this, "storage");
+    __publicField$N(this, "storage");
     if (!ConnectorService.ready) {
       throw new Error("SRE not available");
     }
@@ -1228,23 +1290,24 @@ const _SmythFS = class _SmythFS {
   }
 };
 //singleton
-__publicField$F(_SmythFS, "instance");
+__publicField$N(_SmythFS, "instance");
 let SmythFS = _SmythFS;
 
-var __defProp$E = Object.defineProperty;
-var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$M = Object.defineProperty;
+var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
 class BinaryInput {
   constructor(data, _name, mimetype) {
     this._name = _name;
     this.mimetype = mimetype;
-    __publicField$E(this, "size");
-    __publicField$E(this, "url");
-    __publicField$E(this, "_ready");
-    __publicField$E(this, "_readyPromise");
-    __publicField$E(this, "_source");
-    __publicField$E(this, "_uploading", false);
+    __publicField$M(this, "size");
+    __publicField$M(this, "url");
+    __publicField$M(this, "_ready");
+    __publicField$M(this, "_readyPromise");
+    __publicField$M(this, "_source");
+    __publicField$M(this, "_uploading", false);
     if (!_name) _name = uid();
+    this._name = _name;
     this.load(data, _name, mimetype);
   }
   async ready() {
@@ -1385,13 +1448,13 @@ class BinaryInput {
   }
 }
 
-var __defProp$D = Object.defineProperty;
-var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$L = Object.defineProperty;
+var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONContentHelper {
   constructor(dataString) {
     this.dataString = dataString;
-    __publicField$D(this, "_current");
+    __publicField$L(this, "_current");
     this._current = dataString;
   }
   get result() {
@@ -1552,18 +1615,18 @@ async function inferAnyType(value) {
   return value;
 }
 
-var __defProp$C = Object.defineProperty;
-var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$K = Object.defineProperty;
+var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Component {
   constructor() {
-    __publicField$C(this, "hasReadOutput", false);
-    __publicField$C(this, "hasPostProcess", true);
-    __publicField$C(this, "alwaysActive", false);
+    __publicField$K(this, "hasReadOutput", false);
+    __publicField$K(this, "hasPostProcess", true);
+    __publicField$K(this, "alwaysActive", false);
     //for components like readable memories
-    __publicField$C(this, "exclusive", false);
+    __publicField$K(this, "exclusive", false);
     //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    __publicField$C(this, "configSchema");
+    __publicField$K(this, "configSchema");
   }
   init() {
   }
@@ -1633,9 +1696,9 @@ class VaultHelper {
   }
 }
 
-var __defProp$B = Object.defineProperty;
-var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$J = Object.defineProperty;
+var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
 const Match = {
   default: /{{(.*?)}}/g,
   //matches all placeholders
@@ -1666,11 +1729,11 @@ const TPLProcessor = {
 class TemplateStringHelper {
   constructor(templateString) {
     this.templateString = templateString;
-    __publicField$B(this, "_current");
+    __publicField$J(this, "_current");
     //this queue is used to wait for asyncronous results when async processors are used
     //if all processors are synchronous, this queue will be empty and .result getter can be used
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
-    __publicField$B(this, "_promiseQueue", []);
+    __publicField$J(this, "_promiseQueue", []);
     this._current = templateString;
   }
   get result() {
@@ -1768,9 +1831,9 @@ function TemplateString(templateString) {
   return TemplateStringHelper.create(templateString);
 }
 
-var __defProp$A = Object.defineProperty;
-var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$I = Object.defineProperty;
+var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
 function isEmpty(value) {
   return value === void 0 || value === null || typeof value === "string" && value.trim() === "" || Array.isArray(value) && value.length === 0 || typeof value === "object" && value !== null && Object.keys(value).length === 0;
 }
@@ -1790,7 +1853,7 @@ function parseKey(str = "", teamId) {
 class APIEndpoint extends Component {
   constructor() {
     super();
-    __publicField$A(this, "configSchema", Joi.object({
+    __publicField$I(this, "configSchema", Joi.object({
       endpoint: Joi.string().pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/).max(50).required(),
       method: Joi.string().valid("POST", "GET").allow(""),
       //we're accepting empty value because we consider it POST by default.
@@ -1921,16 +1984,16 @@ class APIEndpoint extends Component {
   }
 }
 
-var __defProp$z = Object.defineProperty;
-var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$H = Object.defineProperty;
+var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APIOutput extends Component {
   constructor() {
     super();
-    __publicField$z(this, "configSchema", Joi.object({
+    __publicField$H(this, "configSchema", Joi.object({
       format: Joi.string().valid("full", "minimal").required().label("Output Format")
     }));
-    __publicField$z(this, "hasPostProcess", true);
+    __publicField$H(this, "hasPostProcess", true);
   }
   init() {
   }
@@ -1964,22 +2027,18 @@ class APIOutput extends Component {
 }
 
 var models = {
-  echo: {
-    llm: "Echo",
-    alias: "Echo"
-  },
-  Echo: {
-    llm: "Echo",
-    tokens: 128e3,
-    completionTokens: 128e3,
-    enabled: true,
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
-  },
+  // GPT-4o
   "gpt-4o-mini": {
     llm: "OpenAI",
     alias: "gpt-4o-mini-2024-07-18",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"],
-    tags: ["new"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ]
   },
   "gpt-4o-mini-2024-07-18": {
     llm: "OpenAI",
@@ -1991,8 +2050,14 @@ var models = {
   "gpt-4o": {
     llm: "OpenAI",
     alias: "gpt-4o-2024-05-13",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"],
-    tags: ["new"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ]
   },
   "gpt-4o-2024-05-13": {
     llm: "OpenAI",
@@ -2005,12 +2070,20 @@ var models = {
   "gpt-4-turbo-latest": {
     llm: "OpenAI",
     alias: "gpt-4-turbo-2024-04-09",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier"]
+    components: ["PromptGenerator", "LLMAssistant", "Classifier"],
+    tags: ["legacy"]
   },
   "gpt-4-turbo": {
     llm: "OpenAI",
     alias: "gpt-4-turbo-2024-04-09",
-    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "GPTPlugin", "AgentPlugin", "Chatbot"],
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "VisionLLM",
+      "GPTPlugin",
+      "AgentPlugin",
+      "Chatbot"
+    ],
     tags: ["legacy"]
   },
   "gpt-4-turbo-2024-04-09": {
@@ -2025,7 +2098,8 @@ var models = {
     llm: "OpenAI",
     alias: "gpt-4-0613",
     enabled: true,
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["legacy"]
   },
   "gpt-4": {
     llm: "OpenAI",
@@ -2033,7 +2107,14 @@ var models = {
     completionTokens: 1024,
     enabled: true,
     keyOptions: { tokens: 8192, completionTokens: 8192 },
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "GPTPlugin", "AgentPlugin", "Chatbot"],
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "GPTPlugin",
+      "AgentPlugin",
+      "Chatbot"
+    ],
     tags: ["legacy"]
   },
   "gpt-4-0613": {
@@ -2050,25 +2131,42 @@ var models = {
     completionTokens: 1024,
     enabled: true,
     keyOptions: { tokens: 128e3, completionTokens: 4096 },
-    components: ["VisionLLM"]
+    components: ["VisionLLM"],
+    tags: ["legacy"]
   },
   "gpt-4-1106-vision-preview": {
     llm: "OpenAI",
     tokens: 1024,
     completionTokens: 1024,
     enabled: true,
-    keyOptions: { tokens: 128e3, completionTokens: 4096 }
+    keyOptions: { tokens: 128e3, completionTokens: 4096 },
+    tags: ["legacy"]
   },
   // GPT-3.5
   "gpt-3.5-turbo-latest": {
     llm: "OpenAI",
     alias: "gpt-3.5-turbo-0125",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "GPTPlugin", "AgentPlugin", "Chatbot"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "GPTPlugin",
+      "AgentPlugin",
+      "Chatbot"
+    ],
+    tags: ["legacy"]
   },
   "gpt-3.5-turbo": {
     llm: "OpenAI",
     alias: "gpt-3.5-turbo-0125",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "GPTPlugin", "AgentPlugin", "Chatbot"],
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "GPTPlugin",
+      "AgentPlugin",
+      "Chatbot"
+    ],
     tags: ["legacy"]
   },
   "gpt-3.5-turbo-0125": {
@@ -2083,8 +2181,9 @@ var models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: true,
-    keyOptions: { tokens: 16384, completionTokens: 4096 }
+    keyOptions: { tokens: 16384, completionTokens: 4096 },
     //components: ['PromptGenerator', 'LLMAssistant'],
+    tags: ["legacy"]
   },
   "gpt-3.5-turbo-16k": {
     llm: "OpenAI",
@@ -2103,23 +2202,51 @@ var models = {
   "claude-3-opus": {
     llm: "AnthropicAI",
     alias: "claude-3-opus-20240229",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ]
   },
   "claude-3.5-sonnet": {
     llm: "AnthropicAI",
     alias: "claude-3-5-sonnet-20240620",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"],
-    tags: ["new"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ]
   },
   "claude-3-sonnet": {
     llm: "AnthropicAI",
     alias: "claude-3-sonnet-20240229",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ],
+    tags: ["legacy"]
   },
   "claude-3-haiku": {
     llm: "AnthropicAI",
     alias: "claude-3-haiku-20240307",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
+    components: [
+      "PromptGenerator",
+      "LLMAssistant",
+      "Classifier",
+      "VisionLLM",
+      "AgentPlugin",
+      "Chatbot"
+    ]
   },
   "claude-3-opus-20240229": {
     llm: "AnthropicAI",
@@ -2174,35 +2301,41 @@ var models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"],
     tags: ["legacy"]
+  },
+  "gemini-1.5-pro-exp-0801": {
+    llm: "GoogleAI",
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true },
+    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"]
   },
   "gemini-1.5-pro-latest-stable": {
     llm: "GoogleAI",
     alias: "gemini-1.5-pro",
-    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"],
-    tags: ["new"]
+    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"]
   },
   "gemini-1.5-pro-stable": {
     llm: "GoogleAI",
     alias: "gemini-1.5-pro-001",
-    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"],
-    tags: ["new"]
+    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"]
   },
   "gemini-1.5-pro": {
     llm: "GoogleAI",
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true }
+    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true }
   },
   "gemini-1.5-pro-001": {
     llm: "GoogleAI",
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true }
+    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true }
   },
   // Gemini 1.5 flash
   "gemini-1.5-flash-latest": {
@@ -2223,8 +2356,7 @@ var models = {
   "gemini-1.5-flash-stable": {
     llm: "GoogleAI",
     alias: "gemini-1.5-flash-001",
-    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"],
-    tags: ["new"]
+    components: ["PromptGenerator", "LLMAssistant", "VisionLLM", "MultimodalLLM"]
   },
   "gemini-1.5-flash": {
     llm: "GoogleAI",
@@ -2246,32 +2378,35 @@ var models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 2048, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true },
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["legacy"]
   },
   "gemini-1.0-pro-latest-stable": {
     llm: "GoogleAI",
     alias: "gemini-1.0-pro",
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["legacy"]
   },
   "gemini-1.0-pro-stable": {
     llm: "GoogleAI",
     alias: "gemini-1.0-pro-001",
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["legacy"]
   },
   "gemini-1.0-pro": {
     llm: "GoogleAI",
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 2048, enabled: true }
+    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true }
   },
   "gemini-1.0-pro-001": {
     llm: "GoogleAI",
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 2048, enabled: true }
+    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true }
   },
   "gemini-pro-vision": {
     llm: "GoogleAI",
@@ -2279,7 +2414,8 @@ var models = {
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 12288, completionTokens: 4096, enabled: true },
-    components: ["VisionLLM"]
+    components: ["VisionLLM"],
+    tags: ["legacy"]
   },
   /* Groq */
   "groq-llama-3.1-405b-reasoning": {
@@ -2321,7 +2457,7 @@ var models = {
     enabled: false,
     keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true }
   },
-  "llama3-groq-70b-tool-use-preview": {
+  "llama3-groq-70b-8192-tool-use-preview": {
     llm: "Groq",
     tokens: 8192,
     completionTokens: 8192,
@@ -2330,7 +2466,7 @@ var models = {
     components: ["PromptGenerator", "LLMAssistant"],
     tags: ["new"]
   },
-  "llama3-groq-8b-tool-use-preview": {
+  "llama3-groq-8b-8192-tool-use-preview": {
     llm: "Groq",
     tokens: 8192,
     completionTokens: 8192,
@@ -2343,7 +2479,7 @@ var models = {
     llm: "Groq",
     alias: "llama3-8b-8192",
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "llama3-8b-8192": {
     llm: "Groq",
@@ -2356,7 +2492,7 @@ var models = {
     llm: "Groq",
     alias: "llama3-70b-8192",
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "llama3-70b-8192": {
     llm: "Groq",
@@ -2369,7 +2505,7 @@ var models = {
     llm: "Groq",
     alias: "llama2-70b-4096",
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "llama2-70b-4096": {
     llm: "Groq",
@@ -2402,9 +2538,21 @@ var models = {
     enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true }
   },
+  "groq-gemma2-9b": {
+    llm: "Groq",
+    alias: "gemma2-9b-it",
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "gemma2-9b-it": {
+    llm: "Groq",
+    tokens: 1024,
+    completionTokens: 1024,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true }
+  },
   /* Together AI */
   "zero-one-ai/Yi-34B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2412,7 +2560,7 @@ var models = {
     // * Excluded from 'PromptGenerator' (has "```json...```" with JSON response)
   },
   "Austism/chronos-hermes-13b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
@@ -2420,63 +2568,70 @@ var models = {
   },
   // Meta
   "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 128e3, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 128e3, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3-8B-Instruct-Turbo": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3-70B-Instruct-Turbo": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3-8B-Instruct-Lite": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "meta-llama/Meta-Llama-3-70B-Instruct-Lite": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 4096,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["LLMAssistant", "PromptGenerator"]
+    components: ["LLMAssistant", "PromptGenerator"],
+    tags: ["new"]
   },
   "togethercomputer/CodeLlama-13b-Instruct": {
     // ! DEPRECATED: will be removed (replace with codellama/CodeLlama-13b-Instruct-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true }
   },
   "codellama/CodeLlama-13b-Instruct-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
@@ -2484,35 +2639,35 @@ var models = {
   },
   "togethercomputer/CodeLlama-34b-Instruct": {
     // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-34b-Instruct-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true }
   },
   "codellama/CodeLlama-34b-Instruct-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "codellama/CodeLlama-70b-Instruct-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "togethercomputer/CodeLlama-7b-Instruct": {
     // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-7b-Instruct-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true }
   },
   "codellama/CodeLlama-7b-Instruct-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 16384, enabled: true },
@@ -2520,13 +2675,13 @@ var models = {
   },
   "togethercomputer/llama-2-70b-chat": {
     // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-70b-chat-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "meta-llama/Llama-2-70b-chat-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2534,13 +2689,13 @@ var models = {
   },
   "togethercomputer/llama-2-13b-chat": {
     // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-13b-chat-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "meta-llama/Llama-2-13b-chat-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2549,13 +2704,13 @@ var models = {
   },
   "togethercomputer/llama-2-7b-chat": {
     // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-7b-chat-hf)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "meta-llama/Llama-2-7b-chat-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2563,37 +2718,37 @@ var models = {
     // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
   },
   "meta-llama/Llama-3-8b-chat-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "meta-llama/Llama-3-70b-chat-hf": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "DiscoResearch/DiscoLM-mixtral-8x7b-v2": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true }
   },
   "togethercomputer/falcon-40b-instruct": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true }
   },
   "togethercomputer/falcon-7b-instruct": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
@@ -2601,58 +2756,58 @@ var models = {
   },
   "togethercomputer/GPT-NeoXT-Chat-Base-20B": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true }
   },
   "togethercomputer/Llama-2-7B-32K-Instruct": {
     // ! DEPRECATED: will be removed
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true }
   },
   // mistralai
   "mistralai/Mistral-7B-Instruct-v0.1": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "mistralai/Mistral-7B-Instruct-v0.2": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "mistralai/Mistral-7B-Instruct-v0.3": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant", "Classifier"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "mistralai/Mixtral-8x7B-Instruct-v0.1": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant", "Classifier"]
   },
   "mistralai/Mixtral-8x22B-Instruct-v0.1": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 65536, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Gryphe/MythoMax-L2-13b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2661,59 +2816,59 @@ var models = {
   // NousResearch
   "NousResearch/Nous-Hermes-Llama2-70b": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "NousResearch/Nous-Capybara-7B-V1p9": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "NousResearch/Nous-Hermes-2-Mistral-7B-DPO": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "NousResearch/Nous-Hermes-2-Yi-34B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "NousResearch/Nous-Hermes-llama-2-7b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "NousResearch/Nous-Hermes-Llama2-13b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2721,7 +2876,7 @@ var models = {
   },
   // OpenChat
   "openchat/openchat-3.5-1210": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
@@ -2729,21 +2884,21 @@ var models = {
   },
   // Teknium
   "teknium/OpenHermes-2-Mistral-7B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "teknium/OpenHermes-2p5-Mistral-7B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "garage-bAInd/Platypus2-70B-instruct": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2751,62 +2906,62 @@ var models = {
   },
   "togethercomputer/Pythia-Chat-Base-7B-v0.16": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true }
   },
   "togethercomputer/Qwen-7B-Chat": {
     // ! DEPRECATED: will be removed (404 - not found)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true }
   },
   "togethercomputer/RedPajama-INCITE-Chat-3B-v1": {
     // ! DEPRECATED: will be removed (Weird response)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true }
   },
   "togethercomputer/RedPajama-INCITE-7B-Chat": {
     // ! DEPRECATED: will be removed (Weird response)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true }
   },
   "upstage/SOLAR-0-70b-16bit": {
     // ! DEPRECATED: will be removed (404 - not found) (replaced with upstage/SOLAR-10.7B-Instruct-v1.0)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "upstage/SOLAR-10.7B-Instruct-v1.0": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "togethercomputer/StripedHyena-Nous-7B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "lmsys/vicuna-7b-v1.5": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "lmsys/vicuna-13b-v1.5": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -2814,7 +2969,7 @@ var models = {
   },
   "lmsys/vicuna-13b-v1.5-16k": {
     // ! DEPRECATED: will be removed (not exists in models page)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 16384, enabled: true }
@@ -2822,193 +2977,209 @@ var models = {
   // Allen AI
   // ! Response it is not JSON and have unnecessary information
   /* 'allenai/OLMo-7B-Instruct': {
-      llm: 'togetherAI',
-      tokens: 1024,
-      enabled: false,
-      keyOptions: { tokens: 2048, enabled: true },
-  }, */
+        llm: 'TogetherAI',
+        tokens: 1024,
+        enabled: false,
+        keyOptions: { tokens: 2048, enabled: true },
+    }, */
   "allenai/OLMo-7B-Twin-2T": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "allenai/OLMo-7B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   // Qwen
   "Qwen/Qwen1.5-0.5B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-1.8B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-4B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-7B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-14B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-32B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-72B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Qwen/Qwen1.5-110B-Chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   // DeepSeek
   "deepseek-ai/deepseek-coder-33b-instruct": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 16384, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "deepseek-ai/deepseek-llm-67b-chat": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   // Google
   "google/gemma-2b-it": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "google/gemma-7b-it": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
+  },
+  "google/gemma-2-9b-it": {
+    llm: "TogetherAI",
+    tokens: 1024,
+    enabled: false,
+    keyOptions: { tokens: 8192, enabled: true },
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["new"]
+  },
+  "google/gemma-2-27b-it": {
+    llm: "TogetherAI",
+    tokens: 1024,
+    enabled: false,
+    keyOptions: { tokens: 8192, enabled: true },
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["new"]
   },
   // Undi95
   "Undi95/ReMM-SLERP-L2-13B": {
     // ! DEPRECATED: will be removed (always have empty response)
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true }
   },
   "Undi95/Toppy-M-7B": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   // Others
   "cognitivecomputations/dolphin-2.5-mixtral-8x7b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "databricks/dbrx-instruct": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Open-Orca/Mistral-7B-OpenOrca": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "snorkelai/Snorkel-Mistral-PairRM-DPO": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has some other text)
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "Snowflake/snowflake-arctic-instruct": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["legacy"]
+    tags: ["new"]
   },
   "togethercomputer/alpaca-7b": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"]
   },
   "WizardLM/WizardLM-13B-V1.2": {
-    llm: "togetherAI",
+    llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
@@ -3016,15 +3187,15 @@ var models = {
   }
 };
 
-var __defProp$y = Object.defineProperty;
-var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$G = Object.defineProperty;
+var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMHelper$1 {
   constructor(model) {
     this.model = model;
-    __publicField$y(this, "_llmConnector");
-    __publicField$y(this, "_modelId");
-    __publicField$y(this, "_modelInfo");
+    __publicField$G(this, "_llmConnector");
+    __publicField$G(this, "_modelId");
+    __publicField$G(this, "_modelInfo");
     const llmName = models[model]?.llm;
     this._modelId = models[model]?.alias || model;
     this._modelInfo = models[this._modelId];
@@ -3088,13 +3259,13 @@ class LLMHelper$1 {
   }
 }
 
-var __defProp$x = Object.defineProperty;
-var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$F = Object.defineProperty;
+var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
 class PromptGenerator extends Component {
   constructor() {
     super();
-    __publicField$x(this, "configSchema", Joi.object({
+    __publicField$F(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().required().label("Prompt"),
       temperature: Joi.number().min(0).max(5).label("Temperature"),
@@ -3146,13 +3317,13 @@ class PromptGenerator extends Component {
   }
 }
 
-var __defProp$w = Object.defineProperty;
-var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$E = Object.defineProperty;
+var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APICall extends Component {
   constructor() {
     super();
-    __publicField$w(this, "configSchema", Joi.object({
+    __publicField$E(this, "configSchema", Joi.object({
       method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD").required().label("Method"),
       url: Joi.string().max(8192).required().label("URL"),
       headers: Joi.string().allow("").label("Headers"),
@@ -3201,13 +3372,13 @@ class APICall extends Component {
   }
 }
 
-var __defProp$v = Object.defineProperty;
-var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$D = Object.defineProperty;
+var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VisionLLM extends Component {
   constructor() {
     super();
-    __publicField$v(this, "configSchema", Joi.object({
+    __publicField$D(this, "configSchema", Joi.object({
       prompt: Joi.string().required().label("Prompt"),
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
@@ -3367,9 +3538,9 @@ ${_error}
   }
 }
 
-var __defProp$u = Object.defineProperty;
-var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$C = Object.defineProperty;
+var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMHelper {
   static load(model) {
     throw new Error("Method not implemented.");
@@ -3378,7 +3549,7 @@ class LLMHelper {
 class DataSourceLookup extends Component {
   constructor() {
     super();
-    __publicField$u(this, "configSchema", Joi.object({
+    __publicField$C(this, "configSchema", Joi.object({
       topK: Joi.string().custom(validateInteger$2({ min: 0 }), "custom range validation").label("Result Count"),
       model: Joi.string().valid("gpt-3.5-turbo", "gpt-4", "gpt-3.5-turbo-16k").required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt"),
@@ -3473,19 +3644,93 @@ class DataSourceLookup extends Component {
   }
 }
 
-var __defProp$t = Object.defineProperty;
-var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$f = Logger("SecureConnector");
+class SecureConnector extends Connector {
+  async start() {
+    console$f.info(`Starting ${this.name} connector ...`);
+  }
+  async stop() {
+    console$f.info(`Stopping ${this.name} connector ...`);
+  }
+  async hasAccess(acRequest) {
+    const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
+    const exactAccess = aclHelper.checkExactAccess(acRequest);
+    if (exactAccess) return true;
+    const ownerRequest = AccessRequest.clone(acRequest).setLevel(TAccessLevel.Owner);
+    const ownerAccess = aclHelper.checkExactAccess(ownerRequest);
+    if (ownerAccess) return true;
+    const publicRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.public());
+    const publicAccess = aclHelper.checkExactAccess(publicRequest);
+    if (publicAccess) return true;
+    const accountConnector = ConnectorService.getAccountConnector();
+    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+    const teamRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
+    const teamAccess = aclHelper.checkExactAccess(teamRequest);
+    if (teamAccess) return true;
+    const teamOwnerRequest = AccessRequest.clone(teamRequest).setLevel(TAccessLevel.Owner);
+    const teamOwnerAccess = aclHelper.checkExactAccess(teamOwnerRequest);
+    if (teamOwnerAccess) return true;
+    return false;
+  }
+  async getAccessTicket(resourceId, request) {
+    const sysAcRequest = AccessRequest.clone(request).resource(resourceId);
+    const accessTicket = {
+      request,
+      access: await this.hasAccess(sysAcRequest) ? TAccessResult.Granted : TAccessResult.Denied
+    };
+    return accessTicket;
+  }
+  //#region [ Decorators ]==========================
+  //AccessControl decorator
+  //This decorator will inject the access control logic into storage connector methods
+  // in order to work properly, the connector expects the resourceId to be the first argument and the access request to be the second argument
+  static AccessControl(target, propertyKey, descriptor) {
+    const originalMethod = descriptor.value;
+    descriptor.value = async function(...args) {
+      const [acRequest, resourceId] = args;
+      const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+      if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError("Access Denied");
+      return originalMethod.apply(this, args);
+    };
+    return descriptor;
+  }
+  //#endregion
+}
+
+class VectorDBConnector extends SecureConnector {
+  // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
+  // protected abstract getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined>;
+  // protected abstract setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata): Promise<void>;
+  // protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
+  // protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
+  static constructNsName(name, teamId) {
+    return `${teamId}::${name}`;
+  }
+  static parseNsName(nsName) {
+    const parts = nsName.split("::");
+    if (parts.length != 2) return null;
+    return {
+      teamId: parts[0],
+      name: parts[1]
+    };
+  }
+}
+
+var __defProp$B = Object.defineProperty;
+var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VectorsHelper {
   constructor() {
-    __publicField$t(this, "_connector");
-    __publicField$t(this, "embeddingsProvider");
-    __publicField$t(this, "_vectorDimention");
-    this._connector = ConnectorService.getVectorDBConnector();
+    __publicField$B(this, "_vectorDBconnector");
+    __publicField$B(this, "embeddingsProvider");
+    __publicField$B(this, "_vectorDimention");
+    __publicField$B(this, "_nkvConnector");
+    this._vectorDBconnector = ConnectorService.getVectorDBConnector();
     this.embeddingsProvider = new OpenAIEmbeddings();
     if (this._vectorDimention && !isNaN(this._vectorDimention)) {
       this.embeddingsProvider.dimensions = this._vectorDimention;
     }
+    this._nkvConnector = ConnectorService.getNKVConnector();
   }
   static load(options = {}) {
     const instance = new VectorsHelper();
@@ -3506,12 +3751,15 @@ class VectorsHelper {
     let output = await textSplitter.splitText(text);
     return output;
   }
-  async ingestText(text, namespace, {
+  async createDatasource(text, namespace, {
     teamId,
     metadata,
     chunkSize = 4e3,
-    chunkOverlap = 500
+    chunkOverlap = 500,
+    label,
+    id
   } = {}) {
+    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
     const chunkedText = await VectorsHelper.chunkText(text, { chunkSize, chunkOverlap });
     const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
     const source = chunkedText.map((doc, i) => {
@@ -3524,8 +3772,46 @@ class VectorsHelper {
         }
       };
     });
-    const _vIds = await this._connector.user(AccessCandidate.team(teamId)).insert(namespace, source);
-    return _vIds;
+    const _vIds = await this._vectorDBconnector.user(AccessCandidate.team(teamId)).insert(namespace, source);
+    const dsId = id || crypto.randomUUID();
+    const dsData = {
+      namespaceId: formattedNs,
+      teamId,
+      name: label || "Untitled",
+      metadata: VectorsHelper.stringifyMetadata(metadata),
+      text,
+      embeddingIds: _vIds
+    };
+    await this._nkvConnector.user(AccessCandidate.team(teamId)).set(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
+    return dsId;
+  }
+  async listDatasources(teamId, namespace) {
+    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+    return (await this._nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`)).map(
+      (ds) => {
+        return {
+          id: ds.key,
+          data: JSONContentHelper.create(ds.data?.toString()).tryParse()
+        };
+      }
+    );
+  }
+  async getDatasource(teamId, namespace, dsId) {
+    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+    return JSONContentHelper.create(
+      (await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId))?.toString()
+    ).tryParse();
+  }
+  async deleteDatasource(teamId, namespace, dsId) {
+    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+    let ds = JSONContentHelper.create(
+      (await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId))?.toString()
+    ).tryParse();
+    if (!ds || typeof ds !== "object") {
+      throw new Error(`Data source not found with id: ${dsId}`);
+    }
+    await this._vectorDBconnector.user(AccessCandidate.team(teamId)).delete(namespace, ds.embeddingIds || []);
+    this._nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId);
   }
   async embedText(text) {
     return this.embeddingsProvider.embedQuery(text);
@@ -3542,14 +3828,14 @@ class VectorsHelper {
   }
 }
 
-var __defProp$s = Object.defineProperty;
-var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$A = Object.defineProperty;
+var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceIndexer extends Component {
   constructor() {
     super();
-    __publicField$s(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
-    __publicField$s(this, "configSchema", Joi.object({
+    __publicField$A(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
+    __publicField$A(this, "configSchema", Joi.object({
       namespace: Joi.string().max(50).allow(""),
       id: Joi.string().custom(validateCharacterSet, "id custom validation").allow("").label("source identifier"),
       name: Joi.string().max(50).allow("").label("label"),
@@ -3580,6 +3866,11 @@ class DataSourceIndexer extends Component {
 ${namespaceId}
 
 `;
+      const vectorDB = ConnectorService.getVectorDBConnector();
+      const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+      if (!nsExists) {
+        throw new Error(`Namespace ${namespaceId} does not exist`);
+      }
       const inputSchema = this.validateInput(input);
       if (inputSchema.error) {
         throw new Error(`Input validation error: ${inputSchema.error}
@@ -3592,10 +3883,10 @@ ${namespaceId}
       } else if (!idRegex.test(providedId)) {
         throw new Error(`Invalid id. Accepted characters: 'a-z', 'A-Z', '0-9', '-', '_', '.'`);
       }
-      const dsId = this.generateContextUID(_config.id, teamId, namespaceId);
       let indexRes = null;
       let parsedUrlArray = null;
       //! DISABLE URL ARRAY PARSING FOR NOW UNTIL WE HAVE A GOOD WAY TO HANDLE BULK INDEXING
+      const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
       if (isUrl(inputSchema.value.Source)) {
         debugOutput += `STEP: Parsing input as url
 
@@ -3608,10 +3899,10 @@ ${namespaceId}
         indexRes = await this.addDSFromText({
           teamId,
           namespaceId,
-          dsId,
           text: inputSchema.value.Source,
           name: _config.name || "Untitled",
-          metadata: _config.metadata || null
+          metadata: _config.metadata || null,
+          sourceId: dsId
         });
       }
       debugOutput += `Created datasource successfully
@@ -3640,64 +3931,30 @@ ${namespaceId}
       Source: Joi.any().required()
     }).unknown(true).validate(input);
   }
-  generateContextUID(providedId, teamId, namespaceId) {
-    return `${teamId}::${namespaceId}::${providedId}`;
-  }
-  parseContextUID(uid) {
-    if (!uid) return null;
-    const parts = uid.split("::");
-    if (parts.length != 3) return null;
-    return {
-      teamId: parts[0],
-      agentId: parts[1],
-      providedId: parts[2]
-    };
-  }
-  async addDSFromText({ teamId, namespaceId, dsId, text, name, metadata }) {
-    const ids = await VectorsHelper.load().ingestText(text, namespaceId, {
+  async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
+    const id = await VectorsHelper.load().createDatasource(text, namespaceId, {
       teamId,
-      metadata
-    });
-    const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-    const dsData = {
-      namespaceId,
-      teamId,
-      name,
       metadata,
-      text,
-      embeddingIds: ids
-    };
-    await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
+      id: sourceId,
+      label: name
+    });
+    return id;
+  }
+  static genDsId(providedId, teamId, namespaceId) {
+    return `${teamId}::${namespaceId}::${providedId}`;
   }
   async addDSFromUrl({ teamId, namespaceId, dsId, type, url, name, metadata }) {
     throw new Error("URLs are not supported yet");
   }
-  // private async checkIfTeamOwnsNamespace(teamId: string, namespaceId: string, token: string) {
-  //     try {
-  //         const res = await SmythAPIHelper.fromAuth({ token }).mwSysAPI.get(`/vectors/namespaces/${namespaceId}`);
-  //         if (res.data?.namespace?.teamId !== teamId) {
-  //             throw new Error(`Namespace does not exist`);
-  //         }
-  //         return true;
-  //     } catch (err) {
-  //         throw new Error(`Namespace does not exist`);
-  //     }
-  // }
-  // private async checkForRecordDuplicate(dsId: string, token: string) {
-  //     try {
-  //         // try to delete the datasource if it exists
-  //         const res = await SmythAPIHelper.fromAuth({ token }).mwSysAPI.delete(`/vectors/datasources/${dsId}`);
-  //     } catch (err) {}
-  // }
 }
 
-var __defProp$r = Object.defineProperty;
-var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$z = Object.defineProperty;
+var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceCleaner extends Component {
   constructor() {
     super();
-    __publicField$r(this, "configSchema", Joi.object({
+    __publicField$z(this, "configSchema", Joi.object({
       namespaceId: Joi.string().max(50).allow("").label("namespace"),
       id: Joi.string().custom(validateCharacterSet, "custom validation characterSet").allow("").label("source identifier")
     }));
@@ -3726,6 +3983,11 @@ class DataSourceCleaner extends Component {
  EXITING...`);
       }
       const namespaceId = configSchema.value.namespaceId;
+      const vectorDB = ConnectorService.getVectorDBConnector();
+      const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+      if (!nsExists) {
+        throw new Error(`Namespace ${namespaceId} does not exist`);
+      }
       const providedId = TemplateString(config.data.id).parse(input).result;
       const idRegex = /^[a-zA-Z0-9\-\_\.]+$/;
       if (!idRegex.test(providedId)) {
@@ -3733,16 +3995,8 @@ class DataSourceCleaner extends Component {
       }
       debugOutput += `Searching for data source with id: ${providedId}
 `;
-      const dsId = this.generateContextUID(providedId, teamId, namespaceId);
-      const dsUrl = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-      const dataBuffer = await SmythFS.Instance.read(dsUrl, AccessCandidate.team(teamId));
-      const data = JSONContentHelper.create(dataBuffer.toString()).tryParse();
-      if (!data) {
-        throw new Error(`Data source not found with id: ${providedId}`);
-      }
-      const vectorDB = ConnectorService.getVectorDBConnector();
-      await vectorDB.user(AccessCandidate.team(teamId)).delete(namespaceId, data.embeddingIds || []);
-      await SmythFS.Instance.delete(dsUrl, AccessCandidate.team(teamId));
+      const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
+      await VectorsHelper.load().deleteDatasource(teamId, namespaceId, dsId);
       debugOutput += `Deleted data source with id: ${providedId}
 `;
       return {
@@ -3760,9 +4014,6 @@ class DataSourceCleaner extends Component {
       };
     }
   }
-  generateContextUID(providedId, teamId, namespaceId) {
-    return `${teamId}::${namespaceId}::${providedId}`;
-  }
   validateInput(input) {
     return Joi.object({}).unknown(true).validate(input);
   }
@@ -3774,13 +4025,13 @@ class DataSourceCleaner extends Component {
   }
 }
 
-var __defProp$q = Object.defineProperty;
-var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$y = Object.defineProperty;
+var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONFilter extends Component {
   constructor() {
     super();
-    __publicField$q(this, "configSchema", Joi.object({
+    __publicField$y(this, "configSchema", Joi.object({
       fields: Joi.string().max(3e4).allow("").label("Prompt")
     }));
   }
@@ -3897,13 +4148,13 @@ class LogicXOR extends Component {
   }
 }
 
-var __defProp$p = Object.defineProperty;
-var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$x = Object.defineProperty;
+var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtLeast extends Component {
   constructor() {
     super();
-    __publicField$p(this, "configSchema", Joi.object({
+    __publicField$x(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       minSetInputs: Joi.string().custom(validateInteger$1({ min: 0, max: 9 }), "custom range validation").label("Minimum Inputs")
     }));
@@ -3961,13 +4212,13 @@ function validateInteger$1(args) {
   };
 }
 
-var __defProp$o = Object.defineProperty;
-var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$w = Object.defineProperty;
+var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtMost extends Component {
   constructor() {
     super();
-    __publicField$o(this, "configSchema", Joi.object({
+    __publicField$w(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       maxSetInputs: Joi.string().custom(validateInteger({ min: 0, max: 9 }), "custom range validation").label("Maximum Inputs")
     }));
@@ -4027,14 +4278,14 @@ function validateInteger(args) {
   };
 }
 
-var __defProp$n = Object.defineProperty;
-var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$v = Object.defineProperty;
+var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentProcess {
   constructor(agentData) {
     this.agentData = agentData;
-    __publicField$n(this, "agent");
-    __publicField$n(this, "_loadPromise");
+    __publicField$v(this, "agent");
+    __publicField$v(this, "_loadPromise");
     this.initAgent(agentData);
   }
   async initAgent(agentData) {
@@ -4179,9 +4430,9 @@ class AgentProcess {
   }
 }
 
-var __defProp$m = Object.defineProperty;
-var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$u = Object.defineProperty;
+var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMContext {
   /**
    *
@@ -4191,8 +4442,8 @@ class LLMContext {
     this._model = _model;
     this._systemPrompt = _systemPrompt;
     this._messages = _messages;
-    __publicField$m(this, "_llmHelper");
-    __publicField$m(this, "contextLength");
+    __publicField$u(this, "_llmHelper");
+    __publicField$u(this, "contextLength");
     this._llmHelper = LLMHelper$1.load(this._model);
   }
   get llmHelper() {
@@ -4244,11 +4495,6 @@ class LLMContext {
     return messages;
   }
 }
-
-const REQUEST_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
-const DEFAULT_MAX_TOKENS_FOR_LLM = 2048;
-const TOOL_USE_DEFAULT_MODEL$1 = "gpt-3.5-turbo";
-const JSON_RESPONSE_INSTRUCTION = "\nAll responses should be in valid JSON format, compacted without newlines, indentations, or additional JSON syntax markers.";
 
 const swaggerParser = new SwaggerParser();
 class OpenAPIParser {
@@ -4309,33 +4555,33 @@ class OpenAPIParser {
   }
 }
 
-var __defProp$l = Object.defineProperty;
-var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$d = Logger("ConversationHelper");
+var __defProp$t = Object.defineProperty;
+var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$e = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
     super();
     this._model = _model;
     this._specSource = _specSource;
     this._settings = _settings;
-    __publicField$l(this, "_agentId", "");
-    __publicField$l(this, "systemPrompt");
-    __publicField$l(this, "assistantName");
-    __publicField$l(this, "_reqMethods");
-    __publicField$l(this, "_toolsConfig");
-    __publicField$l(this, "_endpoints");
-    __publicField$l(this, "_baseUrl");
-    __publicField$l(this, "_status", "");
-    __publicField$l(this, "_currentWaitPromise");
-    __publicField$l(this, "_context");
-    __publicField$l(this, "_maxContextSize", 1024 * 16);
-    __publicField$l(this, "_maxOutputTokens", 1024);
-    __publicField$l(this, "_lastError");
-    __publicField$l(this, "_spec");
+    __publicField$t(this, "_agentId", "");
+    __publicField$t(this, "systemPrompt");
+    __publicField$t(this, "assistantName");
+    __publicField$t(this, "_reqMethods");
+    __publicField$t(this, "_toolsConfig");
+    __publicField$t(this, "_endpoints");
+    __publicField$t(this, "_baseUrl");
+    __publicField$t(this, "_status", "");
+    __publicField$t(this, "_currentWaitPromise");
+    __publicField$t(this, "_context");
+    __publicField$t(this, "_maxContextSize", 1024 * 16);
+    __publicField$t(this, "_maxOutputTokens", 1024);
+    __publicField$t(this, "_lastError");
+    __publicField$t(this, "_spec");
     this.on("error", (error) => {
       this._lastError = error;
-      console$d.warn("Conversation Error: ", error);
+      console$e.warn("Conversation Error: ", error);
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
@@ -4417,7 +4663,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    console$d.debug("Request to LLM with the given model, messages and functions properties.", {
+    console$e.debug("Request to LLM with the given model, messages and functions properties.", {
       model: this.model,
       message,
       toolsConfig
@@ -4443,7 +4689,7 @@ class Conversation extends EventEmitter$1 {
       );
     }
     if (llmResponse?.useTool) {
-      console$d.debug({
+      console$e.debug({
         type: "ToolsData",
         message: "Tool(s) is available for use.",
         toolsData: llmResponse?.toolsData
@@ -4464,7 +4710,7 @@ class Conversation extends EventEmitter$1 {
           baseUrl,
           headers: toolHeaders
         };
-        console$d.debug({
+        console$e.debug({
           type: "UseTool",
           message: "As LLM returned a tool to use, so use it with the provided arguments.",
           plugin_url: { baseUrl, endpoint, args },
@@ -4477,7 +4723,7 @@ class Conversation extends EventEmitter$1 {
           functionResponse = typeof error2 === "object" && typeof error2 !== null ? JSON.stringify(error2) : error2;
         }
         functionResponse = typeof functionResponse === "object" && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-        console$d.debug({
+        console$e.debug({
           type: "ToolResult",
           message: "Result from the tool",
           response: functionResponse
@@ -4490,7 +4736,7 @@ class Conversation extends EventEmitter$1 {
       return this.prompt(null, toolHeaders);
     }
     let content = JSONContent(llmResponse?.content).tryParse();
-    console$d.debug({
+    console$e.debug({
       type: "FinalResult",
       message: "Here is the final result after processing all the tools and LLM response.",
       response: content
@@ -4517,7 +4763,7 @@ class Conversation extends EventEmitter$1 {
       },
       this._agentId
     ).catch((error) => {
-      console$d.error("Error on streamRequest: ", error);
+      console$e.error("Error on streamRequest: ", error);
     });
     if (!eventEmitter || eventEmitter.error) {
       throw new Error("[LLM Request Error]");
@@ -4711,7 +4957,7 @@ class Conversation extends EventEmitter$1 {
           }
           reqConfig.headers["Content-Type"] = "application/json";
         }
-        console$d.debug("Calling tool: ", reqConfig);
+        console$e.debug("Calling tool: ", reqConfig);
         if (reqConfig.url.includes("localhost")) {
           const response = await AgentProcess.load(reqConfig.headers["X-AGENT-ID"]).run(reqConfig);
           return { data: response.data, error: null };
@@ -4720,8 +4966,8 @@ class Conversation extends EventEmitter$1 {
           return { data: response.data, error: null };
         }
       } catch (error) {
-        console$d.warn("Failed to call Tool: ", baseUrl, endpoint);
-        console$d.warn("  ====>", error);
+        console$e.warn("Failed to call Tool: ", baseUrl, endpoint);
+        console$e.warn("  ====>", error);
         return { data: null, error: error?.response?.data || error?.message };
       }
     }
@@ -4861,13 +5107,13 @@ ${this.systemPrompt}`;
   }
 }
 
-var __defProp$k = Object.defineProperty;
-var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$s = Object.defineProperty;
+var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentPlugin extends Component {
   constructor() {
     super();
-    __publicField$k(this, "configSchema", Joi.object({
+    __publicField$s(this, "configSchema", Joi.object({
       agentId: Joi.string().max(200).required(),
       openAiModel: Joi.string().max(200).required(),
       descForModel: Joi.string().max(5e3).allow("").label("Description for Model"),
@@ -4941,9 +5187,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$j = Object.defineProperty;
-var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$r = Object.defineProperty;
+var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
 let cacheConnector;
 function getCacheConnector() {
   if (!cacheConnector) {
@@ -4985,7 +5231,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
 class LLMAssistant extends Component {
   constructor() {
     super();
-    __publicField$j(this, "configSchema", Joi.object({
+    __publicField$r(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       behavior: Joi.string().max(3e4).allow("").label("Behavior")
     }));
@@ -5042,6 +5288,1251 @@ ${behavior}
   }
 }
 
+var __defProp$q = Object.defineProperty;
+var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+Logger("ForkedAgent");
+class ForkedAgent {
+  constructor(parent, componentId) {
+    this.parent = parent;
+    __publicField$q(this, "agent");
+    const data = fork(this.parent.data, componentId);
+    const content = { name: this.parent.name, data, teamId: this.parent.teamId, debugSessionEnabled: false, version: this.parent.version };
+    const agentRequest = new AgentRequest(this.parent.agentRequest.req);
+    agentRequest.headers = [];
+    this.agent = new Agent(this.parent.id, content, this.parent.agentSettings, agentRequest);
+    const JobID = componentId + "-" + uid();
+    this.agent.jobID = JobID;
+  }
+  get agentRequest() {
+    return this.agent.agentRequest;
+  }
+  get components() {
+    return this.agent.components;
+  }
+  get agentRuntime() {
+    return this.agent.agentRuntime;
+  }
+  get jobID() {
+    return this.agent.jobID;
+  }
+  process(path, input) {
+    return this.agent.process(path, input);
+  }
+}
+function cloneComponent(component) {
+  const newComponent = JSON.parse(JSON.stringify(component));
+  newComponent.id = component.id;
+  return newComponent;
+}
+function cloneRecursively(componentData, currentID, newIDMap, clonedComponents, clonedConnections) {
+  const componentToClone = componentData.components.find((c) => c.id === currentID);
+  if (!componentToClone) {
+    return;
+  }
+  const clonedComponent = cloneComponent(componentToClone);
+  newIDMap[currentID] = clonedComponent.id;
+  clonedComponents.push(clonedComponent);
+  const outgoingConnections = componentData.connections.filter((conn) => conn.sourceId === currentID);
+  outgoingConnections.forEach((conn) => {
+    const clonedConnection = JSON.parse(JSON.stringify(conn));
+    clonedConnection.sourceId = clonedComponent.id;
+    if (!newIDMap[conn.targetId]) {
+      cloneRecursively(componentData, conn.targetId, newIDMap, clonedComponents, clonedConnections);
+    }
+    clonedConnection.targetId = newIDMap[conn.targetId];
+    clonedConnections.push(clonedConnection);
+  });
+}
+function fork(componentData, componentID) {
+  const clonedComponents = [];
+  const clonedConnections = [];
+  const newIDMap = {};
+  cloneRecursively(componentData, componentID, newIDMap, clonedComponents, clonedConnections);
+  const rootComponentData = clonedComponents.find((e) => e.id == componentID);
+  if (rootComponentData) {
+    if (rootComponentData.name !== "APIEndpoint") {
+      const APIEndpointData = {
+        id: `${componentID}_ENDPOINT`,
+        name: "APIEndpoint",
+        outputs: [
+          { name: "headers", index: 0, default: true },
+          { name: "body", index: 1, default: true },
+          { name: "query", index: 2, default: true }
+        ],
+        inputs: [],
+        data: { endpoint: componentID, description: "", method: "POST" },
+        displayName: "APIEndpoint",
+        title: "APIEndpoint",
+        description: ""
+      };
+      clonedComponents.push(APIEndpointData);
+      const incomingConnections = componentData.connections.filter((conn) => conn.targetId === componentID);
+      let i = 3;
+      for (let con of incomingConnections) {
+        const input = rootComponentData.inputs.find((e) => e.index == con.targetIndex);
+        const epInput = JSON.parse(JSON.stringify(input));
+        APIEndpointData.inputs.push(epInput);
+        const epOutput = {
+          name: input.name,
+          expression: `body.${input.name}`,
+          optional: false,
+          index: i++,
+          default: false
+        };
+        APIEndpointData.outputs.push(epOutput);
+        clonedConnections.push({
+          sourceId: APIEndpointData.id,
+          targetId: rootComponentData.id,
+          sourceIndex: epOutput.index,
+          targetIndex: input.index
+        });
+      }
+    }
+  }
+  return {
+    components: clonedComponents,
+    connections: clonedConnections
+  };
+}
+
+var __defProp$p = Object.defineProperty;
+var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+const _Async = class _Async extends Component {
+  constructor() {
+    super();
+    __publicField$p(this, "configSchema", null);
+  }
+  init() {
+  }
+  async process(input, config, agent) {
+    await super.process(input, config, agent);
+    this.createComponentLogger(agent, config.name);
+    const forked = config.data.forked;
+    try {
+      if (!forked) {
+        const forkedAgent = new ForkedAgent(agent, config.id);
+        const JobID = forkedAgent.jobID;
+        forkedAgent.agent.async = true;
+        forkedAgent.agent.jobID = JobID;
+        this.cleanJobIDBranch(forkedAgent.agent);
+        const componentData = forkedAgent.components[config.id];
+        componentData.data.forked = true;
+        forkedAgent.agentRequest.body = { ...input };
+        if (!_Async.JOBS[agent.id]) _Async.JOBS[agent.id] = {};
+        _Async.JOBS[agent.id][JobID] = {
+          //forkedAgent,
+          status: "pending"
+        };
+        if (agent.debugSessionEnabled) {
+          const _job_components = Object.keys(forkedAgent.components);
+          agent.agentRuntime.updateComponent(config.id, { _job_components });
+        }
+        forkedAgent.process(`/api/${config.id}`, input).then((result) => {
+          _Async.JOBS[agent.id][JobID].result = result;
+          _Async.JOBS[agent.id][JobID].status = "done";
+        }).finally(async () => {
+          if (_Async.JOBS[agent.id][JobID].status !== "done") {
+            _Async.JOBS[agent.id][JobID].status = "failed";
+          }
+          if (agent.debugSessionEnabled) {
+            await delay(1e3);
+            agent.agentRuntime.reloadCtxData();
+            agent.agentRuntime.updateComponent(config.id, { _job_components: [] });
+          }
+        });
+        return { JobID };
+      } else {
+        let result = { JobID: agent.jobID };
+        for (let key in input) {
+          result[key] = input[key];
+        }
+        return result;
+      }
+    } catch (error) {
+    }
+    return {};
+  }
+  // private recursiveTagAsyncComponents(component, agent: Agent) {
+  //     for (let output of component.outputs) {
+  //         if (component.name == 'Async' && output.name === 'JobID') continue; //'JobID' is a special output
+  //         const connected = agent.connections.filter((c) => c.sourceId === component.id && c.sourceIndex === output.index);
+  //         if (!connected) continue;
+  //         for (let con of connected) {
+  //             const targetComponent = agent.components[con.targetId];
+  //             if (!targetComponent) continue;
+  //             targetComponent.async = true;
+  //             this.recursiveTagAsyncComponents(targetComponent, agent);
+  //         }
+  //     }
+  // }
+  // private tagAsyncComponents(agent: Agent) {
+  //     const componentsList: any[] = Object.values(agent.components);
+  //     const AsyncComponent = componentsList.find((c) => c.name === 'Async');
+  //     if (!AsyncComponent) return;
+  //     AsyncComponent.async = true;
+  //     this.recursiveTagAsyncComponents(AsyncComponent, agent);
+  // }
+  cleanJobIDBranch(agent) {
+    const componentsList = Object.values(agent.components);
+    const AsyncComponent = componentsList.find((c) => c.name === "Async");
+    if (!AsyncComponent) return;
+    const jobIDOutputIndex = AsyncComponent.outputs.findIndex((o) => o.name === "JobID");
+    if (jobIDOutputIndex === -1) return;
+    agent.connections = agent.connections.filter((c) => {
+      const toDelete = c.sourceId === AsyncComponent.id && c.sourceIndex === jobIDOutputIndex && !agent.components[c.targetId].async;
+      return !toDelete;
+    });
+    this.removeOrphanedBranches(agent);
+  }
+  removeOrphanedBranches(agent) {
+    const toDelete = [];
+    for (let componentId in agent.components) {
+      const component = agent.components[componentId];
+      if (component.name === "APIEndpoint") continue;
+      const connected = agent.connections.some((c) => c.targetId === component.id);
+      if (!connected) {
+        toDelete.push(component.id);
+      }
+    }
+    for (let id of toDelete) {
+      this.removeComponent(agent, id);
+    }
+  }
+  removeComponent(agent, componentId) {
+    agent.components[componentId];
+    delete agent.components[componentId];
+    agent.connections = agent.connections.filter((c) => c.sourceId !== componentId);
+    this.removeOrphanedBranches(agent);
+  }
+};
+__publicField$p(_Async, "JOBS", {});
+__publicField$p(_Async, "ForkedAgent");
+let Async = _Async;
+
+var __defProp$o = Object.defineProperty;
+var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
+const _Await = class _Await extends Component {
+  constructor() {
+    super();
+    __publicField$o(this, "configSchema", Joi.object({
+      jobs_count: Joi.number().min(1).max(100).default(1).label("Jobs Count"),
+      max_time: Joi.number().min(1).max(21600).default(1).label("Max time")
+    }));
+  }
+  init() {
+  }
+  async process(input, config, agent) {
+    await super.process(input, config, agent);
+    const logger = this.createComponentLogger(agent, config.name);
+    try {
+      let Results = {};
+      const _error = null;
+      let jobs_count = parseInt(config.data.jobs_count || 1);
+      let max_time = parseInt(config.data.max_time || 1);
+      const jobs = Array.isArray(input.Jobs) ? input.Jobs : [input.Jobs];
+      if (!_Await.WAITS[agent.id]) _Await.WAITS[agent.id] = {};
+      if (!_Await.WAITS[agent.id][config.id]) _Await.WAITS[agent.id][config.id] = {};
+      if (!_Await.WAITS[agent.id][config.id][agent.agentRuntime.workflowReqId])
+        _Await.WAITS[agent.id][config.id][agent.agentRuntime.workflowReqId] = [];
+      for (let jobID of jobs) _Await.WAITS[agent.id][config.id][agent.agentRuntime.workflowReqId].push(jobID);
+      logger.debug("Jobs", jobs);
+      logger.debug("Waiting for jobs to finish");
+      let promise = new Promise((resolve, reject) => {
+        let interval = setInterval(() => {
+          if (max_time < 0) {
+            clearInterval(interval);
+            return resolve(true);
+          }
+          let done = true;
+          let completed = 0;
+          for (let jobID of jobs) {
+            if (Async.JOBS?.[agent.id]?.[jobID]?.status == "pending") {
+              done = false;
+              break;
+            } else {
+              completed++;
+            }
+          }
+          if (completed >= jobs_count) {
+            done = true;
+          }
+          if (done) {
+            clearInterval(interval);
+            return resolve(true);
+          }
+          max_time -= 1;
+        }, 1e3);
+      });
+      await promise;
+      logger.debug("Jobs finished, collecting results");
+      for (let jobID of jobs) {
+        Results[jobID] = {
+          output: Async.JOBS?.[agent.id]?.[jobID]?.result,
+          status: Async.JOBS?.[agent.id]?.[jobID]?.status || "unknown_job"
+        };
+      }
+      delete _Await.WAITS[agent.id][config.id][agent.agentRuntime.workflowReqId];
+      logger.debug("Results", Results);
+      return { Results, _error, _debug: logger.output, _debug_time: logger.elapsedTime };
+    } catch (err) {
+      const _error = err?.response?.data || err?.message || err.toString();
+      logger.error(` Error running code 
+${_error}
+`);
+      delete _Await.WAITS[agent.id][config.id][agent.agentRuntime.workflowReqId];
+      return { Output: void 0, _error, _debug: logger.output, _debug_time: logger.elapsedTime };
+    }
+  }
+};
+__publicField$o(_Await, "WAITS", {});
+let Await = _Await;
+
+var __defProp$n = Object.defineProperty;
+var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
+class ForEach extends Component {
+  constructor() {
+    super();
+    __publicField$n(this, "configSchema", null);
+  }
+  init() {
+  }
+  async process(input, config, agent) {
+    await super.process(input, config, agent);
+    let Loop = {};
+    let Result;
+    let _temp_result;
+    let _error = null;
+    let _in_progress = true;
+    const logger = this.createComponentLogger(agent, config.name);
+    try {
+      const inputObject = input.Input;
+      let inputArray = Array.isArray(inputObject) ? inputObject : [inputObject];
+      if (!Array.isArray(inputArray) && typeof inputArray === "object")
+        inputArray = Object.values(inputArray);
+      const runtimeData = agent.agentRuntime.getRuntimeData(config.id);
+      const _ForEachData = runtimeData._LoopData || { parentId: config.id, loopIndex: 0, loopLength: inputArray.length };
+      logger.debug(`Loop: ${_ForEachData.loopIndex} / ${_ForEachData.loopLength}`);
+      delete _ForEachData.branches;
+      if (_ForEachData.result) {
+        _temp_result = _ForEachData.result;
+        logger.debug(`  => Loop Result : ${JSON.stringify(Loop, null, 2)}`);
+        logger.debug(`---------------------------------------------------`);
+      }
+      Loop = inputArray[_ForEachData.loopIndex];
+      logger.debug(`  => Loop Data : ${JSON.stringify(Loop, null, 2)}`);
+      _in_progress = Loop !== void 0;
+      if (_in_progress) {
+        _ForEachData.loopIndex++;
+      }
+      _ForEachData._in_progress = _in_progress;
+      agent.agentRuntime.updateRuntimeData(config.id, { _LoopData: _ForEachData });
+    } catch (error) {
+      _error = error;
+      logger.error(error);
+    }
+    if (!_in_progress) {
+      Result = _temp_result || [];
+      switch (config?.data?.format) {
+        case "minimal":
+          Result = Result.map((item) => cleanupResult(item.result));
+          break;
+        case "results-array":
+          Result = Result.map((item) => Object.values(cleanupResult(item.result))).flat(Infinity);
+          break;
+      }
+    }
+    return { Loop, Result, _temp_result, _error, _in_progress, _debug: logger.output };
+  }
+  async postProcess(output, config, agent) {
+    output = await super.postProcess(output, config, agent);
+    if (output?.result) {
+      delete output.result._temp_result;
+      delete output.result._in_progress;
+      delete output.result.Loop;
+    }
+    return output;
+  }
+}
+function cleanupResult(result) {
+  if (typeof result !== "object") return result;
+  if (result._debug) delete result._debug;
+  if (result._error) delete result._error;
+  if (result._temp_result) delete result._temp_result;
+  if (result._in_progress) delete result._in_progress;
+  return result;
+}
+
+var __defProp$m = Object.defineProperty;
+var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
+class Code extends Component {
+  constructor() {
+    super();
+    __publicField$m(this, "configSchema", Joi.object({
+      code_vars: Joi.string().max(1e3).allow("").label("Variables"),
+      code_body: Joi.string().max(5e5).allow("").label("Code"),
+      _templateSettings: Joi.object().allow(null).label("Template Settings"),
+      _templateVars: Joi.object().allow(null).label("Template Variables")
+    }));
+  }
+  init() {
+  }
+  async process(input, config$1, agent) {
+    await super.process(input, config$1, agent);
+    const logger = this.createComponentLogger(agent, config$1.name);
+    try {
+      let Output = {};
+      let _error = void 0;
+      const url = config.env.CODE_SANDBOX_URL + "/run-js";
+      let codeInputs = {};
+      for (let fieldName in input) {
+        const _type = typeof input[fieldName];
+        switch (_type) {
+          case "string":
+            const b64encoded = Buffer.from(input[fieldName]).toString("base64");
+            codeInputs[fieldName] = `___internal.b64decode('${b64encoded}')`;
+            break;
+          case "number":
+          case "boolean":
+            codeInputs[fieldName] = input[fieldName];
+            break;
+          default:
+            codeInputs[fieldName] = input[fieldName];
+            break;
+        }
+      }
+      let code_vars = TemplateStringHelper.create(config$1.data.code_vars || "").parse(codeInputs).result;
+      let code_body = config$1.data.code_body;
+      if (config$1.data._templateVars) {
+        code_body = TemplateStringHelper.create(code_body).parse(config$1.data._templateVars).result;
+      }
+      const code = code_vars + "\n" + code_body;
+      logger.debug(` Running code 
+${code}
+`);
+      const result = await axios.post(url, { code }).catch((error) => ({ error }));
+      if (result.error) {
+        _error = result.error?.response?.data || result.error?.message || result.error.toString();
+        logger.error(` Error running code 
+${_error}
+`);
+        Output = void 0;
+      } else {
+        logger.debug(` Code result 
+${JSON.stringify(result.data, null, 2)}
+`);
+        Output = result.data?.Output;
+      }
+      return { Output, _error, _debug: logger.output };
+    } catch (err) {
+      const _error = err?.response?.data || err?.message || err.toString();
+      logger.error(` Error running code 
+${_error}
+`);
+      return { Output: void 0, _error, _debug: logger.output };
+    }
+  }
+}
+
+var translation = {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be translated in the original languages",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+};
+var summarization = {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be summarized",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	parameters: {
+		min_length: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the minimum length in tokens of the output summary."
+		},
+		max_length: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the maximum length in tokens of the output summary."
+		},
+		top_k: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+		},
+		top_p: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+		},
+		temperature: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+		},
+		repetition_penalty: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+		},
+		max_time: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+};
+var conversational = {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) The last input from the user in the conversation.",
+			request_parameter_name: "text",
+			request_parameter_type: "string"
+		},
+		Generated_responses: {
+			type: "string[]",
+			desc: "A list of strings corresponding to the earlier replies from the model.",
+			request_parameter_name: "generated_responses",
+			request_parameter_type: "string[]"
+		},
+		Past_user_inputs: {
+			type: "string[]",
+			desc: "A list of strings corresponding to the earlier replies from the user. Should be of the same length of generated_responses.",
+			request_parameter_name: "past_user_inputs",
+			request_parameter_type: "string[]"
+		}
+	},
+	parameters: {
+		min_length: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the minimum length in tokens of the output summary."
+		},
+		max_length: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the maximum length in tokens of the output summary."
+		},
+		top_k: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+		},
+		top_p: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+		},
+		temperature: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+		},
+		repetition_penalty: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+		},
+		max_time: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\", past_user_inputs: [{{past_user_inputs}}], generated_responses: [{{generated_responses}}] }"
+};
+var hfParams = {
+	"text-classification": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be classified",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"token-classification": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be classified",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	parameters: {
+		aggregation_strategy: {
+			type: "string",
+			"default": "simple",
+			desc: "(Default: simple). There are several aggregation strategies:",
+			supportedValues: [
+				{
+					value: "none",
+					desc: "Every token gets classified without further aggregation."
+				},
+				{
+					value: "simple",
+					desc: "Entities are grouped according to the default schema (B-, I- tags get merged when the tag is similar)."
+				},
+				{
+					value: "first",
+					desc: "Same as the simple strategy except words cannot end up with different tags. Words will use the tag of the first token when there is ambiguity."
+				},
+				{
+					value: "average",
+					desc: "Same as the simple strategy except words cannot end up with different tags. Scores are averaged across tokens and then the maximum label is applied."
+				},
+				{
+					value: "max",
+					desc: "Same as the simple strategy except words cannot end up with different tags. Word entity will be the token with the maximum score."
+				}
+			]
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"table-question-answering": {
+	inputs: {
+		Query: {
+			type: "string",
+			desc: "(required) The query in plain text that you want to ask the table",
+			request_parameter_name: "query",
+			request_parameter_type: "string"
+		},
+		Table: {
+			type: "string",
+			desc: "(required) A table of data represented as a dict of list where entries are headers and the lists are all the values, all lists must have the same size.",
+			request_parameter_name: "table",
+			request_parameter_type: "Record<string, string[]>"
+		}
+	},
+	formatRequest: "inputs: { query: \"{{query}}\", table: {{table}} }"
+},
+	"question-answering": {
+	inputs: {
+		Question: {
+			type: "string",
+			request_parameter_name: "question",
+			request_parameter_type: "string"
+		},
+		Context: {
+			type: "string",
+			request_parameter_name: "context",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: { context: \"{{context}}\", question: \"{{question}}\" }"
+},
+	"document-question-answering": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "image",
+			request_parameter_type: "Blob | ArrayBuffer"
+		},
+		Question: {
+			type: "string",
+			desc: "(required) Question about document image.",
+			request_parameter_name: "question",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: { image: {{image}}, question: \"{{question}}\" }"
+},
+	"visual-question-answering": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "image",
+			request_parameter_type: "Blob | ArrayBuffer"
+		},
+		Question: {
+			type: "string",
+			desc: "(required) Question about visual image.",
+			request_parameter_name: "question",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: { image: {{image}}, question: \"{{question}}\" }"
+},
+	"zero-shot-classification": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string or list of strings",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string | string[]"
+		}
+	},
+	parameters: {
+		candidate_labels: {
+			type: "string[]",
+			"default": [
+			],
+			desc: "(required) a list of strings that are potential classes for inputs. (max 10 candidate_labels, for more, simply run multiple requests, results are going to be misleading if using too many candidate_labels anyway. If you want to keep the exact same, you can simply run multi_label=true and do the scaling on your end. )"
+		},
+		multi_label: {
+			type: "boolean",
+			"default": false,
+			desc: "(Default: false) Boolean that is set to True if classes can overlap"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\", parameters: { candidate_labels: [{{candidate_labels}}] }"
+},
+	translation: translation,
+	summarization: summarization,
+	conversational: conversational,
+	"text-generation": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be generated from",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	parameters: {
+		do_sample: {
+			type: "boolean",
+			"default": true,
+			desc: "(Optional: true). Bool. Whether or not to use sampling, use greedy decoding otherwise."
+		},
+		max_time: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+		},
+		num_return_sequences: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1). Integer. The number of proposition you want to be returned."
+		},
+		repetition_penalty: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+		},
+		return_full_text: {
+			type: "boolean",
+			"default": true,
+			desc: "(Default: true). Bool. If set to False, the return results will not contain the original query making it easier for prompting."
+		},
+		temperature: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+		},
+		max_new_tokens: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Int (0-250). The amount of new tokens to be generated, this does not include the input length it is a estimate of the size of generated text you want. Each new tokens slows down the request, so look for balance between response times and length of text generated."
+		},
+		top_k: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+		},
+		top_p: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+		},
+		truncate: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer. The maximum number of tokens from the input."
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"text2text-generation": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be generated from",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	parameters: {
+		max_time: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0-120.0). The amount of time in seconds that the query should take maximum. Network can cause some overhead so it will be a soft limit."
+		},
+		num_return_sequences: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1). Integer. The number of proposition you want to be returned."
+		},
+		repetition_penalty: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float (0.0-100.0). The more a token is used within generation the more it is penalized to not be picked in successive generation passes."
+		},
+		temperature: {
+			type: "number",
+			"default": 1,
+			desc: "(Default: 1.0). Float (0.0-100.0). The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability."
+		},
+		max_new_tokens: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Int (0-250). The amount of new tokens to be generated, this does not include the input length it is a estimate of the size of generated text you want. Each new tokens slows down the request, so look for balance between response times and length of text generated."
+		},
+		top_k: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Integer to define the top tokens considered within the sample operation to create new text."
+		},
+		top_p: {
+			type: "number",
+			"default": "None",
+			desc: "(Default: None). Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p."
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"fill-mask": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be filled from, must contain the [MASK] token (check model card for exact name of the mask)",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"sentence-similarity": {
+	inputs: {
+		Source_sentence: {
+			type: "string",
+			desc: "(required) The string that you wish to compare the other strings with. This can be a phrase, sentence, or longer passage, depending on the model being used.",
+			request_parameter_name: "source_sentence",
+			request_parameter_type: "string"
+		},
+		Sentences: {
+			type: "string[]",
+			desc: "(required) A list of strings which will be compared against the source_sentence.",
+			request_parameter_name: "sentences",
+			request_parameter_type: "string[]"
+		}
+	},
+	formatRequest: "inputs: { source_sentence: \"{{source_sentence}}\", sentences: [{{sentences}}] }"
+},
+	"text-to-image": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) prompt to generate image from",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"image-to-text": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{image}} "
+},
+	"image-classification": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{image}}"
+},
+	"object-detection": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{image}}"
+},
+	"image-segmentation": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{image}}"
+},
+	"zero-shot-image-classification": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "image",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	parameters: {
+		candidate_labels: {
+			type: "string[]",
+			desc: "A list of strings that are potential classes for inputs. (max 10)"
+		}
+	},
+	formatRequest: "inputs: { image: {{image}}, parameters: { candidate_labels: [{{candidate_labels}}] } }"
+},
+	"image-to-image": {
+	inputs: {
+		Image: {
+			type: "URL | base64 | file | SmythFileObject",
+			desc: "(required) image URL, base64 string, uploaded image, or linked image output",
+			request_parameter_name: "inputs",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	parameters: {
+		prompt: {
+			type: "string",
+			desc: "(Optional) The text prompt to guide the image generation",
+			"default": "None"
+		},
+		strength: {
+			type: "number",
+			"default": 0,
+			desc: "(Optional) The 'strength' parameter is effective only for SD img2img and alt diffusion img2img models. It conceptually indicates the extent of transformation applied to the reference 'image,' with values between 0 and 1. A higher 'strength' adds more noise to the initial 'image,' and the denoising process runs for the specified number of iterations in 'num_inference_steps.' A 'strength' of 1 ignores the 'image,' applying maximum added noise and running denoising for the full set of iterations."
+		},
+		negative_prompt: {
+			type: "string",
+			"default": "None",
+			desc: "(Optional) A negative prompt for the image generation"
+		},
+		height: {
+			type: "number",
+			"default": "None",
+			desc: "(Optional) The height in pixels of the generated image"
+		},
+		width: {
+			type: "number",
+			"default": "None",
+			desc: "(Optional) The width in pixels of the generated image"
+		},
+		num_inference_steps: {
+			type: "number",
+			"default": "None",
+			desc: "(Optional) The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference."
+		},
+		guidance_scale: {
+			type: "number",
+			"default": "None",
+			desc: "(Optional) Guidance scale: Higher guidance scale encourages to generate images that are closely linked to the text `prompt`, usually at the expense of lower image quality."
+		},
+		guess_mode: {
+			type: "boolean",
+			"default": "None",
+			desc: "(Optional) guess_mode only works for ControlNet models, defaults to False In this mode, the ControlNet encoder will try best to recognize the content of the input image even if you remove all prompts. The `guidance_scale` between 3.0 and 5.0 is recommended."
+		}
+	},
+	formatRequest: "inputs: {{image}}"
+},
+	"text-to-speech": {
+	inputs: {
+		Text: {
+			type: "string",
+			desc: "(required) a string to be converted to speech",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+},
+	"automatic-speech-recognition": {
+	inputs: {
+		Audio: {
+			type: "URL | base64 | SmythFileObject",
+			desc: "(required) audio URL, base64 string, SmythFileObject",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{audio}}"
+},
+	"audio-to-audio": {
+	inputs: {
+		Audio: {
+			type: "URL | base64 | SmythFileObject",
+			desc: "(required) audio URL, base64 string, SmythFileObject",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{audio}}"
+},
+	"audio-classification": {
+	inputs: {
+		Audio: {
+			type: "URL | base64 | SmythFileObject",
+			desc: "(required) audio URL, base64 string, SmythFileObject",
+			request_parameter_name: "data",
+			request_parameter_type: "Blob | ArrayBuffer"
+		}
+	},
+	formatRequest: "data: {{audio}}"
+},
+	"feature-extraction": {
+	inputs: {
+		Text: {
+			type: "string | string[]",
+			desc: "(required) a string or a list of strings to get the features from.",
+			request_parameter_name: "inputs",
+			request_parameter_type: "string | string[]"
+		}
+	},
+	formatRequest: "inputs: \"{{text}}\""
+}
+};
+
+var __defProp$l = Object.defineProperty;
+var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
+function shouldNestInputs(formatRequestPattern) {
+  const trimmedPattern = formatRequestPattern?.trim();
+  return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
+}
+function validateAndParseJson(value, helpers) {
+  let parsedJson = null;
+  try {
+    parsedJson = JSON.parse(value);
+  } catch (error) {
+    return helpers.error("string.invalidJson", { value });
+  }
+  if (typeof parsedJson !== "object" || parsedJson === null) {
+    return helpers.error("string.notJsonObject", { value });
+  }
+  for (const key in parsedJson) {
+    if (key.trim() === "") {
+      return helpers.error("object.emptyKey", { value });
+    }
+  }
+  return parsedJson;
+}
+class HuggingFace extends Component {
+  constructor() {
+    super();
+    __publicField$l(this, "configSchema", Joi.object({
+      accessToken: Joi.string().max(350).required().label("Access Token"),
+      modelName: Joi.string().max(100).required(),
+      modelTask: Joi.string().max(100).required(),
+      inputConfig: Joi.string().allow(""),
+      parameters: Joi.string().custom(validateAndParseJson, "custom JSON validation").allow(""),
+      name: Joi.string().max(100).required(),
+      displayName: Joi.string().max(100).required(),
+      desc: Joi.string().max(5e3).required().allow(""),
+      logoUrl: Joi.string().max(500).allow(""),
+      disableCache: Joi.boolean().strict()
+    }));
+  }
+  init() {
+  }
+  async process(input, config, agent) {
+    await super.process(input, config, agent);
+    const logger = this.createComponentLogger(agent, config.name);
+    logger.debug(`=== Hugging Face Log ===`);
+    agent?.id;
+    const teamId = agent?.teamId;
+    const accessToken = await TemplateStringHelper.create(config?.data?.accessToken).parseTeamKeys(teamId).asyncResult;
+    if (!accessToken) {
+      return { _error: "Please provide a valid Hugging Face Access Token", _debug: logger.output };
+    }
+    const hf = new HfInference(accessToken);
+    const task = config?.data?.modelTask;
+    if (!task) {
+      return { _error: "Hugging Face Task is required!", _debug: logger.output };
+    }
+    logger.debug(`Task: ${kebabToCapitalize(task)}`);
+    let hfFunc = kebabToCamel(task);
+    if (hfFunc === "text2textGeneration") {
+      hfFunc = "textGeneration";
+    }
+    if (!hf?.[hfFunc]) {
+      return { _error: `Inference API does not support for this task - ${kebabToCapitalize(task)}`, _debug: logger.output };
+    }
+    const modelName = config?.data?.modelName;
+    if (!modelName) {
+      return { _error: "Hugging Face Model is required!", _debug: logger.output };
+    }
+    logger.debug(`Model Name: ${modelName}`);
+    let inputConfig = {};
+    const formatRequest = hfParams?.[task]?.formatRequest;
+    const _hfParams = hfParams?.[task]?.inputs;
+    if (_hfParams && Object.keys(_hfParams).length > 0) {
+      for (const key in _hfParams) {
+        const config2 = _hfParams[key];
+        inputConfig[key] = config2;
+      }
+      if (typeof inputConfig === "object" && inputConfig !== null) {
+        inputConfig = { ...inputConfig, formatRequest };
+      }
+    }
+    if (!inputConfig || Object.keys(inputConfig)?.length === 0) {
+      console.log("No inputs config found for Hugging Face Model!");
+    }
+    let inputs = {};
+    if (!input || Object.keys(input)?.length === 0) {
+      return { _error: "Please provide a valid input!", _debug: logger.output };
+    }
+    if (typeof input !== "object") {
+      return { _error: "Invalid input!", _debug: logger.output };
+    }
+    if (typeof input == "object" && Object.keys(input)?.length > 0) {
+      for (const key in input) {
+        if (inputConfig?.[key]) {
+          let value = input[key];
+          let name = inputConfig[key]["request_parameter_name"];
+          let type = inputConfig[key]["request_parameter_type"];
+          if (type && type?.includes("Blob")) {
+            try {
+              const binaryFile = new BinaryInput(value);
+              const buffer = await binaryFile.getBuffer();
+              const blob = new Blob([buffer]);
+              inputs[name] = blob;
+            } catch (error) {
+              return { _error: error?.message || JSON.stringify(error), _debug: logger.output };
+            }
+          } else {
+            inputs[name] = value;
+          }
+        }
+      }
+    }
+    const nestInputs = shouldNestInputs(inputConfig.formatRequest);
+    const structuredInputs = nestInputs ? { inputs } : inputs;
+    let inputsLog;
+    if (structuredInputs["inputs"] && typeof structuredInputs["inputs"] === "object") {
+      inputsLog = { ...structuredInputs["inputs"] };
+      for (const [key, value] of Object.entries(structuredInputs["inputs"] || {})) {
+        if (value instanceof Blob) {
+          inputsLog[key] = `Blob size=${value.size}`;
+        }
+      }
+    } else {
+      inputsLog = structuredInputs;
+    }
+    logger.debug("Inputs: ", inputsLog);
+    let params = JSON.parse(config?.data?.parameters || "{}");
+    params = convertStringToRespectiveType(params);
+    let parameters = {};
+    if (params && Object.keys(params)?.length > 0) {
+      for (const key in params) {
+        const value = params[key];
+        if (typeof value === "string") {
+          if (value?.toLowerCase() === "none") continue;
+          parameters[key] = TemplateStringHelper.create(value).parse(input).result;
+        } else {
+          parameters[key] = value;
+        }
+      }
+    }
+    let args = { model: modelName, ...structuredInputs };
+    const options = {};
+    if (config?.data?.disableCache) {
+      options["use_cache"] = false;
+    }
+    if (Object.keys(parameters)?.length > 0) {
+      args["parameters"] = parameters;
+      logger.debug("Parameters: \n", parameters);
+    }
+    const modelCallWithRetry = async ({ retryCount = 0, retryLimit = 2, retryDelay = 1e3 }) => {
+      try {
+        if (typeof hf[hfFunc] !== "function" || retryCount === retryLimit) {
+          hfFunc = "request";
+        }
+        const result = await hf[hfFunc](args, options);
+        let output;
+        if (result instanceof Blob) {
+          const obj = await BinaryInput.from(result).getJsonData(AccessCandidate.agent(agent.id));
+          output = obj;
+        } else if (Array.isArray(result)) {
+          output = await Promise.all(
+            result.map(async (item) => {
+              if (item.blob instanceof Blob || typeof item.blob === "string" && isBase64(item.blob)) {
+                let binaryInput;
+                if (item.blob instanceof Blob) {
+                  binaryInput = BinaryInput.from(item.blob);
+                } else {
+                  binaryInput = BinaryInput.from(item.blob, void 0, item["content-type"]);
+                }
+                const fileObj = await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+                return { ...item, blob: fileObj };
+              } else {
+                return item;
+              }
+            })
+          );
+        } else {
+          output = result;
+        }
+        return output;
+      } catch (error) {
+        if (retryCount < retryLimit) {
+          await delay(retryDelay);
+          return modelCallWithRetry({
+            retryCount: retryCount + 1,
+            retryLimit,
+            retryDelay: retryDelay * 2
+          });
+        }
+        throw error;
+      }
+    };
+    try {
+      const output = await modelCallWithRetry({
+        retryCount: 0,
+        retryLimit: 2,
+        retryDelay: 5e3
+      });
+      logger.debug("Output: \n", output);
+      return { Output: output, _debug: logger.output };
+    } catch (error) {
+      console.log(`Error on running Hugging Face Model!`, error);
+      console.log("Error: args, options ", args, options);
+      return { _error: `Error from Hugging Face: 
+${error?.message || JSON.stringify(error)}`, _debug: logger.output };
+    }
+  }
+}
+
 const components = {
   Component: new Component(),
   Note: new Component(),
@@ -5067,12 +6558,17 @@ const components = {
   LogicAtLeast: new LogicAtLeast(),
   LogicAtMost: new LogicAtMost(),
   AgentPlugin: new AgentPlugin(),
-  LLMAssistant: new LLMAssistant()
+  LLMAssistant: new LLMAssistant(),
+  Async: new Async(),
+  Await: new Await(),
+  ForEach: new ForEach(),
+  Code: new Code(),
+  HuggingFace: new HuggingFace()
 };
 
-var __defProp$i = Object.defineProperty;
-var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$k = Object.defineProperty;
+var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentLogger");
 const _AgentLogger = class _AgentLogger {
   constructor(agent) {
@@ -5094,25 +6590,25 @@ const _AgentLogger = class _AgentLogger {
   static async logTask(agent, tasks) {
   }
 };
-__publicField$i(_AgentLogger, "transactions", {});
+__publicField$k(_AgentLogger, "transactions", {});
 let AgentLogger = _AgentLogger;
 
-var __defProp$h = Object.defineProperty;
-var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$c = Logger("RuntimeContext");
+var __defProp$j = Object.defineProperty;
+var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$d = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
     this.runtime = runtime;
-    __publicField$h(this, "circularLimitReached", false);
-    __publicField$h(this, "step", 0);
-    __publicField$h(this, "sessionResult", false);
-    __publicField$h(this, "sessionResults");
-    __publicField$h(this, "components", {});
-    __publicField$h(this, "checkRuntimeContext", null);
-    __publicField$h(this, "ctxFile", "");
-    __publicField$h(this, "_runtimeFileReady");
+    __publicField$j(this, "circularLimitReached", false);
+    __publicField$j(this, "step", 0);
+    __publicField$j(this, "sessionResult", false);
+    __publicField$j(this, "sessionResults");
+    __publicField$j(this, "components", {});
+    __publicField$j(this, "checkRuntimeContext", null);
+    __publicField$j(this, "ctxFile", "");
+    __publicField$j(this, "_runtimeFileReady");
     const agent = runtime.agent;
     const dbgFolder = path.join(config.env.DATA_PATH, `/debug/${agent.id}/`);
     if (!fs.existsSync(dbgFolder)) {
@@ -5147,7 +6643,7 @@ class RuntimeContext extends EventEmitter$1 {
   initRuntimeContext() {
     if (this._runtimeFileReady) return;
     const endpointDBGCall = this.runtime.xDebugId?.startsWith("dbg-");
-    console$c.debug("Init ctxFile", this.ctxFile);
+    console$d.debug("Init ctxFile", this.ctxFile);
     const agent = this.runtime.agent;
     let method = (agent.agentRequest.method || "POST").toUpperCase();
     const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
@@ -5197,9 +6693,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     component.ctx = { ...component.ctx, ...data, step: this.step };
     this.sync();
@@ -5208,9 +6704,9 @@ class RuntimeContext extends EventEmitter$1 {
     const ctxData = this;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     component.ctx.runtimeData = {};
     component.ctx.active = false;
@@ -5221,19 +6717,19 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return null;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     const data = component.ctx;
     return data;
   }
 }
 
-var __defProp$g = Object.defineProperty;
-var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$b = Logger("AgentRuntime");
+var __defProp$i = Object.defineProperty;
+var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$c = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
   {
@@ -5242,7 +6738,7 @@ const AgentRuntimeUnavailable = new Proxy(
         return target[prop];
       } else {
         return function() {
-          console$b.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
+          console$c.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
         };
       }
     }
@@ -5251,28 +6747,28 @@ const AgentRuntimeUnavailable = new Proxy(
 const _AgentRuntime = class _AgentRuntime {
   constructor(agent) {
     this.agent = agent;
-    __publicField$g(this, "agentContext");
+    __publicField$i(this, "agentContext");
     //private ctxFile: string = '';
-    __publicField$g(this, "xDebugRun", "");
-    __publicField$g(this, "xDebugInject", "");
-    __publicField$g(this, "xDebugRead", "");
-    __publicField$g(this, "xDebugStop", "");
-    __publicField$g(this, "xDebugPendingInject", null);
-    __publicField$g(this, "xDebugId", "");
-    __publicField$g(this, "xDebugCmd", "");
-    __publicField$g(this, "_debugActive", false);
-    __publicField$g(this, "_runtimeFileReady", false);
-    __publicField$g(this, "sessionClosed", false);
-    __publicField$g(this, "reqTagOwner", false);
+    __publicField$i(this, "xDebugRun", "");
+    __publicField$i(this, "xDebugInject", "");
+    __publicField$i(this, "xDebugRead", "");
+    __publicField$i(this, "xDebugStop", "");
+    __publicField$i(this, "xDebugPendingInject", null);
+    __publicField$i(this, "xDebugId", "");
+    __publicField$i(this, "xDebugCmd", "");
+    __publicField$i(this, "_debugActive", false);
+    __publicField$i(this, "_runtimeFileReady", false);
+    __publicField$i(this, "sessionClosed", false);
+    __publicField$i(this, "reqTagOwner", false);
     //reqTag is used to identify the current running workflow including nested calls, it allows us to identify circular calls
-    __publicField$g(this, "reqTag");
-    __publicField$g(this, "processID");
+    __publicField$i(this, "reqTag");
+    __publicField$i(this, "processID");
     //this identifies the current processID, a process ID is the full set of runCycles that is executed by the agent.
-    __publicField$g(this, "workflowReqId");
+    __publicField$i(this, "workflowReqId");
     //this identifies the current running workflow. a workflow starts when and agent endpoint is called, or a debug session is initiated, and ends when no more steps can be executed.
-    __publicField$g(this, "alwaysActiveComponents", {});
-    __publicField$g(this, "exclusiveComponents", {});
-    __publicField$g(this, "checkRuntimeContext", null);
+    __publicField$i(this, "alwaysActiveComponents", {});
+    __publicField$i(this, "exclusiveComponents", {});
+    __publicField$i(this, "checkRuntimeContext", null);
     this.reqTag = agent.agentRequest.header("X-REQUEST-TAG");
     const isNestedProcess = !!this.reqTag;
     if (!this.reqTag) {
@@ -5323,7 +6819,7 @@ const _AgentRuntime = class _AgentRuntime {
       for (let component of this.agent.data.components) {
         const cpt = components[component.name];
         if (!cpt) {
-          console$b.warn(`Component ${component.name} Exists in agent but has no implementation`);
+          console$c.warn(`Component ${component.name} Exists in agent but has no implementation`);
           continue;
         }
         if (cpt.alwaysActive) {
@@ -5365,7 +6861,7 @@ const _AgentRuntime = class _AgentRuntime {
   async sync() {
     const deleteTag = this.reqTagOwner && this.sessionClosed || this.circularLimitReached;
     if (deleteTag) {
-      console$b.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
+      console$c.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
       delete _AgentRuntime.tagsData[this.reqTag];
     }
     this.agentContext.sync();
@@ -5439,7 +6935,7 @@ const _AgentRuntime = class _AgentRuntime {
    * @returns
    */
   async runCycle() {
-    console$b.debug(
+    console$c.debug(
       `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
     );
     const runtime = this;
@@ -5620,9 +7116,9 @@ const _AgentRuntime = class _AgentRuntime {
     return this.agentContext.getComponentData(componentId);
   }
 };
-__publicField$g(_AgentRuntime, "processResults", {});
-__publicField$g(_AgentRuntime, "tagsData", {});
-__publicField$g(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
+__publicField$i(_AgentRuntime, "processResults", {});
+__publicField$i(_AgentRuntime, "tagsData", {});
+__publicField$i(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
 let AgentRuntime = _AgentRuntime;
 
 const OSResourceMonitor = {
@@ -5666,40 +7162,40 @@ function getMemoryUsage() {
   };
 }
 
-var __defProp$f = Object.defineProperty;
-var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$a = Logger("Agent");
+var __defProp$h = Object.defineProperty;
+var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$b = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
     this.id = id;
     this.agentSettings = agentSettings;
-    __publicField$f(this, "name");
-    __publicField$f(this, "data");
-    __publicField$f(this, "teamId");
-    __publicField$f(this, "components");
-    __publicField$f(this, "connections");
-    __publicField$f(this, "endpoints", {});
-    __publicField$f(this, "sessionId");
-    __publicField$f(this, "sessionTag", "");
-    __publicField$f(this, "callerSessionId");
-    __publicField$f(this, "apiBasePath", "/api");
-    __publicField$f(this, "agentRuntime");
-    __publicField$f(this, "usingTestDomain", false);
-    __publicField$f(this, "domain", "");
-    __publicField$f(this, "debugSessionEnabled", false);
-    __publicField$f(this, "circularLimit", 100);
+    __publicField$h(this, "name");
+    __publicField$h(this, "data");
+    __publicField$h(this, "teamId");
+    __publicField$h(this, "components");
+    __publicField$h(this, "connections");
+    __publicField$h(this, "endpoints", {});
+    __publicField$h(this, "sessionId");
+    __publicField$h(this, "sessionTag", "");
+    __publicField$h(this, "callerSessionId");
+    __publicField$h(this, "apiBasePath", "/api");
+    __publicField$h(this, "agentRuntime");
+    __publicField$h(this, "usingTestDomain", false);
+    __publicField$h(this, "domain", "");
+    __publicField$h(this, "debugSessionEnabled", false);
+    __publicField$h(this, "circularLimit", 100);
     //TODO : make it configurable from agent settings
-    __publicField$f(this, "version", "");
+    __publicField$h(this, "version", "");
     //public baseUrl = '';
-    __publicField$f(this, "agentVariables", {});
-    __publicField$f(this, "_kill", false);
+    __publicField$h(this, "agentVariables", {});
+    __publicField$h(this, "_kill", false);
     //public agentRequest: Request | AgentRequest | any;
-    __publicField$f(this, "async", false);
-    __publicField$f(this, "jobID", "");
-    __publicField$f(this, "planInfo", {});
-    __publicField$f(this, "agentRequest");
+    __publicField$h(this, "async", false);
+    __publicField$h(this, "jobID", "");
+    __publicField$h(this, "planInfo", {});
+    __publicField$h(this, "agentRequest");
     const json = typeof agentData === "string" ? JSON.parse(agentData) : agentData;
     this.name = json.name;
     this.data = json.data;
@@ -5808,7 +7304,7 @@ class Agent {
       await delay(30 + qosLatency);
     } while (!step?.finalResult && !this._kill);
     if (this._kill) {
-      console$a.warn(`Agent ${this.id} was killed`);
+      console$b.warn(`Agent ${this.id} was killed`);
       return { error: "Agent killed" };
     }
     result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -5939,7 +7435,7 @@ class Agent {
     const componentData = this.components[componentId];
     const component = components[componentData.name];
     if (this._kill) {
-      console$a.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
+      console$b.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
       return { id: componentData.id, name: componentData.displayName, result: null, error: "Agent killed" };
     }
     if (!component) {
@@ -5993,9 +7489,9 @@ class Agent {
           try {
             await this.parseVariables();
             output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
-            console$a.log(output);
+            console$b.log(output);
           } catch (error) {
-            console$a.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
+            console$b.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
             if (error?.message) output = { Response: void 0, _error: error.message, _debug: error.message };
             else output = { Response: void 0, _error: error.toString(), _debug: error.toString() };
           }
@@ -6269,15 +7765,15 @@ class Agent {
   }
 }
 
-var __defProp$e = Object.defineProperty;
-var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$g = Object.defineProperty;
+var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
 const logger = Logger("SRE");
 const CInstance = ConnectorService;
 const _SmythRuntime = class _SmythRuntime {
   constructor() {
-    __publicField$e(this, "started", false);
-    __publicField$e(this, "initialized", false);
+    __publicField$g(this, "started", false);
+    __publicField$g(this, "initialized", false);
     this.started = true;
   }
   static get Instance() {
@@ -6342,85 +7838,32 @@ const _SmythRuntime = class _SmythRuntime {
     this.started = false;
   }
 };
-__publicField$e(_SmythRuntime, "instance");
+__publicField$g(_SmythRuntime, "instance");
 let SmythRuntime = _SmythRuntime;
-
-const console$9 = Logger("SecureConnector");
-class SecureConnector extends Connector {
-  async start() {
-    console$9.info(`Starting ${this.name} connector ...`);
-  }
-  async stop() {
-    console$9.info(`Stopping ${this.name} connector ...`);
-  }
-  async hasAccess(acRequest) {
-    const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
-    const exactAccess = aclHelper.checkExactAccess(acRequest);
-    if (exactAccess) return true;
-    const ownerRequest = AccessRequest.clone(acRequest).setLevel(TAccessLevel.Owner);
-    const ownerAccess = aclHelper.checkExactAccess(ownerRequest);
-    if (ownerAccess) return true;
-    const publicRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.public());
-    const publicAccess = aclHelper.checkExactAccess(publicRequest);
-    if (publicAccess) return true;
-    const accountConnector = ConnectorService.getAccountConnector();
-    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-    const teamRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
-    const teamAccess = aclHelper.checkExactAccess(teamRequest);
-    if (teamAccess) return true;
-    const teamOwnerRequest = AccessRequest.clone(teamRequest).setLevel(TAccessLevel.Owner);
-    const teamOwnerAccess = aclHelper.checkExactAccess(teamOwnerRequest);
-    if (teamOwnerAccess) return true;
-    return false;
-  }
-  async getAccessTicket(resourceId, request) {
-    const sysAcRequest = AccessRequest.clone(request).resource(resourceId);
-    const accessTicket = {
-      request,
-      access: await this.hasAccess(sysAcRequest) ? TAccessResult.Granted : TAccessResult.Denied
-    };
-    return accessTicket;
-  }
-  //#region [ Decorators ]==========================
-  //AccessControl decorator
-  //This decorator will inject the access control logic into storage connector methods
-  // in order to work properly, the connector expects the resourceId to be the first argument and the access request to be the second argument
-  static AccessControl(target, propertyKey, descriptor) {
-    const originalMethod = descriptor.value;
-    descriptor.value = async function(...args) {
-      const [acRequest, resourceId] = args;
-      const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-      if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError("Access Denied");
-      return originalMethod.apply(this, args);
-    };
-    return descriptor;
-  }
-  //#endregion
-}
 
 class StorageConnector extends SecureConnector {
 }
 
-var __defProp$d = Object.defineProperty;
+var __defProp$f = Object.defineProperty;
 var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$4 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$d(target, key, result);
+  if (kind && result) __defProp$f(target, key, result);
   return result;
 };
-var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$8 = Logger("S3Storage");
+var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$a = Logger("S3Storage");
 class S3Storage extends StorageConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$d(this, "name", "S3Storage");
-    __publicField$d(this, "client");
-    __publicField$d(this, "bucket");
+    __publicField$f(this, "name", "S3Storage");
+    __publicField$f(this, "client");
+    __publicField$f(this, "bucket");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.bucket = config.bucket;
     const clientConfig = {};
@@ -6473,7 +7916,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$8.error(`Error reading object from S3`, error.name, error.message);
+      console$a.error(`Error reading object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6482,7 +7925,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return s3Metadata;
     } catch (error) {
-      console$8.error(`Error getting access rights in S3`, error.name, error.message);
+      console$a.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6493,7 +7936,7 @@ class S3Storage extends StorageConnector {
       s3Metadata = { ...s3Metadata, ...metadata };
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$8.error(`Error setting access rights in S3`, error);
+      console$a.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -6514,7 +7957,7 @@ class S3Storage extends StorageConnector {
     try {
       const result = await this.client.send(command);
     } catch (error) {
-      console$8.error(`Error writing object to S3`, error.name, error.message);
+      console$a.error(`Error writing object to S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6526,7 +7969,7 @@ class S3Storage extends StorageConnector {
     try {
       await this.client.send(command);
     } catch (error) {
-      console$8.error(`Error deleting object from S3`, error.name, error.message);
+      console$a.error(`Error deleting object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6542,7 +7985,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return false;
       }
-      console$8.error(`Error checking object existence in S3`, error.name, error.message);
+      console$a.error(`Error checking object existence in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6563,7 +8006,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return ACL.from(s3Metadata?.["x-amz-meta-acl"]);
     } catch (error) {
-      console$8.error(`Error getting access rights in S3`, error.name, error.message);
+      console$a.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6574,7 +8017,7 @@ class S3Storage extends StorageConnector {
       s3Metadata["x-amz-meta-acl"] = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$8.error(`Error setting access rights in S3`, error);
+      console$a.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -6645,7 +8088,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$8.error(`Error reading object metadata from S3`, error.name, error.message);
+      console$a.error(`Error reading object metadata from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6666,7 +8109,7 @@ class S3Storage extends StorageConnector {
       });
       await this.client.send(putObjectCommand);
     } catch (error) {
-      console$8.error(`Error setting object metadata in S3`, error.name, error.message);
+      console$a.error(`Error setting object metadata in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -6728,7 +8171,7 @@ var paramMappings = {
     frequencyPenalty: "frequency_penalty",
     presencePenalty: "presence_penalty"
   },
-  togetherAI: {
+  TogetherAI: {
     maxTokens: "max_tokens",
     temperature: "temperature",
     stopSequences: "stop",
@@ -6758,7 +8201,7 @@ var paramMappings = {
   }
 };
 
-const console$7 = Logger("LLMConnector");
+const console$9 = Logger("LLMConnector");
 class LLMConnector extends Connector {
   user(candidate) {
     if (candidate.role !== "agent") throw new Error("Only agents can use LLM connector");
@@ -6996,18 +8439,18 @@ async function _getImageDimensions(url) {
       height: dimensions?.height || 0
     };
   } catch (error) {
-    console$7.error("Error getting image dimensions", error);
+    console$9.error("Error getting image dimensions", error);
     throw new Error("Please provide a valid image url!");
   }
 }
 
-var __defProp$c = Object.defineProperty;
-var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$e = Object.defineProperty;
+var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
 class EchoConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$c(this, "name", "LLM:Echo");
+    __publicField$e(this, "name", "LLM:Echo");
   }
   async chatRequest(acRequest, prompt, params) {
     return { content: prompt, finishReason: "stop" };
@@ -7036,14 +8479,14 @@ class EchoConnector extends LLMConnector {
   }
 }
 
-var __defProp$b = Object.defineProperty;
-var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$6 = Logger("OpenAIConnector");
+var __defProp$d = Object.defineProperty;
+var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$8 = Logger("OpenAIConnector");
 class OpenAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$b(this, "name", "LLM:OpenAI");
+    __publicField$d(this, "name", "LLM:OpenAI");
   }
   async chatRequest(acRequest, prompt, params) {
     if (!params.messages) params.messages = [];
@@ -7121,7 +8564,7 @@ class OpenAIConnector extends LLMConnector {
       const content = response?.choices?.[0]?.message.content;
       return { content, finishReason: response?.choices?.[0]?.finish_reason };
     } catch (error) {
-      console$6.log("Error in visionLLMRequest: ", error);
+      console$8.log("Error in visionLLMRequest: ", error);
       throw error;
     }
   }
@@ -7160,7 +8603,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, content: message?.content ?? "", toolsData }
       };
     } catch (error) {
-      console$6.log("Error on toolUseLLMRequest: ", error);
+      console$8.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -7172,8 +8615,8 @@ class OpenAIConnector extends LLMConnector {
       if (!Array.isArray(messages) || !messages?.length) {
         return { error: new Error("Invalid messages argument for chat completion.") };
       }
-      console$6.log("model", model);
-      console$6.log("messages", messages);
+      console$8.log("model", model);
+      console$8.log("messages", messages);
       let args = {
         model,
         messages,
@@ -7230,7 +8673,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, stream: _stream, toolsData }
       };
     } catch (error) {
-      console$6.log("Error on toolUseLLMRequest: ", error);
+      console$8.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -7284,8 +8727,8 @@ class OpenAIConnector extends LLMConnector {
     const openai = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY
     });
-    console$6.log("model", model);
-    console$6.log("messages", messages);
+    console$8.log("model", model);
+    console$8.log("messages", messages);
     let args = {
       model,
       messages,
@@ -7374,10 +8817,10 @@ class OpenAIConnector extends LLMConnector {
   }
 }
 
-var __defProp$a = Object.defineProperty;
-var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$5 = Logger("GoogleAIConnector");
+var __defProp$c = Object.defineProperty;
+var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$7 = Logger("GoogleAIConnector");
 const DEFAULT_MODEL = "gemini-pro";
 const MODELS_WITH_SYSTEM_MESSAGE = [
   "gemini-1.5-pro-latest",
@@ -7430,9 +8873,9 @@ const VALID_IMAGE_MIME_TYPES$1 = ["image/png", "image/jpeg", "image/jpg", "image
 class GoogleAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$a(this, "name", "LLM:GoogleAI");
-    __publicField$a(this, "validMimeTypes", VALID_MIME_TYPES);
-    __publicField$a(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$1);
+    __publicField$c(this, "name", "LLM:GoogleAI");
+    __publicField$c(this, "validMimeTypes", VALID_MIME_TYPES);
+    __publicField$c(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$1);
   }
   async chatRequest(acRequest, prompt, params) {
     try {
@@ -7492,7 +8935,7 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console$5.error("Error in googleAI componentLLMRequest", error);
+      console$7.error("Error in googleAI componentLLMRequest", error);
       throw error;
     }
   }
@@ -7552,67 +8995,154 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console$5.error("Error in googleAI visionLLMRequest", error);
+      console$7.error("Error in googleAI visionLLMRequest", error);
       throw error;
     }
   }
-  // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
   async toolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
     try {
-      throw new Error("Tools are not yet implemented for Google AI.");
+      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+      let systemInstruction = "";
+      let formattedMessages;
+      if (this.hasSystemMessage(messages)) {
+        const separateMessages = this.separateSystemMessages(messages);
+        systemInstruction = separateMessages.systemMessage?.content || "";
+        formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+      } else {
+        formattedMessages = this.formatInputMessages(messages);
+      }
+      const $model = genAI.getGenerativeModel({ model });
+      const result = await $model.generateContent({
+        contents: formattedMessages,
+        tools,
+        systemInstruction,
+        toolConfig: {
+          functionCallingConfig: { mode: tool_choice || "auto" }
+        }
+      });
+      const response = await result.response;
+      const content = response.text();
+      const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+      let toolsData = [];
+      let useTool = false;
+      if (toolCalls && toolCalls.length > 0) {
+        toolsData = toolCalls.map((toolCall, index) => ({
+          index,
+          id: `tool-${index}`,
+          type: "function",
+          name: toolCall.functionCall.name,
+          arguments: JSON.stringify(toolCall.functionCall.args),
+          role: "assistant"
+        }));
+        useTool = true;
+      }
+      return {
+        data: { useTool, message: { content }, content, toolsData }
+      };
     } catch (error) {
-      throw error;
+      console$7.log("Error on toolUseLLMRequest: ", error);
+      return { error };
     }
   }
-  // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
   async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
-    try {
-      throw new Error("Tools are not yet implemented for Google AI.");
-    } catch (error) {
-      throw error;
-    }
+    throw new Error("streamToolRequest() is Deprecated!");
   }
   async streamRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    const emitter = new EventEmitter$1();
+    const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+    const $model = genAI.getGenerativeModel({ model });
+    let systemInstruction = "";
+    let formattedMessages;
+    if (this.hasSystemMessage(messages)) {
+      const separateMessages = this.separateSystemMessages(messages);
+      systemInstruction = separateMessages.systemMessage?.content || "";
+      formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+    } else {
+      formattedMessages = this.formatInputMessages(messages);
+    }
     try {
-      throw new Error("Tools are not yet implemented for Google AI.");
+      const result = await $model.generateContentStream({
+        contents: formattedMessages,
+        tools,
+        systemInstruction,
+        toolConfig: {
+          functionCallingConfig: { mode: tool_choice || "auto" }
+        }
+      });
+      let toolsData = [];
+      (async () => {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          emitter.emit("content", chunkText);
+          if (chunk.candidates[0]?.content?.parts) {
+            const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
+            if (toolCalls.length > 0) {
+              toolsData = toolCalls.map((toolCall, index) => ({
+                index,
+                id: `tool-${index}`,
+                type: "function",
+                name: toolCall.functionCall.name,
+                arguments: JSON.stringify(toolCall.functionCall.args),
+                role: "assistant"
+              }));
+              emitter.emit("toolsData", toolsData);
+            }
+          }
+        }
+        setTimeout(() => {
+          emitter.emit("end", toolsData);
+        }, 100);
+      })();
+      return emitter;
     } catch (error) {
-      throw error;
+      emitter.emit("error", error);
+      return emitter;
     }
   }
   async extractVisionLLMParams(config) {
     const params = await super.extractVisionLLMParams(config);
     return params;
   }
-  formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
-    const allowFunctionNames = [];
-    const functionDeclarations = toolDefinitions.map((item) => {
-      const { name, description, properties, requiredFields } = item;
-      allowFunctionNames.push(name);
+  formatToolsConfig({ toolDefinitions, toolChoice = "auto" }) {
+    const tools = toolDefinitions.map((tool) => {
+      const { name, description, properties, requiredFields } = tool;
+      const validName = this.sanitizeFunctionName(name);
+      const validProperties = properties && Object.keys(properties).length > 0 ? properties : { dummy: { type: "string" } };
       return {
-        name,
-        description,
-        parameters: {
-          type: "OBJECT",
-          properties,
-          required: requiredFields
-        }
+        functionDeclarations: [
+          {
+            name: validName,
+            description: description || "",
+            parameters: {
+              type: "OBJECT",
+              properties: validProperties,
+              required: requiredFields || []
+            }
+          }
+        ]
       };
     });
-    const tools = [
-      {
-        function_declarations: functionDeclarations
-      }
-    ];
-    const toolConfig = {
-      function_calling_config: {
-        mode: toolChoice || "AUTO",
-        allowed_function_names: allowFunctionNames
-      }
-    };
     return {
       tools,
-      tool_config: toolConfig
+      toolChoice: {
+        type: toolChoice
+      }
     };
+  }
+  // Add this helper method to sanitize function names
+  sanitizeFunctionName(name) {
+    if (name == null) {
+      return "_unnamed_function";
+    }
+    let sanitized = name.replace(/[^a-zA-Z0-9_.-]/g, "");
+    if (!/^[a-zA-Z_]/.test(sanitized)) {
+      sanitized = "_" + sanitized;
+    }
+    if (sanitized === "") {
+      sanitized = "_unnamed_function";
+    }
+    sanitized = sanitized.slice(0, 64);
+    return sanitized;
   }
   async processValidFiles(fileSources, candidate) {
     const fileProcessingTasks = fileSources.map((fileSource) => async () => {
@@ -7678,7 +9208,7 @@ ${systemMessage?.content || ""}`;
         throw new Error("File processing failed.");
       }
       fs.unlink(tempFilePath, (err) => {
-        if (err) console$5.error("Error deleting temp file: ", err);
+        if (err) console$7.error("Error deleting temp file: ", err);
       });
       return {
         url: uploadResponse.file.uri || ""
@@ -7687,20 +9217,32 @@ ${systemMessage?.content || ""}`;
       throw new Error(`Error uploading file for Google AI ${error.message}`);
     }
   }
+  formatInputMessages(messages) {
+    return messages.map((message) => {
+      let role = message.role;
+      if (message.role === "assistant") {
+        role = "model";
+      }
+      return {
+        role,
+        parts: [{ text: message.content }]
+      };
+    });
+  }
 }
 
-var __defProp$9 = Object.defineProperty;
-var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$4 = Logger("AnthropicAIConnector");
+var __defProp$b = Object.defineProperty;
+var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$6 = Logger("AnthropicAIConnector");
 const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = "{";
 const TOOL_USE_DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
 class AnthropicAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$9(this, "name", "LLM:AnthropicAI");
-    __publicField$9(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
+    __publicField$b(this, "name", "LLM:AnthropicAI");
+    __publicField$b(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
   }
   async chatRequest(acRequest, prompt, params) {
     params.messages = params?.messages || [];
@@ -7741,7 +9283,7 @@ class AnthropicAIConnector extends LLMConnector {
       }
       return { content, finishReason };
     } catch (error) {
-      console$4.error("Error in componentLLMRequest in AnthropicAI: ", error);
+      console$6.error("Error in componentLLMRequest in AnthropicAI: ", error);
       if (error instanceof Anthropic.APIError) {
         throw error;
       } else {
@@ -7794,7 +9336,7 @@ class AnthropicAIConnector extends LLMConnector {
       }
       return { content: content2, finishReason };
     } catch (error) {
-      console$4.error("Error in componentLLMRequest in Calude: ", error);
+      console$6.error("Error in componentLLMRequest in Calude: ", error);
       if (error instanceof Anthropic.APIError) {
         throw error;
       } else {
@@ -7881,7 +9423,7 @@ class AnthropicAIConnector extends LLMConnector {
         messageCreateArgs.messages = this.checkMessagesConsistency(messages);
       }
       if (tools && tools.length > 0) messageCreateArgs.tools = tools;
-      const stream = await anthropic.messages.stream(messageCreateArgs);
+      const stream = anthropic.messages.stream(messageCreateArgs);
       stream.on("error", (error) => {
         emitter.emit("error", error);
       });
@@ -8023,18 +9565,364 @@ class AnthropicAIConnector extends LLMConnector {
   }
 }
 
+var __defProp$a = Object.defineProperty;
+var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$5 = Logger("GroqConnector");
+class GroqConnector extends LLMConnector {
+  constructor() {
+    super(...arguments);
+    __publicField$a(this, "name", "LLM:Groq");
+  }
+  async chatRequest(acRequest, prompt, params) {
+    try {
+      params.messages = params?.messages || [];
+      if (this.hasSystemMessage(params.messages)) {
+        const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
+        params.messages = [systemMessage, ...otherMessages];
+      } else {
+        params.messages.unshift({
+          role: "system",
+          content: JSON_RESPONSE_INSTRUCTION
+        });
+      }
+      if (prompt) {
+        params.messages.push({ role: "user", content: prompt });
+      }
+      const apiKey = params?.apiKey;
+      if (!apiKey) throw new Error("Please provide an API key for Groq");
+      const groq = new Groq({ apiKey });
+      const response = await groq.chat.completions.create(params);
+      const content = response.choices[0]?.message?.content;
+      const finishReason = response.choices[0]?.finish_reason;
+      return { content, finishReason };
+    } catch (error) {
+      console$5.error("Error in groq chatRequest", error);
+      throw error;
+    }
+  }
+  async visionRequest(acRequest, prompt, params, agent) {
+    throw new Error("Vision requests are not supported by Groq");
+  }
+  async toolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    try {
+      const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+      if (!Array.isArray(messages) || !messages?.length) {
+        return { error: new Error("Invalid messages argument for chat completion.") };
+      }
+      let args = {
+        model,
+        messages,
+        tools,
+        tool_choice
+      };
+      const result = await groq.chat.completions.create(args);
+      const message = result?.choices?.[0]?.message;
+      const toolCalls = message?.tool_calls;
+      let toolsData = [];
+      let useTool = false;
+      if (toolCalls) {
+        toolsData = toolCalls.map((tool, index) => ({
+          index,
+          id: tool.id,
+          type: tool.type,
+          name: tool.function.name,
+          arguments: tool.function.arguments,
+          role: "assistant"
+        }));
+        useTool = true;
+      }
+      return {
+        data: { useTool, message, content: message?.content ?? "", toolsData }
+      };
+    } catch (error) {
+      console$5.error("Error on toolUseLLMRequest: ", error);
+      return { error };
+    }
+  }
+  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    throw new Error("streamToolRequest() is Deprecated!");
+  }
+  async streamRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    const emitter = new EventEmitter$1();
+    const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+    let args = {
+      model,
+      messages,
+      tools,
+      tool_choice,
+      stream: true
+    };
+    try {
+      const stream = await groq.chat.completions.create(args);
+      let toolsData = [];
+      (async () => {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta;
+          emitter.emit("data", delta);
+          if (delta?.content) {
+            emitter.emit("content", delta.content);
+          }
+          if (delta?.tool_calls) {
+            delta.tool_calls.forEach((toolCall, index) => {
+              if (!toolsData[index]) {
+                toolsData[index] = {
+                  index,
+                  id: toolCall.id,
+                  type: toolCall.type,
+                  name: toolCall.function?.name,
+                  arguments: toolCall.function?.arguments,
+                  role: "assistant"
+                };
+              } else {
+                toolsData[index].arguments += toolCall.function?.arguments || "";
+              }
+            });
+          }
+        }
+        if (toolsData.length > 0) {
+          emitter.emit("toolsData", toolsData);
+        }
+        setTimeout(() => {
+          emitter.emit("end", toolsData);
+        }, 100);
+      })();
+      return emitter;
+    } catch (error) {
+      emitter.emit("error", error);
+      return emitter;
+    }
+  }
+  async extractVisionLLMParams(config) {
+    const params = await super.extractVisionLLMParams(config);
+    return params;
+  }
+  formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
+    let tools = [];
+    if (type === "function") {
+      tools = toolDefinitions.map((tool) => {
+        const { name, description, properties, requiredFields } = tool;
+        return {
+          type: "function",
+          function: {
+            name,
+            description,
+            parameters: {
+              type: "object",
+              properties,
+              required: requiredFields
+            }
+          }
+        };
+      });
+    }
+    return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
+  }
+  formatInputMessages(messages) {
+    return messages.map((message) => {
+      let textContent = "";
+      if (Array.isArray(message.content)) {
+        textContent = message.content.map((textBlock) => textBlock?.text || "").join(" ");
+      } else if (typeof message.content === "string") {
+        textContent = message.content;
+      }
+      return {
+        role: message.role,
+        content: textContent
+      };
+    });
+  }
+}
+
+var __defProp$9 = Object.defineProperty;
+var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$4 = Logger("TogetherAIConnector");
+const TOGETHER_AI_API_URL = "https://api.together.xyz/v1";
+class TogetherAIConnector extends LLMConnector {
+  constructor() {
+    super(...arguments);
+    __publicField$9(this, "name", "LLM:TogetherAI");
+  }
+  async chatRequest(acRequest, prompt, params) {
+    try {
+      if (!params.messages) params.messages = [];
+      if (params.messages[0]?.role !== "system") {
+        params.messages.unshift({
+          role: "system",
+          content: JSON_RESPONSE_INSTRUCTION
+        });
+      }
+      if (prompt) {
+        params.messages.push({ role: "user", content: prompt });
+      }
+      params.messages = this.formatInputMessages(params.messages);
+      const apiKey = params?.apiKey;
+      delete params.apiKey;
+      const openai = new OpenAI({
+        apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+        baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
+      });
+      const response = await openai.chat.completions.create(params);
+      const content = response?.choices?.[0]?.text || response?.choices?.[0]?.message.content || response?.data?.choices?.[0]?.text || response?.data?.choices?.[0]?.message.content;
+      const finishReason = response?.choices?.[0]?.finish_reason;
+      return { content, finishReason };
+    } catch (error) {
+      console$4.error("Error in TogetherAI chatRequest", error);
+      throw error;
+    }
+  }
+  async visionRequest(acRequest, prompt, params, agent) {
+    throw new Error("Vision requests are not supported by TogetherAI");
+  }
+  async toolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    try {
+      const openai = new OpenAI({
+        apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+        baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
+      });
+      if (!Array.isArray(messages) || !messages?.length) {
+        return { error: new Error("Invalid messages argument for chat completion.") };
+      }
+      let args = {
+        model,
+        messages,
+        tools,
+        tool_choice
+      };
+      const result = await openai.chat.completions.create(args);
+      const message = result?.choices?.[0]?.message;
+      const finishReason = result?.choices?.[0]?.finish_reason;
+      let toolsData = [];
+      let useTool = false;
+      if (finishReason === "tool_calls") {
+        toolsData = message?.tool_calls?.map((tool, index) => ({
+          index,
+          id: tool?.id,
+          type: tool?.type,
+          name: tool?.function?.name,
+          arguments: tool?.function?.arguments,
+          role: "tool"
+        })) || [];
+        useTool = true;
+      }
+      return {
+        data: { useTool, message, content: message?.content ?? "", toolsData }
+      };
+    } catch (error) {
+      console$4.log("Error on toolUseLLMRequest: ", error);
+      return { error };
+    }
+  }
+  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    throw new Error("streamToolRequest() is Deprecated!");
+  }
+  async streamRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    const emitter = new EventEmitter$1();
+    const openai = new OpenAI({
+      apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+      baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
+    });
+    let args = {
+      model,
+      messages,
+      tools,
+      tool_choice,
+      stream: true
+    };
+    try {
+      const stream = await openai.chat.completions.create(args);
+      let toolsData = [];
+      (async () => {
+        for await (const part of stream) {
+          const delta = part.choices[0].delta;
+          emitter.emit("data", delta);
+          if (!delta?.tool_calls && delta?.content) {
+            emitter.emit("content", delta.content, delta.role);
+          }
+          if (delta?.tool_calls) {
+            const toolCall = delta?.tool_calls?.[0];
+            const index = toolCall?.index;
+            toolsData[index] = {
+              index,
+              role: "tool",
+              id: (toolsData?.[index]?.id || "") + (toolCall?.id || ""),
+              type: (toolsData?.[index]?.type || "") + (toolCall?.type || ""),
+              name: (toolsData?.[index]?.name || "") + (toolCall?.function?.name || ""),
+              arguments: (toolsData?.[index]?.arguments || "") + (toolCall?.function?.arguments || "")
+            };
+          }
+        }
+        if (toolsData?.length > 0) {
+          emitter.emit("toolsData", toolsData);
+        }
+        setTimeout(() => {
+          emitter.emit("end", toolsData);
+        }, 100);
+      })();
+      return emitter;
+    } catch (error) {
+      emitter.emit("error", error);
+      return emitter;
+    }
+  }
+  async extractVisionLLMParams(config2) {
+    const params = await super.extractVisionLLMParams(config2);
+    return params;
+  }
+  formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
+    let tools = [];
+    if (type === "function") {
+      tools = toolDefinitions.map((tool) => {
+        const { name, description, properties, requiredFields } = tool;
+        return {
+          type: "function",
+          function: {
+            name,
+            description,
+            parameters: {
+              type: "object",
+              properties,
+              required: requiredFields
+            }
+          }
+        };
+      });
+    }
+    return tools?.length > 0 ? { tools, tool_choice: toolChoice || "auto" } : {};
+  }
+  formatInputMessages(messages) {
+    return messages.map((message) => {
+      let textContent = "";
+      if (Array.isArray(message.content)) {
+        textContent = message.content.map((textBlock) => textBlock?.text || "").join(" ");
+      } else if (typeof message.content === "string") {
+        textContent = message.content;
+      }
+      return {
+        role: message.role,
+        content: textContent
+      };
+    });
+  }
+}
+
 class LLMService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.LLM, "Echo", EchoConnector);
     ConnectorService.register(TConnectorService.LLM, "OpenAI", OpenAIConnector);
     ConnectorService.register(TConnectorService.LLM, "GoogleAI", GoogleAIConnector);
     ConnectorService.register(TConnectorService.LLM, "AnthropicAI", AnthropicAIConnector);
+    ConnectorService.register(TConnectorService.LLM, "Groq", GroqConnector);
+    ConnectorService.register(TConnectorService.LLM, "TogetherAI", TogetherAIConnector);
   }
   init() {
     ConnectorService.init(TConnectorService.LLM, "Echo");
     ConnectorService.init(TConnectorService.LLM, "OpenAI");
     ConnectorService.init(TConnectorService.LLM, "GoogleAI");
     ConnectorService.init(TConnectorService.LLM, "AnthropicAI");
+    ConnectorService.init(TConnectorService.LLM, "Groq");
+    ConnectorService.init(TConnectorService.LLM, "TogetherAI");
   }
 }
 
@@ -8095,7 +9983,6 @@ class RedisCache extends CacheConnector {
     __publicField$8(this, "redis");
     __publicField$8(this, "_prefix", "smyth:cache");
     __publicField$8(this, "_mdPrefix", "smyth:metadata");
-    __publicField$8(this, "accountConnector");
     const sentinels = parseSentinelHosts(settings.hosts);
     this.redis = new IORedis({
       sentinels,
@@ -8108,27 +9995,24 @@ class RedisCache extends CacheConnector {
     this.redis.on("connect", () => {
       console$3.log("Redis connected!");
     });
-    this.accountConnector = ConnectorService.getAccountConnector();
   }
   get client() {
     return this.redis;
   }
-  prefix(teamId) {
-    return `${this._prefix}:team_${teamId}`;
+  get prefix() {
+    return this._prefix;
   }
-  mdPrefix(teamId) {
-    return `${this._mdPrefix}:team_${teamId}`;
+  get mdPrefix() {
+    return this._mdPrefix;
   }
   async get(acRequest, key) {
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    const value = await this.redis.get(`${this.prefix(teamId)}:${key}`);
+    const value = await this.redis.get(`${this._prefix}:${key}`);
     return value;
   }
   async set(acRequest, key, data, acl, metadata, ttl) {
     const accessCandidate = acRequest.candidate;
     const promises = [];
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    promises.push(this.redis.set(`${this.prefix(teamId)}:${key}`, data));
+    promises.push(this.redis.set(`${this._prefix}:${key}`, data));
     const newMetadata = metadata || {};
     newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
     promises.push(this.setMetadata(acRequest, key, newMetadata));
@@ -8139,40 +10023,33 @@ class RedisCache extends CacheConnector {
     return true;
   }
   async delete(acRequest, key) {
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    await Promise.all([this.redis.del(`${this.prefix(teamId)}:${key}`), this.redis.del(`${this.mdPrefix(teamId)}:${key}`)]);
+    await Promise.all([this.redis.del(`${this._prefix}:${key}`), this.redis.del(`${this._mdPrefix}:${key}`)]);
   }
   async exists(acRequest, key) {
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    return !!await this.redis.exists(`${this.prefix(teamId)}:${key}`);
+    return !!await this.redis.exists(`${this._prefix}:${key}`);
   }
   async getMetadata(acRequest, key) {
     if (!this.exists(acRequest, key)) return void 0;
     try {
-      const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-      const metadata = await this.redis.get(`${this.mdPrefix(teamId)}:${key}`);
+      const metadata = await this.redis.get(`${this._mdPrefix}:${key}`);
       return metadata ? this.deserializeRedisMetadata(metadata) : {};
     } catch (error) {
       return {};
     }
   }
   async setMetadata(acRequest, key, metadata) {
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    await this.redis.set(`${this.mdPrefix(teamId)}:${key}`, this.serializeRedisMetadata(metadata));
+    await this.redis.set(`${this._mdPrefix}:${key}`, this.serializeRedisMetadata(metadata));
   }
   async updateTTL(acRequest, key, ttl) {
     if (ttl) {
-      const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-      await Promise.all([this.redis.expire(`${this.prefix(teamId)}:${key}`, ttl), this.redis.expire(`${this.mdPrefix(teamId)}:${key}`, ttl)]);
+      await Promise.all([this.redis.expire(`${this._prefix}:${key}`, ttl), this.redis.expire(`${this._mdPrefix}:${key}`, ttl)]);
     }
   }
   async getTTL(acRequest, key) {
-    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    return this.redis.ttl(`${this.prefix(teamId)}:${key}`);
+    return this.redis.ttl(`${this._prefix}:${key}`);
   }
   async getResourceACL(resourceId, candidate) {
-    const teamId = await this.accountConnector.getCandidateTeam(candidate);
-    const _metadata = await this.redis.get(`${this.mdPrefix(teamId)}:${resourceId}`).catch((error) => {
+    const _metadata = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => {
     });
     const exists = _metadata !== void 0 && _metadata !== null;
     const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
@@ -8727,14 +10604,6 @@ class AgentDataService extends ConnectorServiceProvider {
   }
 }
 
-class VectorDBConnector extends SecureConnector {
-  // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
-  // protected abstract getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined>;
-  // protected abstract setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata): Promise<void>;
-  // protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
-  // protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
-}
-
 var __defProp$2 = Object.defineProperty;
 var __getOwnPropDesc$1 = Object.getOwnPropertyDescriptor;
 var __defNormalProp$2 = (obj, key, value) => key in obj ? __defProp$2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -8755,6 +10624,9 @@ class PineconeVectorDB extends VectorDBConnector {
     __publicField$2(this, "name", "PineconeVectorDB");
     __publicField$2(this, "_client");
     __publicField$2(this, "indexName");
+    __publicField$2(this, "nkv");
+    __publicField$2(this, "redisCache");
+    __publicField$2(this, "accountConnector");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     if (!config.pineconeApiKey) throw new Error("Pinecone API key is required");
     if (!config.indexName) throw new Error("Pinecone index name is required");
@@ -8764,44 +10636,102 @@ class PineconeVectorDB extends VectorDBConnector {
     console$2.info("Pinecone client initialized");
     console$2.info("Pinecone index name:", config.indexName);
     this.indexName = config.indexName;
+    this.nkv = ConnectorService.getNKVConnector();
+    this.accountConnector = ConnectorService.getAccountConnector();
+    this.redisCache = ConnectorService.getCacheConnector("Redis");
   }
   get client() {
     return this._client;
   }
   async getResourceACL(resourceId, candidate) {
-    return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+    const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
+    const preparedNs = VectorDBConnector.constructNsName(teamId, resourceId);
+    const acl = await this.getACL(AccessCandidate.clone(candidate), preparedNs);
+    const exists = !!acl;
+    if (!exists) {
+      return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+    }
+    return ACL.from(acl);
   }
-  // @SecureConnector.AccessControl
   user(candidate) {
     return {
       search: async (namespace, query, options) => {
-        return await this.search(candidate.readRequest, { indexName: this.indexName, namespace, query }, options);
+        return await this.search(candidate.readRequest, namespace, query, this.indexName, options);
       },
       insert: async (namespace, source) => {
-        return this.insert(candidate.writeRequest, { indexName: this.indexName, namespace, source });
+        return this.insert(candidate.writeRequest, namespace, source, this.indexName);
       },
       delete: async (namespace, id) => {
-        await this.delete(candidate.writeRequest, { id, indexName: this.indexName, namespace });
+        await this.delete(candidate.writeRequest, namespace, id, this.indexName);
       },
       createNamespace: async (namespace) => {
         await this.createNamespace(candidate.writeRequest, namespace, this.indexName);
       },
       deleteNamespace: async (namespace) => {
         await this.deleteNamespace(candidate.writeRequest, namespace, this.indexName);
+      },
+      listNamespaces: async () => {
+        return await this.listNamespaces(candidate.readRequest);
+      },
+      namespaceExists: async (namespace) => {
+        return await this.namespaceExists(candidate.readRequest, namespace);
       }
     };
   }
   async createNamespace(acRequest, namespace, indexName) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    const candidate = AccessCandidate.clone(acRequest.candidate);
+    const nsExists = await this.nkv.user(candidate).exists("vectorDB:pinecone", `namespace:${preparedNs}`);
+    if (!nsExists) {
+      const nsData = {
+        namespace: preparedNs,
+        displayName: namespace,
+        indexName,
+        teamId
+      };
+      await this.nkv.user(candidate).set("vectorDB:pinecone:namespaces", preparedNs, JSON.stringify(nsData));
+    }
+    const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+    await this.setACL(acRequest, preparedNs, acl);
     return new Promise((resolve) => resolve());
   }
-  async deleteNamespace(acRequest, namespace, indexName) {
-    await this._client.Index(indexName).namespace(namespace).deleteAll();
+  async namespaceExists(acRequest, namespace) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    return await this.nkv.user(AccessCandidate.clone(acRequest.candidate)).exists("vectorDB:pinecone:namespaces", VectorDBConnector.constructNsName(teamId, namespace));
   }
-  async search(acRequest, data, options = {}) {
-    const pineconeIndex = this.client.Index(data.indexName).namespace(data.namespace);
-    let _vector = data.query;
-    if (typeof data.query === "string") {
-      _vector = await VectorsHelper.load().embedText(data.query);
+  async listNamespaces(acRequest) {
+    const candidate = AccessCandidate.clone(acRequest.candidate);
+    const nsKeys = await this.nkv.user(candidate).list("vectorDB:pinecone:namespaces");
+    return nsKeys.map((k) => {
+      const nsData = JSONContentHelper.create(k.data?.toString()).tryParse();
+      return nsData?.displayName;
+    });
+  }
+  async deleteNamespace(acRequest, namespace, indexName) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    await this._client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteAll().catch((e) => {
+      if (e?.name == "PineconeNotFoundError") {
+        console$2.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
+        return;
+      }
+      throw e;
+    });
+    const candidate = AccessCandidate.clone(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    await this.nkv.user(candidate).delete("vectorDB:pinecone:namespaces", preparedNs);
+    await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
+  }
+  async search(acRequest, namespace, query, indexName, options = {}) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const nsExists = await this.nkv.user(AccessCandidate.clone(acRequest.candidate)).exists("vectorDB:pinecone:namespaces", VectorDBConnector.constructNsName(teamId, namespace));
+    if (!nsExists) {
+      throw new Error("Namespace does not exist");
+    }
+    const pineconeIndex = this.client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
+    let _vector = query;
+    if (typeof query === "string") {
+      _vector = await VectorsHelper.load().embedText(query);
     }
     const results = await pineconeIndex.query({
       topK: options?.topK || 10,
@@ -8815,9 +10745,13 @@ class PineconeVectorDB extends VectorDBConnector {
       metadata: match.metadata
     }));
   }
-  async insert(acRequest, data) {
-    let { source: sourceWrapper } = data;
+  async insert(acRequest, namespace, sourceWrapper, indexName) {
     sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const nsExists = await this.nkv.user(AccessCandidate.clone(acRequest.candidate)).exists("vectorDB:pinecone:namespaces", VectorDBConnector.constructNsName(teamId, namespace));
+    if (!nsExists) {
+      throw new Error("Namespace does not exist");
+    }
     if (sourceWrapper.some((s) => this.detectSourceType(s.source) !== this.detectSourceType(sourceWrapper[0].source))) {
       throw new Error("All sources must be of the same type");
     }
@@ -8829,18 +10763,24 @@ class PineconeVectorDB extends VectorDBConnector {
       values: s.source,
       metadata: s.metadata
     }));
-    await this._client.Index(data.indexName).namespace(data.namespace).upsert(preparedSource);
+    await this._client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).upsert(preparedSource);
+    const accessCandidate = acRequest.candidate;
+    const isNewNs = await this.isNewNs(AccessCandidate.clone(accessCandidate), namespace);
+    if (isNewNs) {
+      let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
+      await this.setACL(acRequest, namespace, acl);
+    }
     return preparedSource.map((s) => s.id);
   }
-  async delete(acRequest, data) {
-    const _ids = Array.isArray(data.id) ? data.id : [data.id];
-    await this._client.Index(data.indexName).namespace(data.namespace).deleteMany(_ids);
+  async delete(acRequest, namespace, id, indexName) {
+    const _ids = Array.isArray(id) ? id : [id];
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const nsExists = await this.nkv.user(AccessCandidate.clone(acRequest.candidate)).exists("vectorDB:pinecone:namespaces", VectorDBConnector.constructNsName(teamId, namespace));
+    if (!nsExists) {
+      throw new Error("Namespace does not exist");
+    }
+    await this._client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteMany(_ids);
   }
-  // private async getNamespaceMetadata(namespaceId: string): Promise<Record<string, any>> {
-  //     const cache = ConnectorService.getCacheConnector();
-  //     const metadata = await cache.get(namespaceId);
-  //     return metadata;
-  // }
   detectSourceType(source) {
     if (typeof source === "string") {
       return isUrl(source) ? "url" : "text";
@@ -8867,10 +10807,30 @@ class PineconeVectorDB extends VectorDBConnector {
       }
     }
   }
+  async setACL(acRequest, namespace, acl) {
+    await this.redisCache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${namespace}:acl`, JSON.stringify(acl));
+  }
+  async getACL(ac, namespace) {
+    let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${namespace}:acl`);
+    const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
+    return acl;
+  }
+  async deleteACL(ac, namespace) {
+    this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${namespace}:acl`);
+  }
+  async isNewNs(ac, namespace) {
+    return !await this.nkv.user(AccessCandidate.clone(ac)).exists("vectorDB:pinecone", `namespace:${namespace}:acl`);
+  }
 }
 __decorateClass$1([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "createNamespace", 1);
+__decorateClass$1([
+  SecureConnector.AccessControl
+], PineconeVectorDB.prototype, "namespaceExists", 1);
+__decorateClass$1([
+  SecureConnector.AccessControl
+], PineconeVectorDB.prototype, "listNamespaces", 1);
 __decorateClass$1([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "deleteNamespace", 1);
@@ -8969,39 +10929,41 @@ const _NKVRedis = class _NKVRedis extends NKVConnector {
     __publicField(this, "name", "Redis");
     __publicField(this, "redisCacheConnector");
     __publicField(this, "accountConnector");
-    __publicField(this, "schemaValidator");
     this.redisCacheConnector = ConnectorService.getCacheConnector("Redis");
     this.accountConnector = ConnectorService.getAccountConnector();
-    this.schemaValidator = Joi.object().keys({
-      namespace: Joi.string().min(1).required(),
-      key: Joi.string().min(1).required()
-    });
+  }
+  key(...parts) {
+    return parts.join(":");
+  }
+  mdKey(...parts) {
+    return parts.join(":");
   }
   async get(acRequest, namespace, key) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).get(`${namespace}:${key}`);
+    return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).get(this.key(`team_${teamId}`, namespace, key));
   }
   async set(acRequest, namespace, key, value) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(`${namespace}:${key}`, value);
+    const setKey = this.key(`team_${teamId}`, namespace, key);
+    await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(setKey, value);
     const isNewNs = !await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(namespace);
     if (isNewNs) {
-      await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(namespace, "", void 0, { ns: true });
+      await this.redisCacheConnector.user(AccessCandidate.team(teamId)).set(this.key(`team_${teamId}`, namespace), "", void 0, { ns: true });
     }
   }
   async delete(acRequest, namespace, key) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    await this.redisCacheConnector.user(AccessCandidate.team(teamId)).delete(`${namespace}:${key}`);
+    await this.redisCacheConnector.user(AccessCandidate.team(teamId)).delete(this.key(`team_${teamId}`, namespace, key));
   }
   async exists(acRequest, namespace, key) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(`${namespace}:${key}`);
+    return await this.redisCacheConnector.user(AccessCandidate.team(teamId)).exists(this.key(`team_${teamId}`, namespace, key));
   }
   async list(acRequest, namespace) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
+    let keys = await this.fetchKeysByPrefix(this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace));
     keys = keys.filter(
-      (key) => key !== `${this.redisCacheConnector.prefix(teamId)}:${namespace}`
+      (key) => key !== this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)
       // if not the namespace sentinel key
     );
     if (keys.length <= 0) return [];
@@ -9012,16 +10974,16 @@ const _NKVRedis = class _NKVRedis extends NKVConnector {
     const results = await pipeline.exec();
     return keys.map((key, index) => {
       return {
-        key: key.replace(`${this.redisCacheConnector.prefix(teamId)}:${namespace}:`, ""),
+        key: key.replace(`${this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)}:`, ""),
         data: results[index][1]
       };
     });
   }
   async deleteAll(acRequest, namespace) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-    let keys = await this.fetchKeysByPrefix(`${this.redisCacheConnector.prefix(teamId)}:${namespace}`);
+    let keys = await this.fetchKeysByPrefix(this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace));
     keys = keys.filter((key) => {
-      return ![`${this.redisCacheConnector.prefix(teamId)}:${namespace}`].includes(key);
+      return ![this.key(this.redisCacheConnector.prefix, `team_${teamId}`, namespace)].includes(key);
     });
     await this.redisCacheConnector.client.del(keys);
   }
@@ -9045,7 +11007,7 @@ const _NKVRedis = class _NKVRedis extends NKVConnector {
       const isNamespaceSearch = key === void 0;
       const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
       const resourceId = isNamespaceSearch ? namespace : `${namespace}:${key}`;
-      const finalKey = `${this.redisCacheConnector.prefix(teamId)}:${resourceId}`;
+      const finalKey = this.key(this.redisCacheConnector.prefix, `team_${teamId}`, resourceId);
       const accessTicket = await this.getAccessTicket(finalKey, acRequest);
       if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError("Access Denied");
       return originalMethod.apply(this, args);
@@ -9056,7 +11018,11 @@ const _NKVRedis = class _NKVRedis extends NKVConnector {
     const originalMethod = descriptor.value;
     descriptor.value = async function(...args) {
       let [acRequest, namespace, key] = args;
-      const validationResult = this.schemaValidator.validate({ namespace, key });
+      const schemaValidator = Joi.object().keys({
+        namespace: Joi.string().min(1).required(),
+        key: Joi.string().min(1).required()
+      });
+      const validationResult = schemaValidator.validate({ namespace, key });
       if (validationResult.error) {
         throw new Error(`Validation Error: ${validationResult.error.message}`);
       }
@@ -9099,15 +11065,15 @@ const console$1 = Logger("Boot");
 function boot() {
   console$1.debug("SRE Boot sequence started");
   const service = {};
+  service.NKV = new NKVService();
   service.Account = new AccountService();
   service.Storage = new StorageService();
-  service.VectorDB = new VectorDBService();
   service.Cache = new CacheService();
   service.LLM = new LLMService();
   service.Vault = new VaultService();
   service.AgentData = new AgentDataService();
   service.CLI = new CLIService();
-  service.NKV = new NKVService();
+  service.VectorDB = new VectorDBService();
   SystemEvents.on("SRE:Initialized", () => {
     console$1.debug("SRE Initialized");
     for (let key in service) {

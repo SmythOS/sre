@@ -37,6 +37,9 @@ const conversations = {};
 const cliConnector = ConnectorService.getCLIConnector();
 //const specUrl = cliConnector.params?.agent || 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
 const model = cliConnector.params?.model || 'gpt-4o';
+
+console.log("Model ===> ", model);
+
 const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 4096);
 const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 4096);
 //const conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });

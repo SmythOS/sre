@@ -132,3 +132,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+tests/data/vault.json
+.DS_Store

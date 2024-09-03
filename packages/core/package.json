@@ -11,7 +11,9 @@
         "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
-        "knip": "knip"
+        "knip": "knip",
+        "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
+        "start:web": "node ./tests/build/web/index.js --model meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -65,6 +67,7 @@
         "dotenv": "^16.4.5",
         "file-type": "^19.0.0",
         "gpt-tokenizer": "^2.2.1",
+        "groq-sdk": "^0.6.1",
         "image-size": "^1.1.1",
         "ioredis": "^5.4.1",
         "isbinaryfile": "^5.0.2",

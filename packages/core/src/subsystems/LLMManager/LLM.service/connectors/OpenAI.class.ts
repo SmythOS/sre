@@ -369,6 +369,7 @@ export class OpenAIConnector extends LLMConnector {
         if (tool_choice) args.tool_choice = tool_choice;
         const stream: any = await openai.chat.completions.create(args);
 
+        // Process stream asynchronously while as we need to return emitter immediately
         (async () => {
             let delta: Record<string, any> = {};
 
