@@ -129,17 +129,6 @@ export abstract class LLMConnector extends Connector {
         };
     }
 
-    private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
-        const alias = models[model]?.alias || model;
-
-        // Only allow full token limit if the API key is provided by the team
-        const maxTokens = hasTeamAPIKey
-            ? models[alias]?.keyOptions?.completionTokens || models[alias]?.keyOptions?.tokens
-            : models[alias]?.completionTokens || models[alias]?.tokens;
-
-        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
-    }
-
     private async getSafeMaxTokens(givenMaxTokens: number, model: string, hasApiKey: boolean): Promise<number> {
         let allowedTokens = this.getAllowedCompletionTokens(model, hasApiKey);
 
@@ -186,6 +175,17 @@ export abstract class LLMConnector extends Connector {
 
         // Only allow full token limit if the API key is provided by the team
         const maxTokens = hasTeamAPIKey ? models[alias]?.keyOptions?.tokens : models[alias]?.tokens;
+
+        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
+    }
+
+    protected getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
+        const alias = models[model]?.alias || model;
+
+        // Only allow full token limit if the API key is provided by the team
+        const maxTokens = hasTeamAPIKey
+            ? models[alias]?.keyOptions?.completionTokens || models[alias]?.keyOptions?.tokens
+            : models[alias]?.completionTokens || models[alias]?.tokens;
 
         return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
     }
@@ -253,9 +253,12 @@ export abstract class LLMConnector extends Connector {
         if (!prompt) return prompt;
         let newPrompt = prompt;
         const outputs = {};
-        for (let con of config.outputs) {
-            if (con.default) continue;
-            outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+
+        if (config?.outputs) {
+            for (let con of config.outputs) {
+                if (con.default) continue;
+                outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+            }
         }
 
         const excludedKeys = ['_debug', '_error'];
@@ -329,7 +332,9 @@ export abstract class LLMConnector extends Connector {
             if (configParams?.[configKey] !== undefined || configParams?.[configKey] !== null || configParams?.[configKey] !== '') {
                 const value = configParams[configKey];
 
-                params[paramKey as string] = value;
+                if (value !== undefined) {
+                    params[paramKey as string] = value;
+                }
             }
         }
 

@@ -1,3 +1,4 @@
+import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -8,10 +9,9 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import EventEmitter from 'events';
-
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
+
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('AnthropicAIConnector');
 
@@ -30,32 +30,34 @@ export class AnthropicAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        params.messages = params?.messages || [];
+        const _params = { ...params }; // Avoid mutation of the original _params object
+
+        _params.messages = _params?.messages || [];
 
         // set prompt as user message if provided
         if (prompt) {
-            params.messages.push({
+            _params.messages.push({
                 role: 'user',
                 content: prompt,
             });
         }
 
-        if (this.hasSystemMessage(params.messages)) {
+        if (this.hasSystemMessage(_params.messages)) {
             // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
+            const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
 
-            params.messages = otherMessages;
+            _params.messages = otherMessages;
 
-            params.system = (systemMessage as LLMMessageBlock)?.content;
+            _params.system = (systemMessage as LLMMessageBlock)?.content;
         }
 
-        const responseFormat = params?.responseFormat || 'json';
+        const responseFormat = _params?.responseFormat || 'json';
         if (responseFormat === 'json') {
-            params.system += JSON_RESPONSE_INSTRUCTION;
-            params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+            _params.system += JSON_RESPONSE_INSTRUCTION;
+            _params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
 
-        const apiKey = params?.apiKey;
+        const apiKey = _params?.apiKey;
 
         // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
@@ -63,18 +65,20 @@ export class AnthropicAIConnector extends LLMConnector {
         const anthropic = new Anthropic({ apiKey });
 
         // TODO: implement claude specific token counting to validate token limit
-        // this.validateTokenLimit(params);
+        // this.validateTokenLimit(_params);
+
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: _params.model,
+            messages: _params.messages,
+            max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!apiKey),
+        };
+
+        if (_params?.temperature) messageCreateArgs.temperature = _params.temperature;
+        if (_params?.stop_sequences) messageCreateArgs.stop_sequences = _params.stop_sequences;
+        if (_params?.top_p) messageCreateArgs.top_p = _params.top_p;
+        if (_params?.top_k) messageCreateArgs.top_k = _params.top_k;
 
         try {
-            const messageCreateArgs = {
-                model: params.model,
-                messages: params.messages,
-                max_tokens: params.max_tokens,
-                temperature: params.temperature,
-                stop_sequences: params.stop_sequences,
-                top_p: params.top_p,
-                top_k: params.top_k,
-            };
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
@@ -85,7 +89,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in componentLLMRequest in AnthropicAI: ', error);
+            console.log('Error in chatRequest in AnthropicAI: ', error);
 
             if (error instanceof Anthropic.APIError) {
                 throw error;
@@ -94,6 +98,7 @@ export class AnthropicAIConnector extends LLMConnector {
             }
         }
     }
+
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         params.messages = params?.messages || [];
 

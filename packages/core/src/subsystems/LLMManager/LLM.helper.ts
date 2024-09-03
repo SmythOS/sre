@@ -30,7 +30,13 @@ export class LLMHelper {
     }
 
     public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
-        if (!this._llmConnector) return { error: 'LLM request failed', details: `Model ${this.model} not supported` };
+        if (!prompt && !customParams.messages?.length) {
+            throw new Error('Prompt or messages are required');
+        }
+
+        if (!this._llmConnector) {
+            throw new Error(`Model ${this.model} not supported`);
+        }
         const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractLLMComponentParams(config);
         params.model = this._modelId;
@@ -44,12 +50,18 @@ export class LLMHelper {
             let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
 
             const result = this._llmConnector.postProcess(response?.content);
-            if (result.error && response.finishReason !== 'stop') {
-                result.details = 'The model stopped before completing the response, this is usually due to output token limit reached.';
+            if (result.error) {
+                // If the model stopped before completing the response, this is usually due to output token limit reached.
+                if (response.finishReason !== 'stop') {
+                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                }
+
+                // If the model stopped due to other reasons, throw the error
+                throw new Error(result.error);
             }
             return result;
         } catch (error: any) {
-            return { error: 'LLM request failed', details: error?.message || error?.toString() };
+            throw error;
         }
     }
 

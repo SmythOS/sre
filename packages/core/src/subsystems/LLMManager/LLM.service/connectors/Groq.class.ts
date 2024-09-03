@@ -11,42 +11,63 @@ import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GroqConnector');
 
+type ChatCompletionCreateParams = {
+    model: string;
+    messages: any;
+    max_tokens?: number;
+    temperature?: number;
+    stop?: string[];
+    top_p?: number;
+};
+
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        const _params = { ...params };
+
+        _params.messages = _params?.messages || [];
+
+        if (this.hasSystemMessage(_params.messages)) {
+            const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
+            _params.messages = [systemMessage, ...otherMessages];
+        } else {
+            _params.messages.unshift({
+                role: 'system',
+                content: JSON_RESPONSE_INSTRUCTION,
+            });
+        }
+
+        if (prompt) {
+            _params.messages.push({ role: 'user', content: prompt });
+        }
+
+        const apiKey = _params?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Groq');
+
+        const groq = new Groq({ apiKey });
+
+        // TODO: implement groq specific token counting
+        // this.validateTokensLimit(_params);
+
+        const chatCompletionCreateParams: ChatCompletionCreateParams = {
+            model: _params.model,
+            messages: _params.messages,
+        };
+
+        if (_params.max_tokens) chatCompletionCreateParams.max_tokens = _params.max_tokens;
+        if (_params.temperature) chatCompletionCreateParams.temperature = _params.temperature;
+        if (_params.stop) chatCompletionCreateParams.stop = _params.stop;
+        if (_params.top_p) chatCompletionCreateParams.top_p = _params.top_p;
+
         try {
-            params.messages = params?.messages || [];
-
-            if (this.hasSystemMessage(params.messages)) {
-                const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
-                params.messages = [systemMessage, ...otherMessages];
-            } else {
-                params.messages.unshift({
-                    role: 'system',
-                    content: JSON_RESPONSE_INSTRUCTION,
-                });
-            }
-
-            if (prompt) {
-                params.messages.push({ role: 'user', content: prompt });
-            }
-
-            const apiKey = params?.apiKey;
-            if (!apiKey) throw new Error('Please provide an API key for Groq');
-
-            const groq = new Groq({ apiKey });
-
-            // TODO: implement groq specific token counting
-            // this.validateTokensLimit(params);
-
-            const response: any = await groq.chat.completions.create(params);
+            const response: any = await groq.chat.completions.create(chatCompletionCreateParams);
             const content = response.choices[0]?.message?.content;
             const finishReason = response.choices[0]?.finish_reason;
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in groq chatRequest', error);
+            console.log('Error in chatRequest in Groq: ', error);
             throw error;
         }
     }

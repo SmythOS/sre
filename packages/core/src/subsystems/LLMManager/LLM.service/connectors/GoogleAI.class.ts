@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -83,18 +83,6 @@ const VALID_MIME_TYPES = [
 // Supported image MIME types for Google AI's Gemini models
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
-export type GetGenerativeModelArgs = {
-    model: string;
-    generationConfig: {
-        stopSequences: string[];
-        candidateCount: number;
-        maxOutputTokens: number;
-        temperature: number;
-        topP: number;
-        topK: number;
-    };
-    systemInstruction?: string;
-};
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
@@ -102,66 +90,69 @@ export class GoogleAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        const _params = { ...params }; // Avoid mutation of the original _params object
+
+        const model = _params?.model || DEFAULT_MODEL;
+
+        const apiKey = _params?.apiKey;
+
+        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+
+        let messages = _params?.messages || [];
+
+        let systemInstruction;
+        let systemMessage: LLMMessageBlock | {} = {};
+
+        if (this.hasSystemMessage(_params?.messages)) {
+            const separateMessages = this.separateSystemMessages(messages);
+            systemMessage = separateMessages.systemMessage;
+            messages = separateMessages.otherMessages;
+        }
+
+        if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
+            systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
+        } else {
+            prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
+        }
+
+        if (_params?.messages) {
+            // Concatenate messages with prompt and remove messages from params as it's not supported
+            prompt = _params.messages.map((message) => message?.content || '').join('\n');
+        }
+
+        // Need to return JSON for LLM Prompt component
+        const responseFormat = _params?.responseFormat || 'json';
+        if (responseFormat === 'json') {
+            if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
+            else prompt += JSON_RESPONSE_INSTRUCTION;
+        }
+
+        if (!prompt) throw new Error('Prompt is required!');
+
+        // TODO: implement claude specific token counting to validate token limit
+        // this.validateTokenLimit(_params);
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        if (systemInstruction) modelParams.systemInstruction = systemInstruction;
+
+        const generationConfig: GenerationConfig = {};
+
+        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
+        if (_params.temperature) generationConfig.temperature = _params.temperature;
+        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
+        if (_params.topP) generationConfig.topP = _params.topP;
+        if (_params.topK) generationConfig.topK = _params.topK;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
         try {
-            const model = params?.model || DEFAULT_MODEL;
+            const $model = genAI.getGenerativeModel(modelParams);
 
-            const apiKey = params?.apiKey;
-
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
-            let messages = params?.messages || [];
-
-            let systemInstruction;
-            let systemMessage: LLMMessageBlock | {} = {};
-
-            if (this.hasSystemMessage(params?.messages)) {
-                const separateMessages = this.separateSystemMessages(messages);
-                systemMessage = separateMessages.systemMessage;
-                messages = separateMessages.otherMessages;
-            }
-
-            if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-                systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
-            } else {
-                prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
-            }
-
-            if (params?.messages) {
-                // Concatenate messages with prompt and remove messages from params as it's not supported
-                prompt = params.messages.map((message) => message?.content || '').join('\n');
-            }
-
-            // Need to return JSON for LLM Prompt component
-            const responseFormat = params?.responseFormat || 'json';
-            if (responseFormat === 'json') {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
-            }
-
-            if (!prompt) throw new Error('Prompt is required!');
-
-            const args: GetGenerativeModelArgs = {
-                model,
-                generationConfig: params,
-            };
-
-            if (systemInstruction) args.systemInstruction = systemInstruction;
-
-            const generationConfig = {
-                stopSequences: params.stopSequences,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                topK: params.topK,
-            };
-
-            const $model = genAI.getGenerativeModel({
-                model,
-                systemInstruction,
-                generationConfig,
-            });
-
-            // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
@@ -179,7 +170,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI componentLLMRequest', error);
+            console.log('Error in chatRequest in GoogleAI: ', error);
 
             throw error;
         }
