@@ -605,18 +605,18 @@ const DummyConnector = new Proxy(
 var __defProp$T = Object.defineProperty;
 var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$f = Logger("Connector");
+const console$h = Logger("Connector");
 class Connector {
   constructor() {
     __publicField$T(this, "started", false);
     __publicField$T(this, "_readyPromise");
   }
   async start() {
-    console$f.info(`Starting ${this.name} connector ...`);
+    console$h.info(`Starting ${this.name} connector ...`);
     this.started = true;
   }
   async stop() {
-    console$f.info(`Stopping ${this.name} connector ...`);
+    console$h.info(`Stopping ${this.name} connector ...`);
   }
   ready() {
     if (!this._readyPromise) {
@@ -646,7 +646,7 @@ class Connector {
 
 const SystemEvents = new EventEmitter();
 
-const console$e = Logger("ConnectorService");
+const console$g = Logger("ConnectorService");
 const Connectors = {};
 const ConnectorInstances = {};
 let ServiceRegistry = {};
@@ -684,7 +684,7 @@ class ConnectorService {
    */
   static register(connectorType, connectorName, connectorConstructor) {
     if (typeof connectorConstructor !== "function" || !isSubclassOf(connectorConstructor, Connector)) {
-      console$e.error(`Invalid Connector ${connectorType}:${connectorName}`);
+      console$g.error(`Invalid Connector ${connectorType}:${connectorName}`);
       return;
     }
     if (!Connectors[connectorType]) {
@@ -735,7 +735,7 @@ class ConnectorService {
       if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
         return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]];
       }
-      console$e.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+      console$g.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
       return DummyConnector;
     }
     return instance;
@@ -3644,13 +3644,13 @@ class DataSourceLookup extends Component {
   }
 }
 
-const console$d = Logger("SecureConnector");
+const console$f = Logger("SecureConnector");
 class SecureConnector extends Connector {
   async start() {
-    console$d.info(`Starting ${this.name} connector ...`);
+    console$f.info(`Starting ${this.name} connector ...`);
   }
   async stop() {
-    console$d.info(`Stopping ${this.name} connector ...`);
+    console$f.info(`Stopping ${this.name} connector ...`);
   }
   async hasAccess(acRequest) {
     const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
@@ -4558,6 +4558,7 @@ class OpenAPIParser {
 var __defProp$t = Object.defineProperty;
 var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$e = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
     super();
@@ -4580,7 +4581,7 @@ class Conversation extends EventEmitter$1 {
     __publicField$t(this, "_spec");
     this.on("error", (error) => {
       this._lastError = error;
-      console.warn("Conversation Error: ", error);
+      console$e.warn("Conversation Error: ", error);
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
@@ -4662,7 +4663,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    console.debug("Request to LLM with the given model, messages and functions properties.", {
+    console$e.debug("Request to LLM with the given model, messages and functions properties.", {
       model: this.model,
       message,
       toolsConfig
@@ -4688,7 +4689,7 @@ class Conversation extends EventEmitter$1 {
       );
     }
     if (llmResponse?.useTool) {
-      console.debug({
+      console$e.debug({
         type: "ToolsData",
         message: "Tool(s) is available for use.",
         toolsData: llmResponse?.toolsData
@@ -4709,7 +4710,7 @@ class Conversation extends EventEmitter$1 {
           baseUrl,
           headers: toolHeaders
         };
-        console.debug({
+        console$e.debug({
           type: "UseTool",
           message: "As LLM returned a tool to use, so use it with the provided arguments.",
           plugin_url: { baseUrl, endpoint, args },
@@ -4722,7 +4723,7 @@ class Conversation extends EventEmitter$1 {
           functionResponse = typeof error2 === "object" && typeof error2 !== null ? JSON.stringify(error2) : error2;
         }
         functionResponse = typeof functionResponse === "object" && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-        console.debug({
+        console$e.debug({
           type: "ToolResult",
           message: "Result from the tool",
           response: functionResponse
@@ -4735,7 +4736,7 @@ class Conversation extends EventEmitter$1 {
       return this.prompt(null, toolHeaders);
     }
     let content = JSONContent(llmResponse?.content).tryParse();
-    console.debug({
+    console$e.debug({
       type: "FinalResult",
       message: "Here is the final result after processing all the tools and LLM response.",
       response: content
@@ -4762,7 +4763,7 @@ class Conversation extends EventEmitter$1 {
       },
       this._agentId
     ).catch((error) => {
-      console.error("Error on streamRequest: ", error);
+      console$e.error("Error on streamRequest: ", error);
     });
     if (!eventEmitter || eventEmitter.error) {
       throw new Error("[LLM Request Error]");
@@ -4956,7 +4957,7 @@ class Conversation extends EventEmitter$1 {
           }
           reqConfig.headers["Content-Type"] = "application/json";
         }
-        console.debug("Calling tool: ", reqConfig);
+        console$e.debug("Calling tool: ", reqConfig);
         if (reqConfig.url.includes("localhost")) {
           const response = await AgentProcess.load(reqConfig.headers["X-AGENT-ID"]).run(reqConfig);
           return { data: response.data, error: null };
@@ -4965,8 +4966,8 @@ class Conversation extends EventEmitter$1 {
           return { data: response.data, error: null };
         }
       } catch (error) {
-        console.warn("Failed to call Tool: ", baseUrl, endpoint);
-        console.warn("  ====>", error);
+        console$e.warn("Failed to call Tool: ", baseUrl, endpoint);
+        console$e.warn("  ====>", error);
         return { data: null, error: error?.response?.data || error?.message };
       }
     }
@@ -6595,7 +6596,7 @@ let AgentLogger = _AgentLogger;
 var __defProp$j = Object.defineProperty;
 var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$c = Logger("RuntimeContext");
+const console$d = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
@@ -6642,7 +6643,7 @@ class RuntimeContext extends EventEmitter$1 {
   initRuntimeContext() {
     if (this._runtimeFileReady) return;
     const endpointDBGCall = this.runtime.xDebugId?.startsWith("dbg-");
-    console$c.debug("Init ctxFile", this.ctxFile);
+    console$d.debug("Init ctxFile", this.ctxFile);
     const agent = this.runtime.agent;
     let method = (agent.agentRequest.method || "POST").toUpperCase();
     const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
@@ -6692,9 +6693,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     component.ctx = { ...component.ctx, ...data, step: this.step };
     this.sync();
@@ -6703,9 +6704,9 @@ class RuntimeContext extends EventEmitter$1 {
     const ctxData = this;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     component.ctx.runtimeData = {};
     component.ctx.active = false;
@@ -6716,9 +6717,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return null;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$c.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
-      console$c.log(">>> ctxFile", this.ctxFile);
-      console$c.log(">>> ctxData", ctxData);
+      console$d.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
+      console$d.log(">>> ctxFile", this.ctxFile);
+      console$d.log(">>> ctxData", ctxData);
     }
     const data = component.ctx;
     return data;
@@ -6728,7 +6729,7 @@ class RuntimeContext extends EventEmitter$1 {
 var __defProp$i = Object.defineProperty;
 var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$b = Logger("AgentRuntime");
+const console$c = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
   {
@@ -6737,7 +6738,7 @@ const AgentRuntimeUnavailable = new Proxy(
         return target[prop];
       } else {
         return function() {
-          console$b.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
+          console$c.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
         };
       }
     }
@@ -6818,7 +6819,7 @@ const _AgentRuntime = class _AgentRuntime {
       for (let component of this.agent.data.components) {
         const cpt = components[component.name];
         if (!cpt) {
-          console$b.warn(`Component ${component.name} Exists in agent but has no implementation`);
+          console$c.warn(`Component ${component.name} Exists in agent but has no implementation`);
           continue;
         }
         if (cpt.alwaysActive) {
@@ -6860,7 +6861,7 @@ const _AgentRuntime = class _AgentRuntime {
   async sync() {
     const deleteTag = this.reqTagOwner && this.sessionClosed || this.circularLimitReached;
     if (deleteTag) {
-      console$b.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
+      console$c.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
       delete _AgentRuntime.tagsData[this.reqTag];
     }
     this.agentContext.sync();
@@ -6934,7 +6935,7 @@ const _AgentRuntime = class _AgentRuntime {
    * @returns
    */
   async runCycle() {
-    console$b.debug(
+    console$c.debug(
       `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
     );
     const runtime = this;
@@ -7164,7 +7165,7 @@ function getMemoryUsage() {
 var __defProp$h = Object.defineProperty;
 var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$a = Logger("Agent");
+const console$b = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
@@ -7303,7 +7304,7 @@ class Agent {
       await delay(30 + qosLatency);
     } while (!step?.finalResult && !this._kill);
     if (this._kill) {
-      console$a.warn(`Agent ${this.id} was killed`);
+      console$b.warn(`Agent ${this.id} was killed`);
       return { error: "Agent killed" };
     }
     result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -7434,7 +7435,7 @@ class Agent {
     const componentData = this.components[componentId];
     const component = components[componentData.name];
     if (this._kill) {
-      console$a.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
+      console$b.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
       return { id: componentData.id, name: componentData.displayName, result: null, error: "Agent killed" };
     }
     if (!component) {
@@ -7488,9 +7489,9 @@ class Agent {
           try {
             await this.parseVariables();
             output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
-            console$a.log(output);
+            console$b.log(output);
           } catch (error) {
-            console$a.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
+            console$b.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
             if (error?.message) output = { Response: void 0, _error: error.message, _debug: error.message };
             else output = { Response: void 0, _error: error.toString(), _debug: error.toString() };
           }
@@ -7855,7 +7856,7 @@ var __decorateClass$4 = (decorators, target, key, kind) => {
   return result;
 };
 var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$9 = Logger("S3Storage");
+const console$a = Logger("S3Storage");
 class S3Storage extends StorageConnector {
   constructor(config) {
     super();
@@ -7915,7 +7916,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$9.error(`Error reading object from S3`, error.name, error.message);
+      console$a.error(`Error reading object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7924,7 +7925,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return s3Metadata;
     } catch (error) {
-      console$9.error(`Error getting access rights in S3`, error.name, error.message);
+      console$a.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7935,7 +7936,7 @@ class S3Storage extends StorageConnector {
       s3Metadata = { ...s3Metadata, ...metadata };
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$9.error(`Error setting access rights in S3`, error);
+      console$a.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -7956,7 +7957,7 @@ class S3Storage extends StorageConnector {
     try {
       const result = await this.client.send(command);
     } catch (error) {
-      console$9.error(`Error writing object to S3`, error.name, error.message);
+      console$a.error(`Error writing object to S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7968,7 +7969,7 @@ class S3Storage extends StorageConnector {
     try {
       await this.client.send(command);
     } catch (error) {
-      console$9.error(`Error deleting object from S3`, error.name, error.message);
+      console$a.error(`Error deleting object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7984,7 +7985,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return false;
       }
-      console$9.error(`Error checking object existence in S3`, error.name, error.message);
+      console$a.error(`Error checking object existence in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8005,7 +8006,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return ACL.from(s3Metadata?.["x-amz-meta-acl"]);
     } catch (error) {
-      console$9.error(`Error getting access rights in S3`, error.name, error.message);
+      console$a.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8016,7 +8017,7 @@ class S3Storage extends StorageConnector {
       s3Metadata["x-amz-meta-acl"] = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$9.error(`Error setting access rights in S3`, error);
+      console$a.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -8087,7 +8088,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$9.error(`Error reading object metadata from S3`, error.name, error.message);
+      console$a.error(`Error reading object metadata from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8108,7 +8109,7 @@ class S3Storage extends StorageConnector {
       });
       await this.client.send(putObjectCommand);
     } catch (error) {
-      console$9.error(`Error setting object metadata in S3`, error.name, error.message);
+      console$a.error(`Error setting object metadata in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8170,7 +8171,7 @@ var paramMappings = {
     frequencyPenalty: "frequency_penalty",
     presencePenalty: "presence_penalty"
   },
-  togetherAI: {
+  TogetherAI: {
     maxTokens: "max_tokens",
     temperature: "temperature",
     stopSequences: "stop",
@@ -8200,7 +8201,7 @@ var paramMappings = {
   }
 };
 
-const console$8 = Logger("LLMConnector");
+const console$9 = Logger("LLMConnector");
 class LLMConnector extends Connector {
   user(candidate) {
     if (candidate.role !== "agent") throw new Error("Only agents can use LLM connector");
@@ -8438,7 +8439,7 @@ async function _getImageDimensions(url) {
       height: dimensions?.height || 0
     };
   } catch (error) {
-    console$8.error("Error getting image dimensions", error);
+    console$9.error("Error getting image dimensions", error);
     throw new Error("Please provide a valid image url!");
   }
 }
@@ -8481,7 +8482,7 @@ class EchoConnector extends LLMConnector {
 var __defProp$d = Object.defineProperty;
 var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$7 = Logger("OpenAIConnector");
+const console$8 = Logger("OpenAIConnector");
 class OpenAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -8563,7 +8564,7 @@ class OpenAIConnector extends LLMConnector {
       const content = response?.choices?.[0]?.message.content;
       return { content, finishReason: response?.choices?.[0]?.finish_reason };
     } catch (error) {
-      console$7.log("Error in visionLLMRequest: ", error);
+      console$8.log("Error in visionLLMRequest: ", error);
       throw error;
     }
   }
@@ -8602,7 +8603,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, content: message?.content ?? "", toolsData }
       };
     } catch (error) {
-      console$7.log("Error on toolUseLLMRequest: ", error);
+      console$8.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -8614,8 +8615,8 @@ class OpenAIConnector extends LLMConnector {
       if (!Array.isArray(messages) || !messages?.length) {
         return { error: new Error("Invalid messages argument for chat completion.") };
       }
-      console$7.log("model", model);
-      console$7.log("messages", messages);
+      console$8.log("model", model);
+      console$8.log("messages", messages);
       let args = {
         model,
         messages,
@@ -8672,7 +8673,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, stream: _stream, toolsData }
       };
     } catch (error) {
-      console$7.log("Error on toolUseLLMRequest: ", error);
+      console$8.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -8726,8 +8727,8 @@ class OpenAIConnector extends LLMConnector {
     const openai = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY
     });
-    console$7.log("model", model);
-    console$7.log("messages", messages);
+    console$8.log("model", model);
+    console$8.log("messages", messages);
     let args = {
       model,
       messages,
@@ -8819,6 +8820,7 @@ class OpenAIConnector extends LLMConnector {
 var __defProp$c = Object.defineProperty;
 var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$7 = Logger("GoogleAIConnector");
 const DEFAULT_MODEL = "gemini-pro";
 const MODELS_WITH_SYSTEM_MESSAGE = [
   "gemini-1.5-pro-latest",
@@ -8933,7 +8935,7 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console.error("Error in googleAI componentLLMRequest", error);
+      console$7.error("Error in googleAI componentLLMRequest", error);
       throw error;
     }
   }
@@ -8993,7 +8995,7 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console.error("Error in googleAI visionLLMRequest", error);
+      console$7.error("Error in googleAI visionLLMRequest", error);
       throw error;
     }
   }
@@ -9005,9 +9007,9 @@ ${systemMessage?.content || ""}`;
       if (this.hasSystemMessage(messages)) {
         const separateMessages = this.separateSystemMessages(messages);
         systemInstruction = separateMessages.systemMessage?.content || "";
-        formattedMessages = this.formatMessages(separateMessages.otherMessages);
+        formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
       } else {
-        formattedMessages = this.formatMessages(messages);
+        formattedMessages = this.formatInputMessages(messages);
       }
       const $model = genAI.getGenerativeModel({ model });
       const result = await $model.generateContent({
@@ -9038,7 +9040,7 @@ ${systemMessage?.content || ""}`;
         data: { useTool, message: { content }, content, toolsData }
       };
     } catch (error) {
-      console.log("Error on toolUseLLMRequest: ", error);
+      console$7.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -9054,13 +9056,11 @@ ${systemMessage?.content || ""}`;
     if (this.hasSystemMessage(messages)) {
       const separateMessages = this.separateSystemMessages(messages);
       systemInstruction = separateMessages.systemMessage?.content || "";
-      formattedMessages = this.formatMessages(separateMessages.otherMessages);
+      formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
     } else {
-      formattedMessages = this.formatMessages(messages);
+      formattedMessages = this.formatInputMessages(messages);
     }
     try {
-      console.log("============== formattedMessages ====================");
-      console.log(formattedMessages);
       const result = await $model.generateContentStream({
         contents: formattedMessages,
         tools,
@@ -9208,7 +9208,7 @@ ${systemMessage?.content || ""}`;
         throw new Error("File processing failed.");
       }
       fs.unlink(tempFilePath, (err) => {
-        if (err) console.error("Error deleting temp file: ", err);
+        if (err) console$7.error("Error deleting temp file: ", err);
       });
       return {
         url: uploadResponse.file.uri || ""
@@ -9217,7 +9217,7 @@ ${systemMessage?.content || ""}`;
       throw new Error(`Error uploading file for Google AI ${error.message}`);
     }
   }
-  formatMessages(messages) {
+  formatInputMessages(messages) {
     return messages.map((message) => {
       let role = message.role;
       if (message.role === "assistant") {
@@ -9605,20 +9605,118 @@ class GroqConnector extends LLMConnector {
     throw new Error("Vision requests are not supported by Groq");
   }
   async toolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
-    throw new Error("Tool requests are not yet implemented for Groq");
+    try {
+      const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+      if (!Array.isArray(messages) || !messages?.length) {
+        return { error: new Error("Invalid messages argument for chat completion.") };
+      }
+      let args = {
+        model,
+        messages,
+        tools,
+        tool_choice
+      };
+      const result = await groq.chat.completions.create(args);
+      const message = result?.choices?.[0]?.message;
+      const toolCalls = message?.tool_calls;
+      let toolsData = [];
+      let useTool = false;
+      if (toolCalls) {
+        toolsData = toolCalls.map((tool, index) => ({
+          index,
+          id: tool.id,
+          type: tool.type,
+          name: tool.function.name,
+          arguments: tool.function.arguments,
+          role: "assistant"
+        }));
+        useTool = true;
+      }
+      return {
+        data: { useTool, message, content: message?.content ?? "", toolsData }
+      };
+    } catch (error) {
+      console$5.error("Error on toolUseLLMRequest: ", error);
+      return { error };
+    }
   }
   async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
-    throw new Error("Stream tool requests are not yet implemented for Groq");
+    throw new Error("streamToolRequest() is Deprecated!");
   }
   async streamRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
-    throw new Error("Stream requests are not yet implemented for Groq");
+    const emitter = new EventEmitter$1();
+    const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+    let args = {
+      model,
+      messages,
+      tools,
+      tool_choice,
+      stream: true
+    };
+    try {
+      const stream = await groq.chat.completions.create(args);
+      let toolsData = [];
+      (async () => {
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta;
+          emitter.emit("data", delta);
+          if (delta?.content) {
+            emitter.emit("content", delta.content);
+          }
+          if (delta?.tool_calls) {
+            delta.tool_calls.forEach((toolCall, index) => {
+              if (!toolsData[index]) {
+                toolsData[index] = {
+                  index,
+                  id: toolCall.id,
+                  type: toolCall.type,
+                  name: toolCall.function?.name,
+                  arguments: toolCall.function?.arguments,
+                  role: "assistant"
+                };
+              } else {
+                toolsData[index].arguments += toolCall.function?.arguments || "";
+              }
+            });
+          }
+        }
+        if (toolsData.length > 0) {
+          emitter.emit("toolsData", toolsData);
+        }
+        setTimeout(() => {
+          emitter.emit("end", toolsData);
+        }, 100);
+      })();
+      return emitter;
+    } catch (error) {
+      emitter.emit("error", error);
+      return emitter;
+    }
   }
   async extractVisionLLMParams(config) {
     const params = await super.extractVisionLLMParams(config);
     return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
-    throw new Error("Tool configuration is not yet implemented for Groq");
+    let tools = [];
+    if (type === "function") {
+      tools = toolDefinitions.map((tool) => {
+        const { name, description, properties, requiredFields } = tool;
+        return {
+          type: "function",
+          function: {
+            name,
+            description,
+            parameters: {
+              type: "object",
+              properties,
+              required: requiredFields
+            }
+          }
+        };
+      });
+    }
+    return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
   }
   formatInputMessages(messages) {
     return messages.map((message) => {
@@ -9640,6 +9738,7 @@ var __defProp$9 = Object.defineProperty;
 var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$4 = Logger("TogetherAIConnector");
+const TOGETHER_AI_API_URL = "https://api.together.xyz/v1";
 class TogetherAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -9662,7 +9761,7 @@ class TogetherAIConnector extends LLMConnector {
       delete params.apiKey;
       const openai = new OpenAI({
         apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
-        baseURL: config.env.TOGETHER_AI_API_URL
+        baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
       });
       const response = await openai.chat.completions.create(params);
       const content = response?.choices?.[0]?.text || response?.choices?.[0]?.message.content || response?.data?.choices?.[0]?.text || response?.data?.choices?.[0]?.message.content;
@@ -9676,21 +9775,121 @@ class TogetherAIConnector extends LLMConnector {
   async visionRequest(acRequest, prompt, params, agent) {
     throw new Error("Vision requests are not supported by TogetherAI");
   }
-  async toolRequest(acRequest, params) {
-    throw new Error("Tool requests are not yet implemented for TogetherAI");
+  async toolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    try {
+      const openai = new OpenAI({
+        apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+        baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
+      });
+      if (!Array.isArray(messages) || !messages?.length) {
+        return { error: new Error("Invalid messages argument for chat completion.") };
+      }
+      let args = {
+        model,
+        messages,
+        tools,
+        tool_choice
+      };
+      const result = await openai.chat.completions.create(args);
+      const message = result?.choices?.[0]?.message;
+      const finishReason = result?.choices?.[0]?.finish_reason;
+      let toolsData = [];
+      let useTool = false;
+      if (finishReason === "tool_calls") {
+        toolsData = message?.tool_calls?.map((tool, index) => ({
+          index,
+          id: tool?.id,
+          type: tool?.type,
+          name: tool?.function?.name,
+          arguments: tool?.function?.arguments,
+          role: "tool"
+        })) || [];
+        useTool = true;
+      }
+      return {
+        data: { useTool, message, content: message?.content ?? "", toolsData }
+      };
+    } catch (error) {
+      console$4.log("Error on toolUseLLMRequest: ", error);
+      return { error };
+    }
   }
-  async streamToolRequest(acRequest, params) {
-    throw new Error("Stream tool requests are not yet implemented for TogetherAI");
+  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    throw new Error("streamToolRequest() is Deprecated!");
   }
-  async streamRequest(acRequest, params) {
-    throw new Error("Stream requests are not yet implemented for TogetherAI");
+  async streamRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+    const emitter = new EventEmitter$1();
+    const openai = new OpenAI({
+      apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+      baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
+    });
+    let args = {
+      model,
+      messages,
+      tools,
+      tool_choice,
+      stream: true
+    };
+    try {
+      const stream = await openai.chat.completions.create(args);
+      let toolsData = [];
+      (async () => {
+        for await (const part of stream) {
+          const delta = part.choices[0].delta;
+          emitter.emit("data", delta);
+          if (!delta?.tool_calls && delta?.content) {
+            emitter.emit("content", delta.content, delta.role);
+          }
+          if (delta?.tool_calls) {
+            const toolCall = delta?.tool_calls?.[0];
+            const index = toolCall?.index;
+            toolsData[index] = {
+              index,
+              role: "tool",
+              id: (toolsData?.[index]?.id || "") + (toolCall?.id || ""),
+              type: (toolsData?.[index]?.type || "") + (toolCall?.type || ""),
+              name: (toolsData?.[index]?.name || "") + (toolCall?.function?.name || ""),
+              arguments: (toolsData?.[index]?.arguments || "") + (toolCall?.function?.arguments || "")
+            };
+          }
+        }
+        if (toolsData?.length > 0) {
+          emitter.emit("toolsData", toolsData);
+        }
+        setTimeout(() => {
+          emitter.emit("end", toolsData);
+        }, 100);
+      })();
+      return emitter;
+    } catch (error) {
+      emitter.emit("error", error);
+      return emitter;
+    }
   }
   async extractVisionLLMParams(config2) {
     const params = await super.extractVisionLLMParams(config2);
     return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
-    throw new Error("Tool configuration is not yet implemented for TogetherAI");
+    let tools = [];
+    if (type === "function") {
+      tools = toolDefinitions.map((tool) => {
+        const { name, description, properties, requiredFields } = tool;
+        return {
+          type: "function",
+          function: {
+            name,
+            description,
+            parameters: {
+              type: "object",
+              properties,
+              required: requiredFields
+            }
+          }
+        };
+      });
+    }
+    return tools?.length > 0 ? { tools, tool_choice: toolChoice || "auto" } : {};
   }
   formatInputMessages(messages) {
     return messages.map((message) => {
