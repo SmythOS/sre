@@ -278,6 +278,8 @@ export abstract class LLMConnector extends Connector {
 
         return newPrompt;
     }
+
+    // TODO [Forhad]: Need to check if we need the params mapping anymore as we set the parameters explicitly now
     public async extractLLMComponentParams(config: any) {
         const params: LLMParams = {};
         const model: string = config.data.model;
@@ -341,6 +343,7 @@ export abstract class LLMConnector extends Connector {
         return params;
     }
 
+    // TODO [Forhad]: Need to support other params like temperature, topP, topK, etc.
     public async extractVisionLLMParams(config: any) {
         const params: LLMParams = {};
         const model: string = config.data.model;

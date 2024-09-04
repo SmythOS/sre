@@ -8,17 +8,23 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+
 import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
 
-import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('OpenAIConnector');
+
+const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
+    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original _params object
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
@@ -30,7 +36,7 @@ export class OpenAIConnector extends LLMConnector {
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
-            if (_params.model.startsWith('gpt-4-turbo') || _params.model.startsWith('gpt-3.5-turbo')) {
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.response_format = { type: 'json_object' };
             }
         }
@@ -80,51 +86,41 @@ export class OpenAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.log('Error in chatRequest in OpenAI: ', error);
             throw error;
         }
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        //if (!params.model) params.model = 'gpt-4-vision-preview';
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages || params.messages?.length === 0) params.messages = [];
-        if (params.messages?.role !== 'system') {
-            params.messages.unshift({
+        if (!_params.messages || _params.messages?.length === 0) _params.messages = [];
+        if (_params.messages?.role !== 'system') {
+            _params.messages.unshift({
                 role: 'system',
                 content:
                     'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
             });
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+                _params.response_format = { type: 'json_object' };
+            }
         }
-
-        const sources: BinaryInput[] = params?.sources || [];
-        delete params?.sources; // Remove images from params
-
-        //const imageData = await prepareImageData(sources, 'OpenAI', agent);
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const imageData = [];
-        for (let source of sources) {
-            const bufferData = await source.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const url = `data:${source.mimetype};base64,${base64Data}`;
-            imageData.push({
-                type: 'image_url',
-                image_url: {
-                    url,
-                },
-            });
-        }
+
+        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
         const promptData = [{ type: 'text', text: prompt }, ...imageData];
-        params.messages.push({ role: 'user', content: promptData });
+        _params.messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
-            const apiKey = params?.apiKey;
-            delete params.apiKey; // Remove apiKey from params
+            const apiKey = _params?.apiKey;
+            delete _params.apiKey; // Remove apiKey from params
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -134,22 +130,29 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = await this.countVisionPromptTokens(promptData);
 
             const tokenLimit = this.checkTokensLimit({
-                model: params.model,
+                model: _params.model,
                 promptTokens,
-                completionTokens: params?.max_tokens,
+                completionTokens: _params?.max_tokens,
                 hasTeamAPIKey: !!apiKey,
             });
 
             if (tokenLimit.isExceeded) throw new Error(tokenLimit.error);
 
-            const response: any = await openai.chat.completions.create({ ...params });
+            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+                model: _params.model,
+                messages: _params.messages,
+            };
+
+            if (_params?.max_tokens) {
+                chatCompletionArgs.max_tokens = _params.max_tokens;
+            }
+
+            const response: any = await openai.chat.completions.create(chatCompletionArgs);
 
             const content = response?.choices?.[0]?.message.content;
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
-            console.log('Error in visionLLMRequest: ', error);
-
             throw error;
         }
     }
@@ -480,5 +483,50 @@ export class OpenAIConnector extends LLMConnector {
         }));
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private async getImageData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            image_url: { url: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const url = `data:${fileSource.mimetype};base64,${base64Data}`;
+
+                imageData.push({
+                    type: 'image_url',
+                    image_url: { url },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

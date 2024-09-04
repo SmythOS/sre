@@ -28,6 +28,8 @@ const sre = SmythRuntime.Instance.init({
     },
 });
 
+const TIMEOUT = 30000;
+
 function runTestCases(model: string) {
     it(`runs a conversation with tool use with Model: ${model}`, async () => {
         const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -42,7 +44,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         const result = await conv.prompt('What can you help me with ?');
 
         expect(result).toBeDefined();
-    }, 30000);
+    }, TIMEOUT);
 
     it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
         const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -63,7 +65,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         const result = await conv.streamPrompt('What can you help me with ?');
 
         expect(result).toBeDefined();
-    }, 30000);
+    }, TIMEOUT);
 
     it(`runs a conversation with remote sentinel agent with Model: ${model}`, async () => {
         const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
@@ -84,7 +86,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
         const result = await conv.streamPrompt('Analyze smyth runtime dependencies and tell me what S3Storage.class.ts depends on');
 
         expect(result).toBeDefined();
-    }, 30000);
+    }, TIMEOUT);
 
     it(`runs a conversation remote weather openAPI.json with Model: ${model}`, async () => {
         //TODO: test invalid yaml and json urls
@@ -107,7 +109,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
 
         console.log(streamResult);
         expect(result).toBeDefined();
-    }, 30000);
+    }, TIMEOUT);
 
     it(
         `runs successive tools calls with Model: ${model}`,
@@ -158,7 +160,7 @@ if the user asks any question, use /ask endpoint to get information and be able 
     );
 }
 
-const models = ['gpt-4o', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash', 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'];
+const models = ['gpt-4o-mini', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash', 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'];
 
 for (const model of models) {
     describe(`LLM Tools use for Model: ${model}`, () => {

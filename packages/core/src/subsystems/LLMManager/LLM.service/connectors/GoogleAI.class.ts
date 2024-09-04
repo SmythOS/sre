@@ -13,6 +13,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
@@ -90,7 +91,7 @@ export class GoogleAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original _params object
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         const model = _params?.model || DEFAULT_MODEL;
 
@@ -170,8 +171,6 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.log('Error in chatRequest in GoogleAI: ', error);
-
             throw error;
         }
     }
@@ -185,15 +184,14 @@ export class GoogleAIConnector extends LLMConnector {
             const fileSources = params?.fileSources || [];
 
             const agentId = agent instanceof Agent ? agent.id : agent;
-            const agentCandidate = AccessCandidate.agent(agentId);
 
-            const validFiles = await this.processValidFiles(fileSources, agentCandidate);
+            const validFiles = this.getValidImageFileSources(fileSources);
 
-            const fileUploadingTasks = validFiles.map((file) => async () => {
+            const fileUploadingTasks = validFiles.map((fileSource) => async () => {
                 try {
-                    const uploadedFile = await this.uploadFile({ file, apiKey });
+                    const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
 
-                    return { url: uploadedFile.url, mimetype: file.mimetype };
+                    return { url: uploadedFile.url, mimetype: fileSource.mimetype };
                 } catch {
                     return null;
                 }
@@ -203,21 +201,13 @@ export class GoogleAIConnector extends LLMConnector {
 
             // We throw error when there are no valid uploaded files,
             if (uploadedFiles?.length === 0) {
-                throw new Error(
-                    `Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`
-                );
+                throw new Error(`There is an issue during upload file in Google AI!`);
             }
 
-            const fileDataObjectsArray = uploadedFiles.map((file: FileObject) => ({
-                fileData: {
-                    mimeType: file.mimetype,
-                    fileUri: file.url,
-                },
-            }));
+            const imageData = this.getImageData(uploadedFiles);
 
             // Adjust input structure handling for multiple image files to accommodate variations.
-            const promptWithFiles =
-                fileDataObjectsArray.length === 1 ? [...fileDataObjectsArray, { text: prompt }] : [prompt, ...fileDataObjectsArray];
+            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
 
             const generationConfig = {
                 stopSequences: params.stopSequences,
@@ -254,8 +244,6 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI visionLLMRequest', error);
-
             throw error;
         }
     }
@@ -503,32 +491,35 @@ export class GoogleAIConnector extends LLMConnector {
         return null;
     }
 
-    private async uploadFile({ file, apiKey }: { file: FileObject; apiKey: string }): Promise<{ url: string }> {
+    private async uploadFile({
+        fileSource,
+        apiKey,
+        agentId,
+    }: {
+        fileSource: BinaryInput;
+        apiKey: string;
+        agentId: string;
+    }): Promise<{ url: string }> {
         try {
-            if (!apiKey || !file?.url || !file?.mimetype) {
+            if (!apiKey || !fileSource?.mimetype) {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
-            // Download the file from source URL to a temp directory
+            // Create a temporary directory
             const tempDir = os.tmpdir();
-            const fileName = path.basename(new URL(file.url).pathname);
+            const fileName = uid();
             const tempFilePath = path.join(tempDir, fileName);
 
-            const response = await axios.get(file.url, { responseType: 'stream' });
+            const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
 
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+            // Write buffer data to temp file
+            await fs.promises.writeFile(tempFilePath, bufferData);
 
             // Upload the file to the Google File Manager
             const fileManager = new GoogleAIFileManager(apiKey);
 
             const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
+                mimeType: fileSource.mimetype,
                 displayName: fileName,
             });
 
@@ -549,15 +540,13 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             // Clean up temp file
-            fs.unlink(tempFilePath, (err) => {
-                if (err) console.error('Error deleting temp file: ', err);
-            });
+            await fs.promises.unlink(tempFilePath);
 
             return {
                 url: uploadResponse.file.uri || '',
             };
         } catch (error) {
-            throw new Error(`Error uploading file for Google AI ${error.message}`);
+            throw new Error(`Error uploading file for Google AI: ${error.message}`);
         }
     }
 
@@ -575,5 +564,49 @@ export class GoogleAIConnector extends LLMConnector {
                 parts: [{ text: message.content }],
             };
         });
+    }
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private getImageData(
+        fileSources: {
+            url: string;
+            mimetype: string;
+        }[]
+    ): {
+        fileData: {
+            mimeType: string;
+            fileUri: string;
+        };
+    }[] {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                imageData.push({
+                    fileData: {
+                        mimeType: fileSource.mimetype,
+                        fileUri: fileSource.url,
+                    },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

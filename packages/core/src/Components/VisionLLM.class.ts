@@ -43,18 +43,9 @@ export default class VisionLLM extends Component {
 
             //logger.debug(` Enhanced prompt \n`, prompt, '\n');
 
-            const sources = [];
-            const images = Array.isArray(input.Images) ? input.Images : [input.Images];
-            const promises = [];
-            for (let image of images) {
-                const binaryInput = BinaryInput.from(image);
-                sources.push(binaryInput);
-                promises.push(binaryInput.upload(AccessCandidate.agent(agent.id)));
-            }
+            const fileSources = Array.isArray(input.Images) ? input.Images : [input.Images];
 
-            await Promise.all(promises);
-
-            const response = await llmHelper.visionRequest(prompt, sources, config, agent);
+            const response = await llmHelper.visionRequest(prompt, fileSources, config, agent);
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null
             if (!response) {

@@ -19,7 +19,7 @@ export class TogetherAIConnector extends LLMConnector {
     public name = 'LLM:TogetherAI';
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original _params object
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
@@ -84,7 +84,6 @@ export class TogetherAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.log('Error in chatRequest in TogetherAI: ', error);
             throw error;
         }
     }

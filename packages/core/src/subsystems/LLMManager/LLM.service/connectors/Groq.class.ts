@@ -67,7 +67,6 @@ export class GroqConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.log('Error in chatRequest in Groq: ', error);
             throw error;
         }
     }
