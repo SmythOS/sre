@@ -62,7 +62,7 @@ describe('HuggingFace Component', () => {
         }
     });
 
-    it('prompt with a text input', async () => {
+    it('should pass prompt with a text input', async () => {
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
@@ -93,7 +93,7 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('prompt with a local binary input', async () => {
+    it('should pass prompt with a local binary input', async () => {
         // const imagePath = '../../data/avatar.png';
         const imagePath = path.resolve(__dirname, '../../data/avatar.png');
 
@@ -131,7 +131,7 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('prompt with a remote binary input', async () => {
+    it('should pass prompt with a remote binary input', async () => {
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
@@ -163,4 +163,42 @@ describe('HuggingFace Component', () => {
         expect(response).toBeDefined();
         expect(output._error).toBeUndefined();
     }, 60_000);
+
+    it('should return a binary output with a preview url', async () => {
+        // @ts-ignore
+        const agent = new Agent();
+        const hfComp = new HuggingFace();
+
+        const output = await hfComp.process(
+            {
+                Text: 'Flowers in a vase on a table',
+            },
+            {
+                data: {
+                    accessToken: process.env.HUGGINGFACE_API_KEY,
+                    desc: '',
+                    disableCache: false,
+                    displayName: 'runwayml/stable-diffusion-v1-5',
+                    logoUrl: '',
+                    modelName: 'runwayml/stable-diffusion-v1-5',
+                    modelTask: 'text-to-image',
+                    name: 'runwayml/stable-diffusion-v1-5',
+                    parameters: JSON.stringify({}),
+                },
+            },
+            agent
+        );
+
+        const response = output.Output;
+
+        expect(response).toBeDefined();
+        expect(output._error).toBeUndefined();
+
+        const previewUrl = response?.url;
+        expect(previewUrl).toBeDefined();
+        expect(previewUrl, 'The output should be a valid URL to an image file').toMatch(/^https:\/\/.*\.(jpg|jpeg|png|gif)$/);
+
+        expect(response).toBeDefined();
+        expect(output._error).toBeUndefined();
+    });
 });
