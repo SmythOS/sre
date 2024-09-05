@@ -1,12 +1,15 @@
+import EventEmitter from 'events';
 import OpenAI from 'openai';
+import { encodeChat } from 'gpt-tokenizer';
+
 import config from '@sre/config';
 import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import EventEmitter from 'events';
 
 const console = Logger('TogetherAIConnector');
 
@@ -16,46 +19,71 @@ export class TogetherAIConnector extends LLMConnector {
     public name = 'LLM:TogetherAI';
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        try {
-            if (!params.messages) params.messages = [];
+        const _params = { ...params }; // Avoid mutation of the original params object
 
-            if (params.messages[0]?.role !== 'system') {
-                params.messages.unshift({
-                    role: 'system',
-                    content: JSON_RESPONSE_INSTRUCTION,
-                });
-            }
+        // Open to take system message with params, if no system message found then force to get JSON response in default
+        if (!_params.messages) _params.messages = [];
 
-            if (prompt) {
-                params.messages.push({ role: 'user', content: prompt });
-            }
-
-            params.messages = this.formatInputMessages(params.messages);
-
-            const apiKey = params?.apiKey;
-            delete params.apiKey;
-
-            const openai = new OpenAI({
-                apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
-                baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+        //FIXME: We probably need to separate the json system from default chatRequest
+        if (_params.messages[0]?.role !== 'system') {
+            _params.messages.unshift({
+                role: 'system',
+                content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
-            // TODO: implement together.ai specific token counting
-            // this.validateTokensLimit(params);
+            if (_params.model.startsWith('gpt-4-turbo') || _params.model.startsWith('gpt-3.5-turbo')) {
+                _params.response_format = { type: 'json_object' };
+            }
+        }
 
-            const response: any = await openai.chat.completions.create(params);
+        if (prompt && _params.messages.length === 1) {
+            _params.messages.push({ role: 'user', content: prompt });
+        }
 
-            const content =
-                response?.choices?.[0]?.text ||
-                response?.choices?.[0]?.message.content ||
-                response?.data?.choices?.[0]?.text ||
-                response?.data?.choices?.[0]?.message.content;
+        // Check if the team has their own API key, then use it
+        const apiKey = _params?.apiKey;
 
+        const openai = new OpenAI({
+            apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+            baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+        });
+
+        // Check token limit
+        const promptTokens = encodeChat(_params.messages, 'gpt-4')?.length;
+
+        const tokensLimit = this.checkTokensLimit({
+            model: _params.model,
+            promptTokens,
+            completionTokens: _params?.max_tokens,
+            hasTeamAPIKey: !!apiKey,
+        });
+
+        if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams & {
+            top_k?: number;
+            repetition_penalty?: number;
+        } = {
+            model: _params.model,
+            messages: _params.messages,
+        };
+
+        if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
+        if (_params?.temperature) chatCompletionArgs.temperature = _params.temperature;
+        if (_params?.stop) chatCompletionArgs.stop = _params.stop;
+        if (_params?.top_p) chatCompletionArgs.top_p = _params.top_p;
+        if (_params?.top_k) chatCompletionArgs.top_k = _params.top_k;
+        if (_params?.repetition_penalty) chatCompletionArgs.repetition_penalty = _params.presence_penalty;
+        if (_params?.response_format) chatCompletionArgs.response_format = _params.response_format;
+
+        try {
+            const response = await openai.chat.completions.create(chatCompletionArgs);
+
+            const content = response?.choices?.[0]?.message.content;
             const finishReason = response?.choices?.[0]?.finish_reason;
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in TogetherAI chatRequest', error);
             throw error;
         }
     }

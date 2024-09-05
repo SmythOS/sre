@@ -21,12 +21,16 @@ const sre = SmythRuntime.Instance.init({
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
+// Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 1, // used inside inferBinaryType()
-        agentRuntime: { debug: true }, // used inside createComponentLogger()
-        teamId: 'default',
-    }));
+    const MockedAgent = vi.fn().mockImplementation(() => {
+        // Inherit Agent.prototype for proper instanceof Agent checks
+        return Object.create(Agent.prototype, {
+            id: { value: 1 }, // used inside inferBinaryType()
+            agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
+            teamId: { value: 'default' },
+        });
+    });
     return { default: MockedAgent };
 });
 

@@ -1,3 +1,4 @@
+import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -8,17 +9,11 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import EventEmitter from 'events';
-
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-const console = Logger('AnthropicAIConnector');
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
-type FileObject = {
-    base64data: string;
-    mimetype: string;
-};
+const console = Logger('AnthropicAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
@@ -30,32 +25,34 @@ export class AnthropicAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        params.messages = params?.messages || [];
+        const _params = { ...params }; // Avoid mutation of the original params object
+
+        _params.messages = _params?.messages || [];
 
         // set prompt as user message if provided
         if (prompt) {
-            params.messages.push({
+            _params.messages.push({
                 role: 'user',
                 content: prompt,
             });
         }
 
-        if (this.hasSystemMessage(params.messages)) {
+        if (this.hasSystemMessage(_params.messages)) {
             // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
+            const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
 
-            params.messages = otherMessages;
+            _params.messages = otherMessages;
 
-            params.system = (systemMessage as LLMMessageBlock)?.content;
+            _params.system = (systemMessage as LLMMessageBlock)?.content;
         }
 
-        const responseFormat = params?.responseFormat || 'json';
+        const responseFormat = _params?.responseFormat || 'json';
         if (responseFormat === 'json') {
-            params.system += JSON_RESPONSE_INSTRUCTION;
-            params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+            _params.system += JSON_RESPONSE_INSTRUCTION;
+            _params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
 
-        const apiKey = params?.apiKey;
+        const apiKey = _params?.apiKey;
 
         // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
@@ -63,18 +60,20 @@ export class AnthropicAIConnector extends LLMConnector {
         const anthropic = new Anthropic({ apiKey });
 
         // TODO: implement claude specific token counting to validate token limit
-        // this.validateTokenLimit(params);
+        // this.validateTokenLimit(_params);
+
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: _params.model,
+            messages: _params.messages,
+            max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!apiKey),
+        };
+
+        if (_params?.temperature) messageCreateArgs.temperature = _params.temperature;
+        if (_params?.stop_sequences) messageCreateArgs.stop_sequences = _params.stop_sequences;
+        if (_params?.top_p) messageCreateArgs.top_p = _params.top_p;
+        if (_params?.top_k) messageCreateArgs.top_k = _params.top_k;
 
         try {
-            const messageCreateArgs = {
-                model: params.model,
-                messages: params.messages,
-                max_tokens: params.max_tokens,
-                temperature: params.temperature,
-                stop_sequences: params.stop_sequences,
-                top_p: params.top_p,
-                top_k: params.top_k,
-            };
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
@@ -85,48 +84,25 @@ export class AnthropicAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in componentLLMRequest in AnthropicAI: ', error);
-
-            if (error instanceof Anthropic.APIError) {
-                throw error;
-            } else {
-                throw new Error('Internal server error! Please try again later or contact support.');
-            }
+            throw error;
         }
     }
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        params.messages = params?.messages || [];
 
-        const fileSources = params?.fileSources || [];
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
+        const _params = { ...params }; // Avoid mutation of the original params object
+
+        _params.messages = _params?.messages || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const agentCandidate = AccessCandidate.agent(agentId);
 
-        const validFiles = await this.processValidFiles(fileSources, agentCandidate);
+        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
 
-        if (validFiles?.length === 0) {
-            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
-        }
+        const content = [{ type: 'text', text: prompt }, ...imageData];
+        _params.messages.push({ role: 'user', content });
 
-        const fileObjectsArray = validFiles.map((file) => ({
-            type: 'image',
-            source: {
-                type: 'base64',
-                data: file.base64data,
-                media_type: file.mimetype,
-            },
-        }));
-
-        const content = [{ type: 'text', text: prompt }, ...fileObjectsArray];
-        params.messages.push({ role: 'user', content });
-
-        const responseFormat = params?.responseFormat || 'json';
-        if (responseFormat === 'json') {
-            params.system = JSON_RESPONSE_INSTRUCTION;
-            params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
-        }
-
-        const apiKey = params?.apiKey;
+        const apiKey = _params?.apiKey;
 
         // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
@@ -136,34 +112,20 @@ export class AnthropicAIConnector extends LLMConnector {
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
 
-        try {
-            const messageCreateArgs = {
-                model: params.model,
-                messages: params.messages,
-                max_tokens: params.max_tokens,
-                temperature: params.temperature,
-                stop_sequences: params.stop_sequences,
-                top_p: params.top_p,
-                top_k: params.top_k,
-            };
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: _params.model,
+            messages: _params.messages,
+            max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!apiKey),
+        };
 
+        try {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
 
-            if (responseFormat === 'json') {
-                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
-            }
-
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in componentLLMRequest in Calude: ', error);
-
-            if (error instanceof Anthropic.APIError) {
-                throw error;
-            } else {
-                throw new Error('Internal server error! Please try again later or contact support.');
-            }
+            throw error;
         }
     }
 
@@ -438,52 +400,51 @@ export class AnthropicAIConnector extends LLMConnector {
         return [...messageBlocks, ...transformedToolsData];
     }
 
-    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
-            if (!fileSource) return null;
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
 
-            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
-                return await this.processObjectFileSource(fileSource, candidate);
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
             }
-
-            if (isValidString(fileSource as string)) {
-                return await this.processStringFileSource(fileSource as string, candidate);
-            }
-
-            return null;
-        });
-
-        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
-
-        return validFiles as FileObject[];
-    }
-
-    private async processObjectFileSource(fileSource: Record<string, string>, candidate: IAccessCandidate): Promise<FileObject | null> {
-        const { mimetype } = fileSource;
-
-        if (!this.validImageMimeTypes.includes(mimetype)) return null;
-
-        const binaryInput = new BinaryInput(fileSource);
-        const base64data = (await binaryInput.getBuffer()).toString('base64');
-
-        return { base64data, mimetype };
-    }
-
-    private async processStringFileSource(fileSource: string, candidate: IAccessCandidate): Promise<FileObject | null> {
-        let mimetype = '';
-
-        if (isUrl(fileSource)) {
-            mimetype = await getMimeTypeFromUrl(fileSource);
-        } else if (isDataUrl(fileSource) || isRawBase64(fileSource)) {
-            const parsedBase64 = await parseBase64(fileSource);
-            mimetype = parsedBase64.mimetype;
         }
 
-        if (!this.validImageMimeTypes.includes(mimetype)) return null;
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
 
-        const binaryInput = new BinaryInput(fileSource);
-        const base64data = (await binaryInput.getBuffer()).toString('base64');
+        return validSources;
+    }
 
-        return { base64data, mimetype };
+    private async getImageData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            source: { type: 'base64'; data: string; media_type: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+
+                imageData.push({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        data: base64Data,
+                        media_type: fileSource.mimetype,
+                    },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

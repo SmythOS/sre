@@ -1,50 +1,52 @@
+import EventEmitter from 'events';
+import OpenAI from 'openai';
+import { encodeChat } from 'gpt-tokenizer';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+
 import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
-import { encodeChat } from 'gpt-tokenizer';
-import OpenAI from 'openai';
-import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
-import EventEmitter from 'events';
-import { delay } from '@sre/utils/date-time.utils';
-import { Readable } from 'stream';
+
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('OpenAIConnector');
+
+const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        // if (!model) model = 'gpt-3.5-turbo';
+    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-        //if (!params.model) params.model = 'gpt-4-turbo';
+    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages) params.messages = [];
+        if (!_params.messages) _params.messages = [];
 
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (params.messages[0]?.role !== 'system') {
-            params.messages.unshift({
+        if (_params.messages[0]?.role !== 'system') {
+            _params.messages.unshift({
                 role: 'system',
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
-            if (params.model.startsWith('gpt-4-turbo') || params.model.startsWith('gpt-3.5-turbo')) {
-                params.response_format = { type: 'json_object' };
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+                _params.response_format = { type: 'json_object' };
             }
         }
 
-        if (prompt && params.messages.length === 1) {
-            params.messages.push({ role: 'user', content: prompt });
+        if (prompt && _params.messages.length === 1) {
+            _params.messages.push({ role: 'user', content: prompt });
         }
-        delete params.prompt;
 
         // Check if the team has their own API key, then use it
-        const apiKey = params?.apiKey;
-        delete params.apiKey; // Remove apiKey from params
+        const apiKey = _params?.apiKey;
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
@@ -52,63 +54,73 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         // Check token limit
-        const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
+        const promptTokens = encodeChat(_params.messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
-            model: params.model,
+            model: _params.model,
             promptTokens,
-            completionTokens: params?.max_tokens,
+            completionTokens: _params?.max_tokens,
             hasTeamAPIKey: !!apiKey,
         });
 
         if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
 
-        const response: any = await openai.chat.completions.create(params as OpenAI.ChatCompletionCreateParamsNonStreaming);
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: _params.model,
+            messages: _params.messages,
+        };
 
-        const content = response?.choices?.[0]?.message.content;
+        if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
+        if (_params?.temperature) chatCompletionArgs.temperature = _params.temperature;
+        if (_params?.stop) chatCompletionArgs.stop = _params.stop;
+        if (_params?.top_p) chatCompletionArgs.top_p = _params.top_p;
+        if (_params?.frequency_penalty) chatCompletionArgs.frequency_penalty = _params.frequency_penalty;
+        if (_params?.presence_penalty) chatCompletionArgs.presence_penalty = _params.presence_penalty;
+        if (_params?.response_format) chatCompletionArgs.response_format = _params.response_format;
 
-        return { content, finishReason: response?.choices?.[0]?.finish_reason };
+        try {
+            const response = await openai.chat.completions.create(chatCompletionArgs);
+
+            const content = response?.choices?.[0]?.message.content;
+            const finishReason = response?.choices?.[0]?.finish_reason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
     }
+
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        //if (!params.model) params.model = 'gpt-4-vision-preview';
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages || params.messages?.length === 0) params.messages = [];
-        if (params.messages?.role !== 'system') {
-            params.messages.unshift({
+        if (!_params.messages || _params.messages?.length === 0) _params.messages = [];
+        if (_params.messages?.role !== 'system') {
+            _params.messages.unshift({
                 role: 'system',
                 content:
                     'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
             });
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+                _params.response_format = { type: 'json_object' };
+            }
         }
-
-        const sources: BinaryInput[] = params?.sources || [];
-        delete params?.sources; // Remove images from params
-
-        //const imageData = await prepareImageData(sources, 'OpenAI', agent);
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const imageData = [];
-        for (let source of sources) {
-            const bufferData = await source.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const url = `data:${source.mimetype};base64,${base64Data}`;
-            imageData.push({
-                type: 'image_url',
-                image_url: {
-                    url,
-                },
-            });
-        }
+
+        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
         const promptData = [{ type: 'text', text: prompt }, ...imageData];
-        params.messages.push({ role: 'user', content: promptData });
+        _params.messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
-            const apiKey = params?.apiKey;
-            delete params.apiKey; // Remove apiKey from params
+            const apiKey = _params?.apiKey;
+            delete _params.apiKey; // Remove apiKey from params
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -118,22 +130,29 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = await this.countVisionPromptTokens(promptData);
 
             const tokenLimit = this.checkTokensLimit({
-                model: params.model,
+                model: _params.model,
                 promptTokens,
-                completionTokens: params?.max_tokens,
+                completionTokens: _params?.max_tokens,
                 hasTeamAPIKey: !!apiKey,
             });
 
             if (tokenLimit.isExceeded) throw new Error(tokenLimit.error);
 
-            const response: any = await openai.chat.completions.create({ ...params });
+            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+                model: _params.model,
+                messages: _params.messages,
+            };
+
+            if (_params?.max_tokens) {
+                chatCompletionArgs.max_tokens = _params.max_tokens;
+            }
+
+            const response: any = await openai.chat.completions.create(chatCompletionArgs);
 
             const content = response?.choices?.[0]?.message.content;
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
-            console.log('Error in visionLLMRequest: ', error);
-
             throw error;
         }
     }
@@ -464,5 +483,50 @@ export class OpenAIConnector extends LLMConnector {
         }));
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private async getImageData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            image_url: { url: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const url = `data:${fileSource.mimetype};base64,${base64Data}`;
+
+                imageData.push({
+                    type: 'image_url',
+                    image_url: { url },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }
