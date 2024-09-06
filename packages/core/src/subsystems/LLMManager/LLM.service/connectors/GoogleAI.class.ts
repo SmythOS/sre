@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -13,10 +13,11 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, ToolInfo, LLMInputMessage } from '@sre/types/LLM.types';
+import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -83,18 +84,6 @@ const VALID_MIME_TYPES = [
 // Supported image MIME types for Google AI's Gemini models
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
-export type GetGenerativeModelArgs = {
-    model: string;
-    generationConfig: {
-        stopSequences: string[];
-        candidateCount: number;
-        maxOutputTokens: number;
-        temperature: number;
-        topP: number;
-        topK: number;
-    };
-    systemInstruction?: string;
-};
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
@@ -102,66 +91,69 @@ export class GoogleAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        const _params = { ...params }; // Avoid mutation of the original params object
+
+        const model = _params?.model || DEFAULT_MODEL;
+
+        const apiKey = _params?.apiKey;
+
+        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+
+        let messages = _params?.messages || [];
+
+        let systemInstruction;
+        let systemMessage: LLMMessageBlock | {} = {};
+
+        if (this.hasSystemMessage(_params?.messages)) {
+            const separateMessages = this.separateSystemMessages(messages);
+            systemMessage = separateMessages.systemMessage;
+            messages = separateMessages.otherMessages;
+        }
+
+        if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
+            systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
+        } else {
+            prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
+        }
+
+        if (_params?.messages) {
+            // Concatenate messages with prompt and remove messages from params as it's not supported
+            prompt = _params.messages.map((message) => message?.content || '').join('\n');
+        }
+
+        // Need to return JSON for LLM Prompt component
+        const responseFormat = _params?.responseFormat || 'json';
+        if (responseFormat === 'json') {
+            if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
+            else prompt += JSON_RESPONSE_INSTRUCTION;
+        }
+
+        if (!prompt) throw new Error('Prompt is required!');
+
+        // TODO: implement claude specific token counting to validate token limit
+        // this.validateTokenLimit(_params);
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        if (systemInstruction) modelParams.systemInstruction = systemInstruction;
+
+        const generationConfig: GenerationConfig = {};
+
+        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
+        if (_params.temperature) generationConfig.temperature = _params.temperature;
+        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
+        if (_params.topP) generationConfig.topP = _params.topP;
+        if (_params.topK) generationConfig.topK = _params.topK;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
         try {
-            const model = params?.model || DEFAULT_MODEL;
+            const $model = genAI.getGenerativeModel(modelParams);
 
-            const apiKey = params?.apiKey;
-
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
-            let messages = params?.messages || [];
-
-            let systemInstruction;
-            let systemMessage: LLMInputMessage | {} = {};
-
-            if (this.hasSystemMessage(params?.messages)) {
-                const separateMessages = this.separateSystemMessages(messages);
-                systemMessage = separateMessages.systemMessage;
-                messages = separateMessages.otherMessages;
-            }
-
-            if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-                systemInstruction = (systemMessage as LLMInputMessage)?.content || '';
-            } else {
-                prompt = `${prompt}\n${(systemMessage as LLMInputMessage)?.content || ''}`;
-            }
-
-            if (params?.messages) {
-                // Concatenate messages with prompt and remove messages from params as it's not supported
-                prompt = params.messages.map((message) => message?.content || '').join('\n');
-            }
-
-            // Need to return JSON for LLM Prompt component
-            const responseFormat = params?.responseFormat || 'json';
-            if (responseFormat === 'json') {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
-            }
-
-            if (!prompt) throw new Error('Prompt is required!');
-
-            const args: GetGenerativeModelArgs = {
-                model,
-                generationConfig: params,
-            };
-
-            if (systemInstruction) args.systemInstruction = systemInstruction;
-
-            const generationConfig = {
-                stopSequences: params.stopSequences,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                topK: params.topK,
-            };
-
-            const $model = genAI.getGenerativeModel({
-                model,
-                systemInstruction,
-                generationConfig,
-            });
-
-            // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
@@ -179,8 +171,6 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI componentLLMRequest', error);
-
             throw error;
         }
     }
@@ -194,40 +184,30 @@ export class GoogleAIConnector extends LLMConnector {
             const fileSources = params?.fileSources || [];
 
             const agentId = agent instanceof Agent ? agent.id : agent;
-            const agentCandidate = AccessCandidate.agent(agentId);
 
-            const validFiles = await this.processValidFiles(fileSources, agentCandidate);
+            const validFiles = this.getValidImageFileSources(fileSources);
 
-            const uploadedFiles = await processWithConcurrencyLimit({
-                items: validFiles,
-                itemProcessor: async (file: FileObject) => {
-                    try {
-                        const uploadedFile = await this.uploadFile({ file, apiKey });
+            const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+                try {
+                    const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
 
-                        return { url: uploadedFile.url, mimetype: file.mimetype };
-                    } catch {
-                        return null;
-                    }
-                },
+                    return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+                } catch {
+                    return null;
+                }
             });
+
+            const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
             // We throw error when there are no valid uploaded files,
             if (uploadedFiles?.length === 0) {
-                throw new Error(
-                    `Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`
-                );
+                throw new Error(`There is an issue during upload file in Google AI!`);
             }
 
-            const fileDataObjectsArray = uploadedFiles.map((file: FileObject) => ({
-                fileData: {
-                    mimeType: file.mimetype,
-                    fileUri: file.url,
-                },
-            }));
+            const imageData = this.getImageData(uploadedFiles);
 
             // Adjust input structure handling for multiple image files to accommodate variations.
-            const promptWithFiles =
-                fileDataObjectsArray.length === 1 ? [...fileDataObjectsArray, { text: prompt }] : [prompt, ...fileDataObjectsArray];
+            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
 
             const generationConfig = {
                 stopSequences: params.stopSequences,
@@ -264,44 +244,136 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI visionLLMRequest', error);
-
             throw error;
         }
     }
 
-    // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
     protected async toolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
         try {
-            throw new Error('Tools are not yet implemented for Google AI.');
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+
+            let systemInstruction = '';
+            let formattedMessages;
+
+            if (this.hasSystemMessage(messages)) {
+                const separateMessages = this.separateSystemMessages(messages);
+                systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
+                formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+            } else {
+                formattedMessages = this.formatInputMessages(messages);
+            }
+
+            const $model = genAI.getGenerativeModel({ model });
+
+            const result = await $model.generateContent({
+                contents: formattedMessages,
+                tools,
+                systemInstruction,
+                toolConfig: {
+                    functionCallingConfig: { mode: tool_choice || 'auto' },
+                },
+            });
+
+            const response = await result.response;
+            const content = response.text();
+            const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+
+            let toolsData: ToolData[] = [];
+            let useTool = false;
+
+            if (toolCalls && toolCalls.length > 0) {
+                toolsData = toolCalls.map((toolCall, index) => ({
+                    index,
+                    id: `tool-${index}`,
+                    type: 'function',
+                    name: toolCall.functionCall.name,
+                    arguments: JSON.stringify(toolCall.functionCall.args),
+                    role: 'assistant',
+                }));
+                useTool = true;
+            }
+
+            return {
+                data: { useTool, message: { content }, content, toolsData },
+            };
         } catch (error: any) {
-            throw error;
+            console.log('Error on toolUseLLMRequest: ', error);
+            return { error };
         }
     }
 
-    // TODO: Need to implement tool request with Google AI, not implemented in the SaaS app as well
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
-        try {
-            throw new Error('Tools are not yet implemented for Google AI.');
-        } catch (error: any) {
-            throw error;
-        }
+        throw new Error('streamToolRequest() is Deprecated!');
     }
 
     protected async streamRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+        const $model = genAI.getGenerativeModel({ model });
+
+        let systemInstruction = '';
+        let formattedMessages;
+
+        if (this.hasSystemMessage(messages)) {
+            const separateMessages = this.separateSystemMessages(messages);
+            systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
+            formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+        } else {
+            formattedMessages = this.formatInputMessages(messages);
+        }
+
         try {
-            throw new Error('Tools are not yet implemented for Google AI.');
+            const result = await $model.generateContentStream({
+                contents: formattedMessages,
+                tools,
+                systemInstruction,
+                toolConfig: {
+                    functionCallingConfig: { mode: tool_choice || 'auto' },
+                },
+            });
+
+            let toolsData: ToolData[] = [];
+
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    emitter.emit('content', chunkText);
+
+                    if (chunk.candidates[0]?.content?.parts) {
+                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
+                        if (toolCalls.length > 0) {
+                            toolsData = toolCalls.map((toolCall, index) => ({
+                                index,
+                                id: `tool-${index}`,
+                                type: 'function',
+                                name: toolCall.functionCall.name,
+                                arguments: JSON.stringify(toolCall.functionCall.args),
+                                role: 'assistant',
+                            }));
+                            emitter.emit('toolsData', toolsData);
+                        }
+                    }
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+
+            return emitter;
         } catch (error: any) {
-            throw error;
+            emitter.emit('error', error);
+            return emitter;
         }
     }
 
@@ -311,56 +383,81 @@ export class GoogleAIConnector extends LLMConnector {
         return params;
     }
 
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        const allowFunctionNames: string[] = [];
-        const functionDeclarations = toolDefinitions.map((item) => {
-            const { name, description, properties, requiredFields } = item;
+    public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
+        const tools = toolDefinitions.map((tool) => {
+            const { name, description, properties, requiredFields } = tool;
 
-            allowFunctionNames.push(name);
+            // Ensure the function name is valid
+            const validName = this.sanitizeFunctionName(name);
+
+            // Ensure properties are non-empty for OBJECT type
+            const validProperties = properties && Object.keys(properties).length > 0 ? properties : { dummy: { type: 'string' } };
 
             return {
-                name,
-                description,
-                parameters: {
-                    type: 'OBJECT',
-                    properties,
-                    required: requiredFields,
-                },
+                functionDeclarations: [
+                    {
+                        name: validName,
+                        description: description || '',
+                        parameters: {
+                            type: 'OBJECT',
+                            properties: validProperties,
+                            required: requiredFields || [],
+                        },
+                    },
+                ],
             };
         });
 
-        const tools = [
-            {
-                function_declarations: functionDeclarations,
-            },
-        ];
-
-        const toolConfig = {
-            function_calling_config: {
-                mode: toolChoice || 'AUTO',
-                allowed_function_names: allowFunctionNames,
-            },
-        };
-
         return {
             tools,
-            tool_config: toolConfig,
+            toolChoice: {
+                type: toolChoice,
+            },
         };
     }
 
-    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const validFiles = await processWithConcurrencyLimit({
-            items: fileSources,
-            itemProcessor: async (fileSource: string | Record<string, any>) => {
-                if (!fileSource) return null;
+    // Add this helper method to sanitize function names
+    private sanitizeFunctionName(name: string): string {
+        // Check if name is undefined or null
+        if (name == null) {
+            return '_unnamed_function';
+        }
 
-                if (typeof fileSource === 'object' && fileSource?.url && fileSource?.mimetype) {
-                    return this.processObjectFileSource(fileSource);
-                } else if (isValidString(fileSource as string)) {
-                    return this.processStringFileSource(fileSource as string, candidate);
-                }
-            },
+        // Remove any characters that are not alphanumeric, underscore, dot, or dash
+        let sanitized = name.replace(/[^a-zA-Z0-9_.-]/g, '');
+
+        // Ensure the name starts with a letter or underscore
+        if (!/^[a-zA-Z_]/.test(sanitized)) {
+            sanitized = '_' + sanitized;
+        }
+
+        // If sanitized is empty after removing invalid characters, use a default name
+        if (sanitized === '') {
+            sanitized = '_unnamed_function';
+        }
+
+        // Truncate to 64 characters if longer
+        sanitized = sanitized.slice(0, 64);
+
+        return sanitized;
+    }
+
+    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
+        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
+            if (!fileSource) return null;
+
+            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
+                return await this.processObjectFileSource(fileSource);
+            }
+
+            if (isValidString(fileSource as string)) {
+                return await this.processStringFileSource(fileSource as string, candidate);
+            }
+
+            return null;
         });
+
+        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
 
         return validFiles as FileObject[];
     }
@@ -394,32 +491,35 @@ export class GoogleAIConnector extends LLMConnector {
         return null;
     }
 
-    private async uploadFile({ file, apiKey }: { file: FileObject; apiKey: string }): Promise<{ url: string }> {
+    private async uploadFile({
+        fileSource,
+        apiKey,
+        agentId,
+    }: {
+        fileSource: BinaryInput;
+        apiKey: string;
+        agentId: string;
+    }): Promise<{ url: string }> {
         try {
-            if (!apiKey || !file?.url || !file?.mimetype) {
+            if (!apiKey || !fileSource?.mimetype) {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
-            // Download the file from source URL to a temp directory
+            // Create a temporary directory
             const tempDir = os.tmpdir();
-            const fileName = path.basename(new URL(file.url).pathname);
+            const fileName = uid();
             const tempFilePath = path.join(tempDir, fileName);
 
-            const response = await axios.get(file.url, { responseType: 'stream' });
+            const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
 
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+            // Write buffer data to temp file
+            await fs.promises.writeFile(tempFilePath, bufferData);
 
             // Upload the file to the Google File Manager
             const fileManager = new GoogleAIFileManager(apiKey);
 
             const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
+                mimeType: fileSource.mimetype,
                 displayName: fileName,
             });
 
@@ -440,15 +540,73 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             // Clean up temp file
-            fs.unlink(tempFilePath, (err) => {
-                if (err) console.error('Error deleting temp file: ', err);
-            });
+            await fs.promises.unlink(tempFilePath);
 
             return {
                 url: uploadResponse.file.uri || '',
             };
         } catch (error) {
-            throw new Error(`Error uploading file for Google AI ${error.message}`);
+            throw new Error(`Error uploading file for Google AI: ${error.message}`);
+        }
+    }
+
+    private formatInputMessages(messages: LLMMessageBlock[]): any[] {
+        return messages.map((message) => {
+            let role = message.role;
+
+            // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
+            if (message.role === 'assistant') {
+                role = 'model';
+            }
+
+            return {
+                role,
+                parts: [{ text: message.content }],
+            };
+        });
+    }
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private getImageData(
+        fileSources: {
+            url: string;
+            mimetype: string;
+        }[]
+    ): {
+        fileData: {
+            mimeType: string;
+            fileUri: string;
+        };
+    }[] {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                imageData.push({
+                    fileData: {
+                        mimeType: fileSource.mimetype,
+                        fileUri: fileSource.url,
+                    },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
         }
     }
 }

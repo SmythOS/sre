@@ -6,6 +6,8 @@ import { EchoConnector } from './connectors/Echo.class';
 import { OpenAIConnector } from './connectors/OpenAI.class';
 import { GoogleAIConnector } from './connectors/GoogleAI.class';
 import { AnthropicAIConnector } from './connectors/AnthropicAI.class';
+import { GroqConnector } from './connectors/Groq.class';
+import { TogetherAIConnector } from './connectors/TogetherAI.class';
 
 export class LLMService extends ConnectorServiceProvider {
     public register() {
@@ -13,6 +15,8 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'OpenAI', OpenAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'GoogleAI', GoogleAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'AnthropicAI', AnthropicAIConnector);
+        ConnectorService.register(TConnectorService.LLM, 'Groq', GroqConnector);
+        ConnectorService.register(TConnectorService.LLM, 'TogetherAI', TogetherAIConnector);
     }
 
     public init() {
@@ -21,5 +25,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.init(TConnectorService.LLM, 'OpenAI');
         ConnectorService.init(TConnectorService.LLM, 'GoogleAI');
         ConnectorService.init(TConnectorService.LLM, 'AnthropicAI');
+        ConnectorService.init(TConnectorService.LLM, 'Groq');
+        ConnectorService.init(TConnectorService.LLM, 'TogetherAI');
     }
 }

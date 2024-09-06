@@ -4,7 +4,7 @@ import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
-    private _llmHelper;
+    private _llmHelper: LLMHelper;
     public contextLength: number;
     public get llmHelper() {
         return this._llmHelper;
@@ -40,7 +40,7 @@ export class LLMContext {
             maxInputContext -= maxInputContext + maxOutputTokens - maxModelContext;
         }
 
-        const messages = [];
+        let messages = [];
 
         const systemMessage = { role: 'system', content: this._systemPrompt };
         //loop through messages from last to first and use encodeChat to calculate token lengths
@@ -62,15 +62,22 @@ export class LLMContext {
 
             delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
 
-            const encoded = encodeChat([message], 'gpt-4');
+            const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+            const encoded = encode(textContent);
             tokens += encoded.length;
             if (tokens > maxInputContext) {
+                if (typeof message.content !== 'string') {
+                    //FIXME: handle this case for object contents (used by Anthropic for tool calls for example)
+                    break;
+                }
                 //handle context window overflow
                 //FIXME: the logic here is weak, we need a better one
                 const diff = tokens - maxInputContext;
                 const excessPercentage = diff / encoded.length;
 
                 //truncate message content
+                //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+
                 message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
                 message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
 

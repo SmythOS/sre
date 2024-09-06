@@ -24,7 +24,7 @@ export default {
         frequencyPenalty: 'frequency_penalty',
         presencePenalty: 'presence_penalty',
     },
-    togetherAI: {
+    TogetherAI: {
         maxTokens: 'max_tokens',
         temperature: 'temperature',
         stopSequences: 'stop',
@@ -32,7 +32,7 @@ export default {
         topK: 'top_k',
         frequencyPenalty: 'repetition_penalty',
     },
-    Claude: {
+    AnthropicAI: {
         maxTokens: 'max_tokens',
         temperature: 'temperature',
         stopSequences: 'stop_sequences',

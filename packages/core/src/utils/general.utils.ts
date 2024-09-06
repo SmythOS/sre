@@ -29,55 +29,45 @@ export function isSubclassOf(subClass: any, superClass: any): boolean {
 }
 
 /**
- * Processes an array of items concurrently with a specified concurrency limit.
+ * Processes an array of tasks concurrently with a specified concurrency limit.
  *
- * @template T - The type of items to be processed.
- * @template R - The type of the result returned by the processing function.
+ * @template T - The type of the result returned by each task.
  *
- * @param {Object} params - The parameters for the function.
- * @param {T[]} params.items - The array of items to be processed.
- * @param {(item: T) => Promise<R>} params.processItem - The asynchronous function to process each item.
- * @param {number} [params.maxConcurrentItems=10] - The maximum number of concurrent processes. Defaults to 10 if not provided.
+ * @param {(() => Promise<T>)[]} tasks - An array of functions that return promises.
+ * Each function represents a task to be processed.
+ * @param {number} [maxConcurrentTasks=10] - The maximum number of concurrent tasks.
  *
- * @returns {Promise<(R)[]>} - A promise that resolves to an array of results.
+ * @returns {Promise<T[]>} - A promise that resolves to an array of results.
  * Only successfully fulfilled promises are included in the result array.
  *
- * @throws {TypeError} - Throws an error if the items parameter is not an array.
+ * @throws {TypeError} - Throws an error if the tasks parameter is not an array of functions.
  *
  * @example
- * const items = [1, 2, 3, 4, 5];
- * const itemProcessor = async (item: number) => {
- *     // Simulate an asynchronous operation
- *     return item * 2;
- * };
+ * const tasks = [
+ *     () => await processFile('file1.txt'),
+ *     () => await processFile('file2.txt'),
+ *     () => await processFile('file3.txt'),
+ * ];
  *
- * processWithConcurrencyLimit({ items, itemProcessor, maxConcurrentItems: 2 })
- *     .then(results => console.log(results)) // [2, 4, 6, 8, 10]
+ * const maxConcurrentTasks = 2;
+ *
+ * processWithConcurrencyLimit(tasks, maxConcurrentTasks)
+ *     .then(results => console.log(results)) // Array of results from the fulfilled promises
  *     .catch(error => console.error(error));
  *
- * @note Currently, this function ignores items that fail to process.
+ * @note Currently, this function ignores tasks that fail to process.
  *       Only successfully fulfilled promises are included in the result array.
- *       To improve this behavior, we could add an option to control whether to exit the function if a process fails.
+ *       To improve this behavior, we could add an option to control whether to exit the function if a task fails.
  */
-export async function processWithConcurrencyLimit<T, R>({
-    items,
-    itemProcessor,
-    maxConcurrentItems,
-}: {
-    items: T[];
-    itemProcessor: (item: T) => Promise<R>;
-    maxConcurrentItems?: number;
-}): Promise<R[]> {
-    if (!Array.isArray(items)) return [];
+export async function processWithConcurrencyLimit<T>(tasks: (() => Promise<T>)[], maxConcurrentTasks: number = 10): Promise<T[]> {
+    const limit = pLimit(maxConcurrentTasks);
 
-    const concurrencyLimiter = pLimit(maxConcurrentItems || 10);
+    const limitedTasks = tasks.map((task) => limit(task));
 
-    // Process each item with defined limit
-    const promises = items.map((item) => concurrencyLimiter(() => itemProcessor(item)));
-    const results = await Promise.allSettled(promises);
+    const results = await Promise.allSettled(limitedTasks);
 
     // Filter for successfully fulfilled promises and extract their values
-    const validResults = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])).filter((item) => item);
+    const validResults = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 
     return validResults;
 }

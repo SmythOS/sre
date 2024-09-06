@@ -4,6 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
+import { ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -51,6 +52,7 @@ export class Conversation extends EventEmitter {
         return this._context;
     }
 
+    private _lastError;
     private _spec;
     public set spec(specSource) {
         this.ready.then(() => {
@@ -83,32 +85,44 @@ export class Conversation extends EventEmitter {
         private _specSource?: string | Record<string, any>,
         private _settings?: { maxContextSize: number; maxOutputTokens: number }
     ) {
+        //TODO: handle loading previous session (messages)
         super();
+
+        //this event listener avoids unhandled errors that can cause crashes
+        this.on('error', (error) => {
+            this._lastError = error;
+            console.warn('Conversation Error: ', error);
+        });
         if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
         if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
         if (_specSource) {
-            this.loadSpecFromSource(_specSource).then((spec) => {
-                if (!spec) {
-                    this._status = 'error';
-                    this.emit('error', 'Invalid OpenAPI specification data format');
-                    throw new Error('Invalid OpenAPI specification data format');
-                }
-                this._spec = spec;
+            this.loadSpecFromSource(_specSource)
+                .then((spec) => {
+                    if (!spec) {
+                        this._status = 'error';
+                        this.emit('error', 'Unable to parse OpenAPI specifications');
+                        throw new Error('Invalid OpenAPI specification data format');
+                    }
+                    this._spec = spec;
 
-                this.updateModel(this._model);
-                this._status = 'ready';
-            });
+                    this.updateModel(this._model);
+                    this._status = 'ready';
+                })
+                .catch((error) => {
+                    this._status = 'error';
+                    this.emit('error', error);
+                });
         } else {
             this.updateModel(this._model);
             this._status = 'ready';
         }
     }
 
-    private get ready() {
+    public get ready() {
         if (this._currentWaitPromise) return this._currentWaitPromise;
         this._currentWaitPromise = new Promise((resolve, reject) => {
             if (this._status) {
-                return resolve(true);
+                return resolve(this._status);
             }
 
             const maxWaitTime = 30000;
@@ -118,7 +132,7 @@ export class Conversation extends EventEmitter {
             const wait = setInterval(() => {
                 if (this._status) {
                     clearInterval(wait);
-                    return resolve(true);
+                    return resolve(this._status);
                 } else {
                     waitTime += interval;
                     if (waitTime >= maxWaitTime) {
@@ -178,15 +192,15 @@ export class Conversation extends EventEmitter {
         if (llmResponse?.useTool) {
             /* ==================== STEP ENTRY ==================== */
             console.debug({
-                type: 'ToolsInfo',
+                type: 'ToolsData',
                 message: 'Tool(s) is available for use.',
-                toolsInfo: llmResponse?.toolsInfo,
+                toolsData: llmResponse?.toolsData,
             });
             /* ==================== STEP ENTRY ==================== */
 
-            const toolsData: any[] = [];
+            const toolsData: ToolData[] = [];
 
-            for (const tool of llmResponse?.toolsInfo) {
+            for (const tool of llmResponse?.toolsData) {
                 const endpoint = endpoints?.get(tool?.name);
                 // Sometimes we have object response from the LLM such as Anthropic
                 const parsedArgs = JSONContent(tool?.arguments).tryParse();
@@ -238,18 +252,7 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const llmMessage = llmResponse?.message;
-
-            const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-            //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-            toolsData.forEach((toolData) => {
-                messagesWithToolResult.push({
-                    tool_call_id: toolData.id,
-                    role: toolData.role,
-                    name: toolData.name,
-                    content: toolData.result, // we have error when the content is an object
-                });
-            });
+            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
@@ -323,14 +326,14 @@ export class Conversation extends EventEmitter {
 
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
-            eventEmitter.on('toolsInfo', async (toolsInfo) => {
+            eventEmitter.on('toolsData', async (toolsData) => {
                 hasTools = true;
                 let llmMessage: any = {
                     role: 'assistant',
                     content: _content,
                     tool_calls: [],
                 };
-                llmMessage.tool_calls = toolsInfo.map((tool) => {
+                llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
                         id: tool.id,
                         type: tool.type,
@@ -343,13 +346,10 @@ export class Conversation extends EventEmitter {
 
                 //if (llmMessage.tool_calls?.length <= 0) return;
 
-                let toolsData: any[] = [];
+                this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-                this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
-
-                toolsData = await processWithConcurrencyLimit({
-                    items: toolsInfo,
-                    itemProcessor: async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
+                const toolProcessingTasks = toolsData.map(
+                    (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                         const endpoint = endpoints?.get(tool?.name);
                         // Sometimes we have object response from the LLM such as Anthropic
 
@@ -359,7 +359,7 @@ export class Conversation extends EventEmitter {
                             throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
                         }
 
-                        //await beforeFunctionCall(llmMessage, toolsInfo[tool.index]);
+                        //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                         this.emit('beforeToolCall', { tool, args });
 
                         const toolArgs = {
@@ -382,38 +382,37 @@ export class Conversation extends EventEmitter {
                                 ? JSON.stringify(functionResponse)
                                 : functionResponse;
 
-                        //await afterFunctionCall(functionResponse, toolsInfo[tool.index]);
+                        //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse);
 
                         return { ...tool, result: functionResponse };
-                    },
-                    maxConcurrentItems: concurrentToolCalls,
-                });
+                    }
+                );
 
-                const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-                //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-                toolsData.forEach((toolData) => {
-                    messagesWithToolResult.push({
-                        tool_call_id: toolData.id,
-                        role: toolData.role,
-                        name: toolData.name,
-                        content: toolData.result, // we have error when the content is an object
-                    });
+                const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
+
+                const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                    messageBlock: llmMessage,
+                    toolsData: processedToolsData,
                 });
 
                 this._context.push(...messagesWithToolResult);
 
-                resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                //console.log('Result after tool call: ', result);
             });
 
-            eventEmitter.on('end', async (toolsInfo) => {
+            eventEmitter.on('end', async (toolsData) => {
                 if (!hasTools) {
-                    resolve('');
+                    //console.log(' ===> resolved content no tool', _content);
+                    this._context.push({ role: 'assistant', content: _content });
+                    resolve(_content);
                 }
             });
         });
 
-        _content += await toolsPromise;
+        const toolsContent = await toolsPromise;
+        _content += toolsContent;
         let content = JSONContent(_content).tryParse();
 
         // let streamPromise = new Promise((resolve, reject) => {
@@ -430,7 +429,13 @@ export class Conversation extends EventEmitter {
         //await Promise.all(promises);
         //return content;
 
-        if (message) this.emit('end');
+        if (message) {
+            //console.log('main content', content);
+            //this._context.push({ role: 'assistant', content: content });
+            this.emit('end');
+        } else {
+            //console.log('tool content', content);
+        }
 
         return content;
     }
@@ -476,23 +481,21 @@ export class Conversation extends EventEmitter {
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {
-            let toolsData: any[] = [];
             const llmMessage = llmResponse?.message;
-            const toolsInfo = llmResponse?.toolsInfo;
+            const toolsData = llmResponse?.toolsData;
 
             /* ==================== STEP ENTRY ==================== */
             // console.debug({
-            //     type: 'ToolsInfo',
+            //     type: 'ToolsData',
             //     message: 'Tool(s) is available for use.',
-            //     toolsInfo: llmResponse?.toolsInfo,
+            //     toolsData: llmResponse?.toolsData,
             // });
             /* ==================== STEP ENTRY ==================== */
 
-            this.emit('toolInfo', toolsInfo); // replaces onFunctionCallResponse in legacy code
+            this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-            toolsData = await processWithConcurrencyLimit({
-                items: toolsInfo,
-                itemProcessor: async (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => {
+            const toolProcessingTasks = toolsData.map(
+                (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                     const endpoint = endpoints?.get(tool?.name);
                     // Sometimes we have object response from the LLM such as Anthropic
 
@@ -502,7 +505,7 @@ export class Conversation extends EventEmitter {
                         throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
                     }
 
-                    //await beforeFunctionCall(llmMessage, toolsInfo[tool.index]);
+                    //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                     this.emit('beforeToolCall', { tool, args });
 
                     const toolArgs = {
@@ -525,23 +528,18 @@ export class Conversation extends EventEmitter {
                             ? JSON.stringify(functionResponse)
                             : functionResponse;
 
-                    //await afterFunctionCall(functionResponse, toolsInfo[tool.index]);
+                    //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                     this.emit('afterToolCall', { tool, args }, functionResponse);
 
                     return { ...tool, result: functionResponse };
-                },
-                maxConcurrentItems: concurrentToolCalls,
-            });
+                }
+            );
 
-            const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-            //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
-            toolsData.forEach((toolData) => {
-                messagesWithToolResult.push({
-                    tool_call_id: toolData.id,
-                    role: toolData.role,
-                    name: toolData.name,
-                    content: toolData.result, // we have error when the content is an object
-                });
+            const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
+
+            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                messageBlock: llmMessage,
+                toolsData: processedToolsData,
             });
 
             this._context.push(...messagesWithToolResult);
@@ -713,6 +711,7 @@ export class Conversation extends EventEmitter {
         if (typeof specSource === 'string') {
             if (isUrl(specSource as string)) {
                 const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
+
                 if (spec.info?.description) this.systemPrompt = spec.info.description;
                 if (spec.info?.title) this.assistantName = spec.info.title;
 
