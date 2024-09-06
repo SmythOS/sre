@@ -30,6 +30,9 @@ const config = {
 
         PINECONE_API_KEY: process.env.PINECONE_API_KEY,
         PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
+
+        LOGTO_SERVER: process.env.LOGTO_SERVER,
+        SMYTH_VAULT_API_BASE_URL: process.env.SMYTH_VAULT_API_BASE_URL,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',
