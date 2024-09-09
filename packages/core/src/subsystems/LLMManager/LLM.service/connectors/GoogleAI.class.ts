@@ -97,8 +97,6 @@ export class GoogleAIConnector extends LLMConnector {
 
         const apiKey = _params?.apiKey;
 
-        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
         let messages = _params?.messages || [];
 
         let systemInstruction;
@@ -152,6 +150,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         try {
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel(modelParams);
 
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
@@ -176,53 +175,59 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        try {
-            const model = params?.model || 'gemini-pro-vision';
+        const _params = { ...params }; // Avoid mutation of the original params object
+        const model = _params?.model || 'gemini-pro-vision';
+        const apiKey = _params?.apiKey;
+        const fileSources = _params?.fileSources || [];
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
-            const apiKey = params?.apiKey;
+        const validFiles = this.getValidImageFileSources(fileSources);
 
-            const fileSources = params?.fileSources || [];
+        const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+            try {
+                const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
 
-            const agentId = agent instanceof Agent ? agent.id : agent;
-
-            const validFiles = this.getValidImageFileSources(fileSources);
-
-            const fileUploadingTasks = validFiles.map((fileSource) => async () => {
-                try {
-                    const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
-
-                    return { url: uploadedFile.url, mimetype: fileSource.mimetype };
-                } catch {
-                    return null;
-                }
-            });
-
-            const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
-
-            // We throw error when there are no valid uploaded files,
-            if (uploadedFiles?.length === 0) {
-                throw new Error(`There is an issue during upload file in Google AI!`);
+                return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+            } catch {
+                return null;
             }
+        });
 
-            const imageData = this.getImageData(uploadedFiles);
+        const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
-            // Adjust input structure handling for multiple image files to accommodate variations.
-            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+        // We throw error when there are no valid uploaded files,
+        if (uploadedFiles?.length === 0) {
+            throw new Error(`There is an issue during upload file in Google AI Server!`);
+        }
 
-            const generationConfig = {
-                stopSequences: params.stopSequences,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                topK: params.topK,
-            };
+        const imageData = this.getFileData(uploadedFiles);
 
+        // Adjust input structure handling for multiple image files to accommodate variations.
+        const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        const generationConfig: GenerationConfig = {};
+
+        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
+        if (_params.temperature) generationConfig.temperature = _params.temperature;
+        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
+        if (_params.topP) generationConfig.topP = _params.topP;
+        if (_params.topK) generationConfig.topK = _params.topK;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        try {
             const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-            const $model = genAI.getGenerativeModel({ model, generationConfig });
+            const $model = genAI.getGenerativeModel(modelParams);
 
-            const responseFormat = params?.responseFormat || 'json';
+            const responseFormat = _params?.responseFormat || 'json';
             if (responseFormat) {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) params.responseMimeType = 'application/json';
+                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
                 else prompt += JSON_RESPONSE_INSTRUCTION;
             }
 
@@ -233,7 +238,7 @@ export class GoogleAIConnector extends LLMConnector {
             this.validateTokensLimit({
                 model,
                 promptTokens,
-                completionTokens: params?.maxOutputTokens,
+                completionTokens: _params?.maxOutputTokens,
                 hasTeamAPIKey: !!apiKey,
             });
 
@@ -248,13 +253,92 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+        const _params = { ...params }; // Avoid mutation of the original params object
+        const model = _params?.model || 'gemini-pro-vision';
+        const apiKey = _params?.apiKey;
+        const fileSources = _params?.fileSources || [];
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        // TODO: Check token limit
+
+        // If user provide mix of valid and invalid files, we will only process the valid files
+        const validFiles = this.getValidImageFileSources(fileSources);
+
+        const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+            try {
+                const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
+
+                return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+            } catch {
+                return null;
+            }
+        });
+
+        const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
+
+        // We throw error when there are no valid uploaded files,
+        if (uploadedFiles?.length === 0) {
+            throw new Error(`There is an issue during upload file in Google AI Server!`);
+        }
+
+        const fileData = this.getFileData(uploadedFiles);
+
+        const hasVideo = fileData.some((data) => data.fileData.mimeType.includes('video'));
+
+        // GoogleAI only supports one video file at a time
+        if (hasVideo && fileData.length > 1) {
+            throw new Error('Only one video file is supported at a time.');
+        }
+
+        // Adjust input structure handling for multiple image files to accommodate variations.
+        const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        const generationConfig: GenerationConfig = {};
+
+        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
+        if (_params.temperature) generationConfig.temperature = _params.temperature;
+        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
+        if (_params.topP) generationConfig.topP = _params.topP;
+        if (_params.topK) generationConfig.topK = _params.topK;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            const responseFormat = _params?.responseFormat || 'json';
+            if (responseFormat) {
+                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
+                else prompt += JSON_RESPONSE_INSTRUCTION;
+            }
+
+            const result = await $model.generateContent(promptWithFiles);
+
+            const response = await result?.response;
+            const content = response?.text();
+            const finishReason = response.candidates[0].finishReason;
+
+            return { content, finishReason };
+        } catch (error) {
+            console.error('Error in googleAI Multimodal LLM Request', error);
+
+            throw error;
+        }
+    }
+
     protected async toolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
     ): Promise<any> {
         try {
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
             let systemInstruction = '';
             let formattedMessages;
 
@@ -266,6 +350,7 @@ export class GoogleAIConnector extends LLMConnector {
                 formattedMessages = this.formatInputMessages(messages);
             }
 
+            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel({ model });
 
             const result = await $model.generateContent({
@@ -581,7 +666,7 @@ export class GoogleAIConnector extends LLMConnector {
         return validSources;
     }
 
-    private getImageData(
+    private getFileData(
         fileSources: {
             url: string;
             mimetype: string;

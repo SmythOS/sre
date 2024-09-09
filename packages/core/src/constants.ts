@@ -40,7 +40,7 @@ export const S3_DAILY_PURGE_LIFECYCLE_TAG = 'ExpirationPolicy=DeleteDaily';
 export const S3_WEEKLY_PURGE_LIFECYCLE_TAG = 'ExpirationPolicy=DeleteWeekly';
 export const S3_MONTHLY_PURGE_LIFECYCLE_TAG = 'ExpirationPolicy=DeleteMonthly';
 
-export const TOOL_USE_DEFAULT_MODEL = 'gpt-3.5-turbo';
+export const TOOL_USE_DEFAULT_MODEL = 'gpt-4o-mini';
 
 export const COMP_NAMES = {
     apiCall: 'APICall',

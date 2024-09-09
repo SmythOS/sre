@@ -12,6 +12,9 @@ export class EchoConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params) {
         return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params) {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
+    }
     protected async toolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
     }

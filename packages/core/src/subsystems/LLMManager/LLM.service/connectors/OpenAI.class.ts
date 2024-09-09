@@ -120,7 +120,6 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // Check if the team has their own API key, then use it
             const apiKey = _params?.apiKey;
-            delete _params.apiKey; // Remove apiKey from params
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -155,6 +154,10 @@ export class OpenAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
     protected async toolRequest(

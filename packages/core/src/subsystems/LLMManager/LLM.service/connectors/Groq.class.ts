@@ -75,6 +75,10 @@ export class GroqConnector extends LLMConnector {
         throw new Error('Vision requests are not supported by Groq');
     }
 
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
     protected async toolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
