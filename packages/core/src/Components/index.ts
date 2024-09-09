@@ -24,6 +24,7 @@ import Await from './Await.class';
 import ForEach from './ForEach.class';
 import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
+import ZapierAction from './ZapierAction.class';
 
 const components = {
     Component: new Component(),
@@ -55,6 +56,7 @@ const components = {
     ForEach: new ForEach(),
     Code: new Code(),
     HuggingFace: new HuggingFace(),
+    ZapierAction: new ZapierAction(),
 };
 
 export default components;
