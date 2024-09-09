@@ -8,8 +8,6 @@ import { convertStringToRespectiveType, delay, isBase64, kebabToCapitalize, keba
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-//TODO: in case of binary output, we need to make the user able to see a preview of the file. currently, we return back an internal path (not accessible to the user)
-
 function shouldNestInputs(formatRequestPattern) {
     const trimmedPattern = formatRequestPattern?.trim();
     return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
