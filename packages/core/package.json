@@ -78,6 +78,7 @@
         "mime": "^4.0.3",
         "openai": "^4.52.2",
         "p-limit": "^6.1.0",
+        "qs": "^6.13.0",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0"
     }
