@@ -3,6 +3,6 @@ export type JSONFileVaultConfig = {
 };
 
 export type SmythVaultConfig = {
-    m2mAppId: string;
-    m2mAppSecret: string;
+    OAuthAppID: string;
+    OAuthAppSecret: string;
 };

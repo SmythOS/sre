@@ -9,8 +9,8 @@ const SREInstance = SmythRuntime.Instance.init({
     Vault: {
         Connector: 'SmythVault',
         Settings: {
-            m2mAppId: 'test-m2m-app-id',
-            m2mAppSecret: 'test-m2m-app-secret',
+            OAuthAppId: 'test-oauth-app-id',
+            OAuthAppSecret: 'test-oauth-app-secret',
         },
     },
 });

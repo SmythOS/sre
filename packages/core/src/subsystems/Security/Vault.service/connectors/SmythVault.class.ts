@@ -13,16 +13,16 @@ import { VaultHelper } from '../Vault.helper';
 const console = Logger('SmythVault');
 export class SmythVault extends VaultConnector {
     public name: string = 'SmythVault';
-    private m2mAppId: string;
-    private m2mAppSecret: string;
+    private OAuthAppId: string;
+    private OAuthAppSecret: string;
 
 
     constructor(private config: SmythVaultConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.m2mAppId = config.m2mAppId;
-        this.m2mAppSecret = config.m2mAppSecret;
+        this.OAuthAppId = config.OAuthAppID;
+        this.OAuthAppSecret = config.OAuthAppSecret;
     }
 
     user(candidate: AccessCandidate): IVaultRequest {
@@ -77,7 +77,7 @@ export class SmythVault extends VaultConnector {
 
     private async getVaultRequestHeaders() {
         return {
-            Authorization: `Bearer ${await VaultHelper.getM2MToken(this.m2mAppId, this.m2mAppSecret)}`
+            Authorization: `Bearer ${await VaultHelper.getM2MToken(this.OAuthAppId, this.OAuthAppSecret)}`
         };
     }
 }
