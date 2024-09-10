@@ -1,5 +1,8 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '../AccessControl/AccessCandidate.class';
+import axios from 'axios';
+import config from '@sre/config';
+import qs from 'qs';
 
 export class VaultHelper {
     static async getTeamKey(key: string, teamId: string): Promise<string> {
@@ -24,4 +27,5 @@ export class VaultHelper {
 
         return await vaultConnector.user(AccessCandidate.team(teamId)).get(key);
     }
+
 }

@@ -4,6 +4,13 @@ import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
+    private _systemPrompt: string = '';
+    public get systemPrompt() {
+        return this._systemPrompt;
+    }
+    public set systemPrompt(systemPrompt) {
+        this._systemPrompt = systemPrompt;
+    }
     private _llmHelper: LLMHelper;
     public contextLength: number;
     public get llmHelper() {
@@ -17,7 +24,8 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private _model, private _systemPrompt: string = '', private _messages: any[] = []) {
+    constructor(private _model, _systemPrompt: string = '', private _messages: any[] = []) {
+        this._systemPrompt = _systemPrompt;
         //TODO:allow configuring a storage service
         this._llmHelper = LLMHelper.load(this._model);
     }
@@ -29,6 +37,9 @@ export class LLMContext {
     }
     public addUserMessage(content: string) {
         this.push({ role: 'user', content });
+    }
+    public addAssistantMessage(content: string) {
+        this.push({ role: 'assistant', content });
     }
 
     public getContextWindow(maxTokens: number, maxOutputTokens: number = 256): any[] {

@@ -248,7 +248,7 @@ export default class HuggingFace extends Component {
                         result.map(async (item) => {
                             if (item.blob instanceof Blob || (typeof item.blob === 'string' && isBase64(item.blob))) {
                                 let binaryInput: BinaryInput;
-                                //FIXME - handle file upload
+
                                 if (item.blob instanceof Blob) {
                                     // file = new SmythFile(item.blob);
 
