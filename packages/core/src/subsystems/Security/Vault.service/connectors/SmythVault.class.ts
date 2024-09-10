@@ -8,21 +8,33 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { SmythVaultConfig } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
-import { VaultHelper } from '../Vault.helper';
+import { getM2MToken } from '@sre/utils/oauth.utils';
+import axios, { AxiosInstance } from 'axios';
 
 const console = Logger('SmythVault');
 export class SmythVault extends VaultConnector {
     public name: string = 'SmythVault';
-    private OAuthAppId: string;
-    private OAuthAppSecret: string;
+    private oAuthAppId: string;
+    private oAuthAppSecret: string;
+    private oAuthBaseUrl: string;
+    private oAuthResource?: string;
+    private oAuthScope?: string;
+    private vaultAPI: AxiosInstance;
 
 
     constructor(private config: SmythVaultConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.OAuthAppId = config.OAuthAppID;
-        this.OAuthAppSecret = config.OAuthAppSecret;
+        this.oAuthAppId = config.oAuthAppID;
+        this.oAuthAppSecret = config.oAuthAppSecret;
+        this.oAuthBaseUrl = config.oAuthBaseUrl;
+        this.oAuthResource = config.oAuthResource || '';
+        this.oAuthScope = config.oAuthScope || '';
+        this.vaultAPI = axios.create({
+            baseURL: `${config.vaultAPIBaseUrl}/v1/api`,
+        });
+
     }
 
     user(candidate: AccessCandidate): IVaultRequest {
@@ -39,7 +51,7 @@ export class SmythVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
-        const vaultResponse = await VaultHelper.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
         return vaultResponse?.data?.secret?.value;
     }
 
@@ -58,7 +70,7 @@ export class SmythVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
-        const vaultResponse = await VaultHelper.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
         return vaultResponse?.data?.secret ? true : false;
     }
 
@@ -77,7 +89,13 @@ export class SmythVault extends VaultConnector {
 
     private async getVaultRequestHeaders() {
         return {
-            Authorization: `Bearer ${await VaultHelper.getM2MToken(this.OAuthAppId, this.OAuthAppSecret)}`
+            Authorization: `Bearer ${await getM2MToken({
+                baseUrl: this.oAuthBaseUrl,
+                oauthAppId: this.oAuthAppId,
+                oauthAppSecret: this.oAuthAppSecret,
+                resource: this.oAuthResource,
+                scope: this.oAuthScope,
+            })}`
         };
     }
 }
