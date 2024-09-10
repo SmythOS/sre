@@ -30,10 +30,6 @@ export class TogetherAIConnector extends LLMConnector {
                 role: 'system',
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
-
-            if (_params.model.startsWith('gpt-4-turbo') || _params.model.startsWith('gpt-3.5-turbo')) {
-                _params.response_format = { type: 'json_object' };
-            }
         }
 
         if (prompt && _params.messages.length === 1) {
@@ -90,6 +86,10 @@ export class TogetherAIConnector extends LLMConnector {
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by TogetherAI');
+    }
+
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
     protected async toolRequest(

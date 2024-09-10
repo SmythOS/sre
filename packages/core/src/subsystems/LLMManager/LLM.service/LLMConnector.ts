@@ -21,6 +21,7 @@ const console = Logger('LLMConnector');
 export interface ILLMConnectorRequest {
     chatRequest(prompt, params: any): Promise<any>;
     visionRequest(prompt, params: any): Promise<any>;
+    multimodalRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
     streamRequest(params: any): Promise<EventEmitter>;
@@ -72,6 +73,7 @@ export abstract class LLMConnector extends Connector {
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
     protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<LLMChatResponse>;
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
@@ -98,6 +100,15 @@ export abstract class LLMConnector extends Connector {
                     .get(llm)
                     .catch((e) => ''); //if vault access is denied we just return empty key
                 return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            multimodalRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
             },
             toolRequest: async (params: any) => {
                 const llm = models[params.model]?.llm;

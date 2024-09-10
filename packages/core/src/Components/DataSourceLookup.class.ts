@@ -22,7 +22,7 @@ export default class DataSourceLookup extends Component {
         topK: Joi.string()
             .custom(validateInteger({ min: 0 }), 'custom range validation')
             .label('Result Count'),
-        model: Joi.string().valid('gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo-16k').required(),
+        model: Joi.string().valid('gpt-4o-mini', 'gpt-4', 'gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo-16k').required(),
         prompt: Joi.string().max(30000).allow('').label('Prompt'),
         postprocess: Joi.boolean().strict().required(),
         includeMetadata: Joi.boolean().strict().optional(),

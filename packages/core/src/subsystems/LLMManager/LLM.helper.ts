@@ -4,6 +4,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import models from './models';
+import { EventEmitter } from 'events';
 
 export class LLMHelper {
     private _llmConnector: LLMConnector;
@@ -108,8 +109,51 @@ export class LLMHelper {
         }
     }
 
+    // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
+    public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        const params: any = await this._llmConnector.extractVisionLLMParams(config);
+        params.model = this._modelId;
+
+        const promises = [];
+        const _fileSources = [];
+
+        for (let image of fileSources) {
+            const binaryInput = BinaryInput.from(image);
+            _fileSources.push(binaryInput);
+            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
+        }
+
+        await Promise.all(promises);
+
+        params.fileSources = _fileSources;
+
+        try {
+            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
+
+            const result = this._llmConnector.postProcess(response?.content);
+
+            if (result.error) {
+                if (response.finishReason !== 'stop') {
+                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                }
+
+                // If the model stopped due to other reasons, throw the error
+                throw new Error(result.error);
+            }
+
+            return result;
+        } catch (error: any) {
+            console.error('Error in visionRequest: ', error);
+
+            throw error;
+        }
+    }
+
     public async toolRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
+        params.model = this._modelId;
         return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
     }
 
@@ -120,6 +164,17 @@ export class LLMHelper {
 
     public async streamRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        return this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+        try {
+            params.model = this._modelId;
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+        } catch (error) {
+            console.error('Error in streamRequest:', error);
+            const dummyEmitter = new EventEmitter();
+            process.nextTick(() => {
+                dummyEmitter.emit('error', error);
+                dummyEmitter.emit('end');
+            });
+            return dummyEmitter;
+        }
     }
 }
