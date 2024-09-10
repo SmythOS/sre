@@ -266,7 +266,7 @@ export abstract class LLMConnector extends Connector {
 
         if (outputKeys.length > 0) {
             const outputFormat = {};
-            outputKeys.forEach((key) => (outputFormat[key] = '<value>'));
+            outputKeys.forEach((key) => (outputFormat[key] = config.isClassifier ? '<Boolean|String>' : '<value>'));
 
             newPrompt +=
                 '\n##\nExpected output format = ' +
