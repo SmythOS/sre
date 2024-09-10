@@ -4,6 +4,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import models from './models';
+import { EventEmitter } from 'events';
 
 export class LLMHelper {
     private _llmConnector: LLMConnector;
@@ -152,6 +153,7 @@ export class LLMHelper {
 
     public async toolRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
+        params.model = this._modelId;
         return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
     }
 
@@ -162,6 +164,17 @@ export class LLMHelper {
 
     public async streamRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        return this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+        try {
+            params.model = this._modelId;
+            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+        } catch (error) {
+            console.error('Error in streamRequest:', error);
+            const dummyEmitter = new EventEmitter();
+            process.nextTick(() => {
+                dummyEmitter.emit('error', error);
+                dummyEmitter.emit('end');
+            });
+            return dummyEmitter;
+        }
     }
 }
