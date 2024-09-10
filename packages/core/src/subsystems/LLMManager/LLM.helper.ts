@@ -129,7 +129,7 @@ export class LLMHelper {
 
         try {
             prompt = this._llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
+            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
 
             const result = this._llmConnector.postProcess(response?.content);
 

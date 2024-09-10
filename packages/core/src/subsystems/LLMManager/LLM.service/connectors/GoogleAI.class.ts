@@ -68,6 +68,7 @@ const VALID_MIME_TYPES = [
     'text/html',
     'text/css',
     'text/javascript',
+    'application/pdf',
     'application/x-javascript',
     'text/x-typescript',
     'application/x-typescript',
@@ -87,8 +88,10 @@ const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/w
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
-    private validMimeTypes = VALID_MIME_TYPES;
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validMimeTypes = {
+        all: VALID_MIME_TYPES,
+        image: VALID_IMAGE_MIME_TYPES,
+    };
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
@@ -181,7 +184,7 @@ export class GoogleAIConnector extends LLMConnector {
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const validFiles = this.getValidImageFileSources(fileSources);
+        const validFiles = this.getValidFileSources(fileSources, 'image');
 
         const fileUploadingTasks = validFiles.map((fileSource) => async () => {
             try {
@@ -260,10 +263,15 @@ export class GoogleAIConnector extends LLMConnector {
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        // TODO: Check token limit
-
         // If user provide mix of valid and invalid files, we will only process the valid files
-        const validFiles = this.getValidImageFileSources(fileSources);
+        const validFiles = this.getValidFileSources(fileSources, 'all');
+
+        const hasVideo = validFiles.some((file) => file?.mimetype?.includes('video'));
+
+        // GoogleAI only supports one video file at a time
+        if (hasVideo && validFiles.length > 1) {
+            throw new Error('Only one video file is supported at a time.');
+        }
 
         const fileUploadingTasks = validFiles.map((fileSource) => async () => {
             try {
@@ -283,13 +291,6 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         const fileData = this.getFileData(uploadedFiles);
-
-        const hasVideo = fileData.some((data) => data.fileData.mimeType.includes('video'));
-
-        // GoogleAI only supports one video file at a time
-        if (hasVideo && fileData.length > 1) {
-            throw new Error('Only one video file is supported at a time.');
-        }
 
         // Adjust input structure handling for multiple image files to accommodate variations.
         const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
@@ -319,6 +320,17 @@ export class GoogleAIConnector extends LLMConnector {
                 if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
                 else prompt += JSON_RESPONSE_INSTRUCTION;
             }
+
+            // Check token limit
+            const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
+
+            // * the function will throw an error if the token limit is exceeded
+            this.validateTokensLimit({
+                model,
+                promptTokens,
+                completionTokens: _params?.maxOutputTokens,
+                hasTeamAPIKey: !!apiKey,
+            });
 
             const result = await $model.generateContent(promptWithFiles);
 
@@ -527,55 +539,6 @@ export class GoogleAIConnector extends LLMConnector {
         return sanitized;
     }
 
-    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
-            if (!fileSource) return null;
-
-            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
-                return await this.processObjectFileSource(fileSource);
-            }
-
-            if (isValidString(fileSource as string)) {
-                return await this.processStringFileSource(fileSource as string, candidate);
-            }
-
-            return null;
-        });
-
-        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
-
-        return validFiles as FileObject[];
-    }
-
-    private processObjectFileSource(fileSource: Record<string, string>) {
-        const { mimetype, url } = fileSource as Record<string, any>;
-
-        if (!this.validImageMimeTypes.includes(mimetype)) return null;
-
-        return { url, mimetype };
-    }
-
-    private async processStringFileSource(fileSource: string, candidate: IAccessCandidate): Promise<FileObject | null> {
-        if (isUrl(fileSource)) {
-            const mimetype = await getMimeTypeFromUrl(fileSource);
-            return this.validImageMimeTypes.includes(mimetype) ? { url: fileSource, mimetype } : null;
-        }
-
-        if (isDataUrl(fileSource) || isRawBase64(fileSource)) {
-            const { mimetype } = await parseBase64(fileSource);
-
-            if (!this.validImageMimeTypes.includes(mimetype)) return null;
-
-            const binaryInput = new BinaryInput(fileSource);
-
-            const fileData = await binaryInput.getJsonData(candidate);
-
-            return { url: fileData.url, mimetype };
-        }
-
-        return null;
-    }
-
     private async uploadFile({
         fileSource,
         apiKey,
@@ -650,17 +613,18 @@ export class GoogleAIConnector extends LLMConnector {
             };
         });
     }
-    private getValidImageFileSources(fileSources: BinaryInput[]) {
+
+    private getValidFileSources(fileSources: BinaryInput[], type: 'image' | 'all') {
         const validSources = [];
 
         for (let fileSource of fileSources) {
-            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+            if (this.validMimeTypes[type].includes(fileSource?.mimetype)) {
                 validSources.push(fileSource);
             }
         }
 
         if (validSources?.length === 0) {
-            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validMimeTypes[type].join(', ')}`);
         }
 
         return validSources;
