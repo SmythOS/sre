@@ -99,24 +99,6 @@ export default {
       hidden: true,
       keyOptions: { tokens: 8192, completionTokens: 8192 },
     },
-    'gpt-4-vision-preview': {
-      llm: 'OpenAI',
-      tokens: 1024,
-      completionTokens: 1024,
-      enabled: true,
-      keyOptions: { tokens: 128000, completionTokens: 4096 },
-      components: ['VisionLLM'],
-      tags: ['legacy'],
-    },
-    'gpt-4-1106-vision-preview': {
-      llm: 'OpenAI',
-      tokens: 1024,
-      completionTokens: 1024,
-      enabled: true,
-      keyOptions: { tokens: 128000, completionTokens: 4096 },
-      tags: ['legacy'],
-    },
-  
     // GPT-3.5
     'gpt-3.5-turbo-latest': {
       llm: 'OpenAI',

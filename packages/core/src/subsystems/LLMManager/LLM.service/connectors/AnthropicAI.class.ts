@@ -129,6 +129,10 @@ export class AnthropicAIConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
     protected async toolRequest(
         acRequest: AccessRequest,
         { model = 'claude-3-opus-20240229', messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
