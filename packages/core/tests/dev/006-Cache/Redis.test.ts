@@ -19,11 +19,12 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Cache: {
-        Connector: 'Redis',
+        Connector: 'S3',
         Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
+            bucket: process.env.AWS_S3_CACHE_BUCKET || '',
+            region: process.env.AWS_S3_CACHE_REGION || '',
+            accessKeyId: process.env.AWS_S3_CACHE_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_S3_CACHE_SECRET_ACCESS_KEY || '',
         },
     },
 });
