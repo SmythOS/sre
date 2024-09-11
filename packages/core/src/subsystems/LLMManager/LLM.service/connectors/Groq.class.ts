@@ -5,7 +5,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -19,6 +19,15 @@ type ChatCompletionCreateParams = {
     stop?: string[];
     top_p?: number;
 };
+
+type ToolRequestParams = {
+    model: string;
+    messages: TLLMMessageBlock[];
+    toolsConfig: { tools: ToolData[]; tool_choice: string };
+    apiKey: string;
+};
+
+// TODO [Forhad]: Apply proper types at for function params and return value
 
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
@@ -39,7 +48,7 @@ export class GroqConnector extends LLMConnector {
         }
 
         if (prompt) {
-            _params.messages.push({ role: 'user', content: prompt });
+            _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
         const apiKey = _params?.apiKey;
@@ -52,7 +61,7 @@ export class GroqConnector extends LLMConnector {
 
         const chatCompletionCreateParams: ChatCompletionCreateParams = {
             model: _params.model,
-            messages: _params.messages,
+            messages: this.getConsistentMessages(_params.messages),
         };
 
         if (_params.max_tokens) chatCompletionCreateParams.max_tokens = _params.max_tokens;
@@ -79,25 +88,26 @@ export class GroqConnector extends LLMConnector {
         throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
-        try {
-            const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+    protected async toolRequest(acRequest: AccessRequest, params: ToolRequestParams): Promise<any> {
+        const _params = { ...params };
 
-            if (!Array.isArray(messages) || !messages?.length) {
+        try {
+            const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
+
+            const _messages = this.getConsistentMessages(_params.messages);
+
+            if (!Array.isArray(_messages) || !_messages?.length) {
                 return { error: new Error('Invalid messages argument for chat completion.') };
             }
 
             let args = {
-                model,
-                messages,
-                tools,
-                tool_choice,
+                model: _params.model,
+                messages: _messages,
+                tools: _params.toolsConfig.tools,
+                tool_choice: _params.toolsConfig.tool_choice,
             };
 
-            const result = await groq.chat.completions.create(args);
+            const result = await groq.chat.completions.create(args as any);
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
 
@@ -111,7 +121,7 @@ export class GroqConnector extends LLMConnector {
                     type: tool.type,
                     name: tool.function.name,
                     arguments: tool.function.arguments,
-                    role: 'assistant',
+                    role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
             }
@@ -196,7 +206,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -226,20 +236,24 @@ export class GroqConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {
+    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        if (messages.length === 0) return messages;
+
         return messages.map((message) => {
+            const _message = { ...message };
             let textContent = '';
 
-            if (Array.isArray(message.content)) {
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
                 textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
-            } else if (typeof message.content === 'string') {
-                textContent = message.content;
+            } else if (message?.content) {
+                textContent = message.content as string;
             }
 
-            return {
-                role: message.role,
-                content: textContent,
-            };
+            _message.content = textContent;
+
+            return _message;
         });
     }
 }

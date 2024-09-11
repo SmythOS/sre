@@ -9,7 +9,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
-import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -29,10 +29,12 @@ export class OpenAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
+        const _messages = this.getConsistentMessages(_params.messages);
+
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (_params.messages[0]?.role !== 'system') {
-            _params.messages.unshift({
-                role: 'system',
+        if (_messages[0]?.role !== 'system') {
+            _messages.unshift({
+                role: TLLMMessageRole.System,
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
@@ -41,8 +43,8 @@ export class OpenAIConnector extends LLMConnector {
             }
         }
 
-        if (prompt && _params.messages.length === 1) {
-            _params.messages.push({ role: 'user', content: prompt });
+        if (prompt && _messages.length === 1) {
+            _messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
         // Check if the team has their own API key, then use it
@@ -54,7 +56,7 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         // Check token limit
-        const promptTokens = encodeChat(_params.messages, 'gpt-4')?.length;
+        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
             model: _params.model,
@@ -67,7 +69,7 @@ export class OpenAIConnector extends LLMConnector {
 
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
             model: _params.model,
-            messages: _params.messages,
+            messages: _messages,
         };
 
         if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
@@ -431,7 +433,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -461,14 +463,14 @@ export class OpenAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
-        const messageBlocks: LLMToolResultMessageBlock[] = [];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
             const transformedMessageBlock = {
@@ -480,12 +482,33 @@ export class OpenAIConnector extends LLMConnector {
 
         const transformedToolsData = toolsData.map((toolData) => ({
             tool_call_id: toolData.id,
-            role: toolData.role,
+            role: toolData.role as TLLMMessageRole,
             name: toolData.name,
             content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
         }));
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    private getConsistentMessages(messages) {
+        if (messages.length === 0) return [];
+
+        return messages.map((message) => {
+            const _message = { ...message };
+            let textContent = '';
+
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
+                textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (message?.content) {
+                textContent = message.content;
+            }
+
+            _message.content = textContent;
+
+            return _message;
+        });
     }
 
     private getValidImageFileSources(fileSources: BinaryInput[]) {

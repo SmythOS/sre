@@ -7,7 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
@@ -32,7 +32,7 @@ export class AnthropicAIConnector extends LLMConnector {
         // set prompt as user message if provided
         if (prompt) {
             _params.messages.push({
-                role: 'user',
+                role: TLLMMessageRole.User,
                 content: prompt,
             });
         }
@@ -41,15 +41,15 @@ export class AnthropicAIConnector extends LLMConnector {
             // in AnthropicAI we need to provide system message separately
             const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
 
-            _params.messages = otherMessages;
+            _params.messages = this.getConsistentMessages(otherMessages);
 
-            _params.system = (systemMessage as LLMMessageBlock)?.content;
+            _params.system = (systemMessage as TLLMMessageBlock)?.content;
         }
 
         const responseFormat = _params?.responseFormat || 'json';
         if (responseFormat === 'json') {
             _params.system += JSON_RESPONSE_INSTRUCTION;
-            _params.messages.push({ role: 'assistant', content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+            _params.messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
 
         const apiKey = _params?.apiKey;
@@ -100,7 +100,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const imageData = await this.getImageData(validSources, agentId);
 
         const content = [{ type: 'text', text: prompt }, ...imageData];
-        _params.messages.push({ role: 'user', content });
+        _params.messages.push({ role: TLLMMessageRole.User, content });
 
         const apiKey = _params?.apiKey;
 
@@ -154,7 +154,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 // in AnthropicAI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
-                messageCreateArgs.system = ((systemMessage as LLMMessageBlock)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
                 messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
             }
@@ -166,7 +166,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             const result = await anthropic.messages.create(messageCreateArgs);
             const message = {
-                role: result?.role || 'user',
+                role: result?.role || TLLMMessageRole.User,
                 content: result?.content || '',
             };
             const stopReason = result?.stop_reason;
@@ -188,7 +188,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
-                        role: 'user',
+                        role: TLLMMessageRole.User,
                     });
                 });
 
@@ -241,11 +241,11 @@ export class AnthropicAIConnector extends LLMConnector {
                 // in Anthropic AI we need to provide system message separately
                 const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
-                messageCreateArgs.system = ((systemMessage as LLMMessageBlock)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
-                messageCreateArgs.messages = this.checkMessagesConsistency(otherMessages as Anthropic.MessageParam[]);
+                messageCreateArgs.messages = this.getConsistentMessages(otherMessages) as Anthropic.MessageParam[];
             } else {
-                messageCreateArgs.messages = this.checkMessagesConsistency(messages);
+                messageCreateArgs.messages = this.getConsistentMessages(messages) as Anthropic.MessageParam[];
             }
 
             if (tools && tools.length > 0) messageCreateArgs.tools = tools;
@@ -273,7 +273,7 @@ export class AnthropicAIConnector extends LLMConnector {
                             type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                             name: toolUseBlock?.name,
                             arguments: toolUseBlock?.input,
-                            role: 'user',
+                            role: TLLMMessageRole.User,
                         });
                     });
 
@@ -292,31 +292,8 @@ export class AnthropicAIConnector extends LLMConnector {
         }
     }
 
-    private checkMessagesConsistency(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-        //handle models specific messages content consistency
-        //   identified case that need to be handled
-
-        if (messages.length <= 0) return messages;
-
-        //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
-        if (messages[0].role === 'user' && Array.isArray(messages[0].content)) {
-            const hasToolResult = messages[0].content.find((content) => content.type === 'tool_result');
-
-            //we found a tool result in the first message, so we need to remove the user message
-            if (hasToolResult) {
-                messages.shift();
-            }
-        }
-
-        //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
-        if (messages[0].role !== 'user') {
-            messages.unshift({ role: 'user', content: 'continue' }); //add an empty user message to keep the consistency
-        }
-
-        return messages;
-    }
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -351,14 +328,14 @@ export class AnthropicAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools } : {};
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
-        const messageBlocks: LLMToolResultMessageBlock[] = [];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
             const content = [];
@@ -378,30 +355,65 @@ export class AnthropicAIConnector extends LLMConnector {
                 content.push(...calls);
             }
 
-            // const transformedMessageBlock = {
-            //     role: messageBlock.role,
-            //     content: typeof messageBlock.content === 'object' ?  messageBlock.content : ,
-            //     //...messageBlock,
-            //     //content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
-            // };
             messageBlocks.push({
                 role: messageBlock.role,
                 content: content,
             });
         }
 
-        const transformedToolsData = toolsData.map((toolData) => ({
-            role: 'user',
-            content: [
-                {
-                    type: 'tool_result',
-                    tool_use_id: toolData.id,
-                    content: toolData.result,
-                },
-            ],
-        }));
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.User,
+                content: [
+                    {
+                        type: 'tool_result',
+                        tool_use_id: toolData.id,
+                        content: toolData.result,
+                    },
+                ],
+            })
+        );
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        if (messages.length === 0) return messages;
+
+        let _messages = [...messages];
+
+        _messages = _messages.map((message) => {
+            let textContent = '';
+
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
+                textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (message?.content) {
+                textContent = message.content as string;
+            }
+
+            message.content = textContent;
+
+            return message;
+        });
+
+        //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
+        if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
+            const hasToolResult = messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
+
+            //we found a tool result in the first message, so we need to remove the user message
+            if (hasToolResult) {
+                messages.shift();
+            }
+        }
+
+        //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
+        if (messages[0].role !== TLLMMessageRole.User) {
+            messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
+        }
+
+        return messages;
     }
 
     private getValidImageFileSources(fileSources: BinaryInput[]) {

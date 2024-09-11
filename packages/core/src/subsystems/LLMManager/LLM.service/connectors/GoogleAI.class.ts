@@ -17,7 +17,7 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -103,23 +103,25 @@ export class GoogleAIConnector extends LLMConnector {
         let messages = _params?.messages || [];
 
         let systemInstruction;
-        let systemMessage: LLMMessageBlock | {} = {};
+        let systemMessage: TLLMMessageBlock | {} = {};
 
         if (this.hasSystemMessage(_params?.messages)) {
             const separateMessages = this.separateSystemMessages(messages);
-            systemMessage = separateMessages.systemMessage;
+            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             messages = separateMessages.otherMessages;
         }
 
         if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-            systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
+            systemInstruction = 'content' in systemMessage ? systemMessage.content : '';
         } else {
-            prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
+            prompt = `${prompt}\n${'content' in systemMessage ? systemMessage.content : ''}`;
         }
 
         if (_params?.messages) {
+            const messages = this.getConsistentMessages(_params.messages);
             // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt = _params.messages.map((message) => message?.content || '').join('\n');
+            prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
         }
 
         // Need to return JSON for LLM Prompt component
@@ -356,10 +358,11 @@ export class GoogleAIConnector extends LLMConnector {
 
             if (this.hasSystemMessage(messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
-                systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-                formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+                const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+                systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+                formattedMessages = this.getConsistentMessages(separateMessages.otherMessages);
             } else {
-                formattedMessages = this.formatInputMessages(messages);
+                formattedMessages = this.getConsistentMessages(messages);
             }
 
             const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
@@ -388,7 +391,7 @@ export class GoogleAIConnector extends LLMConnector {
                     type: 'function',
                     name: toolCall.functionCall.name,
                     arguments: JSON.stringify(toolCall.functionCall.args),
-                    role: 'assistant',
+                    role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
             }
@@ -422,10 +425,11 @@ export class GoogleAIConnector extends LLMConnector {
 
         if (this.hasSystemMessage(messages)) {
             const separateMessages = this.separateSystemMessages(messages);
-            systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-            formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+            formattedMessages = this.getConsistentMessages(separateMessages.otherMessages);
         } else {
-            formattedMessages = this.formatInputMessages(messages);
+            formattedMessages = this.getConsistentMessages(messages);
         }
 
         try {
@@ -455,7 +459,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 type: 'function',
                                 name: toolCall.functionCall.name,
                                 arguments: JSON.stringify(toolCall.functionCall.args),
-                                role: 'assistant',
+                                role: TLLMMessageRole.Assistant,
                             }));
                             emitter.emit('toolsData', toolsData);
                         }
@@ -475,7 +479,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -598,19 +602,29 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): any[] {
+    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        if (messages.length === 0) return messages;
+
         return messages.map((message) => {
-            let role = message.role;
+            const _message = { ...message };
+            let textContent = '';
 
             // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
-            if (message.role === 'assistant') {
-                role = 'model';
+            if (_message.role === TLLMMessageRole.Assistant) {
+                _message.role = TLLMMessageRole.Model;
             }
 
-            return {
-                role,
-                parts: [{ text: message.content }],
-            };
+            if (_message?.parts) {
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(_message?.content)) {
+                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (_message?.content) {
+                textContent = _message.content as string;
+            }
+
+            _message.parts = [{ text: textContent }];
+
+            return _message;
         });
     }
 

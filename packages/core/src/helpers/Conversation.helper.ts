@@ -260,7 +260,7 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
@@ -406,7 +406,7 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                     messageBlock: llmMessage,
                     toolsData: processedToolsData,
                 });
@@ -559,7 +559,7 @@ export class Conversation extends EventEmitter {
 
             const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                 messageBlock: llmMessage,
                 toolsData: processedToolsData,
             });

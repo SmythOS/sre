@@ -7,7 +7,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -24,16 +24,18 @@ export class TogetherAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
+        const _messages = this.getConsistentMessages(_params.messages);
+
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (_params.messages[0]?.role !== 'system') {
-            _params.messages.unshift({
+        if (_messages[0]?.role !== 'system') {
+            _messages.unshift({
                 role: 'system',
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
         }
 
-        if (prompt && _params.messages.length === 1) {
-            _params.messages.push({ role: 'user', content: prompt });
+        if (prompt && _messages.length === 1) {
+            _messages.push({ role: 'user', content: prompt });
         }
 
         // Check if the team has their own API key, then use it
@@ -45,7 +47,7 @@ export class TogetherAIConnector extends LLMConnector {
         });
 
         // Check token limit
-        const promptTokens = encodeChat(_params.messages, 'gpt-4')?.length;
+        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
             model: _params.model,
@@ -214,7 +216,7 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -244,20 +246,24 @@ export class TogetherAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {
+    private getConsistentMessages(messages) {
+        if (messages.length === 0) return messages;
+
         return messages.map((message) => {
+            const _message = { ...message };
             let textContent = '';
 
-            if (Array.isArray(message.content)) {
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
                 textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
-            } else if (typeof message.content === 'string') {
-                textContent = message.content;
+            } else if (message?.content) {
+                textContent = message.content as string;
             }
 
-            return {
-                role: message.role,
-                content: textContent,
-            };
+            _message.content = textContent;
+
+            return _message;
         });
     }
 }
