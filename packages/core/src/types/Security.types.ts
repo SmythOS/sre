@@ -10,3 +10,9 @@ export type SmythVaultConfig = {
     oAuthScope?: string;
     vaultAPIBaseUrl: string;
 };
+
+export type SecretsManagerConfig = {
+    region: string;
+    awsAccessKeyId?: string;
+    awsSecretAccessKey?: string;
+};
