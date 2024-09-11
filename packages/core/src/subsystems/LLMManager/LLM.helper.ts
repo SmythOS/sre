@@ -5,6 +5,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import models from './models';
 import { EventEmitter } from 'events';
+import { GenerateImageConfig } from '@sre/types/LLM.types';
 
 export class LLMHelper {
     private _llmConnector: LLMConnector;
@@ -149,6 +150,12 @@ export class LLMHelper {
 
             throw error;
         }
+    }
+
+    public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        params.model = this._modelId;
+        return this._llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
     }
 
     public async toolRequest(params: any, agent: string | Agent) {

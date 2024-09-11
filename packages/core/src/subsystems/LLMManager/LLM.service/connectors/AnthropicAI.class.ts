@@ -11,7 +11,7 @@ import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from 
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('AnthropicAIConnector');
 
@@ -208,6 +208,10 @@ export class AnthropicAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for AnthropicAI.');
     }
 
     // ! DEPRECATED METHOD

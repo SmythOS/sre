@@ -9,9 +9,9 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
-import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock, GenerateImageConfig } from '@sre/types/LLM.types';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('OpenAIConnector');
 
@@ -158,6 +158,39 @@ export class OpenAIConnector extends LLMConnector {
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        // throw new Error('Image generation request is not supported for OpenAI.');
+        try {
+            const { model, size, quality, n, response_format, style } = params;
+            const args: GenerateImageConfig & { prompt: string } = {
+                prompt,
+                model,
+                size,
+                quality,
+                n,
+                response_format,
+            };
+
+            if (style) {
+                args.style = style;
+            }
+
+            const apiKey = params?.apiKey;
+
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.OPENAI_API_KEY,
+            });
+
+            const response = await openai.images.generate(args);
+
+            return response;
+        } catch (error: any) {
+            console.log('Error generating image(s) with DALL·E: ', error);
+
+            throw error;
+        }
     }
 
     protected async toolRequest(

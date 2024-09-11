@@ -1,5 +1,5 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
@@ -17,6 +17,9 @@ export class EchoConnector extends LLMConnector {
     }
     protected async toolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
+    }
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for Echo.');
     }
     protected async streamToolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');

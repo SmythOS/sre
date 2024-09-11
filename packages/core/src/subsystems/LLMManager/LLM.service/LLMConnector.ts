@@ -25,11 +25,20 @@ export interface ILLMConnectorRequest {
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
     streamRequest(params: any): Promise<EventEmitter>;
+    imageGenRequest(prompt, params: any): Promise<any>;
 }
 
 export type LLMChatResponse = {
     content: string;
     finishReason: string;
+};
+
+export type ImagesResponse = {
+    created: number;
+    data: Array<{
+        b64_json?: string;
+        url?: string;
+    }>;
 };
 
 export class LLMStream extends Readable {
@@ -77,6 +86,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
 
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
@@ -109,6 +119,15 @@ export abstract class LLMConnector extends Connector {
                     .get(llm)
                     .catch((e) => ''); //if vault access is denied we just return empty key
                 return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            imageGenRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.imageGenRequest(candidate.readRequest, prompt, params);
             },
             toolRequest: async (params: any) => {
                 const llm = models[params.model]?.llm;
