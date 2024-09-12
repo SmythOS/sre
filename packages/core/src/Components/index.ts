@@ -26,6 +26,8 @@ import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
 import ZapierAction from './ZapierAction.class';
 import ImageGenerator from './ImageGenerator.class';
+import Classifier from './Classifier.class';
+import FSign from './FSign.class';
 
 const components = {
     Component: new Component(),
@@ -39,7 +41,7 @@ const components = {
     FSleep: new FSleep(),
     FHash: new FHash(),
     FEncDec: new FEncDec(),
-    // FSign: new FSign(), // TODO: Implement FSign
+    FSign: new FSign(),
     FTimestamp: new FTimestamp(),
     DataSourceLookup: new DataSourceLookup(),
     DataSourceIndexer: new DataSourceIndexer(),
@@ -59,6 +61,7 @@ const components = {
     HuggingFace: new HuggingFace(),
     ZapierAction: new ZapierAction(),
     ImageGenerator: new ImageGenerator(),
+    Classifier: new Classifier(),
 };
 
 export default components;

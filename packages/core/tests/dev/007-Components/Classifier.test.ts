@@ -68,6 +68,7 @@ describe('Classifier Component', () => {
                 Input: input,
             },
             {
+                name: 'Classifier',
                 data: {
                     model: 'gpt-4o',
                     prompt: `Classify the input content to one of the categories. Set the selected category to true and the others to empty value`,

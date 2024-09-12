@@ -89,16 +89,7 @@ ${JSON.stringify(categories, null, 2)}`;
             };
         }
 
-        let response = await llmHelper
-            .promptRequest(
-                prompt,
-                {
-                    ...config,
-                    isClassifier: true,
-                },
-                agent
-            )
-            .catch((error) => ({ error: error }));
+        let response = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
         if (response.error) {
             logger.error(` LLM Error=`, response.error);
