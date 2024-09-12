@@ -58,6 +58,7 @@
         "@apidevtools/json-schema-ref-parser": "^11.6.4",
         "@apidevtools/swagger-parser": "^10.1.0",
         "@aws-sdk/client-s3": "^3.529.0",
+        "@aws-sdk/client-secrets-manager": "^3.649.0",
         "@google/generative-ai": "^0.14.1",
         "@huggingface/inference": "^2.8.0",
         "@langchain/pinecone": "^0.0.8",
