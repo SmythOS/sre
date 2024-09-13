@@ -20,7 +20,7 @@ import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRa
 import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GoogleAIConnector');
 
@@ -400,6 +400,10 @@ export class GoogleAIConnector extends LLMConnector {
             console.log('Error on toolUseLLMRequest: ', error);
             return { error };
         }
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
     protected async streamToolRequest(

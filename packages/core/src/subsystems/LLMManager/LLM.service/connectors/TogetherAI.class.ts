@@ -9,7 +9,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('TogetherAIConnector');
 
@@ -90,6 +90,10 @@ export class TogetherAIConnector extends LLMConnector {
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for TogetherAI.');
     }
 
     protected async toolRequest(
