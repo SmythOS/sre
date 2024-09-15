@@ -25,6 +25,7 @@ import ForEach from './ForEach.class';
 import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
 import ZapierAction from './ZapierAction.class';
+import GPTPlugin from './GPTPlugin.class';
 
 const components = {
     Component: new Component(),
@@ -57,6 +58,7 @@ const components = {
     Code: new Code(),
     HuggingFace: new HuggingFace(),
     ZapierAction: new ZapierAction(),
+    GPTPlugin: new GPTPlugin(),
 };
 
 export default components;
