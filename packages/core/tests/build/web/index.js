@@ -210,10 +210,6 @@ function promptConversation(conv, message, contentCallback) {
         conv.on('end', (content) => {
             console.log('Ended ==============');
             conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
         });
 
         await conv.streamPrompt(message);

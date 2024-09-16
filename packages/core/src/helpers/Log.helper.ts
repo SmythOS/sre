@@ -94,6 +94,41 @@ const colorizedFormat = winston.format.printf((info) => {
 
 const MAX_LOG_MESSAGE_LENGTH = 500;
 
+// function redactLogMessage(logMessage: string) {
+//     const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
+//     const obfuscatedString = ' [!! SmythOS::REDACTED_DATA !!] ';
+
+//     // Iterate through the sensitive words list and replace sensitive data in the log message
+
+//     for (const sensitiveWord of sensitiveWords) {
+//         // Create a regular expression to find the sensitive word followed by any character (non-greedy) until a space, newline, or separator is found.
+//         const regex = new RegExp(`(${sensitiveWord})((?:[^\\n]{0,29}(?=\\n))|(?:[^\\n]{30}\\S*))`, 'gmi');
+
+//         // Replace sensitive data with the obfuscated string
+//         logMessage = logMessage.replace(regex, `$1${obfuscatedString}`);
+//     }
+
+//     return logMessage;
+// }
+function redactLogMessage(logMessage: string, beforeChars: number = 15, afterChars: number = 30): string {
+    const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
+    const obfuscatedString = ' [!!!REDACTED!!!] ';
+
+    // Iterate through the sensitive words list and replace sensitive data in the log message
+    for (const sensitiveWord of sensitiveWords) {
+        // Escape special regex characters in the sensitive word
+        const escapedWord = sensitiveWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Create a regular expression to match characters before and after the sensitive word
+        const regex = new RegExp(`(.{0,${beforeChars}})(${escapedWord})(.{0,${afterChars}})`, 'gmi');
+
+        // Replace the entire match with the obfuscated string
+        logMessage = logMessage.replace(regex, obfuscatedString);
+    }
+
+    return logMessage;
+}
+
 function createBaseLogger(memoryStore?: any[]) {
     const logger = winston.createLogger({
         //level: 'info', // log level
@@ -102,6 +137,10 @@ function createBaseLogger(memoryStore?: any[]) {
             winston.format((info) => {
                 if (config.env.LOG_LEVEL == 'none') return false; // skip logging if log level is none
 
+                // Apply redaction to the log message
+                //info.message = redactSecrets(info.message, sensitiveOptions);
+
+                info.message = redactLogMessage(info.message);
                 return info;
             })(),
             winston.format.timestamp(),
