@@ -6,8 +6,18 @@ import { Logger } from '../helpers/Log.helper';
 const logger = Logger('SRE');
 const CInstance = ConnectorService;
 
+interface IRouter {
+    get(path: string, ...handlers: Function[]): this;
+    post(path: string, ...handlers: Function[]): this;
+    put(path: string, ...handlers: Function[]): this;
+    delete(path: string, ...handlers: Function[]): this;
+    use(...handlers: Function[]): this;
+    use(path: string, ...handlers: Function[]): this;
+}
+
 export default class SmythRuntime {
     public started = false;
+    private _router: IRouter;
 
     protected constructor() {
         this.started = true;
@@ -37,6 +47,7 @@ export default class SmythRuntime {
         }
 
         SystemEvents.emit('SRE:Initialized');
+
         return SmythRuntime.Instance as SmythRuntime;
     }
 
@@ -85,5 +96,16 @@ export default class SmythRuntime {
         CInstance._stop();
         SmythRuntime.instance = undefined;
         this.started = false;
+    }
+
+    public get router(): IRouter {
+        if (!this._router) {
+            throw new Error('Router not initialized');
+        }
+        return this._router;
+    }
+
+    public set router(router: IRouter) {
+        this._router = router;
     }
 }
