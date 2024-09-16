@@ -35,7 +35,7 @@ export default {
     'gpt-4-turbo': {
         llm: 'OpenAI',
         alias: 'gpt-4-turbo-2024-04-09',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
+        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
         tags: ['legacy'],
     },
     'gpt-4-turbo-2024-04-09': {
@@ -60,7 +60,7 @@ export default {
         completionTokens: 1024,
         enabled: true,
         keyOptions: { tokens: 8192, completionTokens: 8192 },
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
         tags: ['legacy'],
     },
     'gpt-4-0613': {
@@ -75,13 +75,13 @@ export default {
     'gpt-3.5-turbo-latest': {
         llm: 'OpenAI',
         alias: 'gpt-3.5-turbo-0125',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
         tags: ['legacy'],
     },
     'gpt-3.5-turbo': {
         llm: 'OpenAI',
         alias: 'gpt-3.5-turbo-0125',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
         tags: ['legacy'],
     },
     'gpt-3.5-turbo-0125': {

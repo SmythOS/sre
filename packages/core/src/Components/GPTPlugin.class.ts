@@ -53,6 +53,8 @@ export default class GPTPlugin extends Component {
                 return { _error: 'Please provide a prompt', _debug: logger.output };
             }
 
+            // TODO [Forhad]: Need to check and validate input prompt token
+
             const conv = new Conversation(model, specUrl);
 
             const result = await conv.prompt(prompt);
