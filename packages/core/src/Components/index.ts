@@ -2,7 +2,7 @@ import Component from './Component.class';
 import APIEndpoint from './APIEndpoint.class';
 import APIOutput from './APIOutput.class';
 import PromptGenerator from './PromptGenerator.class';
-import APICall from './APICall.class';
+import APICall from './APICall/APICall.class';
 import VisionLLM from './VisionLLM.class';
 import FSleep from './FSleep.class';
 import FHash from './FHash.class';

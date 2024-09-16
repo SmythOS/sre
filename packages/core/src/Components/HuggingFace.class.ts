@@ -70,7 +70,7 @@ export default class HuggingFace extends Component {
 
         const teamId = agent?.teamId;
         // const accessToken = await parseKey(config?.data?.accessToken, teamId);
-        const accessToken = (await TemplateStringHelper.create(config?.data?.accessToken).parseTeamKeys(teamId).asyncResult) as string;
+        const accessToken = (await TemplateStringHelper.create(config?.data?.accessToken).parseTeamKeysAsync(teamId).asyncResult) as string;
 
         if (!accessToken) {
             return { _error: 'Please provide a valid Hugging Face Access Token', _debug: logger.output };

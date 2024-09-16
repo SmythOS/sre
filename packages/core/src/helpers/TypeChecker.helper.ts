@@ -21,6 +21,13 @@ const InferenceStrategies = {
     date: inferDateType,
 };
 
+/**
+ * Performs type inference on the inputs based on the input config
+ * @param inputs - The inputs to perform type inference on
+ * @param inputConfig - The input config to perform type inference on
+ * @param agent - The agent to perform type inference on
+ * @returns The inputs with the inferred types
+ */
 export async function performTypeInference(
     inputs: Record<string, any>,
     inputConfig: Record<string, any>[],

@@ -16,7 +16,7 @@ export class JSONContentHelper {
     }
 
     /**
-     * This function tries to extract and parse a JSON object from a string. If it fails, it returns the original string.
+     * This a permissive json parsing function : It tries to extract and parse a JSON object from a string. If it fails, it returns the original string.
      * if the string is not a JSON representation, but contains a JSON object, it will extract and parse it.
      * @returns
      */

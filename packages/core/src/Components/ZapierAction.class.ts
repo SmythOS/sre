@@ -54,7 +54,7 @@ export default class ZapierAction extends Component {
 
         const teamId = agent?.teamId;
         // const apiKey = await parseKey(config?.data?.apiKey, teamId);
-        const apiKey = await TemplateStringHelper.create(config?.data?.apiKey).parseTeamKeys(teamId).asyncResult;
+        const apiKey = await TemplateStringHelper.create(config?.data?.apiKey).parseTeamKeysAsync(teamId).asyncResult;
 
         if (!apiKey) {
             return { _error: 'You are not authorized to run the Zapier Action!', _debug: logger.output };
