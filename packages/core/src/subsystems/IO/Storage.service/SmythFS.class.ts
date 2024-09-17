@@ -20,7 +20,9 @@ export type TSmythFSURI = {
 };
 
 SystemEvents.on('SRE:Booted', () => {
-    SmythRuntime.Instance.router.instance.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+    if (SmythRuntime.Instance.router) {
+        SmythRuntime.Instance.router.instance.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+    }
 });
 
 export class SmythFS {
