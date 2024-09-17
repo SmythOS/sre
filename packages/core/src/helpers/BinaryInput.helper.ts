@@ -172,6 +172,8 @@ export class BinaryInput {
                 const teamId = await accountConnector.getCandidateTeam(candidate);
 
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
+                //TODO : set a TTL for temporary files
+                //we probably need a write with TTL method in SmythFS
                 await SmythFS.Instance.write(this.url, this._source, candidate);
                 this._uploading = false;
             }

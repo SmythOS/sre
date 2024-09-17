@@ -7,7 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GroqConnector');
 
@@ -131,6 +131,10 @@ export class GroqConnector extends LLMConnector {
         } catch (error: any) {
             throw error;
         }
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for Groq.');
     }
 
     protected async streamToolRequest(

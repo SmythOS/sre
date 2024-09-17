@@ -147,7 +147,7 @@ export default class Agent {
                 const value = this.agentVariables[key];
                 if (value.startsWith('{{') && value.endsWith('}}')) {
                     //this.agentVariables[key] = (await parseKey(value, this.teamId)) || '';
-                    this.agentVariables[key] = await TemplateString(value).parseTeamKeys(this.teamId).asyncResult;
+                    this.agentVariables[key] = await TemplateString(value).parseTeamKeysAsync(this.teamId).asyncResult;
                 }
             }
         }

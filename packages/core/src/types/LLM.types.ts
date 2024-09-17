@@ -104,3 +104,12 @@ export type TLLMToolResultMessageBlock = TLLMMessageBlock & {
     tool_call_id?: string; // for tool result message block of OpenAI
     name?: string; // for tool result message block of OpenAI
 };
+
+export type GenerateImageConfig = {
+    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+    quality?: 'standard' | 'hd';
+    model: string;
+    style?: 'vivid' | 'natural';
+    n?: number;
+    response_format?: 'url' | 'b64_json';
+};

@@ -7,6 +7,13 @@ export const Match = {
     //matches all placeholders
     doubleCurly: /{{(.*?)}}/g,
     singleCurly: /{(.*?)}/g,
+
+    //matches component template variables
+    //example of matching strings
+    // {{VAULTINPUT:Input label:[APIKEY]}}
+    // {{VARINPUT:Variable label:{ "key":"value" }}}
+    templateVariables: /{{([A-Z]+):([\w\s]+):[\[{](.*?)[\]}]}}/gm,
+
     //matches only the placeholders that have a specific prefix
     prefix(prefix: string) {
         return new RegExp(`{{${prefix}(.*?)}}`, 'g');
@@ -32,6 +39,16 @@ export const TPLProcessor = {
         //the token here represents the vault key name
         return async (token) => await VaultHelper.getTeamKey(token, teamId);
     },
+    componentTemplateVar(templateSettings: Record<string, any>): (token, matches) => Promise<string> {
+        return async (token, matches) => {
+            const label = matches[2]; //template variables are identified by their label inside the component config
+            if (!label) return token;
+
+            const entry: any = Object.values(templateSettings).find((o: any) => o.label == label);
+            if (!entry) return token;
+            return `{{${entry.id}}}`;
+        };
+    },
 };
 
 /**
@@ -48,12 +65,12 @@ export class TemplateStringHelper {
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
     private _promiseQueue: Promise<any>[] = [];
 
-    public get result() {
+    public get result(): string {
         if (this._promiseQueue.length <= 0) return this._current;
         throw new Error('This template object has async results, you should use .asyncResult with await instead of .result');
     }
 
-    public get asyncResult() {
+    public get asyncResult(): Promise<string> {
         return new Promise(async (resolve, reject) => {
             await Promise.all(this._promiseQueue);
             resolve(this._current);
@@ -86,8 +103,17 @@ export class TemplateStringHelper {
      * @param teamId
      * @returns
      */
-    public parseTeamKeys(teamId: string) {
+    public parseTeamKeysAsync(teamId: string) {
         return this.process(TPLProcessor.vaultTeam(teamId), Match.fn('KEY'));
+    }
+
+    /**
+     * This is a shortcut function that parses component template variables and replace them with their corresponding values
+     * @param templateSettings the component template settings to be used for parsing
+     * @returns
+     */
+    public parseComponentTemplateVarsAsync(templateSettings: Record<string, any>) {
+        return this.process(TPLProcessor.componentTemplateVar(templateSettings), Match.templateVariables);
     }
 
     /**
@@ -95,7 +121,7 @@ export class TemplateStringHelper {
      * The processor function receives the token as an argument and should return the value to replace the token with
      * If the processor function returns undefined, the token will be left as is
      */
-    public process(processor: (token) => Promise<string> | string, regex: TemplateStringMatch = Match.default) {
+    public process(processor: (token, matches?) => Promise<string> | string, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string') return this;
         //first build a json object with all matching tokens
         let tokens = {};
@@ -106,7 +132,7 @@ export class TemplateStringHelper {
             const token = match[1];
             tokens[token] = match[0];
 
-            const _processor = processor(token);
+            const _processor = processor(token, match);
 
             //if an async processor is used, the TemplateStringHelper switches to async mode
             if (_processor instanceof Promise) {

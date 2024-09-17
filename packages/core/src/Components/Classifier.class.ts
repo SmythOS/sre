@@ -66,10 +66,7 @@ ${_input}
 
 ---
 Categories: 
-${JSON.stringify(categories, null, 2)}
-###
-Output format: 
-${JSON.stringify(outputFormat)}`;
+${JSON.stringify(categories, null, 2)}`;
 
             prompt = TemplateString(prompt).parse(input).result;
         }

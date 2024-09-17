@@ -15,10 +15,20 @@ export default class APIOutput extends Component {
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config.name);
         const _error = undefined;
-        const Output = {};
+        let Output = {};
         logger.debug(` Processing outputs `);
         for (let key in input) {
+            if (!config.inputs.find((i) => i.name == key)) continue; //exclude global variables
             Output[key] = input[key];
+        }
+
+        if (config.data.format === 'raw') {
+            let rawOutput = '';
+            for (let key in input) {
+                if (!config.inputs.find((i) => i.name == key)) continue; //exclude global variables
+                rawOutput += input[key];
+            }
+            Output = rawOutput;
         }
         return { Output, _error, _debug: logger.output };
     }

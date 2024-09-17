@@ -1089,4 +1089,24 @@ export default {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
     },
+
+    // We do not get the exact token information for Dalle models, so use the maximum possible values
+    'dall-e-3': {
+        llm: 'OpenAI',
+        alias: 'dall-e-3',
+        enabled: true,
+        components: ['ImageGenerator'],
+        tokens: 2048,
+        completionTokens: 2048,
+        keyOptions: { tokens: 128000, completionTokens: 16383 },
+    },
+    'dall-e-2': {
+        llm: 'OpenAI',
+        alias: 'dall-e-2',
+        enabled: true,
+        components: ['ImageGenerator'],
+        tokens: 2048,
+        completionTokens: 2048,
+        keyOptions: { tokens: 128000, completionTokens: 16383 },
+    },
 };

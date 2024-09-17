@@ -36,18 +36,18 @@ const conversations = {};
 
 const cliConnector = ConnectorService.getCLIConnector();
 //const specUrl = cliConnector.params?.agent || 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-const model = cliConnector.params?.model || 'gpt-4o';
+const model = cliConnector.params?.model || 'claude-3.5-sonnet';
 
 console.log('Model ===> ', model);
 
-const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 4096);
+const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 128 * 1024);
 const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 4096);
 //const conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
 
 //implement a simple expressjs app that serves static files from ./static folder
 
 const app = express();
-const port = process.env.PORT || 5555;
+const port = /*process.env.PORT || */ 5555;
 // Session configuration
 const sessionConfig = {
     secret: 'session secret goes here 123 456', // Replace with your own secret key
@@ -209,10 +209,6 @@ function promptConversation(conv, message, contentCallback) {
 
         conv.on('end', (content) => {
             console.log('Ended ==============');
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
             conv.removeAllListeners();
         });
 
