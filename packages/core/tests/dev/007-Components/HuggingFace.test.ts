@@ -186,7 +186,7 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('should return a binary output with a preview url', async () => {
+    it('should return a binary output with a smythfs:// uri', async () => {
         vi.mock('@huggingface/inference', () => ({
             HfInference: vi.fn().mockImplementation(() => ({
                 // dummy blob of a png image
@@ -227,7 +227,7 @@ describe('HuggingFace Component', () => {
         // expect(previewUrl, 'The output should be a valid URL to an image file').toMatch(/^https:\/\/.*\.(jpg|jpeg|png|gif)$/);
 
         // should match: smythfs://<teamId>.team/<candidateId>/_temp/<filename>
-        expect(previewUrl, 'The output should be a valid SmythFS URL that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
+        expect(previewUrl, 'The output should be a valid SmythFS URI that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
 
         expect(response).toBeDefined();
         expect(output._error).toBeUndefined();

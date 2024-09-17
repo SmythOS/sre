@@ -12,11 +12,16 @@ import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import SystemEvents from '@sre/Core/SystemEvents';
 export type TSmythFSURI = {
     hash: string;
     team: string;
     path: string;
 };
+
+SystemEvents.on('SRE:Booted', () => {
+    SmythRuntime.Instance.router.instance.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+});
 
 export class SmythFS {
     private storage: StorageConnector;
@@ -38,8 +43,6 @@ export class SmythFS {
         }
         this.storage = ConnectorService.getStorageConnector();
         this.cache = ConnectorService.getCacheConnector();
-
-        SmythRuntime.Instance.router.get('/_temp/:uid', this.serveTempContent.bind(this));
     }
 
     private URIParser(uri: string) {
@@ -170,7 +173,7 @@ export class SmythFS {
         return await this.storage.user(_candidate).exists(resourceId);
     }
 
-    public async genTempUrl(uri: string, candidate: IAccessCandidate, ttl: number = 3600) {
+    public async genTempUrl(uri: string, candidate: IAccessCandidate, ttlSeconds: number = 3600) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
 
@@ -185,7 +188,6 @@ export class SmythFS {
         const uid = crypto.randomUUID();
         const tempUserCandidate = AccessCandidate.user(`system:${uid}`);
 
-        // TODO: generate uid and store it in cache with TTL
         await this.cache.user(tempUserCandidate).set(
             `pub_url:${uid}`,
             JSON.stringify({
@@ -195,10 +197,10 @@ export class SmythFS {
             }),
             undefined,
             undefined,
-            ttl
+            ttlSeconds
         ); // 1 hour
 
-        return `/_temp/${uid}`;
+        return `${SmythRuntime.Instance.router.baseUrl}/_temp/${uid}`;
     }
 
     public async destroyTempUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {
@@ -212,7 +214,7 @@ export class SmythFS {
         }
     }
 
-    private async serveTempContent(req: any, res: any) {
+    public async serveTempContent(req: any, res: any) {
         try {
             const { uid } = req.params;
             let cacheVal = await this.cache.user(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);

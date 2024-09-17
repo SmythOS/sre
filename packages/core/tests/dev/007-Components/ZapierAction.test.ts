@@ -3,7 +3,7 @@ import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';
@@ -13,6 +13,11 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import axios from 'axios';
+import http from 'http';
+import { promisify } from 'util';
+import { Router } from 'express';
 
 // Specific getter for Zapier API key
 const apiKeyVaultKeyName = (): string => {
@@ -26,6 +31,10 @@ const apiKeyVaultKeyName = (): string => {
 
 //We need SRE to be loaded because LLMAssistant uses internal SRE functions
 
+const router = Router();
+const PORT = 8084;
+const BASE_URL = `http://localhost:${PORT}`;
+SmythRuntime.Instance.configureRouter(router, BASE_URL);
 const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
@@ -63,6 +72,8 @@ const sre = SmythRuntime.Instance.init({
     },
 });
 
+const server = http.createServer(router);
+
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
@@ -89,6 +100,18 @@ describe('ZapierAction Component', () => {
         if (!apiKey) {
             throw new Error('Zapier testing API Key is not set. Please set the key in vault.json to run this test.');
         }
+    });
+
+    beforeAll(async () => {
+        const listen = promisify(server.listen.bind(server));
+        await listen(PORT);
+        console.log(`Server is running on port ${PORT}`);
+    });
+
+    afterAll(async () => {
+        const close = promisify(server.close.bind(server));
+        await close();
+        console.log('Server has been shut down');
     });
 
     it('triggers a zapier action', async () => {
@@ -121,4 +144,47 @@ describe('ZapierAction Component', () => {
 
         expect(response?.result?.isOk).toBe(true);
     }, 60_000);
+
+    it('should pass a temp pub url of smyth file input to the action', async () => {
+        //@ts-ignore
+        const agent = new Agent();
+        const zapierAction = new ZapierAction();
+        const img = await fs.promises.readFile(path.join(__dirname, '../../data/avatar.png'));
+        const obj = await BinaryInput.from(img).getJsonData(AccessCandidate.agent(agent.id));
+
+        //* the zapier code action code snippet: `output = [{isOk: true}];`
+
+        // mock axios.post to see the passed inputs
+        const spy = vi.spyOn(axios, 'post').mockResolvedValueOnce({ data: { result: { isOk: true } } });
+
+        const output = await zapierAction.process(
+            {
+                instructions: 'run code',
+                img: obj,
+            },
+            {
+                data: {
+                    actionId: '4d1de4b5-fde8-4cc4-8f2c-3b90ddc78e37',
+                    actionName: 'ANY NAME',
+                    // apiKey: '{{KEY(Zapier (3))}}',
+                    apiKey: apiKeyVaultKeyName(),
+                    logoUrl: 'https://app.smythos.dev/img/zapier.png',
+                    params: '{"instructions":"str", "img": "{{FILE(img)}}"}',
+                },
+            },
+            agent
+        );
+
+        //get the first argument of the first call to axios.post
+        const firstCallArguments = spy.mock.calls[0];
+        const body = (firstCallArguments[1] as any)?.img as Awaited<ReturnType<typeof BinaryInput.prototype.getJsonData>>;
+        expect(body?.url).toBeDefined();
+        expect(body?.url.startsWith(`${BASE_URL}/_temp/`)).toBe(true);
+
+        // expect the pub url access to be deleted after the the agent finishes processing
+        // wait for 5 seconds because the temp url deletion run in the background
+        await delay(5000);
+        const responseErr = await axios.get(body.url).catch((e) => e);
+        expect(responseErr?.response?.status || responseErr?.status, 'temp url should not be accessible after agent processing finished').toBe(404);
+    });
 });

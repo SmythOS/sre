@@ -12,9 +12,11 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 
-const PORT = 3000;
-const TEMP_HOST = `http://localhost:${PORT}`;
+const PORT = 8083;
+const BASE_URL = `http://localhost:${PORT}`;
 
+const router = Router();
+SmythRuntime.Instance.configureRouter(router, BASE_URL);
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
         Connector: 'MyCustomAccountConnector',
@@ -38,8 +40,6 @@ const SREInstance = SmythRuntime.Instance.init({
         },
     },
 });
-const router = Router();
-SREInstance.router = router;
 
 //  make router listen on port 3000
 const server = http.createServer(router);
@@ -168,10 +168,11 @@ describe('Smyth FileSystem Tests', () => {
             await smythFS.write(uri, _preparedContent, candidate);
 
             const tempUrl = await smythFS.genTempUrl(uri, candidate);
+            console.log('tempUrl', tempUrl);
 
             expect(tempUrl).toBeDefined();
 
-            const response = await axios.get(`${TEMP_HOST}${tempUrl}`, {
+            const response = await axios.get(tempUrl, {
                 responseType: 'arraybuffer',
             });
 
@@ -181,7 +182,7 @@ describe('Smyth FileSystem Tests', () => {
             expect(Buffer.from(response.data).equals(Buffer.from(_preparedContent))).toBeTruthy();
 
             // delete the file
-            await smythFS.destroyTempUrl(tempUrl, { delResource: true }).catch((e) => {}); // destroyTempUrl wil be tested in separate test
+            // await smythFS.destroyTempUrl(tempUrl, { delResource: true }).catch((e) => {}); // destroyTempUrl wil be tested in separate test
         } catch (e) {
             error = e;
         }
@@ -206,7 +207,7 @@ describe('Smyth FileSystem Tests', () => {
             await smythFS.destroyTempUrl(tempUrl, { delResource: true });
 
             // try to reach the destroyed content
-            const responseErr = await axios.get(`${TEMP_HOST}${tempUrl}`).catch((e) => e);
+            const responseErr = await axios.get(tempUrl).catch((e) => e);
             expect(responseErr?.response?.status).toBe(404);
 
             // check if the file still exists
@@ -219,7 +220,30 @@ describe('Smyth FileSystem Tests', () => {
         expect(error).toBeUndefined();
     });
 
-    it('Set and expire after TTL', async () => {});
+    it('Expire temp url after TTL', async () => {
+        const smythFS = SmythFS.Instance;
+        let error;
+        try {
+            const candidate: IAccessCandidate = AccessCandidate.team('team-123456');
+            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile_unqiue`;
+
+            // write the file
+            await smythFS.write(uri, 'Hello World!', candidate);
+
+            // set the ttl
+            const tempUrl = await smythFS.genTempUrl(uri, candidate, 2); // 1 second ttl
+
+            // wait for the ttl to expire
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+
+            const responseErr = await axios.get(tempUrl).catch((e) => e);
+            expect(responseErr?.response?.status).toBe(404);
+        } catch (e) {
+            error = e;
+        }
+
+        expect(error).toBeUndefined();
+    });
 
     //TODO: test auto ContentTypes
 });

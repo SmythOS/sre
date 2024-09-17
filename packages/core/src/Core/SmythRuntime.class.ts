@@ -17,7 +17,7 @@ interface IRouter {
 
 export default class SmythRuntime {
     public started = false;
-    private _router: IRouter;
+    private _router: { instance: IRouter; baseUrl: string };
 
     protected constructor() {
         this.started = true;
@@ -98,14 +98,14 @@ export default class SmythRuntime {
         this.started = false;
     }
 
-    public get router(): IRouter {
+    public get router() {
         if (!this._router) {
             throw new Error('Router not initialized');
         }
         return this._router;
     }
 
-    public set router(router: IRouter) {
-        this._router = router;
+    public configureRouter(router: IRouter, baseUrl: string) {
+        this._router = { instance: router, baseUrl: baseUrl };
     }
 }
