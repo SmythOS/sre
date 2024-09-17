@@ -1,4 +1,16 @@
 export default {
+    echo: {
+        llm: 'Echo',
+        alias: 'Echo',
+    },
+    Echo: {
+        llm: 'Echo',
+        tokens: 128000,
+        completionTokens: 128000,
+        enabled: true,
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    },
+
     // GPT-4o
     'gpt-4o-mini': {
         llm: 'OpenAI',
