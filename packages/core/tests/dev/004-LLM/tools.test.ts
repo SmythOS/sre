@@ -82,8 +82,8 @@ function runToolTestCases(model: string) {
                 };
 
                 const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeDefined();
-                expect(result.data).toBeDefined();
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
                 expect(result.data.useTool).toBe(true);
                 expect(result.data.toolsData).toBeInstanceOf(Array);
                 expect(result.data.toolsData.length).toBeGreaterThan(0);
@@ -116,10 +116,10 @@ function runToolTestCases(model: string) {
                 };
 
                 const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeDefined();
-                expect(result.data).toBeDefined();
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
                 expect(result.data.useTool).toBe(false);
-                expect(result.data.content).toBeDefined();
+                expect(result.data.content).toBeTruthy();
             },
             TIMEOUT
         );
@@ -137,10 +137,10 @@ function runToolTestCases(model: string) {
                 };
 
                 const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeDefined();
-                expect(result.data).toBeDefined();
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
                 expect(result.data.useTool).toBe(false);
-                expect(result.data.content).toBeDefined();
+                expect(result.data.content).toBeTruthy();
             },
             TIMEOUT
         );
@@ -218,15 +218,24 @@ function runStreamRequestTestCases(model: string) {
                 const stream = await llmHelper.streamRequest(params, agent);
                 expect(stream).toBeInstanceOf(EventEmitter);
 
+                let toolsData;
+
                 const getToolsData = () => {
                     return new Promise<void>((resolve) => {
                         stream.on('toolsData', resolve);
                     });
                 };
 
-                const toolsData = await getToolsData();
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('toolsData', (data) => {
+                        toolsData = data;
+                    });
+                    stream.on('end', resolve);
+                });
 
-                expect(toolsData).toBeDefined();
+                await streamComplete;
+
+                expect(toolsData).toBeTruthy();
                 expect(toolsData[0].name).toBe('get_weather');
             },
             TIMEOUT
@@ -242,13 +251,16 @@ function runStreamRequestTestCases(model: string) {
                 const stream = await llmHelper.streamRequest(params, agent);
                 expect(stream).toBeInstanceOf(EventEmitter);
 
-                const getError = () => {
-                    return new Promise<Error>((resolve) => {
-                        stream.on('error', resolve);
-                    });
-                };
+                let error;
 
-                const error = await getError();
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('error', (e) => {
+                        error = e;
+                    });
+                    stream.on('end', resolve);
+                });
+
+                await streamComplete;
 
                 expect(error).toBeInstanceOf(Error);
             },
@@ -295,8 +307,8 @@ function runMultipleToolRequestTestCases(model: string) {
             'should return multiple tools info with toolRequest()',
             async () => {
                 const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeDefined();
-                expect(result.data).toBeDefined();
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
                 expect(result.data.useTool).toBe(true);
                 expect(result.data.toolsData).toBeInstanceOf(Array);
                 expect(result.data.toolsData.length).toBe(2);

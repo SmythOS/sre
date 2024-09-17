@@ -79,10 +79,11 @@ export interface ToolsConfig {
 
 export enum TLLMMessageRole {
     User = 'user',
-    Assistant = "assistant",
+    Assistant = 'assistant',
     System = 'system',
     Model = 'model',
     Tool = 'tool',
+    Function = 'function',
 }
 
 export type TLLMMessageBlock = {
@@ -91,7 +92,11 @@ export type TLLMMessageBlock = {
         | string
         | { text: string }[]
         | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam>;
-    parts?: { text: string }[]; // * 'part' is for Google Vertex AI
+    parts?: {
+        text?: string;
+        functionCall?: { name: string; args: string };
+        functionResponse?: { name: string; response: { name: string; content: string } };
+    }[]; // for Google Vertex AI
     tool_calls?: ToolData[];
 };
 

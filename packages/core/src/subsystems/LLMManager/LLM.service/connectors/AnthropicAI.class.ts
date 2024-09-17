@@ -27,7 +27,7 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        _params.messages = _params?.messages || [];
+        _params.messages = this.getConsistentMessages(_params?.messages) || [];
 
         // set prompt as user message if provided
         if (prompt) {
@@ -91,7 +91,7 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        _params.messages = _params?.messages || [];
+        _params.messages = this.getConsistentMessages(_params?.messages) || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -236,15 +236,17 @@ export class AnthropicAIConnector extends LLMConnector {
                 max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!_params?.apiKey), // * max token is required
             };
 
-            if (this.hasSystemMessage(_params?.messages)) {
+            const messages = this.getConsistentMessages(_params?.messages);
+
+            if (this.hasSystemMessage(messages)) {
                 // in Anthropic AI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.separateSystemMessages(_params?.messages);
+                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
-                messageCreateArgs.messages = this.getConsistentMessages(otherMessages) as Anthropic.MessageParam[];
+                messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
             } else {
-                messageCreateArgs.messages = this.getConsistentMessages(_params?.messages) as Anthropic.MessageParam[];
+                messageCreateArgs.messages = messages as Anthropic.MessageParam[];
             }
 
             if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) messageCreateArgs.tools = _params?.toolsConfig?.tools;
@@ -338,8 +340,8 @@ export class AnthropicAIConnector extends LLMConnector {
 
         if (messageBlock) {
             const content = [];
-            if (typeof messageBlock.content === 'object') {
-                content.push(messageBlock.content);
+            if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
             } else {
                 content.push({ type: 'text', text: messageBlock.content });
             }
@@ -382,33 +384,48 @@ export class AnthropicAIConnector extends LLMConnector {
         let _messages = [...messages];
 
         _messages = _messages.map((message) => {
-            let textContent = '';
+            let content;
 
             if (message?.parts) {
-                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+                content = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
             } else if (Array.isArray(message?.content)) {
-                textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
+                if (Array.isArray(message.content)) {
+                    const toolBlocks = message.content.filter(
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                    );
+
+                    if (toolBlocks?.length > 0) {
+                        content = message.content;
+                    } else {
+                        content = message.content
+                            .map((block) => block?.text || '')
+                            .join(' ')
+                            .trim();
+                    }
+                } else {
+                    content = message.content;
+                }
             } else if (message?.content) {
-                textContent = message.content as string;
+                content = message.content as string;
             }
 
-            message.content = textContent;
+            message.content = content;
 
             return message;
         });
 
         //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
-        if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
+        /* if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
             const hasToolResult = messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
 
             //we found a tool result in the first message, so we need to remove the user message
             if (hasToolResult) {
                 messages.shift();
             }
-        }
+        } */
 
         //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
-        if (messages[0].role !== TLLMMessageRole.User) {
+        if (messages[0].role !== TLLMMessageRole.User && messages[0].role !== TLLMMessageRole.System) {
             messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
         }
 

@@ -17,7 +17,7 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -621,9 +621,17 @@ export class GoogleAIConnector extends LLMConnector {
             const _message = { ...message };
             let textContent = '';
 
-            // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
-            if (_message.role === TLLMMessageRole.Assistant) {
-                _message.role = TLLMMessageRole.Model;
+            // Map roles to valid Google AI roles
+            switch (_message.role) {
+                case TLLMMessageRole.Assistant:
+                case TLLMMessageRole.System:
+                    _message.role = TLLMMessageRole.Model;
+                    break;
+                case TLLMMessageRole.User:
+                    // User role is already valid
+                    break;
+                default:
+                    _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
             if (_message?.parts) {
@@ -685,5 +693,62 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const content = [];
+            if (typeof messageBlock.content === 'string') {
+                content.push({ text: messageBlock.content });
+            } else if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
+            }
+
+            if (messageBlock.parts) {
+                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
+                if (functionCalls.length > 0) {
+                    content.push(
+                        ...functionCalls.map((call) => ({
+                            functionCall: {
+                                name: call.functionCall.name,
+                                args: JSON.parse(call.functionCall.args),
+                            },
+                        }))
+                    );
+                }
+            }
+
+            messageBlocks.push({
+                role: messageBlock.role,
+                parts: content,
+            });
+        }
+
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.Function,
+                parts: [
+                    {
+                        functionResponse: {
+                            name: toolData.name,
+                            response: {
+                                name: toolData.name,
+                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+
+        return [...messageBlocks, ...transformedToolsData];
     }
 }

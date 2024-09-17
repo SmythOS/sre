@@ -267,6 +267,8 @@ export class Conversation extends EventEmitter {
             return this.prompt(null, toolHeaders);
         }
 
+        this._context.push(llmResponse?.message);
+
         let content = JSONContent(llmResponse?.content).tryParse();
 
         /* ==================== STEP ENTRY ==================== */

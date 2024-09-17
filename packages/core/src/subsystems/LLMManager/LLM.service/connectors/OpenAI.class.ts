@@ -165,23 +165,23 @@ export class OpenAIConnector extends LLMConnector {
     protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
         const _params = { ...params };
 
+        // We provide
+        const openai = new OpenAI({
+            apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
+        });
+
+        const messages = this.getConsistentMessages(_params.messages);
+
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+            model: _params.model,
+            messages: messages,
+            max_tokens: _params.max_tokens,
+        };
+
+        if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+
         try {
-            // We provide
-            const openai = new OpenAI({
-                apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
-            });
-
-            const messages = this.getConsistentMessages(_params.messages);
-
-            let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-                model: _params.model,
-                messages: messages,
-                max_tokens: _params.max_tokens,
-            };
-
-            if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
-            if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
-
             const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
