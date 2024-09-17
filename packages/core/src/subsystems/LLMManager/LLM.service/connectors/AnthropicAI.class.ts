@@ -133,22 +133,22 @@ export class AnthropicAIConnector extends LLMConnector {
         throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = 'claude-3-opus-20240229', messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
         try {
             // We do not provide default API key for claude, so user/team must provide their own API key
-            if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
+            if (!_params?.apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
-            const anthropic = new Anthropic({ apiKey });
+            const anthropic = new Anthropic({ apiKey: _params?.apiKey });
 
             const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-                model,
+                model: _params?.model,
                 messages: [],
-                // TODO (Forhad): Need to set max dynamically based on the model
-                max_tokens: 4096, // * max token is required
+                max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!_params?.apiKey), // * max token is required
             };
+
+            const messages = this.getConsistentMessages(_params?.messages);
 
             if (this.hasSystemMessage(messages)) {
                 // in AnthropicAI we need to provide system message separately
@@ -157,9 +157,11 @@ export class AnthropicAIConnector extends LLMConnector {
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
                 messageCreateArgs.messages = otherMessages as Anthropic.MessageParam[];
+            } else {
+                messageCreateArgs.messages = messages as Anthropic.MessageParam[];
             }
 
-            if (tools && tools.length > 0) messageCreateArgs.tools = tools;
+            if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) messageCreateArgs.tools = _params?.toolsConfig?.tools;
 
             // TODO (Forhad): implement claude specific token counting properly
             // this.validateTokenLimit(params);
@@ -218,37 +220,34 @@ export class AnthropicAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
         try {
             const emitter = new EventEmitter();
 
             // We do not provide default API key for claude, so user/team must provide their own API key
-            if (!apiKey) throw new Error('Please provide an API key for AnthropicAI');
+            if (!_params?.apiKey) throw new Error('Please provide an API key for AnthropicAI');
 
-            const anthropic = new Anthropic({ apiKey });
+            const anthropic = new Anthropic({ apiKey: _params?.apiKey });
 
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
-                model,
+                model: _params?.model,
                 messages: [],
-                // TODO (Forhad): Need to set max dynamically based on the model
-                max_tokens: 4096, // * max token is required
+                max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!_params?.apiKey), // * max token is required
             };
 
-            if (this.hasSystemMessage(messages)) {
+            if (this.hasSystemMessage(_params?.messages)) {
                 // in Anthropic AI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
+                const { systemMessage, otherMessages } = this.separateSystemMessages(_params?.messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
                 messageCreateArgs.messages = this.getConsistentMessages(otherMessages) as Anthropic.MessageParam[];
             } else {
-                messageCreateArgs.messages = this.getConsistentMessages(messages) as Anthropic.MessageParam[];
+                messageCreateArgs.messages = this.getConsistentMessages(_params?.messages) as Anthropic.MessageParam[];
             }
 
-            if (tools && tools.length > 0) messageCreateArgs.tools = tools;
+            if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) messageCreateArgs.tools = _params?.toolsConfig?.tools;
 
             const stream = anthropic.messages.stream(messageCreateArgs);
 
@@ -280,7 +279,7 @@ export class AnthropicAIConnector extends LLMConnector {
                     emitter.emit('toolsData', toolsData);
                 }
 
-                //only emit enf event after processing the final message
+                //only emit end event after processing the final message
                 setTimeout(() => {
                     emitter.emit('end', toolsData);
                 }, 100);

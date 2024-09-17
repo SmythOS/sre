@@ -141,7 +141,13 @@ function runTestCases(model: string) {
     );
 }
 
-const models = ['gpt-4o-mini', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash', 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'];
+const models = [
+    'gpt-4o-mini', // OpenAI
+    'claude-3-5-sonnet-20240620', // Anthropic
+    'gemini-1.5-flash', // Google API
+    'gemma2-9b-it', // Groq
+    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
+];
 
 for (const model of models) {
     describe(`LLM Prompt Tests for Model: ${model}`, () => {

@@ -176,25 +176,25 @@ export class Conversation extends EventEmitter {
 
         const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const { data: llmResponse, error } = await llmHelper.toolRequest(
-            {
-                model: this.model,
-                messages: contextWindow,
-                toolsConfig,
-                max_tokens: this._maxOutputTokens,
-            },
-            this._agentId
-        );
-
-        if (error) {
-            throw new Error(
-                '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
-            );
-        }
+        const { data: llmResponse } = await llmHelper
+            .toolRequest(
+                {
+                    model: this.model,
+                    messages: contextWindow,
+                    toolsConfig,
+                    max_tokens: this._maxOutputTokens,
+                },
+                this._agentId
+            )
+            .catch((error: any) => {
+                throw new Error(
+                    '[LLM Request Error]\n' +
+                        JSON.stringify({
+                            code: error?.name || 'LLMRequestFailed',
+                            message: error?.message || 'Something went wrong while calling LLM.',
+                        })
+                );
+            });
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {

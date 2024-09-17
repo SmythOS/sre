@@ -18,6 +18,9 @@ type ChatCompletionCreateParams = {
     temperature?: number;
     stop?: string[];
     top_p?: number;
+    tools?: any;
+    tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
+    stream?: boolean;
 };
 
 type ToolRequestParams = {
@@ -59,18 +62,18 @@ export class GroqConnector extends LLMConnector {
         // TODO: implement groq specific token counting
         // this.validateTokensLimit(_params);
 
-        const chatCompletionCreateParams: ChatCompletionCreateParams = {
+        const chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
             messages: this.getConsistentMessages(_params.messages),
         };
 
-        if (_params.max_tokens) chatCompletionCreateParams.max_tokens = _params.max_tokens;
-        if (_params.temperature) chatCompletionCreateParams.temperature = _params.temperature;
-        if (_params.stop) chatCompletionCreateParams.stop = _params.stop;
-        if (_params.top_p) chatCompletionCreateParams.top_p = _params.top_p;
+        if (_params.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
+        if (_params.temperature) chatCompletionArgs.temperature = _params.temperature;
+        if (_params.stop) chatCompletionArgs.stop = _params.stop;
+        if (_params.top_p) chatCompletionArgs.top_p = _params.top_p;
 
         try {
-            const response: any = await groq.chat.completions.create(chatCompletionCreateParams);
+            const response: any = await groq.chat.completions.create(chatCompletionArgs);
             const content = response.choices[0]?.message?.content;
             const finishReason = response.choices[0]?.finish_reason;
 
@@ -95,10 +98,6 @@ export class GroqConnector extends LLMConnector {
             const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
 
             const _messages = this.getConsistentMessages(_params.messages);
-
-            if (!Array.isArray(_messages) || !_messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
 
             let args = {
                 model: _params.model,
@@ -130,8 +129,7 @@ export class GroqConnector extends LLMConnector {
                 data: { useTool, message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.error('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
@@ -142,23 +140,22 @@ export class GroqConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
         const emitter = new EventEmitter();
-        const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+        const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
 
-        let args = {
-            model,
-            messages,
-            tools,
-            tool_choice,
+        let chatCompletionArgs: ChatCompletionCreateParams = {
+            model: _params.model,
+            messages: _params.messages,
             stream: true,
         };
 
+        if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
+        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+
         try {
-            const stream = await groq.chat.completions.create(args);
+            const stream = await groq.chat.completions.create(chatCompletionArgs);
 
             let toolsData: ToolData[] = [];
 
@@ -200,8 +197,7 @@ export class GroqConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
     }
 

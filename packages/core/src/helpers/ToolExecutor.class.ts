@@ -95,24 +95,24 @@ export default class ToolExecutor {
         /* ==================== STEP ENTRY ==================== */
         const llmHelper: LLMHelper = LLMHelper.load(this.model);
 
-        const { data: llmResponse, error } = await llmHelper.toolRequest(
-            {
-                model: this.model,
-                messages,
-                toolsConfig,
-            },
-            agentId
-        );
-
-        if (error) {
-            throw new Error(
-                '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
-            );
-        }
+        const { data: llmResponse } = await llmHelper
+            .toolRequest(
+                {
+                    model: this.model,
+                    messages,
+                    toolsConfig,
+                },
+                agentId
+            )
+            .catch((error: any) => {
+                throw new Error(
+                    '[LLM Request Error]\n' +
+                        JSON.stringify({
+                            code: error?.name || 'LLMRequestFailed',
+                            message: error?.message || 'Something went wrong while calling LLM.',
+                        })
+                );
+            });
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {

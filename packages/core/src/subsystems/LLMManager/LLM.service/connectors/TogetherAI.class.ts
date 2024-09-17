@@ -94,28 +94,26 @@ export class TogetherAIConnector extends LLMConnector {
         throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
         try {
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+                apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
                 baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
-            if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
+            const messages = this.getConsistentMessages(_params.messages);
 
-            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-                model,
+            let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+                model: _params.model,
                 messages,
-                tools,
-                tool_choice,
             };
 
-            const result = await openai.chat.completions.create(args);
+            if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
+            if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+
+            const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -140,8 +138,7 @@ export class TogetherAIConnector extends LLMConnector {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
@@ -152,26 +149,25 @@ export class TogetherAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
         const emitter = new EventEmitter();
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+            apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
             baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
-        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model,
-            messages,
-            tools,
-            tool_choice,
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model: _params.model,
+            messages: _params.messages,
             stream: true,
         };
 
+        if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
+        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+
         try {
-            const stream: any = await openai.chat.completions.create(args);
+            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
             let toolsData: ToolData[] = [];
 
@@ -210,8 +206,7 @@ export class TogetherAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
     }
 

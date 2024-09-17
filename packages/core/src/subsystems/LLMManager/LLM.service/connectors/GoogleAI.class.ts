@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI, ModelParams, GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -29,7 +29,7 @@ type FileObject = {
     mimetype: string;
 };
 
-const DEFAULT_MODEL = 'gemini-pro';
+const DEFAULT_MODEL = 'gemini-1.5-pro';
 
 const MODELS_WITH_SYSTEM_MESSAGE = [
     'gemini-1.5-pro-latest',
@@ -260,7 +260,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
-        const model = _params?.model || 'gemini-pro-vision';
+        const model = _params?.model || DEFAULT_MODEL;
         const apiKey = _params?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
@@ -342,40 +342,46 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI Multimodal LLM Request', error);
-
             throw error;
         }
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
         try {
             let systemInstruction = '';
             let formattedMessages;
+
+            const messages = this.getConsistentMessages(_params.messages);
 
             if (this.hasSystemMessage(messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
                 const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
                 systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
-                formattedMessages = this.getConsistentMessages(separateMessages.otherMessages);
+                formattedMessages = separateMessages.otherMessages;
             } else {
-                formattedMessages = this.getConsistentMessages(messages);
+                formattedMessages = messages;
             }
 
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-            const $model = genAI.getGenerativeModel({ model });
+            const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+            const $model = genAI.getGenerativeModel({ model: _params.model });
 
-            const result = await $model.generateContent({
+            const generationConfig: GenerateContentRequest = {
                 contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            };
+
+            if (systemInstruction) {
+                generationConfig.systemInstruction = systemInstruction;
+            }
+
+            if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+            if (_params?.toolsConfig?.tool_choice)
+                generationConfig.toolConfig = {
+                    functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+                };
+
+            const result = await $model.generateContent(generationConfig);
 
             const response = await result.response;
             const content = response.text();
@@ -400,11 +406,11 @@ export class GoogleAIConnector extends LLMConnector {
                 data: { useTool, message: { content }, content, toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
+    // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -412,16 +418,16 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
+
         const emitter = new EventEmitter();
-        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-        const $model = genAI.getGenerativeModel({ model });
+        const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+        const $model = genAI.getGenerativeModel({ model: _params.model });
 
         let systemInstruction = '';
         let formattedMessages;
+        const messages = this.getConsistentMessages(_params.messages);
 
         if (this.hasSystemMessage(messages)) {
             const separateMessages = this.separateSystemMessages(messages);
@@ -432,15 +438,22 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = this.getConsistentMessages(messages);
         }
 
+        const generationConfig: GenerateContentRequest = {
+            contents: formattedMessages,
+        };
+
+        if (systemInstruction) {
+            generationConfig.systemInstruction = systemInstruction;
+        }
+
+        if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tool_choice)
+            generationConfig.toolConfig = {
+                functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+            };
+
         try {
-            const result = await $model.generateContentStream({
-                contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            const result = await $model.generateContentStream(generationConfig);
 
             let toolsData: ToolData[] = [];
 
@@ -473,8 +486,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
     }
 
@@ -623,6 +635,8 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             _message.parts = [{ text: textContent }];
+
+            delete _message.content; // Remove content to avoid error
 
             return _message;
         });
