@@ -1,14 +1,25 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, SmythRuntime } from '@sre/index';
+import { config, ConnectorService, SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-//We need SRE to be loaded because LLMAssistant uses internal SRE functions
+// Specific getter for HuggingFace API key
+const getApiKeyVaultKeyName = (): string => {
+    // const apiKey = process.env.__TEST__HUGGINGFACE_API_KEY;
+    // if (!apiKey) {
+    //     throw new Error('Zapier testing API Key is not set. Please set the __TEST__HUGGINGFACE_API_KEY environment variable to run this test.');
+    // }
+    // // return apiKey;
+    return `{{KEY(HUGGINGFACE_API_KEY)}}`;
+};
+
+// We need SRE to be loaded because LLMAssistant uses internal SRE functions
 const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
@@ -49,20 +60,31 @@ const sre = SmythRuntime.Instance.init({
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
         id: 'agent-123456',
+        teamId: 'default',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
     }));
     return { default: MockedAgent };
 });
 
 describe('HuggingFace Component', () => {
-    beforeAll(() => {
-        // check if the huggingface env variables are set. if not, inform the developer to set them
-        if (!process.env.HUGGINGFACE_API_KEY) {
-            throw new Error('HuggingFace API Key is not set. Please set the HUGGINGFACE_API_KEY environment variable to run this test.');
+    beforeAll(async () => {
+        // This will throw an error if the API key is not set
+        const vaultConnector = ConnectorService.getVaultConnector();
+        const agent = AccessCandidate.agent('agent-123456');
+
+        const apiKey = await vaultConnector
+            .user(agent)
+            .get('HUGGINGFACE_API_KEY')
+            .catch((e) => {
+                throw new Error('Failed to get Zapier API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
+            });
+
+        if (!apiKey) {
+            throw new Error('Zapier testing API Key is not set. Please set the key in vault.json to run this test.');
         }
     });
 
-    it('prompt with a text input', async () => {
+    it('should pass prompt with a text input', async () => {
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
@@ -73,7 +95,7 @@ describe('HuggingFace Component', () => {
             },
             {
                 data: {
-                    accessToken: process.env.HUGGINGFACE_API_KEY,
+                    accessToken: getApiKeyVaultKeyName(),
                     desc: '',
                     disableCache: false,
                     displayName: 'fasttext-language-identification',
@@ -93,7 +115,7 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('prompt with a local binary input', async () => {
+    it('should pass prompt with a local binary input', async () => {
         // const imagePath = '../../data/avatar.png';
         const imagePath = path.resolve(__dirname, '../../data/avatar.png');
 
@@ -109,7 +131,7 @@ describe('HuggingFace Component', () => {
             },
             {
                 data: {
-                    accessToken: process.env.HUGGINGFACE_API_KEY,
+                    accessToken: getApiKeyVaultKeyName(),
                     desc: "Zero-shot image classification based on OpenAI's CLIP model using Vision Transformer with large patches.",
                     disableCache: false,
                     displayName: 'clip-vit-large-patch14',
@@ -131,7 +153,7 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('prompt with a remote binary input', async () => {
+    it('should pass prompt with a remote binary input', async () => {
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
@@ -142,7 +164,7 @@ describe('HuggingFace Component', () => {
             },
             {
                 data: {
-                    accessToken: process.env.HUGGINGFACE_API_KEY,
+                    accessToken: getApiKeyVaultKeyName(),
                     desc: "Zero-shot image classification based on OpenAI's CLIP model using Vision Transformer with large patches.",
                     disableCache: false,
                     displayName: 'clip-vit-large-patch14',
@@ -163,4 +185,55 @@ describe('HuggingFace Component', () => {
         expect(response).toBeDefined();
         expect(output._error).toBeUndefined();
     }, 60_000);
+
+    it('should return a binary output with a preview url', async () => {
+        vi.mock('@huggingface/inference', () => ({
+            HfInference: vi.fn().mockImplementation(() => ({
+                // dummy blob of a png image
+                textToImage: vi.fn().mockResolvedValue(new Blob()),
+            })),
+        }));
+        // @ts-ignore
+        const agent = new Agent();
+        const hfComp = new HuggingFace();
+
+        const output = await hfComp.process(
+            {
+                Text: 'anime artwork, anime style',
+            },
+            {
+                data: {
+                    accessToken: getApiKeyVaultKeyName(),
+                    desc: '',
+                    disableCache: false,
+                    displayName: 'aipicasso/emi',
+                    logoUrl: '',
+                    modelName: 'aipicasso/emi',
+                    modelTask: 'text-to-image',
+                    name: 'aipicasso/emi',
+                    parameters: JSON.stringify({}),
+                },
+            },
+            agent
+        );
+
+        const response = output.Output;
+
+        expect(output._error).toBeUndefined();
+        expect(response).toBeDefined();
+
+        const previewUrl = response?.url;
+        expect(previewUrl).toBeDefined();
+        // expect(previewUrl, 'The output should be a valid URL to an image file').toMatch(/^https:\/\/.*\.(jpg|jpeg|png|gif)$/);
+
+        // should match: smythfs://<teamId>.team/<candidateId>/_temp/<filename>
+        expect(previewUrl, 'The output should be a valid SmythFS URL that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
+
+        expect(response).toBeDefined();
+        expect(output._error).toBeUndefined();
+    }, 90_000);
+
+    // afterEach(() => {
+    //     vi.unmock('@huggingface/inference');
+    // });
 });

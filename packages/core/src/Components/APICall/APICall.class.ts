@@ -1,25 +1,16 @@
-import { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import Joi from 'joi';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import Component from '../Component.class';
+import { REQUEST_CONTENT_TYPES } from '@sre/constants';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { parseHeaders } from './parseHeaders';
+import { parseUrl } from './parseUrl';
+import { parseData } from './parseData';
+import { parseProxy } from './parseProxy';
+import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
 
-function parseComponentAnnotations(source, templateSettings) {
-    const arrRegex = new RegExp(/{{([A-Z]+):([\w\s]+):\[(.*?)\]}}/gm);
-    const jsonRegex = new RegExp(/{{([A-Z]+):([\w\s]+):(\{.*?\})}}/gm);
-
-    const matches = [...source.matchAll(arrRegex), ...source.matchAll(jsonRegex)];
-    for (const match of matches) {
-        const label = match[2];
-        if (!label) continue;
-
-        const entry: any = Object.values(templateSettings).find((o: any) => o.label == label);
-        if (!entry) continue;
-
-        source = source.replace(match[0], `{{${entry.id}}}`);
-    }
-    return source;
-}
 export default class APICall extends Component {
     protected configSchema = Joi.object({
         method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD').required().label('Method'),
@@ -64,27 +55,40 @@ export default class APICall extends Component {
         const _error: any = undefined;
         try {
             logger.debug(`=== API Call Log ===`);
-            // addittionalParams will collect values that oauth1.0 header require for signature
-            let additionalParams: any = {},
-                rootUrl: any = null;
-            const templateSettings = config?.template?.settings || {};
 
-            const reqConfig: AxiosRequestConfig = {};
-
-            /*
-                We're experiencing an issue displaying binary data as a string in the debug log.
-                To address this, we need to create 'dataForDebug' specifically for the debug log to avoid converting binary data into a string.
-            */
-            let dataForDebug;
-
-            /* === Request Method === */
             const method = config?.data?.method || 'get';
 
+            const reqConfig: AxiosRequestConfig = {};
             reqConfig.method = method;
 
-            let _url = config?.data?.url;
+            reqConfig.url = await parseUrl(input, config, agent);
 
-            return { Response: {}, Headers: {}, _error, _debug: logger.output };
+            reqConfig.data = await parseData(input, config, agent);
+
+            reqConfig.headers = await parseHeaders(input, config, agent);
+
+            reqConfig.proxy = await parseProxy(input, config, agent);
+
+            let Response: any = {};
+            let Headers: any = {};
+            let _error: any = undefined;
+            try {
+                logger.debug('Making API call', reqConfig);
+                // in order to handle binary data automatically, we need to set responseType to 'arraybuffer' for all requests, then parse the response data based on content-type
+                reqConfig.responseType = 'arraybuffer';
+
+                const response = await axios.request(reqConfig);
+
+                Response = await parseArrayBufferResponse(response, agent);
+                Headers = response.headers;
+            } catch (error) {
+                logger.debug(`Error making API call: ${error.message}`);
+                Headers = error?.response?.headers || {};
+                Response = await parseArrayBufferResponse(error.response, agent);
+                _error = error.message;
+            }
+
+            return { Response, Headers, _error, _debug: logger.output };
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }

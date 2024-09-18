@@ -9,7 +9,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMParams, LLMMessageBlock, LLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { isDataUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
@@ -21,14 +21,24 @@ const console = Logger('LLMConnector');
 export interface ILLMConnectorRequest {
     chatRequest(prompt, params: any): Promise<any>;
     visionRequest(prompt, params: any): Promise<any>;
+    multimodalRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
     streamRequest(params: any): Promise<EventEmitter>;
+    imageGenRequest(prompt, params: any): Promise<any>;
 }
 
 export type LLMChatResponse = {
     content: string;
     finishReason: string;
+};
+
+export type ImagesResponse = {
+    created: number;
+    data: Array<{
+        b64_json?: string;
+        url?: string;
+    }>;
 };
 
 export class LLMStream extends Readable {
@@ -72,9 +82,11 @@ export abstract class LLMConnector extends Connector {
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
     protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<LLMChatResponse>;
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
 
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
@@ -98,6 +110,24 @@ export abstract class LLMConnector extends Connector {
                     .get(llm)
                     .catch((e) => ''); //if vault access is denied we just return empty key
                 return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            multimodalRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
+            },
+            imageGenRequest: async (prompt, params: any) => {
+                const llm = models[params.model]?.llm;
+                if (!llm) throw new Error(`Model ${params.model} not supported`);
+                params.apiKey = await vaultConnector
+                    .user(candidate)
+                    .get(llm)
+                    .catch((e) => ''); //if vault access is denied we just return empty key
+                return this.imageGenRequest(candidate.readRequest, prompt, params);
             },
             toolRequest: async (params: any) => {
                 const llm = models[params.model]?.llm;
@@ -127,17 +157,6 @@ export abstract class LLMConnector extends Connector {
                 return this.streamRequest(candidate.readRequest, params);
             },
         };
-    }
-
-    private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
-        const alias = models[model]?.alias || model;
-
-        // Only allow full token limit if the API key is provided by the team
-        const maxTokens = hasTeamAPIKey
-            ? models[alias]?.keyOptions?.completionTokens || models[alias]?.keyOptions?.tokens
-            : models[alias]?.completionTokens || models[alias]?.tokens;
-
-        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
     }
 
     private async getSafeMaxTokens(givenMaxTokens: number, model: string, hasApiKey: boolean): Promise<number> {
@@ -186,6 +205,17 @@ export abstract class LLMConnector extends Connector {
 
         // Only allow full token limit if the API key is provided by the team
         const maxTokens = hasTeamAPIKey ? models[alias]?.keyOptions?.tokens : models[alias]?.tokens;
+
+        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
+    }
+
+    protected getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
+        const alias = models[model]?.alias || model;
+
+        // Only allow full token limit if the API key is provided by the team
+        const maxTokens = hasTeamAPIKey
+            ? models[alias]?.keyOptions?.completionTokens || models[alias]?.keyOptions?.tokens
+            : models[alias]?.completionTokens || models[alias]?.tokens;
 
         return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
     }
@@ -253,9 +283,12 @@ export abstract class LLMConnector extends Connector {
         if (!prompt) return prompt;
         let newPrompt = prompt;
         const outputs = {};
-        for (let con of config.outputs) {
-            if (con.default) continue;
-            outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+
+        if (config?.outputs) {
+            for (let con of config.outputs) {
+                if (con.default) continue;
+                outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+            }
         }
 
         const excludedKeys = ['_debug', '_error'];
@@ -263,7 +296,7 @@ export abstract class LLMConnector extends Connector {
 
         if (outputKeys.length > 0) {
             const outputFormat = {};
-            outputKeys.forEach((key) => (outputFormat[key] = '<value>'));
+            outputKeys.forEach((key) => (outputFormat[key] = config.name === 'Classifier' ? '<Boolean|String>' : '<value>'));
 
             newPrompt +=
                 '\n##\nExpected output format = ' +
@@ -275,8 +308,10 @@ export abstract class LLMConnector extends Connector {
 
         return newPrompt;
     }
+
+    // TODO [Forhad]: Need to check if we need the params mapping anymore as we set the parameters explicitly now
     public async extractLLMComponentParams(config: any) {
-        const params: LLMParams = {};
+        const params: TLLMParams = {};
         const model: string = config.data.model;
         // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
 
@@ -329,15 +364,18 @@ export abstract class LLMConnector extends Connector {
             if (configParams?.[configKey] !== undefined || configParams?.[configKey] !== null || configParams?.[configKey] !== '') {
                 const value = configParams[configKey];
 
-                params[paramKey as string] = value;
+                if (value !== undefined) {
+                    params[paramKey as string] = value;
+                }
             }
         }
 
         return params;
     }
 
+    // TODO [Forhad]: Need to support other params like temperature, topP, topK, etc.
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = {};
+        const params: TLLMParams = {};
         const model: string = config.data.model;
         // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
 
@@ -371,13 +409,13 @@ export abstract class LLMConnector extends Connector {
         throw new Error('This model does not support tools');
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
+    }): TLLMToolResultMessageBlock[] {
         throw new Error('This model does not support tools');
     }
 
@@ -387,9 +425,9 @@ export abstract class LLMConnector extends Connector {
         return messages?.some((message) => message.role === 'system');
     }
 
-    public separateSystemMessages(messages: LLMMessageBlock[]): {
-        systemMessage: LLMMessageBlock | {};
-        otherMessages: LLMMessageBlock[];
+    public separateSystemMessages(messages: TLLMMessageBlock[]): {
+        systemMessage: TLLMMessageBlock | {};
+        otherMessages: TLLMMessageBlock[];
     } {
         const systemMessage = messages.find((message) => message.role === 'system') || {};
         const otherMessages = messages.filter((message) => message.role !== 'system');

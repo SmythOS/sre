@@ -32,8 +32,14 @@ type ToolParams = {
 //TODO: handle authentication
 export class Conversation extends EventEmitter {
     private _agentId: string = '';
-
-    public systemPrompt;
+    private _systemPrompt;
+    public get systemPrompt() {
+        return this._systemPrompt;
+    }
+    public set systemPrompt(systemPrompt) {
+        this._systemPrompt = systemPrompt;
+        if (this._context) this._context.systemPrompt = systemPrompt;
+    }
     public assistantName;
 
     private _reqMethods;
@@ -54,6 +60,7 @@ export class Conversation extends EventEmitter {
 
     private _lastError;
     private _spec;
+    public stop = false;
     public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
@@ -148,6 +155,7 @@ export class Conversation extends EventEmitter {
 
     //TODO : handle attachments
     public async prompt(message?: string, toolHeaders = {}) {
+        if (this.stop) return;
         await this.ready;
 
         const reqMethods = this._reqMethods;
@@ -168,25 +176,25 @@ export class Conversation extends EventEmitter {
 
         const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const { data: llmResponse, error } = await llmHelper.toolRequest(
-            {
-                model: this.model,
-                messages: contextWindow,
-                toolsConfig,
-                max_tokens: this._maxOutputTokens,
-            },
-            this._agentId
-        );
-
-        if (error) {
-            throw new Error(
-                '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
-            );
-        }
+        const { data: llmResponse } = await llmHelper
+            .toolRequest(
+                {
+                    model: this.model,
+                    messages: contextWindow,
+                    toolsConfig,
+                    max_tokens: this._maxOutputTokens,
+                },
+                this._agentId
+            )
+            .catch((error: any) => {
+                throw new Error(
+                    '[LLM Request Error]\n' +
+                        JSON.stringify({
+                            code: error?.name || 'LLMRequestFailed',
+                            message: error?.message || 'Something went wrong while calling LLM.',
+                        })
+                );
+            });
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {
@@ -228,7 +236,7 @@ export class Conversation extends EventEmitter {
                 });
                 /* ==================== STEP ENTRY ==================== */
 
-                this.emit('beforeToolCall', toolArgs);
+                this.emit('beforeToolCall', { tool, args });
                 //TODO: Should we run these tools in parallel?
                 let { data: functionResponse, error } = await this.useTool(toolArgs);
 
@@ -252,12 +260,14 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
             return this.prompt(null, toolHeaders);
         }
+
+        this._context.push(llmResponse?.message);
 
         let content = JSONContent(llmResponse?.content).tryParse();
 
@@ -274,6 +284,7 @@ export class Conversation extends EventEmitter {
 
     //TODO : handle attachments
     public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
+        if (this.stop) return;
         await this.ready;
 
         //let promises = [];
@@ -326,6 +337,12 @@ export class Conversation extends EventEmitter {
 
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
+            let hasError = false;
+            eventEmitter.on('error', (error) => {
+                hasError = true;
+                reject(error);
+            });
+
             eventEmitter.on('toolsData', async (toolsData) => {
                 hasTools = true;
                 let llmMessage: any = {
@@ -391,7 +408,7 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                     messageBlock: llmMessage,
                     toolsData: processedToolsData,
                 });
@@ -403,15 +420,22 @@ export class Conversation extends EventEmitter {
             });
 
             eventEmitter.on('end', async (toolsData) => {
+                if (hasError) return;
+
                 if (!hasTools) {
                     //console.log(' ===> resolved content no tool', _content);
                     this._context.push({ role: 'assistant', content: _content });
-                    resolve(_content);
+                    resolve(''); //the content were already emitted through 'content' event
                 }
             });
         });
 
-        const toolsContent = await toolsPromise;
+        const toolsContent = await toolsPromise.catch((error) => {
+            console.error('Error in toolsPromise: ', error);
+            //this.emit('error', error);
+            this.emit('warning', error);
+            return '';
+        });
         _content += toolsContent;
         let content = JSONContent(_content).tryParse();
 
@@ -537,7 +561,7 @@ export class Conversation extends EventEmitter {
 
             const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                 messageBlock: llmMessage,
                 toolsData: processedToolsData,
             });
@@ -626,6 +650,8 @@ export class Conversation extends EventEmitter {
                 }
 
                 console.debug('Calling tool: ', reqConfig);
+
+                //TODO : implement a timeout for the tool call
                 if (reqConfig.url.includes('localhost')) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID']).run(reqConfig as TAgentProcessParams);
@@ -650,30 +676,34 @@ export class Conversation extends EventEmitter {
      * @param model
      */
     private updateModel(model: string) {
-        this._model = model;
+        try {
+            this._model = model;
 
-        if (this._spec) {
-            this._reqMethods = OpenAPIParser.mapReqMethods(this._spec?.paths);
-            this._endpoints = OpenAPIParser.mapEndpoints(this._spec?.paths);
-            this._baseUrl = this._spec?.servers?.[0].url;
+            if (this._spec) {
+                this._reqMethods = OpenAPIParser.mapReqMethods(this._spec?.paths);
+                this._endpoints = OpenAPIParser.mapEndpoints(this._spec?.paths);
+                this._baseUrl = this._spec?.servers?.[0].url;
 
-            const functionDeclarations = this.getFunctionDeclarations(this._spec);
-            const llmHelper: LLMHelper = LLMHelper.load(this._model);
-            this._toolsConfig = llmHelper.connector.formatToolsConfig({
-                type: 'function',
-                toolDefinitions: functionDeclarations,
-                toolChoice: 'auto',
-            });
+                const functionDeclarations = this.getFunctionDeclarations(this._spec);
+                const llmHelper: LLMHelper = LLMHelper.load(this._model);
+                this._toolsConfig = llmHelper.connector.formatToolsConfig({
+                    type: 'function',
+                    toolDefinitions: functionDeclarations,
+                    toolChoice: 'auto',
+                });
 
-            let messages = [];
-            if (this._context) messages = this._context.messages; // preserve messages
+                let messages = [];
+                if (this._context) messages = this._context.messages; // preserve messages
 
-            this._context = new LLMContext(this._model, this.systemPrompt, messages);
-        } else {
-            this._toolsConfig = null;
-            this._reqMethods = null;
-            this._endpoints = null;
-            this._baseUrl = null;
+                this._context = new LLMContext(this._model, this.systemPrompt, messages);
+            } else {
+                this._toolsConfig = null;
+                this._reqMethods = null;
+                this._endpoints = null;
+                this._baseUrl = null;
+            }
+        } catch (error) {
+            this.emit('error', error);
         }
     }
 

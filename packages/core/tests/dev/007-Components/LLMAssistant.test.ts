@@ -39,16 +39,17 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 });
-
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'agent-123456',
-        agentRuntime: { debug: true }, // used inside createComponentLogger()
-    }));
+    const MockedAgent = vi.fn().mockImplementation(() => {
+        // Inherit Agent.prototype for proper instanceof Agent checks
+        return Object.create(Agent.prototype, {
+            id: { value: 'agent-123456' }, // used inside inferBinaryType()
+            agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
+        });
+    });
     return { default: MockedAgent };
 });
-
 describe('LLMAssistant: process function', () => {
     let llmAssistant: LLMAssistant;
     let agent: Agent;
@@ -62,7 +63,7 @@ describe('LLMAssistant: process function', () => {
             name: 'LLMAssistant',
             inputs: [],
             data: {
-                model: 'gpt-3.5-turbo',
+                model: 'gpt-4o-mini',
                 ttl: 5 * 60, //default expiration time for conversation cache
                 behavior:
                     'You are a friendly and funny assistant, you answer any question but start and finish every message with "Yohohohooooo!"\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"',

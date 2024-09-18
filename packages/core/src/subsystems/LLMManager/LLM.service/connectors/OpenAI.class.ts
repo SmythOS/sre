@@ -1,50 +1,54 @@
+import EventEmitter from 'events';
+import OpenAI from 'openai';
+import { encodeChat } from 'gpt-tokenizer';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
-import { encodeChat } from 'gpt-tokenizer';
-import OpenAI from 'openai';
-import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
-import EventEmitter from 'events';
-import { delay } from '@sre/utils/date-time.utils';
-import { Readable } from 'stream';
+
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig } from '@sre/types/LLM.types';
+
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('OpenAIConnector');
+
+const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        // if (!model) model = 'gpt-3.5-turbo';
+    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-        //if (!params.model) params.model = 'gpt-4-turbo';
+    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages) params.messages = [];
+        if (!_params.messages) _params.messages = [];
+
+        const _messages = this.getConsistentMessages(_params.messages);
 
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (params.messages[0]?.role !== 'system') {
-            params.messages.unshift({
-                role: 'system',
+        if (_messages[0]?.role !== 'system') {
+            _messages.unshift({
+                role: TLLMMessageRole.System,
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
 
-            if (params.model.startsWith('gpt-4-turbo') || params.model.startsWith('gpt-3.5-turbo')) {
-                params.response_format = { type: 'json_object' };
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+                _params.response_format = { type: 'json_object' };
             }
         }
 
-        if (prompt && params.messages.length === 1) {
-            params.messages.push({ role: 'user', content: prompt });
+        if (prompt && _messages.length === 1) {
+            _messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
-        delete params.prompt;
 
         // Check if the team has their own API key, then use it
-        const apiKey = params?.apiKey;
-        delete params.apiKey; // Remove apiKey from params
+        const apiKey = _params?.apiKey;
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
@@ -52,63 +56,72 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         // Check token limit
-        const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
+        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
-            model: params.model,
+            model: _params.model,
             promptTokens,
-            completionTokens: params?.max_tokens,
+            completionTokens: _params?.max_tokens,
             hasTeamAPIKey: !!apiKey,
         });
 
         if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
 
-        const response: any = await openai.chat.completions.create(params as OpenAI.ChatCompletionCreateParamsNonStreaming);
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: _params.model,
+            messages: _messages,
+        };
 
-        const content = response?.choices?.[0]?.message.content;
+        if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
+        if (_params?.temperature) chatCompletionArgs.temperature = _params.temperature;
+        if (_params?.stop) chatCompletionArgs.stop = _params.stop;
+        if (_params?.top_p) chatCompletionArgs.top_p = _params.top_p;
+        if (_params?.frequency_penalty) chatCompletionArgs.frequency_penalty = _params.frequency_penalty;
+        if (_params?.presence_penalty) chatCompletionArgs.presence_penalty = _params.presence_penalty;
+        if (_params?.response_format) chatCompletionArgs.response_format = _params.response_format;
 
-        return { content, finishReason: response?.choices?.[0]?.finish_reason };
+        try {
+            const response = await openai.chat.completions.create(chatCompletionArgs);
+
+            const content = response?.choices?.[0]?.message.content;
+            const finishReason = response?.choices?.[0]?.finish_reason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
     }
+
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        //if (!params.model) params.model = 'gpt-4-vision-preview';
+        const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages || params.messages?.length === 0) params.messages = [];
-        if (params.messages?.role !== 'system') {
-            params.messages.unshift({
+        if (!_params.messages || _params.messages?.length === 0) _params.messages = [];
+        if (_params.messages?.role !== 'system') {
+            _params.messages.unshift({
                 role: 'system',
                 content:
                     'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
             });
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+                _params.response_format = { type: 'json_object' };
+            }
         }
-
-        const sources: BinaryInput[] = params?.sources || [];
-        delete params?.sources; // Remove images from params
-
-        //const imageData = await prepareImageData(sources, 'OpenAI', agent);
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const imageData = [];
-        for (let source of sources) {
-            const bufferData = await source.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const url = `data:${source.mimetype};base64,${base64Data}`;
-            imageData.push({
-                type: 'image_url',
-                image_url: {
-                    url,
-                },
-            });
-        }
+
+        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
         const promptData = [{ type: 'text', text: prompt }, ...imageData];
-        params.messages.push({ role: 'user', content: promptData });
+        _params.messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
-            const apiKey = params?.apiKey;
-            delete params.apiKey; // Remove apiKey from params
+            const apiKey = _params?.apiKey;
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
@@ -118,51 +131,91 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = await this.countVisionPromptTokens(promptData);
 
             const tokenLimit = this.checkTokensLimit({
-                model: params.model,
+                model: _params.model,
                 promptTokens,
-                completionTokens: params?.max_tokens,
+                completionTokens: _params?.max_tokens,
                 hasTeamAPIKey: !!apiKey,
             });
 
             if (tokenLimit.isExceeded) throw new Error(tokenLimit.error);
 
-            const response: any = await openai.chat.completions.create({ ...params });
+            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+                model: _params.model,
+                messages: _params.messages,
+            };
+
+            if (_params?.max_tokens) {
+                chatCompletionArgs.max_tokens = _params.max_tokens;
+            }
+
+            const response: any = await openai.chat.completions.create(chatCompletionArgs);
 
             const content = response?.choices?.[0]?.message.content;
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
-            console.log('Error in visionLLMRequest: ', error);
+            throw error;
+        }
+    }
+
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        // throw new Error('Image generation request is not supported for OpenAI.');
+        try {
+            const { model, size, quality, n, response_format, style } = params;
+            const args: GenerateImageConfig & { prompt: string } = {
+                prompt,
+                model,
+                size,
+                quality,
+                n,
+                response_format,
+            };
+
+            if (style) {
+                args.style = style;
+            }
+
+            const apiKey = params?.apiKey;
+
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.OPENAI_API_KEY,
+            });
+
+            const response = await openai.images.generate(args);
+
+            return response;
+        } catch (error: any) {
+            console.log('Error generating image(s) with DALL·E: ', error);
 
             throw error;
         }
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
+        // We provide
+        const openai = new OpenAI({
+            apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
+        });
+
+        const messages = this.getConsistentMessages(_params.messages);
+
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+            model: _params.model,
+            messages: messages,
+            max_tokens: _params.max_tokens,
+        };
+
+        if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+
         try {
-            // We provide
-            const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
-            });
-
-            // sanity check
-            if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
-
-            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-                model,
-                messages,
-                max_tokens,
-            };
-
-            if (tools && tools.length > 0) args.tools = tools;
-            if (tool_choice) args.tool_choice = tool_choice;
-
-            const result = await openai.chat.completions.create(args);
+            const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -187,11 +240,11 @@ export class OpenAIConnector extends LLMConnector {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
+    // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -204,7 +257,7 @@ export class OpenAIConnector extends LLMConnector {
 
             // sanity check
             if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
+                throw new Error('Invalid messages argument for chat completion.');
             }
 
             console.log('model', model);
@@ -346,70 +399,74 @@ export class OpenAIConnector extends LLMConnector {
     //     return stream;
     // }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
+
         const emitter = new EventEmitter();
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
         });
 
         //TODO: check token limits for non api key users
-        console.log('model', model);
-        console.log('messages', messages);
-        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model,
-            messages,
-            max_tokens,
+        console.log('model', _params.model);
+        console.log('messages', _params.messages);
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model: _params.model,
+            messages: _params.messages,
+            max_tokens: _params.max_tokens,
             stream: true,
         };
 
-        if (tools && tools.length > 0) args.tools = tools;
-        if (tool_choice) args.tool_choice = tool_choice;
-        const stream: any = await openai.chat.completions.create(args);
+        if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
 
-        // Process stream asynchronously while as we need to return emitter immediately
-        (async () => {
-            let delta: Record<string, any> = {};
+        try {
+            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
-            let toolsData: any = [];
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                let delta: Record<string, any> = {};
 
-            for await (const part of stream) {
-                delta = part.choices[0].delta;
-                emitter.emit('data', delta);
+                let toolsData: any = [];
 
-                if (!delta?.tool_calls && delta?.content) {
-                    emitter.emit('content', delta?.content, delta?.role);
+                for await (const part of stream) {
+                    delta = part.choices[0].delta;
+                    emitter.emit('data', delta);
+
+                    if (!delta?.tool_calls && delta?.content) {
+                        emitter.emit('content', delta?.content, delta?.role);
+                    }
+                    //_stream = toolCallsStream;
+                    if (delta?.tool_calls) {
+                        const toolCall = delta?.tool_calls?.[0];
+                        const index = toolCall?.index;
+
+                        toolsData[index] = {
+                            index,
+                            role: 'tool',
+                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        };
+                    }
                 }
-                //_stream = toolCallsStream;
-                if (delta?.tool_calls) {
-                    const toolCall = delta?.tool_calls?.[0];
-                    const index = toolCall?.index;
-
-                    toolsData[index] = {
-                        index,
-                        role: 'tool',
-                        id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
-                        type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
-                        name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                        arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-                    };
+                if (toolsData?.length > 0) {
+                    emitter.emit('toolsData', toolsData);
                 }
-            }
-            if (toolsData?.length > 0) {
-                emitter.emit('toolsData', toolsData);
-            }
 
-            setTimeout(() => {
-                emitter.emit('end', toolsData);
-            }, 100);
-        })();
-        return emitter;
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+            return emitter;
+        } catch (error: any) {
+            throw error;
+        }
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -439,14 +496,14 @@ export class OpenAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
-        const messageBlocks: LLMToolResultMessageBlock[] = [];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
             const transformedMessageBlock = {
@@ -458,11 +515,77 @@ export class OpenAIConnector extends LLMConnector {
 
         const transformedToolsData = toolsData.map((toolData) => ({
             tool_call_id: toolData.id,
-            role: toolData.role,
+            role: toolData.role as TLLMMessageRole,
             name: toolData.name,
             content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
         }));
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    private getConsistentMessages(messages) {
+        if (messages.length === 0) return [];
+
+        return messages.map((message) => {
+            const _message = { ...message };
+            let textContent = '';
+
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
+                textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (message?.content) {
+                textContent = message.content;
+            }
+
+            _message.content = textContent;
+
+            return _message;
+        });
+    }
+
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private async getImageData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            image_url: { url: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const url = `data:${fileSource.mimetype};base64,${base64Data}`;
+
+                imageData.push({
+                    type: 'image_url',
+                    image_url: { url },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

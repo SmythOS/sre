@@ -21,7 +21,7 @@ export default class FSign extends Component {
             let signingKey = input.Key || config.data.key;
             // signingKey = parseTemplate(signingKey, input, { processUnmatched: false });
             // signingKey = await parseKey(signingKey, teamId);
-            signingKey = await TemplateString(signingKey).parse(input).parseTeamKeys(teamId).asyncResult;
+            signingKey = await TemplateString(signingKey).parse(input).parseTeamKeysAsync(teamId).asyncResult;
 
             const signMethod = config.data.signMethod || 'HMAC';
             const dataTransform = config.data.dataTransform || 'None';

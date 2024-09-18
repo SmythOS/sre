@@ -4,7 +4,8 @@ import { FunctionCallingMode } from '@google/generative-ai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
-export type LLMParams = {
+export type TLLMParams = {
+    messages?: TLLMMessageBlock[];
     apiKey?: string; // for all
     temperature?: number; // for all
     max_tokens?: number; // for OpenAI, cohere, together.ai, AnthropicAI
@@ -75,13 +76,40 @@ export interface ToolsConfig {
 }
 
 //#endregion
-export type LLMMessageBlock = {
-    role: string;
-    content: string | any;
+
+export enum TLLMMessageRole {
+    User = 'user',
+    Assistant = 'assistant',
+    System = 'system',
+    Model = 'model',
+    Tool = 'tool',
+    Function = 'function',
+}
+
+export type TLLMMessageBlock = {
+    role: TLLMMessageRole;
+    content?:
+        | string
+        | { text: string }[]
+        | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam>;
+    parts?: {
+        text?: string;
+        functionCall?: { name: string; args: string };
+        functionResponse?: { name: string; response: { name: string; content: string } };
+    }[]; // for Google Vertex AI
     tool_calls?: ToolData[];
 };
 
-export type LLMToolResultMessageBlock = LLMMessageBlock & {
+export type TLLMToolResultMessageBlock = TLLMMessageBlock & {
     tool_call_id?: string; // for tool result message block of OpenAI
     name?: string; // for tool result message block of OpenAI
+};
+
+export type GenerateImageConfig = {
+    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792';
+    quality?: 'standard' | 'hd';
+    model: string;
+    style?: 'vivid' | 'natural';
+    n?: number;
+    response_format?: 'url' | 'b64_json';
 };

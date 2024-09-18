@@ -1,8 +1,27 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-
+import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import { Conversation } from '@sre/helpers/Conversation.helper';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import Agent from '@sre/AgentManager/Agent.class';
+import EventEmitter from 'events';
+
+/*
+ * This file contains tests for the `toolRequest` and `streamRequest` functions.
+ * These tests ensure that the responses include the correct tool information
+ * and handle various scenarios, such as using multiple tools, handling errors,
+ * and streaming responses.
+ */
+
+// Mock Agent class
+vi.mock('@sre/AgentManager/Agent.class', () => {
+    const MockedAgent = vi.fn().mockImplementation(() => {
+        return Object.create(Agent.prototype, {
+            id: { value: 1 },
+        });
+    });
+    return { default: MockedAgent };
+});
+
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -28,140 +47,329 @@ const sre = SmythRuntime.Instance.init({
     },
 });
 
-function runTestCases(model: string) {
-    it(`runs a conversation with tool use with Model: ${model}`, async () => {
-        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-        const system = `You are a helpful assistant that can answer questions about SmythOS.
-if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
+// @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
+let agent = new Agent();
 
-        const conv = new Conversation(model, specUrl);
-        conv.systemPrompt = system;
-        conv.on('beforeToolCall', (args) => {
-            console.log('beforeToolCall', args);
-        });
-        const result = await conv.prompt('What can you help me with ?');
+const TIMEOUT = 30000;
 
-        expect(result).toBeDefined();
-    }, 30000);
+function runToolTestCases(model: string) {
+    const llmHelper: LLMHelper = LLMHelper.load(model);
 
-    it(`runs a conversation with tool use in stream mode with Model: ${model}`, async () => {
-        const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-        const system = `You are a helpful assistant that can answer questions about SmythOS.
-if the user asks any question, use /ask endpoint to get information and be able to answer it.`;
+    describe(`Tool Request Tests for Model: ${model}`, () => {
+        it(
+            'should execute a simple tool request',
+            async () => {
+                const toolDefinitions = [
+                    {
+                        name: 'get_weather',
+                        description: 'Get the current weather',
+                        properties: {
+                            location: { type: 'string' },
+                        },
+                        requiredFields: ['location'],
+                    },
+                ];
 
-        const conv = new Conversation(model, specUrl);
-        conv.systemPrompt = system;
+                const toolsConfig = llmHelper.connector.formatToolsConfig({
+                    type: 'function',
+                    toolDefinitions,
+                    toolChoice: 'auto',
+                });
 
-        let streamResult = '';
-        conv.on('beforeToolCall', (args) => {
-            //console.log('beforeToolCall', args);
-        });
-        conv.on('content', (content) => {
-            //console.log('data', content);
-            streamResult += content;
-        });
-        const result = await conv.streamPrompt('What can you help me with ?');
+                const params = {
+                    messages: [{ role: 'user', content: "What's current weather in Bangladesh?" }],
+                    toolsConfig,
+                };
 
-        expect(result).toBeDefined();
-    }, 30000);
+                const result = await llmHelper.toolRequest(params, agent);
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
+                expect(result.data.useTool).toBe(true);
+                expect(result.data.toolsData).toBeInstanceOf(Array);
+                expect(result.data.toolsData.length).toBeGreaterThan(0);
+                expect(result.data.toolsData[0].name).toBe('get_weather');
+            },
+            TIMEOUT
+        );
 
-    it(`runs a conversation with remote sentinel agent with Model: ${model}`, async () => {
-        const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+        it(
+            'should handle tool requests with no tools used',
+            async () => {
+                const toolDefinitions = [
+                    {
+                        name: 'get_weather',
+                        description: 'Get the current weather',
+                        properties: {
+                            location: { type: 'string' },
+                        },
+                        requiredFields: ['location'],
+                    },
+                ];
 
-        const conv = new Conversation(model, specUrl);
+                const params = {
+                    messages: [{ role: 'user', content: 'Hello, how are you?' }],
+                    toolsConfig: {
+                        type: 'function',
+                        toolDefinitions,
+                        toolChoice: 'auto',
+                    },
+                };
 
-        let streamResult = '';
-        conv.on('beforeToolCall', (args) => {
-            //console.log('beforeToolCall', args);
-        });
-        conv.on('content', (content) => {
-            //console.log('data', content);
-            streamResult += content;
-        });
-        conv.on('afterToolCall', (toolArgs, functionResponse) => {
-            console.log('afterToolCall', toolArgs, functionResponse);
-        });
-        const result = await conv.streamPrompt('Analyze smyth runtime dependencies and tell me what S3Storage.class.ts depends on');
+                const result = await llmHelper.toolRequest(params, agent);
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
+                expect(result.data.useTool).toBe(false);
+                expect(result.data.content).toBeTruthy();
+            },
+            TIMEOUT
+        );
 
-        expect(result).toBeDefined();
-    }, 30000);
+        it(
+            'should handle requests with empty toolDefinitions',
+            async () => {
+                const params = {
+                    messages: [{ role: 'user', content: "What's the weather like today?" }],
+                    toolsConfig: {
+                        type: 'function',
+                        toolDefinitions: [], // Empty tools array
+                        toolChoice: 'auto',
+                    },
+                };
 
-    it(`runs a conversation remote weather openAPI.json with Model: ${model}`, async () => {
-        //TODO: test invalid yaml and json urls
-        const specUrl = 'https://raw.githubusercontent.com/APIs-guru/openapi-directory/main/APIs/xkcd.com/1.0.0/openapi.yaml';
+                const result = await llmHelper.toolRequest(params, agent);
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
+                expect(result.data.useTool).toBe(false);
+                expect(result.data.content).toBeTruthy();
+            },
+            TIMEOUT
+        );
 
-        const conv = new Conversation(model, specUrl);
+        it(
+            'should handle errors in toolRequest gracefully',
+            async () => {
+                const params = {
+                    messages: [], // Empty messages array should cause an error
+                };
 
-        let streamResult = '';
-        conv.on('beforeToolCall', (args) => {
-            //console.log('beforeToolCall', args);
-        });
-        conv.on('content', (content) => {
-            //console.log('data', content);
-            streamResult += content;
-        });
-        conv.on('afterToolCall', (info, functionResponse) => {
-            console.log('afterToolCall', info.tool, functionResponse);
-        });
-        const result = await conv.streamPrompt('find a random comic and write a short story about it');
-
-        console.log(streamResult);
-        expect(result).toBeDefined();
-    }, 30000);
-
-    it(
-        `runs successive tools calls with Model: ${model}`,
-        async () => {
-            //const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-            const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const conv = new Conversation(model, specUrl);
-
-            let streamResult = '';
-            conv.on('beforeToolCall', (args) => {
-                //console.log('beforeToolCall', args);
-            });
-
-            conv.on('data', (data) => {
-                //console.log('===== data =====');
-                //console.log('>>', data);
-            });
-            conv.on('content', (content) => {
-                console.log(content);
-                streamResult += content;
-            });
-            conv.on('start', (content) => {
-                console.log('============== Start ====================');
-            });
-            conv.on('end', (content) => {
-                console.log('============== End ====================');
-            });
-
-            conv.on('beforeToolCall', (info) => {
-                try {
-                    console.log('Using tool : ' + info.tool.name);
-                } catch (error) {}
-            });
-            conv.on('beforeToolCall', async (info) => {
-                try {
-                    console.log('Got response from tool : ' + info.tool.name);
-                } catch (error) {}
-            });
-
-            const result = await conv.streamPrompt(
-                //'analyze smyth runtime code, implement a Google Cloud storage connector, register it in the storage service, implement the unit tests, and then write a documentation.\n\nif you get stuck somewhere or need confirmation, you can ask me'
-                'search documentation about ldap, then summarize it in a single sentence, then search a documentation about logto, then write a single sentence about it. when you finish say : "FINISHED!!"'
-                //'search documentation about ldap, then summarize it in a single sentence'
-            );
-            expect(result).toBeDefined();
-        },
-        60000 * 10
-    );
+                expect(llmHelper.toolRequest(params, agent)).rejects.toThrow();
+            },
+            TIMEOUT
+        );
+    });
 }
 
-const models = ['gpt-4o', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash', 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'];
+function runStreamRequestTestCases(model: string) {
+    const llmHelper: LLMHelper = LLMHelper.load(model);
+
+    describe(`Stream Request Tests for Model: ${model}`, () => {
+        it(
+            'should stream a simple request',
+            async () => {
+                const params = {
+                    messages: [{ role: 'user', content: 'Tell me a short story.' }],
+                };
+
+                const stream = await llmHelper.streamRequest(params, agent);
+                expect(stream).toBeInstanceOf(EventEmitter);
+
+                let content = '';
+
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('content', (chunk) => {
+                        content += chunk;
+                    });
+
+                    stream.on('end', resolve);
+                });
+
+                await streamComplete;
+
+                expect(content).toBeTruthy();
+            },
+            TIMEOUT
+        );
+
+        it(
+            'should handle streaming with tools',
+            async () => {
+                const toolDefinitions = [
+                    {
+                        name: 'get_weather',
+                        description: 'Get the current weather',
+                        properties: {
+                            location: { type: 'string' },
+                        },
+                        requiredFields: ['location'],
+                    },
+                ];
+
+                const toolsConfig = llmHelper.connector.formatToolsConfig({
+                    type: 'function',
+                    toolDefinitions,
+                    toolChoice: 'auto',
+                });
+
+                const params = {
+                    messages: [{ role: 'user', content: "What's the current weather in Bangladesh?" }],
+                    toolsConfig,
+                };
+
+                const stream = await llmHelper.streamRequest(params, agent);
+                expect(stream).toBeInstanceOf(EventEmitter);
+
+                let toolsData;
+
+                const getToolsData = () => {
+                    return new Promise<void>((resolve) => {
+                        stream.on('toolsData', resolve);
+                    });
+                };
+
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('toolsData', (data) => {
+                        toolsData = data;
+                    });
+                    stream.on('end', resolve);
+                });
+
+                await streamComplete;
+
+                expect(toolsData).toBeTruthy();
+                expect(toolsData[0].name).toBe('get_weather');
+            },
+            TIMEOUT
+        );
+
+        it(
+            'should handle errors in stream gracefully',
+            async () => {
+                const params = {
+                    messages: [], // Empty messages array should cause an error
+                };
+
+                const stream = await llmHelper.streamRequest(params, agent);
+                expect(stream).toBeInstanceOf(EventEmitter);
+
+                let error;
+
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('error', (e) => {
+                        error = e;
+                    });
+                    stream.on('end', resolve);
+                });
+
+                await streamComplete;
+
+                expect(error).toBeInstanceOf(Error);
+            },
+            TIMEOUT
+        );
+    });
+}
+
+function runMultipleToolRequestTestCases(model: string) {
+    const llmHelper: LLMHelper = LLMHelper.load(model);
+
+    describe(`Multiple Tools Request Tests for Model: ${model}`, () => {
+        const toolDefinitions = [
+            {
+                name: 'get_weather',
+                description: 'Get the current weather',
+                properties: {
+                    location: { type: 'string' },
+                },
+                requiredFields: ['location'],
+            },
+            {
+                name: 'get_population',
+                description: 'Get the population of a city',
+                properties: {
+                    city: { type: 'string' },
+                },
+                requiredFields: ['city'],
+            },
+        ];
+
+        const toolsConfig = llmHelper.connector.formatToolsConfig({
+            type: 'function',
+            toolDefinitions,
+            toolChoice: 'auto',
+        });
+
+        const params = {
+            messages: [{ role: 'user', content: "What's the weather like in New York and what's the population?" }],
+            toolsConfig,
+        };
+
+        it(
+            'should return multiple tools info with toolRequest()',
+            async () => {
+                const result = await llmHelper.toolRequest(params, agent);
+                expect(result).toBeTruthy();
+                expect(result.data).toBeTruthy();
+                expect(result.data.useTool).toBe(true);
+                expect(result.data.toolsData).toBeInstanceOf(Array);
+                expect(result.data.toolsData.length).toBe(2);
+                expect(result.data.toolsData[0].name).toBe('get_weather');
+                expect(result.data.toolsData[1].name).toBe('get_population');
+            },
+            TIMEOUT
+        );
+
+        it(
+            'should return multiple tools info with streamRequest()',
+            async () => {
+                const stream = await llmHelper.streamRequest(params, agent);
+                expect(stream).toBeInstanceOf(EventEmitter);
+
+                let toolsData: any[] = [];
+
+                const streamComplete = new Promise<void>((resolve) => {
+                    stream.on('toolsData', (data) => {
+                        toolsData = toolsData.concat(data);
+                    });
+
+                    stream.on('end', resolve);
+                });
+
+                await streamComplete;
+
+                expect(toolsData).toBeInstanceOf(Array);
+                expect(toolsData.length).toBe(2);
+                expect(toolsData[0].name).toBe('get_weather');
+                expect(toolsData[1].name).toBe('get_population');
+            },
+            TIMEOUT
+        );
+    });
+}
+
+const models = [
+    'gpt-4o-mini', // OpenAI
+    'claude-3-5-sonnet-20240620', // Anthropic AI
+    'gemini-1.5-flash', // Google AI
+    'gemma2-9b-it', // Groq
+    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
+];
 
 for (const model of models) {
-    describe(`LLM Tools use for Model: ${model}`, () => {
-        runTestCases(model);
-    });
+    runToolTestCases(model);
+    runStreamRequestTestCases(model);
+}
+
+/*
+ * Google AI and Groq do not return multiple tool data in a single response.
+ * Therefore, the expectation "(result.data.toolsData.length).toBe(2)" does not apply to them.
+ * They may provide additional tool data in subsequent requests.
+ * Tests for the sequence of tool responses are available in conversation.test.ts.
+ */
+const modelsWithMultipleToolsResponse = [
+    'gpt-4o-mini', // OpenAI
+    'claude-3-5-sonnet-20240620', // Anthropic AI
+    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
+];
+for (const model of modelsWithMultipleToolsResponse) {
+    runMultipleToolRequestTestCases(model);
 }

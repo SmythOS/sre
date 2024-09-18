@@ -25,9 +25,10 @@
         "@rollup/plugin-node-resolve": "^15.2.3",
         "@rollup/pluginutils": "^5.1.0",
         "@types/node": "^20.14.2",
-        "@vitest/coverage-v8": "^1.6.0",
+        "@vitest/coverage-v8": "^2.0.5",
         "blessed": "^0.1.81",
         "blessed-contrib": "^1.0.11",
+        "chalk": "^5.3.0",
         "cross-env": "^7.0.3",
         "dependency-cruiser": "^16.3.3",
         "express": "^4.19.2",
@@ -37,7 +38,7 @@
         "neo-blessed": "^0.2.0",
         "node-global-key-listener": "^0.3.0",
         "nyc": "^17.0.0",
-        "ora": "^8.0.1",
+        "ora": "^8.1.0",
         "rollup-plugin-copy": "^3.5.0",
         "rollup-plugin-esbuild": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
@@ -50,7 +51,7 @@
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.4.5",
         "vite-tsconfig-paths": "^4.3.2",
-        "vitest": "^1.6.0"
+        "vitest": "^2.0.5"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.25.0",
@@ -78,6 +79,7 @@
         "langchain": "^0.2.10",
         "mime": "^4.0.3",
         "openai": "^4.52.2",
+        "p-limit": "^6.1.0",
         "qs": "^6.13.0",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0"
