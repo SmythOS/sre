@@ -80,8 +80,8 @@ describe('DataSourceIndexer Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
-        const vectorDB = ConnectorService.getVectorDBConnector();
-        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
+        const vectorDBHelper = VectorsHelper.load();
+        await vectorDBHelper.createNamespace(agent.teamId, namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -106,7 +106,7 @@ describe('DataSourceIndexer Component', () => {
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-        const vectors = await vectorDB.user(AccessCandidate.team('default')).search(namespace, 'Paris');
+        const vectors = await vectorDBHelper.search('default', namespace, 'Paris');
 
         expect(vectors).toBeDefined();
         expect(vectors.length).toBeGreaterThan(0);
@@ -116,7 +116,7 @@ describe('DataSourceIndexer Component', () => {
 
         // make sure that the datasource was created
 
-        const ds = await VectorsHelper.load().getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+        const ds = await vectorDBHelper.getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
         expect(ds).toBeDefined();
     });

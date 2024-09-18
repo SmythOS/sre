@@ -3,20 +3,22 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
-import { IVectorDataSourceDto, QueryOptions, Source, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
+import { IStorageVectorNamespace, IVectorDataSourceDto, QueryOptions, Source, VectorDBMetadata, VectorsResultData } from '@sre/types/VectorDB.types';
 import { Document } from '@langchain/core/documents';
 
 export interface IVectorDBRequest {
     search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorsResultData>;
     insert(namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
     delete(namespace: string, id: string | string[]): Promise<void>;
-    createNamespace(namespace: string): Promise<void>;
+    createNamespace(namespace: string, metadata?: { [key: string]: any }): Promise<void>;
     deleteNamespace(namespace: string): Promise<void>;
     namespaceExists(namespace: string): Promise<boolean>;
-    listNamespaces(): Promise<string[]>;
+    listNamespaces(): Promise<any[]>;
+    getNamespace(namespace: string): Promise<any>;
 }
 
 export abstract class VectorDBConnector extends SecureConnector {
+    public abstract indexName: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract user(candidate: IAccessCandidate): IVectorDBRequest;
 
@@ -37,13 +39,20 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract delete(acRequest: AccessRequest, namespace: string, id: string | string[], indexName: string): Promise<void>;
 
-    protected abstract createNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
+    protected abstract createNamespace(
+        acRequest: AccessRequest,
+        namespace: string,
+        indexName: string,
+        metadata?: { [key: string]: any }
+    ): Promise<void>;
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void>;
 
-    protected abstract listNamespaces(acRequest: AccessRequest): Promise<string[]>;
+    protected abstract listNamespaces(acRequest: AccessRequest): Promise<any[]>;
 
     protected abstract namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean>;
+
+    protected abstract getNamespace(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorNamespace>;
 
     // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
 

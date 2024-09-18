@@ -50,6 +50,13 @@ const SREInstance = SmythRuntime.Instance.init({
             indexName: config.env.PINECONE_INDEX_NAME || '',
         },
     },
+
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 
 const EVENTUAL_CONSISTENCY_DELAY = 4_000;
@@ -57,7 +64,6 @@ const EVENTUAL_CONSISTENCY_DELAY = 4_000;
 describe('Integration: VectorDB Helper', () => {
     describe('Functional', () => {
         const idsToClean: { id: string; namespace: string }[] = [];
-
         //* Cleanup
         afterAll(async () => {
             const vectorDB = ConnectorService.getVectorDBConnector();
@@ -77,12 +83,36 @@ describe('Integration: VectorDB Helper', () => {
             }
         });
 
+        it('create namespace', async () => {
+            const vectorDBHelper = VectorsHelper.load();
+
+            const team = AccessCandidate.team('team-123456');
+
+            await vectorDBHelper.createNamespace(team.id, faker.lorem.slug());
+        });
+
+        it("list namespaces should return the created namespace's name", async () => {
+            const vectorDBHelper = VectorsHelper.load();
+            const team = AccessCandidate.team('team-123456');
+
+            const namespaceSlugs = [faker.lorem.slug(), faker.lorem.slug(), faker.lorem.slug()];
+            const promises = namespaceSlugs.map((ns) => vectorDBHelper.createNamespace(team.id, ns));
+            await Promise.all(promises);
+
+            const namespaces = (await vectorDBHelper.listNamespaces(team.id)).map((n) => n.displayName);
+            expect(namespaces.length).toBeGreaterThanOrEqual(namespaceSlugs.length);
+            expect(namespaces).toEqual(expect.arrayContaining(namespaceSlugs));
+
+            const promises2 = namespaceSlugs.map((ns) => vectorDBHelper.deleteNamespace(team.id, ns));
+            await Promise.all(promises2);
+        });
+
         it('insert datasource (large text)', async () => {
             const hugeText = faker.lorem.paragraphs(30);
             const namespace = faker.lorem.slug();
             const vectorDB = ConnectorService.getVectorDBConnector() as PineconeVectorDB;
             const team = AccessCandidate.team('team-123');
-            await vectorDB.user(team).createNamespace(namespace);
+            await VectorsHelper.load().createNamespace(team.id, namespace);
             await VectorsHelper.load().createDatasource(hugeText, namespace, { teamId: 'team-123' });
 
             const expectedVectorsSize = (await VectorsHelper.chunkText(hugeText)).length;
@@ -102,9 +132,8 @@ describe('Integration: VectorDB Helper', () => {
 
         it('lists datasources', async () => {
             const namespace = faker.lorem.slug();
-            const vectorDB = ConnectorService.getVectorDBConnector() as PineconeVectorDB;
             const team = AccessCandidate.team('team-123');
-            await vectorDB.user(team).createNamespace(namespace);
+            await VectorsHelper.load().createNamespace(team.id, namespace);
 
             const hugeText = faker.lorem.paragraphs(30);
             await VectorsHelper.load().createDatasource(hugeText, namespace, { teamId: 'team-123' });
@@ -116,9 +145,8 @@ describe('Integration: VectorDB Helper', () => {
 
         it('deletes datasource', async () => {
             const namespace = faker.lorem.slug();
-            const vectorDB = ConnectorService.getVectorDBConnector() as PineconeVectorDB;
             const team = AccessCandidate.team('team-123');
-            await vectorDB.user(team).createNamespace(namespace);
+            await VectorsHelper.load().createNamespace(team.id, namespace);
 
             const hugeText = faker.lorem.paragraphs(30);
             const id = crypto.randomUUID();
@@ -131,6 +159,60 @@ describe('Integration: VectorDB Helper', () => {
 
             const dsAfterDelete = await VectorsHelper.load().getDatasource('team-123', namespace, id);
             expect(dsAfterDelete).toBeUndefined();
+        });
+
+        it('creates namespaces on team custom storage', async () => {
+            const namespace = faker.lorem.slug();
+            const vectorDBHelper = VectorsHelper.load();
+            const team = AccessCandidate.team('Team1');
+            vi.spyOn(vectorDBHelper, 'getCustomStorageConfig').mockResolvedValue({
+                pineconeApiKey: config.env.PINECONE_API_KEY,
+                indexName: config.env.PINECONE_INDEX_NAME,
+                openaiApiKey: config.env.OPENAI_API_KEY || '',
+            });
+            await vectorDBHelper.createNamespace(team.id, namespace, { isOnCustomStorage: true });
+
+            const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(team.id, namespace);
+            expect(isOnCustomStorage).toBe(true);
+        });
+
+        it('should return the team-specific vectorDB if it exists', async () => {
+            const helper = VectorsHelper.load();
+
+            vi.spyOn(helper, 'getCustomStorageConfig').mockResolvedValue({ pineconeApiKey: '1', indexName: 'test', environment: 'us-east-1' });
+
+            const vectorDB = await helper.getTeamVectorDB('9');
+            expect(vectorDB).toBeDefined();
+        });
+
+        it('should return null if no vectorDB is configured', async () => {
+            const vectorDB = await VectorsHelper.load().getTeamVectorDB('100');
+            expect(vectorDB).toBeNull();
+        });
+
+        it('should return true if namespace is on custom storage', async () => {
+            const helper = VectorsHelper.load();
+            const team = AccessCandidate.team('Team1');
+            vi.spyOn(helper, 'getCustomStorageConfig').mockResolvedValue({
+                pineconeApiKey: config.env.PINECONE_API_KEY,
+                indexName: config.env.PINECONE_INDEX_NAME,
+                openaiApiKey: config.env.OPENAI_API_KEY || '',
+            });
+            await helper.createNamespace(team.id, 'test', { isOnCustomStorage: true });
+
+            const isOnCustomStorage = await helper.isNamespaceOnCustomStorage(team.id, 'test');
+            expect(isOnCustomStorage).toBe(true);
+        });
+
+        it('should return false if namespace is not on custom storage', async () => {
+            const helper = VectorsHelper.load();
+            vi.spyOn(helper, 'getCustomStorageConfig').mockResolvedValue(null);
+
+            const team = AccessCandidate.team('Team1');
+            await helper.createNamespace(team.id, 'test', { isOnCustomStorage: false });
+
+            const isOnCustomStorage = await helper.isNamespaceOnCustomStorage(team.id, 'test');
+            expect(isOnCustomStorage).toBe(false);
         });
     });
 });

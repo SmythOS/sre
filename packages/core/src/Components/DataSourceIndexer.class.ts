@@ -45,8 +45,9 @@ export default class DataSourceIndexer extends Component {
             const namespaceId = _config.namespace;
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
 
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            const vectorDBHelper = VectorsHelper.load();
+            const nsExists = await vectorDBHelper.namespaceExists(teamId, namespaceId);
+
             if (!nsExists) {
                 throw new Error(`Namespace ${namespaceId} does not exist`);
             }

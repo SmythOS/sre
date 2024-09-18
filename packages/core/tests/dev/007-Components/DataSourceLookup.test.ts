@@ -78,12 +78,12 @@ describe('DataSourceLookup Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
-        const vectorDB = ConnectorService.getVectorDBConnector();
-        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
+        const vectorDBHelper = VectorsHelper.load();
+        await vectorDBHelper.createNamespace(agent.teamId, namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await VectorsHelper.load().createDatasource(sourceText.join(' '), namespace, {
+        await vectorDBHelper.createDatasource(sourceText.join(' '), namespace, {
             teamId: 'default',
             chunkSize: 1000,
             chunkOverlap: 0,
@@ -137,7 +137,7 @@ describe('DataSourceLookup Component', () => {
         // index some data using the connector
         const namespace = faker.lorem.word();
         const vectorDB = ConnectorService.getVectorDBConnector();
-        await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
+        await VectorsHelper.load().createNamespace(agent.teamId, namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 

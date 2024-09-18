@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import DataSourceCleaner from '@sre/Components/DataSourceCleaner.class';
-import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
@@ -82,8 +81,8 @@ describe('DataSourceCleaner Component', () => {
 
             // index some data using the connector
             const namespace = faker.lorem.word();
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
+            const vectorDBHelper = VectorsHelper.load();
+            await vectorDBHelper.createNamespace(agent.teamId, namespace);
 
             const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -146,7 +145,7 @@ describe('DataSourceCleaner Component', () => {
 
             // expect that all the embeddings are deleted. we can do that by doing a similar search on the data we indexed
 
-            const vectors = await vectorDB.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
+            const vectors = await vectorDBHelper.search(agent.teamId, namespace, 'Paris');
 
             expect(vectors).toBeDefined();
             expect(vectors.length).toBe(0);

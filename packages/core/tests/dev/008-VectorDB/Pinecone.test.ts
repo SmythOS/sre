@@ -76,31 +76,6 @@ describe('Integration: Pinecone VectorDB', () => {
             }
         });
 
-        it('create namespace', async () => {
-            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
-
-            const team = AccessCandidate.team('team-123456');
-
-            const namespace = await vectorDB.user(team).createNamespace(faker.lorem.slug());
-            expect(namespace).toBeUndefined();
-        });
-
-        it("list namespaces should return the created namespace's name", async () => {
-            const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
-            const team = AccessCandidate.team('team-123456');
-
-            const namespaceSlugs = [faker.lorem.slug(), faker.lorem.slug(), faker.lorem.slug()];
-            const promises = namespaceSlugs.map((ns) => vectorDB.user(team).createNamespace(ns));
-            await Promise.all(promises);
-
-            const namespaces = await vectorDB.user(team).listNamespaces();
-            expect(namespaces.length).toBeGreaterThanOrEqual(namespaceSlugs.length);
-            expect(namespaces).toEqual(expect.arrayContaining(namespaceSlugs));
-
-            const promises2 = namespaceSlugs.map((ns) => vectorDB.user(team).deleteNamespace(ns));
-            await Promise.all(promises2);
-        });
-
         it('insert as raw vectors', async () => {
             const dummyVectors: IVectorDataSourceDto[] = [
                 {
@@ -136,7 +111,7 @@ describe('Integration: Pinecone VectorDB', () => {
             expect(searchResult).toHaveLength(2);
 
             expect(searchResult[0].id).toBe(dummyVectors[0].id);
-        });
+        }, 60_000);
 
         it('insert vectors from text documents', async () => {
             const dummyDocuments: IVectorDataSourceDto[] = [
@@ -163,7 +138,7 @@ describe('Integration: Pinecone VectorDB', () => {
             expect(searchResult).toHaveLength(1);
 
             expect(searchResult[0].id).toBe(dummyDocuments[0].id);
-        });
+        }, 60_000);
 
         it('similiarty search by query', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -207,7 +182,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             expect(sorted[0].id).toBe(dummyVectors[0].id);
             expect(sorted[1].id).toBe(dummyVectors[1].id);
-        });
+        }, 60_000);
 
         it('similarity search by vector', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -237,7 +212,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
             // delete the inserted vector
             await vectorDB.user(team).delete(namespace, [id]);
-        });
+        }, 60_000);
 
         it('metadata should be returned with the search result', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -271,7 +246,7 @@ describe('Integration: Pinecone VectorDB', () => {
             expect(searchResult[0].id).toBe(id);
             expect(searchResult[0].metadata?.text).toBe(dummyText);
             expect(searchResult[0].metadata?.anotherField).toBe('another value');
-        });
+        }, 60_000);
 
         it('delete vectors', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -303,7 +278,7 @@ describe('Integration: Pinecone VectorDB', () => {
             expect(searchResult[0].id).toBe(id);
 
             await vectorDB.user(team).delete(namespace, [id]);
-        });
+        }, 60_000);
 
         it('different namespaces should not share vectors', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -355,7 +330,7 @@ describe('Integration: Pinecone VectorDB', () => {
             const result2Ids = searchResult2.map((r) => r.id);
             // expect that the search result would not contain v1 id
             expect(result2Ids).not.toContain(id1);
-        });
+        }, 60_000);
 
         it('delete namespace with all its vectors', async () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone') as PineconeVectorDB;
@@ -389,7 +364,7 @@ describe('Integration: Pinecone VectorDB', () => {
             await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
             await vectorDB.user(team).deleteNamespace(namespace);
-        });
+        }, 60_000);
     });
 
     describe('Security', () => {
@@ -425,6 +400,6 @@ describe('Integration: Pinecone VectorDB', () => {
             // expect that the search result would not contain the inserted vector for the stranger
             const strangerSearchResult = await vectorDB.user(strangerAgent).search(namespace, v, { topK: 10 });
             expect(strangerSearchResult).toHaveLength(0);
-        });
+        }, 60_000);
     });
 });
