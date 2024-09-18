@@ -38,9 +38,9 @@ export class SmythAccount extends AccountConnector {
 
     user(candidate: AccessCandidate): ISmythAccountRequest {
         return {
-            getAccountAllSettings: async () => this.getAccountAllSettings(candidate.readRequest, candidate.id),
-            getAccountSetting: async (settingKey: string) => this.getAccountSetting(candidate.readRequest, candidate.id, settingKey),
-            getTeamAllSettings: async () => this.getTeamAllSettings(candidate.readRequest, candidate.id),
+            getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),
+            getUserSetting: async (settingKey: string) => this.getUserSetting(candidate.readRequest, candidate.id, settingKey),
+            getAllTeamSettings: async () => this.getAllTeamSettings(candidate.readRequest, candidate.id),
             getTeamSetting: async (settingKey: string) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
             isTeamMember: async (teamId: string) => this.isTeamMember(teamId, candidate),
             getCandidateTeam: async () => this.getCandidateTeam(candidate),
@@ -74,7 +74,7 @@ export class SmythAccount extends AccountConnector {
         return null;
     }
 
-    public async getTeamAllSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[] | null> {
+    public async getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[] | null> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
             return response?.data?.settings;
@@ -83,7 +83,7 @@ export class SmythAccount extends AccountConnector {
         }
     }
 
-    public async getAccountAllSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[] | null> {
+    public async getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[] | null> {
         try {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
             return response?.data?.settings;
@@ -102,7 +102,7 @@ export class SmythAccount extends AccountConnector {
         }
     }
 
-    public async getAccountSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject> {
+    public async getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject> {
         try {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
             return response?.data?.setting;

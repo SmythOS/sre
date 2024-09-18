@@ -57,7 +57,7 @@ describe('Smyth Account Tests', () => {
 
     it('Verify all account settings are returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
-        const userSettings = await smythAccount.user(AccessCandidate.user('876')).getAccountAllSettings();
+        const userSettings = await smythAccount.user(AccessCandidate.user('876')).getAllUserSettings();
         const userMarketingMetadataObj = userSettings.filter((setting) => setting.settingKey === 'UserMarketingMetadata')?.[0];
         const userMetadataSettings = JSON.parse(userMarketingMetadataObj?.settingValue as string);
         expect(userMetadataSettings?.name).toEqual('Zubair');
@@ -65,14 +65,14 @@ describe('Smyth Account Tests', () => {
 
     it('Verify all team settings are returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
-        const teamSettings = await smythAccount.user(AccessCandidate.team('clyx0dgia0bfuccoqvwle2zsr')).getTeamAllSettings();
+        const teamSettings = await smythAccount.user(AccessCandidate.team('clyx0dgia0bfuccoqvwle2zsr')).getAllTeamSettings();
         const vaultSettings = teamSettings.filter((setting) => setting.settingKey === 'vault');
         expect(vaultSettings.length).greaterThan(0);
     });
 
     it('Verify specific account setting is returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
-        const userSettings = await smythAccount.user(AccessCandidate.user('876')).getAccountSetting('UserMarketingMetadata');
+        const userSettings = await smythAccount.user(AccessCandidate.user('876')).getUserSetting('UserMarketingMetadata');
         expect(userSettings).toBeTypeOf("object");
     });
 
