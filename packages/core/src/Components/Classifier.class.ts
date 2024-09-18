@@ -89,39 +89,43 @@ ${JSON.stringify(categories, null, 2)}`;
             };
         }
 
-        let response = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+        try {
+            let response = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
-        if (response.error) {
-            logger.error(` LLM Error=`, response.error);
+            if (response.error) {
+                logger.error(` LLM Error=`, response.error);
 
-            return { _error: response.error.toString(), _debug: logger.output };
-        }
+                return { _error: response.error.toString(), _debug: logger.output };
+            }
 
-        // let parsed = parseJson(response);
-        let parsed = typeof response === 'string' ? JSONContentHelper.create(response).tryParse() : response;
+            // let parsed = parseJson(response);
+            let parsed = typeof response === 'string' ? JSONContentHelper.create(response).tryParse() : response;
 
-        for (let entry in parsed) {
-            if (!parsed[entry]) delete parsed[entry];
-            else {
-                if (typeof parsed[entry] === 'string') {
-                    parsed[entry] = this.unescapeJSONString(parsed[entry]);
-                    // const parsedValue = parseJson(parsed[entry]);
-                    const parsedValue = JSONContentHelper.create(parsed[entry]).tryParse();
-                    if (typeof parsedValue === 'object' && !parsedValue.error) parsed[entry] = parsedValue;
+            for (let entry in parsed) {
+                if (!parsed[entry]) delete parsed[entry];
+                else {
+                    if (typeof parsed[entry] === 'string') {
+                        parsed[entry] = this.unescapeJSONString(parsed[entry]);
+                        // const parsedValue = parseJson(parsed[entry]);
+                        const parsedValue = JSONContentHelper.create(parsed[entry]).tryParse();
+                        if (typeof parsedValue === 'object' && !parsedValue.error) parsed[entry] = parsedValue;
+                    }
                 }
             }
+
+            if (parsed.error) {
+                parsed._error = parsed.error;
+                logger.warn(` Post process error=${parsed.error}`);
+                delete parsed.error;
+            }
+
+            logger.log(' Classifier result', parsed);
+
+            parsed['_debug'] = logger.output;
+
+            return parsed;
+        } catch (error) {
+            return { _error: error.message, _debug: logger.output };
         }
-
-        if (parsed.error) {
-            parsed._error = parsed.error;
-            logger.warn(` Post process error=${parsed.error}`);
-            delete parsed.error;
-        }
-
-        logger.log(' Classifier result', parsed);
-
-        parsed['_debug'] = logger.output;
-
-        return parsed;
     }
 }

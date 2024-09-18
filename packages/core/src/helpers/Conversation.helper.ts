@@ -176,25 +176,25 @@ export class Conversation extends EventEmitter {
 
         const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const { data: llmResponse, error } = await llmHelper.toolRequest(
-            {
-                model: this.model,
-                messages: contextWindow,
-                toolsConfig,
-                max_tokens: this._maxOutputTokens,
-            },
-            this._agentId
-        );
-
-        if (error) {
-            throw new Error(
-                '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
-            );
-        }
+        const { data: llmResponse } = await llmHelper
+            .toolRequest(
+                {
+                    model: this.model,
+                    messages: contextWindow,
+                    toolsConfig,
+                    max_tokens: this._maxOutputTokens,
+                },
+                this._agentId
+            )
+            .catch((error: any) => {
+                throw new Error(
+                    '[LLM Request Error]\n' +
+                        JSON.stringify({
+                            code: error?.name || 'LLMRequestFailed',
+                            message: error?.message || 'Something went wrong while calling LLM.',
+                        })
+                );
+            });
 
         // useTool = true means we need to use it
         if (llmResponse?.useTool) {
@@ -260,12 +260,14 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
             return this.prompt(null, toolHeaders);
         }
+
+        this._context.push(llmResponse?.message);
 
         let content = JSONContent(llmResponse?.content).tryParse();
 
@@ -406,7 +408,7 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+                const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                     messageBlock: llmMessage,
                     toolsData: processedToolsData,
                 });
@@ -559,7 +561,7 @@ export class Conversation extends EventEmitter {
 
             const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmHelper.connector.prepareInputMessageBlocks({
+            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
                 messageBlock: llmMessage,
                 toolsData: processedToolsData,
             });
