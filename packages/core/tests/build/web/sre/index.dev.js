@@ -36,7 +36,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import Groq from 'groq-sdk';
 import IORedis from 'ioredis';
 import qs from 'qs';
-import { SecretsManagerClient, GetSecretValueCommand, PutSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { Pinecone } from '@pinecone-database/pinecone';
 
 var __defProp$X = Object.defineProperty;
@@ -609,18 +609,18 @@ const DummyConnector = new Proxy(
 var __defProp$V = Object.defineProperty;
 var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$i = Logger("Connector");
+const console$j = Logger("Connector");
 class Connector {
   constructor() {
     __publicField$V(this, "started", false);
     __publicField$V(this, "_readyPromise");
   }
   async start() {
-    console$i.info(`Starting ${this.name} connector ...`);
+    console$j.info(`Starting ${this.name} connector ...`);
     this.started = true;
   }
   async stop() {
-    console$i.info(`Stopping ${this.name} connector ...`);
+    console$j.info(`Stopping ${this.name} connector ...`);
   }
   ready() {
     if (!this._readyPromise) {
@@ -650,7 +650,7 @@ class Connector {
 
 const SystemEvents = new EventEmitter();
 
-const console$h = Logger("ConnectorService");
+const console$i = Logger("ConnectorService");
 const Connectors = {};
 const ConnectorInstances = {};
 let ServiceRegistry = {};
@@ -688,7 +688,7 @@ class ConnectorService {
    */
   static register(connectorType, connectorName, connectorConstructor) {
     if (typeof connectorConstructor !== "function" || !isSubclassOf(connectorConstructor, Connector)) {
-      console$h.error(`Invalid Connector ${connectorType}:${connectorName}`);
+      console$i.error(`Invalid Connector ${connectorType}:${connectorName}`);
       return;
     }
     if (!Connectors[connectorType]) {
@@ -739,7 +739,7 @@ class ConnectorService {
       if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
         return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]];
       }
-      console$h.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+      console$i.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
       return DummyConnector;
     }
     return instance;
@@ -3648,13 +3648,13 @@ class DataSourceLookup extends Component {
   }
 }
 
-const console$g = Logger("SecureConnector");
+const console$h = Logger("SecureConnector");
 class SecureConnector extends Connector {
   async start() {
-    console$g.info(`Starting ${this.name} connector ...`);
+    console$h.info(`Starting ${this.name} connector ...`);
   }
   async stop() {
-    console$g.info(`Stopping ${this.name} connector ...`);
+    console$h.info(`Stopping ${this.name} connector ...`);
   }
   async hasAccess(acRequest) {
     const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
@@ -4562,7 +4562,7 @@ class OpenAPIParser {
 var __defProp$v = Object.defineProperty;
 var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$f = Logger("ConversationHelper");
+const console$g = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
     super();
@@ -4585,7 +4585,7 @@ class Conversation extends EventEmitter$1 {
     __publicField$v(this, "_spec");
     this.on("error", (error) => {
       this._lastError = error;
-      console$f.warn("Conversation Error: ", error);
+      console$g.warn("Conversation Error: ", error);
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
@@ -4667,7 +4667,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    console$f.debug("Request to LLM with the given model, messages and functions properties.", {
+    console$g.debug("Request to LLM with the given model, messages and functions properties.", {
       model: this.model,
       message,
       toolsConfig
@@ -4693,7 +4693,7 @@ class Conversation extends EventEmitter$1 {
       );
     }
     if (llmResponse?.useTool) {
-      console$f.debug({
+      console$g.debug({
         type: "ToolsData",
         message: "Tool(s) is available for use.",
         toolsData: llmResponse?.toolsData
@@ -4714,7 +4714,7 @@ class Conversation extends EventEmitter$1 {
           baseUrl,
           headers: toolHeaders
         };
-        console$f.debug({
+        console$g.debug({
           type: "UseTool",
           message: "As LLM returned a tool to use, so use it with the provided arguments.",
           plugin_url: { baseUrl, endpoint, args },
@@ -4727,7 +4727,7 @@ class Conversation extends EventEmitter$1 {
           functionResponse = typeof error2 === "object" && typeof error2 !== null ? JSON.stringify(error2) : error2;
         }
         functionResponse = typeof functionResponse === "object" && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-        console$f.debug({
+        console$g.debug({
           type: "ToolResult",
           message: "Result from the tool",
           response: functionResponse
@@ -4740,7 +4740,7 @@ class Conversation extends EventEmitter$1 {
       return this.prompt(null, toolHeaders);
     }
     let content = JSONContent(llmResponse?.content).tryParse();
-    console$f.debug({
+    console$g.debug({
       type: "FinalResult",
       message: "Here is the final result after processing all the tools and LLM response.",
       response: content
@@ -4767,7 +4767,7 @@ class Conversation extends EventEmitter$1 {
       },
       this._agentId
     ).catch((error) => {
-      console$f.error("Error on streamRequest: ", error);
+      console$g.error("Error on streamRequest: ", error);
     });
     if (!eventEmitter || eventEmitter.error) {
       throw new Error("[LLM Request Error]");
@@ -4961,7 +4961,7 @@ class Conversation extends EventEmitter$1 {
           }
           reqConfig.headers["Content-Type"] = "application/json";
         }
-        console$f.debug("Calling tool: ", reqConfig);
+        console$g.debug("Calling tool: ", reqConfig);
         if (reqConfig.url.includes("localhost")) {
           const response = await AgentProcess.load(reqConfig.headers["X-AGENT-ID"]).run(reqConfig);
           return { data: response.data, error: null };
@@ -4970,8 +4970,8 @@ class Conversation extends EventEmitter$1 {
           return { data: response.data, error: null };
         }
       } catch (error) {
-        console$f.warn("Failed to call Tool: ", baseUrl, endpoint);
-        console$f.warn("  ====>", error);
+        console$g.warn("Failed to call Tool: ", baseUrl, endpoint);
+        console$g.warn("  ====>", error);
         return { data: null, error: error?.response?.data || error?.message };
       }
     }
@@ -6600,7 +6600,7 @@ let AgentLogger = _AgentLogger;
 var __defProp$l = Object.defineProperty;
 var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$e = Logger("RuntimeContext");
+const console$f = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
@@ -6647,7 +6647,7 @@ class RuntimeContext extends EventEmitter$1 {
   initRuntimeContext() {
     if (this._runtimeFileReady) return;
     const endpointDBGCall = this.runtime.xDebugId?.startsWith("dbg-");
-    console$e.debug("Init ctxFile", this.ctxFile);
+    console$f.debug("Init ctxFile", this.ctxFile);
     const agent = this.runtime.agent;
     let method = (agent.agentRequest.method || "POST").toUpperCase();
     const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
@@ -6697,9 +6697,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$e.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
-      console$e.log(">>> ctxFile", this.ctxFile);
-      console$e.log(">>> ctxData", ctxData);
+      console$f.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
+      console$f.log(">>> ctxFile", this.ctxFile);
+      console$f.log(">>> ctxData", ctxData);
     }
     component.ctx = { ...component.ctx, ...data, step: this.step };
     this.sync();
@@ -6708,9 +6708,9 @@ class RuntimeContext extends EventEmitter$1 {
     const ctxData = this;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$e.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
-      console$e.log(">>> ctxFile", this.ctxFile);
-      console$e.log(">>> ctxData", ctxData);
+      console$f.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
+      console$f.log(">>> ctxFile", this.ctxFile);
+      console$f.log(">>> ctxData", ctxData);
     }
     component.ctx.runtimeData = {};
     component.ctx.active = false;
@@ -6721,9 +6721,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return null;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$e.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
-      console$e.log(">>> ctxFile", this.ctxFile);
-      console$e.log(">>> ctxData", ctxData);
+      console$f.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
+      console$f.log(">>> ctxFile", this.ctxFile);
+      console$f.log(">>> ctxData", ctxData);
     }
     const data = component.ctx;
     return data;
@@ -6733,7 +6733,7 @@ class RuntimeContext extends EventEmitter$1 {
 var __defProp$k = Object.defineProperty;
 var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$d = Logger("AgentRuntime");
+const console$e = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
   {
@@ -6742,7 +6742,7 @@ const AgentRuntimeUnavailable = new Proxy(
         return target[prop];
       } else {
         return function() {
-          console$d.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
+          console$e.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
         };
       }
     }
@@ -6823,7 +6823,7 @@ const _AgentRuntime = class _AgentRuntime {
       for (let component of this.agent.data.components) {
         const cpt = components[component.name];
         if (!cpt) {
-          console$d.warn(`Component ${component.name} Exists in agent but has no implementation`);
+          console$e.warn(`Component ${component.name} Exists in agent but has no implementation`);
           continue;
         }
         if (cpt.alwaysActive) {
@@ -6865,7 +6865,7 @@ const _AgentRuntime = class _AgentRuntime {
   async sync() {
     const deleteTag = this.reqTagOwner && this.sessionClosed || this.circularLimitReached;
     if (deleteTag) {
-      console$d.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
+      console$e.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
       delete _AgentRuntime.tagsData[this.reqTag];
     }
     this.agentContext.sync();
@@ -6939,7 +6939,7 @@ const _AgentRuntime = class _AgentRuntime {
    * @returns
    */
   async runCycle() {
-    console$d.debug(
+    console$e.debug(
       `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
     );
     const runtime = this;
@@ -7169,7 +7169,7 @@ function getMemoryUsage() {
 var __defProp$j = Object.defineProperty;
 var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$c = Logger("Agent");
+const console$d = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
@@ -7308,7 +7308,7 @@ class Agent {
       await delay(30 + qosLatency);
     } while (!step?.finalResult && !this._kill);
     if (this._kill) {
-      console$c.warn(`Agent ${this.id} was killed`);
+      console$d.warn(`Agent ${this.id} was killed`);
       return { error: "Agent killed" };
     }
     result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -7439,7 +7439,7 @@ class Agent {
     const componentData = this.components[componentId];
     const component = components[componentData.name];
     if (this._kill) {
-      console$c.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
+      console$d.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
       return { id: componentData.id, name: componentData.displayName, result: null, error: "Agent killed" };
     }
     if (!component) {
@@ -7493,9 +7493,9 @@ class Agent {
           try {
             await this.parseVariables();
             output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
-            console$c.log(output);
+            console$d.log(output);
           } catch (error) {
-            console$c.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
+            console$d.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
             if (error?.message) output = { Response: void 0, _error: error.message, _debug: error.message };
             else output = { Response: void 0, _error: error.toString(), _debug: error.toString() };
           }
@@ -7860,7 +7860,7 @@ var __decorateClass$6 = (decorators, target, key, kind) => {
   return result;
 };
 var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$b = Logger("S3Storage");
+const console$c = Logger("S3Storage");
 class S3Storage extends StorageConnector {
   constructor(config) {
     super();
@@ -7920,7 +7920,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$b.error(`Error reading object from S3`, error.name, error.message);
+      console$c.error(`Error reading object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7929,7 +7929,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return s3Metadata;
     } catch (error) {
-      console$b.error(`Error getting access rights in S3`, error.name, error.message);
+      console$c.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7940,7 +7940,7 @@ class S3Storage extends StorageConnector {
       s3Metadata = { ...s3Metadata, ...metadata };
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$b.error(`Error setting access rights in S3`, error);
+      console$c.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -7961,7 +7961,7 @@ class S3Storage extends StorageConnector {
     try {
       const result = await this.client.send(command);
     } catch (error) {
-      console$b.error(`Error writing object to S3`, error.name, error.message);
+      console$c.error(`Error writing object to S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7973,7 +7973,7 @@ class S3Storage extends StorageConnector {
     try {
       await this.client.send(command);
     } catch (error) {
-      console$b.error(`Error deleting object from S3`, error.name, error.message);
+      console$c.error(`Error deleting object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -7989,7 +7989,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return false;
       }
-      console$b.error(`Error checking object existence in S3`, error.name, error.message);
+      console$c.error(`Error checking object existence in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8010,7 +8010,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return ACL.from(s3Metadata?.["x-amz-meta-acl"]);
     } catch (error) {
-      console$b.error(`Error getting access rights in S3`, error.name, error.message);
+      console$c.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8021,7 +8021,7 @@ class S3Storage extends StorageConnector {
       s3Metadata["x-amz-meta-acl"] = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$b.error(`Error setting access rights in S3`, error);
+      console$c.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -8092,7 +8092,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$b.error(`Error reading object metadata from S3`, error.name, error.message);
+      console$c.error(`Error reading object metadata from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8113,7 +8113,7 @@ class S3Storage extends StorageConnector {
       });
       await this.client.send(putObjectCommand);
     } catch (error) {
-      console$b.error(`Error setting object metadata in S3`, error.name, error.message);
+      console$c.error(`Error setting object metadata in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -8205,7 +8205,7 @@ var paramMappings = {
   }
 };
 
-const console$a = Logger("LLMConnector");
+const console$b = Logger("LLMConnector");
 class LLMConnector extends Connector {
   user(candidate) {
     if (candidate.role !== "agent") throw new Error("Only agents can use LLM connector");
@@ -8443,7 +8443,7 @@ async function _getImageDimensions(url) {
       height: dimensions?.height || 0
     };
   } catch (error) {
-    console$a.error("Error getting image dimensions", error);
+    console$b.error("Error getting image dimensions", error);
     throw new Error("Please provide a valid image url!");
   }
 }
@@ -8486,7 +8486,7 @@ class EchoConnector extends LLMConnector {
 var __defProp$f = Object.defineProperty;
 var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$9 = Logger("OpenAIConnector");
+const console$a = Logger("OpenAIConnector");
 class OpenAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -8568,7 +8568,7 @@ class OpenAIConnector extends LLMConnector {
       const content = response?.choices?.[0]?.message.content;
       return { content, finishReason: response?.choices?.[0]?.finish_reason };
     } catch (error) {
-      console$9.log("Error in visionLLMRequest: ", error);
+      console$a.log("Error in visionLLMRequest: ", error);
       throw error;
     }
   }
@@ -8607,7 +8607,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, content: message?.content ?? "", toolsData }
       };
     } catch (error) {
-      console$9.log("Error on toolUseLLMRequest: ", error);
+      console$a.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -8619,8 +8619,8 @@ class OpenAIConnector extends LLMConnector {
       if (!Array.isArray(messages) || !messages?.length) {
         return { error: new Error("Invalid messages argument for chat completion.") };
       }
-      console$9.log("model", model);
-      console$9.log("messages", messages);
+      console$a.log("model", model);
+      console$a.log("messages", messages);
       let args = {
         model,
         messages,
@@ -8677,7 +8677,7 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, stream: _stream, toolsData }
       };
     } catch (error) {
-      console$9.log("Error on toolUseLLMRequest: ", error);
+      console$a.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -8731,8 +8731,8 @@ class OpenAIConnector extends LLMConnector {
     const openai = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY
     });
-    console$9.log("model", model);
-    console$9.log("messages", messages);
+    console$a.log("model", model);
+    console$a.log("messages", messages);
     let args = {
       model,
       messages,
@@ -8824,7 +8824,7 @@ class OpenAIConnector extends LLMConnector {
 var __defProp$e = Object.defineProperty;
 var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$8 = Logger("GoogleAIConnector");
+const console$9 = Logger("GoogleAIConnector");
 const DEFAULT_MODEL = "gemini-pro";
 const MODELS_WITH_SYSTEM_MESSAGE = [
   "gemini-1.5-pro-latest",
@@ -8939,7 +8939,7 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console$8.error("Error in googleAI componentLLMRequest", error);
+      console$9.error("Error in googleAI componentLLMRequest", error);
       throw error;
     }
   }
@@ -8999,7 +8999,7 @@ ${systemMessage?.content || ""}`;
       const finishReason = response.candidates[0].finishReason;
       return { content, finishReason };
     } catch (error) {
-      console$8.error("Error in googleAI visionLLMRequest", error);
+      console$9.error("Error in googleAI visionLLMRequest", error);
       throw error;
     }
   }
@@ -9044,7 +9044,7 @@ ${systemMessage?.content || ""}`;
         data: { useTool, message: { content }, content, toolsData }
       };
     } catch (error) {
-      console$8.log("Error on toolUseLLMRequest: ", error);
+      console$9.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -9212,7 +9212,7 @@ ${systemMessage?.content || ""}`;
         throw new Error("File processing failed.");
       }
       fs.unlink(tempFilePath, (err) => {
-        if (err) console$8.error("Error deleting temp file: ", err);
+        if (err) console$9.error("Error deleting temp file: ", err);
       });
       return {
         url: uploadResponse.file.uri || ""
@@ -9238,7 +9238,7 @@ ${systemMessage?.content || ""}`;
 var __defProp$d = Object.defineProperty;
 var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$7 = Logger("AnthropicAIConnector");
+const console$8 = Logger("AnthropicAIConnector");
 const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = "{";
 const TOOL_USE_DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
@@ -9287,7 +9287,7 @@ class AnthropicAIConnector extends LLMConnector {
       }
       return { content, finishReason };
     } catch (error) {
-      console$7.error("Error in componentLLMRequest in AnthropicAI: ", error);
+      console$8.error("Error in componentLLMRequest in AnthropicAI: ", error);
       if (error instanceof Anthropic.APIError) {
         throw error;
       } else {
@@ -9340,7 +9340,7 @@ class AnthropicAIConnector extends LLMConnector {
       }
       return { content: content2, finishReason };
     } catch (error) {
-      console$7.error("Error in componentLLMRequest in Calude: ", error);
+      console$8.error("Error in componentLLMRequest in Calude: ", error);
       if (error instanceof Anthropic.APIError) {
         throw error;
       } else {
@@ -9572,7 +9572,7 @@ class AnthropicAIConnector extends LLMConnector {
 var __defProp$c = Object.defineProperty;
 var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$6 = Logger("GroqConnector");
+const console$7 = Logger("GroqConnector");
 class GroqConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -9601,7 +9601,7 @@ class GroqConnector extends LLMConnector {
       const finishReason = response.choices[0]?.finish_reason;
       return { content, finishReason };
     } catch (error) {
-      console$6.error("Error in groq chatRequest", error);
+      console$7.error("Error in groq chatRequest", error);
       throw error;
     }
   }
@@ -9640,7 +9640,7 @@ class GroqConnector extends LLMConnector {
         data: { useTool, message, content: message?.content ?? "", toolsData }
       };
     } catch (error) {
-      console$6.error("Error on toolUseLLMRequest: ", error);
+      console$7.error("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -9741,7 +9741,7 @@ class GroqConnector extends LLMConnector {
 var __defProp$b = Object.defineProperty;
 var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$5 = Logger("TogetherAIConnector");
+const console$6 = Logger("TogetherAIConnector");
 const TOGETHER_AI_API_URL = "https://api.together.xyz/v1";
 class TogetherAIConnector extends LLMConnector {
   constructor() {
@@ -9772,7 +9772,7 @@ class TogetherAIConnector extends LLMConnector {
       const finishReason = response?.choices?.[0]?.finish_reason;
       return { content, finishReason };
     } catch (error) {
-      console$5.error("Error in TogetherAI chatRequest", error);
+      console$6.error("Error in TogetherAI chatRequest", error);
       throw error;
     }
   }
@@ -9814,7 +9814,7 @@ class TogetherAIConnector extends LLMConnector {
         data: { useTool, message, content: message?.content ?? "", toolsData }
       };
     } catch (error) {
-      console$5.log("Error on toolUseLLMRequest: ", error);
+      console$6.log("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
@@ -9979,7 +9979,7 @@ var __decorateClass$5 = (decorators, target, key, kind) => {
   return result;
 };
 var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$4 = Logger("RedisCache");
+const console$5 = Logger("RedisCache");
 class RedisCache extends CacheConnector {
   constructor(settings) {
     super();
@@ -9994,10 +9994,10 @@ class RedisCache extends CacheConnector {
       password: settings.password
     });
     this.redis.on("error", (error) => {
-      console$4.error("Redis Error:", error);
+      console$5.error("Redis Error:", error);
     });
     this.redis.on("connect", () => {
-      console$4.log("Redis connected!");
+      console$5.log("Redis connected!");
     });
   }
   get client() {
@@ -10067,7 +10067,7 @@ class RedisCache extends CacheConnector {
       const metadata = await this.getMetadata(acRequest, key);
       return metadata?.acl || {};
     } catch (error) {
-      console$4.error(`Error getting access rights in S3`, error.name, error.message);
+      console$5.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10078,7 +10078,7 @@ class RedisCache extends CacheConnector {
       metadata.acl = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
       await this.setMetadata(acRequest, key, metadata);
     } catch (error) {
-      console$4.error(`Error setting access rights in S3`, error);
+      console$5.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -10101,7 +10101,7 @@ class RedisCache extends CacheConnector {
       }
       return redisMetadata;
     } catch (error) {
-      console$4.warn(`Error deserializing metadata`, strMetadata);
+      console$5.warn(`Error deserializing metadata`, strMetadata);
       return {};
     }
   }
@@ -10327,7 +10327,7 @@ class SmythVault extends VaultConnector {
     };
   }
   async get(acRequest, keyId) {
-    const accountConnector = ConnectorService.getAccountConnector();
+    const accountConnector = ConnectorService.getAccountConnector("Smyth");
     const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
     const vaultAPIHeaders = await this.getVaultRequestHeaders();
     const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
@@ -10347,7 +10347,7 @@ class SmythVault extends VaultConnector {
     return vaultResponse?.data?.secret ? true : false;
   }
   async getResourceACL(resourceId, candidate) {
-    const accountConnector = ConnectorService.getAccountConnector();
+    const accountConnector = ConnectorService.getAccountConnector("Smyth");
     const teamId = await accountConnector.getCandidateTeam(candidate);
     const acl = new ACL();
     acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner).addAccess(TAccessRole.Team, teamId, TAccessLevel.Read).addAccess(TAccessRole.Team, teamId, TAccessLevel.Write);
@@ -10390,7 +10390,7 @@ var __decorateClass$2 = (decorators, target, key, kind) => {
   return result;
 };
 var __publicField$7 = (obj, key, value) => __defNormalProp$7(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$3 = Logger("SecretsManager");
+const console$4 = Logger("SecretsManager");
 class SecretsManager extends VaultConnector {
   constructor(config) {
     super();
@@ -10421,18 +10421,12 @@ class SecretsManager extends VaultConnector {
       const secret = await this.secretsManager.send(new GetSecretValueCommand({ SecretId: `${teamId}/${secretId}` }));
       return secret.SecretString;
     } catch (error) {
-      console$3.error(error);
+      console$4.error(error);
       throw error;
     }
   }
   async set(acRequest, secretId, value) {
-    const accountConnector = ConnectorService.getAccountConnector();
-    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-    const command = new PutSecretValueCommand({
-      SecretId: `${teamId}/${secretId}`,
-      SecretString: value
-    });
-    await this.secretsManager.send(command);
+    throw new Error("SecretsManager.set not allowed");
   }
   async delete(acRequest, keyId) {
     throw new Error("SecretsManager.delete not allowed");
@@ -10470,31 +10464,102 @@ class VaultService extends ConnectorServiceProvider {
   }
 }
 
+class AccountConnector extends Connector {
+}
+
 var __defProp$6 = Object.defineProperty;
 var __defNormalProp$6 = (obj, key, value) => key in obj ? __defProp$6(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$6 = (obj, key, value) => __defNormalProp$6(obj, typeof key !== "symbol" ? key + "" : key, value);
-class AccountConnector extends Connector {
-  constructor() {
-    super(...arguments);
-    __publicField$6(this, "name", "Account");
+const console$3 = Logger("SmythAccount");
+class SmythAccount extends AccountConnector {
+  constructor(config) {
+    super();
+    this.config = config;
+    __publicField$6(this, "name", "SmythAccount");
+    __publicField$6(this, "oAuthAppId");
+    __publicField$6(this, "oAuthAppSecret");
+    __publicField$6(this, "oAuthBaseUrl");
+    __publicField$6(this, "oAuthResource");
+    __publicField$6(this, "oAuthScope");
+    __publicField$6(this, "smythAPI");
+    if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
+    this.oAuthAppId = config.oAuthAppID;
+    this.oAuthAppSecret = config.oAuthAppSecret;
+    this.oAuthBaseUrl = config.oAuthBaseUrl;
+    this.oAuthResource = config.oAuthResource || "";
+    this.oAuthScope = config.oAuthScope || "";
+    this.smythAPI = axios.create({
+      baseURL: `${config.smythMiddlewareUrl}`
+    });
   }
-  isTeamMember(team, candidate) {
-    return Promise.resolve(true);
+  user(candidate) {
+    return {
+      getAccountAllSettings: async () => this.getAccountAllSettings(candidate.readRequest, candidate.id),
+      getAccountSetting: async (settingKey) => this.getAccountSetting(candidate.readRequest, candidate.id, settingKey),
+      getTeamAllSettings: async (keyId) => this.getTeamAllSettings(candidate.readRequest, keyId),
+      getTeamSetting: async (settingKey) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
+      isTeamMember: async (teamId) => this.isTeamMember(teamId, candidate),
+      getCandidateTeam: async () => this.getCandidateTeam(candidate)
+    };
   }
-  getCandidateTeam(candidate) {
-    if (candidate.role === TAccessRole.Team) {
-      return Promise.resolve(candidate.id);
+  async isTeamMember(teamId, candidate) {
+    try {
+      const candidateTeamId = await this.getCandidateTeam(candidate);
+      if (teamId === candidateTeamId) {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console$3.error(error);
+      return false;
     }
-    return Promise.resolve("default");
+  }
+  async getCandidateTeam(candidate) {
+    if (candidate.role === TAccessRole.Team) {
+      return candidate.id;
+    }
+    if (candidate.role === TAccessRole.User) {
+      const response = await this.smythAPI.get(`/v1/user/${candidate.id}`, { headers: await this.getSmythRequestHeaders() });
+      return response?.data?.user?.teamId;
+    }
+    if (candidate.role === TAccessRole.Agent) {
+      const response = await this.smythAPI.get(`/v1/ai-agent/${candidate.id}`, { headers: await this.getSmythRequestHeaders() });
+      return response?.data?.agent?.teamId;
+    }
+    return null;
+  }
+  async getTeamAllSettings(acRequest, teamId) {
+    const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
+    return response?.data?.settings;
+  }
+  async getAccountAllSettings(acRequest, accountId) {
+    const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
+    return response?.data?.settings;
+  }
+  async getTeamSetting(acRequest, teamId, settingKey) {
+    const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
+    return response?.data?.setting;
+  }
+  async getAccountSetting(acRequest, accountId, settingKey) {
+    const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
+    return response?.data?.setting;
+  }
+  async getSmythRequestHeaders() {
+    return {
+      Authorization: `Bearer ${await getM2MToken({
+        baseUrl: this.oAuthBaseUrl,
+        oauthAppId: this.oAuthAppId,
+        oauthAppSecret: this.oAuthAppSecret,
+        resource: this.oAuthResource,
+        scope: this.oAuthScope
+      })}`
+    };
   }
 }
 
 class AccountService extends ConnectorServiceProvider {
   register() {
-    ConnectorService.register(TConnectorService.Account, "Account", AccountConnector);
-  }
-  init() {
-    ConnectorService.init(TConnectorService.Account, "Account");
+    ConnectorService.register(TConnectorService.Account, "SmythAccount", SmythAccount);
   }
 }
 
