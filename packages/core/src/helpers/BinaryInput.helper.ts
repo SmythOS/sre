@@ -13,12 +13,17 @@ export class BinaryInput {
     private _source: Buffer;
     private _uploading: boolean = false;
 
-    constructor(data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>, private _name?: string, public mimetype?: string) {
+    constructor(
+        data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>,
+        private _name?: string,
+        public mimetype?: string,
+        private candidate?: IAccessCandidate
+    ) {
         if (!_name) _name = uid();
         this._name = _name;
         //this._source = data;
 
-        this.load(data, _name, mimetype);
+        this.load(data, _name, mimetype, candidate);
     }
 
     public async ready() {
@@ -43,7 +48,7 @@ export class BinaryInput {
         return this._readyPromise;
     }
 
-    private async load(data, name: string, mimetype?: string) {
+    private async load(data, name: string, mimetype?: string, candidate?: IAccessCandidate) {
         //assume the mimetype from the provided name
         const ext: any = name.split('.').pop();
         this.mimetype = mimetype || mime.getType(ext) || 'application/octet-stream';
@@ -54,6 +59,9 @@ export class BinaryInput {
             this.size = data.size;
             this.url = data.url;
             this._ready = true;
+            if (candidate) {
+                this._source = await SmythFS.Instance.read(this.url, candidate);
+            }
             return;
         }
 
@@ -156,9 +164,9 @@ export class BinaryInput {
 
         return { size, data: buffer, mimetype: filetype?.mime || '' };
     }
-    public static from(data, name?: string, mimetype?: string) {
+    public static from(data, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
         if (data instanceof BinaryInput) return data;
-        return new BinaryInput(data, name, mimetype);
+        return new BinaryInput(data, name, mimetype, candidate);
     }
 
     public async upload(candidate: IAccessCandidate) {
@@ -189,6 +197,7 @@ export class BinaryInput {
             mimetype: this.mimetype,
             size: this.size,
             url: this.url,
+            name: this._name,
         };
     }
 
