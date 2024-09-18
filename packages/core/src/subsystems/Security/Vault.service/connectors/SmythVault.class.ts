@@ -6,7 +6,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { SmythVaultConfig } from '@sre/types/Security.types';
+import { OAuthConfig, SmythVaultConfig } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 import { getM2MToken } from '@sre/utils/oauth.utils';
 import axios, { AxiosInstance } from 'axios';
@@ -22,7 +22,7 @@ export class SmythVault extends VaultConnector {
     private vaultAPI: AxiosInstance;
 
 
-    constructor(private config: SmythVaultConfig) {
+    constructor(private config: SmythVaultConfig & OAuthConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
@@ -48,7 +48,7 @@ export class SmythVault extends VaultConnector {
 
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
-        const accountConnector = ConnectorService.getAccountConnector();
+        const accountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
         const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
@@ -75,7 +75,7 @@ export class SmythVault extends VaultConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
-        const accountConnector = ConnectorService.getAccountConnector();
+        const accountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const teamId = await accountConnector.getCandidateTeam(candidate);
 
         const acl = new ACL();
