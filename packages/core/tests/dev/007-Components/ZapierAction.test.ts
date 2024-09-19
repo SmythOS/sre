@@ -17,7 +17,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import axios from 'axios';
 import http from 'http';
 import { promisify } from 'util';
-import { Router } from 'express';
+import express, { Router } from 'express';
 
 // Specific getter for Zapier API key
 const apiKeyVaultKeyName = (): string => {
@@ -31,10 +31,10 @@ const apiKeyVaultKeyName = (): string => {
 
 //We need SRE to be loaded because LLMAssistant uses internal SRE functions
 
-const router = Router();
 const PORT = 8084;
 const BASE_URL = `http://localhost:${PORT}`;
-SmythRuntime.Instance.configureRouter(router, BASE_URL);
+const app = express();
+
 const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
@@ -70,9 +70,17 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+
+    Router: {
+        Connector: 'ExpressRouter',
+        Settings: {
+            router: app,
+            baseUrl: BASE_URL,
+        },
+    },
 });
 
-const server = http.createServer(router);
+const server = http.createServer(app);
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {

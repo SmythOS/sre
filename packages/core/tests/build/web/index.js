@@ -11,7 +11,6 @@ dotenv.config();
 const app = express();
 const port = /*process.env.PORT || */ 5555;
 const BASE_URL = `http://localhost:${port}`;
-SmythRuntime.Instance.configureRouter(app, BASE_URL);
 
 const sre = SmythRuntime.Instance.init({
     CLI: {

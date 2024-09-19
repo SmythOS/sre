@@ -2,6 +2,7 @@ import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
 import { Logger } from '../helpers/Log.helper';
+import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 
 const logger = Logger('SRE');
 const CInstance = ConnectorService;
@@ -17,7 +18,6 @@ interface IRouter {
 
 export default class SmythRuntime {
     public started = false;
-    public router: { instance: IRouter; baseUrl: string };
 
     protected constructor() {
         this.started = true;
@@ -96,9 +96,5 @@ export default class SmythRuntime {
         CInstance._stop();
         SmythRuntime.instance = undefined;
         this.started = false;
-    }
-
-    public configureRouter(router: IRouter, baseUrl: string) {
-        this.router = { instance: router, baseUrl: baseUrl };
     }
 }

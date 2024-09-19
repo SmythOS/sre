@@ -7,6 +7,7 @@ import { LLMService } from '@sre/LLMManager/LLM.service';
 import { CacheService } from '@sre/MemoryManager/Cache.service';
 import { AccountService } from '@sre/Security/Account.service';
 import { VaultService } from '@sre/Security/Vault.service';
+import { RouterService } from '@sre/IO/Router.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -18,6 +19,7 @@ export type TServiceRegistry = {
     AgentData?: AgentDataService;
     CLI?: CLIService;
     NKV?: NKVService;
+    Router?: RouterService;
 };
 
 export enum TConnectorService {
@@ -30,6 +32,7 @@ export enum TConnectorService {
     AgentData = 'AgentData',
     CLI = 'CLI',
     NKV = 'NKV',
+    Router = 'Router',
 }
 
 export type SREConnectorConfig = {

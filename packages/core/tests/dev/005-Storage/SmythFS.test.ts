@@ -1,22 +1,23 @@
 import { afterAll, describe, expect, it, beforeAll } from 'vitest';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
-import { Router } from 'express';
+import express from 'express';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import http from 'http';
+import http, { Server } from 'http';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import axios from 'axios';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
+import { RotateSecretCommand } from '@aws-sdk/client-secrets-manager';
 
 const PORT = 8083;
 const BASE_URL = `http://localhost:${PORT}`;
 
-const router = Router();
-SmythRuntime.Instance.configureRouter(router, BASE_URL);
+const app = express();
+
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
         Connector: 'MyCustomAccountConnector',
@@ -39,10 +40,17 @@ const SREInstance = SmythRuntime.Instance.init({
             password: config.env.REDIS_PASSWORD || '',
         },
     },
+    Router: {
+        Connector: 'ExpressRouter',
+        Settings: {
+            router: app,
+            baseUrl: BASE_URL,
+        },
+    },
 });
 
 //  make router listen on port 3000
-const server = http.createServer(router);
+const server = http.createServer(app);
 
 if (!SREInstance.ready()) {
     process.exit(1);

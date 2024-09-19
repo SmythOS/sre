@@ -13,6 +13,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { RouterConnector } from '../Router.service/RouterConnector';
 export type TSmythFSURI = {
     hash: string;
     team: string;
@@ -20,8 +21,9 @@ export type TSmythFSURI = {
 };
 
 SystemEvents.on('SRE:Booted', () => {
-    if (SmythRuntime.Instance.router) {
-        SmythRuntime.Instance.router.instance.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+    const router = ConnectorService.getRouterConnector();
+    if (router) {
+        router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
     }
 });
 
@@ -202,7 +204,8 @@ export class SmythFS {
             ttlSeconds
         ); // 1 hour
 
-        return `${SmythRuntime.Instance.router.baseUrl}/_temp/${uid}`;
+        const baseUrl = ConnectorService.getRouterConnector().baseUrl;
+        return `${baseUrl}/_temp/${uid}`;
     }
 
     public async destroyTempUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {
