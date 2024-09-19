@@ -49,16 +49,16 @@ export default class Agent {
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
-        this.name = json.name;
         this.data = json.data;
         //this.agentVariables = json.data.variables || {};
 
+        this.name = this.data.name;
         this.version = this.data.agentVersion || ''; //when version is not set we load the latest dev version
-        this.teamId = json.teamId;
+        this.teamId = this.data.teamId;
         this.connections = this.data.connections;
         this.debugSessionEnabled = this.data.debugSessionEnabled;
 
-        this.agentVariables = json.data.variables || {};
+        this.agentVariables = this.data.variables || {};
 
         //parse vault agent variables
         // if (typeof json.data.variables === 'object') {

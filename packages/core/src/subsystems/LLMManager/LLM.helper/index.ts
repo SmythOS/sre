@@ -1,11 +1,10 @@
-import axios from 'axios';
-
 import { ModelRegistry } from './ModelRegistry.helper';
 import { TokenManager } from './TokenManager.helper';
 import { MessageProcessor } from './MessageProcessor.helper';
 import { FileProcessor } from './FileProcessor.helper';
 
-import { getM2MToken } from '@sre/utils/oauth.utils';
+import { ConnectorService } from '@sre/index';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import config from '@sre/config';
 
@@ -43,24 +42,10 @@ export class LLMHelper {
         const settingsKey = 'custom-llm';
 
         try {
-            // TODO [Forhad]: Need to load team settings from Account Connector
-            const accessToken = await getM2MToken({
-                oauthAppId: config.env.LOGTO_M2M_APP_ID,
-                oauthAppSecret: config.env.LOGTO_M2M_APP_SECRET,
-                resource: config.env.LOGTO_API_RESOURCE,
-                scope: '',
-                baseUrl: `${config.env.LOGTO_SERVER}/oidc/token`,
-            });
+            const accountConnector = ConnectorService.getAccountConnector();
 
-            const url = `${config.env.SMYTH_API_BASE_URL}/_sysapi/v1/teams/${teamId}/settings/${settingsKey}`;
-
-            const res = await axios.get(url, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
-
-            const savedCustomModelsData: Record<string, any> = JSON.parse(res?.data?.setting?.settingValue || '{}');
+            const teamSettings = await accountConnector.user(AccessCandidate.team(teamId)).getTeamSetting(settingsKey);
+            const savedCustomModelsData = JSON.parse(teamSettings?.settingValue || '{}') as Record<string, any>;
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
                 customModels[entryId] = {

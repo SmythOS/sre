@@ -60,6 +60,7 @@
         "@aws-sdk/client-bedrock-runtime": "^3.651.1",
         "@aws-sdk/client-s3": "^3.529.0",
         "@aws-sdk/client-secrets-manager": "^3.649.0",
+        "@google-cloud/vertexai": "^1.7.0",
         "@google/generative-ai": "^0.14.1",
         "@huggingface/inference": "^2.8.0",
         "@langchain/pinecone": "^0.0.8",

@@ -61,7 +61,7 @@ export class ModelRegistry {
 
     public getModelId(modelName: string): string {
         if (this.models[modelName]) {
-            return this.models[modelName].alias || modelName;
+            return this.models?.[modelName]?.alias || modelName;
         }
         for (const [id, model] of Object.entries(this.models)) {
             if (model.name === modelName) {
@@ -72,10 +72,10 @@ export class ModelRegistry {
     }
 
     public getModelName(modelName: string): string {
-        return this.models[modelName].alias || modelName;
+        return this.models?.[modelName]?.alias || modelName;
     }
 
     public getModelKeyOptions(modelId: string): Record<string, any> {
-        return this.models[modelId]?.keyOptions || {};
+        return this.models?.[modelId]?.keyOptions || {};
     }
 }

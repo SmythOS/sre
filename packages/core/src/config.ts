@@ -31,12 +31,8 @@ const config = {
         PINECONE_API_KEY: process.env.PINECONE_API_KEY,
         PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
 
-        LOGTO_M2M_APP_ID: process.env.LOGTO_M2M_APP_ID,
-        LOGTO_M2M_APP_SECRET: process.env.LOGTO_M2M_APP_SECRET,
-        LOGTO_API_RESOURCE: process.env.LOGTO_API_RESOURCE,
         LOGTO_SERVER: process.env.LOGTO_SERVER,
         SMYTH_VAULT_API_BASE_URL: process.env.SMYTH_VAULT_API_BASE_URL,
-        SMYTH_API_BASE_URL: process.env.SMYTH_API_SERVER,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

@@ -109,23 +109,28 @@ export class BedrockConnector extends LLMConnector {
     }
 
     private async getBedrockClient(modelInfo: any, teamId: string) {
-        const keyId = await VaultHelper.getTeamKey(modelInfo.settings?.keyIDName, teamId);
-        const secretKey = await VaultHelper.getTeamKey(modelInfo.settings?.secretKeyName, teamId);
-        const sessionKey = await VaultHelper.getTeamKey(modelInfo.settings?.sessionKeyName, teamId);
+        try {
+            const keyId = await VaultHelper.getTeamKey(modelInfo.settings?.keyIDName, teamId);
+            const secretKey = await VaultHelper.getTeamKey(modelInfo.settings?.secretKeyName, teamId);
+            const sessionKey = await VaultHelper.getTeamKey(modelInfo.settings?.sessionKeyName, teamId);
 
-        const credentials: any = {
-            accessKeyId: keyId || '',
-            secretAccessKey: secretKey || '',
-        };
+            const credentials: any = {
+                accessKeyId: keyId || '',
+                secretAccessKey: secretKey || '',
+            };
 
-        if (sessionKey) {
-            credentials['sessionToken'] = sessionKey;
+            if (sessionKey) {
+                credentials['sessionToken'] = sessionKey;
+            }
+
+            return new BedrockRuntimeClient({
+                region: modelInfo.settings.region,
+                credentials,
+            });
+        } catch (error) {
+            console.error('Error on initializing Bedrock client.');
+            throw error;
         }
-
-        return new BedrockRuntimeClient({
-            region: modelInfo.settings.region,
-            credentials,
-        });
     }
 
     private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
