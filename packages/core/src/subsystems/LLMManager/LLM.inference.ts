@@ -3,30 +3,36 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
-import models from './models';
 import { EventEmitter } from 'events';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
+import { LLMHelper } from './LLM.helper';
 
-export class LLMHelper {
+export class LLMInference {
+    private modelName: string;
     private _llmConnector: LLMConnector;
-    private _modelId: string;
-    private _modelInfo: any;
+    private _llmHelper: LLMHelper;
 
-    constructor(private model: string) {
-        const llmName = models[model]?.llm;
-        this._modelId = models[model]?.alias || model;
-        this._modelInfo = models[this._modelId];
-        this._llmConnector = ConnectorService.getLLMConnector(llmName);
+    static async load(modelName: string, teamId?: string): Promise<LLMInference> {
+        const llmHelper = await LLMHelper.load(teamId);
+        const llmInference = new LLMInference();
+
+        const llmRegistry = llmHelper.getModelRegistry();
+
+        const provider = llmRegistry.getProvider(modelName);
+
+        llmInference.modelName = llmRegistry.getModelName(modelName);
+        llmInference._llmConnector = ConnectorService.getLLMConnector(provider);
+
+        llmInference._llmConnector.llmHelper = llmHelper;
+        llmInference._llmHelper = llmHelper;
+
+        return llmInference;
     }
 
-    static load(model: string) {
-        //TODO: cache instances
-        return new LLMHelper(model);
+    public get llmHelper(): LLMHelper {
+        return this._llmHelper;
     }
 
-    public get modelInfo(): any {
-        return this._modelInfo;
-    }
     public get connector(): LLMConnector {
         return this._llmConnector;
     }
@@ -37,11 +43,14 @@ export class LLMHelper {
         }
 
         if (!this._llmConnector) {
-            throw new Error(`Model ${this.model} not supported`);
+            throw new Error(`Model ${this.modelName} not supported`);
         }
         const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractLLMComponentParams(config);
-        params.model = this._modelId;
+        params.model = this.modelName;
+
+        // We pass teamId within the params as it required to get vault keys for Bedrock and VertexAI
+        params.teamId = agent instanceof Agent && agent.teamId;
 
         //override params with customParams
         Object.assign(params, customParams);
@@ -72,7 +81,7 @@ export class LLMHelper {
     public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractVisionLLMParams(config);
-        params.model = this._modelId;
+        params.model = this.modelName;
 
         const promises = [];
         const _fileSources = [];
@@ -114,8 +123,7 @@ export class LLMHelper {
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
         const params: any = await this._llmConnector.extractVisionLLMParams(config);
-        params.model = this._modelId;
-
+        params.model = this.modelName;
         const promises = [];
         const _fileSources = [];
 
@@ -154,7 +162,8 @@ export class LLMHelper {
 
     public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        params.model = this._modelId;
+        params.model = this.modelName;
+
         return this._llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
     }
 
@@ -165,7 +174,7 @@ export class LLMHelper {
 
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
-            params.model = this._modelId;
+            params.model = this.modelName;
             return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
         } catch (error: any) {
             console.error('Error in toolRequest: ', error);
@@ -186,7 +195,7 @@ export class LLMHelper {
                 throw new Error('Input messages are required.');
             }
 
-            params.model = this._modelId;
+            params.model = this.modelName;
             return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
         } catch (error) {
             console.error('Error in streamRequest:', error);

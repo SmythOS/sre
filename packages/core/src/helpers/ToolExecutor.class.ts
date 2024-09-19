@@ -1,6 +1,6 @@
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { ToolsConfig } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -93,9 +93,9 @@ export default class ToolExecutor {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmHelper: LLMHelper = LLMHelper.load(this.model);
+        const llmInference: LLMInference = await LLMInference.load(this.model);
 
-        const { data: llmResponse } = await llmHelper
+        const { data: llmResponse } = await llmInference
             .toolRequest(
                 {
                     model: this.model,
@@ -177,7 +177,7 @@ export default class ToolExecutor {
             const llmMessage = llmResponse?.message;
 
             const messagesWithToolResult = llmMessage ? [llmMessage] : [];
-            //const messagesWithToolResult = LLMHelper.formatMessagesWithToolResult(this.model, { llmMessage, toolsData });
+
             toolsData.forEach((toolData) => {
                 messagesWithToolResult.push({
                     tool_call_id: toolData.id,
@@ -287,9 +287,9 @@ export default class ToolExecutor {
 
     private async toolsConfig(model: string): Promise<ToolsConfig | void> {
         const functionDeclarations = await this.functionDeclarations();
-        const llmHelper: LLMHelper = LLMHelper.load(this.model);
+        const llmInference: LLMInference = await LLMInference.load(this.model);
 
-        const toolsConfig = llmHelper.connector.formatToolsConfig({ type: 'function', toolDefinitions: functionDeclarations, toolChoice: 'auto' });
+        const toolsConfig = llmInference.connector.formatToolsConfig({ type: 'function', toolDefinitions: functionDeclarations, toolChoice: 'auto' });
 
         return toolsConfig;
     }

@@ -1,11 +1,10 @@
+import Joi from 'joi';
+
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-// import { parseJson, parseTemplate } from '../../services/utils';
-import Joi from 'joi';
-// import { getLLMApiKey } from '../../services/LLMHelper/utils';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 
 export default class Classifier extends Component {
     protected configSchema = Joi.object({
@@ -79,10 +78,8 @@ ${JSON.stringify(categories, null, 2)}`;
             return { _error: 'Missing information, Cannot run classifier', _debug: logger.output };
         }
 
-        // const response: any = await LLMHelper.componentLLMRequest(prompt, model, params, agent).catch((error) => ({ error: error }));
-
-        const llmHelper: LLMHelper = LLMHelper.load(model || 'echo');
-        if (!llmHelper.connector) {
+        const llmInference: LLMInference = await LLMInference.load(model || 'echo');
+        if (!llmInference.connector) {
             return {
                 _error: `The model '${model}' is not available. Please try a different one.`,
                 _debug: logger.output,
@@ -90,7 +87,7 @@ ${JSON.stringify(categories, null, 2)}`;
         }
 
         try {
-            let response = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+            let response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             if (response.error) {
                 logger.error(` LLM Error=`, response.error);

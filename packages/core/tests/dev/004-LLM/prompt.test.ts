@@ -2,7 +2,7 @@ import fs from 'fs';
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -46,7 +46,7 @@ let agent = new Agent();
 
 const TIMEOUT = 30000;
 
-function runTestCases(model: string) {
+async function runTestCases(model: string) {
     const config = {
         data: {
             model,
@@ -59,7 +59,7 @@ function runTestCases(model: string) {
             presencePenalty: 0.1,
         },
     };
-    const llmHelper: LLMHelper = LLMHelper.load(model);
+    const llmInference: LLMInference = await LLMInference.load(model);
 
     function expectValidResponse(result: any) {
         expect(result).toBeDefined();
@@ -69,7 +69,7 @@ function runTestCases(model: string) {
     it(
         `runs a simple prompt with Model: ${model}`,
         async () => {
-            const result: any = await llmHelper.promptRequest('Hello, how are you?', config, agent);
+            const result: any = await llmInference.promptRequest('Hello, how are you?', config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -78,7 +78,7 @@ function runTestCases(model: string) {
     it(
         `runs a prompt with system message with Model: ${model}`,
         async () => {
-            const result = await llmHelper.promptRequest('', config, agent, {
+            const result = await llmInference.promptRequest('', config, agent, {
                 messages: [
                     { role: 'system', content: 'You are a helpful assistant' },
                     { role: 'user', content: 'What can you do?' },
@@ -95,7 +95,7 @@ function runTestCases(model: string) {
             let longPrompt = fs.readFileSync('./tests/data/dummy-article.txt', 'utf8');
             longPrompt += '\n\nWhat is the main topic of this article?';
 
-            const result = await llmHelper.promptRequest(longPrompt, config, agent);
+            const result = await llmInference.promptRequest(longPrompt, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -106,7 +106,7 @@ function runTestCases(model: string) {
         async () => {
             const messages = JSON.parse(fs.readFileSync('./tests/data/dummy-input-messages.json', 'utf8'));
 
-            const result = await llmHelper.promptRequest('', config, agent, { messages });
+            const result = await llmInference.promptRequest('', config, agent, { messages });
             expectValidResponse(result);
         },
         TIMEOUT
@@ -116,7 +116,7 @@ function runTestCases(model: string) {
         `correctly handles special characters and Unicode with Model: ${model}`,
         async () => {
             const specialCharsPrompt = 'Hello! こんにちは! 你好! مرحبا! 🌍🚀';
-            const result = await llmHelper.promptRequest(specialCharsPrompt, config, agent);
+            const result = await llmInference.promptRequest(specialCharsPrompt, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -126,7 +126,7 @@ function runTestCases(model: string) {
         `handles prompts with code snippets correctly with Model: ${model}`,
         async () => {
             const codePrompt = 'Explain this code:\n\nfunction add(a, b) {\n  return a + b;\n}';
-            const result = await llmHelper.promptRequest(codePrompt, config, agent);
+            const result = await llmInference.promptRequest(codePrompt, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -135,7 +135,7 @@ function runTestCases(model: string) {
     it(
         `handles errors gracefully with Model: ${model}`,
         async () => {
-            await expect(llmHelper.promptRequest('', config, agent)).rejects.toThrow();
+            await expect(llmInference.promptRequest('', config, agent)).rejects.toThrow();
         },
         TIMEOUT
     );
@@ -150,7 +150,7 @@ const models = [
 ];
 
 for (const model of models) {
-    describe(`LLM Prompt Tests for Model: ${model}`, () => {
-        runTestCases(model);
+    describe(`LLM Prompt Tests for Model: ${model}`, async () => {
+        await runTestCases(model);
     });
 }

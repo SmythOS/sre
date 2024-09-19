@@ -26,14 +26,11 @@ export class OpenAIConnector extends LLMConnector {
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!_params.messages) _params.messages = [];
-
-        const _messages = this.getConsistentMessages(_params.messages);
+        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (_messages[0]?.role !== 'system') {
-            _messages.unshift({
+        if (messages[0]?.role !== 'system') {
+            messages.unshift({
                 role: TLLMMessageRole.System,
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
@@ -43,8 +40,8 @@ export class OpenAIConnector extends LLMConnector {
             }
         }
 
-        if (prompt && _messages.length === 1) {
-            _messages.push({ role: TLLMMessageRole.User, content: prompt });
+        if (prompt && messages.length === 1) {
+            messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
         // Check if the team has their own API key, then use it
@@ -55,21 +52,19 @@ export class OpenAIConnector extends LLMConnector {
             apiKey: apiKey || process.env.OPENAI_API_KEY,
         });
 
-        // Check token limit
-        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
+        // Validate token limit
+        const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
-        const tokensLimit = this.checkTokensLimit({
-            model: _params.model,
+        await this.llmHelper.getTokenManager().validateTokensLimit({
+            modelName: _params?.model,
             promptTokens,
             completionTokens: _params?.max_tokens,
-            hasTeamAPIKey: !!apiKey,
+            hasAPIKey: !!apiKey,
         });
-
-        if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
 
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
             model: _params.model,
-            messages: _messages,
+            messages,
         };
 
         if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
@@ -95,10 +90,10 @@ export class OpenAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!_params.messages || _params.messages?.length === 0) _params.messages = [];
-        if (_params.messages?.role !== 'system') {
-            _params.messages.unshift({
+        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+
+        if (messages[0]?.role !== 'system') {
+            messages.unshift({
                 role: 'system',
                 content:
                     'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
@@ -117,7 +112,10 @@ export class OpenAIConnector extends LLMConnector {
 
         // Add user message
         const promptData = [{ type: 'text', text: prompt }, ...imageData];
-        _params.messages.push({ role: 'user', content: promptData });
+
+        if (prompt && messages.length === 1) {
+            messages.push({ role: 'user', content: promptData });
+        }
 
         try {
             // Check if the team has their own API key, then use it
@@ -127,21 +125,19 @@ export class OpenAIConnector extends LLMConnector {
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
             });
 
-            // Check token limit
-            const promptTokens = await this.countVisionPromptTokens(promptData);
+            // Validate token limit
+            const promptTokens = await this.llmHelper.getFileProcessor().countVisionPromptTokens(promptData);
 
-            const tokenLimit = this.checkTokensLimit({
-                model: _params.model,
+            await this.llmHelper.getTokenManager().validateTokensLimit({
+                modelName: _params?.model,
                 promptTokens,
                 completionTokens: _params?.max_tokens,
-                hasTeamAPIKey: !!apiKey,
+                hasAPIKey: !!apiKey,
             });
-
-            if (tokenLimit.isExceeded) throw new Error(tokenLimit.error);
 
             const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
                 model: _params.model,
-                messages: _params.messages,
+                messages,
             };
 
             if (_params?.max_tokens) {
@@ -524,8 +520,6 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     private getConsistentMessages(messages) {
-        if (messages.length === 0) return [];
-
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

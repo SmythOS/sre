@@ -27,23 +27,26 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        _params.messages = this.getConsistentMessages(_params?.messages) || [];
+        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
         // set prompt as user message if provided
         if (prompt) {
-            _params.messages.push({
+            messages.push({
                 role: TLLMMessageRole.User,
                 content: prompt,
             });
         }
 
-        if (this.hasSystemMessage(_params.messages)) {
+        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+        if (hasSystemMessage) {
             // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
+            const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
 
-            _params.messages = this.getConsistentMessages(otherMessages);
+            _params.messages = otherMessages;
 
             _params.system = (systemMessage as TLLMMessageBlock)?.content;
+        } else {
+            _params.messages = messages;
         }
 
         const responseFormat = _params?.responseFormat || 'json';
@@ -65,7 +68,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: _params.model,
             messages: _params.messages,
-            max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!apiKey),
+            max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
         };
 
         if (_params?.temperature) messageCreateArgs.temperature = _params.temperature;
@@ -91,7 +94,7 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        _params.messages = this.getConsistentMessages(_params?.messages) || [];
+        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params.messages) : [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -100,7 +103,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const imageData = await this.getImageData(validSources, agentId);
 
         const content = [{ type: 'text', text: prompt }, ...imageData];
-        _params.messages.push({ role: TLLMMessageRole.User, content });
+        messages.push({ role: TLLMMessageRole.User, content });
 
         const apiKey = _params?.apiKey;
 
@@ -114,8 +117,8 @@ export class AnthropicAIConnector extends LLMConnector {
 
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: _params.model,
-            messages: _params.messages,
-            max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!apiKey),
+            messages,
+            max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
         };
 
         try {
@@ -145,14 +148,15 @@ export class AnthropicAIConnector extends LLMConnector {
             const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model: _params?.model,
                 messages: [],
-                max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!_params?.apiKey), // * max token is required
+                max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
             };
 
-            const messages = this.getConsistentMessages(_params?.messages);
+            const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-            if (this.hasSystemMessage(messages)) {
+            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+            if (hasSystemMessage) {
                 // in AnthropicAI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
+                const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
@@ -237,14 +241,15 @@ export class AnthropicAIConnector extends LLMConnector {
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
                 model: _params?.model,
                 messages: [],
-                max_tokens: _params?.max_tokens || this.getAllowedCompletionTokens(_params.model, !!_params?.apiKey), // * max token is required
+                max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
             };
 
-            const messages = this.getConsistentMessages(_params?.messages);
+            const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-            if (this.hasSystemMessage(messages)) {
+            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+            if (hasSystemMessage) {
                 // in Anthropic AI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.separateSystemMessages(messages);
+                const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
@@ -382,9 +387,7 @@ export class AnthropicAIConnector extends LLMConnector {
         return [...messageBlocks, ...transformedToolsData];
     }
 
-    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        if (messages.length === 0) return messages;
-
+    private getConsistentMessages(messages) {
         let _messages = [...messages];
 
         _messages = _messages.map((message) => {
@@ -419,14 +422,14 @@ export class AnthropicAIConnector extends LLMConnector {
         });
 
         //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
-        /* if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
+        if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
             const hasToolResult = messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
 
             //we found a tool result in the first message, so we need to remove the user message
             if (hasToolResult) {
                 messages.shift();
             }
-        } */
+        }
 
         //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
         if (messages[0].role !== TLLMMessageRole.User && messages[0].role !== TLLMMessageRole.System) {

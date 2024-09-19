@@ -1,6 +1,6 @@
 // import Component from './Component.class';
 import Joi from 'joi';
-// import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+// import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { validateInteger } from '../utils';
 import { jsonrepair } from 'jsonrepair';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
@@ -9,10 +9,10 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
-// import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-class LLMHelper {
-    static load(model: string) {
+// Note: LLMHelper renamed to LLMInference
+class LLMInference {
+    static async load(model: string) {
         throw new Error('Method not implemented.');
     }
 }
@@ -90,9 +90,8 @@ export default class DataSourceLookup extends Component {
             const promises: any = [];
             for (let result of results) {
                 const _prompt = TemplateString(prompt.replace(/{{result}}/g, JSON.stringify(result))).parse(input).result;
-                // promises.push(LLMHelper.componentLLMRequest(_prompt, model, {}, agent).catch((error) => result));
-                const llmHelper = LLMHelper.load(model);
-                // const req = llmHelper.promptRequest(_prompt, config, agent).catch((error) => ({ error: error }));
+                const llmInference = await LLMInference.load(model);
+                // const req = llmInference.promptRequest(_prompt, config, agent).catch((error) => ({ error: error }));
                 // promises.push(req);
             }
             results = await Promise.all(promises);

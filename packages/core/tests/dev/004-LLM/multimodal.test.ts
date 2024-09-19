@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -45,14 +45,14 @@ let agent = new Agent();
 
 const TIMEOUT = 30000;
 
-function runMultimodalTestCases(model: string) {
+async function runMultimodalTestCases(model: string) {
     const config = {
         data: {
             model,
             maxTokens: 200,
         },
     };
-    const llmHelper: LLMHelper = LLMHelper.load(model);
+    const llmInference: LLMInference = await LLMInference.load(model);
 
     const imageUrl1 = 'https://fastly.picsum.photos/id/478/536/354.jpg?hmac=adxYyHX8WcCfHkk07quT2s92fbC7vY2QttaeBztwxgI';
     const imageUrl2 = 'https://fastly.picsum.photos/id/1038/536/354.jpg?hmac=Hu6nao4zkSvq_pHo5pIssp8oYizJus3yfL956AXww70';
@@ -69,7 +69,7 @@ function runMultimodalTestCases(model: string) {
         `runs a simple multimodal request with a single image for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1];
-            const result: any = await llmHelper.multimodalRequest('What is in this image?', fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest('What is in this image?', fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -79,7 +79,7 @@ function runMultimodalTestCases(model: string) {
         `handles multiple images in a single request for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1, imageUrl2];
-            const result: any = await llmHelper.multimodalRequest('Compare these two images', fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest('Compare these two images', fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -89,7 +89,7 @@ function runMultimodalTestCases(model: string) {
         `handles empty file sources array for Model: ${model}`,
         async () => {
             const fileSources = [];
-            await expect(llmHelper.multimodalRequest('Analyze this data', fileSources, config, agent)).rejects.toThrow();
+            await expect(llmInference.multimodalRequest('Analyze this data', fileSources, config, agent)).rejects.toThrow();
         },
         TIMEOUT
     );
@@ -100,7 +100,7 @@ function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, audioUrl, pdfUrl];
             const complexPrompt =
                 'Analyze these files in detail. Describe the visual elements in the image, the audio content, and the document content. Then, speculate about how they might be related.';
-            const result: any = await llmHelper.multimodalRequest(complexPrompt, fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest(complexPrompt, fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -111,7 +111,7 @@ function runMultimodalTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1, audioUrl];
             const specialCharsPrompt = 'Describe these files: 🌍🚀 こんにちは! 你好! مرحبا!';
-            const result: any = await llmHelper.multimodalRequest(specialCharsPrompt, fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest(specialCharsPrompt, fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -122,7 +122,7 @@ function runMultimodalTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1, pdfUrl];
             const prompt = 'Compare the content of the image with the text file. Are they related?';
-            const result: any = await llmHelper.multimodalRequest(prompt, fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -133,7 +133,7 @@ function runMultimodalTestCases(model: string) {
         async () => {
             const fileSources = [videoUrl];
             const prompt = 'Describe the main events in this video.';
-            const result: any = await llmHelper.multimodalRequest(prompt, fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT * 20 // 10 mins
@@ -144,7 +144,7 @@ function runMultimodalTestCases(model: string) {
         async () => {
             const fileSources = [audioUrl, imageUrl1];
             const prompt = 'Is the audio describing the image? If not, how are they different?';
-            const result: any = await llmHelper.multimodalRequest(prompt, fileSources, config, agent);
+            const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expectValidResponse(result);
         },
         TIMEOUT
@@ -154,7 +154,7 @@ function runMultimodalTestCases(model: string) {
         `should throw error when there are video file with other file types for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1, audioUrl, videoUrl, pdfUrl];
-            await expect(llmHelper.multimodalRequest('Analyze these files', fileSources, config, agent)).rejects.toThrow();
+            await expect(llmInference.multimodalRequest('Analyze these files', fileSources, config, agent)).rejects.toThrow();
         },
         TIMEOUT * 3 // 1:30 mins
     );
@@ -163,7 +163,7 @@ function runMultimodalTestCases(model: string) {
 const models = ['gemini-1.5-flash'];
 
 for (const model of models) {
-    describe(`LLM Multimodal Tests for Model: ${model}`, () => {
-        runMultimodalTestCases(model);
+    describe(`LLM Multimodal Tests for Model: ${model}`, async () => {
+        await runMultimodalTestCases(model);
     });
 }

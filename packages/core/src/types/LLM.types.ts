@@ -113,3 +113,41 @@ export type GenerateImageConfig = {
     n?: number;
     response_format?: 'url' | 'b64_json';
 };
+
+type TCustomModel = {
+    name: string;
+    provider: 'Bedrock';
+    components: string[];
+    tags: string[];
+    features: string[];
+    tokens: number;
+    completionTokens: number;
+    settings: {
+        foundationModel: string;
+        customModel: string;
+        region: string;
+    };
+};
+
+export type TBedrockModel = TCustomModel & {
+    settings: {
+        keyIDName: string;
+        secretKeyName: string;
+        sessionKeyName: string;
+    };
+};
+
+export type TVertexAIModel = TCustomModel & {
+    settings: {
+        projectId: string;
+        credentialsName: string;
+        jsonCredentialsName: string;
+    };
+};
+
+// ! Deprecated
+export type TLLMInputMessage = {
+    role: string;
+    content?: string | { text: string }[];
+    parts?: { text: string }[]; // * 'part' is for Google Vertex AI
+};

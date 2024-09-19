@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 
@@ -52,298 +52,292 @@ let agent = new Agent();
 
 const TIMEOUT = 30000;
 
-function runToolTestCases(model: string) {
-    const llmHelper: LLMHelper = LLMHelper.load(model);
+async function runToolTestCases(model: string) {
+    const llmInference: LLMInference = await LLMInference.load(model);
 
-    describe(`Tool Request Tests for Model: ${model}`, () => {
-        it(
-            'should execute a simple tool request',
-            async () => {
-                const toolDefinitions = [
-                    {
-                        name: 'get_weather',
-                        description: 'Get the current weather',
-                        properties: {
-                            location: { type: 'string' },
-                        },
-                        requiredFields: ['location'],
+    it(
+        'should execute a simple tool request',
+        async () => {
+            const toolDefinitions = [
+                {
+                    name: 'get_weather',
+                    description: 'Get the current weather',
+                    properties: {
+                        location: { type: 'string' },
                     },
-                ];
+                    requiredFields: ['location'],
+                },
+            ];
 
-                const toolsConfig = llmHelper.connector.formatToolsConfig({
+            const toolsConfig = llmInference.connector.formatToolsConfig({
+                type: 'function',
+                toolDefinitions,
+                toolChoice: 'auto',
+            });
+
+            const params = {
+                messages: [{ role: 'user', content: "What's current weather in Bangladesh?" }],
+                toolsConfig,
+            };
+
+            const result = await llmInference.toolRequest(params, agent);
+            expect(result).toBeTruthy();
+            expect(result.data).toBeTruthy();
+            expect(result.data.useTool).toBe(true);
+            expect(result.data.toolsData).toBeInstanceOf(Array);
+            expect(result.data.toolsData.length).toBeGreaterThan(0);
+            expect(result.data.toolsData[0].name).toBe('get_weather');
+        },
+        TIMEOUT
+    );
+
+    it(
+        'should handle tool requests with no tools used',
+        async () => {
+            const toolDefinitions = [
+                {
+                    name: 'get_weather',
+                    description: 'Get the current weather',
+                    properties: {
+                        location: { type: 'string' },
+                    },
+                    requiredFields: ['location'],
+                },
+            ];
+
+            const params = {
+                messages: [{ role: 'user', content: 'Hello, how are you?' }],
+                toolsConfig: {
                     type: 'function',
                     toolDefinitions,
                     toolChoice: 'auto',
-                });
+                },
+            };
 
-                const params = {
-                    messages: [{ role: 'user', content: "What's current weather in Bangladesh?" }],
-                    toolsConfig,
-                };
+            const result = await llmInference.toolRequest(params, agent);
+            expect(result).toBeTruthy();
+            expect(result.data).toBeTruthy();
+            expect(result.data.useTool).toBe(false);
+            expect(result.data.content).toBeTruthy();
+        },
+        TIMEOUT
+    );
 
-                const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeTruthy();
-                expect(result.data).toBeTruthy();
-                expect(result.data.useTool).toBe(true);
-                expect(result.data.toolsData).toBeInstanceOf(Array);
-                expect(result.data.toolsData.length).toBeGreaterThan(0);
-                expect(result.data.toolsData[0].name).toBe('get_weather');
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should handle tool requests with no tools used',
-            async () => {
-                const toolDefinitions = [
-                    {
-                        name: 'get_weather',
-                        description: 'Get the current weather',
-                        properties: {
-                            location: { type: 'string' },
-                        },
-                        requiredFields: ['location'],
-                    },
-                ];
-
-                const params = {
-                    messages: [{ role: 'user', content: 'Hello, how are you?' }],
-                    toolsConfig: {
-                        type: 'function',
-                        toolDefinitions,
-                        toolChoice: 'auto',
-                    },
-                };
-
-                const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeTruthy();
-                expect(result.data).toBeTruthy();
-                expect(result.data.useTool).toBe(false);
-                expect(result.data.content).toBeTruthy();
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should handle requests with empty toolDefinitions',
-            async () => {
-                const params = {
-                    messages: [{ role: 'user', content: "What's the weather like today?" }],
-                    toolsConfig: {
-                        type: 'function',
-                        toolDefinitions: [], // Empty tools array
-                        toolChoice: 'auto',
-                    },
-                };
-
-                const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeTruthy();
-                expect(result.data).toBeTruthy();
-                expect(result.data.useTool).toBe(false);
-                expect(result.data.content).toBeTruthy();
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should handle errors in toolRequest gracefully',
-            async () => {
-                const params = {
-                    messages: [], // Empty messages array should cause an error
-                };
-
-                expect(llmHelper.toolRequest(params, agent)).rejects.toThrow();
-            },
-            TIMEOUT
-        );
-    });
-}
-
-function runStreamRequestTestCases(model: string) {
-    const llmHelper: LLMHelper = LLMHelper.load(model);
-
-    describe(`Stream Request Tests for Model: ${model}`, () => {
-        it(
-            'should stream a simple request',
-            async () => {
-                const params = {
-                    messages: [{ role: 'user', content: 'Tell me a short story.' }],
-                };
-
-                const stream = await llmHelper.streamRequest(params, agent);
-                expect(stream).toBeInstanceOf(EventEmitter);
-
-                let content = '';
-
-                const streamComplete = new Promise<void>((resolve) => {
-                    stream.on('content', (chunk) => {
-                        content += chunk;
-                    });
-
-                    stream.on('end', resolve);
-                });
-
-                await streamComplete;
-
-                expect(content).toBeTruthy();
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should handle streaming with tools',
-            async () => {
-                const toolDefinitions = [
-                    {
-                        name: 'get_weather',
-                        description: 'Get the current weather',
-                        properties: {
-                            location: { type: 'string' },
-                        },
-                        requiredFields: ['location'],
-                    },
-                ];
-
-                const toolsConfig = llmHelper.connector.formatToolsConfig({
+    it(
+        'should handle requests with empty toolDefinitions',
+        async () => {
+            const params = {
+                messages: [{ role: 'user', content: "What's the weather like today?" }],
+                toolsConfig: {
                     type: 'function',
-                    toolDefinitions,
+                    toolDefinitions: [], // Empty tools array
                     toolChoice: 'auto',
-                });
+                },
+            };
 
-                const params = {
-                    messages: [{ role: 'user', content: "What's the current weather in Bangladesh?" }],
-                    toolsConfig,
-                };
+            const result = await llmInference.toolRequest(params, agent);
+            expect(result).toBeTruthy();
+            expect(result.data).toBeTruthy();
+            expect(result.data.useTool).toBe(false);
+            expect(result.data.content).toBeTruthy();
+        },
+        TIMEOUT
+    );
 
-                const stream = await llmHelper.streamRequest(params, agent);
-                expect(stream).toBeInstanceOf(EventEmitter);
+    it(
+        'should handle errors in toolRequest gracefully',
+        async () => {
+            const params = {
+                messages: [], // Empty messages array should cause an error
+            };
 
-                let toolsData;
-
-                const getToolsData = () => {
-                    return new Promise<void>((resolve) => {
-                        stream.on('toolsData', resolve);
-                    });
-                };
-
-                const streamComplete = new Promise<void>((resolve) => {
-                    stream.on('toolsData', (data) => {
-                        toolsData = data;
-                    });
-                    stream.on('end', resolve);
-                });
-
-                await streamComplete;
-
-                expect(toolsData).toBeTruthy();
-                expect(toolsData[0].name).toBe('get_weather');
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should handle errors in stream gracefully',
-            async () => {
-                const params = {
-                    messages: [], // Empty messages array should cause an error
-                };
-
-                const stream = await llmHelper.streamRequest(params, agent);
-                expect(stream).toBeInstanceOf(EventEmitter);
-
-                let error;
-
-                const streamComplete = new Promise<void>((resolve) => {
-                    stream.on('error', (e) => {
-                        error = e;
-                    });
-                    stream.on('end', resolve);
-                });
-
-                await streamComplete;
-
-                expect(error).toBeInstanceOf(Error);
-            },
-            TIMEOUT
-        );
-    });
+            expect(llmInference.toolRequest(params, agent)).rejects.toThrow();
+        },
+        TIMEOUT
+    );
 }
 
-function runMultipleToolRequestTestCases(model: string) {
-    const llmHelper: LLMHelper = LLMHelper.load(model);
+async function runStreamRequestTestCases(model: string) {
+    const llmInference: LLMInference = await LLMInference.load(model);
 
-    describe(`Multiple Tools Request Tests for Model: ${model}`, () => {
-        const toolDefinitions = [
-            {
-                name: 'get_weather',
-                description: 'Get the current weather',
-                properties: {
-                    location: { type: 'string' },
-                },
-                requiredFields: ['location'],
-            },
-            {
-                name: 'get_population',
-                description: 'Get the population of a city',
-                properties: {
-                    city: { type: 'string' },
-                },
-                requiredFields: ['city'],
-            },
-        ];
+    it(
+        'should stream a simple request',
+        async () => {
+            const params = {
+                messages: [{ role: 'user', content: 'Tell me a short story.' }],
+            };
 
-        const toolsConfig = llmHelper.connector.formatToolsConfig({
-            type: 'function',
-            toolDefinitions,
-            toolChoice: 'auto',
-        });
+            const stream = await llmInference.streamRequest(params, agent);
+            expect(stream).toBeInstanceOf(EventEmitter);
 
-        const params = {
-            messages: [{ role: 'user', content: "What's the weather like in New York and what's the population?" }],
-            toolsConfig,
-        };
+            let content = '';
 
-        it(
-            'should return multiple tools info with toolRequest()',
-            async () => {
-                const result = await llmHelper.toolRequest(params, agent);
-                expect(result).toBeTruthy();
-                expect(result.data).toBeTruthy();
-                expect(result.data.useTool).toBe(true);
-                expect(result.data.toolsData).toBeInstanceOf(Array);
-                expect(result.data.toolsData.length).toBe(2);
-                expect(result.data.toolsData[0].name).toBe('get_weather');
-                expect(result.data.toolsData[1].name).toBe('get_population');
-            },
-            TIMEOUT
-        );
-
-        it(
-            'should return multiple tools info with streamRequest()',
-            async () => {
-                const stream = await llmHelper.streamRequest(params, agent);
-                expect(stream).toBeInstanceOf(EventEmitter);
-
-                let toolsData: any[] = [];
-
-                const streamComplete = new Promise<void>((resolve) => {
-                    stream.on('toolsData', (data) => {
-                        toolsData = toolsData.concat(data);
-                    });
-
-                    stream.on('end', resolve);
+            const streamComplete = new Promise<void>((resolve) => {
+                stream.on('content', (chunk) => {
+                    content += chunk;
                 });
 
-                await streamComplete;
+                stream.on('end', resolve);
+            });
 
-                expect(toolsData).toBeInstanceOf(Array);
-                expect(toolsData.length).toBe(2);
-                expect(toolsData[0].name).toBe('get_weather');
-                expect(toolsData[1].name).toBe('get_population');
+            await streamComplete;
+
+            expect(content).toBeTruthy();
+        },
+        TIMEOUT
+    );
+
+    it(
+        'should handle streaming with tools',
+        async () => {
+            const toolDefinitions = [
+                {
+                    name: 'get_weather',
+                    description: 'Get the current weather',
+                    properties: {
+                        location: { type: 'string' },
+                    },
+                    requiredFields: ['location'],
+                },
+            ];
+
+            const toolsConfig = llmInference.connector.formatToolsConfig({
+                type: 'function',
+                toolDefinitions,
+                toolChoice: 'auto',
+            });
+
+            const params = {
+                messages: [{ role: 'user', content: "What's the current weather in Bangladesh?" }],
+                toolsConfig,
+            };
+
+            const stream = await llmInference.streamRequest(params, agent);
+            expect(stream).toBeInstanceOf(EventEmitter);
+
+            let toolsData;
+
+            const getToolsData = () => {
+                return new Promise<void>((resolve) => {
+                    stream.on('toolsData', resolve);
+                });
+            };
+
+            const streamComplete = new Promise<void>((resolve) => {
+                stream.on('toolsData', (data) => {
+                    toolsData = data;
+                });
+                stream.on('end', resolve);
+            });
+
+            await streamComplete;
+
+            expect(toolsData).toBeTruthy();
+            expect(toolsData[0].name).toBe('get_weather');
+        },
+        TIMEOUT
+    );
+
+    it(
+        'should handle errors in stream gracefully',
+        async () => {
+            const params = {
+                messages: [], // Empty messages array should cause an error
+            };
+
+            const stream = await llmInference.streamRequest(params, agent);
+            expect(stream).toBeInstanceOf(EventEmitter);
+
+            let error;
+
+            const streamComplete = new Promise<void>((resolve) => {
+                stream.on('error', (e) => {
+                    error = e;
+                });
+                stream.on('end', resolve);
+            });
+
+            await streamComplete;
+
+            expect(error).toBeInstanceOf(Error);
+        },
+        TIMEOUT
+    );
+}
+
+async function runMultipleToolRequestTestCases(model: string) {
+    const llmInference: LLMInference = await LLMInference.load(model);
+
+    const toolDefinitions = [
+        {
+            name: 'get_weather',
+            description: 'Get the current weather',
+            properties: {
+                location: { type: 'string' },
             },
-            TIMEOUT
-        );
+            requiredFields: ['location'],
+        },
+        {
+            name: 'get_population',
+            description: 'Get the population of a city',
+            properties: {
+                city: { type: 'string' },
+            },
+            requiredFields: ['city'],
+        },
+    ];
+
+    const toolsConfig = llmInference.connector.formatToolsConfig({
+        type: 'function',
+        toolDefinitions,
+        toolChoice: 'auto',
     });
+
+    const params = {
+        messages: [{ role: 'user', content: "What's the weather like in New York and what's the population?" }],
+        toolsConfig,
+    };
+
+    it(
+        'should return multiple tools info with toolRequest()',
+        async () => {
+            const result = await llmInference.toolRequest(params, agent);
+            expect(result).toBeTruthy();
+            expect(result.data).toBeTruthy();
+            expect(result.data.useTool).toBe(true);
+            expect(result.data.toolsData).toBeInstanceOf(Array);
+            expect(result.data.toolsData.length).toBe(2);
+            expect(result.data.toolsData[0].name).toBe('get_weather');
+            expect(result.data.toolsData[1].name).toBe('get_population');
+        },
+        TIMEOUT
+    );
+
+    it(
+        'should return multiple tools info with streamRequest()',
+        async () => {
+            const stream = await llmInference.streamRequest(params, agent);
+            expect(stream).toBeInstanceOf(EventEmitter);
+
+            let toolsData: any[] = [];
+
+            const streamComplete = new Promise<void>((resolve) => {
+                stream.on('toolsData', (data) => {
+                    toolsData = toolsData.concat(data);
+                });
+
+                stream.on('end', resolve);
+            });
+
+            await streamComplete;
+
+            expect(toolsData).toBeInstanceOf(Array);
+            expect(toolsData.length).toBe(2);
+            expect(toolsData[0].name).toBe('get_weather');
+            expect(toolsData[1].name).toBe('get_population');
+        },
+        TIMEOUT
+    );
 }
 
 const models = [
@@ -355,8 +349,13 @@ const models = [
 ];
 
 for (const model of models) {
-    runToolTestCases(model);
-    runStreamRequestTestCases(model);
+    describe(`Tool Request Tests for Model: ${model}`, async () => {
+        await runToolTestCases(model);
+    });
+
+    describe(`Stream Request Tests for Model: ${model}`, async () => {
+        await runStreamRequestTestCases(model);
+    });
 }
 
 /*
@@ -371,5 +370,7 @@ const modelsWithMultipleToolsResponse = [
     'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
 ];
 for (const model of modelsWithMultipleToolsResponse) {
-    runMultipleToolRequestTestCases(model);
+    describe(`Multiple Tools Request Tests for Model: ${model}`, async () => {
+        await runMultipleToolRequestTestCases(model);
+    });
 }

@@ -105,8 +105,10 @@ export class GoogleAIConnector extends LLMConnector {
         let systemInstruction;
         let systemMessage: TLLMMessageBlock | {} = {};
 
-        if (this.hasSystemMessage(_params?.messages)) {
-            const separateMessages = this.separateSystemMessages(messages);
+        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(_params?.messages);
+
+        if (hasSystemMessage) {
+            const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             messages = separateMessages.otherMessages;
@@ -119,7 +121,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         if (_params?.messages) {
-            const messages = this.getConsistentMessages(_params.messages);
+            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
             // Concatenate messages with prompt and remove messages from params as it's not supported
             prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
         }
@@ -161,11 +163,11 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
-            this.validateTokensLimit({
-                model,
+            await this.llmHelper.getTokenManager().validateTokensLimit({
+                modelName: model,
                 promptTokens,
                 completionTokens: params?.maxOutputTokens,
-                hasTeamAPIKey: !!apiKey,
+                hasAPIKey: !!apiKey,
             });
 
             const result = await $model.generateContent(prompt);
@@ -240,11 +242,11 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            this.validateTokensLimit({
-                model,
+            await this.llmHelper.getTokenManager().validateTokensLimit({
+                modelName: model,
                 promptTokens,
                 completionTokens: _params?.maxOutputTokens,
-                hasTeamAPIKey: !!apiKey,
+                hasAPIKey: !!apiKey,
             });
 
             const result = await $model.generateContent(promptWithFiles);
@@ -327,11 +329,11 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            this.validateTokensLimit({
-                model,
+            await this.llmHelper.getTokenManager().validateTokensLimit({
+                modelName: model,
                 promptTokens,
                 completionTokens: _params?.maxOutputTokens,
-                hasTeamAPIKey: !!apiKey,
+                hasAPIKey: !!apiKey,
             });
 
             const result = await $model.generateContent(promptWithFiles);
@@ -353,10 +355,12 @@ export class GoogleAIConnector extends LLMConnector {
             let systemInstruction = '';
             let formattedMessages;
 
-            const messages = this.getConsistentMessages(_params.messages);
+            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
-            if (this.hasSystemMessage(messages)) {
-                const separateMessages = this.separateSystemMessages(messages);
+            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+
+            if (hasSystemMessage) {
+                const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
                 const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
                 systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
                 formattedMessages = separateMessages.otherMessages;
@@ -431,15 +435,16 @@ export class GoogleAIConnector extends LLMConnector {
 
         let systemInstruction = '';
         let formattedMessages;
-        const messages = this.getConsistentMessages(_params.messages);
+        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-        if (this.hasSystemMessage(messages)) {
-            const separateMessages = this.separateSystemMessages(messages);
+        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+        if (hasSystemMessage) {
+            const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
-            formattedMessages = this.getConsistentMessages(separateMessages.otherMessages);
+            formattedMessages = separateMessages.otherMessages;
         } else {
-            formattedMessages = this.getConsistentMessages(messages);
+            formattedMessages = messages;
         }
 
         const generationConfig: GenerateContentRequest = {
@@ -533,6 +538,63 @@ export class GoogleAIConnector extends LLMConnector {
         };
     }
 
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const content = [];
+            if (typeof messageBlock.content === 'string') {
+                content.push({ text: messageBlock.content });
+            } else if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
+            }
+
+            if (messageBlock.parts) {
+                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
+                if (functionCalls.length > 0) {
+                    content.push(
+                        ...functionCalls.map((call) => ({
+                            functionCall: {
+                                name: call.functionCall.name,
+                                args: JSON.parse(call.functionCall.args),
+                            },
+                        }))
+                    );
+                }
+            }
+
+            messageBlocks.push({
+                role: messageBlock.role,
+                parts: content,
+            });
+        }
+
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.Function,
+                parts: [
+                    {
+                        functionResponse: {
+                            name: toolData.name,
+                            response: {
+                                name: toolData.name,
+                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+
+        return [...messageBlocks, ...transformedToolsData];
+    }
+
     // Add this helper method to sanitize function names
     private sanitizeFunctionName(name: string): string {
         // Check if name is undefined or null
@@ -619,8 +681,6 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        if (messages.length === 0) return messages;
-
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';
@@ -697,62 +757,5 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
-    }
-
-    public transformToolMessageBlocks({
-        messageBlock,
-        toolsData,
-    }: {
-        messageBlock: TLLMMessageBlock;
-        toolsData: ToolData[];
-    }): TLLMToolResultMessageBlock[] {
-        const messageBlocks: TLLMToolResultMessageBlock[] = [];
-
-        if (messageBlock) {
-            const content = [];
-            if (typeof messageBlock.content === 'string') {
-                content.push({ text: messageBlock.content });
-            } else if (Array.isArray(messageBlock.content)) {
-                content.push(...messageBlock.content);
-            }
-
-            if (messageBlock.parts) {
-                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
-                if (functionCalls.length > 0) {
-                    content.push(
-                        ...functionCalls.map((call) => ({
-                            functionCall: {
-                                name: call.functionCall.name,
-                                args: JSON.parse(call.functionCall.args),
-                            },
-                        }))
-                    );
-                }
-            }
-
-            messageBlocks.push({
-                role: messageBlock.role,
-                parts: content,
-            });
-        }
-
-        const transformedToolsData = toolsData.map(
-            (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.Function,
-                parts: [
-                    {
-                        functionResponse: {
-                            name: toolData.name,
-                            response: {
-                                name: toolData.name,
-                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-                            },
-                        },
-                    },
-                ],
-            })
-        );
-
-        return [...messageBlocks, ...transformedToolsData];
     }
 }
