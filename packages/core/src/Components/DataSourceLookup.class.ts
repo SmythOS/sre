@@ -58,7 +58,11 @@ export default class DataSourceLookup extends Component {
 
         const topK = Math.max(config.data.topK, 50);
 
-        const vectorDBHelper = VectorsHelper.load();
+        let vectorDBHelper = VectorsHelper.load();
+        const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespace);
+        if (isOnCustomStorage) {
+            vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+        }
 
         let results: string[] | { content: string; metadata: any }[];
         let _error;

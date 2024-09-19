@@ -35,10 +35,12 @@ type SupportedSources = 'text' | 'vector' | 'url';
 
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
+    public id = 'pinecone';
     private _client: Pinecone;
     public indexName: string;
     private redisCache: CacheConnector;
     private accountConnector: AccountConnector;
+    private openaiApiKey: string;
 
     constructor(config: PineconeConfig) {
         super();
@@ -54,6 +56,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.indexName = config.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.redisCache = ConnectorService.getCacheConnector('Redis');
+        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
     }
 
     public get client() {
@@ -169,7 +172,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         const pineconeIndex = this.client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
         if (typeof query === 'string') {
-            _vector = await VectorsHelper.load().embedText(query);
+            _vector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
         }
 
         const results = await pineconeIndex.query({
@@ -215,7 +218,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const accessCandidate = acRequest.candidate;
 
-        const isNewNs = await VectorsHelper.load().isNewNs(AccessCandidate.clone(accessCandidate), namespace);
+        const isNewNs = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
         if (isNewNs) {
             let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
             await this.setACL(acRequest, namespace, acl);
@@ -248,7 +251,7 @@ export class PineconeVectorDB extends VectorDBConnector {
             case 'text': {
                 const texts = source.map((s) => s.source as string);
 
-                return VectorsHelper.load()
+                return VectorsHelper.load({ openaiApiKey: this.openaiApiKey })
                     .embedTexts(texts)
                     .then((vectors) => {
                         return source.map((s, i) => ({

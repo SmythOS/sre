@@ -18,22 +18,41 @@ export class VectorsHelper {
     private _nkvConnector: NKVConnector;
     private _vaultConnector: VaultConnector;
     public cusStorageKeyName: string;
+    private isCustomStorageInstance: boolean = false;
 
-    constructor(connectorName?: string) {
+    constructor(connectorName?: string, options: { openaiApiKey?: string } = {}) {
         this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
-        this.embeddingsProvider = new OpenAIEmbeddings();
+        this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: options.openaiApiKey || process.env.OPENAI_API_KEY });
         if (this._vectorDimention && !isNaN(this._vectorDimention)) {
             this.embeddingsProvider.dimensions = this._vectorDimention;
         }
         this._nkvConnector = ConnectorService.getNKVConnector();
         this._vaultConnector = ConnectorService.getVaultConnector();
-        this.cusStorageKeyName = `vectorDB:customStorage:${this.getConnectorName(this._vectorDBconnector)}`;
+        this.cusStorageKeyName = `vectorDB:customStorage:${this._vectorDBconnector.id}`;
     }
 
-    public static load(options: { vectorDimention?: number; connectorName?: string } = {}) {
+    public static load(options: { vectorDimention?: number; connectorName?: string; openaiApiKey?: string } = {}) {
+        const instance = new VectorsHelper(options.connectorName, { openaiApiKey: options.openaiApiKey });
+        options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
+
+        return instance;
+    }
+
+    /**
+     * Loads a VectorsHelper instance for a team. If the team has a custom storage, it will use the custom storage.
+     * @param teamId - The team ID.
+     * @param options - The options.
+     * @returns The VectorsHelper instance.
+     */
+    public static async forTeam(teamId: string, options: { vectorDimention?: number; connectorName?: string } = {}) {
         const instance = new VectorsHelper(options.connectorName);
         options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
 
+        let teamVectorDB = await instance.getTeamVectorDB(teamId);
+        if (teamVectorDB && teamVectorDB instanceof VectorDBConnector) {
+            instance._vectorDBconnector = teamVectorDB;
+            instance.isCustomStorageInstance = true;
+        }
         return instance;
     }
 
@@ -93,7 +112,7 @@ export class VectorsHelper {
         });
         const nsExists = await this._nkvConnector
             .user(AccessCandidate.team(teamId))
-            .exists('vectorDB:pinecone:namespaces', VectorDBConnector.constructNsName(teamId, namespace));
+            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
         if (!nsExists) {
             throw new Error('Namespace does not exist');
         }
@@ -114,27 +133,31 @@ export class VectorsHelper {
         // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
         await this._nkvConnector
             .user(AccessCandidate.team(teamId))
-            .set(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
+            .set(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
         return dsId;
     }
 
     public async listDatasources(teamId: string, namespace: string) {
         const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-        return (await this._nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`)).map(
-            (ds) => {
-                return {
-                    id: ds.key,
-                    data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
-                };
-            }
-        );
+        return (
+            await this._nkvConnector
+                .user(AccessCandidate.team(teamId))
+                .list(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`)
+        ).map((ds) => {
+            return {
+                id: ds.key,
+                data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
+            };
+        });
     }
 
     public async getDatasource(teamId: string, namespace: string, dsId: string) {
         const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
         return JSONContentHelper.create(
             (
-                await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId)
+                await this._nkvConnector
+                    .user(AccessCandidate.team(teamId))
+                    .get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId)
             )?.toString()
         ).tryParse() as IStorageVectorDataSource;
     }
@@ -145,7 +168,9 @@ export class VectorsHelper {
         // await SmythFS.Instance.delete(url, AccessCandidate.team(teamId));
         let ds: IStorageVectorDataSource = JSONContentHelper.create(
             (
-                await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId)
+                await this._nkvConnector
+                    .user(AccessCandidate.team(teamId))
+                    .get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId)
             )?.toString()
         ).tryParse();
 
@@ -155,43 +180,38 @@ export class VectorsHelper {
 
         const nsExists = await this._nkvConnector
             .user(AccessCandidate.team(teamId))
-            .exists('vectorDB:pinecone:namespaces', VectorDBConnector.constructNsName(teamId, namespace));
+            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
         if (!nsExists) {
             throw new Error('Namespace does not exist');
         }
 
         await this._vectorDBconnector.user(AccessCandidate.team(teamId)).delete(namespace, ds.embeddingIds || []);
 
-        await this._nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:pinecone:namespaces:${formattedNs}:datasources`, dsId);
+        await this._nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .delete(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId);
     }
 
-    public async createNamespace(teamId: string, name: string, metadata: { isOnCustomStorage?: boolean } = {}) {
-        let _connector = this._vectorDBconnector;
-        if (metadata?.isOnCustomStorage) {
-            const config = await this.getCustomStorageConfig(teamId);
-            if (!config) {
-                throw new Error('Custom storage is not configured');
-            }
-            _connector = this._vectorDBconnector.instance(config);
-        }
-
-        // return _connector.user(AccessCandidate.team(teamId)).createNamespace(name, { isOnCustomStorage });
+    public async createNamespace(teamId: string, name: string, metadata: { [key: string]: any } = {}) {
         const preparedNs = VectorDBConnector.constructNsName(teamId, name);
 
         const candidate = AccessCandidate.team(teamId);
-        const nsExists = await this._nkvConnector.user(candidate).exists('vectorDB:pinecone', `namespace:${preparedNs}`);
+        const nsExists = await this._nkvConnector.user(candidate).exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${preparedNs}`);
         if (!nsExists) {
             const nsData: IStorageVectorNamespace = {
                 namespace: preparedNs,
                 displayName: name,
                 indexName: this._vectorDBconnector.indexName,
                 teamId,
-                metadata,
+                metadata: {
+                    ...metadata,
+                    isOnCustomStorage: this.isCustomStorageInstance,
+                },
             };
-            await this._nkvConnector.user(candidate).set('vectorDB:pinecone:namespaces', preparedNs, JSON.stringify(nsData));
+            await this._nkvConnector.user(candidate).set(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs, JSON.stringify(nsData));
         }
 
-        await _connector.user(candidate).createNamespace(name, { isOnCustomStorage: metadata?.isOnCustomStorage });
+        await this._vectorDBconnector.user(candidate).createNamespace(name, { ...metadata, isOnCustomStorage: this.isCustomStorageInstance });
     }
 
     public async deleteNamespace(teamId: string, name: string) {
@@ -203,34 +223,47 @@ export class VectorsHelper {
 
     public async listNamespaces(teamId: string) {
         const candidate = AccessCandidate.team(teamId);
-        const nsKeys = await this._nkvConnector.user(candidate).list('vectorDB:pinecone:namespaces');
+        const nsKeys = await this._nkvConnector.user(candidate).list(`vectorDB:${this._vectorDBconnector.id}:namespaces`);
         return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse() as IStorageVectorNamespace);
     }
 
     public async namespaceExists(teamId: string, name: string) {
         return await this._nkvConnector
             .user(AccessCandidate.team(teamId))
-            .exists('vectorDB:pinecone:namespaces', VectorDBConnector.constructNsName(teamId, name));
+            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, name));
     }
 
     public async search(teamId: string, namespace: string, query: string | number[], options: QueryOptions = {}) {
-        const nsExists = await this._nkvConnector
+        let ns = await this._nkvConnector
             .user(AccessCandidate.team(teamId))
-            .exists('vectorDB:pinecone:namespaces', VectorDBConnector.constructNsName(teamId, namespace));
-        if (!nsExists) {
+            .get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+
+        if (!ns) {
             throw new Error('Namespace does not exist');
         }
+
+        const nsData = JSONContentHelper.create(ns.toString()).tryParse() as IStorageVectorNamespace;
+        if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
+            throw new Error('Tried to access namespace on custom storage.');
+        } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
+            throw new Error('Tried to access namespace that is not on custom storage.');
+        }
+
         return this._vectorDBconnector.user(AccessCandidate.team(teamId)).search(namespace, query, options);
     }
 
     public async getNamespace(teamId: string, name: string) {
         const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-        const nsData = await this._nkvConnector.user(AccessCandidate.team(teamId)).get('vectorDB:pinecone:namespaces', preparedNs);
+        const nsData = await this._nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs);
         return JSONContentHelper.create(nsData?.toString()).tryParse() as IStorageVectorNamespace;
     }
 
     public async isNewNs(ac: AccessCandidate, namespace: string): Promise<boolean> {
-        return !(await this._nkvConnector.user(AccessCandidate.clone(ac)).exists('vectorDB:pinecone', `namespace:${namespace}:acl`));
+        return !(await this._nkvConnector
+            .user(AccessCandidate.clone(ac))
+            .exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${namespace}:acl`));
     }
 
     public async embedText(text: string) {
@@ -270,14 +303,6 @@ export class VectorsHelper {
     public async isNamespaceOnCustomStorage(teamId: string, namespace: string) {
         const ns = await this.getNamespace(teamId, namespace);
         return (ns.metadata?.isOnCustomStorage as boolean) ?? false;
-    }
-
-    private getConnectorName(connector: VectorDBConnector) {
-        if (connector instanceof PineconeVectorDB) {
-            return 'Pinecone';
-        }
-
-        throw new Error('Unable to determine custom storage key name for vector DB connector');
     }
 
     // async configureCustomStorage(teamId: string, config: any) {

@@ -44,7 +44,7 @@ export default class DataSourceCleaner extends Component {
             }
 
             const namespaceId = configSchema.value.namespaceId;
-            const vectorDBHelper = VectorsHelper.load();
+            let vectorDBHelper = VectorsHelper.load();
             const nsExists = await vectorDBHelper.namespaceExists(teamId, namespaceId);
             if (!nsExists) {
                 throw new Error(`Namespace ${namespaceId} does not exist`);
@@ -58,7 +58,10 @@ export default class DataSourceCleaner extends Component {
             debugOutput += `Searching for data source with id: ${providedId}\n`;
 
             const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
-
+            const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
+            if (isOnCustomStorage) {
+                vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+            }
             await vectorDBHelper.deleteDatasource(teamId, namespaceId, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;

@@ -57,6 +57,13 @@ const SREInstance = SmythRuntime.Instance.init({
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 
 const EVENTUAL_CONSISTENCY_DELAY = 5_000;
@@ -184,6 +191,58 @@ describe('DataSourceLookup Component', () => {
         expect(output._error).toBeUndefined();
 
         expect(error).toBeUndefined;
+    });
+
+    it('lookup data in custom storage', async () => {
+        let error;
+        const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
+        const data = JSON.parse(agentData);
+        const date = new Date();
+
+        const agent = new Agent(10, data, new AgentSettings(10));
+        agent.teamId = 'default';
+
+        const lookupComp = new DataSourceLookup();
+
+        const namespace = faker.lorem.word();
+        const vectorDbHelper = await VectorsHelper.forTeam(agent.teamId);
+        await vectorDbHelper.createNamespace(agent.teamId, namespace);
+        const id = faker.lorem.word();
+        const sourceText = ['What is the capital of France?', 'Paris'];
+
+        await vectorDbHelper.createDatasource(sourceText.join(' '), namespace, {
+            teamId: 'default',
+            chunkSize: 1000,
+            chunkOverlap: 0,
+            metadata: {
+                text: 'Paris',
+            },
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
+
+        const output = await lookupComp.process(
+            {
+                Query: sourceText[0],
+            },
+            {
+                data: {
+                    namespace,
+                    postprocess: false,
+                    prompt: '',
+                    includeMetadata: false,
+                    topK: 10,
+                },
+                outputs: [],
+            },
+            agent
+        );
+
+        const results = output.Results;
+
+        expect(results).toBeDefined();
+        expect(results.length).toBeGreaterThan(0);
+        expect(results.some((result) => result.includes('Paris'))).toBeTruthy();
     });
 
     // it('postprocess data', async () => {

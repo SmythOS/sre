@@ -60,6 +60,13 @@ const SREInstance = SmythRuntime.Instance.init({
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);

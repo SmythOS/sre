@@ -60,6 +60,12 @@ const SREInstance = SmythRuntime.Instance.init({
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 
 const EVENTUAL_CONSISTENCY_DELAY = 5_000;
@@ -68,7 +74,7 @@ ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnec
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
 describe('DataSourceIndexer Component', () => {
-    it('inserts data', async () => {
+    it('inserts data on global storage', async () => {
         const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
         const data = JSON.parse(agentData);
         const date = new Date();
@@ -119,5 +125,58 @@ describe('DataSourceIndexer Component', () => {
         const ds = await vectorDBHelper.getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
         expect(ds).toBeDefined();
+    });
+
+    it('inserts data on custom storage', async () => {
+        const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
+        const data = JSON.parse(agentData);
+        const agent = new Agent(10, data, new AgentSettings(10));
+        agent.teamId = 'default';
+
+        const indexer = new DataSourceIndexer();
+
+        // index some data using the connector
+        const namespace = faker.lorem.word();
+        const vectorDBHelper = await VectorsHelper.forTeam(agent.teamId); // load an instance that can access the custom storage (if it exists)
+        await vectorDBHelper.createNamespace(agent.teamId, namespace);
+
+        const sourceText = ['What is the capital of France?', 'Paris'];
+
+        const dynamic_id = crypto.randomBytes(16).toString('hex');
+
+        await indexer.process(
+            {
+                Source: sourceText.join(' '),
+                dynamic_id,
+            },
+            {
+                data: {
+                    namespace,
+                    name: 'Paris Datasource',
+                    id: '{{dynamic_id}}',
+                    metadata: 'Paris',
+                },
+                outputs: [],
+            },
+            agent
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
+
+        // make sure that the datasource was created
+
+        const ds = await vectorDBHelper.getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+        expect(ds).toBeDefined();
+
+        const vectors = await vectorDBHelper.search(agent.teamId, namespace, 'Paris');
+        expect(vectors).toBeDefined();
+        expect(vectors.length).toBeGreaterThan(0);
+        expect(vectors.some((result) => result.metadata?.text.includes('Paris'))).toBeTruthy();
+
+        const globalStorageHelper = VectorsHelper.load();
+        //* expect an error because we tried to access a namespace that exists on custom storage
+        const globalVectors = await globalStorageHelper.search(agent.teamId, namespace, 'Paris').catch((e) => []);
+        expect(globalVectors).toBeDefined();
+        expect(globalVectors.length).toBe(0);
     });
 });

@@ -18,6 +18,7 @@ export interface IVectorDBRequest {
 }
 
 export abstract class VectorDBConnector extends SecureConnector {
+    public abstract id: string;
     public abstract indexName: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract user(candidate: IAccessCandidate): IVectorDBRequest;
