@@ -22,7 +22,7 @@ export class S3Storage extends StorageConnector {
     private client: S3Client;
     private bucket: string;
 
-    constructor(private config: S3Config & { bucket: string }) {
+    constructor(config: S3Config & { bucket: string }) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.bucket = config.bucket;
@@ -38,34 +38,6 @@ export class S3Storage extends StorageConnector {
         this.client = new S3Client(clientConfig);
     }
 
-    public user(candidate: AccessCandidate): IStorageRequest {
-        return {
-            write: async (resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata) => {
-                return await this.write(candidate.writeRequest, resourceId, value, acl, metadata);
-            },
-            read: async (resourceId: string) => {
-                return await this.read(candidate.readRequest, resourceId);
-            },
-            delete: async (resourceId: string) => {
-                await this.delete(candidate.readRequest, resourceId);
-            },
-            exists: async (resourceId: string) => {
-                return await this.exists(candidate.readRequest, resourceId);
-            },
-            getMetadata: async (resourceId: string) => {
-                return await this.getMetadata(candidate.readRequest, resourceId);
-            },
-            setMetadata: async (resourceId: string, metadata: StorageMetadata) => {
-                await this.setMetadata(candidate.writeRequest, resourceId, metadata);
-            },
-            getACL: async (resourceId: string) => {
-                return await this.getACL(candidate.readRequest, resourceId);
-            },
-            setACL: async (resourceId: string, acl: IACL) => {
-                return await this.setACL(candidate.writeRequest, resourceId, acl);
-            },
-        } as IStorageRequest;
-    }
     /**
      * Reads an object from the S3 bucket.
      *

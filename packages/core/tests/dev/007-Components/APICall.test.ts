@@ -163,7 +163,7 @@ describe('APICall Component', () => {
                 method: 'POST',
                 url: 'https://www.example.com',
                 headers: '{\n  "Content-Type": "{{mime}}"\n}',
-                contentType: 'none',
+                contentType: 'binary',
                 body: '{{image}}',
                 proxy: '',
                 oauthService: 'None',

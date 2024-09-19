@@ -61,6 +61,14 @@ const testOriginalMetadata = {
 describe('S3 Storage Tests', () => {
     it('Create S3Storage', async () => {
         const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
+        const newClient = s3Storage.instance({
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        });
+        newClient.name = 'test';
+
         expect(s3Storage).toBeInstanceOf(S3Storage);
     });
 

@@ -14,6 +14,9 @@ const SREInstance = SmythRuntime.Instance.init({
             region: process.env.AWS_REGION,
         },
     },
+    Account: {
+        Connector: 'SmythAccount',
+    }
 });
 
 describe('Secret Manager Tests', () => {
