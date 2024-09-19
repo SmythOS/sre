@@ -4,6 +4,11 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 export type GenericRequestHandler = (...args: any[]) => void | Promise<void>;
 
+/*
+This Connector is highly discouraged to be used because by design, SRE should not handle any kind of HTTP requests
+Currently it is only used to serve the temp files for external services to retrieve them.
+*/
+
 export abstract class RouterConnector extends Connector {
     public abstract baseUrl: string;
 
