@@ -8,6 +8,10 @@ dotenv.config();
 //(session);
 
 //==============
+const app = express();
+const port = /*process.env.PORT || */ 5555;
+const BASE_URL = `http://localhost:${port}`;
+
 const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
@@ -33,6 +37,14 @@ const sre = SmythRuntime.Instance.init({
     AgentData: {
         Connector: 'CLI',
     },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: process.env.REDIS_SENTINEL_HOSTS,
+            name: process.env.REDIS_MASTER_NAME || '',
+            password: process.env.REDIS_PASSWORD || '',
+        },
+    },
 });
 
 const conversations = {};
@@ -49,8 +61,6 @@ const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 8 * 102
 
 //implement a simple expressjs app that serves static files from ./static folder
 
-const app = express();
-const port = /*process.env.PORT || */ 5555;
 // Session configuration
 const sessionConfig = {
     secret: 'session secret goes here 123 456', // Replace with your own secret key

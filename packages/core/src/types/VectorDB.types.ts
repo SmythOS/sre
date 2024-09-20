@@ -13,6 +13,11 @@ export type PineconeConfig = {
     indexName: string;
 };
 
+export interface NsKnownMetadata {
+    isOnCustomStorage?: boolean;
+    [key: string]: any;
+}
+
 // export interface IDocument<Metadata extends Record<string, any> = Record<string, any>> {
 //     text: string;
 //     metadata: Metadata;
@@ -56,7 +61,12 @@ export interface IStorageVectorDataSource {
 
 export interface IStorageVectorNamespace {
     namespace: string;
-    indexName: string;
     displayName: string;
     teamId: string;
+    metadata?: StorageVectorNamespaceMetadata;
+}
+
+export type StorageVectorNamespaceMetadata = Partial<PineconeNamespaceMetadata> & { [key: string]: any };
+export interface PineconeNamespaceMetadata {
+    indexName: string;
 }

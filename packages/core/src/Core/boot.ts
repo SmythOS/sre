@@ -10,6 +10,7 @@ import { AgentDataService } from '@sre/AgentManager/AgentData.service';
 import { VectorDBService } from '@sre/IO/VectorDB.service';
 import { CLIService } from '@sre/IO/CLI.service';
 import { NKVService } from '@sre/IO/NKV.service';
+import { RouterService } from '@sre/IO/Router.service';
 const console = Logger('Boot');
 
 export function boot() {
@@ -24,6 +25,7 @@ export function boot() {
     service.AgentData = new AgentDataService();
     service.CLI = new CLIService();
     service.VectorDB = new VectorDBService();
+    service.Router = new RouterService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

@@ -1,6 +1,9 @@
+import { LocalCache } from '@sre/helpers/LocalCache.helper';
 import { Logger } from '../helpers/Log.helper';
+import { createHash } from 'crypto';
 
 const console = Logger('Connector');
+const lCache = new LocalCache();
 
 export class Connector {
     public name: string;
@@ -17,12 +20,23 @@ export class Connector {
      * @returns A new instance of the current class.
      */
     public instance(config: any): this {
-        // Using 'this.constructor' to refer to the class of the current instance.
-        // The 'as any' cast is necessary because TypeScript doesn't automatically
-        // recognize that 'this.constructor' can be invoked with 'new'.
+
+        const configHash = createHash('sha256').update(JSON.stringify(config)).digest('hex');
+        const key = `${this.name}-${configHash}`;
+
+        if (lCache.has(key)) {
+            return lCache.get(key) as this;
+        }
+
+        // if not in cache, create a new instance from the concrete class
         const constructor = this.constructor as { new (config: any): any };
-        return new constructor(config);
+        const instance = new constructor(config);
+        lCache.set(key, instance, 60 * 60 * 1000); // cache for 1 hour
+
+        return instance;
     }
+
+
     public async start() {
         console.info(`Starting ${this.name} connector ...`);
         this.started = true;

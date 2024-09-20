@@ -3,6 +3,9 @@ import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import Joi from 'joi';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
+import { isSmythFileObject } from '../utils';
+import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 function validateAndParseJson(value, helpers) {
     let parsedJson: any = null;
@@ -71,23 +74,20 @@ export default class ZapierAction extends Component {
         }
 
         let _input = {};
+        let _pubUrlsCreated: string[] = [];
 
         for (const [key, value] of Object.entries(input)) {
-            // TODO: handle SmythFileObject in SRE context
-            /*
-            PROBLEM:
-            in SRE context, if the passed input is a file, it will be an object with a url property with
-            something like smythfs://teamId.team/candidateId/..., correct?
-            the problem now is that, the zapier action expects a public url and not an INTERNAL private resource.
-
-            Solutions I thought of:
-            - pass a base64 
-            */
-            // if (isSmythFileObject(value)) {
-            //     _input[key] = (value as SmythFileObject)?.url;
-            // } else {
-            _input[key] = value;
-            // }
+            if (isSmythFileObject(value)) {
+                // _input[key] = (value as SmythFileObject)?.url;
+                const pubUrl = await SmythFS.Instance.genTempUrl((value as any)?.url, AccessCandidate.agent(agent.id));
+                _pubUrlsCreated.push(pubUrl);
+                _input[key] = {
+                    ...(value as any),
+                    url: pubUrl,
+                };
+            } else {
+                _input[key] = value;
+            }
         }
 
         try {
@@ -95,6 +95,14 @@ export default class ZapierAction extends Component {
             const res = await axios.post(url, { ..._input });
 
             logger.debug(`Output:\n`, res?.data);
+
+            Promise.all(_pubUrlsCreated.map((url) => SmythFS.Instance.destroyTempUrl(url)))
+                .then(() => {
+                    console.log('Cleaned up all temp urls');
+                })
+                .catch((e) => {
+                    console.log('Error cleaning up temp urls', e);
+                });
 
             return { Output: res?.data, _debug: logger.output };
         } catch (error: any) {
@@ -107,6 +115,14 @@ export default class ZapierAction extends Component {
 
             logger.error(`Error running Zapier Action!`, message);
             logger.error('Error Inputs ', input);
+
+            Promise.all(_pubUrlsCreated.map((url) => SmythFS.Instance.destroyTempUrl(url)))
+                .then(() => {
+                    console.log('Cleaned up all temp urls');
+                })
+                .catch((e) => {
+                    console.log('Error cleaning up temp urls', e);
+                });
 
             return { _error: `Zapier Error: ${message}`, _debug: logger.output };
         }

@@ -8,15 +8,28 @@ import * as FileType from 'file-type';
 import mime from 'mime';
 import { Readable } from 'stream';
 import { StorageConnector } from './StorageConnector';
-
+import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import crypto from 'crypto';
+import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { RouterConnector } from '../Router.service/RouterConnector';
 export type TSmythFSURI = {
     hash: string;
     team: string;
     path: string;
 };
 
+SystemEvents.on('SRE:Booted', () => {
+    const router = ConnectorService.getRouterConnector();
+    if (router && router?.get instanceof Function) {
+        router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+    }
+});
+
 export class SmythFS {
     private storage: StorageConnector;
+    private cache: CacheConnector;
 
     //singleton
     private static instance: SmythFS;
@@ -33,6 +46,7 @@ export class SmythFS {
             throw new Error('SRE not available');
         }
         this.storage = ConnectorService.getStorageConnector();
+        this.cache = ConnectorService.getCacheConnector();
     }
 
     private URIParser(uri: string) {
@@ -161,5 +175,71 @@ export class SmythFS {
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
         return await this.storage.user(_candidate).exists(resourceId);
+    }
+
+    public async genTempUrl(uri: string, candidate: IAccessCandidate, ttlSeconds: number = 3600) {
+        const smythURI = this.URIParser(uri);
+        if (!smythURI) throw new Error('Invalid Resource URI');
+
+        const exists = await this.exists(uri, candidate);
+        if (!exists) throw new Error('Resource does not exist');
+
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
+
+        const resourceId = `teams/${smythURI.team}${smythURI.path}`;
+        const resourceMetadata = await this.storage.user(_candidate).getMetadata(resourceId);
+
+        const uid = crypto.randomUUID();
+        const tempUserCandidate = AccessCandidate.user(`system:${uid}`);
+
+        await this.cache.user(tempUserCandidate).set(
+            `pub_url:${uid}`,
+            JSON.stringify({
+                accessCandidate: _candidate,
+                uri,
+                contentType: resourceMetadata?.ContentType,
+            }),
+            undefined,
+            undefined,
+            ttlSeconds
+        ); // 1 hour
+
+        const baseUrl = ConnectorService.getRouterConnector().baseUrl;
+        return `${baseUrl}/_temp/${uid}`;
+    }
+
+    public async destroyTempUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {
+        const uid = url.split('/_temp/')[1].split('?')[0]; // remove any query params
+        let cacheVal = await this.cache.user(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);
+        if (!cacheVal) throw new Error('Invalid Temp URL');
+        cacheVal = JSONContentHelper.create(cacheVal).tryParse();
+        await this.cache.user(AccessCandidate.user(`system:${uid}`)).delete(`pub_url:${uid}`);
+        if (delResource) {
+            await this.delete(cacheVal.uri, AccessCandidate.clone(cacheVal.accessCandidate));
+        }
+    }
+
+    public async serveTempContent(req: any, res: any) {
+        try {
+            const { uid } = req.params;
+            let cacheVal = await this.cache.user(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);
+            if (!cacheVal) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Invalid Temp URL');
+                return;
+            }
+            cacheVal = JSONContentHelper.create(cacheVal).tryParse();
+            const content = await this.read(cacheVal.uri, AccessCandidate.clone(cacheVal.accessCandidate));
+
+            res.writeHead(200, {
+                'Content-Type': cacheVal.contentType,
+                'Content-Disposition': 'inline',
+            });
+            res.end(content);
+        } catch (error) {
+            console.error('Error serving temp content:', error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Internal Server Error');
+        }
     }
 }
