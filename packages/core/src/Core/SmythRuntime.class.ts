@@ -2,19 +2,9 @@ import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
 import { Logger } from '../helpers/Log.helper';
-import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 
 const logger = Logger('SRE');
 const CInstance = ConnectorService;
-
-interface IRouter {
-    get(path: string, ...handlers: Function[]): this;
-    post(path: string, ...handlers: Function[]): this;
-    put(path: string, ...handlers: Function[]): this;
-    delete(path: string, ...handlers: Function[]): this;
-    use(...handlers: Function[]): this;
-    use(path: string, ...handlers: Function[]): this;
-}
 
 export default class SmythRuntime {
     public started = false;
