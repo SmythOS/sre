@@ -7,7 +7,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -24,16 +24,18 @@ export class TogetherAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
+        const _messages = this.getConsistentMessages(_params.messages);
+
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (_params.messages[0]?.role !== 'system') {
-            _params.messages.unshift({
+        if (_messages[0]?.role !== 'system') {
+            _messages.unshift({
                 role: 'system',
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
         }
 
-        if (prompt && _params.messages.length === 1) {
-            _params.messages.push({ role: 'user', content: prompt });
+        if (prompt && _messages.length === 1) {
+            _messages.push({ role: 'user', content: prompt });
         }
 
         // Check if the team has their own API key, then use it
@@ -45,7 +47,7 @@ export class TogetherAIConnector extends LLMConnector {
         });
 
         // Check token limit
-        const promptTokens = encodeChat(_params.messages, 'gpt-4')?.length;
+        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
 
         const tokensLimit = this.checkTokensLimit({
             model: _params.model,
@@ -96,28 +98,26 @@ export class TogetherAIConnector extends LLMConnector {
         throw new Error('Image generation request is not supported for TogetherAI.');
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
         try {
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+                apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
                 baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
-            if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
+            const messages = this.getConsistentMessages(_params.messages);
 
-            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-                model,
+            let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+                model: _params.model,
                 messages,
-                tools,
-                tool_choice,
             };
 
-            const result = await openai.chat.completions.create(args);
+            if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
+            if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+
+            const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -142,8 +142,7 @@ export class TogetherAIConnector extends LLMConnector {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
@@ -154,26 +153,25 @@ export class TogetherAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
         const emitter = new EventEmitter();
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+            apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
             baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
-        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model,
-            messages,
-            tools,
-            tool_choice,
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model: _params.model,
+            messages: _params.messages,
             stream: true,
         };
 
+        if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
+        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+
         try {
-            const stream: any = await openai.chat.completions.create(args);
+            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
             let toolsData: ToolData[] = [];
 
@@ -212,13 +210,12 @@ export class TogetherAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -248,20 +245,24 @@ export class TogetherAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {
+    private getConsistentMessages(messages) {
+        if (messages.length === 0) return messages;
+
         return messages.map((message) => {
+            const _message = { ...message };
             let textContent = '';
 
-            if (Array.isArray(message.content)) {
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
                 textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
-            } else if (typeof message.content === 'string') {
-                textContent = message.content;
+            } else if (message?.content) {
+                textContent = message.content as string;
             }
 
-            return {
-                role: message.role,
-                content: textContent,
-            };
+            _message.content = textContent;
+
+            return _message;
         });
     }
 }

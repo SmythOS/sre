@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI, ModelParams, GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -17,7 +17,7 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -29,7 +29,7 @@ type FileObject = {
     mimetype: string;
 };
 
-const DEFAULT_MODEL = 'gemini-pro';
+const DEFAULT_MODEL = 'gemini-1.5-pro';
 
 const MODELS_WITH_SYSTEM_MESSAGE = [
     'gemini-1.5-pro-latest',
@@ -64,21 +64,21 @@ const VALID_MIME_TYPES = [
     'audio/aac',
     'audio/ogg',
     'audio/flac',
+    'application/pdf',
+    'application/x-javascript',
+    'application/x-typescript',
+    'application/x-python-code',
+    'application/json',
+    'application/rtf',
     'text/plain',
     'text/html',
     'text/css',
     'text/javascript',
-    'application/pdf',
-    'application/x-javascript',
     'text/x-typescript',
-    'application/x-typescript',
     'text/csv',
     'text/markdown',
     'text/x-python',
-    'application/x-python-code',
-    'application/json',
     'text/xml',
-    'application/rtf',
     'text/rtf',
 ];
 
@@ -103,23 +103,25 @@ export class GoogleAIConnector extends LLMConnector {
         let messages = _params?.messages || [];
 
         let systemInstruction;
-        let systemMessage: LLMMessageBlock | {} = {};
+        let systemMessage: TLLMMessageBlock | {} = {};
 
         if (this.hasSystemMessage(_params?.messages)) {
             const separateMessages = this.separateSystemMessages(messages);
-            systemMessage = separateMessages.systemMessage;
+            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             messages = separateMessages.otherMessages;
         }
 
         if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-            systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
+            systemInstruction = 'content' in systemMessage ? systemMessage.content : '';
         } else {
-            prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
+            prompt = `${prompt}\n${'content' in systemMessage ? systemMessage.content : ''}`;
         }
 
         if (_params?.messages) {
+            const messages = this.getConsistentMessages(_params.messages);
             // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt = _params.messages.map((message) => message?.content || '').join('\n');
+            prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
         }
 
         // Need to return JSON for LLM Prompt component
@@ -258,7 +260,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
-        const model = _params?.model || 'gemini-pro-vision';
+        const model = _params?.model || DEFAULT_MODEL;
         const apiKey = _params?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
@@ -340,39 +342,46 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI Multimodal LLM Request', error);
-
             throw error;
         }
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        const _params = { ...params };
+
         try {
             let systemInstruction = '';
             let formattedMessages;
 
+            const messages = this.getConsistentMessages(_params.messages);
+
             if (this.hasSystemMessage(messages)) {
                 const separateMessages = this.separateSystemMessages(messages);
-                systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-                formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+                const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+                systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+                formattedMessages = separateMessages.otherMessages;
             } else {
-                formattedMessages = this.formatInputMessages(messages);
+                formattedMessages = messages;
             }
 
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-            const $model = genAI.getGenerativeModel({ model });
+            const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+            const $model = genAI.getGenerativeModel({ model: _params.model });
 
-            const result = await $model.generateContent({
+            const generationConfig: GenerateContentRequest = {
                 contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            };
+
+            if (systemInstruction) {
+                generationConfig.systemInstruction = systemInstruction;
+            }
+
+            if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+            if (_params?.toolsConfig?.tool_choice)
+                generationConfig.toolConfig = {
+                    functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+                };
+
+            const result = await $model.generateContent(generationConfig);
 
             const response = await result.response;
             const content = response.text();
@@ -388,7 +397,7 @@ export class GoogleAIConnector extends LLMConnector {
                     type: 'function',
                     name: toolCall.functionCall.name,
                     arguments: JSON.stringify(toolCall.functionCall.args),
-                    role: 'assistant',
+                    role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
             }
@@ -397,8 +406,7 @@ export class GoogleAIConnector extends LLMConnector {
                 data: { useTool, message: { content }, content, toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
@@ -406,6 +414,7 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
+    // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -413,34 +422,42 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+        const _params = { ...params };
+
         const emitter = new EventEmitter();
-        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-        const $model = genAI.getGenerativeModel({ model });
+        const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+        const $model = genAI.getGenerativeModel({ model: _params.model });
 
         let systemInstruction = '';
         let formattedMessages;
+        const messages = this.getConsistentMessages(_params.messages);
 
         if (this.hasSystemMessage(messages)) {
             const separateMessages = this.separateSystemMessages(messages);
-            systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-            formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+            formattedMessages = this.getConsistentMessages(separateMessages.otherMessages);
         } else {
-            formattedMessages = this.formatInputMessages(messages);
+            formattedMessages = this.getConsistentMessages(messages);
         }
 
+        const generationConfig: GenerateContentRequest = {
+            contents: formattedMessages,
+        };
+
+        if (systemInstruction) {
+            generationConfig.systemInstruction = systemInstruction;
+        }
+
+        if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tool_choice)
+            generationConfig.toolConfig = {
+                functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+            };
+
         try {
-            const result = await $model.generateContentStream({
-                contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            const result = await $model.generateContentStream(generationConfig);
 
             let toolsData: ToolData[] = [];
 
@@ -459,7 +476,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 type: 'function',
                                 name: toolCall.functionCall.name,
                                 arguments: JSON.stringify(toolCall.functionCall.args),
-                                role: 'assistant',
+                                role: TLLMMessageRole.Assistant,
                             }));
                             emitter.emit('toolsData', toolsData);
                         }
@@ -473,13 +490,12 @@ export class GoogleAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
     }
 
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
+        const params: TLLMParams = await super.extractVisionLLMParams(config);
 
         return params;
     }
@@ -602,19 +618,39 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): any[] {
-        return messages.map((message) => {
-            let role = message.role;
+    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        if (messages.length === 0) return messages;
 
-            // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
-            if (message.role === 'assistant') {
-                role = 'model';
+        return messages.map((message) => {
+            const _message = { ...message };
+            let textContent = '';
+
+            // Map roles to valid Google AI roles
+            switch (_message.role) {
+                case TLLMMessageRole.Assistant:
+                case TLLMMessageRole.System:
+                    _message.role = TLLMMessageRole.Model;
+                    break;
+                case TLLMMessageRole.User:
+                    // User role is already valid
+                    break;
+                default:
+                    _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
-            return {
-                role,
-                parts: [{ text: message.content }],
-            };
+            if (_message?.parts) {
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(_message?.content)) {
+                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (_message?.content) {
+                textContent = _message.content as string;
+            }
+
+            _message.parts = [{ text: textContent }];
+
+            delete _message.content; // Remove content to avoid error
+
+            return _message;
         });
     }
 
@@ -661,5 +697,62 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const content = [];
+            if (typeof messageBlock.content === 'string') {
+                content.push({ text: messageBlock.content });
+            } else if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
+            }
+
+            if (messageBlock.parts) {
+                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
+                if (functionCalls.length > 0) {
+                    content.push(
+                        ...functionCalls.map((call) => ({
+                            functionCall: {
+                                name: call.functionCall.name,
+                                args: JSON.parse(call.functionCall.args),
+                            },
+                        }))
+                    );
+                }
+            }
+
+            messageBlocks.push({
+                role: messageBlock.role,
+                parts: content,
+            });
+        }
+
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.Function,
+                parts: [
+                    {
+                        functionResponse: {
+                            name: toolData.name,
+                            response: {
+                                name: toolData.name,
+                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+
+        return [...messageBlocks, ...transformedToolsData];
     }
 }

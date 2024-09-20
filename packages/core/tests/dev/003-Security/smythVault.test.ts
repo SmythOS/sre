@@ -17,6 +17,9 @@ const SREInstance = SmythRuntime.Instance.init({
           vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+    Account: {
+        Connector: 'SmythAccount',
+    }
 });
 
 describe('Vault Tests', () => {

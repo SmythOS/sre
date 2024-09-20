@@ -25,6 +25,7 @@ import ForEach from './ForEach.class';
 import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
 import ZapierAction from './ZapierAction.class';
+import GPTPlugin from './GPTPlugin.class';
 import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
@@ -60,6 +61,7 @@ const components = {
     Code: new Code(),
     HuggingFace: new HuggingFace(),
     ZapierAction: new ZapierAction(),
+    GPTPlugin: new GPTPlugin(),
     ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
 };

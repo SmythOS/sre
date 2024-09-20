@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 
 const console = Logger('Connector');
 const lCache = new LocalCache();
+
 export class Connector {
     public name: string;
     public started = false;
@@ -19,6 +20,7 @@ export class Connector {
      * @returns A new instance of the current class.
      */
     public instance(config: any): this {
+
         const configHash = createHash('sha256').update(JSON.stringify(config)).digest('hex');
         const key = `${this.name}-${configHash}`;
 
@@ -33,6 +35,7 @@ export class Connector {
 
         return instance;
     }
+
 
     public async start() {
         console.info(`Starting ${this.name} connector ...`);

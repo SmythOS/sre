@@ -9,7 +9,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMParams, LLMMessageBlock, LLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { isDataUrl, isUrl } from '@sre/utils';
 import axios from 'axios';
 import { encode } from 'gpt-tokenizer';
@@ -311,7 +311,7 @@ export abstract class LLMConnector extends Connector {
 
     // TODO [Forhad]: Need to check if we need the params mapping anymore as we set the parameters explicitly now
     public async extractLLMComponentParams(config: any) {
-        const params: LLMParams = {};
+        const params: TLLMParams = {};
         const model: string = config.data.model;
         // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
 
@@ -375,7 +375,7 @@ export abstract class LLMConnector extends Connector {
 
     // TODO [Forhad]: Need to support other params like temperature, topP, topK, etc.
     public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = {};
+        const params: TLLMParams = {};
         const model: string = config.data.model;
         // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
 
@@ -409,13 +409,13 @@ export abstract class LLMConnector extends Connector {
         throw new Error('This model does not support tools');
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
+    }): TLLMToolResultMessageBlock[] {
         throw new Error('This model does not support tools');
     }
 
@@ -425,9 +425,9 @@ export abstract class LLMConnector extends Connector {
         return messages?.some((message) => message.role === 'system');
     }
 
-    public separateSystemMessages(messages: LLMMessageBlock[]): {
-        systemMessage: LLMMessageBlock | {};
-        otherMessages: LLMMessageBlock[];
+    public separateSystemMessages(messages: TLLMMessageBlock[]): {
+        systemMessage: TLLMMessageBlock | {};
+        otherMessages: TLLMMessageBlock[];
     } {
         const systemMessage = messages.find((message) => message.role === 'system') || {};
         const otherMessages = messages.filter((message) => message.role !== 'system');

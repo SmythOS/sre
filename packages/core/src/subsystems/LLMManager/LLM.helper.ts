@@ -146,7 +146,7 @@ export class LLMHelper {
 
             return result;
         } catch (error: any) {
-            console.error('Error in visionRequest: ', error);
+            console.error('Error in multimodalRequest: ', error);
 
             throw error;
         }
@@ -159,9 +159,19 @@ export class LLMHelper {
     }
 
     public async toolRequest(params: any, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
-        params.model = this._modelId;
-        return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
+        if (!params.messages || !params.messages?.length) {
+            throw new Error('Input messages are required.');
+        }
+
+        try {
+            const agentId = agent instanceof Agent ? agent.id : agent;
+            params.model = this._modelId;
+            return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
+        } catch (error: any) {
+            console.error('Error in toolRequest: ', error);
+
+            throw error;
+        }
     }
 
     public async streamToolRequest(params: any, agent: string | Agent) {
@@ -172,10 +182,15 @@ export class LLMHelper {
     public async streamRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
         try {
+            if (!params.messages || !params.messages?.length) {
+                throw new Error('Input messages are required.');
+            }
+
             params.model = this._modelId;
             return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
         } catch (error) {
             console.error('Error in streamRequest:', error);
+
             const dummyEmitter = new EventEmitter();
             process.nextTick(() => {
                 dummyEmitter.emit('error', error);
