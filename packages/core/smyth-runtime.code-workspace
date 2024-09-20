@@ -2,10 +2,6 @@
     "folders": [
         {
             "path": "."
-        },
-        {
-            "path": "../../Agent Generator"
         }
-    ],
-    "settings": {}
+    ]
 }
