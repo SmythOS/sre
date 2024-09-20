@@ -50,7 +50,7 @@ export class ModelRegistry {
 
     public getProvider(modelName: string): string {
         const modelId = this.getModelId(modelName);
-        return this.models[modelId]?.llm;
+        return this.models?.[modelId]?.llm;
     }
 
     public modelExists(modelName: string): boolean {

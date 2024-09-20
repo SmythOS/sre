@@ -24,7 +24,7 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'DummyAccount',
+        Connector: 'SmythAccount',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -54,6 +54,7 @@ ConnectorService.init(TConnectorService.AgentData, 'CLI');
 // - expect JSON output
 // - expect error when model is not supported
 // - run test cases for all providers
+// - Need to separate test cases for custom models, as custom models require SmythAccount account connector
 
 const TIMEOUT = 30000;
 

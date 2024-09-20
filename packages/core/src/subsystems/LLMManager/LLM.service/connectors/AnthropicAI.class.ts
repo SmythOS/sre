@@ -375,7 +375,7 @@ export class AnthropicAIConnector extends LLMConnector {
             }
 
             messageBlocks.push({
-                role: messageBlock.role,
+                role: messageBlock?.role,
                 content: content,
             });
         }
@@ -431,7 +431,7 @@ export class AnthropicAIConnector extends LLMConnector {
         });
 
         //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
-        if (messages[0].role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
+        if (messages[0]?.role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
             const hasToolResult = messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
 
             //we found a tool result in the first message, so we need to remove the user message
@@ -441,7 +441,7 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
-        if (messages[0].role !== TLLMMessageRole.User) {
+        if (messages[0]?.role !== TLLMMessageRole.User) {
             messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
         }
 
