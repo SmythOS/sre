@@ -14,6 +14,7 @@ import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { TestAccountConnector } from '../../utils/TestConnectors';
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -76,7 +77,7 @@ describe('S3 Storage Tests', () => {
         //Expected to not work, will only work if we associate the candidate "agent-123456" with the team "9"
         //here we create a custom connector just to test this case
 
-        class CustomAccountConnector extends AccountConnector {
+        class CustomAccountConnector extends TestAccountConnector {
             public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
                 if (candidate.id === 'agent-123456') {
                     return Promise.resolve('9');

@@ -7,22 +7,15 @@ import { faker } from '@faker-js/faker';
 import { Document } from '@langchain/core/documents';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { AccountConnector, ISmythAccountRequest } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { time } from 'console';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
+import { TestAccountConnector } from '../../utils/TestConnectors';
 
-class CustomAccountConnector extends AccountConnector {
-    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
-        if (candidate.id === 'agent-123456') {
-            return Promise.resolve('9');
-        } else if (candidate.id === 'agent-654321') {
-            return Promise.resolve('5');
-        }
-        return super.getCandidateTeam(candidate);
-    }
-}
-ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', TestAccountConnector);
 
 const SREInstance = SmythRuntime.Instance.init({
     Account: {

@@ -11,8 +11,9 @@ import { AccountConnector } from '@sre/Security/Account.service/AccountConnector
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
+import { TestAccountConnector } from '../../utils/TestConnectors';
 
-class CustomAccountConnector extends AccountConnector {
+class CustomAccountConnector extends TestAccountConnector {
     public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
         if (candidate.id === 'agent-123456') {
             return Promise.resolve('9');
