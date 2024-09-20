@@ -14,6 +14,7 @@ import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
+import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
 const console = Logger('ConnectorService');
 
 const Connectors = {};
@@ -75,7 +76,7 @@ export class ConnectorService {
      * @param isDefault
      * @returns
      */
-    static init(connectorType: TConnectorService, connectorName: string, settings: any = {}, isDefault = false) {
+    static init(connectorType: TConnectorService, connectorName: string, connectorId: string, settings: any = {}, isDefault = false) {
         if (ConnectorInstances[connectorType]?.[connectorName]) {
             throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
         }
@@ -89,7 +90,8 @@ export class ConnectorService {
 
             connector.start();
             if (!ConnectorInstances[connectorType]) ConnectorInstances[connectorType] = {};
-            ConnectorInstances[connectorType][connectorName] = connector;
+            const id = connectorId || connectorName;
+            ConnectorInstances[connectorType][id] = connector;
 
             if (!ConnectorInstances[connectorType].default && isDefault) {
                 ConnectorInstances[connectorType].default = connector;
@@ -114,6 +116,8 @@ export class ConnectorService {
                 return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]] as T;
             }
             console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+            //print stack trace
+            console.debug(new Error().stack);
             return DummyConnector as T;
         }
         return instance;
@@ -147,6 +151,10 @@ export class ConnectorService {
 
     static getVaultConnector(name?: string): VaultConnector {
         return ConnectorService.getInstance<VaultConnector>(TConnectorService.Vault, name);
+    }
+
+    static getManagedVaultConnector(name?: string): ManagedVaultConnector {
+        return ConnectorService.getInstance<ManagedVaultConnector>(TConnectorService.ManagedVault, name);
     }
 
     static getAccountConnector(name?: string): AccountConnector {

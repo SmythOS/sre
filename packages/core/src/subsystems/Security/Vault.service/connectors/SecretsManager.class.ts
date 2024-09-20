@@ -21,20 +21,13 @@ export class SecretsManager extends VaultConnector {
 
         this.secretsManager = new SecretsManagerClient({
             region: config.region,
-            ...(config.awsAccessKeyId && config.awsSecretAccessKey ? {
-                accessKeyId: config.awsAccessKeyId,
-                secretAccessKey: config.awsSecretAccessKey,
-            } : {}),
+            ...(config.awsAccessKeyId && config.awsSecretAccessKey
+                ? {
+                      accessKeyId: config.awsAccessKeyId,
+                      secretAccessKey: config.awsSecretAccessKey,
+                  }
+                : {}),
         });
-    }
-
-    user(candidate: AccessCandidate): IVaultRequest {
-        return {
-            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
-            set: async (keyId: string, value: string) => this.set(candidate.writeRequest, keyId, value),
-            delete: async (keyId: string) => this.delete(candidate.writeRequest, keyId),
-            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
-        };
     }
 
     @SecureConnector.AccessControl
@@ -48,16 +41,6 @@ export class SecretsManager extends VaultConnector {
             console.error(error);
             throw error;
         }
-    }
-
-    @SecureConnector.AccessControl
-    protected async set(acRequest: AccessRequest, secretId: string, value: string) {
-        throw new Error('SecretsManager.set not allowed');
-    }
-
-    @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, keyId: string) {
-        throw new Error('SecretsManager.delete not allowed');
     }
 
     @SecureConnector.AccessControl
@@ -78,5 +61,4 @@ export class SecretsManager extends VaultConnector {
 
         return acl;
     }
-
 }

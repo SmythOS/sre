@@ -15,11 +15,11 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { TestAccountConnector } from '../../utils/TestConnectors';
 
-ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', TestAccountConnector);
+//ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', TestAccountConnector);
 
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
-        Connector: 'MyCustomAccountConnector',
+        Connector: 'DummyAccount',
         Settings: {},
     },
     Cache: {

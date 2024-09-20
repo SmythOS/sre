@@ -65,7 +65,7 @@ export class SmythAccount extends AccountConnector {
     public async getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[] | null> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.settings;
+            return response?.data?.settings; //FIXME : return key/value object
         } catch (error) {
             return null;
         }
@@ -74,27 +74,27 @@ export class SmythAccount extends AccountConnector {
     public async getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[] | null> {
         try {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.settings;
+            return response?.data?.settings; //FIXME : return key/value object
         } catch (error) {
             return null;
         }
     }
 
-    public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<KeyValueObject> {
+    public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.setting;
+            return response?.data?.setting?.settingValue;
         } catch (error) {
             return null;
         }
     }
 
-    public async getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject> {
+    public async getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string> {
         try {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, {
                 headers: await this.getSmythRequestHeaders(),
             });
-            return response?.data?.setting;
+            return response?.data?.setting; //FIXME : return actual value
         } catch (error) {
             return null;
         }

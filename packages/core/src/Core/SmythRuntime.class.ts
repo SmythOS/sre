@@ -32,7 +32,7 @@ export default class SmythRuntime {
 
         for (let connectorType in config) {
             for (let configEntry of config[connectorType]) {
-                CInstance.init(connectorType as TConnectorService, configEntry.Connector, configEntry.Settings, configEntry.Default);
+                CInstance.init(connectorType as TConnectorService, configEntry.Connector, configEntry.Id, configEntry.Settings, configEntry.Default);
             }
         }
 

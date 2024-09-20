@@ -37,16 +37,26 @@ export const Match = {
 export const TPLProcessor = {
     vaultTeam(teamId: string): (token) => Promise<string> {
         //the token here represents the vault key name
-        return async (token) => await VaultHelper.getTeamKey(token, teamId);
+        return async (token) => {
+            try {
+                return await VaultHelper.getTeamKey(token, teamId);
+            } catch (error) {
+                return token;
+            }
+        };
     },
     componentTemplateVar(templateSettings: Record<string, any>): (token, matches) => Promise<string> {
         return async (token, matches) => {
-            const label = matches[2]; //template variables are identified by their label inside the component config
-            if (!label) return token;
+            try {
+                const label = matches[2]; //template variables are identified by their label inside the component config
+                if (!label) return token;
 
-            const entry: any = Object.values(templateSettings).find((o: any) => o.label == label);
-            if (!entry) return token;
-            return `{{${entry.id}}}`;
+                const entry: any = Object.values(templateSettings).find((o: any) => o.label == label);
+                if (!entry) return token;
+                return `{{${entry.id}}}`;
+            } catch (error) {
+                return token;
+            }
         };
     },
 };

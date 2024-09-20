@@ -72,7 +72,7 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'MyCustomAccountConnector',
+        Connector: 'DummyAccount',
         Settings: {},
     },
 });

@@ -10,6 +10,7 @@ import { parseUrl } from './parseUrl';
 import { parseData } from './parseData';
 import { parseProxy } from './parseProxy';
 import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
+import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHeaders } from './OAuth.helper';
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
@@ -52,7 +53,7 @@ export default class APICall extends Component {
         await super.process(input, config, agent);
 
         const logger = this.createComponentLogger(agent, config.name);
-        const _error: any = undefined;
+
         try {
             logger.debug(`=== API Call Log ===`);
 
@@ -73,6 +74,14 @@ export default class APICall extends Component {
             let Headers: any = {};
             let _error: any = undefined;
             try {
+                if (config?.data?.oauthService !== '' && config?.data?.oauthService !== 'None') {
+                    const rootUrl = new URL(reqConfig.url).origin;
+                    const additionalParams = extractAdditionalParamsForOAuth1(reqConfig);
+                    const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams, rootUrl);
+                    //reqConfig.headers = { ...reqConfig.headers, ...oauthHeaders };
+                    reqConfig.headers = reqConfig.headers.concat({ ...oauthHeaders });
+                }
+
                 logger.debug('Making API call', reqConfig);
                 // in order to handle binary data automatically, we need to set responseType to 'arraybuffer' for all requests, then parse the response data based on content-type
                 reqConfig.responseType = 'arraybuffer';

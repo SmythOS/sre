@@ -84,7 +84,10 @@ export abstract class SecureConnector extends Connector {
 
             // Inject the access control logic
             const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-            if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError('Access Denied');
+            if (accessTicket.access !== TAccessResult.Granted) {
+                console.error(`Access denied for ${acRequest.candidate.id} on ${resourceId}`);
+                throw new ACLAccessDeniedError('Access Denied');
+            }
 
             // Call the original method with the original arguments
             return originalMethod.apply(this, args);
