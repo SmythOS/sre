@@ -12,6 +12,9 @@ const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
     },
+    Account: {
+        Connector: 'DummyAccount',
+    },
     Storage: {
         Connector: 'S3',
         Settings: {
@@ -41,7 +44,7 @@ const model = cliConnector.params?.model || 'claude-3.5-sonnet';
 console.log('Model ===> ', model);
 
 const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 128 * 1024);
-const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 4096);
+const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 8 * 1024);
 //const conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
 
 //implement a simple expressjs app that serves static files from ./static folder

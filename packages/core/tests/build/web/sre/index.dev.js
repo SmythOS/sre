@@ -39,22 +39,22 @@ import qs from 'qs';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { Pinecone } from '@pinecone-database/pinecone';
 
-var __defProp$$ = Object.defineProperty;
-var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$10 = Object.defineProperty;
+var __defNormalProp$10 = (obj, key, value) => key in obj ? __defProp$10(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$10 = (obj, key, value) => __defNormalProp$10(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentRequest {
   constructor(req) {
-    __publicField$$(this, "headers");
-    __publicField$$(this, "body");
-    __publicField$$(this, "query");
-    __publicField$$(this, "params");
-    __publicField$$(this, "method", "GET");
-    __publicField$$(this, "path", "");
-    __publicField$$(this, "sessionID", "");
-    __publicField$$(this, "res", null);
-    __publicField$$(this, "req", null);
-    __publicField$$(this, "files", []);
-    __publicField$$(this, "_agent_authinfo");
+    __publicField$10(this, "headers");
+    __publicField$10(this, "body");
+    __publicField$10(this, "query");
+    __publicField$10(this, "params");
+    __publicField$10(this, "method", "GET");
+    __publicField$10(this, "path", "");
+    __publicField$10(this, "sessionID", "");
+    __publicField$10(this, "res", null);
+    __publicField$10(this, "req", null);
+    __publicField$10(this, "files", []);
+    __publicField$10(this, "_agent_authinfo");
     if (!req) return;
     this.headers = JSON.parse(JSON.stringify(req.headers || {}));
     this.body = JSON.parse(JSON.stringify(req.body || req.data || {}));
@@ -418,9 +418,9 @@ const config = {
   }
 };
 
-var __defProp$_ = Object.defineProperty;
-var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$$ = Object.defineProperty;
+var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
 winston.addColors({
   error: "red",
   warn: "yellow",
@@ -441,7 +441,7 @@ const namespaceFilter = winston.format((info) => {
 class ArrayTransport extends Transport {
   constructor(opts) {
     super(opts);
-    __publicField$_(this, "logs");
+    __publicField$$(this, "logs");
     this.logs = opts.logs;
   }
   log(info, callback) {
@@ -457,7 +457,7 @@ class LogHelper {
     this._logger = _logger;
     this.data = data;
     this.labels = labels;
-    __publicField$_(this, "startTime", Date.now());
+    __publicField$$(this, "startTime", Date.now());
   }
   get output() {
     return Array.isArray(this.data) ? this.data.join("\n") : void 0;
@@ -492,13 +492,15 @@ class LogHelper {
 winston.format.printf((info) => {
   return `${info.timestamp} ${winston.format.colorize().colorize(info.level, `${info.level}: ${info.message}`)}`;
 });
-function redactLogMessage(logMessage, beforeChars = 15, afterChars = 30) {
+function redactLogMessage(logMessage) {
+  if (logMessage.length > 500) {
+    return logMessage;
+  }
   const sensitiveWords = ["password", "eyJ", "token", "email", "secret", "key", "apikey", "api_key", "auth", "credential"];
-  const obfuscatedString = " [!!!REDACTED!!!] ";
+  const obfuscatedString = " [!! SmythOS::REDACTED_DATA !!] ";
   for (const sensitiveWord of sensitiveWords) {
-    const escapedWord = sensitiveWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(.{0,${beforeChars}})(${escapedWord})(.{0,${afterChars}})`, "gmi");
-    logMessage = logMessage.replace(regex, obfuscatedString);
+    const regex = new RegExp(`(${sensitiveWord})((?:[^\\n]{0,29}(?=\\n))|(?:[^\\n]{30}\\S*))`, "gmi");
+    logMessage = logMessage.replace(regex, `$1${obfuscatedString}`);
   }
   return logMessage;
 }
@@ -590,14 +592,26 @@ const DummyConnector = new Proxy(
   }
 );
 
-var __defProp$Z = Object.defineProperty;
-var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$_ = Object.defineProperty;
+var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$e = Logger("Connector");
 class Connector {
-  constructor() {
-    __publicField$Z(this, "started", false);
-    __publicField$Z(this, "_readyPromise");
+  constructor(config = {}) {
+    __publicField$_(this, "name");
+    __publicField$_(this, "started", false);
+    __publicField$_(this, "_readyPromise");
+  }
+  /**
+   * Creates a new instance of the current class using the provided settings.
+   * This method can be called on both Connector instances and its subclasses.
+   *
+   * @param config - Configuration settings for the new instance.
+   * @returns A new instance of the current class.
+   */
+  instance(config) {
+    const constructor = this.constructor;
+    return new constructor(config);
   }
   async start() {
     console$e.info(`Starting ${this.name} connector ...`);
@@ -774,14 +788,14 @@ class ConnectorServiceProvider {
   }
 }
 
-var __defProp$Y = Object.defineProperty;
-var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Z = Object.defineProperty;
+var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("EmbodimentSettings");
 class EmbodimentSettings {
   constructor(agentId) {
-    __publicField$Y(this, "_embodiments");
-    __publicField$Y(this, "_ready", false);
+    __publicField$Z(this, "_embodiments");
+    __publicField$Z(this, "_ready", false);
     this.init(agentId);
   }
   async init(data) {
@@ -813,15 +827,15 @@ class EmbodimentSettings {
   }
 }
 
-var __defProp$X = Object.defineProperty;
-var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Y = Object.defineProperty;
+var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentSettings");
 class AgentSettings {
   constructor(agentId) {
-    __publicField$X(this, "_settings");
-    __publicField$X(this, "embodiments");
-    __publicField$X(this, "_ready", false);
+    __publicField$Y(this, "_settings");
+    __publicField$Y(this, "embodiments");
+    __publicField$Y(this, "_ready", false);
     if (agentId) {
       this.init(agentId);
     }
@@ -899,15 +913,15 @@ class ACLAccessDeniedError extends Error {
   }
 }
 
-var __defProp$W = Object.defineProperty;
-var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$X = Object.defineProperty;
+var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessRequest {
   constructor(object) {
-    __publicField$W(this, "id");
-    __publicField$W(this, "resourceId");
-    __publicField$W(this, "level", []);
-    __publicField$W(this, "candidate");
+    __publicField$X(this, "id");
+    __publicField$X(this, "resourceId");
+    __publicField$X(this, "level", []);
+    __publicField$X(this, "candidate");
     if (!object) {
       this.id = "aclR:" + uid();
     }
@@ -943,14 +957,14 @@ class AccessRequest {
   }
 }
 
-var __defProp$V = Object.defineProperty;
-var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$W = Object.defineProperty;
+var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessCandidate {
   //public _candidate: TAccessCandidate;
   constructor(candidate) {
-    __publicField$V(this, "role");
-    __publicField$V(this, "id");
+    __publicField$W(this, "role");
+    __publicField$W(this, "id");
     this.role = candidate ? candidate.role : TAccessRole.Public;
     this.id = candidate ? candidate.id : "";
   }
@@ -1003,18 +1017,18 @@ class AccessCandidate {
   }
 }
 
-var __defProp$U = Object.defineProperty;
-var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$V = Object.defineProperty;
+var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
 const ACLHashAlgo = {
   none: (source) => source,
   xxh3: (source) => xxh3.xxh64(source.toString()).toString(16)
 };
 class ACL {
   constructor(acl) {
-    __publicField$U(this, "hashAlgorithm");
-    __publicField$U(this, "entries");
-    __publicField$U(this, "migrated");
+    __publicField$V(this, "hashAlgorithm");
+    __publicField$V(this, "entries");
+    __publicField$V(this, "migrated");
     if (typeof acl === "string") {
       this.deserializeACL(acl);
     } else {
@@ -1158,12 +1172,12 @@ class ACL {
   }
 }
 
-var __defProp$T = Object.defineProperty;
-var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$U = Object.defineProperty;
+var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _SmythFS = class _SmythFS {
   constructor() {
-    __publicField$T(this, "storage");
+    __publicField$U(this, "storage");
     if (!ConnectorService.ready) {
       throw new Error("SRE not available");
     }
@@ -1278,25 +1292,26 @@ const _SmythFS = class _SmythFS {
   }
 };
 //singleton
-__publicField$T(_SmythFS, "instance");
+__publicField$U(_SmythFS, "instance");
 let SmythFS = _SmythFS;
 
-var __defProp$S = Object.defineProperty;
-var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$T = Object.defineProperty;
+var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
 class BinaryInput {
-  constructor(data, _name, mimetype) {
+  constructor(data, _name, mimetype, candidate) {
     this._name = _name;
     this.mimetype = mimetype;
-    __publicField$S(this, "size");
-    __publicField$S(this, "url");
-    __publicField$S(this, "_ready");
-    __publicField$S(this, "_readyPromise");
-    __publicField$S(this, "_source");
-    __publicField$S(this, "_uploading", false);
+    this.candidate = candidate;
+    __publicField$T(this, "size");
+    __publicField$T(this, "url");
+    __publicField$T(this, "_ready");
+    __publicField$T(this, "_readyPromise");
+    __publicField$T(this, "_source");
+    __publicField$T(this, "_uploading", false);
     if (!_name) _name = uid();
     this._name = _name;
-    this.load(data, _name, mimetype);
+    this.load(data, _name, mimetype, candidate);
   }
   async ready() {
     if (this._ready) return true;
@@ -1312,7 +1327,7 @@ class BinaryInput {
     }
     return this._readyPromise;
   }
-  async load(data, name, mimetype) {
+  async load(data, name, mimetype, candidate) {
     const ext = name.split(".").pop();
     this.mimetype = mimetype || mime.getType(ext) || "application/octet-stream";
     this.url = ``;
@@ -1321,6 +1336,9 @@ class BinaryInput {
       this.size = data.size;
       this.url = data.url;
       this._ready = true;
+      if (candidate) {
+        this._source = await SmythFS.Instance.read(this.url, candidate);
+      }
       return;
     }
     if (isUrl(data)) {
@@ -1393,9 +1411,9 @@ class BinaryInput {
     const filetype = await FileType.fileTypeFromBuffer(buffer);
     return { size, data: buffer, mimetype: filetype?.mime || "" };
   }
-  static from(data, name, mimetype) {
+  static from(data, name, mimetype, candidate) {
     if (data instanceof BinaryInput) return data;
-    return new BinaryInput(data, name, mimetype);
+    return new BinaryInput(data, name, mimetype, candidate);
   }
   async upload(candidate) {
     await this.ready();
@@ -1419,7 +1437,8 @@ class BinaryInput {
     return {
       mimetype: this.mimetype,
       size: this.size,
-      url: this.url
+      url: this.url,
+      name: this._name
     };
   }
   async readData(candidate) {
@@ -1436,13 +1455,13 @@ class BinaryInput {
   }
 }
 
-var __defProp$R = Object.defineProperty;
-var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$S = Object.defineProperty;
+var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONContentHelper {
   constructor(dataString) {
     this.dataString = dataString;
-    __publicField$R(this, "_current");
+    __publicField$S(this, "_current");
     this._current = dataString;
   }
   get result() {
@@ -1583,7 +1602,8 @@ async function inferObjectType(value, key, agent) {
 }
 async function inferBinaryType(value, key, agent) {
   const binaryInput = BinaryInput.from(value, uid() + "-" + key);
-  return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+  await binaryInput.ready();
+  return binaryInput;
 }
 async function inferDateType(value, key, agent) {
   const errMsg = `Invalid Date value
@@ -1603,18 +1623,18 @@ async function inferAnyType(value) {
   return value;
 }
 
-var __defProp$Q = Object.defineProperty;
-var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$R = Object.defineProperty;
+var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Component {
   constructor() {
-    __publicField$Q(this, "hasReadOutput", false);
-    __publicField$Q(this, "hasPostProcess", true);
-    __publicField$Q(this, "alwaysActive", false);
+    __publicField$R(this, "hasReadOutput", false);
+    __publicField$R(this, "hasPostProcess", true);
+    __publicField$R(this, "alwaysActive", false);
     //for components like readable memories
-    __publicField$Q(this, "exclusive", false);
+    __publicField$R(this, "exclusive", false);
     //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    __publicField$Q(this, "configSchema");
+    __publicField$R(this, "configSchema");
   }
   init() {
   }
@@ -1684,9 +1704,9 @@ class VaultHelper {
   }
 }
 
-var __defProp$P = Object.defineProperty;
-var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Q = Object.defineProperty;
+var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
 const Match = {
   default: /{{(.*?)}}/g,
   //matches all placeholders
@@ -1731,11 +1751,11 @@ const TPLProcessor = {
 class TemplateStringHelper {
   constructor(templateString) {
     this.templateString = templateString;
-    __publicField$P(this, "_current");
+    __publicField$Q(this, "_current");
     //this queue is used to wait for asyncronous results when async processors are used
     //if all processors are synchronous, this queue will be empty and .result getter can be used
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
-    __publicField$P(this, "_promiseQueue", []);
+    __publicField$Q(this, "_promiseQueue", []);
     this._current = templateString;
   }
   get result() {
@@ -1841,9 +1861,9 @@ function TemplateString(templateString) {
   return TemplateStringHelper.create(templateString);
 }
 
-var __defProp$O = Object.defineProperty;
-var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$P = Object.defineProperty;
+var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
 function isEmpty(value) {
   return value === void 0 || value === null || typeof value === "string" && value.trim() === "" || Array.isArray(value) && value.length === 0 || typeof value === "object" && value !== null && Object.keys(value).length === 0;
 }
@@ -1863,7 +1883,7 @@ function parseKey(str = "", teamId) {
 class APIEndpoint extends Component {
   constructor() {
     super();
-    __publicField$O(this, "configSchema", Joi.object({
+    __publicField$P(this, "configSchema", Joi.object({
       endpoint: Joi.string().pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/).max(50).required(),
       method: Joi.string().valid("POST", "GET").allow(""),
       //we're accepting empty value because we consider it POST by default.
@@ -1994,16 +2014,16 @@ class APIEndpoint extends Component {
   }
 }
 
-var __defProp$N = Object.defineProperty;
-var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$O = Object.defineProperty;
+var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APIOutput extends Component {
   constructor() {
     super();
-    __publicField$N(this, "configSchema", Joi.object({
+    __publicField$O(this, "configSchema", Joi.object({
       format: Joi.string().valid("full", "minimal").required().label("Output Format")
     }));
-    __publicField$N(this, "hasPostProcess", true);
+    __publicField$O(this, "hasPostProcess", true);
   }
   init() {
   }
@@ -3149,15 +3169,15 @@ var models = {
   }
 };
 
-var __defProp$M = Object.defineProperty;
-var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$N = Object.defineProperty;
+var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMHelper$1 {
   constructor(model) {
     this.model = model;
-    __publicField$M(this, "_llmConnector");
-    __publicField$M(this, "_modelId");
-    __publicField$M(this, "_modelInfo");
+    __publicField$N(this, "_llmConnector");
+    __publicField$N(this, "_modelId");
+    __publicField$N(this, "_modelInfo");
     const llmName = models[model]?.llm;
     this._modelId = models[model]?.alias || model;
     this._modelInfo = models[this._modelId];
@@ -3300,13 +3320,13 @@ class LLMHelper$1 {
   }
 }
 
-var __defProp$L = Object.defineProperty;
-var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$M = Object.defineProperty;
+var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
 class PromptGenerator extends Component {
   constructor() {
     super();
-    __publicField$L(this, "configSchema", Joi.object({
+    __publicField$M(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().required().label("Prompt"),
       temperature: Joi.number().min(0).max(5).label("Temperature"),
@@ -3396,17 +3416,74 @@ async function parseUrl(input, config, agent) {
 async function parseData(input, config, agent) {
   const teamId = agent ? agent.teamId : null;
   const templateSettings = config?.template?.settings || {};
-  let body = config?.data?.body.trim();
+  const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
+  let body = config?.data?.body?.trim();
   if (!body) {
     return void 0;
   }
   if (config.data._templateVars && templateSettings) {
-    body = await TemplateString(body).parseComponentTemplateVarsAsync(templateSettings).parse(config.data._templateVars).asyncResult;
+    body = await TemplateString(body).parseComponentTemplateVarsAsync(templateSettings).asyncResult;
   }
   body = await TemplateString(body).parseTeamKeysAsync(teamId).asyncResult;
-  body = TemplateString(body).parse(input).clean().result;
-  const jsonBody = JSONContent(body).tryParse();
+  const handlers = {
+    [REQUEST_CONTENT_TYPES.json]: handleJson,
+    [REQUEST_CONTENT_TYPES.urlEncodedFormData]: handleUrlEncoded,
+    [REQUEST_CONTENT_TYPES.multipartFormData]: handleMultipartFormData,
+    [REQUEST_CONTENT_TYPES.binary]: handleBinary,
+    [REQUEST_CONTENT_TYPES.text]: handleText,
+    [REQUEST_CONTENT_TYPES.none]: handleNone
+  };
+  const handler = handlers[contentType] || handleNone;
+  const data = await handler(body, input, config, agent);
+  return data;
+}
+async function handleJson(body, input, config, agent) {
+  const data = TemplateString(body).parse(config.data._templateVars).parse(input).clean().result;
+  const jsonBody = JSONContent(data).tryParse();
   return jsonBody;
+}
+async function handleUrlEncoded(body, input, config, agent) {
+  if (typeof body === "object") {
+    const params = new URLSearchParams();
+    for (const key in body) {
+      params.append(key, String(body[key]));
+    }
+    return params.toString();
+  }
+  return body;
+}
+async function handleMultipartFormData(body, input, config, agent) {
+  const formData = new FormData();
+  for (const key in body) {
+    const value = body[key];
+    if (value && typeof value === "object" && value.url) {
+      const binaryInput = await BinaryInput.from(value, value.name, value.mimetype);
+      const buffer = await binaryInput.getBuffer();
+      const blob = new Blob([buffer], { type: value.mimetype });
+      formData.append(key, blob, value.filename);
+    } else {
+      formData.append(key, typeof value === "boolean" ? String(value) : value);
+    }
+  }
+  return formData;
+}
+async function handleBinary(body, input, config, agent) {
+  const regex = /{{(.*?)}}/;
+  const match = typeof body === "string" ? body.match(regex) : null;
+  const key = match ? match[1] : "";
+  const data = input?.[key];
+  if (data && data instanceof BinaryInput) {
+    const buffer = await data.getBuffer();
+    return buffer;
+  }
+  return Buffer.from([]);
+}
+async function handleNone(body, input, config, agent) {
+  return typeof body === "string" ? body : JSON.stringify(body);
+}
+function handleText(body, input, config, agent) {
+  const data = TemplateString(body).parse(config.data._templateVars).parse(input).clean().result;
+  return data;
 }
 
 async function parseProxy(input, config, agent) {
@@ -3518,13 +3595,13 @@ async function parseArrayBufferResponse(response, agent) {
   }
 }
 
-var __defProp$K = Object.defineProperty;
-var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$L = Object.defineProperty;
+var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APICall extends Component {
   constructor() {
     super();
-    __publicField$K(this, "configSchema", Joi.object({
+    __publicField$L(this, "configSchema", Joi.object({
       method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD").required().label("Method"),
       url: Joi.string().max(8192).required().label("URL"),
       headers: Joi.string().allow("").label("Headers"),
@@ -3587,13 +3664,13 @@ class APICall extends Component {
   }
 }
 
-var __defProp$J = Object.defineProperty;
-var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$K = Object.defineProperty;
+var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VisionLLM extends Component {
   constructor() {
     super();
-    __publicField$J(this, "configSchema", Joi.object({
+    __publicField$K(this, "configSchema", Joi.object({
       prompt: Joi.string().required().label("Prompt"),
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
@@ -3745,9 +3822,9 @@ ${_error}
   }
 }
 
-var __defProp$I = Object.defineProperty;
-var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$J = Object.defineProperty;
+var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMHelper {
   static load(model) {
     throw new Error("Method not implemented.");
@@ -3756,7 +3833,7 @@ class LLMHelper {
 class DataSourceLookup extends Component {
   constructor() {
     super();
-    __publicField$I(this, "configSchema", Joi.object({
+    __publicField$J(this, "configSchema", Joi.object({
       topK: Joi.string().custom(validateInteger$2({ min: 0 }), "custom range validation").label("Result Count"),
       model: Joi.string().valid("gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "gpt-4", "gpt-3.5-turbo-16k").required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt"),
@@ -3923,15 +4000,15 @@ class VectorDBConnector extends SecureConnector {
   }
 }
 
-var __defProp$H = Object.defineProperty;
-var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$I = Object.defineProperty;
+var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VectorsHelper {
   constructor() {
-    __publicField$H(this, "_vectorDBconnector");
-    __publicField$H(this, "embeddingsProvider");
-    __publicField$H(this, "_vectorDimention");
-    __publicField$H(this, "_nkvConnector");
+    __publicField$I(this, "_vectorDBconnector");
+    __publicField$I(this, "embeddingsProvider");
+    __publicField$I(this, "_vectorDimention");
+    __publicField$I(this, "_nkvConnector");
     this._vectorDBconnector = ConnectorService.getVectorDBConnector();
     this.embeddingsProvider = new OpenAIEmbeddings();
     if (this._vectorDimention && !isNaN(this._vectorDimention)) {
@@ -4035,14 +4112,14 @@ class VectorsHelper {
   }
 }
 
-var __defProp$G = Object.defineProperty;
-var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$H = Object.defineProperty;
+var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceIndexer extends Component {
   constructor() {
     super();
-    __publicField$G(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
-    __publicField$G(this, "configSchema", Joi.object({
+    __publicField$H(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
+    __publicField$H(this, "configSchema", Joi.object({
       namespace: Joi.string().max(50).allow(""),
       id: Joi.string().custom(validateCharacterSet, "id custom validation").allow("").label("source identifier"),
       name: Joi.string().max(50).allow("").label("label"),
@@ -4155,13 +4232,13 @@ ${namespaceId}
   }
 }
 
-var __defProp$F = Object.defineProperty;
-var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$G = Object.defineProperty;
+var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceCleaner extends Component {
   constructor() {
     super();
-    __publicField$F(this, "configSchema", Joi.object({
+    __publicField$G(this, "configSchema", Joi.object({
       namespaceId: Joi.string().max(50).allow("").label("namespace"),
       id: Joi.string().custom(validateCharacterSet, "custom validation characterSet").allow("").label("source identifier")
     }));
@@ -4232,13 +4309,13 @@ class DataSourceCleaner extends Component {
   }
 }
 
-var __defProp$E = Object.defineProperty;
-var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$F = Object.defineProperty;
+var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONFilter extends Component {
   constructor() {
     super();
-    __publicField$E(this, "configSchema", Joi.object({
+    __publicField$F(this, "configSchema", Joi.object({
       fields: Joi.string().max(3e4).allow("").label("Prompt")
     }));
   }
@@ -4355,13 +4432,13 @@ class LogicXOR extends Component {
   }
 }
 
-var __defProp$D = Object.defineProperty;
-var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$E = Object.defineProperty;
+var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtLeast extends Component {
   constructor() {
     super();
-    __publicField$D(this, "configSchema", Joi.object({
+    __publicField$E(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       minSetInputs: Joi.string().custom(validateInteger$1({ min: 0, max: 9 }), "custom range validation").label("Minimum Inputs")
     }));
@@ -4419,13 +4496,13 @@ function validateInteger$1(args) {
   };
 }
 
-var __defProp$C = Object.defineProperty;
-var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$D = Object.defineProperty;
+var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtMost extends Component {
   constructor() {
     super();
-    __publicField$C(this, "configSchema", Joi.object({
+    __publicField$D(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       maxSetInputs: Joi.string().custom(validateInteger({ min: 0, max: 9 }), "custom range validation").label("Maximum Inputs")
     }));
@@ -4485,14 +4562,14 @@ function validateInteger(args) {
   };
 }
 
-var __defProp$B = Object.defineProperty;
-var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$C = Object.defineProperty;
+var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentProcess {
   constructor(agentData) {
     this.agentData = agentData;
-    __publicField$B(this, "agent");
-    __publicField$B(this, "_loadPromise");
+    __publicField$C(this, "agent");
+    __publicField$C(this, "_loadPromise");
     this.initAgent(agentData);
   }
   async initAgent(agentData) {
@@ -4637,9 +4714,9 @@ class AgentProcess {
   }
 }
 
-var __defProp$A = Object.defineProperty;
-var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$B = Object.defineProperty;
+var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMContext {
   /**
    *
@@ -4648,9 +4725,9 @@ class LLMContext {
   constructor(_model, _systemPrompt = "", _messages = []) {
     this._model = _model;
     this._messages = _messages;
-    __publicField$A(this, "_systemPrompt", "");
-    __publicField$A(this, "_llmHelper");
-    __publicField$A(this, "contextLength");
+    __publicField$B(this, "_systemPrompt", "");
+    __publicField$B(this, "_llmHelper");
+    __publicField$B(this, "contextLength");
     this._systemPrompt = _systemPrompt;
     this._llmHelper = LLMHelper$1.load(this._model);
   }
@@ -4772,9 +4849,9 @@ class OpenAPIParser {
   }
 }
 
-var __defProp$z = Object.defineProperty;
-var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$A = Object.defineProperty;
+var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$b = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
@@ -4782,21 +4859,21 @@ class Conversation extends EventEmitter$1 {
     this._model = _model;
     this._specSource = _specSource;
     this._settings = _settings;
-    __publicField$z(this, "_agentId", "");
-    __publicField$z(this, "_systemPrompt");
-    __publicField$z(this, "assistantName");
-    __publicField$z(this, "_reqMethods");
-    __publicField$z(this, "_toolsConfig");
-    __publicField$z(this, "_endpoints");
-    __publicField$z(this, "_baseUrl");
-    __publicField$z(this, "_status", "");
-    __publicField$z(this, "_currentWaitPromise");
-    __publicField$z(this, "_context");
-    __publicField$z(this, "_maxContextSize", 1024 * 16);
-    __publicField$z(this, "_maxOutputTokens", 1024);
-    __publicField$z(this, "_lastError");
-    __publicField$z(this, "_spec");
-    __publicField$z(this, "stop", false);
+    __publicField$A(this, "_agentId", "");
+    __publicField$A(this, "_systemPrompt");
+    __publicField$A(this, "assistantName");
+    __publicField$A(this, "_reqMethods");
+    __publicField$A(this, "_toolsConfig");
+    __publicField$A(this, "_endpoints");
+    __publicField$A(this, "_baseUrl");
+    __publicField$A(this, "_status", "");
+    __publicField$A(this, "_currentWaitPromise");
+    __publicField$A(this, "_context");
+    __publicField$A(this, "_maxContextSize", 1024 * 16);
+    __publicField$A(this, "_maxOutputTokens", 1024);
+    __publicField$A(this, "_lastError");
+    __publicField$A(this, "_spec");
+    __publicField$A(this, "stop", false);
     this.on("error", (error) => {
       this._lastError = error;
       console$b.warn("Conversation Error: ", error);
@@ -5348,13 +5425,13 @@ ${this.systemPrompt}`;
   }
 }
 
-var __defProp$y = Object.defineProperty;
-var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$z = Object.defineProperty;
+var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentPlugin extends Component {
   constructor() {
     super();
-    __publicField$y(this, "configSchema", Joi.object({
+    __publicField$z(this, "configSchema", Joi.object({
       agentId: Joi.string().max(200).required(),
       openAiModel: Joi.string().max(200).required(),
       descForModel: Joi.string().max(5e3).allow("").label("Description for Model"),
@@ -5428,9 +5505,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$x = Object.defineProperty;
-var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$y = Object.defineProperty;
+var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
 let cacheConnector;
 function getCacheConnector() {
   if (!cacheConnector) {
@@ -5472,7 +5549,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
 class LLMAssistant extends Component {
   constructor() {
     super();
-    __publicField$x(this, "configSchema", Joi.object({
+    __publicField$y(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       behavior: Joi.string().max(3e4).allow("").label("Behavior")
     }));
@@ -5529,14 +5606,14 @@ ${behavior}
   }
 }
 
-var __defProp$w = Object.defineProperty;
-var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$x = Object.defineProperty;
+var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("ForkedAgent");
 class ForkedAgent {
   constructor(parent, componentId) {
     this.parent = parent;
-    __publicField$w(this, "agent");
+    __publicField$x(this, "agent");
     const data = fork(this.parent.data, componentId);
     const content = { name: this.parent.name, data, teamId: this.parent.teamId, debugSessionEnabled: false, version: this.parent.version };
     const agentRequest = new AgentRequest(this.parent.agentRequest.req);
@@ -5637,13 +5714,13 @@ function fork(componentData, componentID) {
   };
 }
 
-var __defProp$v = Object.defineProperty;
-var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$w = Object.defineProperty;
+var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Async = class _Async extends Component {
   constructor() {
     super();
-    __publicField$v(this, "configSchema", null);
+    __publicField$w(this, "configSchema", null);
   }
   init() {
   }
@@ -5748,17 +5825,17 @@ const _Async = class _Async extends Component {
     this.removeOrphanedBranches(agent);
   }
 };
-__publicField$v(_Async, "JOBS", {});
-__publicField$v(_Async, "ForkedAgent");
+__publicField$w(_Async, "JOBS", {});
+__publicField$w(_Async, "ForkedAgent");
 let Async = _Async;
 
-var __defProp$u = Object.defineProperty;
-var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$v = Object.defineProperty;
+var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Await = class _Await extends Component {
   constructor() {
     super();
-    __publicField$u(this, "configSchema", Joi.object({
+    __publicField$v(this, "configSchema", Joi.object({
       jobs_count: Joi.number().min(1).max(100).default(1).label("Jobs Count"),
       max_time: Joi.number().min(1).max(21600).default(1).label("Max time")
     }));
@@ -5828,16 +5905,16 @@ ${_error}
     }
   }
 };
-__publicField$u(_Await, "WAITS", {});
+__publicField$v(_Await, "WAITS", {});
 let Await = _Await;
 
-var __defProp$t = Object.defineProperty;
-var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$u = Object.defineProperty;
+var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ForEach extends Component {
   constructor() {
     super();
-    __publicField$t(this, "configSchema", null);
+    __publicField$u(this, "configSchema", null);
   }
   init() {
   }
@@ -5907,13 +5984,13 @@ function cleanupResult(result) {
   return result;
 }
 
-var __defProp$s = Object.defineProperty;
-var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$t = Object.defineProperty;
+var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Code extends Component {
   constructor() {
     super();
-    __publicField$s(this, "configSchema", Joi.object({
+    __publicField$t(this, "configSchema", Joi.object({
       code_vars: Joi.string().max(1e3).allow("").label("Variables"),
       code_body: Joi.string().max(5e5).allow("").label("Code"),
       _templateSettings: Joi.object().allow(null).label("Template Settings"),
@@ -6564,9 +6641,9 @@ var hfParams = {
 }
 };
 
-var __defProp$r = Object.defineProperty;
-var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$s = Object.defineProperty;
+var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
 function shouldNestInputs(formatRequestPattern) {
   const trimmedPattern = formatRequestPattern?.trim();
   return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
@@ -6591,7 +6668,7 @@ function validateAndParseJson$1(value, helpers) {
 class HuggingFace extends Component {
   constructor() {
     super();
-    __publicField$r(this, "configSchema", Joi.object({
+    __publicField$s(this, "configSchema", Joi.object({
       accessToken: Joi.string().max(350).required().label("Access Token"),
       modelName: Joi.string().max(100).required(),
       modelTask: Joi.string().max(100).required(),
@@ -6774,9 +6851,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$q = Object.defineProperty;
-var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$r = Object.defineProperty;
+var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
 function validateAndParseJson(value, helpers) {
   let parsedJson = null;
   try {
@@ -6797,7 +6874,7 @@ function validateAndParseJson(value, helpers) {
 class ZapierAction extends Component {
   constructor() {
     super();
-    __publicField$q(this, "configSchema", Joi.object({
+    __publicField$r(this, "configSchema", Joi.object({
       actionName: Joi.string().max(100).required(),
       actionId: Joi.string().max(100).required(),
       logoUrl: Joi.string().max(500).allow(""),
@@ -6844,13 +6921,13 @@ class ZapierAction extends Component {
   }
 }
 
-var __defProp$p = Object.defineProperty;
-var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$q = Object.defineProperty;
+var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
 class GPTPlugin extends Component {
   constructor() {
     super();
-    __publicField$p(this, "configSchema", Joi.object({
+    __publicField$q(this, "configSchema", Joi.object({
       model: Joi.string().optional(),
       openAiModel: Joi.string().required(),
       // ! Legacy
@@ -6899,13 +6976,13 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$o = Object.defineProperty;
-var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$p = Object.defineProperty;
+var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ImageGenerator extends Component {
   constructor() {
     super();
-    __publicField$o(this, "configSchema", Joi.object({
+    __publicField$p(this, "configSchema", Joi.object({
       model: Joi.string().valid("dall-e-2", "dall-e-3").required(),
       sizeDalle2: Joi.string().valid("256x256", "512x512", "1024x1024").required(),
       sizeDalle3: Joi.string().valid("1024x1024", "1792x1024", "1024x1792").required(),
@@ -6977,13 +7054,13 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$n = Object.defineProperty;
-var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$o = Object.defineProperty;
+var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Classifier extends Component {
   constructor() {
     super();
-    __publicField$n(this, "configSchema", Joi.object({
+    __publicField$o(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt")
     }));
@@ -7177,9 +7254,9 @@ const components = {
   Classifier: new Classifier()
 };
 
-var __defProp$m = Object.defineProperty;
-var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$n = Object.defineProperty;
+var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentLogger");
 const _AgentLogger = class _AgentLogger {
   constructor(agent) {
@@ -7201,25 +7278,25 @@ const _AgentLogger = class _AgentLogger {
   static async logTask(agent, tasks) {
   }
 };
-__publicField$m(_AgentLogger, "transactions", {});
+__publicField$n(_AgentLogger, "transactions", {});
 let AgentLogger = _AgentLogger;
 
-var __defProp$l = Object.defineProperty;
-var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$m = Object.defineProperty;
+var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$a = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
     this.runtime = runtime;
-    __publicField$l(this, "circularLimitReached", false);
-    __publicField$l(this, "step", 0);
-    __publicField$l(this, "sessionResult", false);
-    __publicField$l(this, "sessionResults");
-    __publicField$l(this, "components", {});
-    __publicField$l(this, "checkRuntimeContext", null);
-    __publicField$l(this, "ctxFile", "");
-    __publicField$l(this, "_runtimeFileReady");
+    __publicField$m(this, "circularLimitReached", false);
+    __publicField$m(this, "step", 0);
+    __publicField$m(this, "sessionResult", false);
+    __publicField$m(this, "sessionResults");
+    __publicField$m(this, "components", {});
+    __publicField$m(this, "checkRuntimeContext", null);
+    __publicField$m(this, "ctxFile", "");
+    __publicField$m(this, "_runtimeFileReady");
     const agent = runtime.agent;
     const dbgFolder = path.join(config.env.DATA_PATH, `/debug/${agent.id}/`);
     if (!fs.existsSync(dbgFolder)) {
@@ -7337,9 +7414,9 @@ class RuntimeContext extends EventEmitter$1 {
   }
 }
 
-var __defProp$k = Object.defineProperty;
-var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$l = Object.defineProperty;
+var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$9 = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
@@ -7358,28 +7435,28 @@ const AgentRuntimeUnavailable = new Proxy(
 const _AgentRuntime = class _AgentRuntime {
   constructor(agent) {
     this.agent = agent;
-    __publicField$k(this, "agentContext");
+    __publicField$l(this, "agentContext");
     //private ctxFile: string = '';
-    __publicField$k(this, "xDebugRun", "");
-    __publicField$k(this, "xDebugInject", "");
-    __publicField$k(this, "xDebugRead", "");
-    __publicField$k(this, "xDebugStop", "");
-    __publicField$k(this, "xDebugPendingInject", null);
-    __publicField$k(this, "xDebugId", "");
-    __publicField$k(this, "xDebugCmd", "");
-    __publicField$k(this, "_debugActive", false);
-    __publicField$k(this, "_runtimeFileReady", false);
-    __publicField$k(this, "sessionClosed", false);
-    __publicField$k(this, "reqTagOwner", false);
+    __publicField$l(this, "xDebugRun", "");
+    __publicField$l(this, "xDebugInject", "");
+    __publicField$l(this, "xDebugRead", "");
+    __publicField$l(this, "xDebugStop", "");
+    __publicField$l(this, "xDebugPendingInject", null);
+    __publicField$l(this, "xDebugId", "");
+    __publicField$l(this, "xDebugCmd", "");
+    __publicField$l(this, "_debugActive", false);
+    __publicField$l(this, "_runtimeFileReady", false);
+    __publicField$l(this, "sessionClosed", false);
+    __publicField$l(this, "reqTagOwner", false);
     //reqTag is used to identify the current running workflow including nested calls, it allows us to identify circular calls
-    __publicField$k(this, "reqTag");
-    __publicField$k(this, "processID");
+    __publicField$l(this, "reqTag");
+    __publicField$l(this, "processID");
     //this identifies the current processID, a process ID is the full set of runCycles that is executed by the agent.
-    __publicField$k(this, "workflowReqId");
+    __publicField$l(this, "workflowReqId");
     //this identifies the current running workflow. a workflow starts when and agent endpoint is called, or a debug session is initiated, and ends when no more steps can be executed.
-    __publicField$k(this, "alwaysActiveComponents", {});
-    __publicField$k(this, "exclusiveComponents", {});
-    __publicField$k(this, "checkRuntimeContext", null);
+    __publicField$l(this, "alwaysActiveComponents", {});
+    __publicField$l(this, "exclusiveComponents", {});
+    __publicField$l(this, "checkRuntimeContext", null);
     this.reqTag = agent.agentRequest.header("X-REQUEST-TAG");
     const isNestedProcess = !!this.reqTag;
     if (!this.reqTag) {
@@ -7727,9 +7804,9 @@ const _AgentRuntime = class _AgentRuntime {
     return this.agentContext.getComponentData(componentId);
   }
 };
-__publicField$k(_AgentRuntime, "processResults", {});
-__publicField$k(_AgentRuntime, "tagsData", {});
-__publicField$k(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
+__publicField$l(_AgentRuntime, "processResults", {});
+__publicField$l(_AgentRuntime, "tagsData", {});
+__publicField$l(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
 let AgentRuntime = _AgentRuntime;
 
 const OSResourceMonitor = {
@@ -7773,40 +7850,40 @@ function getMemoryUsage() {
   };
 }
 
-var __defProp$j = Object.defineProperty;
-var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$k = Object.defineProperty;
+var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$8 = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
     this.id = id;
     this.agentSettings = agentSettings;
-    __publicField$j(this, "name");
-    __publicField$j(this, "data");
-    __publicField$j(this, "teamId");
-    __publicField$j(this, "components");
-    __publicField$j(this, "connections");
-    __publicField$j(this, "endpoints", {});
-    __publicField$j(this, "sessionId");
-    __publicField$j(this, "sessionTag", "");
-    __publicField$j(this, "callerSessionId");
-    __publicField$j(this, "apiBasePath", "/api");
-    __publicField$j(this, "agentRuntime");
-    __publicField$j(this, "usingTestDomain", false);
-    __publicField$j(this, "domain", "");
-    __publicField$j(this, "debugSessionEnabled", false);
-    __publicField$j(this, "circularLimit", 100);
+    __publicField$k(this, "name");
+    __publicField$k(this, "data");
+    __publicField$k(this, "teamId");
+    __publicField$k(this, "components");
+    __publicField$k(this, "connections");
+    __publicField$k(this, "endpoints", {});
+    __publicField$k(this, "sessionId");
+    __publicField$k(this, "sessionTag", "");
+    __publicField$k(this, "callerSessionId");
+    __publicField$k(this, "apiBasePath", "/api");
+    __publicField$k(this, "agentRuntime");
+    __publicField$k(this, "usingTestDomain", false);
+    __publicField$k(this, "domain", "");
+    __publicField$k(this, "debugSessionEnabled", false);
+    __publicField$k(this, "circularLimit", 100);
     //TODO : make it configurable from agent settings
-    __publicField$j(this, "version", "");
+    __publicField$k(this, "version", "");
     //public baseUrl = '';
-    __publicField$j(this, "agentVariables", {});
-    __publicField$j(this, "_kill", false);
+    __publicField$k(this, "agentVariables", {});
+    __publicField$k(this, "_kill", false);
     //public agentRequest: Request | AgentRequest | any;
-    __publicField$j(this, "async", false);
-    __publicField$j(this, "jobID", "");
-    __publicField$j(this, "planInfo", {});
-    __publicField$j(this, "agentRequest");
+    __publicField$k(this, "async", false);
+    __publicField$k(this, "jobID", "");
+    __publicField$k(this, "planInfo", {});
+    __publicField$k(this, "agentRequest");
     const json = typeof agentData === "string" ? JSON.parse(agentData) : agentData;
     this.name = json.name;
     this.data = json.data;
@@ -8376,15 +8453,15 @@ class Agent {
   }
 }
 
-var __defProp$i = Object.defineProperty;
-var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$j = Object.defineProperty;
+var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
 const logger = Logger("SRE");
 const CInstance = ConnectorService;
 const _SmythRuntime = class _SmythRuntime {
   constructor() {
-    __publicField$i(this, "started", false);
-    __publicField$i(this, "initialized", false);
+    __publicField$j(this, "started", false);
+    __publicField$j(this, "initialized", false);
     this.started = true;
   }
   static get Instance() {
@@ -8449,44 +8526,10 @@ const _SmythRuntime = class _SmythRuntime {
     this.started = false;
   }
 };
-__publicField$i(_SmythRuntime, "instance");
+__publicField$j(_SmythRuntime, "instance");
 let SmythRuntime = _SmythRuntime;
 
 class StorageConnector extends SecureConnector {
-}
-
-var __defProp$h = Object.defineProperty;
-var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$6 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
-  for (var i = decorators.length - 1, decorator; i >= 0; i--)
-    if (decorator = decorators[i])
-      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$h(target, key, result);
-  return result;
-};
-var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$7 = Logger("S3Storage");
-class S3Storage extends StorageConnector {
-  constructor(config) {
-    super();
-    this.config = config;
-    __publicField$h(this, "name", "S3Storage");
-    __publicField$h(this, "client");
-    __publicField$h(this, "bucket");
-    if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
-    this.bucket = config.bucket;
-    const clientConfig = {};
-    if (config.region) clientConfig.region = config.region;
-    if (config.accessKeyId && config.secretAccessKey) {
-      clientConfig.credentials = {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey
-      };
-    }
-    this.client = new S3Client(clientConfig);
-  }
   user(candidate) {
     return {
       write: async (resourceId, value, acl, metadata) => {
@@ -8514,6 +8557,39 @@ class S3Storage extends StorageConnector {
         return await this.setACL(candidate.writeRequest, resourceId, acl);
       }
     };
+  }
+}
+
+var __defProp$i = Object.defineProperty;
+var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$6 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$i(target, key, result);
+  return result;
+};
+var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$7 = Logger("S3Storage");
+class S3Storage extends StorageConnector {
+  constructor(config) {
+    super();
+    __publicField$i(this, "name", "S3Storage");
+    __publicField$i(this, "client");
+    __publicField$i(this, "bucket");
+    if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
+    this.bucket = config.bucket;
+    const clientConfig = {};
+    if (config.region) clientConfig.region = config.region;
+    if (config.accessKeyId && config.secretAccessKey) {
+      clientConfig.credentials = {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey
+      };
+    }
+    this.client = new S3Client(clientConfig);
   }
   async read(acRequest, resourceId) {
     const command = new GetObjectCommand({
@@ -9073,13 +9149,13 @@ async function _getImageDimensions(url) {
   }
 }
 
-var __defProp$g = Object.defineProperty;
-var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$h = Object.defineProperty;
+var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
 class EchoConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$g(this, "name", "LLM:Echo");
+    __publicField$h(this, "name", "LLM:Echo");
   }
   async chatRequest(acRequest, prompt, params) {
     return { content: prompt, finishReason: "stop" };
@@ -9124,17 +9200,17 @@ var TLLMMessageRole = /* @__PURE__ */ ((TLLMMessageRole2) => {
   return TLLMMessageRole2;
 })(TLLMMessageRole || {});
 
-var __defProp$f = Object.defineProperty;
-var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$g = Object.defineProperty;
+var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$5 = Logger("OpenAIConnector");
 const VALID_IMAGE_MIME_TYPES$2 = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const MODELS_WITH_JSON_RESPONSE$1 = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
 class OpenAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$f(this, "name", "LLM:OpenAI");
-    __publicField$f(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$2);
+    __publicField$g(this, "name", "LLM:OpenAI");
+    __publicField$g(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$2);
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
@@ -9556,9 +9632,9 @@ class OpenAIConnector extends LLMConnector {
   }
 }
 
-var __defProp$e = Object.defineProperty;
-var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$f = Object.defineProperty;
+var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("GoogleAIConnector");
 const DEFAULT_MODEL = "gemini-1.5-pro";
 const MODELS_WITH_SYSTEM_MESSAGE = [
@@ -9613,8 +9689,8 @@ const VALID_IMAGE_MIME_TYPES$1 = ["image/png", "image/jpeg", "image/jpg", "image
 class GoogleAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$e(this, "name", "LLM:GoogleAI");
-    __publicField$e(this, "validMimeTypes", {
+    __publicField$f(this, "name", "LLM:GoogleAI");
+    __publicField$f(this, "validMimeTypes", {
       all: VALID_MIME_TYPES,
       image: VALID_IMAGE_MIME_TYPES$1
     });
@@ -10101,9 +10177,9 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
   }
 }
 
-var __defProp$d = Object.defineProperty;
-var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$e = Object.defineProperty;
+var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AnthropicAIConnector");
 const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = "{";
@@ -10111,8 +10187,8 @@ const TOOL_USE_DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
 class AnthropicAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$d(this, "name", "LLM:AnthropicAI");
-    __publicField$d(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
+    __publicField$e(this, "name", "LLM:AnthropicAI");
+    __publicField$e(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
@@ -10432,14 +10508,14 @@ class AnthropicAIConnector extends LLMConnector {
   }
 }
 
-var __defProp$c = Object.defineProperty;
-var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$d = Object.defineProperty;
+var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("GroqConnector");
 class GroqConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$c(this, "name", "LLM:Groq");
+    __publicField$d(this, "name", "LLM:Groq");
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
@@ -10615,15 +10691,15 @@ class GroqConnector extends LLMConnector {
   }
 }
 
-var __defProp$b = Object.defineProperty;
-var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$c = Object.defineProperty;
+var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("TogetherAIConnector");
 const TOGETHER_AI_API_URL = "https://api.together.xyz/v1";
 class TogetherAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$b(this, "name", "LLM:TogetherAI");
+    __publicField$c(this, "name", "LLM:TogetherAI");
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
@@ -10868,26 +10944,26 @@ class CacheConnector extends SecureConnector {
   }
 }
 
-var __defProp$a = Object.defineProperty;
+var __defProp$b = Object.defineProperty;
 var __getOwnPropDesc$5 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$5 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$5(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$a(target, key, result);
+  if (kind && result) __defProp$b(target, key, result);
   return result;
 };
-var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$4 = Logger("RedisCache");
 class RedisCache extends CacheConnector {
   constructor(settings) {
     super();
-    __publicField$a(this, "name", "RedisCache");
-    __publicField$a(this, "redis");
-    __publicField$a(this, "_prefix", "smyth:cache");
-    __publicField$a(this, "_mdPrefix", "smyth:metadata");
+    __publicField$b(this, "name", "RedisCache");
+    __publicField$b(this, "redis");
+    __publicField$b(this, "_prefix", "smyth:cache");
+    __publicField$b(this, "_mdPrefix", "smyth:metadata");
     const sentinels = parseSentinelHosts(settings.hosts);
     this.redis = new IORedis({
       sentinels,
@@ -11076,26 +11152,26 @@ class CacheService extends ConnectorServiceProvider {
 class VaultConnector extends SecureConnector {
 }
 
-var __defProp$9 = Object.defineProperty;
+var __defProp$a = Object.defineProperty;
 var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$4 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$9(target, key, result);
+  if (kind && result) __defProp$a(target, key, result);
   return result;
 };
-var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("JSONFileVault");
 class JSONFileVault extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$9(this, "name", "JSONFileVault");
-    __publicField$9(this, "vaultData");
-    __publicField$9(this, "index");
+    __publicField$a(this, "name", "JSONFileVault");
+    __publicField$a(this, "vaultData");
+    __publicField$a(this, "index");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     if (fs.existsSync(config.file)) {
       try {
@@ -11185,30 +11261,30 @@ async function getM2MToken(configs) {
   });
 }
 
-var __defProp$8 = Object.defineProperty;
+var __defProp$9 = Object.defineProperty;
 var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$8 = (obj, key, value) => key in obj ? __defProp$8(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$3 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$8(target, key, result);
+  if (kind && result) __defProp$9(target, key, result);
   return result;
 };
-var __publicField$8 = (obj, key, value) => __defNormalProp$8(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("SmythVault");
 class SmythVault extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$8(this, "name", "SmythVault");
-    __publicField$8(this, "oAuthAppId");
-    __publicField$8(this, "oAuthAppSecret");
-    __publicField$8(this, "oAuthBaseUrl");
-    __publicField$8(this, "oAuthResource");
-    __publicField$8(this, "oAuthScope");
-    __publicField$8(this, "vaultAPI");
+    __publicField$9(this, "name", "SmythVault");
+    __publicField$9(this, "oAuthAppId");
+    __publicField$9(this, "oAuthAppSecret");
+    __publicField$9(this, "oAuthBaseUrl");
+    __publicField$9(this, "oAuthResource");
+    __publicField$9(this, "oAuthScope");
+    __publicField$9(this, "vaultAPI");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.oAuthAppId = config.oAuthAppID;
     this.oAuthAppSecret = config.oAuthAppSecret;
@@ -11279,25 +11355,25 @@ __decorateClass$3([
   SecureConnector.AccessControl
 ], SmythVault.prototype, "exists", 1);
 
-var __defProp$7 = Object.defineProperty;
+var __defProp$8 = Object.defineProperty;
 var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$7 = (obj, key, value) => key in obj ? __defProp$7(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$8 = (obj, key, value) => key in obj ? __defProp$8(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$2 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$7(target, key, result);
+  if (kind && result) __defProp$8(target, key, result);
   return result;
 };
-var __publicField$7 = (obj, key, value) => __defNormalProp$7(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$8 = (obj, key, value) => __defNormalProp$8(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$3 = Logger("SecretsManager");
 class SecretsManager extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$7(this, "name", "SecretsManager");
-    __publicField$7(this, "secretsManager");
+    __publicField$8(this, "name", "SecretsManager");
+    __publicField$8(this, "secretsManager");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.secretsManager = new SecretsManagerClient({
       region: config.region,
@@ -11366,23 +11442,33 @@ class VaultService extends ConnectorServiceProvider {
 }
 
 class AccountConnector extends Connector {
+  user(candidate) {
+    return {
+      getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),
+      getUserSetting: async (settingKey) => this.getUserSetting(candidate.readRequest, candidate.id, settingKey),
+      getAllTeamSettings: async () => this.getAllTeamSettings(candidate.readRequest, candidate.id),
+      getTeamSetting: async (settingKey) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
+      isTeamMember: async (teamId) => this.isTeamMember(teamId, candidate),
+      getCandidateTeam: async () => this.getCandidateTeam(candidate)
+    };
+  }
 }
 
-var __defProp$6 = Object.defineProperty;
-var __defNormalProp$6 = (obj, key, value) => key in obj ? __defProp$6(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$6 = (obj, key, value) => __defNormalProp$6(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$7 = Object.defineProperty;
+var __defNormalProp$7 = (obj, key, value) => key in obj ? __defProp$7(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$7 = (obj, key, value) => __defNormalProp$7(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("SmythAccount");
 class SmythAccount extends AccountConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$6(this, "name", "SmythAccount");
-    __publicField$6(this, "oAuthAppId");
-    __publicField$6(this, "oAuthAppSecret");
-    __publicField$6(this, "oAuthBaseUrl");
-    __publicField$6(this, "oAuthResource");
-    __publicField$6(this, "oAuthScope");
-    __publicField$6(this, "smythAPI");
+    __publicField$7(this, "name", "SmythAccount");
+    __publicField$7(this, "oAuthAppId");
+    __publicField$7(this, "oAuthAppSecret");
+    __publicField$7(this, "oAuthBaseUrl");
+    __publicField$7(this, "oAuthResource");
+    __publicField$7(this, "oAuthScope");
+    __publicField$7(this, "smythAPI");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.oAuthAppId = config.oAuthAppID;
     this.oAuthAppSecret = config.oAuthAppSecret;
@@ -11392,16 +11478,6 @@ class SmythAccount extends AccountConnector {
     this.smythAPI = axios.create({
       baseURL: `${config.smythAPIBaseUrl}`
     });
-  }
-  user(candidate) {
-    return {
-      getAccountAllSettings: async () => this.getAccountAllSettings(candidate.readRequest, candidate.id),
-      getAccountSetting: async (settingKey) => this.getAccountSetting(candidate.readRequest, candidate.id, settingKey),
-      getTeamAllSettings: async () => this.getTeamAllSettings(candidate.readRequest, candidate.id),
-      getTeamSetting: async (settingKey) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
-      isTeamMember: async (teamId) => this.isTeamMember(teamId, candidate),
-      getCandidateTeam: async () => this.getCandidateTeam(candidate)
-    };
   }
   async isTeamMember(teamId, candidate) {
     try {
@@ -11428,7 +11504,7 @@ class SmythAccount extends AccountConnector {
     }
     return null;
   }
-  async getTeamAllSettings(acRequest, teamId) {
+  async getAllTeamSettings(acRequest, teamId) {
     try {
       const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
       return response?.data?.settings;
@@ -11436,7 +11512,7 @@ class SmythAccount extends AccountConnector {
       return null;
     }
   }
-  async getAccountAllSettings(acRequest, accountId) {
+  async getAllUserSettings(acRequest, accountId) {
     try {
       const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
       return response?.data?.settings;
@@ -11452,9 +11528,11 @@ class SmythAccount extends AccountConnector {
       return null;
     }
   }
-  async getAccountSetting(acRequest, accountId, settingKey) {
+  async getUserSetting(acRequest, accountId, settingKey) {
     try {
-      const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
+      const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, {
+        headers: await this.getSmythRequestHeaders()
+      });
       return response?.data?.setting;
     } catch (error) {
       return null;
@@ -11480,9 +11558,44 @@ class SmythAccount extends AccountConnector {
   }
 }
 
+var __defProp$6 = Object.defineProperty;
+var __defNormalProp$6 = (obj, key, value) => key in obj ? __defProp$6(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$6 = (obj, key, value) => __defNormalProp$6(obj, typeof key !== "symbol" ? key + "" : key, value);
+class DummyAccount extends AccountConnector {
+  constructor() {
+    super(...arguments);
+    __publicField$6(this, "name", "DummyAccount");
+  }
+  isTeamMember(team, candidate) {
+    return Promise.resolve(true);
+  }
+  getCandidateTeam(candidate) {
+    if (candidate.role === TAccessRole.Team) {
+      return Promise.resolve(candidate.id);
+    }
+    return Promise.resolve("default");
+  }
+  getResourceACL(resourceId, candidate) {
+    throw new Error("getResourceACL Method not implemented.");
+  }
+  getAllTeamSettings(acRequest, teamId) {
+    throw new Error("getAllTeamSettings Method not implemented.");
+  }
+  getAllUserSettings(acRequest, accountId) {
+    throw new Error("getAllUserSettings Method not implemented.");
+  }
+  getTeamSetting(acRequest, teamId, settingKey) {
+    throw new Error("getTeamSetting Method not implemented.");
+  }
+  getUserSetting(acRequest, accountId, settingKey) {
+    throw new Error("getUserSetting Method not implemented.");
+  }
+}
+
 class AccountService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.Account, "SmythAccount", SmythAccount);
+    ConnectorService.register(TConnectorService.Account, "DummyAccount", DummyAccount);
   }
 }
 

@@ -1,16 +1,15 @@
-import { Logger } from "@sre/helpers/Log.helper";
-import { ISmythAccountRequest, AccountConnector } from "../AccountConnector";
-import { IAccessCandidate, TAccessLevel, TAccessRole } from "@sre/types/ACL.types";
-import { AccessRequest } from "@sre/Security/AccessControl/AccessRequest.class";
-import { AccessCandidate } from "@sre/Security/AccessControl/AccessCandidate.class";
-import { OAuthConfig, SmythConfigs } from "@sre/types/Security.types";
-import axios, { AxiosInstance } from "axios";
-import SmythRuntime from "@sre/Core/SmythRuntime.class";
-import { getM2MToken } from "@sre/utils/oauth.utils";
-import { KeyValueObject } from "@sre/types/Common.types";
-import { ConnectorService } from "@sre/Core/ConnectorsService";
-import { ACL } from "@sre/Security/AccessControl/ACL.class";
-
+import { Logger } from '@sre/helpers/Log.helper';
+import { ISmythAccountRequest, AccountConnector } from '../AccountConnector';
+import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
+import axios, { AxiosInstance } from 'axios';
+import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { getM2MToken } from '@sre/utils/oauth.utils';
+import { KeyValueObject } from '@sre/types/Common.types';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
 
 const console = Logger('SmythAccount');
 export class SmythAccount extends AccountConnector {
@@ -34,17 +33,6 @@ export class SmythAccount extends AccountConnector {
         this.smythAPI = axios.create({
             baseURL: `${config.smythAPIBaseUrl}`,
         });
-    }
-
-    user(candidate: AccessCandidate): ISmythAccountRequest {
-        return {
-            getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),
-            getUserSetting: async (settingKey: string) => this.getUserSetting(candidate.readRequest, candidate.id, settingKey),
-            getAllTeamSettings: async () => this.getAllTeamSettings(candidate.readRequest, candidate.id),
-            getTeamSetting: async (settingKey: string) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
-            isTeamMember: async (teamId: string) => this.isTeamMember(teamId, candidate),
-            getCandidateTeam: async () => this.getCandidateTeam(candidate),
-        };
     }
 
     public async isTeamMember(teamId: string, candidate: IAccessCandidate): Promise<boolean> {
@@ -92,7 +80,6 @@ export class SmythAccount extends AccountConnector {
         }
     }
 
-
     public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<KeyValueObject> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
@@ -104,7 +91,9 @@ export class SmythAccount extends AccountConnector {
 
     public async getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject> {
         try {
-            const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
+            const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, {
+                headers: await this.getSmythRequestHeaders(),
+            });
             return response?.data?.setting;
         } catch (error) {
             return null;
@@ -132,7 +121,7 @@ export class SmythAccount extends AccountConnector {
                 oauthAppSecret: this.oAuthAppSecret,
                 resource: this.oAuthResource,
                 scope: this.oAuthScope,
-            })}`
+            })}`,
         };
     }
 }
