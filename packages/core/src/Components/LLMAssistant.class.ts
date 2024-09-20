@@ -2,7 +2,6 @@ import Joi from 'joi';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
@@ -10,6 +9,8 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { encode } from 'gpt-tokenizer';
 import Component from './Component.class';
 import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -86,9 +87,9 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const llmInference: LLMInference = await LLMInference.load(model);
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -104,8 +105,11 @@ export default class LLMAssistant extends Component {
             let behavior = TemplateString(config.data.behavior).parse(input).result;
             logger.debug(`[Parsed Behavior] \n${behavior}\n\n`);
 
-            const modelInfo = llmHelper.modelInfo;
-            const maxTokens = modelInfo?.tokens ?? 2048;
+            const provider = llmInference.llmHelper.ModelRegistry().getProvider(model);
+
+            const apiKey = await VaultHelper.getTeamKey(provider, agent.teamId);
+
+            const maxTokens = (await llmInference.llmHelper.TokenManager().getAllowedCompletionTokens(model, !!apiKey)) ?? 2048;
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 
@@ -117,7 +121,7 @@ export default class LLMAssistant extends Component {
                 messages,
             };
 
-            const response: any = await llmHelper.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
+            const response: any = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
 
             // in case we have the response but it's empty string, undefined or null
             if (!response) {

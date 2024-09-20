@@ -40,8 +40,9 @@ export class GroqConnector extends LLMConnector {
 
         _params.messages = _params?.messages || [];
 
-        if (this.hasSystemMessage(_params.messages)) {
-            const { systemMessage, otherMessages } = this.separateSystemMessages(_params.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+        if (hasSystemMessage) {
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
             _params.messages = [systemMessage, ...otherMessages];
         } else {
             _params.messages.unshift({
@@ -62,9 +63,11 @@ export class GroqConnector extends LLMConnector {
         // TODO: implement groq specific token counting
         // this.validateTokensLimit(_params);
 
+        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+
         const chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
-            messages: this.getConsistentMessages(_params.messages),
+            messages,
         };
 
         if (_params.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
@@ -97,11 +100,11 @@ export class GroqConnector extends LLMConnector {
         try {
             const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
 
-            const _messages = this.getConsistentMessages(_params.messages);
+            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
             let args = {
                 model: _params.model,
-                messages: _messages,
+                messages,
                 tools: _params.toolsConfig.tools,
                 tool_choice: _params.toolsConfig.tool_choice,
             };
@@ -237,8 +240,6 @@ export class GroqConnector extends LLMConnector {
     }
 
     private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        if (messages.length === 0) return messages;
-
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

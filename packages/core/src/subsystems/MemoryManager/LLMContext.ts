@@ -2,6 +2,8 @@ import { encode, encodeChat } from 'gpt-tokenizer';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 
+// TODO [Forhad]: we can move methods to MessageProcessor
+
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
     private _systemPrompt: string = '';
@@ -27,7 +29,7 @@ export class LLMContext {
     constructor(private _model, _systemPrompt: string = '', private _messages: any[] = []) {
         this._systemPrompt = _systemPrompt;
         //TODO:allow configuring a storage service
-        this._llmHelper = LLMHelper.load(this._model);
+        this._llmHelper = new LLMHelper();
     }
 
     public push(...message: any[]) {
@@ -42,9 +44,10 @@ export class LLMContext {
         this.push({ role: 'assistant', content });
     }
 
-    public getContextWindow(maxTokens: number, maxOutputTokens: number = 256): any[] {
+    public async getContextWindow(maxTokens: number, maxOutputTokens: number = 256): Promise<any[]> {
         //TODO: handle non key accounts (limit tokens)
-        const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
+        // const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
+        const maxModelContext = await this._llmHelper.TokenManager().getAllowedCompletionTokens(this._model, true);
         let maxInputContext = Math.min(maxTokens, maxModelContext);
 
         if (maxInputContext + maxOutputTokens > maxModelContext) {

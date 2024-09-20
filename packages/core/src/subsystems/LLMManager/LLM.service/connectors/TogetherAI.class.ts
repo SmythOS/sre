@@ -24,18 +24,18 @@ export class TogetherAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
-        const _messages = this.getConsistentMessages(_params.messages);
+        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
         //FIXME: We probably need to separate the json system from default chatRequest
-        if (_messages[0]?.role !== 'system') {
-            _messages.unshift({
+        if (messages[0]?.role !== 'system') {
+            messages.unshift({
                 role: 'system',
                 content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
             });
         }
 
-        if (prompt && _messages.length === 1) {
-            _messages.push({ role: 'user', content: prompt });
+        if (prompt && messages.length === 1) {
+            messages.push({ role: 'user', content: prompt });
         }
 
         // Check if the team has their own API key, then use it
@@ -46,24 +46,22 @@ export class TogetherAIConnector extends LLMConnector {
             baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
-        // Check token limit
-        const promptTokens = encodeChat(_messages, 'gpt-4')?.length;
+        // Validate token limit
+        const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
-        const tokensLimit = this.checkTokensLimit({
-            model: _params.model,
+        await this.llmHelper.TokenManager().validateTokensLimit({
+            modelName: _params?.model,
             promptTokens,
             completionTokens: _params?.max_tokens,
-            hasTeamAPIKey: !!apiKey,
+            hasAPIKey: !!apiKey,
         });
-
-        if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
 
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams & {
             top_k?: number;
             repetition_penalty?: number;
         } = {
             model: _params.model,
-            messages: _params.messages,
+            messages,
         };
 
         if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
@@ -107,7 +105,7 @@ export class TogetherAIConnector extends LLMConnector {
                 baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
-            const messages = this.getConsistentMessages(_params.messages);
+            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
             let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
                 model: _params.model,
@@ -246,8 +244,6 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     private getConsistentMessages(messages) {
-        if (messages.length === 0) return messages;
-
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

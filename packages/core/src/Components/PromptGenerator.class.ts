@@ -1,5 +1,5 @@
 import Agent from '@sre/AgentManager/Agent.class';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Joi from 'joi';
 import Component from './Component.class';
@@ -32,10 +32,10 @@ export default class PromptGenerator extends Component {
             logger.debug(`=== LLM Prompt Log ===`);
 
             const model: string = config.data.model || 'echo';
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const llmInference: LLMInference = await LLMInference.load(model, agent.teamId);
 
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -49,8 +49,7 @@ export default class PromptGenerator extends Component {
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
             // request to LLM
-            //const response: any = await componentLLMRequest(prompt, model, config).catch((error) => ({ error: error }));
-            const response: any = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+            const response: any = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null

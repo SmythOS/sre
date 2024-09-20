@@ -1,7 +1,7 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { ToolData } from '@sre/types/LLM.types';
@@ -170,13 +170,13 @@ export class Conversation extends EventEmitter {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmHelper: LLMHelper = LLMHelper.load(this.model);
+        const llmInference: LLMInference = await LLMInference.load(this.model);
 
         if (message) this._context.addUserMessage(message);
 
-        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const { data: llmResponse } = await llmHelper
+        const { data: llmResponse } = await llmInference
             .toolRequest(
                 {
                     model: this.model,
@@ -260,7 +260,7 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
+            const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
             this._context.push(...messagesWithToolResult);
 
@@ -301,13 +301,13 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmHelper: LLMHelper = LLMHelper.load(this.model);
+        const llmInference: LLMInference = await LLMInference.load(this.model);
 
         if (message) this._context.addUserMessage(message);
 
-        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const eventEmitter: any = await llmHelper
+        const eventEmitter: any = await llmInference
             .streamRequest(
                 {
                     model: this.model,
@@ -408,7 +408,7 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
+                const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
                     messageBlock: llmMessage,
                     toolsData: processedToolsData,
                 });
@@ -479,12 +479,12 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmHelper: LLMHelper = LLMHelper.load(this.model);
+        const llmInference: LLMInference = await LLMInference.load(this.model);
 
         if (message) this._context.addUserMessage(message);
-        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
-        const { data: llmResponse, error } = await llmHelper.streamToolRequest(
+        const { data: llmResponse, error } = await llmInference.streamToolRequest(
             {
                 model: this.model,
                 messages: contextWindow,
@@ -561,7 +561,7 @@ export class Conversation extends EventEmitter {
 
             const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmHelper.connector.transformToolMessageBlocks({
+            const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
                 messageBlock: llmMessage,
                 toolsData: processedToolsData,
             });
@@ -675,7 +675,8 @@ export class Conversation extends EventEmitter {
      * updates LLM model, if spec is available, it will update the tools config
      * @param model
      */
-    private updateModel(model: string) {
+    // TODO [Forhad]: For now updateModel does not required await, but when we will have tools implementation in custom model then we need to await for it
+    private async updateModel(model: string) {
         try {
             this._model = model;
 
@@ -685,8 +686,8 @@ export class Conversation extends EventEmitter {
                 this._baseUrl = this._spec?.servers?.[0].url;
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
-                const llmHelper: LLMHelper = LLMHelper.load(this._model);
-                this._toolsConfig = llmHelper.connector.formatToolsConfig({
+                const llmInference: LLMInference = await LLMInference.load(this._model);
+                this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
                     toolChoice: 'auto',

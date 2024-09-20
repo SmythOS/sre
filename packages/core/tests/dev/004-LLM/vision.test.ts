@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -9,7 +9,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
-            id: { value: 1 },
+            id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
         });
     });
     return { default: MockedAgent };
@@ -19,10 +19,10 @@ const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
         Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+            bucket: process.env.AWS_S3_BUCKET_NAME || '',
+            region: process.env.AWS_S3_REGION || '',
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
     AgentData: {
@@ -38,6 +38,17 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    },
 });
 
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
@@ -45,30 +56,25 @@ let agent = new Agent();
 
 const TIMEOUT = 30000;
 
-function runVisionTestCases(model: string) {
+async function runVisionTestCases(model: string) {
     const config = {
         data: {
             model,
             maxTokens: 200,
         },
     };
-    const llmHelper: LLMHelper = LLMHelper.load(model);
+    const llmInference: LLMInference = await LLMInference.load(model);
 
     const imageUrl1 = 'https://fastly.picsum.photos/id/478/536/354.jpg?hmac=adxYyHX8WcCfHkk07quT2s92fbC7vY2QttaeBztwxgI';
     const imageUrl2 = 'https://fastly.picsum.photos/id/1038/536/354.jpg?hmac=Hu6nao4zkSvq_pHo5pIssp8oYizJus3yfL956AXww70';
     const imageUrl3 = 'https://fastly.picsum.photos/id/533/536/354.jpg?hmac=jRXOQOhY0DMDE0jgxz4LsOlmfwO4keMU6sh258s8OIQ';
 
-    function expectValidResponse(result: any) {
-        expect(result).toBeDefined();
-        expect(result).not.toBe('');
-    }
-
     it(
         `runs a simple vision request with a single image for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1];
-            const result: any = await llmHelper.visionRequest('What is in this image?', fileSources, config, agent);
-            expectValidResponse(result);
+            const result: any = await llmInference.visionRequest('What is in this image?', fileSources, config, agent);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -77,8 +83,8 @@ function runVisionTestCases(model: string) {
         `handles multiple images in a single request for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1, imageUrl2];
-            const result: any = await llmHelper.visionRequest('Compare these two images', fileSources, config, agent);
-            expectValidResponse(result);
+            const result: any = await llmInference.visionRequest('Compare these two images', fileSources, config, agent);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -87,8 +93,8 @@ function runVisionTestCases(model: string) {
         `handles different image formats correctly for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1, imageUrl2, imageUrl3];
-            const result: any = await llmHelper.visionRequest('Describe these images', fileSources, config, agent);
-            expectValidResponse(result);
+            const result: any = await llmInference.visionRequest('Describe these images', fileSources, config, agent);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -97,7 +103,7 @@ function runVisionTestCases(model: string) {
         `handles invalid image files gracefully for Model: ${model}`,
         async () => {
             const fileSources = ['invalid-url'];
-            await expect(llmHelper.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
+            await expect(llmInference.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
         },
         TIMEOUT
     );
@@ -106,7 +112,7 @@ function runVisionTestCases(model: string) {
         `handles empty file sources array for Model: ${model}`,
         async () => {
             const fileSources = [];
-            await expect(llmHelper.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
+            await expect(llmInference.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
         },
         TIMEOUT
     );
@@ -117,8 +123,8 @@ function runVisionTestCases(model: string) {
             const fileSources = [imageUrl1];
             const complexPrompt =
                 'Analyze this image in detail. Describe the main elements, colors, and any text visible. Then, speculate about the context or purpose of this image.';
-            const result: any = await llmHelper.visionRequest(complexPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            const result: any = await llmInference.visionRequest(complexPrompt, fileSources, config, agent);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -128,8 +134,8 @@ function runVisionTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1];
             const specialCharsPrompt = 'Describe this image: 🌍🚀 こんにちは! 你好! مرحبا!';
-            const result: any = await llmHelper.visionRequest(specialCharsPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            const result: any = await llmInference.visionRequest(specialCharsPrompt, fileSources, config, agent);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -138,7 +144,7 @@ function runVisionTestCases(model: string) {
 const models = ['gpt-4o-mini', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash'];
 
 for (const model of models) {
-    describe(`LLM Vision Tests for Model: ${model}`, () => {
-        runVisionTestCases(model);
+    describe(`LLM Vision Tests for Model: ${model}`, async () => {
+        await runVisionTestCases(model);
     });
 }

@@ -1,4 +1,4 @@
-export default {
+export const models = {
     echo: {
         llm: 'Echo',
         alias: 'Echo',

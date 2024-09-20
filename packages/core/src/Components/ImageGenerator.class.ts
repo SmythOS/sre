@@ -1,7 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 
 export default class ImageGenerator extends Component {
@@ -114,16 +114,16 @@ export default class ImageGenerator extends Component {
             } */
 
             // let response = await OpenAI.generateImage(args);
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const llmInference: LLMInference = await LLMInference.load(model);
 
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
                 };
             }
-            const response: any = await llmHelper.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
+            const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
 
             let output = response?.data?.[0]?.[responseFormat];
             const revised_prompt = response?.data?.[0]?.revised_prompt;

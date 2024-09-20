@@ -13,7 +13,7 @@
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
         "knip": "knip",
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        "start:web": "node ./tests/build/web/index.js --model gpt-4o-mini --maxOutputTokens 256"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -58,8 +58,10 @@
         "@anthropic-ai/sdk": "^0.25.0",
         "@apidevtools/json-schema-ref-parser": "^11.6.4",
         "@apidevtools/swagger-parser": "^10.1.0",
+        "@aws-sdk/client-bedrock-runtime": "^3.651.1",
         "@aws-sdk/client-s3": "^3.529.0",
         "@aws-sdk/client-secrets-manager": "^3.649.0",
+        "@google-cloud/vertexai": "^1.7.0",
         "@google/generative-ai": "^0.14.1",
         "@huggingface/inference": "^2.8.0",
         "@langchain/pinecone": "^0.0.8",

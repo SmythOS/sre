@@ -1,12 +1,8 @@
 import Joi from 'joi';
 
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-
-import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import Component from './Component.class';
-
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 export default class VisionLLM extends Component {
     protected configSchema = Joi.object({
         prompt: Joi.string().required().label('Prompt'),
@@ -27,9 +23,9 @@ export default class VisionLLM extends Component {
         try {
             logger.debug(`=== Vision LLM Log ===`);
             const model: string = config.data.model || 'gpt-4-vision-preview';
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const llmInference: LLMInference = await LLMInference.load(model);
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -39,13 +35,9 @@ export default class VisionLLM extends Component {
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
-            //prompt = llmConnector.enhancePrompt(prompt, config);
-
-            //logger.debug(` Enhanced prompt \n`, prompt, '\n');
-
             const fileSources = Array.isArray(input.Images) ? input.Images : [input.Images];
 
-            const response = await llmHelper.visionRequest(prompt, fileSources, config, agent);
+            const response = await llmInference.visionRequest(prompt, fileSources, config, agent);
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null
             if (!response) {
