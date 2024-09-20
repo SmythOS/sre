@@ -49,9 +49,6 @@ export class LLMInference {
         const params: any = (await this._llmConnector.extractLLMComponentParams(config)) || {};
         params.model = this.modelName;
 
-        // We pass teamId within the params as it required to get vault keys for Bedrock and VertexAI
-        params.teamId = agent instanceof Agent && agent.teamId;
-
         //override params with customParams
         Object.assign(params, customParams);
 

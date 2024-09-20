@@ -7,6 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -50,7 +51,10 @@ export class VertexAIConnector extends LLMConnector {
         }
 
         try {
-            const client = await this.getVertexAIClient(modelInfo, params.teamId);
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+
+            const client = await this.getVertexAIClient(modelInfo, teamId);
             const generativeModel = client.getGenerativeModel(modelParams);
 
             const contents = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];

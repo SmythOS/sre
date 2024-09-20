@@ -7,6 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -66,7 +67,10 @@ export class BedrockConnector extends LLMConnector {
         const command = new ConverseCommand(converseCommandInput);
 
         try {
-            const client = await this.getBedrockClient(modelInfo, params.teamId);
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+
+            const client = await this.getBedrockClient(modelInfo, teamId);
             const response = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
             return { content, finishReason: 'stop' };

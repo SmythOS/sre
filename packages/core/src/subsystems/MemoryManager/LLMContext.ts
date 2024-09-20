@@ -46,8 +46,8 @@ export class LLMContext {
 
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 256): Promise<any[]> {
         //TODO: handle non key accounts (limit tokens)
-        // TODO [Forhad]: need to provide if hasAPIKey or not to get proper token limit
-        const maxModelContext = await this._llmHelper.TokenManager().getAllowedCompletionTokens(this._model);
+        // const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
+        const maxModelContext = await this._llmHelper.TokenManager().getAllowedCompletionTokens(this._model, true);
         let maxInputContext = Math.min(maxTokens, maxModelContext);
 
         if (maxInputContext + maxOutputTokens > maxModelContext) {
