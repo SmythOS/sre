@@ -37,6 +37,7 @@ export default class SmythRuntime {
         }
 
         SystemEvents.emit('SRE:Initialized');
+
         return SmythRuntime.Instance as SmythRuntime;
     }
 

@@ -8,6 +8,10 @@ import fs from 'fs';
 import util from 'util';
 import path from 'path';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { HfInference, textClassification, zeroShotClassification, zeroShotImageClassification } from '@huggingface/inference';
+import { TestAccountConnector } from '../../utils/TestConnectors';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TConnectorService } from '@sre/types/SRE.types';
 
 // Specific getter for HuggingFace API key
 const getApiKeyVaultKeyName = (): string => {
@@ -18,6 +22,19 @@ const getApiKeyVaultKeyName = (): string => {
     // // return apiKey;
     return `{{KEY(HUGGINGFACE_API_KEY)}}`;
 };
+
+class CustomAccountConnector extends TestAccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
 // We need SRE to be loaded because LLMAssistant uses internal SRE functions
 const sre = SmythRuntime.Instance.init({
@@ -54,6 +71,10 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
 });
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -66,21 +87,41 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     return { default: MockedAgent };
 });
 
+vi.mock('@huggingface/inference', async () => {
+    const originalHfInference = (await vi.importActual<typeof import('@huggingface/inference')>('@huggingface/inference')).HfInference;
+    return {
+        HfInference: vi.fn().mockImplementation((apiKey) => {
+            const hfInference = new originalHfInference(apiKey);
+            return {
+                // dummy blob of a png image
+                textToImage: vi.fn().mockResolvedValue(new Blob()),
+                zeroShotClassification: hfInference.zeroShotClassification.bind(hfInference),
+                zeroShotImageClassification: hfInference.zeroShotImageClassification.bind(hfInference),
+                textClassification: hfInference.textClassification.bind(hfInference),
+                textGeneration: hfInference.textGeneration.bind(hfInference),
+                accessToken: apiKey,
+                custom: true,
+            };
+        }),
+    };
+});
+
 describe('HuggingFace Component', () => {
     beforeAll(async () => {
         // This will throw an error if the API key is not set
         const vaultConnector = ConnectorService.getVaultConnector();
-        const agent = AccessCandidate.agent('agent-123456');
+        const team = AccessCandidate.team('default');
 
         const apiKey = await vaultConnector
-            .user(agent)
+            .user(team)
             .get('HUGGINGFACE_API_KEY')
             .catch((e) => {
-                throw new Error('Failed to get Zapier API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
+                console.log(e);
+                throw new Error('Failed to get HuggingFace API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
             });
 
         if (!apiKey) {
-            throw new Error('Zapier testing API Key is not set. Please set the key in vault.json to run this test.');
+            throw new Error('HuggingFace testing API Key is not set. Please set the key in vault.json to run this test.');
         }
     });
 
@@ -186,13 +227,14 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 60_000);
 
-    it('should return a binary output with a preview url', async () => {
-        vi.mock('@huggingface/inference', () => ({
-            HfInference: vi.fn().mockImplementation(() => ({
-                // dummy blob of a png image
-                textToImage: vi.fn().mockResolvedValue(new Blob()),
-            })),
-        }));
+    it('should return a binary output with a smythfs:// uri', async () => {
+        // vi.mock('@huggingface/inference', () => ({
+        //     HfInference: vi.fn().mockImplementation(() => ({
+        //         // dummy blob of a png image
+        //         textToImage: vi.fn().mockResolvedValue(new Blob()),
+        //     })),
+        // }));
+
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
@@ -227,7 +269,7 @@ describe('HuggingFace Component', () => {
         // expect(previewUrl, 'The output should be a valid URL to an image file').toMatch(/^https:\/\/.*\.(jpg|jpeg|png|gif)$/);
 
         // should match: smythfs://<teamId>.team/<candidateId>/_temp/<filename>
-        expect(previewUrl, 'The output should be a valid SmythFS URL that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
+        expect(previewUrl, 'The output should be a valid SmythFS URI that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
 
         expect(response).toBeDefined();
         expect(output._error).toBeUndefined();

@@ -9,6 +9,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
+import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 // import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 class LLMHelper {
@@ -57,12 +58,16 @@ export default class DataSourceLookup extends Component {
 
         const topK = Math.max(config.data.topK, 50);
 
-        const vectorDB = ConnectorService.getVectorDBConnector();
+        let vectorDBHelper = VectorsHelper.load();
+        const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespace);
+        if (isOnCustomStorage) {
+            vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+        }
 
         let results: string[] | { content: string; metadata: any }[];
         let _error;
         try {
-            const response = await vectorDB.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
+            const response = await vectorDBHelper.search(teamId, namespace, _input, { topK, includeMetadata: true });
             results = response.slice(0, config.data.topK).map((result) => ({
                 content: result.metadata?.text,
                 metadata: result.metadata,

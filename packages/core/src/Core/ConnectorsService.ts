@@ -13,6 +13,7 @@ import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDat
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
+import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 const console = Logger('ConnectorService');
 
 const Connectors = {};
@@ -165,6 +166,10 @@ export class ConnectorService {
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorInstances[connectorType]?.[connectorName];
         return instance && instance !== DummyConnector;
+    }
+
+    static getRouterConnector(name?: string): RouterConnector {
+        return ConnectorService.getInstance<RouterConnector>(TConnectorService.Router, name);
     }
 }
 
