@@ -9,6 +9,9 @@ import util from 'util';
 import path from 'path';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { HfInference, textClassification, zeroShotClassification, zeroShotImageClassification } from '@huggingface/inference';
+import { TestAccountConnector } from '../../utils/TestConnectors';
+import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TConnectorService } from '@sre/types/SRE.types';
 
 // Specific getter for HuggingFace API key
 const getApiKeyVaultKeyName = (): string => {
@@ -19,6 +22,19 @@ const getApiKeyVaultKeyName = (): string => {
     // // return apiKey;
     return `{{KEY(HUGGINGFACE_API_KEY)}}`;
 };
+
+class CustomAccountConnector extends TestAccountConnector {
+    public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
+        if (candidate.id === 'agent-123456') {
+            return Promise.resolve('9');
+        } else if (candidate.id === 'agent-654321') {
+            return Promise.resolve('5');
+        }
+
+        return super.getCandidateTeam(candidate);
+    }
+}
+ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
 // We need SRE to be loaded because LLMAssistant uses internal SRE functions
 const sre = SmythRuntime.Instance.init({
@@ -55,6 +71,10 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'MyCustomAccountConnector',
+        Settings: {},
+    },
 });
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -90,12 +110,13 @@ describe('HuggingFace Component', () => {
     beforeAll(async () => {
         // This will throw an error if the API key is not set
         const vaultConnector = ConnectorService.getVaultConnector();
-        const agent = AccessCandidate.agent('agent-123456');
+        const team = AccessCandidate.team('default');
 
         const apiKey = await vaultConnector
-            .user(agent)
+            .user(team)
             .get('HUGGINGFACE_API_KEY')
             .catch((e) => {
+                console.log(e);
                 throw new Error('Failed to get HuggingFace API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
             });
 

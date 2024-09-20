@@ -22,7 +22,7 @@ export type TSmythFSURI = {
 
 SystemEvents.on('SRE:Booted', () => {
     const router = ConnectorService.getRouterConnector();
-    if (router) {
+    if (router && router?.get instanceof Function) {
         router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
     }
 });
