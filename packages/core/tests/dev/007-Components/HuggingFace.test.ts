@@ -8,6 +8,7 @@ import fs from 'fs';
 import util from 'util';
 import path from 'path';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { HfInference, textClassification, zeroShotClassification, zeroShotImageClassification } from '@huggingface/inference';
 
 // Specific getter for HuggingFace API key
 const getApiKeyVaultKeyName = (): string => {
@@ -66,6 +67,25 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     return { default: MockedAgent };
 });
 
+vi.mock('@huggingface/inference', async () => {
+    const originalHfInference = (await vi.importActual<typeof import('@huggingface/inference')>('@huggingface/inference')).HfInference;
+    return {
+        HfInference: vi.fn().mockImplementation((apiKey) => {
+            const hfInference = new originalHfInference(apiKey);
+            return {
+                // dummy blob of a png image
+                textToImage: vi.fn().mockResolvedValue(new Blob()),
+                zeroShotClassification: hfInference.zeroShotClassification.bind(hfInference),
+                zeroShotImageClassification: hfInference.zeroShotImageClassification.bind(hfInference),
+                textClassification: hfInference.textClassification.bind(hfInference),
+                textGeneration: hfInference.textGeneration.bind(hfInference),
+                accessToken: apiKey,
+                custom: true,
+            };
+        }),
+    };
+});
+
 describe('HuggingFace Component', () => {
     beforeAll(async () => {
         // This will throw an error if the API key is not set
@@ -76,11 +96,11 @@ describe('HuggingFace Component', () => {
             .user(agent)
             .get('HUGGINGFACE_API_KEY')
             .catch((e) => {
-                throw new Error('Failed to get Zapier API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
+                throw new Error('Failed to get HuggingFace API Key from vault. Please add HUGGINGFACE_API_KEY to your vault.');
             });
 
         if (!apiKey) {
-            throw new Error('Zapier testing API Key is not set. Please set the key in vault.json to run this test.');
+            throw new Error('HuggingFace testing API Key is not set. Please set the key in vault.json to run this test.');
         }
     });
 
@@ -187,12 +207,13 @@ describe('HuggingFace Component', () => {
     }, 60_000);
 
     it('should return a binary output with a smythfs:// uri', async () => {
-        vi.mock('@huggingface/inference', () => ({
-            HfInference: vi.fn().mockImplementation(() => ({
-                // dummy blob of a png image
-                textToImage: vi.fn().mockResolvedValue(new Blob()),
-            })),
-        }));
+        // vi.mock('@huggingface/inference', () => ({
+        //     HfInference: vi.fn().mockImplementation(() => ({
+        //         // dummy blob of a png image
+        //         textToImage: vi.fn().mockResolvedValue(new Blob()),
+        //     })),
+        // }));
+
         // @ts-ignore
         const agent = new Agent();
         const hfComp = new HuggingFace();
