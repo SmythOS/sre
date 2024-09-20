@@ -69,17 +69,12 @@ async function runVisionTestCases(model: string) {
     const imageUrl2 = 'https://fastly.picsum.photos/id/1038/536/354.jpg?hmac=Hu6nao4zkSvq_pHo5pIssp8oYizJus3yfL956AXww70';
     const imageUrl3 = 'https://fastly.picsum.photos/id/533/536/354.jpg?hmac=jRXOQOhY0DMDE0jgxz4LsOlmfwO4keMU6sh258s8OIQ';
 
-    function expectValidResponse(result: any) {
-        expect(result).toBeDefined();
-        expect(result).not.toBe('');
-    }
-
     it(
         `runs a simple vision request with a single image for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1];
             const result: any = await llmInference.visionRequest('What is in this image?', fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -89,7 +84,7 @@ async function runVisionTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1, imageUrl2];
             const result: any = await llmInference.visionRequest('Compare these two images', fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -99,7 +94,7 @@ async function runVisionTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1, imageUrl2, imageUrl3];
             const result: any = await llmInference.visionRequest('Describe these images', fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -129,7 +124,7 @@ async function runVisionTestCases(model: string) {
             const complexPrompt =
                 'Analyze this image in detail. Describe the main elements, colors, and any text visible. Then, speculate about the context or purpose of this image.';
             const result: any = await llmInference.visionRequest(complexPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -140,7 +135,7 @@ async function runVisionTestCases(model: string) {
             const fileSources = [imageUrl1];
             const specialCharsPrompt = 'Describe this image: 🌍🚀 こんにちは! 你好! مرحبا!';
             const result: any = await llmInference.visionRequest(specialCharsPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );

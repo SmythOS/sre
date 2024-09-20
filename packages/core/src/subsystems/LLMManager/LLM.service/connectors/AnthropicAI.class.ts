@@ -37,10 +37,10 @@ export class AnthropicAIConnector extends LLMConnector {
             });
         }
 
-        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
         if (hasSystemMessage) {
             // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
 
             _params.messages = otherMessages;
 
@@ -68,7 +68,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: _params.model,
             messages: _params.messages,
-            max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
+            max_tokens: _params?.max_tokens || this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
         };
 
         if (_params?.temperature) messageCreateArgs.temperature = _params.temperature;
@@ -118,7 +118,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: _params.model,
             messages,
-            max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
+            max_tokens: _params?.max_tokens || this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey),
         };
 
         try {
@@ -148,15 +148,15 @@ export class AnthropicAIConnector extends LLMConnector {
             const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model: _params?.model,
                 messages: [],
-                max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
+                max_tokens: _params?.max_tokens || this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
             };
 
             const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+            const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
             if (hasSystemMessage) {
                 // in AnthropicAI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+                const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 
@@ -241,15 +241,15 @@ export class AnthropicAIConnector extends LLMConnector {
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
                 model: _params?.model,
                 messages: [],
-                max_tokens: _params?.max_tokens || this.llmHelper.getTokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
+                max_tokens: _params?.max_tokens || this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey), // * max token is required
             };
 
             const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+            const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
             if (hasSystemMessage) {
                 // in Anthropic AI we need to provide system message separately
-                const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+                const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
 

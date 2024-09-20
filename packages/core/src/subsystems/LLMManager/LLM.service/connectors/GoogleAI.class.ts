@@ -105,10 +105,10 @@ export class GoogleAIConnector extends LLMConnector {
         let systemInstruction;
         let systemMessage: TLLMMessageBlock | {} = {};
 
-        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(_params?.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params?.messages);
 
         if (hasSystemMessage) {
-            const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+            const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             messages = separateMessages.otherMessages;
@@ -163,7 +163,7 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.getTokenManager().validateTokensLimit({
+            await this.llmHelper.TokenManager().validateTokensLimit({
                 modelName: model,
                 promptTokens,
                 completionTokens: params?.maxOutputTokens,
@@ -241,7 +241,7 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.getTokenManager().validateTokensLimit({
+            await this.llmHelper.TokenManager().validateTokensLimit({
                 modelName: model,
                 promptTokens,
                 completionTokens: _params?.maxOutputTokens,
@@ -328,7 +328,7 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.getTokenManager().validateTokensLimit({
+            await this.llmHelper.TokenManager().validateTokensLimit({
                 modelName: model,
                 promptTokens,
                 completionTokens: _params?.maxOutputTokens,
@@ -356,10 +356,10 @@ export class GoogleAIConnector extends LLMConnector {
 
             const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
-            const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+            const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
 
             if (hasSystemMessage) {
-                const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+                const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
                 const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
                 systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
                 formattedMessages = separateMessages.otherMessages;
@@ -436,9 +436,9 @@ export class GoogleAIConnector extends LLMConnector {
         let formattedMessages;
         const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const separateMessages = this.llmHelper.getMessageProcessor().separateSystemMessages(messages);
+            const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             formattedMessages = separateMessages.otherMessages;

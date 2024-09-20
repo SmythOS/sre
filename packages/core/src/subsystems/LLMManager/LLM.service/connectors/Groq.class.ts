@@ -40,9 +40,9 @@ export class GroqConnector extends LLMConnector {
 
         _params.messages = _params?.messages || [];
 
-        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(_params.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(_params.messages);
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
             _params.messages = [systemMessage, ...otherMessages];
         } else {
             _params.messages.unshift({

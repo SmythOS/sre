@@ -16,7 +16,7 @@ export class LLMInference {
         const llmHelper = await LLMHelper.load(teamId);
         const llmInference = new LLMInference();
 
-        const llmRegistry = llmHelper.getModelRegistry();
+        const llmRegistry = llmHelper.ModelRegistry();
 
         const provider = llmRegistry.getProvider(modelName);
 

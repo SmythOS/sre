@@ -55,7 +55,7 @@ export class OpenAIConnector extends LLMConnector {
         // Validate token limit
         const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
-        await this.llmHelper.getTokenManager().validateTokensLimit({
+        await this.llmHelper.TokenManager().validateTokensLimit({
             modelName: _params?.model,
             promptTokens,
             completionTokens: _params?.max_tokens,
@@ -126,9 +126,9 @@ export class OpenAIConnector extends LLMConnector {
             });
 
             // Validate token limit
-            const promptTokens = await this.llmHelper.getFileProcessor().countVisionPromptTokens(promptData);
+            const promptTokens = await this.llmHelper.FileProcessor().countVisionPromptTokens(promptData);
 
-            await this.llmHelper.getTokenManager().validateTokensLimit({
+            await this.llmHelper.TokenManager().validateTokensLimit({
                 modelName: _params?.model,
                 promptTokens,
                 completionTokens: _params?.max_tokens,

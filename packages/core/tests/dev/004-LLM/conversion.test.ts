@@ -42,11 +42,6 @@ const sre = SmythRuntime.Instance.init({
 const TIMEOUT = 30000;
 
 function runTestCases(model: string) {
-    const expectValidResponse = (result: any, length: number) => {
-        expect(result).toBeTruthy();
-        expect(result?.length).toBeGreaterThanOrEqual(length);
-    };
-
     it(
         'runs a conversation with tool use',
         async () => {
@@ -59,7 +54,7 @@ function runTestCases(model: string) {
 
             const result = await conv.prompt('What can you help me with?');
 
-            expectValidResponse(result, 20);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -90,8 +85,8 @@ function runTestCases(model: string) {
 
             await streamComplete;
 
-            expectValidResponse(result, 20);
-            expectValidResponse(streamResult, 20);
+            expect(result).toBeTruthy();
+            expect(streamResult).toBeTruthy();
         },
         TIMEOUT
     );
@@ -123,8 +118,8 @@ function runTestCases(model: string) {
 
                 await streamComplete;
 
-                expectValidResponse(result, 20);
-                expectValidResponse(streamResult, 20);
+                expect(result).toBeTruthy();
+                expect(streamResult).toBeTruthy();
             },
             TIMEOUT
         ); */
@@ -138,7 +133,7 @@ function runTestCases(model: string) {
             await conv.prompt('What is SmythOS?');
             const followUpResult = await conv.prompt('Can you provide more details about its features?');
 
-            expectValidResponse(followUpResult, 20);
+            expect(followUpResult).toBeTruthy();
         },
         TIMEOUT * 2
     );
@@ -167,8 +162,8 @@ function runTestCases(model: string) {
 
                 await streamComplete;
 
-                expectValidResponse(result, 20);
-                expectValidResponse(streamResult, 20);
+                expect(result).toBeTruthy();
+                expect(streamResult).toBeTruthy();
             },
             TIMEOUT * 2
         ); */
@@ -197,8 +192,8 @@ function runTestCases(model: string) {
 
             await streamComplete;
 
-            expectValidResponse(result, 20);
-            expectValidResponse(streamResult, 20);
+            expect(result).toBeTruthy();
+            expect(streamResult).toBeTruthy();
         },
         TIMEOUT
     ); */

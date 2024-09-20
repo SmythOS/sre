@@ -110,7 +110,7 @@ export abstract class LLMConnector extends Connector {
         const vaultConnector = ConnectorService.getVaultConnector();
         if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
 
-        const llmRegistry = this.llmHelper.getModelRegistry();
+        const llmRegistry = this.llmHelper.ModelRegistry();
 
         return {
             chatRequest: async (prompt, params: any) => {
@@ -262,7 +262,7 @@ export abstract class LLMConnector extends Connector {
                 }
 
                 maxTokens = await this.llmHelper
-                    .getTokenManager()
+                    .TokenManager()
                     .getSafeMaxTokens({ givenMaxTokens: maxTokens, modelName: model, hasAPIKey: !!apiKey });
                 _value = maxTokens;
             }
@@ -272,7 +272,7 @@ export abstract class LLMConnector extends Connector {
 
         /*** Prepare LLM specific parameters ***/
 
-        const llmProvider = this.llmHelper.getModelRegistry().getProvider(model);
+        const llmProvider = this.llmHelper.ModelRegistry().getProvider(model);
 
         for (const [configKey, paramKey] of Object.entries(paramMappings[llmProvider])) {
             // we need to allow 0 as truthy
@@ -301,10 +301,10 @@ export abstract class LLMConnector extends Connector {
 
         const maxTokens =
             (await this.llmHelper
-                .getTokenManager()
+                .TokenManager()
                 .getSafeMaxTokens({ givenMaxTokens: +config.data.maxTokens, modelName: model, hasAPIKey: !!apiKey })) || 300;
 
-        const llm = this.llmHelper.getModelRegistry().getProvider(model);
+        const llm = this.llmHelper.ModelRegistry().getProvider(model);
 
         // as max output token prop name differs based on LLM provider, we need to get the actual prop from paramMappings
         params[paramMappings[llm]?.maxTokens] = maxTokens;

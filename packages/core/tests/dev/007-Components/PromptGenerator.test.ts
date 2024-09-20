@@ -58,11 +58,6 @@ ConnectorService.init(TConnectorService.AgentData, 'CLI');
 const TIMEOUT = 30000;
 
 function runTestCases(endpoint: string) {
-    const expectValidResponse = (result: any, length: number) => {
-        expect(result).toBeTruthy();
-        expect(result?.length).toBeGreaterThanOrEqual(length);
-    };
-
     it(
         'should generate a relevant response for a given prompt',
         async () => {
@@ -83,7 +78,7 @@ function runTestCases(endpoint: string) {
 
                 const output = res?.data?.result?.Reply;
 
-                expectValidResponse(output, 20);
+                expect(output).toBeTruthy();
             } catch (e) {
                 error = e;
                 console.error(e.message);

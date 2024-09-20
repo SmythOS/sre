@@ -72,16 +72,11 @@ async function runTestCases(model: string) {
     };
     const llmInference: LLMInference = await LLMInference.load(model);
 
-    function expectValidResponse(result: any) {
-        expect(result).toBeDefined();
-        expect(result).not.toBe('');
-    }
-
     it(
         `runs a simple prompt with Model: ${model}`,
         async () => {
             const result: any = await llmInference.promptRequest('Hello, how are you?', config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -95,7 +90,7 @@ async function runTestCases(model: string) {
                     { role: 'user', content: 'What can you do?' },
                 ],
             });
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -107,7 +102,7 @@ async function runTestCases(model: string) {
             longPrompt += '\n\nWhat is the main topic of this article?';
 
             const result = await llmInference.promptRequest(longPrompt, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -118,7 +113,7 @@ async function runTestCases(model: string) {
             const messages = JSON.parse(fs.readFileSync('./tests/data/dummy-input-messages.json', 'utf8'));
 
             const result = await llmInference.promptRequest('', config, agent, { messages });
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -128,7 +123,7 @@ async function runTestCases(model: string) {
         async () => {
             const specialCharsPrompt = 'Hello! こんにちは! 你好! مرحبا! 🌍🚀';
             const result = await llmInference.promptRequest(specialCharsPrompt, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -138,7 +133,7 @@ async function runTestCases(model: string) {
         async () => {
             const codePrompt = 'Explain this code:\n\nfunction add(a, b) {\n  return a + b;\n}';
             const result = await llmInference.promptRequest(codePrompt, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );

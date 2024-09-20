@@ -305,7 +305,7 @@ export class Conversation extends EventEmitter {
 
         if (message) this._context.addUserMessage(message);
 
-        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
         const eventEmitter: any = await llmInference
             .streamRequest(
@@ -482,7 +482,7 @@ export class Conversation extends EventEmitter {
         const llmInference: LLMInference = await LLMInference.load(this.model);
 
         if (message) this._context.addUserMessage(message);
-        const contextWindow = this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
+        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
         const { data: llmResponse, error } = await llmInference.streamToolRequest(
             {

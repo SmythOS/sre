@@ -71,17 +71,12 @@ async function runMultimodalTestCases(model: string) {
     const videoUrl = 'https://storage.googleapis.com/generativeai-downloads/images/GreatRedSpot.mp4';
     const pdfUrl = 'https://file-examples.com/storage/fef44df12666d835ba71c24/2017/10/file-sample_150kB.pdf';
 
-    function expectValidResponse(result: any) {
-        expect(result).toBeDefined();
-        expect(result).not.toBe('');
-    }
-
     it(
         `runs a simple multimodal request with a single image for Model: ${model}`,
         async () => {
             const fileSources = [imageUrl1];
             const result: any = await llmInference.multimodalRequest('What is in this image?', fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -91,7 +86,7 @@ async function runMultimodalTestCases(model: string) {
         async () => {
             const fileSources = [imageUrl1, imageUrl2];
             const result: any = await llmInference.multimodalRequest('Compare these two images', fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -112,7 +107,7 @@ async function runMultimodalTestCases(model: string) {
             const complexPrompt =
                 'Analyze these files in detail. Describe the visual elements in the image, the audio content, and the document content. Then, speculate about how they might be related.';
             const result: any = await llmInference.multimodalRequest(complexPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -123,7 +118,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, audioUrl];
             const specialCharsPrompt = 'Describe these files: 🌍🚀 こんにちは! 你好! مرحبا!';
             const result: any = await llmInference.multimodalRequest(specialCharsPrompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -134,7 +129,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, pdfUrl];
             const prompt = 'Compare the content of the image with the text file. Are they related?';
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );
@@ -145,7 +140,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [videoUrl];
             const prompt = 'Describe the main events in this video.';
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT * 20 // 10 mins
     );
@@ -156,7 +151,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [audioUrl, imageUrl1];
             const prompt = 'Is the audio describing the image? If not, how are they different?';
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
-            expectValidResponse(result);
+            expect(result).toBeTruthy();
         },
         TIMEOUT
     );

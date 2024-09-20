@@ -23,16 +23,16 @@ export class VertexAIConnector extends LLMConnector {
             _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        const hasSystemMessage = this.llmHelper.getMessageProcessor().hasSystemMessage(_params.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.getMessageProcessor().separateSystemMessages(_params.messages);
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
             _params.messages = otherMessages;
             _params.systemInstruction = { role: 'system', parts: [{ text: (systemMessage as TLLMMessageBlock)?.content }] };
         } else {
             _params.systemInstruction = { role: 'system', parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
         }
 
-        const modelInfo = await this.llmHelper.getModelRegistry().getModelInfo(_params.model);
+        const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
 
         const generationConfig: GenerationConfig = {};
         if (_params?.max_tokens !== undefined) generationConfig.maxOutputTokens = _params.max_tokens;

@@ -71,19 +71,19 @@ export class LLMHelper {
     }
 
     // Expose instances
-    public getModelRegistry(): ModelRegistry {
+    public ModelRegistry(): ModelRegistry {
         return this.modelRegistry;
     }
 
-    public getTokenManager(): TokenManager {
+    public TokenManager(): TokenManager {
         return this.tokenManager;
     }
 
-    public getMessageProcessor(): MessageProcessor {
+    public MessageProcessor(): MessageProcessor {
         return this.messageProcessor;
     }
 
-    public getFileProcessor(): FileProcessor {
+    public FileProcessor(): FileProcessor {
         return this.fileProcessor;
     }
 }

@@ -105,11 +105,11 @@ export default class LLMAssistant extends Component {
             let behavior = TemplateString(config.data.behavior).parse(input).result;
             logger.debug(`[Parsed Behavior] \n${behavior}\n\n`);
 
-            const provider = llmInference.llmHelper.getModelRegistry().getProvider(model);
+            const provider = llmInference.llmHelper.ModelRegistry().getProvider(model);
 
             const apiKey = await VaultHelper.getTeamKey(provider, agent.teamId);
 
-            const maxTokens = (await llmInference.llmHelper.getTokenManager().getAllowedCompletionTokens(model, !!apiKey)) ?? 2048;
+            const maxTokens = (await llmInference.llmHelper.TokenManager().getAllowedCompletionTokens(model, !!apiKey)) ?? 2048;
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 
