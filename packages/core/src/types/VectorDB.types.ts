@@ -61,8 +61,12 @@ export interface IStorageVectorDataSource {
 
 export interface IStorageVectorNamespace {
     namespace: string;
-    indexName: string;
     displayName: string;
     teamId: string;
-    metadata?: { [key: string]: any };
+    metadata?: StorageVectorNamespaceMetadata;
+}
+
+export type StorageVectorNamespaceMetadata = Partial<PineconeNamespaceMetadata> & { [key: string]: any };
+export interface PineconeNamespaceMetadata {
+    indexName: string;
 }

@@ -10,6 +10,9 @@ import { NKVConnector } from '../NKV.service/NKVConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { PineconeVectorDB } from './connectors/PineconeVectorDB.class';
+import { isUrl } from '@sre/utils/data.utils';
+
+type SupportedSources = 'text' | 'vector' | 'url';
 
 export class VectorsHelper {
     private _vectorDBconnector: VectorDBConnector;
@@ -19,10 +22,11 @@ export class VectorsHelper {
     private _vaultConnector: VaultConnector;
     public cusStorageKeyName: string;
     private isCustomStorageInstance: boolean = false;
-
+    private openaiApiKey: string;
     constructor(connectorName?: string, options: { openaiApiKey?: string } = {}) {
         this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
-        this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: options.openaiApiKey || process.env.OPENAI_API_KEY });
+        this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
+        this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: this.openaiApiKey });
         if (this._vectorDimention && !isNaN(this._vectorDimention)) {
             this.embeddingsProvider.dimensions = this._vectorDimention;
         }
@@ -197,15 +201,17 @@ export class VectorsHelper {
 
         const candidate = AccessCandidate.team(teamId);
         const nsExists = await this._nkvConnector.user(candidate).exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${preparedNs}`);
+        const nsSysMetadata = await this._vectorDBconnector.user(candidate).getNsMetadata(preparedNs);
+
         if (!nsExists) {
             const nsData: IStorageVectorNamespace = {
                 namespace: preparedNs,
                 displayName: name,
-                indexName: this._vectorDBconnector.indexName,
                 teamId,
                 metadata: {
                     ...metadata,
                     isOnCustomStorage: this.isCustomStorageInstance,
+                    ...nsSysMetadata,
                 },
             };
             await this._nkvConnector.user(candidate).set(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs, JSON.stringify(nsData));
@@ -303,6 +309,38 @@ export class VectorsHelper {
     public async isNamespaceOnCustomStorage(teamId: string, namespace: string) {
         const ns = await this.getNamespace(teamId, namespace);
         return (ns.metadata?.isOnCustomStorage as boolean) ?? false;
+    }
+
+    public detectSourceType(source: Source): SupportedSources | 'unknown' {
+        if (typeof source === 'string') {
+            return isUrl(source) ? 'url' : 'text';
+        } else if (Array.isArray(source) && source.every((v) => typeof v === 'number')) {
+            return 'vector';
+        } else {
+            return 'unknown';
+        }
+    }
+
+    public transformSource(source: IVectorDataSourceDto[], sourceType: SupportedSources) {
+        //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
+        switch (sourceType) {
+            case 'text': {
+                const texts = source.map((s) => s.source as string);
+
+                return VectorsHelper.load({ openaiApiKey: this.openaiApiKey })
+                    .embedTexts(texts)
+                    .then((vectors) => {
+                        return source.map((s, i) => ({
+                            ...s,
+                            source: vectors[i],
+                            metadata: { ...s.metadata, text: texts[i] },
+                        }));
+                    });
+            }
+            case 'vector': {
+                return source;
+            }
+        }
     }
 
     // async configureCustomStorage(teamId: string, config: any) {

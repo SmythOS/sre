@@ -174,7 +174,7 @@ describe('Integration: VectorDB Helper', () => {
             beforeAll(async () => {
                 // check if the vault.json 'vectorDB:customStorage:pinecone' is set to the correct value
                 const vault = ConnectorService.getVaultConnector();
-                const team1CustomStorage = vault
+                const team1CustomStorage = await vault
                     .user(AccessCandidate.team('default'))
                     .get(VectorsHelper.load().cusStorageKeyName)
                     .catch(() => null);

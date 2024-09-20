@@ -15,6 +15,7 @@ import {
     PineconeConfig,
     QueryOptions,
     Source,
+    StorageVectorNamespaceMetadata,
     VectorDBMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
@@ -31,13 +32,11 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 
 const console = Logger('Pinecone VectorDB');
 
-type SupportedSources = 'text' | 'vector' | 'url';
-
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
     public id = 'pinecone';
-    private _client: Pinecone;
-    public indexName: string;
+    private client: Pinecone;
+    private indexName: string;
     private redisCache: CacheConnector;
     private accountConnector: AccountConnector;
     private openaiApiKey: string;
@@ -48,7 +47,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         if (!config.pineconeApiKey) throw new Error('Pinecone API key is required');
         if (!config.indexName) throw new Error('Pinecone index name is required');
 
-        this._client = new Pinecone({
+        this.client = new Pinecone({
             apiKey: config.pineconeApiKey,
         });
         console.info('Pinecone client initialized');
@@ -59,9 +58,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
     }
 
-    public get client() {
-        return this._client;
-    }
+    
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
@@ -76,44 +73,8 @@ export class PineconeVectorDB extends VectorDBConnector {
         return ACL.from(acl);
     }
 
-    public user(candidate: AccessCandidate): IVectorDBRequest {
-        return {
-            search: async (namespace: string, query: string | number[], options: QueryOptions) => {
-                return await this.search(candidate.readRequest, namespace, query, this.indexName, options);
-            },
-
-            insert: async (namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]) => {
-                return this.insert(candidate.writeRequest, namespace, source, this.indexName);
-            },
-
-            delete: async (namespace: string, id: string | string[]) => {
-                await this.delete(candidate.writeRequest, namespace, id, this.indexName);
-            },
-            createNamespace: async (namespace: string, metadata?: { [key: string]: any }) => {
-                await this.createNamespace(candidate.writeRequest, namespace, this.indexName, metadata);
-            },
-            deleteNamespace: async (namespace: string) => {
-                await this.deleteNamespace(candidate.writeRequest, namespace, this.indexName);
-            },
-            listNamespaces: async () => {
-                return await this.listNamespaces(candidate.readRequest);
-            },
-            namespaceExists: async (namespace: string) => {
-                return await this.namespaceExists(candidate.readRequest, namespace);
-            },
-            getNamespace: async (namespace: string) => {
-                return await this.getNamespace(candidate.readRequest, namespace);
-            },
-        };
-    }
-
     @SecureConnector.AccessControl
-    protected async createNamespace(
-        acRequest: AccessRequest,
-        namespace: string,
-        indexName: string,
-        metadata?: { [key: string]: any }
-    ): Promise<void> {
+    protected async createNamespace(acRequest: AccessRequest, namespace: string, metadata?: { [key: string]: any }): Promise<void> {
         //* Pinecone does not need explicit namespace creation, instead, it creates the namespace when the first vector is inserted
 
         // save namespace for listing
@@ -142,10 +103,10 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async deleteNamespace(acRequest: AccessRequest, namespace: string, indexName: string): Promise<void> {
+    protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        await this._client
-            .Index(indexName)
+        await this.client
+            .Index(this.indexName)
             .namespace(VectorDBConnector.constructNsName(teamId, namespace))
             .deleteAll()
             .catch((e) => {
@@ -164,12 +125,11 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        indexName: string,
         options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
-        const pineconeIndex = this.client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
+        const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
         if (typeof query === 'string') {
             _vector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
@@ -193,20 +153,20 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
-        indexName: string
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
+        const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
 
         // make sure that all sources are of the same type (source.source)
-        if (sourceWrapper.some((s) => this.detectSourceType(s.source) !== this.detectSourceType(sourceWrapper[0].source))) {
+        if (sourceWrapper.some((s) => helper.detectSourceType(s.source) !== helper.detectSourceType(sourceWrapper[0].source))) {
             throw new Error('All sources must be of the same type');
         }
 
-        const sourceType = this.detectSourceType(sourceWrapper[0].source);
+        const sourceType = helper.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
-        const transformedSource = await this.transformSource(sourceWrapper, sourceType);
+        const transformedSource = await helper.transformSource(sourceWrapper, sourceType);
         const preparedSource = transformedSource.map((s) => ({
             id: s.id,
             values: s.source as number[],
@@ -214,7 +174,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         }));
 
         // await pineconeStore.addDocuments(chunks, ids);
-        await this._client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).upsert(preparedSource);
+        await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).upsert(preparedSource);
 
         const accessCandidate = acRequest.candidate;
 
@@ -228,43 +188,18 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[], indexName: string): Promise<void> {
+    protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
         const _ids = Array.isArray(id) ? id : [id];
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
-        const res = await this._client.Index(indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteMany(_ids);
+        const res = await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteMany(_ids);
     }
 
-    private detectSourceType(source: Source): SupportedSources | 'unknown' {
-        if (typeof source === 'string') {
-            return isUrl(source) ? 'url' : 'text';
-        } else if (Array.isArray(source) && source.every((v) => typeof v === 'number')) {
-            return 'vector';
-        } else {
-            return 'unknown';
-        }
-    }
-
-    private transformSource(source: IVectorDataSourceDto[], sourceType: SupportedSources) {
-        //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
-        switch (sourceType) {
-            case 'text': {
-                const texts = source.map((s) => s.source as string);
-
-                return VectorsHelper.load({ openaiApiKey: this.openaiApiKey })
-                    .embedTexts(texts)
-                    .then((vectors) => {
-                        return source.map((s, i) => ({
-                            ...s,
-                            source: vectors[i],
-                            metadata: { ...s.metadata, text: texts[i] },
-                        }));
-                    });
-            }
-            case 'vector': {
-                return source;
-            }
-        }
+    @SecureConnector.AccessControl
+    protected getNsMetadata(acRequest: AccessRequest, namespace: string): Promise<StorageVectorNamespaceMetadata> {
+        return Promise.resolve({
+            indexName: this.indexName,
+        });
     }
 
     private async setACL(acRequest: AccessRequest, namespace: string, acl: IACL): Promise<void> {

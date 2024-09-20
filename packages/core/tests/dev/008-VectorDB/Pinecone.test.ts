@@ -10,6 +10,7 @@ import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
+import { time } from 'console';
 
 class CustomAccountConnector extends AccountConnector {
     public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
@@ -62,18 +63,35 @@ describe('Integration: Pinecone VectorDB', () => {
             const vectorDB = ConnectorService.getVectorDBConnector('Pinecone');
             const team = AccessCandidate.team('team-123456');
 
-            for (const id of idsToClean) {
-                console.log('Cleaning up', id);
-                await vectorDB
-                    .user(team)
-                    .delete(id.namespace, [id.id])
-                    .catch((e) => {});
+            const promise = new Promise(async (resolve, reject) => {
+                let timeout: NodeJS.Timeout;
 
-                await vectorDB
-                    .user(team)
-                    .deleteNamespace(id.namespace)
-                    .catch((e) => {});
-            }
+                timeout = setTimeout(() => {
+                    reject(new Error('Cleanup Timeout'));
+                }, 10_000);
+
+                for (const id of idsToClean) {
+                    console.log('Cleaning up', id);
+                    await vectorDB
+                        .user(team)
+                        .delete(id.namespace, [id.id])
+                        .catch((e) => {});
+
+                    await vectorDB
+                        .user(team)
+                        .deleteNamespace(id.namespace)
+                        .catch((e) => {});
+                }
+
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+                resolve(true);
+            });
+
+            await promise.catch((e) => {
+                console.log('Cleanup failed', e);
+            });
         });
 
         it('insert as raw vectors', async () => {
