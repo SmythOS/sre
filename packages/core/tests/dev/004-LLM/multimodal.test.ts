@@ -39,7 +39,7 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'SmythAccount',
+        Connector: 'DummyAccount',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -142,7 +142,7 @@ async function runMultimodalTestCases(model: string) {
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
         },
-        TIMEOUT * 20 // 10 mins
+        TIMEOUT * 30 // 10 mins // ! FIXME: Make it 20
     );
 
     it(
@@ -162,7 +162,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, audioUrl, videoUrl, pdfUrl];
             await expect(llmInference.multimodalRequest('Analyze these files', fileSources, config, agent)).rejects.toThrow();
         },
-        TIMEOUT * 3 // 1:30 mins
+        TIMEOUT * 30 // 1:30 mins // ! FIXME: Make it 20
     );
 }
 

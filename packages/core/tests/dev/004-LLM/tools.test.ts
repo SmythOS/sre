@@ -46,7 +46,7 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'SmythAccount',
+        Connector: 'DummyAccount',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -87,7 +87,7 @@ async function runToolTestCases(model: string) {
             });
 
             const params = {
-                messages: [{ role: 'user', content: "What's current weather in Bangladesh?" }],
+                messages: [{ role: 'user', content: "What's current weather in New York?" }],
                 toolsConfig,
             };
 
