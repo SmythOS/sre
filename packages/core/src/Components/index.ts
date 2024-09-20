@@ -29,6 +29,7 @@ import GPTPlugin from './GPTPlugin.class';
 import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
+import MultimodalLLM from './MultimodalLLM.class';
 
 const components = {
     Component: new Component(),
@@ -64,6 +65,7 @@ const components = {
     GPTPlugin: new GPTPlugin(),
     ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
+    MultimodalLLM: new MultimodalLLM(),
 };
 
 export default components;

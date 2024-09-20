@@ -46,7 +46,7 @@ export class LLMInference {
             throw new Error(`Model ${this.modelName} not supported`);
         }
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = await this._llmConnector.extractLLMComponentParams(config);
+        const params: any = (await this._llmConnector.extractLLMComponentParams(config)) || {};
         params.model = this.modelName;
 
         // We pass teamId within the params as it required to get vault keys for Bedrock and VertexAI
@@ -80,7 +80,7 @@ export class LLMInference {
 
     public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = await this._llmConnector.extractVisionLLMParams(config);
+        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
         params.model = this.modelName;
 
         const promises = [];
@@ -122,7 +122,7 @@ export class LLMInference {
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = await this._llmConnector.extractVisionLLMParams(config);
+        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
         params.model = this.modelName;
         const promises = [];
         const _fileSources = [];

@@ -55,37 +55,43 @@ ConnectorService.init(TConnectorService.AgentData, 'CLI');
 // - expect error when model is not supported
 // - run test cases for all providers
 
+const TIMEOUT = 30000;
+
 function runTestCases(endpoint: string) {
     const expectValidResponse = (result: any, length: number) => {
         expect(result).toBeTruthy();
         expect(result?.length).toBeGreaterThanOrEqual(length);
     };
 
-    it('runs a simple OpenAPI Plugin request', async () => {
-        let error;
-        try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
+    it(
+        'should generate a relevant response for a given prompt',
+        async () => {
+            let error;
+            try {
+                const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+                const data = JSON.parse(agentData);
 
-            const agentProcess = AgentProcess.load(data);
+                const agentProcess = AgentProcess.load(data);
 
-            let res = await agentProcess.run({
-                method: 'POST',
-                path: endpoint,
-                body: {
-                    Input: 'What is the largest planet in our solar system, and how does it compare to other planets in the Milky Way galaxy?',
-                },
-            });
+                let res = await agentProcess.run({
+                    method: 'POST',
+                    path: endpoint,
+                    body: {
+                        Input: 'What is the largest planet in our solar system, and how does it compare to other planets in the Milky Way galaxy?',
+                    },
+                });
 
-            const output = res?.data?.result?.Reply;
+                const output = res?.data?.result?.Reply;
 
-            expectValidResponse(output, 20);
-        } catch (e) {
-            error = e;
-            console.error(e.message);
-        }
-        expect(error).toBeUndefined();
-    });
+                expectValidResponse(output, 20);
+            } catch (e) {
+                error = e;
+                console.error(e.message);
+            }
+            expect(error).toBeUndefined();
+        },
+        TIMEOUT
+    );
 }
 
 const llmProviderEndpoints = {
@@ -95,7 +101,7 @@ const llmProviderEndpoints = {
 };
 
 for (const [provider, endpoint] of Object.entries(llmProviderEndpoints)) {
-    describe(`PromptGenerator Component with ${provider}`, () => {
+    describe(`PromptGenerator Component with - ${provider} (${endpoint})`, () => {
         runTestCases(endpoint);
     });
 }

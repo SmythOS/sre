@@ -199,36 +199,35 @@ export class GoogleAIConnector extends LLMConnector {
                 return null;
             }
         });
-
-        const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
-
-        // We throw error when there are no valid uploaded files,
-        if (uploadedFiles?.length === 0) {
-            throw new Error(`There is an issue during upload file in Google AI Server!`);
-        }
-
-        const imageData = this.getFileData(uploadedFiles);
-
-        // Adjust input structure handling for multiple image files to accommodate variations.
-        const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
-
-        const modelParams: ModelParams = {
-            model,
-        };
-
-        const generationConfig: GenerationConfig = {};
-
-        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-        if (_params.temperature) generationConfig.temperature = _params.temperature;
-        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-        if (_params.topP) generationConfig.topP = _params.topP;
-        if (_params.topK) generationConfig.topK = _params.topK;
-
-        if (Object.keys(generationConfig).length > 0) {
-            modelParams.generationConfig = generationConfig;
-        }
-
         try {
+            const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
+
+            // We throw error when there are no valid uploaded files,
+            if (!uploadedFiles || uploadedFiles?.length === 0) {
+                throw new Error(`There is an issue during upload file in Google AI Server!`);
+            }
+
+            const imageData = this.getFileData(uploadedFiles);
+
+            // Adjust input structure handling for multiple image files to accommodate variations.
+            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+
+            const modelParams: ModelParams = {
+                model,
+            };
+
+            const generationConfig: GenerationConfig = {};
+
+            if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
+            if (_params.temperature) generationConfig.temperature = _params.temperature;
+            if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
+            if (_params.topP) generationConfig.topP = _params.topP;
+            if (_params.topK) generationConfig.topK = _params.topK;
+
+            if (Object.keys(generationConfig).length > 0) {
+                modelParams.generationConfig = generationConfig;
+            }
+
             const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel(modelParams);
 
@@ -290,7 +289,7 @@ export class GoogleAIConnector extends LLMConnector {
         const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
         // We throw error when there are no valid uploaded files,
-        if (uploadedFiles?.length === 0) {
+        if (uploadedFiles && uploadedFiles?.length === 0) {
             throw new Error(`There is an issue during upload file in Google AI Server!`);
         }
 

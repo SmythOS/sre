@@ -10,7 +10,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
-            id: { value: 1 },
+            id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
         });
     });
     return { default: MockedAgent };
@@ -37,6 +37,17 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './tests/data/vault.json',
+        },
+    },
+    Account: {
+        Connector: 'SmythAccount',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
 });

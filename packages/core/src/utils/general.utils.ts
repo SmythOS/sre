@@ -67,7 +67,7 @@ export async function processWithConcurrencyLimit<T>(tasks: (() => Promise<T>)[]
     const results = await Promise.allSettled(limitedTasks);
 
     // Filter for successfully fulfilled promises and extract their values
-    const validResults = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+    const validResults = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])).filter(Boolean);
 
     return validResults;
 }
