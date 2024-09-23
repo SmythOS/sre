@@ -62,19 +62,35 @@ export class SmythAccount extends AccountConnector {
         return null;
     }
 
-    public async getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[] | null> {
+    public async getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject | null> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.settings; //FIXME : return key/value object
+
+            if (response?.data?.settings?.length > 0) {
+                const settingsObject: KeyValueObject = {};
+                response?.data?.settings?.forEach((setting: KeyValueObject) => {
+                    settingsObject[setting?.settingKey] = setting?.settingValue;
+                });
+                return settingsObject;
+            }
+            return null;
         } catch (error) {
             return null;
         }
     }
 
-    public async getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[] | null> {
+    public async getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject | null> {
         try {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.settings; //FIXME : return key/value object
+
+            if (response?.data?.settings?.length > 0) {
+                const settingsObject: KeyValueObject = {};
+                response?.data?.settings?.forEach((setting: KeyValueObject) => {
+                    settingsObject[setting?.settingKey] = setting?.settingValue;
+                });
+                return settingsObject;
+            }
+            return null;
         } catch (error) {
             return null;
         }
@@ -83,7 +99,7 @@ export class SmythAccount extends AccountConnector {
     public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
         try {
             const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
-            return response?.data?.setting?.settingValue;
+            return response?.data?.setting?.settingValue || null;
         } catch (error) {
             return null;
         }
@@ -94,7 +110,7 @@ export class SmythAccount extends AccountConnector {
             const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, {
                 headers: await this.getSmythRequestHeaders(),
             });
-            return response?.data?.setting; //FIXME : return actual value
+            return response?.data?.setting?.settingValue || null;
         } catch (error) {
             return null;
         }

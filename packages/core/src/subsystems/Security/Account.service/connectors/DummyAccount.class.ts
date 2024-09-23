@@ -30,10 +30,10 @@ export class DummyAccount extends AccountConnector {
     public getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[]> {
         throw new Error('getAllUserSettings Method not implemented.');
     }
-    public getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<KeyValueObject> {
+    public getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
         throw new Error('getTeamSetting Method not implemented.');
     }
-    public getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject> {
+    public getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string> {
         throw new Error('getUserSetting Method not implemented.');
     }
 }

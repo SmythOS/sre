@@ -18,7 +18,6 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-
 describe('Smyth Account Tests', () => {
     it('Smyth Account loaded', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
@@ -58,35 +57,34 @@ describe('Smyth Account Tests', () => {
     it('Verify all account settings are returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const userSettings = await smythAccount.user(AccessCandidate.user('876')).getAllUserSettings();
-        const userMarketingMetadataObj = userSettings.filter((setting) => setting.settingKey === 'UserMarketingMetadata')?.[0];
-        const userMetadataSettings = JSON.parse(userMarketingMetadataObj?.settingValue as string);
-        expect(userMetadataSettings?.name).toEqual('Zubair');
+        const userMetadataSettings = userSettings['UserMarketingMetadata'];
+        expect(JSON.parse(userMetadataSettings || "{}")?.name).toEqual('Zubair');
     });
 
     it('Verify all team settings are returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const teamSettings = await smythAccount.user(AccessCandidate.team('clyx0dgia0bfuccoqvwle2zsr')).getAllTeamSettings();
-        const vaultSettings = teamSettings.filter((setting) => setting.settingKey === 'vault');
-        expect(vaultSettings.length).greaterThan(0);
+        const vaultSettings = teamSettings['vault'];
+        expect(vaultSettings).toBeTypeOf("string");
     });
 
     it('Verify specific account setting is returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const userSettings = await smythAccount.user(AccessCandidate.user('876')).getUserSetting('UserMarketingMetadata');
-        expect(userSettings).toBeTypeOf("object");
+        expect(JSON.parse(userSettings || "{}")?.name).toEqual("Zubair");
     });
 
     it('Verify specific team setting is returning', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const teamSettings = await smythAccount.user(AccessCandidate.team('clyx0dgia0bfuccoqvwle2zsr')).getTeamSetting('vault');
-        expect(teamSettings).toBeTypeOf("object");
+        expect(teamSettings).toBeTypeOf("string");
     });
 
     it('Verify agent can access account setting', async () => {
         const smythAccount: AccountConnector = ConnectorService.getAccountConnector('SmythAccount');
         const team = await smythAccount.user(AccessCandidate.agent('clzmufcbd09zqne7l6poq5168')).getCandidateTeam();
         const teamSettings = await smythAccount.user(AccessCandidate.team(team)).getTeamSetting('vault');
-        expect(teamSettings).toBeTypeOf("object");
+        expect(teamSettings).toBeTypeOf("string");
     });
 
     it('Invalid setting key to be returned as null', async () => {
