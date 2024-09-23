@@ -33,6 +33,7 @@ type ToolParams = {
 export class Conversation extends EventEmitter {
     private _agentId: string = '';
     private _systemPrompt;
+    private userDefinedSystemPrompt: string = '';
     public get systemPrompt() {
         return this._systemPrompt;
     }
@@ -90,7 +91,7 @@ export class Conversation extends EventEmitter {
     constructor(
         private _model: string,
         private _specSource?: string | Record<string, any>,
-        private _settings?: { maxContextSize: number; maxOutputTokens: number }
+        private _settings?: { maxContextSize?: number; maxOutputTokens?: number; systemPrompt?: string }
     ) {
         //TODO: handle loading previous session (messages)
         super();
@@ -102,6 +103,10 @@ export class Conversation extends EventEmitter {
         });
         if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
         if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
+        if (_settings?.systemPrompt) {
+            this.userDefinedSystemPrompt = _settings.systemPrompt;
+        }
+
         if (_specSource) {
             this.loadSpecFromSource(_specSource)
                 .then((spec) => {
@@ -744,6 +749,10 @@ export class Conversation extends EventEmitter {
                 const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
 
                 if (spec.info?.description) this.systemPrompt = spec.info.description;
+
+                // we always overwrite system prompt with user defined one
+                if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
+
                 if (spec.info?.title) this.assistantName = spec.info.title;
 
                 const defaultBaseUrl = new URL(specSource as string).origin;
@@ -763,6 +772,10 @@ export class Conversation extends EventEmitter {
             if (!agentData) return null;
             this._agentId = agentId;
             this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+
+            // we always overwrite system prompt with user defined one
+            if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
+
             this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
             if (this.assistantName) {
                 this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;

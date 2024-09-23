@@ -5697,7 +5697,7 @@ class LLMContext {
     this.push({ role: "assistant", content });
   }
   async getContextWindow(maxTokens, maxOutputTokens = 256) {
-    const maxModelContext = await this._llmHelper.TokenManager().getAllowedCompletionTokens(this._model, true);
+    const maxModelContext = await this._llmHelper.TokenManager().getAllowedContextTokens(this._model, true);
     let maxInputContext = Math.min(maxTokens, maxModelContext);
     if (maxInputContext + maxOutputTokens > maxModelContext) {
       maxInputContext -= maxInputContext + maxOutputTokens - maxModelContext;
@@ -5805,6 +5805,7 @@ class Conversation extends EventEmitter$1 {
     this._settings = _settings;
     __publicField$D(this, "_agentId", "");
     __publicField$D(this, "_systemPrompt");
+    __publicField$D(this, "userDefinedSystemPrompt", "");
     __publicField$D(this, "assistantName");
     __publicField$D(this, "_reqMethods");
     __publicField$D(this, "_toolsConfig");
@@ -5824,6 +5825,9 @@ class Conversation extends EventEmitter$1 {
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
+    if (_settings?.systemPrompt) {
+      this.userDefinedSystemPrompt = _settings.systemPrompt;
+    }
     if (_specSource) {
       this.loadSpecFromSource(_specSource).then((spec) => {
         if (!spec) {
@@ -6294,6 +6298,7 @@ class Conversation extends EventEmitter$1 {
       if (isUrl(specSource)) {
         const spec2 = await OpenAPIParser.getJsonFromUrl(specSource);
         if (spec2.info?.description) this.systemPrompt = spec2.info.description;
+        if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
         if (spec2.info?.title) this.assistantName = spec2.info.title;
         const defaultBaseUrl = new URL(specSource).origin;
         if (!spec2?.servers) spec2.servers = [{ url: defaultBaseUrl }];
@@ -6311,6 +6316,7 @@ ${this.systemPrompt}`;
       if (!agentData) return null;
       this._agentId = agentId;
       this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+      if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
       this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
       if (this.assistantName) {
         this.systemPrompt = `Assistant Name : ${this.assistantName}
@@ -6431,7 +6437,7 @@ class AgentPlugin extends Component {
           };
         }
       }
-      const conv = new Conversation(config?.data?.openAiModel, subAgentId);
+      const conv = new Conversation(config?.data?.openAiModel, subAgentId, { systemPrompt: descForModel });
       const result = await conv.prompt(prompt, {
         "X-AGENT-ID": subAgentId,
         "X-AGENT-VERSION": version,
@@ -7929,7 +7935,7 @@ class GPTPlugin extends Component {
       if (!prompt) {
         return { _error: "Please provide a prompt", _debug: logger.output };
       }
-      const conv = new Conversation(model, specUrl);
+      const conv = new Conversation(model, specUrl, { systemPrompt: descForModel });
       const result = await conv.prompt(prompt);
       logger.debug(`Response:
 `, result, "\n");

@@ -55,7 +55,7 @@ export default class GPTPlugin extends Component {
 
             // TODO [Forhad]: Need to check and validate input prompt token
 
-            const conv = new Conversation(model, specUrl);
+            const conv = new Conversation(model, specUrl, { systemPrompt: descForModel });
 
             const result = await conv.prompt(prompt);
 
