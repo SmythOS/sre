@@ -13,7 +13,7 @@
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
         "knip": "knip",
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model gpt-4o-mini --maxOutputTokens 256"
+        "start:web": "node ./tests/build/web/index.js --model claude-3-5-sonnet-20240620"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
