@@ -20,7 +20,7 @@ const app = express();
 
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
-        Connector: 'MyCustomAccountConnector',
+        Connector: 'DummyAccount',
         Settings: {},
     },
     Storage: {
@@ -77,7 +77,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://default.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -96,7 +96,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://default.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -116,7 +116,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://default.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,
@@ -134,7 +134,7 @@ describe('Smyth FileSystem Tests', () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
-            const uri = 'smythfs://myTestTeam.team/myTestAgent/myTestFile.txt';
+            const uri = 'smythfs://default.team/myTestAgent/myTestFile.txt';
 
             const candidate: IAccessCandidate = {
                 role: TAccessRole.Agent,

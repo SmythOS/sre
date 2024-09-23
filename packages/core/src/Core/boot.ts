@@ -11,6 +11,7 @@ import { VectorDBService } from '@sre/IO/VectorDB.service';
 import { CLIService } from '@sre/IO/CLI.service';
 import { NKVService } from '@sre/IO/NKV.service';
 import { RouterService } from '@sre/IO/Router.service';
+import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 const console = Logger('Boot');
 
 export function boot() {
@@ -18,10 +19,11 @@ export function boot() {
     const service: TServiceRegistry = {};
     service.NKV = new NKVService();
     service.Account = new AccountService();
-    service.Storage = new StorageService();
-    service.Cache = new CacheService();
-    service.LLM = new LLMService();
     service.Vault = new VaultService();
+    service.ManagedVault = new ManagedVaultService();
+    service.Cache = new CacheService();
+    service.Storage = new StorageService();
+    service.LLM = new LLMService();
     service.AgentData = new AgentDataService();
     service.CLI = new CLIService();
     service.VectorDB = new VectorDBService();

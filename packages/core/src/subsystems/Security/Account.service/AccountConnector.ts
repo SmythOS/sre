@@ -10,8 +10,8 @@ export interface ISmythAccountRequest {
     getCandidateTeam(): Promise<string | undefined>;
     getAllTeamSettings(): Promise<KeyValueObject[]>;
     getAllUserSettings(): Promise<KeyValueObject[]>;
-    getTeamSetting(settingKey: string): Promise<KeyValueObject>;
-    getUserSetting(settingKey: string): Promise<KeyValueObject>;
+    getTeamSetting(settingKey: string): Promise<string>;
+    getUserSetting(settingKey: string): Promise<string>;
 }
 
 export abstract class AccountConnector extends Connector {
@@ -31,6 +31,6 @@ export abstract class AccountConnector extends Connector {
     public abstract getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined>;
     public abstract getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[]>;
     public abstract getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject[]>;
-    public abstract getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<KeyValueObject>;
-    public abstract getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<KeyValueObject>;
+    public abstract getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string>;
+    public abstract getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string>;
 }

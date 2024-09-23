@@ -2,6 +2,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { REQUEST_CONTENT_TYPES } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { AxiosHeaders } from 'axios';
 
 export async function parseHeaders(input, config, agent: Agent) {
     const teamId = agent ? agent.teamId : null;
@@ -36,5 +37,5 @@ export async function parseHeaders(input, config, agent: Agent) {
         jsonHeaders['content-type'] = contentType;
     }
 
-    return jsonHeaders;
+    return new AxiosHeaders(jsonHeaders);
 }

@@ -16,28 +16,9 @@ export class HashicorpVault extends VaultConnector {
         //hashicorp client/api
     }
 
-    user(candidate: AccessCandidate): IVaultRequest {
-        return {
-            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
-            set: async (keyId: string, value: string) => this.set(candidate.writeRequest, keyId, value),
-            delete: async (keyId: string) => this.delete(candidate.writeRequest, keyId),
-            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
-        };
-    }
-
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
         return null;
-    }
-
-    @SecureConnector.AccessControl
-    protected async set(acRequest: AccessRequest, keyId: string, value: string) {
-        throw new Error('HashicorpVault.set not allowed');
-    }
-
-    @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, keyId: string) {
-        throw new Error('HashicorpVault.delete not allowed');
     }
 
     @SecureConnector.AccessControl

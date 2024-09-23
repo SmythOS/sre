@@ -38,15 +38,6 @@ export class JSONFileVault extends VaultConnector {
         }
     }
 
-    user(candidate: AccessCandidate): IVaultRequest {
-        return {
-            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
-            set: async (keyId: string, value: string) => this.set(candidate.writeRequest, keyId, value),
-            delete: async (keyId: string) => this.delete(candidate.writeRequest, keyId),
-            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
-        };
-    }
-
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
         const accountConnector = ConnectorService.getAccountConnector();
@@ -56,18 +47,10 @@ export class JSONFileVault extends VaultConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async set(acRequest: AccessRequest, keyId: string, value: string) {
-        throw new Error('JSONFileVault.set not allowed');
-    }
-
-    @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, keyId: string) {
-        throw new Error('JSONFileVault.delete not allowed');
-    }
-
-    @SecureConnector.AccessControl
     protected async exists(acRequest: AccessRequest, keyId: string) {
-        return false;
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+        return !!this.vaultData?.[teamId]?.[keyId];
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {

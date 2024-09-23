@@ -11,6 +11,30 @@ import Classifier from '@sre/Components/Classifier.class';
 import APICall from '@sre/Components/APICall/APICall.class';
 
 const sre = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'SmythAccount',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    },
+    ManagedVault: {
+        Connector: 'SmythManagedVault',
+        Id: 'oauth',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            vaultName: 'oauth',
+        },
+    },
     CLI: {
         Connector: 'CLI',
     },
@@ -49,7 +73,7 @@ const sre = SmythRuntime.Instance.init({
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'agent-123456',
+        id: 'cm186sv0a0jrecgim4ysl6vtj',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
     }));
     return { default: MockedAgent };
@@ -102,6 +126,57 @@ describe('APICall Component', () => {
                         name: '_error',
                         index: 2,
                         default: false,
+                    },
+                ],
+            },
+            agent
+        );
+
+        expect(output).toBeDefined();
+    });
+
+    it('Handles OAuth tokens', async () => {
+        // @ts-ignore
+        const agent = new Agent();
+        agent.id = 'cm186sv0a0jrecgim4ysl6vtj';
+        agent.teamId = '9';
+        const apiCall = new APICall();
+
+        const inputs = {};
+        const output = await apiCall.process(
+            inputs,
+            {
+                id: 'CM1AJB22RBOI', //required to retrieve oauth tokens
+                data: {
+                    method: 'POST',
+                    url: 'https://www.example.com/test',
+                    headers: '{  "Authorization": "Bearer sqlkjsdqlmsdqkjlsdkjsdqlkjsdqlkjsqdlksdj"}',
+                    contentType: 'none',
+                    body: '',
+                    proxy: '',
+                    oauthService: 'Google',
+                    authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+                    clientID: '{{KEY(Google_Gmail_Client_ID)}}',
+                    clientSecret: '{{KEY(Google_Gmail_ClientSecret)}}',
+                    scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                    tokenURL: 'https://oauth2.googleapis.com/token',
+                    requestTokenURL: '',
+                    accessTokenURL: '',
+                    userAuthorizationURL: '',
+                    consumerKey: '',
+                    consumerSecret: '',
+                    authenticate: '',
+                },
+                outputs: [
+                    {
+                        name: 'Response',
+                        index: 0,
+                        default: true,
+                    },
+                    {
+                        name: 'Headers',
+                        index: 1,
+                        default: true,
                     },
                 ],
             },
@@ -185,6 +260,7 @@ describe('APICall Component', () => {
 
         expect(output).toBeDefined();
     });
+
     it('handles application/json body', async () => {
         // @ts-ignore
         const agent = new Agent();

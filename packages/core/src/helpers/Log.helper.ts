@@ -95,6 +95,7 @@ const colorizedFormat = winston.format.printf((info) => {
 const MAX_LOG_MESSAGE_LENGTH = 500;
 
 function redactLogMessage(logMessage: string) {
+    if (config.env.NODE_ENV !== 'PROD') return logMessage; //only redact logs in PROD
     if (logMessage.length > 500) {
         return logMessage;
     }
