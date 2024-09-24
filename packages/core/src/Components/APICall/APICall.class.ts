@@ -14,7 +14,7 @@ import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHe
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
-        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD').required().label('Method'),
+        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').required().label('Method'),
         url: Joi.string()
             .max(8192) /*.custom(isUrlValid, 'URL validation')*/
             .required()
@@ -72,6 +72,7 @@ export default class APICall extends Component {
 
             let Response: any = {};
             let Headers: any = {};
+            let Status: any = {};
             let _error: any = undefined;
             try {
                 if (config?.data?.oauthService !== '' && config?.data?.oauthService !== 'None') {
@@ -90,16 +91,18 @@ export default class APICall extends Component {
 
                 Response = await parseArrayBufferResponse(response, agent);
                 Headers = response.headers;
+                Status = response.status;
             } catch (error) {
                 logger.debug(`Error making API call: ${error.message}`);
                 Headers = error?.response?.headers || {};
                 Response = await parseArrayBufferResponse(error.response, agent);
                 _error = error.message;
+                Status = error?.response?.status || 0;
             }
 
-            return { Response, Headers, _error, _debug: logger.output };
+            return { Response, Headers, _error, _debug: logger.output, Status, RequestConfig: reqConfig };
         } catch (error) {
-            return { _error: error.message, _debug: logger.output };
+            return { _error: error.message, _debug: logger.output, Status: 500 };
         }
     }
 }
