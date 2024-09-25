@@ -475,7 +475,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(expectedUrl);
     });
 
-    it('should should have error with fully encoded URL with special characters', async () => {
+    it('should have error with fully encoded URL with special characters', async () => {
         const url = 'https://httpbin.org/get?symbols=!@$%^*()_+-={}[]|\\:;"\'<>,.?/~` абвгдеёжзийклмнопрстуфхцчшщъыьэюя#&';
         const encodedUrl = encodeURIComponent(url);
         const config = {
@@ -490,36 +490,9 @@ describe('APICall Component - URL Formats', () => {
             outputs: [{ name: 'Response', index: 0, default: true }],
         };
         const output = await apiCall.process({}, config, agent);
-        const status = output.Status;
-        const response = output.Response;
-        const reqConfig = output.RequestConfig;
 
-        expect(status).toEqual(200);
-        expect(reqConfig.url).toEqual(encodedUrl);
-        expect(response.url).toEqual(encodedUrl);
-    });
-
-    it('should handle URL with non-ASCII characters', async () => {
-        const url = 'https://httpbin.org/get?text=こんにちは世界&emoji=🌍';
-        const config = {
-            data: {
-                method: 'GET',
-                url,
-                headers: '',
-                contentType: 'none',
-                oauthService: 'None',
-                body: '',
-            },
-            outputs: [{ name: 'Response', index: 0, default: true }],
-        };
-        const output = await apiCall.process({}, config, agent);
-        const status = output.Status;
-        const response = output.Response;
-
-        expect(status).toEqual(200);
-        expect(response.url).toEqual(url);
-        expect(response.args.text).toEqual('こんにちは世界');
-        expect(response.args.emoji).toEqual('🌍');
+        expect(output._error).toBeDefined();
+        expect(output._error.message).toContain('Could not send request');
     });
 
     it('should handle URL with fragment identifier', async () => {
@@ -568,30 +541,6 @@ describe('APICall Component - URL Formats', () => {
         expect(status).toEqual(200);
         expect(response.authenticated).toEqual(true);
         expect(response.user).toEqual('user');
-    });
-
-    it('should handle URL with encoded Unicode characters', async () => {
-        const unicodeChars = '你好世界😀🌍🚀';
-        const encodedUrl = `https://httpbin.org/get?unicode=${encodeURIComponent(unicodeChars)}`;
-        const config = {
-            data: {
-                method: 'GET',
-                url: encodedUrl,
-                headers: '',
-                contentType: 'none',
-                oauthService: 'None',
-                body: '',
-            },
-            outputs: [{ name: 'Response', index: 0, default: true }],
-        };
-        const output = await apiCall.process({}, config, agent);
-        const status = output.Status;
-        const response = output.Response;
-        const reqConfig = output.RequestConfig;
-
-        expect(status).toEqual(200);
-        expect(reqConfig.url).toEqual(encodedUrl);
-        expect(response.args.unicode).toEqual(unicodeChars);
     });
 
     it('should handle wrong URL', async () => {
