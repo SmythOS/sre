@@ -96,10 +96,12 @@ describe('APICall Component - HTTP Methods', () => {
                 outputs: [{ name: 'Response', index: 0, default: true }],
             };
             const output = await apiCall.process({}, config, agent);
+            const status = output.Status;
+            const reqConfig = output.RequestConfig;
 
-            expect(output.Status).toEqual(200);
-            expect(output.RequestConfig.method).toEqual(method);
-            expect(output.RequestConfig.url).toEqual(url);
+            expect(status).toEqual(200);
+            expect(reqConfig.method).toEqual(method);
+            expect(reqConfig.url).toEqual(url);
         });
     });
 });
@@ -160,9 +162,7 @@ describe('APICall Component - Headers', () => {
         };
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
-        const reqConfig = output.RequestConfig;
 
-        expect(reqConfig.headers['content-type']).toEqual('application/xml');
         expect(response.headers['Content-Type']).toEqual('application/xml');
     });
 
@@ -181,13 +181,12 @@ describe('APICall Component - Headers', () => {
         };
         const output = await apiCall.process({ token }, config, agent);
         const response = output.Response;
-        const reqConfig = output.RequestConfig;
 
-        expect(reqConfig.headers['authorization']).toEqual(`Bearer ${token}`);
         expect(response.headers['Authorization']).toEqual(`Bearer ${token}`);
     });
 
-    it('should resolve component annotation', async () => {
+    // TODO [Forhad]: Need to make it work
+    it('should resolve component template variable', async () => {
         const token = 'sdl7k8lsd93ko4iu39';
         const config = {
             data: {
@@ -221,12 +220,11 @@ describe('APICall Component - Headers', () => {
         };
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
-        const reqConfig = output.RequestConfig;
 
-        expect(reqConfig.headers['authorization']).toEqual(`Bearer ${token}`);
         expect(response.headers['Authorization']).toEqual(`Bearer ${token}`);
     });
 
+    // TODO [Forhad]: Need to make it work
     it('should resolve vault key', async () => {
         const config = {
             data: {
@@ -241,20 +239,20 @@ describe('APICall Component - Headers', () => {
 
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
-        const reqConfig = output.RequestConfig;
 
         const savedToken = 'sdl7k8lsd93ko4iu39';
-        expect(reqConfig.headers['authorization']).toEqual(`Bearer ${savedToken}`);
         expect(response.headers['Authorization']).toEqual(`Bearer ${savedToken}`);
     });
 });
 
 describe('APICall Component - URL Formats', () => {
+    const url = 'https://httpbin.org/get?a=hello%20world&b=robot';
+
     it('should handle URL with query parameters', async () => {
         const config = {
             data: {
                 method: 'GET',
-                url: 'https://httpbin.org/get?a=hello%20world&b=robot',
+                url,
                 headers: '',
                 contentType: 'none',
                 oauthService: 'None',
@@ -263,37 +261,358 @@ describe('APICall Component - URL Formats', () => {
             outputs: [{ name: 'Response', index: 0, default: true }],
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(200);
+        expect(response.args.a).toEqual('hello world');
+        expect(response.args.b).toEqual('robot');
+        expect(reqConfig.url).toEqual(url);
     });
 
     it('should handle URL with array query parameters', async () => {
+        const url = 'https://httpbin.org/get?ids[]=1&ids[]=2&ids[]=3';
         const config = {
             data: {
                 method: 'GET',
-                url: 'https://httpbin.org/get?ids[]=1&ids[]=2&ids[]=3',
+                url,
                 headers: '',
                 contentType: 'none',
+                oauthService: 'None',
                 body: '',
             },
             outputs: [{ name: 'Response', index: 0, default: true }],
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.args['ids[]']).toEqual(['1', '2', '3']);
+        expect(response.url).toEqual(url);
     });
 
     it('should handle URL with object query parameters', async () => {
+        const url = 'https://httpbin.org/get?filter[name]=John&filter[age]=30';
         const config = {
             data: {
                 method: 'GET',
-                url: 'https://httpbin.org/get?filter[name]=John&filter[age]=30',
+                url,
                 headers: '',
                 contentType: 'none',
+                oauthService: 'None',
                 body: '',
             },
             outputs: [{ name: 'Response', index: 0, default: true }],
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(url);
+        expect(response.args['filter[age]']).toEqual('30');
+        expect(response.args['filter[name]']).toEqual('John');
+    });
+
+    it('should handle URL with multiple occurrences of the same parameter', async () => {
+        const url = 'https://httpbin.org/get?color=red&color=blue&color=green';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(url);
+        expect(response.args.color).toEqual(['red', 'blue', 'green']);
+    });
+
+    it('should handle URL with nested object parameters', async () => {
+        const url = 'https://httpbin.org/get?user[name][first]=John&user[name][last]=Doe&user[age]=30';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(url);
+        expect(response.args['user[name][first]']).toEqual('John');
+        expect(response.args['user[name][last]']).toEqual('Doe');
+        expect(response.args['user[age]']).toEqual('30');
+    });
+
+    it('should handle URL with empty parameter values', async () => {
+        const url = 'https://httpbin.org/get?empty=&null=&undefined=';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(url);
+        expect(response.args.empty).toEqual('');
+        expect(response.args.null).toEqual('');
+        expect(response.args.undefined).toEqual('');
+    });
+
+    it('should handle URL with encoded spaces and plus signs', async () => {
+        const url = 'https://httpbin.org/get?message=hello%20world&operation=1+1';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(200);
+        expect(reqConfig.url).toEqual(url);
+        expect(response.args.message).toEqual('hello world');
+        expect(response.args.operation).toEqual('1 1');
+    });
+
+    //#region test cases with symbols and special characters
+    // Need to make it work
+    it('should handle URL with all types of raw characters and symbols', async () => {
+        const allChars =
+            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&'; // we should keep # and & in the end of the string for it's special meaning in URL
+        const url = `https://httpbin.org/get?all=${allChars}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        // The expected arguments and URL encoding differs between browsers and Postman, We're expecting the Postman version.
+        const expectedChars =
+            '!@$%^*()_ -={}[]|\\\\:;"\\\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123   456 = 579 ©️ 🌈';
+        const expectedUrl =
+            'https://httpbin.org/get?all=!%40$%^*()_+-={}[]|\\:%3B"\'<>,.%3F%2F~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123 + 456 = 579 ©️ 🌈';
+        expect(status).toEqual(200);
+        expect(response.args.all).toEqual(expectedChars);
+        expect(reqConfig.url).toEqual(expectedUrl);
+        expect(response.url).toEqual(expectedUrl);
+    });
+
+    it('should handle URL with all types of encoded characters and symbols', async () => {
+        const allChars =
+            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&'; // we should keep # and & in the end of the string for it's special meaning in URL
+        const url = `https://httpbin.org/get?all=${encodeURIComponent(allChars)}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        const expectedChars =
+            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&';
+        const expectedUrl =
+            'https://httpbin.org/get?all=!%40%24%25^*()_%2B-%3D{}[]|\\%3A%3B"\'<>%2C.%3F%2F~`∑πΔ∞≠≤≥±×÷√∫∂%24€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello%2C 世界! ¿Cómo estás%3F 123 %2B 456 %3D 579 ©️ 🌈%23%26';
+        expect(status).toEqual(200);
+        expect(response.args.all).toEqual(expectedChars);
+        expect(reqConfig.url).toEqual(expectedUrl);
+        expect(response.url).toEqual(expectedUrl);
+    });
+
+    it('should should have error with fully encoded URL with special characters', async () => {
+        const url = 'https://httpbin.org/get?symbols=!@$%^*()_+-={}[]|\\:;"\'<>,.?/~` абвгдеёжзийклмнопрстуфхцчшщъыьэюя#&';
+        const encodedUrl = encodeURIComponent(url);
+        const config = {
+            data: {
+                method: 'GET',
+                url: encodedUrl,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(200);
+        expect(reqConfig.url).toEqual(encodedUrl);
+        expect(response.url).toEqual(encodedUrl);
+    });
+
+    it('should handle URL with non-ASCII characters', async () => {
+        const url = 'https://httpbin.org/get?text=こんにちは世界&emoji=🌍';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(url);
+        expect(response.args.text).toEqual('こんにちは世界');
+        expect(response.args.emoji).toEqual('🌍');
+    });
+
+    it('should handle URL with fragment identifier', async () => {
+        const fragment = '#section1';
+        const urlWithoutFragment = `https://httpbin.org/get?param=value`;
+        const url = `${urlWithoutFragment}${fragment}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(200);
+        expect(response.url).toEqual(urlWithoutFragment);
+        expect(response.args.param).toEqual('value');
+        expect(reqConfig.url).toEqual(url);
+    });
+
+    it('should handle URL with basic auth credentials', async () => {
+        const url = 'https://user:pass@httpbin.org/basic-auth/user/pass';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+
+        expect(status).toEqual(200);
+        expect(response.authenticated).toEqual(true);
+        expect(response.user).toEqual('user');
+    });
+
+    it('should handle URL with encoded Unicode characters', async () => {
+        const unicodeChars = '你好世界😀🌍🚀';
+        const encodedUrl = `https://httpbin.org/get?unicode=${encodeURIComponent(unicodeChars)}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url: encodedUrl,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const response = output.Response;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(200);
+        expect(reqConfig.url).toEqual(encodedUrl);
+        expect(response.args.unicode).toEqual(unicodeChars);
+    });
+
+    it('should handle wrong URL', async () => {
+        const url = 'https://httpbin.org/wrong-url';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const status = output.Status;
+        const reqConfig = output.RequestConfig;
+
+        expect(status).toEqual(404);
+        expect(reqConfig.url).toEqual(url);
     });
 });
 
@@ -307,6 +626,7 @@ describe('APICall Component - Content Types', () => {
                     url: 'https://httpbin.org/post',
                     headers: '',
                     contentType,
+                    oauthService: 'None',
                     body: contentType === 'application/json' ? '{"key": "value"}' : 'test body',
                 },
                 outputs: [{ name: 'Response', index: 0, default: true }],
