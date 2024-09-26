@@ -142,8 +142,8 @@ describe('APICall Component - Headers', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.headers['Authorization']).toEqual(authToken);
         expect(response.headers['Content-Type']).toEqual(contentType);
+        expect(response.headers['Authorization']).toEqual(authToken);
     });
 
     it('should override contentType header', async () => {
@@ -222,7 +222,6 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['Authorization']).toEqual(`Bearer ${token}`);
     });
 
-    // TODO [Forhad]: Need to make it work
     it('should resolve vault key', async () => {
         const config = {
             data: {
@@ -240,6 +239,51 @@ describe('APICall Component - Headers', () => {
 
         const savedToken = 'sdl7k8lsd93ko4iu39';
         expect(response.headers['Authorization']).toEqual(`Bearer ${savedToken}`);
+    });
+
+    it('should resolve template variable, component template variable, and vault key in headers', async () => {
+        const token = 'sdl7k8lsd93ko4iu39';
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{
+                    "Authorization": "Bearer {{VARVAULTINPUT:Authentication Key:[\\"\\"]}}",
+                    "X-User-Name": "{{name}}",
+                    "X-API-Key": "{{KEY(SRE TEST KEY)}}"
+                }`,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': token,
+                },
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'Authentication Key',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+
+        const output = await apiCall.process({ name: 'John Doe' }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toEqual(`Bearer ${token}`);
+        expect(response.headers['X-User-Name']).toEqual('John Doe');
+        expect(response.headers['X-API-Key']).toEqual('v1.0.0');
     });
 });
 
@@ -416,7 +460,7 @@ describe('APICall Component - URL Formats', () => {
 
         // The expected arguments and URL encoding differs between browsers and Postman, We're expecting the Postman version.
         const expectedChars =
-            '!@$%^*()_ -={}[]|\\\\:;"\\\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123   456 = 579 ©️ 🌈';
+            '!@$%^*()_ -={}[]|\\\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123   456 = 579 ©️ 🌈';
         const expectedUrl =
             'https://httpbin.org/get?all=!%40$%^*()_+-={}[]|\\:%3B"\'<>,.%3F%2F~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123 %2B 456 %3D 579 ©️ 🌈';
 
@@ -634,8 +678,8 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.json).toEqual(body);
         expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(body);
     });
 
     it('should handle application/x-www-form-urlencoded content type', async () => {
@@ -653,8 +697,8 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.form).toEqual({ name: 'John Doe', age: '30' });
         expect(response.headers['Content-Type']).toContain('application/x-www-form-urlencoded');
+        expect(response.form).toEqual({ name: 'John Doe', age: '30' });
     });
 
     it('should handle text/plain content type', async () => {
@@ -672,8 +716,8 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.data).toEqual('Hello, world!');
         expect(response.headers['Content-Type']).toContain('text/plain');
+        expect(response.data).toEqual('Hello, world!');
     });
 
     it('should handle multipart/form-data content type', async () => {
@@ -693,10 +737,10 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
         expect(response).toHaveProperty('files');
         expect(response.files).toHaveProperty('image');
         expect(response.files.image).toMatch(/^data:image\/jpeg;base64,/);
-        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
     });
 
     it('should handle binary content type', async () => {
@@ -755,10 +799,10 @@ describe('APICall Component - Body', () => {
         });
         const expectedResponse = res.data; */
 
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
         // for some reason httpbin returns data as application/octet-stream
         expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
-        expect(response.headers['Content-Length']).toEqual(size.toString());
-        expect(response.headers['Content-Type']).toMatch(mimetype);
     });
 
     it('should handle empty body', async () => {
@@ -776,9 +820,9 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
+        expect(response.headers['Content-Type']).toEqual('application/x-www-form-urlencoded');
         expect(response.data).toEqual('');
         expect(response.headers['Content-Length']).toEqual('0');
-        expect(response.headers['Content-Type']).toEqual('application/x-www-form-urlencoded');
     });
 
     it('should handle application/xml content type', async () => {
@@ -796,8 +840,106 @@ describe('APICall Component - Body', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.data).toContain('<root><name>John Doe</name><age>30</age></root>');
         expect(response.headers['Content-Type']).toContain('application/xml');
+        expect(response.data).toContain('<root><name>John Doe</name><age>30</age></root>');
+    });
+
+    // TODO [Forhad]: Need to make it work
+    it('should resolve component template variable in body', async () => {
+        const body = { name: 'John Doe', age: 30 };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{{body}}',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({ body: JSON.stringify(body) }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(body);
+    });
+
+    it('should resolve component template variable in body property', async () => {
+        const name = 'John Doe';
+        const age = 30;
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{name: "{{name}}", age: "{{age}}"}',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({ name, age }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual({ name, age });
+    });
+
+    it('should resolve component template variable in body', async () => {
+        const body = { name: 'John Doe', age: 30 };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{{VARVAULTINPUT:User Data:[""]}}',
+                oauthService: 'None',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(body),
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'User Data',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+            outputs: [{ name: 'Response', index: 0, default: true }],
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(body);
+    });
+
+    it('should resolve vault key in body', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{"key": {{KEY(SRE TEST KEY)}}}',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        const savedKey = 'sdl7k8lsd93ko4iu39';
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json.key).toEqual(savedKey);
     });
 });
 
@@ -819,6 +961,7 @@ describe('APICall Component - OAuth', () => {
             outputs: [{ name: 'Response', index: 0, default: true }],
         };
         const output = await apiCall.process({}, config, agent);
+
         expect(output).toBeDefined();
     });
 
