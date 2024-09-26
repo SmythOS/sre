@@ -67,6 +67,8 @@ export const TPLProcessor = {
  * Template strings are strings that can contain placeholders, which are expressions that get evaluated to produce a resulting string.
  * The placeholders are defined by double curly braces `{{` and `}}`.
  */
+
+//FIXME: async parsing breaks the chainability of the TemplateStringHelper
 export class TemplateStringHelper {
     private _current: string;
 
@@ -100,7 +102,7 @@ export class TemplateStringHelper {
      * unmatched placeholders will be left as is
      */
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
-        if (typeof this._current !== 'string') return this;
+        if (typeof this._current !== 'string' || typeof data !== 'object') return this;
         this._current = this._current.replace(regex, (match, token) => {
             return data[token] || match;
         });

@@ -78,7 +78,15 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
             const blob = new Blob([buffer], { type: value.mimetype });
             formData.append(key, blob, value.filename);
         } else {
-            formData.append(key, typeof value === 'boolean' ? String(value) : value);
+            let data = typeof value === 'boolean' ? String(value) : value;
+            data = TemplateString(data)
+                .parse(config.data._templateVars) //parse Template variables first (if any)
+                .parse(input)
+                .clean().result;
+
+            formData.append(key, data);
+
+            //formData.append(key, typeof value === 'boolean' ? String(value) : value);
         }
     }
     return formData;

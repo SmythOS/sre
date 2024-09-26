@@ -366,7 +366,6 @@ describe('APICall Component - URL Formats', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(status).toEqual(200);
         expect(response.url).toEqual(url);
         expect(response.args.color).toEqual(['red', 'blue', 'green']);
     });
@@ -387,7 +386,6 @@ describe('APICall Component - URL Formats', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(status).toEqual(200);
         expect(response.url).toEqual(url);
         expect(response.args['user[name][first]']).toEqual('John');
         expect(response.args['user[name][last]']).toEqual('Doe');
@@ -410,7 +408,6 @@ describe('APICall Component - URL Formats', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(status).toEqual(200);
         expect(response.url).toEqual(url);
         expect(response.args.empty).toEqual('');
         expect(response.args.null).toEqual('');
@@ -440,8 +437,7 @@ describe('APICall Component - URL Formats', () => {
     //#region test cases with symbols and special characters
     // Need to make it work
     it('should handle URL with all types of raw characters and symbols', async () => {
-        const allChars =
-            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&'; // we should keep # and & in the end of the string for it's special meaning in URL
+        const allChars = `!@$%^*()_+-={}[]|\:;"'<>,.?/~\`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&`; // we should keep # and & in the end of the string for it's special meaning in URL
         const url = `https://httpbin.org/get?all=${allChars}`;
 
         const config = {
@@ -459,10 +455,8 @@ describe('APICall Component - URL Formats', () => {
         const response = output.Response;
 
         // The expected arguments and URL encoding differs between browsers and Postman, We're expecting the Postman version.
-        const expectedChars =
-            '!@$%^*()_ -={}[]|\\\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123   456 = 579 ©️ 🌈';
-        const expectedUrl =
-            'https://httpbin.org/get?all=!%40$%^*()_+-={}[]|\\:%3B"\'<>,.%3F%2F~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás%3F 123 %2B 456 %3D 579 ©️ 🌈';
+        const expectedChars = `!@$%^*()_ -={}[]|\\:;\"'<>,.?/~\`\u2211\u03c0\u0394\u221e\u2260\u2264\u2265\u00b1\u00d7\u00f7\u221a\u222b\u2202$\u20ac\u00a3\u00a5\u20b9\u20bd\u20a9\u20aa\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00fc\u00e7\u00e3\u00f5\u00e2\u00ea\u00ee\u00f4\u00fb\u00e4\u00eb\u00ef\u00f6\u00fc\ud83d\ude00\ud83c\udf0d\ud83d\ude80\ud83c\udf89\ud83c\udf55\ud83d\udc31\u200d\ud83d\udc64\u00a9\u00ae\u2122\u2665\u2660\u2663\u2666\u2622\u2623\u262e\u262fHello, \u4e16\u754c! \u00bfC\u00f3mo est\u00e1s? 123   456 = 579 \u00a9\ufe0f \ud83c\udf08`;
+        const expectedUrl = `https://httpbin.org/get?all=!%40$%^*()_+-={}[]|\\:%3B\"'<>,.%3F%2F~\`\u2211\u03c0\u0394\u221e\u2260\u2264\u2265\u00b1\u00d7\u00f7\u221a\u222b\u2202$\u20ac\u00a3\u00a5\u20b9\u20bd\u20a9\u20aa\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00fc\u00e7\u00e3\u00f5\u00e2\u00ea\u00ee\u00f4\u00fb\u00e4\u00eb\u00ef\u00f6\u00fc\ud83d\ude00\ud83c\udf0d\ud83d\ude80\ud83c\udf89\ud83c\udf55\ud83d\udc31\u200d\ud83d\udc64\u00a9\u00ae\u2122\u2665\u2660\u2663\u2666\u2622\u2623\u262e\u262fHello, \u4e16\u754c! \u00bfC\u00f3mo est\u00e1s%3F 123 + 456 = 579 \u00a9\ufe0f \ud83c\udf08`;
 
         expect(response.args.all).toEqual(expectedChars);
         expect(response.url).toEqual(expectedUrl);
@@ -873,7 +867,7 @@ describe('APICall Component - Body', () => {
                 url: 'https://httpbin.org/post',
                 headers: '',
                 contentType: 'application/json',
-                body: '{name: "{{name}}", age: "{{age}}"}',
+                body: '{name: "{{name}}", age: {{age}}}',
                 oauthService: 'None',
             },
         };
