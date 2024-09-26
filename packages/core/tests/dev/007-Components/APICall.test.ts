@@ -702,8 +702,8 @@ describe('APICall Component - Body', () => {
     it('should handle binary content type', async () => {
         const fileUrl = 'https://app.smythos.dev/img/smythos-logo.png';
 
-        const getFileInfo = async (fileUrl: string): Promise<{ mimetype: string; size: number; data: Buffer | null }> => {
-            if (!fileUrl) return { mimetype: '', size: 0, data: null };
+        const fetchFileInfoAndContent = async (fileUrl: string): Promise<{ mimetype: string; size: number; buffer: Buffer | null }> => {
+            if (!fileUrl) return { mimetype: '', size: 0, buffer: null };
 
             try {
                 const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
@@ -711,26 +711,39 @@ describe('APICall Component - Body', () => {
                 const buffer = Buffer.from(data, 'binary');
                 const size = buffer.byteLength;
 
-                return { mimetype: response.headers['content-type'], size, data: buffer };
+                return { mimetype: response.headers['content-type'], size, buffer };
             } catch (error: any) {
-                return { mimetype: '', size: 0, data: null };
+                return { mimetype: '', size: 0, buffer: null };
             }
         };
 
-        const { mimetype, size, data } = await getFileInfo(fileUrl);
+        const { mimetype, size, buffer } = await fetchFileInfoAndContent(fileUrl);
+
+        // Convert buffer to base64 URL
+        const base64Data = buffer ? buffer.toString('base64') : '';
+        const base64Url = `data:${mimetype};base64,${base64Data}`;
 
         const config = {
             data: {
                 method: 'POST',
                 url: 'https://httpbin.org/post',
                 headers: '',
-                contentType: mimetype,
-                body: data,
+                contentType: 'binary',
+                body: '{{file}}',
                 oauthService: 'None',
             },
-            outputs: [{ name: 'Response', index: 0, default: true }],
+            inputs: [
+                {
+                    name: 'file',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
         };
-        const output = await apiCall.process({}, config, agent);
+        const output = await apiCall.process({ file: base64Url }, config, agent);
         const response = output.Response;
 
         // ! remove after fixing
