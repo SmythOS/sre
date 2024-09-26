@@ -76,7 +76,7 @@ export class ConnectorService {
      * @param isDefault
      * @returns
      */
-    static init(connectorType: TConnectorService, connectorName: string, connectorId: string, settings: any = {}, isDefault = false) {
+    static init(connectorType: TConnectorService, connectorName: string, connectorId?: string, settings: any = {}, isDefault = false) {
         if (ConnectorInstances[connectorType]?.[connectorName]) {
             throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
         }
