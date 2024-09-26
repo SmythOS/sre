@@ -14,7 +14,7 @@ import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHe
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
-        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD').required().label('Method'),
+        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').required().label('Method'),
         url: Joi.string()
             .max(8192) /*.custom(isUrlValid, 'URL validation')*/
             .required()

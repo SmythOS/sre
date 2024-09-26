@@ -11,7 +11,7 @@ export async function parseData(input: any, config, agent: Agent) {
     const templateSettings = config?.template?.settings || {};
     const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
 
-    let body = config?.data?.body?.trim();
+    let body = typeof config?.data?.body === 'string' ? config?.data?.body?.trim() : config?.data?.body;
     if (!body) {
         return undefined;
     }
