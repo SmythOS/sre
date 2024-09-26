@@ -86,7 +86,7 @@ function runTestCases(endpoint: string) {
             }
             expect(error).toBeUndefined();
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 }
 

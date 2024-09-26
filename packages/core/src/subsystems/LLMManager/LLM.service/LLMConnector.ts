@@ -274,7 +274,7 @@ export abstract class LLMConnector extends Connector {
 
         const llmProvider = this.llmHelper.ModelRegistry().getProvider(model);
 
-        for (const [configKey, paramKey] of Object.entries(paramMappings[llmProvider])) {
+        for (const [configKey, paramKey] of Object.entries(paramMappings?.[llmProvider] || {})) {
             // we need to allow 0 as truthy
             if (configParams?.[configKey] !== undefined || configParams?.[configKey] !== null || configParams?.[configKey] !== '') {
                 const value = configParams[configKey];
