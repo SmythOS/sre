@@ -7,6 +7,7 @@ export const Match = {
     //matches all placeholders
     doubleCurly: /{{(.*?)}}/g,
     singleCurly: /{(.*?)}/g,
+    doubleCurlyForSingleMatch: /{{(.*?)}}/,
 
     //matches component template variables
     //example of matching strings
@@ -106,6 +107,25 @@ export class TemplateStringHelper {
         this._current = this._current.replace(regex, (match, token) => {
             return data[token] || match;
         });
+
+        return this;
+    }
+
+    /**
+     * Parses a template string by replacing the placeholders with the values from the provided data object and keep the raw value instead of returning a string like .parse does
+     * unmatched placeholders will be left as is
+     */
+    // Note: right now this method only match the first occurrence of the regex
+    public parseRaw(data: Record<string, string>, regex: TemplateStringMatch = Match.doubleCurlyForSingleMatch) {
+        if (typeof this._current !== 'string' || typeof data !== 'object') return this;
+
+        const match = this._current.match(regex);
+        const key = match ? match[1] : '';
+
+        if (key) {
+            const value = data?.[key];
+            this._current = value;
+        }
 
         return this;
     }

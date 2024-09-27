@@ -74,10 +74,12 @@ const apiCall = new APICall();
 const VAULT_KEY_TEMPLATE_VAR = '{{KEY(SRE TEST KEY)}}';
 const DUMMY_KEY = 'sdl7k8lsd93ko4iu39';
 
+const IMAGE_URL = 'https://app.smythos.dev/img/smythos-logo.png';
+
 describe('APICall Component - HTTP Methods', () => {
     const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
     methods.forEach((method) => {
-        it(`should handle ${method} method`, async () => {
+        it(`handle ${method} method`, async () => {
             const path = ['HEAD', 'OPTIONS'].includes(method) ? 'get' : method.toLowerCase();
             const url = `https://httpbin.org/${path}`;
 
@@ -100,7 +102,7 @@ describe('APICall Component - HTTP Methods', () => {
 });
 
 describe('APICall Component - Headers', () => {
-    it('should handle default headers', async () => {
+    it('handle default headers', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -118,7 +120,7 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['Accept']).toEqual('application/json');
     });
 
-    it('should handle custom headers', async () => {
+    it('handle custom headers', async () => {
         const authToken = 'Bearer token';
         const contentType = 'application/json';
 
@@ -156,7 +158,7 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['Content-Type']).toEqual('application/xml');
     });
 
-    it('should resolve input template variable in headers', async () => {
+    it('resolve input template variable in headers', async () => {
         const userName = 'John Doe';
         const config = {
             data: {
@@ -175,7 +177,7 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['X-User-Name']).toEqual(userName);
     });
 
-    it('should resolve component template variable in headers', async () => {
+    it('resolve component template variable in headers', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -212,7 +214,7 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
     });
 
-    it('should resolve vault key in headers', async () => {
+    it('resolve vault key in headers', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -230,7 +232,7 @@ describe('APICall Component - Headers', () => {
         expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
     });
 
-    it('should resolve multiple variable types in headers', async () => {
+    it('resolve multiple variable types in headers', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -280,7 +282,7 @@ describe('APICall Component - Headers', () => {
 describe('APICall Component - URL Formats', () => {
     const url = 'https://httpbin.org/get?a=hello%20world&b=robot';
 
-    it('should handle URL with query parameters', async () => {
+    it('handle URL with query parameters', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -298,7 +300,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.b).toEqual('robot');
     });
 
-    it('should handle URL with array query parameters', async () => {
+    it('handle URL with array query parameters', async () => {
         const url = 'https://httpbin.org/get?ids[]=1&ids[]=2&ids[]=3';
         const config = {
             data: {
@@ -317,7 +319,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(url);
     });
 
-    it('should handle URL with object query parameters', async () => {
+    it('handle URL with object query parameters', async () => {
         const url = 'https://httpbin.org/get?filter[name]=John&filter[age]=30';
         const config = {
             data: {
@@ -337,7 +339,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args['filter[name]']).toEqual('John');
     });
 
-    it('should handle URL with multiple occurrences of the same parameter', async () => {
+    it('handle URL with multiple occurrences of the same parameter', async () => {
         const url = 'https://httpbin.org/get?color=red&color=blue&color=green';
         const config = {
             data: {
@@ -356,7 +358,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.color).toEqual(['red', 'blue', 'green']);
     });
 
-    it('should handle URL with nested object parameters', async () => {
+    it('handle URL with nested object parameters', async () => {
         const url = 'https://httpbin.org/get?user[name][first]=John&user[name][last]=Doe&user[age]=30';
         const config = {
             data: {
@@ -377,7 +379,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args['user[age]']).toEqual('30');
     });
 
-    it('should handle URL with empty parameter values', async () => {
+    it('handle URL with empty parameter values', async () => {
         const url = 'https://httpbin.org/get?empty=&null=&undefined=';
         const config = {
             data: {
@@ -398,7 +400,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.undefined).toEqual('');
     });
 
-    it('should handle URL with encoded spaces and plus signs', async () => {
+    it('handle URL with encoded spaces and plus signs', async () => {
         const url = 'https://httpbin.org/get?message=hello%20world&operation=1+1';
         const config = {
             data: {
@@ -419,7 +421,7 @@ describe('APICall Component - URL Formats', () => {
 
     //#region test cases with symbols and special characters
     // * Note: Following commented test cases in includes characters that that could be used in very rare cases, we will check later
-    /* it('should handle URL with all types of raw characters and symbols', async () => {
+    /* it('handle URL with all types of raw characters and symbols', async () => {
         const allChars = `!@$%^*()_+-={}[]|\:;"'<>,.?/~\`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&`; // we should keep # and & in the end of the string for it's special meaning in URL
         const url = `https://httpbin.org/get?all=${allChars}`;
 
@@ -445,7 +447,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(expectedUrl);
     });
 
-    it('should handle URL with all types of encoded characters and symbols', async () => {
+    it('handle URL with all types of encoded characters and symbols', async () => {
         const allChars =
             '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&'; // we should keep # and & in the end of the string for it's special meaning in URL
         const url = `https://httpbin.org/get?all=${encodeURIComponent(allChars)}`;
@@ -474,7 +476,7 @@ describe('APICall Component - URL Formats', () => {
     }); */
     //#endregion test cases with symbols and special characters
 
-    it('should handle URL with common symbols and special characters', async () => {
+    it('handle URL with common symbols and special characters', async () => {
         const specialChars = "!@$'()*+,;=-._~:/?[]#&";
         const url = `https://httpbin.org/get?special=${specialChars}`;
 
@@ -498,7 +500,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(expectedUrl);
     });
 
-    it('should handle URL with encoded common symbols and special characters', async () => {
+    it('handle URL with encoded common symbols and special characters', async () => {
         const specialChars = "!@$'()*,;=-._~:/?[]";
         const url = `https://httpbin.org/get?special=${encodeURIComponent(specialChars)}`;
 
@@ -529,7 +531,7 @@ describe('APICall Component - URL Formats', () => {
     // TODO: Need to write dedicated test for encoded symbols `#&+`, although they have special meaning in the URL, still it should work we provide encoded version of those symbols
 
     // Fully encoded URL like "https%3A%2F%2Fhttpbin.org%2Fget" is not working in Postman and Browser, but we support it as we decodeURIComponent in parseUrl
-    it('should handle fully encoded URL', async () => {
+    it('handle fully encoded URL', async () => {
         const url = 'https://httpbin.org/get';
         const encodedUrl = encodeURIComponent(url);
         const config = {
@@ -548,7 +550,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(url);
     });
 
-    it('should handle URL with fragment identifier', async () => {
+    it('handle URL with fragment identifier', async () => {
         const fragment = '#section1';
         const urlWithoutFragment = `https://httpbin.org/get?param=value`;
         const url = `${urlWithoutFragment}${fragment}`;
@@ -569,7 +571,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.param).toEqual('value');
     });
 
-    it('should handle URL with basic auth credentials', async () => {
+    it('handle URL with basic auth credentials', async () => {
         const url = 'https://user:pass@httpbin.org/basic-auth/user/pass';
         const config = {
             data: {
@@ -588,7 +590,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.user).toEqual('user');
     });
 
-    it('should handle wrong URL', async () => {
+    it('handle wrong URL', async () => {
         const url = 'https://httpbin.org/wrong-url';
         const config = {
             data: {
@@ -606,7 +608,7 @@ describe('APICall Component - URL Formats', () => {
         expect(output._error).toContain('404');
     });
 
-    it('should resolve input template variable in URL', async () => {
+    it('resolve input template variable in URL', async () => {
         const user = 'John Doe';
         const url = 'https://httpbin.org/get?user={{user}}';
         const config = {
@@ -625,7 +627,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(`https://httpbin.org/get?user=${user}`);
     });
 
-    it('should resolve component template variable in URL', async () => {
+    it('resolve component template variable in URL', async () => {
         const url = 'https://httpbin.org/get?key={{VARVAULTINPUT:Authentication Key:[""]}}';
         const config = {
             data: {
@@ -662,7 +664,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(`https://httpbin.org/get?key=${DUMMY_KEY}`);
     });
 
-    it('should resolve vault key in URL', async () => {
+    it('resolve vault key in URL', async () => {
         const url = `https://httpbin.org/get?key=${VAULT_KEY_TEMPLATE_VAR}`;
         const config = {
             data: {
@@ -681,7 +683,7 @@ describe('APICall Component - URL Formats', () => {
         expect(response.url).toEqual(`https://httpbin.org/get?key=${DUMMY_KEY}`);
     });
 
-    it('should resolve multiple variable types in URL', async () => {
+    it('resolve multiple variable types in URL', async () => {
         const url = `https://httpbin.org/get?user={{user}}&key={{VARVAULTINPUT:Authentication Key:[""]}}&secret=${VAULT_KEY_TEMPLATE_VAR}`;
         const config = {
             data: {
@@ -724,7 +726,7 @@ describe('APICall Component - URL Formats', () => {
 describe('APICall Component - Content Types', () => {
     const contentTypes = ['none', 'application/json', 'multipart/form-data', 'binary', 'application/x-www-form-urlencoded', 'text/plain'];
     contentTypes.forEach((contentType) => {
-        it(`should handle ${contentType} content type`, async () => {
+        it(`handle ${contentType} content type`, async () => {
             const config = {
                 data: {
                     method: 'GET',
@@ -744,7 +746,7 @@ describe('APICall Component - Content Types', () => {
 });
 
 describe('APICall Component - Body', () => {
-    it('should handle application/json content type', async () => {
+    it('handle application/json content type', async () => {
         const body = { name: 'John Doe', age: 30 };
         const config = {
             data: {
@@ -763,7 +765,7 @@ describe('APICall Component - Body', () => {
         expect(response.json).toEqual(body);
     });
 
-    it('should handle application/x-www-form-urlencoded content type', async () => {
+    it('handle application/x-www-form-urlencoded content type', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -781,7 +783,7 @@ describe('APICall Component - Body', () => {
         expect(response.form).toEqual({ name: 'John Doe', age: '30' });
     });
 
-    it('should handle text/plain content type', async () => {
+    it('handle text/plain content type', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -799,52 +801,132 @@ describe('APICall Component - Body', () => {
         expect(response.data).toEqual('Hello, world!');
     });
 
-    it('should handle multipart/form-data content type', async () => {
-        const body = {
-            image: 'https://app.smythos.dev/img/smythos-logo.png',
-        };
+    const fetchFileInfoAndContent = async (fileUrl: string): Promise<{ mimetype: string; size: number; buffer: Buffer | null }> => {
+        if (!fileUrl) return { mimetype: '', size: 0, buffer: null };
+
+        try {
+            const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+            const data = response.data || '';
+            const buffer = Buffer.from(data, 'binary');
+            const size = buffer.byteLength;
+
+            return { mimetype: response.headers['content-type'], size, buffer };
+        } catch (error: any) {
+            return { mimetype: '', size: 0, buffer: null };
+        }
+    };
+
+    it('handle multipart/form-data with base64 input', async () => {
         const config = {
             data: {
                 method: 'POST',
                 url: 'https://httpbin.org/post',
                 contentType: 'multipart/form-data',
-                body: JSON.stringify(body),
+                body: '{"image": "{{image}}"}',
                 oauthService: 'None',
             },
-        };
-        const output = await apiCall.process({}, config, agent);
-        const response = output.Response;
-
-        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
-        expect(response).toHaveProperty('files');
-        expect(response.files).toHaveProperty('image');
-        expect(response.files.image).toMatch(/^data:image\/jpeg;base64,/);
-    });
-
-    it('should handle binary content type', async () => {
-        const fileUrl = 'https://app.smythos.dev/img/smythos-logo.png';
-
-        const fetchFileInfoAndContent = async (fileUrl: string): Promise<{ mimetype: string; size: number; buffer: Buffer | null }> => {
-            if (!fileUrl) return { mimetype: '', size: 0, buffer: null };
-
-            try {
-                const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
-                const data = response.data || '';
-                const buffer = Buffer.from(data, 'binary');
-                const size = buffer.byteLength;
-
-                return { mimetype: response.headers['content-type'], size, buffer };
-            } catch (error: any) {
-                return { mimetype: '', size: 0, buffer: null };
-            }
+            inputs: [
+                {
+                    name: 'image',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
         };
 
-        const { mimetype, size, buffer } = await fetchFileInfoAndContent(fileUrl);
+        const { mimetype, buffer } = await fetchFileInfoAndContent(IMAGE_URL);
 
         // Convert buffer to base64 URL
         const base64Data = buffer ? buffer.toString('base64') : '';
         const base64Url = `data:${mimetype};base64,${base64Data}`;
 
+        const output = await apiCall.process({ image: base64Url }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle multipart/form-data with SmythFile object input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                image: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle multipart/form-data with SmythFile object input as Binary type', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'image',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                image: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle binary content type with base64 input', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -865,17 +947,15 @@ describe('APICall Component - Body', () => {
                 },
             ],
         };
+
+        const { mimetype, size, buffer } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        // Convert buffer to base64 URL
+        const base64Data = buffer ? buffer.toString('base64') : '';
+        const base64Url = `data:${mimetype};base64,${base64Data}`;
+
         const output = await apiCall.process({ file: base64Url }, config, agent);
         const response = output.Response;
-
-        // ! remove after fixing
-        /* const res = await axios.request({
-            method: 'POST',
-            url: 'https://httpbin.org/post',
-            data,
-            headers: { 'Content-Type': mimetype },
-        });
-        const expectedResponse = res.data; */
 
         expect(response.headers['Content-Type']).toMatch(mimetype);
         expect(response.headers['Content-Length']).toEqual(size.toString());
@@ -883,7 +963,83 @@ describe('APICall Component - Body', () => {
         expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
     });
 
-    it('should handle empty body', async () => {
+    it('handle binary with SmythFile object', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'binary',
+                body: '{{file}}',
+                oauthService: 'None',
+            },
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                file: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
+        // for some reason httpbin returns data as application/octet-stream
+        expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
+    });
+
+    it('handle binary with SmythFile object as binary input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'binary',
+                body: '{{file}}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'file',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                file: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
+        // for some reason httpbin returns data as application/octet-stream
+        expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
+    });
+
+    it('handle empty body', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -902,7 +1058,7 @@ describe('APICall Component - Body', () => {
         expect(response.headers['Content-Length']).toEqual('0');
     });
 
-    it('should handle application/xml content type', async () => {
+    it('handle application/xml content type', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -921,7 +1077,7 @@ describe('APICall Component - Body', () => {
     });
 
     // TODO [Forhad]: Need to make it work
-    it('should resolve input template variable in body', async () => {
+    it('resolve input template variable in body', async () => {
         const body = { name: 'John Doe', age: 30 };
         const config = {
             data: {
@@ -940,7 +1096,7 @@ describe('APICall Component - Body', () => {
         expect(response.json).toEqual(body);
     });
 
-    it('should resolve input template variable inside body properties', async () => {
+    it('resolve input template variable inside body properties', async () => {
         const name = 'John Doe';
         const age = 30;
         const config = {
@@ -960,8 +1116,8 @@ describe('APICall Component - Body', () => {
         expect(response.json).toEqual({ name, age });
     });
 
-    it('should resolve component template variable in body', async () => {
-        const body = { name: 'John Doe', age: 30 };
+    it('resolve component template variable in body', async () => {
+        const userData = { name: 'John Doe', age: 30 };
         const config = {
             data: {
                 method: 'POST',
@@ -971,7 +1127,7 @@ describe('APICall Component - Body', () => {
                 body: '{{VARVAULTINPUT:User Data:[""]}}',
                 oauthService: 'None',
                 _templateVars: {
-                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(body),
+                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(userData),
                 },
             },
             template: {
@@ -995,10 +1151,10 @@ describe('APICall Component - Body', () => {
         const response = output.Response;
 
         expect(response.headers['Content-Type']).toContain('application/json');
-        expect(response.json).toEqual(body);
+        expect(response.json).toEqual(userData);
     });
 
-    it('should resolve vault key in body', async () => {
+    it('resolve vault key in body', async () => {
         const config = {
             data: {
                 method: 'POST',
@@ -1015,10 +1171,55 @@ describe('APICall Component - Body', () => {
         expect(response.headers['Content-Type']).toContain('application/json');
         expect(response.json.key).toEqual(DUMMY_KEY);
     });
+
+    it('resolve multiple variable types in Body', async () => {
+        const userName = 'John Doe';
+        const userData = { name: userName, age: 30 };
+
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: `{"name": "{{name}}", "userData": {{VARVAULTINPUT:User Data:[""]}}, "key": ${VAULT_KEY_TEMPLATE_VAR}}`,
+                oauthService: 'None',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(userData),
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'User Data',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+
+        const output = await apiCall.process({ name: userName }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual({
+            name: userName,
+            userData: userData,
+            key: DUMMY_KEY,
+        });
+    });
 });
 
 describe('APICall Component - OAuth', () => {
-    it('should handle OAuth1 authentication', async () => {
+    it('handle OAuth1 authentication', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -1038,7 +1239,7 @@ describe('APICall Component - OAuth', () => {
         expect(output).toBeDefined();
     });
 
-    it('should handle OAuth2 authentication', async () => {
+    it('handle OAuth2 authentication', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -1058,7 +1259,7 @@ describe('APICall Component - OAuth', () => {
 });
 
 describe('APICall Component - Proxy', () => {
-    it('should handle proxy settings', async () => {
+    it('handle proxy settings', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -1075,7 +1276,7 @@ describe('APICall Component - Proxy', () => {
 });
 
 describe('APICall Component - Error Handling', () => {
-    it('should handle network errors', async () => {
+    it('handle network errors', async () => {
         const config = {
             data: {
                 method: 'GET',
@@ -1089,7 +1290,7 @@ describe('APICall Component - Error Handling', () => {
         expect(output._error).toBeDefined();
     });
 
-    it('should handle invalid URL errors', async () => {
+    it('handle invalid URL errors', async () => {
         const config = {
             data: {
                 method: 'GET',

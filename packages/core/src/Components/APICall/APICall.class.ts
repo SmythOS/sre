@@ -64,9 +64,11 @@ export default class APICall extends Component {
 
             reqConfig.url = await parseUrl(input, config, agent);
 
-            reqConfig.data = await parseData(input, config, agent);
+            const { data, headers } = await parseData(input, config, agent);
 
-            reqConfig.headers = await parseHeaders(input, config, agent);
+            reqConfig.data = data;
+
+            reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
 
             reqConfig.proxy = await parseProxy(input, config, agent);
 
