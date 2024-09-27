@@ -3,17 +3,17 @@ import { REQUEST_CONTENT_TYPES } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
+import FormData from 'form-data';
+import { Readable } from 'stream';
 
-export async function parseData(input: any, config, agent: Agent) {
+export async function parseData(input: any, config, agent: Agent): Promise<{ data: any; headers: any }> {
     const teamId = agent ? agent.teamId : null;
     const templateSettings = config?.template?.settings || {};
     const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
 
     let body = typeof config?.data?.body === 'string' ? config?.data?.body?.trim() : config?.data?.body;
     if (!body) {
-        return undefined;
+        return { data: null, headers: {} };
     }
 
     // Parse component template variables
@@ -38,10 +38,10 @@ export async function parseData(input: any, config, agent: Agent) {
     };
 
     const handler = handlers[contentType] || handleNone;
-    const data = await handler(body, input, config, agent);
+    const { data = null, headers = {} } = await handler(body, input, config, agent);
 
     //const jsonBody: any = JSONContent(data).tryParse();
-    return data;
+    return { data, headers };
 }
 
 async function handleJson(body: any, input: any, config, agent: Agent) {
@@ -53,7 +53,7 @@ async function handleJson(body: any, input: any, config, agent: Agent) {
         .clean().result; //clean up the remaining unparsed values
 
     const jsonBody: any = JSONContent(data).tryParse();
-    return jsonBody;
+    return { data: jsonBody };
 }
 
 async function handleUrlEncoded(body: any, input: any, config, agent: Agent) {
@@ -64,51 +64,73 @@ async function handleUrlEncoded(body: any, input: any, config, agent: Agent) {
         }
         return params.toString();
     }
-    return body;
+    return { data: body };
 }
 
 async function handleMultipartFormData(body: any, input: any, config, agent: Agent) {
     const formData = new FormData();
-    for (const key in body) {
-        const value = body[key];
 
-        if (value && typeof value === 'object' && value.url) {
-            const binaryInput = await BinaryInput.from(value, value.name, value.mimetype);
+    const _body = typeof body === 'string' ? JSON.parse(body) : body;
+
+    for (const key in _body) {
+        let value = _body[key];
+        value = typeof value === 'boolean' ? String(value) : value;
+
+        value = TemplateString(value).parseRaw(input).result;
+
+        if (value && typeof value === 'object' && value?.url) {
+            const binaryInput = await BinaryInput.from(value.url, '', value?.mimetype);
             const buffer = await binaryInput.getBuffer();
-            const blob = new Blob([buffer], { type: value.mimetype });
-            formData.append(key, blob, value.filename);
+
+            const bufferStream = new Readable();
+            bufferStream.push(buffer || null);
+            bufferStream.push(null);
+
+            const filename = (await binaryInput.getName()) || key;
+
+            formData.append(key, bufferStream, { filename });
+        } else if (value instanceof BinaryInput) {
+            const buffer = await value.getBuffer();
+            const bufferStream = new Readable();
+            bufferStream.push(buffer || null);
+            bufferStream.push(null);
+
+            const filename = (await value.getName()) || key;
+            formData.append(key, bufferStream, { filename });
         } else {
-            let data = typeof value === 'boolean' ? String(value) : value;
-            data = TemplateString(data)
+            value = TemplateString(value)
                 .parse(config.data._templateVars) //parse Template variables first (if any)
                 .parse(input)
                 .clean().result;
 
-            formData.append(key, data);
+            formData.append(key, value);
 
             //formData.append(key, typeof value === 'boolean' ? String(value) : value);
         }
     }
-    return formData;
+    return { data: formData, headers: formData.getHeaders() };
 }
 
 async function handleBinary(body: any, input: any, config, agent: Agent) {
-    const regex = /{{(.*?)}}/;
-    const match = typeof body === 'string' ? body.match(regex) : null;
-    const key = match ? match[1] : '';
-    const data = input?.[key];
-    if (data && data instanceof BinaryInput) {
-        //const binaryInput = BinaryInput.from(data, data.name, data.mimetype, AccessCandidate.agent(agent.id));
-        const buffer = await data.getBuffer();
-        return buffer;
+    const value: any = TemplateString(body).parseRaw(input).result;
+
+    if (value && typeof value === 'object' && value?.url) {
+        const binaryInput = await BinaryInput.from(value.url, '', value?.mimetype);
+        const buffer = await binaryInput.getBuffer();
+
+        return { data: buffer, headers: { 'Content-Type': binaryInput.mimetype } };
+    } else if (value && value instanceof BinaryInput) {
+        const buffer = await value.getBuffer();
+        return { data: buffer, headers: { 'Content-Type': value.mimetype } };
     }
-    return Buffer.from([]);
+
+    return { data: Buffer.from([]), headers: {} };
 }
 
 async function handleNone(body: any, input: any, config, agent: Agent) {
     //FIXME: try to guess the content type from headers content-type and data
 
-    return typeof body === 'string' ? body : JSON.stringify(body);
+    return { data: typeof body === 'string' ? body : JSON.stringify(body), headers: {} };
 }
 function handleText(body: any, input: any, config: any, agent: Agent) {
     // Parse template and input variables
@@ -118,5 +140,5 @@ function handleText(body: any, input: any, config: any, agent: Agent) {
         .parse(input) //parse inputs
         .clean().result; //clean up the remaining unparsed values
 
-    return data;
+    return { data };
 }

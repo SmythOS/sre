@@ -147,12 +147,14 @@ async function inferObjectType(value: any, key?: string, agent?: Agent) {
 }
 
 async function inferBinaryType(value: any, key?: string, agent?: Agent) {
+    if (value && typeof value === 'object' && value?.url) {
+        const binaryInput = await BinaryInput.from(value.url, uid() + '-' + key, value?.mimetype);
+        await binaryInput.ready();
+        return binaryInput;
+    }
+
     const binaryInput = BinaryInput.from(value, uid() + '-' + key);
     await binaryInput.ready();
-    //const data = value;
-    //const file = data instanceof SmythFile ? data : new SmythFile(data);
-    //return file;
-    //return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
     return binaryInput;
 }
 
