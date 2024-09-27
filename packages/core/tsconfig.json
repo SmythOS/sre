@@ -10,6 +10,9 @@
         "resolveJsonModule": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
+        //"noImplicitAny": false,
+        //"ignoreDeprecations": "5.0",
+        //"suppressImplicitAnyIndexErrors": true,
         "paths": {
             "@sre/index": ["index.ts"],
             "@sre/config": ["config.ts"],
@@ -49,5 +52,6 @@
         "allowSyntheticDefaultImports": true
     },
     "include": ["src/**/*.ts", "tests/**/*.ts", "tests/dev/008-VectorDB/Pinecone.test.bak"],
+
     "exclude": ["node_modules"]
 }
