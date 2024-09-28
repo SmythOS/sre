@@ -55,6 +55,19 @@ const sre = SmythRuntime.Instance.init({
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+    ManagedVault: {
+        Connector: 'SmythManagedVault',
+        Id: 'oauth',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            vaultName: 'oauth',
+        },
+    },
 });
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -1219,42 +1232,67 @@ describe('APICall Component - Body', () => {
 });
 
 describe('APICall Component - OAuth', () => {
-    it('handle OAuth1 authentication', async () => {
-        const config = {
-            data: {
-                method: 'GET',
-                url: 'https://httpbin.org/get',
-                headers: '',
-                contentType: 'none',
-                body: '',
-                oauthService: 'OAuth1',
-                consumerKey: 'consumerKey',
-                consumerSecret: 'consumerSecret',
-                token: 'token',
-                tokenSecret: 'tokenSecret',
-            },
-        };
-        const output = await apiCall.process({}, config, agent);
-
-        expect(output).toBeDefined();
-    });
-
     it('handle OAuth2 authentication', async () => {
         const config = {
+            id: 'M1LWWLNL1V',
+            name: 'APICall',
             data: {
-                method: 'GET',
-                url: 'https://httpbin.org/get',
+                method: 'POST',
+                url: 'https://httpbin.org/post',
                 headers: '',
                 contentType: 'none',
                 body: '',
-                oauthService: 'OAuth2',
-                clientID: 'clientID',
-                clientSecret: 'clientSecret',
-                tokenURL: 'https://oauth2.example.com/token',
+                proxy: '',
+                oauthService: 'Google',
+                scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+                tokenURL: 'https://oauth2.googleapis.com/token',
+                clientID: '{{KEY(Google Client ID)}}',
+                clientSecret: '{{KEY(Google Client Secret)}}',
+                requestTokenURL: '',
+                accessTokenURL: '',
+                userAuthorizationURL: '',
+                consumerKey: '',
+                consumerSecret: '',
+                authenticate: '',
             },
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toMatch(/^Bearer .{200,}$/);
+    });
+
+    it('handle OAuth1 authentication', async () => {
+        const config = {
+            id: 'CM1LXC1LAZV9',
+            name: 'APICall',
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                proxy: '',
+                oauthService: 'Twitter',
+                scope: '',
+                authorizationURL: '',
+                tokenURL: '',
+                clientID: '',
+                clientSecret: '',
+                requestTokenURL: 'https://api.twitter.com/oauth/request_token',
+                accessTokenURL: 'https://api.twitter.com/oauth/access_token',
+                userAuthorizationURL: 'https://api.twitter.com/oauth/authorize',
+                consumerKey: '{{KEY(X Consumer Key)}}',
+                consumerSecret: '{{KEY(X Consumer Secret)}}',
+                authenticate: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+        expect(response.headers['Authorization']).toMatch(
+            /OAuth oauth_consumer_key="[^"]+", oauth_nonce="[^"]+", oauth_signature="[^"]+", oauth_signature_method="HMAC-SHA1", oauth_timestamp="[^"]+", oauth_token="[^"]+", oauth_version="1.0"/
+        );
     });
 });
 
