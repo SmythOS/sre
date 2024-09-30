@@ -6,8 +6,6 @@ import { FileProcessor } from './FileProcessor.helper';
 import { ConnectorService } from '@sre/index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-import config from '@sre/config';
-
 export class LLMHelper {
     private modelRegistry: ModelRegistry;
     private tokenManager: TokenManager;
@@ -45,7 +43,7 @@ export class LLMHelper {
             const accountConnector = ConnectorService.getAccountConnector();
 
             const teamSettings = await accountConnector.user(AccessCandidate.team(teamId)).getTeamSetting(settingsKey);
-            const savedCustomModelsData = JSON.parse(teamSettings?.settingValue || '{}') as Record<string, any>;
+            const savedCustomModelsData = JSON.parse(teamSettings || '{}') as Record<string, any>;
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
                 customModels[entryId] = {

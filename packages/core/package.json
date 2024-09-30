@@ -13,7 +13,9 @@
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
         "knip": "knip",
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model gpt-4o-mini --maxOutputTokens 256"
+        "start:web": "node ./tests/build/web/index.js --model claude-3-5-sonnet-20240620",
+        "build:aws:dev": "cross-env BUILD=dev rollup -c distributions/AWS/rollup.config.js",
+        "build:aws:prod": "cross-env BUILD=prod rollup -c distributions/AWS/rollup.config.js"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -25,6 +27,7 @@
         "@rollup/plugin-node-resolve": "^15.2.3",
         "@rollup/pluginutils": "^5.1.0",
         "@types/express": "^4.17.21",
+        "@types/express-session": "^1.18.0",
         "@types/node": "^20.14.2",
         "@vitest/coverage-v8": "^2.0.5",
         "blessed": "^0.1.81",
@@ -80,6 +83,7 @@
         "js-yaml": "^4.1.0",
         "jsonrepair": "^3.8.0",
         "langchain": "^0.2.10",
+        "memorystore": "^1.6.7",
         "mime": "^4.0.3",
         "oauth-1.0a": "^2.2.6",
         "openai": "^4.52.2",

@@ -37,6 +37,7 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import yaml from 'js-yaml';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
+import FormData from 'form-data';
 import OAuth from 'oauth-1.0a';
 import { HfInference } from '@huggingface/inference';
 import querystring from 'querystring';
@@ -1658,6 +1659,10 @@ class BinaryInput {
     const data = await SmythFS.Instance.read(this.url, candidate);
     return data;
   }
+  async getName() {
+    await this.ready();
+    return this._name;
+  }
   async getBuffer() {
     await this.ready();
     return this._source;
@@ -1761,6 +1766,11 @@ async function inferObjectType(value, key, agent) {
   }
 }
 async function inferBinaryType(value, key, agent) {
+  if (value && typeof value === "object" && value?.url) {
+    const binaryInput2 = await BinaryInput.from(value.url, uid() + "-" + key, value?.mimetype);
+    await binaryInput2.ready();
+    return binaryInput2;
+  }
   const binaryInput = BinaryInput.from(value, uid() + "-" + key);
   await binaryInput.ready();
   return binaryInput;
@@ -1872,6 +1882,7 @@ const Match = {
   //matches all placeholders
   doubleCurly: /{{(.*?)}}/g,
   singleCurly: /{(.*?)}/g,
+  doubleCurlyForSingleMatch: /{{(.*?)}}/,
   //matches component template variables
   //example of matching strings
   // {{VAULTINPUT:Input label:[APIKEY]}}
@@ -1946,10 +1957,25 @@ class TemplateStringHelper {
    * unmatched placeholders will be left as is
    */
   parse(data, regex = Match.default) {
-    if (typeof this._current !== "string") return this;
+    if (typeof this._current !== "string" || typeof data !== "object") return this;
     this._current = this._current.replace(regex, (match, token) => {
       return data[token] || match;
     });
+    return this;
+  }
+  /**
+   * Parses a template string by replacing the placeholders with the values from the provided data object and keep the raw value instead of returning a string like .parse does
+   * unmatched placeholders will be left as is
+   */
+  // Note: right now this method only match the first occurrence of the regex
+  parseRaw(data, regex = Match.doubleCurlyForSingleMatch) {
+    if (typeof this._current !== "string" || typeof data !== "object") return this;
+    const match = this._current.match(regex);
+    const key = match ? match[1] : "";
+    if (key) {
+      const value = data?.[key];
+      this._current = value;
+    }
     return this;
   }
   /**
@@ -3659,7 +3685,7 @@ class LLMHelper {
     try {
       const accountConnector = ConnectorService.getAccountConnector();
       const teamSettings = await accountConnector.user(AccessCandidate.team(teamId)).getTeamSetting(settingsKey);
-      const savedCustomModelsData = JSON.parse(teamSettings?.settingValue || "{}");
+      const savedCustomModelsData = JSON.parse(teamSettings || "{}");
       for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
         customModels[entryId] = {
           id: entryId,
@@ -3897,7 +3923,7 @@ class PromptGenerator extends Component {
       }
       if (response?.error) {
         logger.error(` LLM Error=${JSON.stringify(response.error)}`);
-        return { Reply: response?.data, _error: response?.error + " " + response?.details, _debug: logger.output };
+        return { Reply: response?.data, _error: response?.error + " " + (response?.details || ""), _debug: logger.output };
       }
       const result = { Reply: response };
       result["_debug"] = logger.output;
@@ -3914,7 +3940,8 @@ async function parseHeaders(input, config, agent) {
   const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
   let headers = config?.data?.headers || "{}";
   if (config.data._templateVars && templateSettings) {
-    headers = await TemplateString(headers).parseComponentTemplateVarsAsync(templateSettings).parse(config.data._templateVars).asyncResult;
+    headers = await TemplateString(headers).parseComponentTemplateVarsAsync(templateSettings).asyncResult;
+    headers = await TemplateString(headers).parse(config.data._templateVars).result;
   }
   headers = await TemplateString(headers).parseTeamKeysAsync(teamId).asyncResult;
   headers = TemplateString(headers).parse(input).clean().result;
@@ -3935,10 +3962,12 @@ async function parseUrl(input, config, agent) {
   let url = config?.data?.url;
   url = decodeURIComponent(url);
   if (config.data._templateVars && templateSettings) {
-    url = await TemplateString(url).parseComponentTemplateVarsAsync(templateSettings).parse(config.data._templateVars).asyncResult;
+    url = await TemplateString(url).parseComponentTemplateVarsAsync(templateSettings).asyncResult;
+    url = await TemplateString(url).parse(config.data._templateVars).result;
   }
   url = await TemplateString(url).parseTeamKeysAsync(teamId).asyncResult;
   url = TemplateString(url).parse(input).clean().result;
+  url = decodeURIComponent(url);
   const urlObj = new URL(url);
   return urlObj.href;
 }
@@ -3947,9 +3976,9 @@ async function parseData(input, config, agent) {
   const teamId = agent ? agent.teamId : null;
   const templateSettings = config?.template?.settings || {};
   const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
-  let body = config?.data?.body?.trim();
+  let body = typeof config?.data?.body === "string" ? config?.data?.body?.trim() : config?.data?.body;
   if (!body) {
-    return void 0;
+    return { data: null, headers: {} };
   }
   if (config.data._templateVars && templateSettings) {
     body = await TemplateString(body).parseComponentTemplateVarsAsync(templateSettings).asyncResult;
@@ -3964,13 +3993,13 @@ async function parseData(input, config, agent) {
     [REQUEST_CONTENT_TYPES.none]: handleNone
   };
   const handler = handlers[contentType] || handleNone;
-  const data = await handler(body, input, config, agent);
-  return data;
+  const { data = null, headers = {} } = await handler(body, input, config, agent);
+  return { data, headers };
 }
 async function handleJson(body, input, config, agent) {
   const data = TemplateString(body).parse(config.data._templateVars).parse(input).clean().result;
   const jsonBody = JSONContent(data).tryParse();
-  return jsonBody;
+  return { data: jsonBody };
 }
 async function handleUrlEncoded(body, input, config, agent) {
   if (typeof body === "object") {
@@ -3980,40 +4009,55 @@ async function handleUrlEncoded(body, input, config, agent) {
     }
     return params.toString();
   }
-  return body;
+  return { data: body };
 }
 async function handleMultipartFormData(body, input, config, agent) {
   const formData = new FormData();
-  for (const key in body) {
-    const value = body[key];
-    if (value && typeof value === "object" && value.url) {
-      const binaryInput = await BinaryInput.from(value, value.name, value.mimetype);
+  const _body = typeof body === "string" ? JSON.parse(body) : body;
+  for (const key in _body) {
+    let value = _body[key];
+    value = typeof value === "boolean" ? String(value) : value;
+    value = TemplateString(value).parseRaw(input).result;
+    if (value && typeof value === "object" && value?.url) {
+      const binaryInput = await BinaryInput.from(value.url, "", value?.mimetype);
       const buffer = await binaryInput.getBuffer();
-      const blob = new Blob([buffer], { type: value.mimetype });
-      formData.append(key, blob, value.filename);
+      const bufferStream = new Readable();
+      bufferStream.push(buffer || null);
+      bufferStream.push(null);
+      const filename = await binaryInput.getName() || key;
+      formData.append(key, bufferStream, { filename });
+    } else if (value instanceof BinaryInput) {
+      const buffer = await value.getBuffer();
+      const bufferStream = new Readable();
+      bufferStream.push(buffer || null);
+      bufferStream.push(null);
+      const filename = await value.getName() || key;
+      formData.append(key, bufferStream, { filename });
     } else {
-      formData.append(key, typeof value === "boolean" ? String(value) : value);
+      value = TemplateString(value).parse(config.data._templateVars).parse(input).clean().result;
+      formData.append(key, value);
     }
   }
-  return formData;
+  return { data: formData, headers: formData.getHeaders() };
 }
 async function handleBinary(body, input, config, agent) {
-  const regex = /{{(.*?)}}/;
-  const match = typeof body === "string" ? body.match(regex) : null;
-  const key = match ? match[1] : "";
-  const data = input?.[key];
-  if (data && data instanceof BinaryInput) {
-    const buffer = await data.getBuffer();
-    return buffer;
+  const value = TemplateString(body).parseRaw(input).result;
+  if (value && typeof value === "object" && value?.url) {
+    const binaryInput = await BinaryInput.from(value.url, "", value?.mimetype);
+    const buffer = await binaryInput.getBuffer();
+    return { data: buffer, headers: { "Content-Type": binaryInput.mimetype } };
+  } else if (value && value instanceof BinaryInput) {
+    const buffer = await value.getBuffer();
+    return { data: buffer, headers: { "Content-Type": value.mimetype } };
   }
-  return Buffer.from([]);
+  return { data: Buffer.from([]), headers: {} };
 }
 async function handleNone(body, input, config, agent) {
-  return typeof body === "string" ? body : JSON.stringify(body);
+  return { data: typeof body === "string" ? body : JSON.stringify(body), headers: {} };
 }
 function handleText(body, input, config, agent) {
   const data = TemplateString(body).parse(config.data._templateVars).parse(input).clean().result;
-  return data;
+  return { data };
 }
 
 async function parseProxy(input, config, agent) {
@@ -4093,7 +4137,7 @@ const contentHandlers = {
   binary: parseBinary
 };
 function parseJson(data) {
-  return JSON.parse(Buffer.from(data).toString("utf8"));
+  return JSON.parse(Buffer.from(data).toString("utf8") || "{}");
 }
 function parseText(data) {
   return Buffer.from(data).toString("utf8");
@@ -4438,7 +4482,7 @@ class APICall extends Component {
   constructor() {
     super();
     __publicField$R(this, "configSchema", Joi.object({
-      method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD").required().label("Method"),
+      method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS").required().label("Method"),
       url: Joi.string().max(8192).required().label("URL"),
       headers: Joi.string().allow("").label("Headers"),
       contentType: Joi.string().valid("none", "application/json", "multipart/form-data", "binary", "application/x-www-form-urlencoded", "text/plain", "application/xml").label("Content-Type"),
@@ -4475,8 +4519,9 @@ class APICall extends Component {
       const reqConfig = {};
       reqConfig.method = method;
       reqConfig.url = await parseUrl(input, config, agent);
-      reqConfig.data = await parseData(input, config, agent);
-      reqConfig.headers = await parseHeaders(input, config, agent);
+      const { data, headers } = await parseData(input, config, agent);
+      reqConfig.data = data;
+      reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
       reqConfig.proxy = await parseProxy(input, config, agent);
       let Response = {};
       let Headers = {};
@@ -4492,10 +4537,10 @@ class APICall extends Component {
         reqConfig.responseType = "arraybuffer";
         const response = await axios.request(reqConfig);
         Response = await parseArrayBufferResponse(response, agent);
-        Headers = response.headers;
+        Headers = Object.fromEntries(Object.entries(response.headers));
       } catch (error) {
         logger.debug(`Error making API call: ${error.message}`);
-        Headers = error?.response?.headers || {};
+        Headers = error?.response?.headers ? Object.fromEntries(Object.entries(error.response.headers)) : {};
         Response = await parseArrayBufferResponse(error.response, agent);
         _error = error.message;
       }
@@ -6030,7 +6075,7 @@ class LLMContext {
     this.push({ role: "assistant", content });
   }
   async getContextWindow(maxTokens, maxOutputTokens = 256) {
-    const maxModelContext = await this._llmHelper.TokenManager().getAllowedCompletionTokens(this._model, true);
+    const maxModelContext = await this._llmHelper.TokenManager().getAllowedContextTokens(this._model, true);
     let maxInputContext = Math.min(maxTokens, maxModelContext);
     if (maxInputContext + maxOutputTokens > maxModelContext) {
       maxInputContext -= maxInputContext + maxOutputTokens - maxModelContext;
@@ -6138,6 +6183,7 @@ class Conversation extends EventEmitter$1 {
     this._settings = _settings;
     __publicField$E(this, "_agentId", "");
     __publicField$E(this, "_systemPrompt");
+    __publicField$E(this, "userDefinedSystemPrompt", "");
     __publicField$E(this, "assistantName");
     __publicField$E(this, "_reqMethods");
     __publicField$E(this, "_toolsConfig");
@@ -6157,6 +6203,9 @@ class Conversation extends EventEmitter$1 {
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
+    if (_settings?.systemPrompt) {
+      this.userDefinedSystemPrompt = _settings.systemPrompt;
+    }
     if (_specSource) {
       this.loadSpecFromSource(_specSource).then((spec) => {
         if (!spec) {
@@ -6627,6 +6676,7 @@ class Conversation extends EventEmitter$1 {
       if (isUrl(specSource)) {
         const spec2 = await OpenAPIParser.getJsonFromUrl(specSource);
         if (spec2.info?.description) this.systemPrompt = spec2.info.description;
+        if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
         if (spec2.info?.title) this.assistantName = spec2.info.title;
         const defaultBaseUrl = new URL(specSource).origin;
         if (!spec2?.servers) spec2.servers = [{ url: defaultBaseUrl }];
@@ -6644,6 +6694,7 @@ ${this.systemPrompt}`;
       if (!agentData) return null;
       this._agentId = agentId;
       this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+      if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
       this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
       if (this.assistantName) {
         this.systemPrompt = `Assistant Name : ${this.assistantName}
@@ -6764,7 +6815,7 @@ class AgentPlugin extends Component {
           };
         }
       }
-      const conv = new Conversation(config?.data?.openAiModel, subAgentId);
+      const conv = new Conversation(config?.data?.openAiModel, subAgentId, { systemPrompt: descForModel });
       const result = await conv.prompt(prompt, {
         "X-AGENT-ID": subAgentId,
         "X-AGENT-VERSION": version,
@@ -8262,7 +8313,7 @@ class GPTPlugin extends Component {
       if (!prompt) {
         return { _error: "Please provide a prompt", _debug: logger.output };
       }
-      const conv = new Conversation(model, specUrl);
+      const conv = new Conversation(model, specUrl, { systemPrompt: descForModel });
       const result = await conv.prompt(prompt);
       logger.debug(`Response:
 `, result, "\n");
@@ -10308,7 +10359,7 @@ class LLMConnector extends Connector {
       configParams[key] = _value;
     }
     const llmProvider = this.llmHelper.ModelRegistry().getProvider(model);
-    for (const [configKey, paramKey] of Object.entries(paramMappings[llmProvider])) {
+    for (const [configKey, paramKey] of Object.entries(paramMappings?.[llmProvider] || {})) {
       if (configParams?.[configKey] !== void 0 || configParams?.[configKey] !== null || configParams?.[configKey] !== "") {
         const value = configParams[configKey];
         if (value !== void 0) {
@@ -12890,7 +12941,14 @@ class SmythAccount extends AccountConnector {
   async getAllTeamSettings(acRequest, teamId) {
     try {
       const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings`, { headers: await this.getSmythRequestHeaders() });
-      return response?.data?.settings;
+      if (response?.data?.settings?.length > 0) {
+        const settingsObject = {};
+        response?.data?.settings?.forEach((setting) => {
+          settingsObject[setting?.settingKey] = setting?.settingValue;
+        });
+        return settingsObject;
+      }
+      return null;
     } catch (error) {
       return null;
     }
@@ -12898,7 +12956,14 @@ class SmythAccount extends AccountConnector {
   async getAllUserSettings(acRequest, accountId) {
     try {
       const response = await this.smythAPI.get(`/v1/user/${accountId}/settings`, { headers: await this.getSmythRequestHeaders() });
-      return response?.data?.settings;
+      if (response?.data?.settings?.length > 0) {
+        const settingsObject = {};
+        response?.data?.settings?.forEach((setting) => {
+          settingsObject[setting?.settingKey] = setting?.settingValue;
+        });
+        return settingsObject;
+      }
+      return null;
     } catch (error) {
       return null;
     }
@@ -12906,7 +12971,7 @@ class SmythAccount extends AccountConnector {
   async getTeamSetting(acRequest, teamId, settingKey) {
     try {
       const response = await this.smythAPI.get(`/v1/teams/${teamId}/settings/${settingKey}`, { headers: await this.getSmythRequestHeaders() });
-      return response?.data?.setting?.settingValue;
+      return response?.data?.setting?.settingValue || null;
     } catch (error) {
       return null;
     }
@@ -12916,7 +12981,7 @@ class SmythAccount extends AccountConnector {
       const response = await this.smythAPI.get(`/v1/user/${accountId}/settings/${settingKey}`, {
         headers: await this.getSmythRequestHeaders()
       });
-      return response?.data?.setting;
+      return response?.data?.setting?.settingValue || null;
     } catch (error) {
       return null;
     }

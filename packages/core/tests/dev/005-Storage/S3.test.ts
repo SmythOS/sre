@@ -88,7 +88,7 @@ describe('S3 Storage Tests', () => {
         ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
         //initialize the custom account connector and force it to be default AccountConnector
-        ConnectorService.init(TConnectorService.Account, 'MyCustomAccountConnector', {}, true);
+        ConnectorService.init(TConnectorService.Account, 'MyCustomAccountConnector', null, {}, true);
 
         const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const legacyFile = 'teams/9/logs/closz0vak00009tsctm7e8xzs/2024-05-12/LLW3FLB08WIE';

@@ -12,9 +12,9 @@ export async function parseHeaders(input, config, agent: Agent) {
 
     //parse component template vars
     if (config.data._templateVars && templateSettings) {
-        headers = await TemplateString(headers)
-            .parseComponentTemplateVarsAsync(templateSettings) // replaces component template vars with their IDs (this turns the string parses into an async parser)
-            .parse(config.data._templateVars).asyncResult; // replaces IDs with actual values then returns parser promise
+        headers = await TemplateString(headers).parseComponentTemplateVarsAsync(templateSettings).asyncResult; // replaces component template vars with their IDs (this turns the string parses into an async parser) // replaces IDs with actual values then returns parser promise
+
+        headers = await TemplateString(headers).parse(config.data._templateVars).result;
     }
 
     //parse vault keys

@@ -81,7 +81,7 @@ export default class AgentPlugin extends Component {
                 }
             }
 
-            const conv = new Conversation(config?.data?.openAiModel, subAgentId);
+            const conv = new Conversation(config?.data?.openAiModel, subAgentId, { systemPrompt: descForModel });
 
             const result = await conv.prompt(prompt, {
                 'X-AGENT-ID': subAgentId,

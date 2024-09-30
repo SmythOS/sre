@@ -12,16 +12,16 @@ const isProduction = process.env.BUILD === 'prod';
 
 const projectRootDir = __dirname;
 const devConfig = {
-    input: 'src/index.ts',
+    input: 'distributions/AWS/index.ts',
     output: {
-        file: 'dist/index.dev.js',
+        file: 'distributions/AWS/dist/aws.dev.js',
         format: 'es',
         sourcemap: true,
     },
     plugins: [
         json(),
         typescriptPaths({
-            tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
+            tsconfig: '../tsconfig.json', // Ensure this points to your tsconfig file
             preserveExtensions: true,
             nonRelative: false,
         }),
@@ -32,28 +32,27 @@ const devConfig = {
         }),
 
         // typescript({
-        //     tsconfig: 'tsconfig.json',
+        //     tsconfig: './tsconfig.json',
         //     clean: true,
+        //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
+        //     exclude: ['node_modules'],
         // }),
         filenameReplacePlugin(),
         sourcemaps(),
-        copy({
-            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
-        }),
     ],
 };
 
 const prodConfig = {
-    input: 'src/index.ts',
+    input: 'distributions/AWS/index.ts',
     output: {
-        file: 'dist/index.js',
+        file: 'distributions/AWS/dist/aws.prod.js',
         format: 'es',
         sourcemap: true,
     },
     plugins: [
         json(),
         typescriptPaths({
-            tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
+            tsconfig: '../tsconfig.json', // Ensure this points to your tsconfig file
             preserveExtensions: true,
             nonRelative: false,
         }),
@@ -63,15 +62,14 @@ const prodConfig = {
             treeShaking: true,
         }),
         // typescript({
-        //     tsconfig: 'tsconfig.json',
+        //     tsconfig: './tsconfig.json',
         //     clean: true,
+        //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
+        //     exclude: ['node_modules'],
         // }),
         filenameReplacePlugin(),
         sourcemaps(),
         terser(),
-        copy({
-            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
-        }),
     ],
 };
 

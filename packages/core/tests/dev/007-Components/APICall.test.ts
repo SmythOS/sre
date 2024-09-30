@@ -1,40 +1,11 @@
+import axios from 'axios';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
 import Agent from '@sre/AgentManager/Agent.class';
-import HuggingFace from '@sre/Components/HuggingFace.class';
-import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
-import { delay } from '@sre/utils/date-time.utils';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import fs from 'fs';
-import util from 'util';
-import path from 'path';
-import Classifier from '@sre/Components/Classifier.class';
 import APICall from '@sre/Components/APICall/APICall.class';
 
 const sre = SmythRuntime.Instance.init({
-    Account: {
-        Connector: 'SmythAccount',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-        },
-    },
-    ManagedVault: {
-        Connector: 'SmythManagedVault',
-        Id: 'oauth',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-            vaultName: 'oauth',
-        },
-    },
     CLI: {
         Connector: 'CLI',
     },
@@ -62,10 +33,26 @@ const sre = SmythRuntime.Instance.init({
             prodDir: './tests/data/AgentData',
         },
     },
-    Vault: {
-        Connector: 'JSONFileVault',
+    Account: {
+        Connector: 'SmythAccount',
         Settings: {
-            file: './tests/data/vault.json',
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    },
+    Vault: {
+        Connector: 'SmythVault',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
 });
@@ -73,18 +60,1253 @@ const sre = SmythRuntime.Instance.init({
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'cm186sv0a0jrecgim4ysl6vtj',
+        id: 'cm1f646cw1x4xp7xuughsh4md',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
+        teamId: 'cloilcrl9001v9tkguilsu8dx',
     }));
     return { default: MockedAgent };
 });
 
+// @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
+const agent = new Agent();
+const apiCall = new APICall();
+
+const VAULT_KEY_TEMPLATE_VAR = '{{KEY(SRE TEST KEY)}}';
+const DUMMY_KEY = 'sdl7k8lsd93ko4iu39';
+
+const IMAGE_URL = 'https://app.smythos.dev/img/smythos-logo.png';
+
+describe('APICall Component - HTTP Methods', () => {
+    const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+    methods.forEach((method) => {
+        it(`handle ${method} method`, async () => {
+            const path = ['HEAD', 'OPTIONS'].includes(method) ? 'get' : method.toLowerCase();
+            const url = `https://httpbin.org/${path}`;
+
+            const config = {
+                data: {
+                    method,
+                    url,
+                    headers: '',
+                    contentType: 'none',
+                    oauthService: 'None',
+                    body: '',
+                },
+            };
+            const output = await apiCall.process({}, config, agent);
+            const headers = output.Headers;
+
+            expect(headers).toBeInstanceOf(Object);
+        });
+    });
+});
+
+describe('APICall Component - Headers', () => {
+    it('handle default headers', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: '{"User-Agent": "APICall-Test", "Accept": "application/json"}',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['User-Agent']).toEqual('APICall-Test');
+        expect(response.headers['Accept']).toEqual('application/json');
+    });
+
+    it('handle custom headers', async () => {
+        const authToken = 'Bearer token';
+        const contentType = 'application/json';
+
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{"Authorization": "${authToken}", "Content-Type": "${contentType}"}`,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toEqual(contentType);
+        expect(response.headers['Authorization']).toEqual(authToken);
+    });
+
+    it('should override contentType header', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: '{"Content-Type": "application/xml"}',
+                contentType: 'application/json',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toEqual('application/xml');
+    });
+
+    it('resolve input template variable in headers', async () => {
+        const userName = 'John Doe';
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{"Authorization": "Bearer {{key}}", X-User-Name: "{{userName}}"}`,
+                contentType: 'none',
+                oauthService: 'None',
+            },
+        };
+
+        const output = await apiCall.process({ key: DUMMY_KEY, userName }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
+        expect(response.headers['X-User-Name']).toEqual(userName);
+    });
+
+    it('resolve component template variable in headers', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{"Authorization": "Bearer {{VARVAULTINPUT:Authentication Key:[""]}}"}`,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': DUMMY_KEY,
+                },
+            },
+
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'Authentication Key',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
+    });
+
+    it('resolve vault key in headers', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{"Authorization": "Bearer ${VAULT_KEY_TEMPLATE_VAR}`,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
+    });
+
+    it('resolve multiple variable types in headers', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/headers',
+                headers: `{
+                    "Authorization": "Bearer ${VAULT_KEY_TEMPLATE_VAR}",
+                    "X-User-Name": "{{name}}",
+                    "X-Api-Key": '{{VARVAULTINPUT:Authentication Key:[""]}}'
+                }`,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': DUMMY_KEY,
+                },
+            },
+
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'Authentication Key',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+
+        const name = 'John Doe';
+
+        const output = await apiCall.process({ name }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toEqual(`Bearer ${DUMMY_KEY}`);
+        expect(response.headers['X-User-Name']).toEqual(name);
+        expect(response.headers['X-Api-Key']).toEqual(DUMMY_KEY);
+    });
+});
+
+describe('APICall Component - URL Formats', () => {
+    const url = 'https://httpbin.org/get?a=hello%20world&b=robot';
+
+    it('handle URL with query parameters', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.args.a).toEqual('hello world');
+        expect(response.args.b).toEqual('robot');
+    });
+
+    it('handle URL with array query parameters', async () => {
+        const url = 'https://httpbin.org/get?ids[]=1&ids[]=2&ids[]=3';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.args['ids[]']).toEqual(['1', '2', '3']);
+        expect(response.url).toEqual(url);
+    });
+
+    it('handle URL with object query parameters', async () => {
+        const url = 'https://httpbin.org/get?filter[name]=John&filter[age]=30';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(url);
+        expect(response.args['filter[age]']).toEqual('30');
+        expect(response.args['filter[name]']).toEqual('John');
+    });
+
+    it('handle URL with multiple occurrences of the same parameter', async () => {
+        const url = 'https://httpbin.org/get?color=red&color=blue&color=green';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(url);
+        expect(response.args.color).toEqual(['red', 'blue', 'green']);
+    });
+
+    it('handle URL with nested object parameters', async () => {
+        const url = 'https://httpbin.org/get?user[name][first]=John&user[name][last]=Doe&user[age]=30';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(url);
+        expect(response.args['user[name][first]']).toEqual('John');
+        expect(response.args['user[name][last]']).toEqual('Doe');
+        expect(response.args['user[age]']).toEqual('30');
+    });
+
+    it('handle URL with empty parameter values', async () => {
+        const url = 'https://httpbin.org/get?empty=&null=&undefined=';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(url);
+        expect(response.args.empty).toEqual('');
+        expect(response.args.null).toEqual('');
+        expect(response.args.undefined).toEqual('');
+    });
+
+    it('handle URL with encoded spaces and plus signs', async () => {
+        const url = 'https://httpbin.org/get?message=hello%20world&operation=1+1';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.args.message).toEqual('hello world');
+        expect(response.args.operation).toEqual('1 1');
+    });
+
+    //#region test cases with symbols and special characters
+    // * Note: Following commented test cases in includes characters that that could be used in very rare cases, we will check later
+    /* it('handle URL with all types of raw characters and symbols', async () => {
+        const allChars = `!@$%^*()_+-={}[]|\:;"'<>,.?/~\`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&`; // we should keep # and & in the end of the string for it's special meaning in URL
+        const url = `https://httpbin.org/get?all=${allChars}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        // The expected arguments and URL encoding differs between browsers and Postman, We're expecting the Postman version.
+        const expectedChars = `!@$%^*()_ -={}[]|\\:;\"'<>,.?/~\`\u2211\u03c0\u0394\u221e\u2260\u2264\u2265\u00b1\u00d7\u00f7\u221a\u222b\u2202$\u20ac\u00a3\u00a5\u20b9\u20bd\u20a9\u20aa\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00fc\u00e7\u00e3\u00f5\u00e2\u00ea\u00ee\u00f4\u00fb\u00e4\u00eb\u00ef\u00f6\u00fc\ud83d\ude00\ud83c\udf0d\ud83d\ude80\ud83c\udf89\ud83c\udf55\ud83d\udc31\u200d\ud83d\udc64\u00a9\u00ae\u2122\u2665\u2660\u2663\u2666\u2622\u2623\u262e\u262fHello, \u4e16\u754c! \u00bfC\u00f3mo est\u00e1s? 123   456 = 579 \u00a9\ufe0f \ud83c\udf08`;
+        const expectedUrl = `https://httpbin.org/get?all=!%40$%^*()_+-={}[]|\\:%3B\"'<>,.%3F%2F~\`\u2211\u03c0\u0394\u221e\u2260\u2264\u2265\u00b1\u00d7\u00f7\u221a\u222b\u2202$\u20ac\u00a3\u00a5\u20b9\u20bd\u20a9\u20aa\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00fc\u00e7\u00e3\u00f5\u00e2\u00ea\u00ee\u00f4\u00fb\u00e4\u00eb\u00ef\u00f6\u00fc\ud83d\ude00\ud83c\udf0d\ud83d\ude80\ud83c\udf89\ud83c\udf55\ud83d\udc31\u200d\ud83d\udc64\u00a9\u00ae\u2122\u2665\u2660\u2663\u2666\u2622\u2623\u262e\u262fHello, \u4e16\u754c! \u00bfC\u00f3mo est\u00e1s%3F 123 + 456 = 579 \u00a9\ufe0f \ud83c\udf08`;
+
+        expect(response.args.all).toEqual(expectedChars);
+        expect(response.url).toEqual(expectedUrl);
+    });
+
+    it('handle URL with all types of encoded characters and symbols', async () => {
+        const allChars =
+            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&'; // we should keep # and & in the end of the string for it's special meaning in URL
+        const url = `https://httpbin.org/get?all=${encodeURIComponent(allChars)}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+            
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        const expectedChars =
+            '!@$%^*()_+-={}[]|\\:;"\'<>,.?/~`∑πΔ∞≠≤≥±×÷√∫∂$€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello, 世界! ¿Cómo estás? 123 + 456 = 579 ©️ 🌈#&';
+        const expectedUrl =
+            'https://httpbin.org/get?all=!%40%24%25^*()_%2B-%3D{}[]|\\%3A%3B"\'<>%2C.%3F%2F~`∑πΔ∞≠≤≥±×÷√∫∂%24€£¥₹₽₩₪áéíóúñüçãõâêîôûäëïöü😀🌍🚀🎉🍕🐱‍👤©®™♥♠♣♦☢☣☮☯Hello%2C 世界! ¿Cómo estás%3F 123 %2B 456 %3D 579 ©️ 🌈%23%26';
+
+        expect(response.args.all).toEqual(expectedChars);
+        expect(response.url).toEqual(expectedUrl);
+    }); */
+    //#endregion test cases with symbols and special characters
+
+    it('handle URL with common symbols and special characters', async () => {
+        const specialChars = "!@$'()*+,;=-._~:/?[]#&";
+        const url = `https://httpbin.org/get?special=${specialChars}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        const expectedSpecialChars = "!@$'()* ,;=-._~:/?[]";
+        const expectedUrl = "https://httpbin.org/get?special=!%40$'()*+,%3B=-._~:%2F%3F[]";
+
+        expect(response.args.special).toEqual(expectedSpecialChars);
+        expect(response.url).toEqual(expectedUrl);
+    });
+
+    it('handle URL with encoded common symbols and special characters', async () => {
+        const specialChars = "!@$'()*,;=-._~:/?[]";
+        const url = `https://httpbin.org/get?special=${encodeURIComponent(specialChars)}`;
+
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        const expectedSpecialChars = "!@$'()*,;=-._~:/?[]";
+
+        expect(response.args.special).toEqual(expectedSpecialChars);
+
+        // TODO: We have difference in returned URL and expected URL for some of the special characters. Need to check it later.
+        // response.url is "https://httpbin.org/get?special=!%40$'()*,%3B=-._~:%2F%3F[]";
+        // const expectedUrl = "https://httpbin.org/get?special=!%40%24'()*%2C%3B%3D-._~%3A%2F%3F[]"; // According to Postman
+
+        // expect(response.url).toEqual(expectedUrl);
+    });
+
+    // TODO: Need to write dedicated test for encoded symbols `#&+`, although they have special meaning in the URL, still it should work we provide encoded version of those symbols
+
+    // Fully encoded URL like "https%3A%2F%2Fhttpbin.org%2Fget" is not working in Postman and Browser, but we support it as we decodeURIComponent in parseUrl
+    it('handle fully encoded URL', async () => {
+        const url = 'https://httpbin.org/get';
+        const encodedUrl = encodeURIComponent(url);
+        const config = {
+            data: {
+                method: 'GET',
+                url: encodedUrl,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(url);
+    });
+
+    it('handle URL with fragment identifier', async () => {
+        const fragment = '#section1';
+        const urlWithoutFragment = `https://httpbin.org/get?param=value`;
+        const url = `${urlWithoutFragment}${fragment}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.url).toEqual(urlWithoutFragment);
+        expect(response.args.param).toEqual('value');
+    });
+
+    it('handle URL with basic auth credentials', async () => {
+        const url = 'https://user:pass@httpbin.org/basic-auth/user/pass';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.authenticated).toEqual(true);
+        expect(response.user).toEqual('user');
+    });
+
+    it('handle wrong URL', async () => {
+        const url = 'https://httpbin.org/wrong-url';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+
+        expect(output._error).toBeDefined();
+        expect(output._error).toContain('404');
+    });
+
+    it('resolve input template variable in URL', async () => {
+        const user = 'John Doe';
+        const url = 'https://httpbin.org/get?user={{user}}';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({ user }, config, agent);
+        const response = output.Response;
+
+        expect(response.args.user).toEqual(user);
+        expect(response.url).toEqual(`https://httpbin.org/get?user=${user}`);
+    });
+
+    it('resolve component template variable in URL', async () => {
+        const url = 'https://httpbin.org/get?key={{VARVAULTINPUT:Authentication Key:[""]}}';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': DUMMY_KEY,
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'Authentication Key',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.args.key).toEqual(DUMMY_KEY);
+        expect(response.url).toEqual(`https://httpbin.org/get?key=${DUMMY_KEY}`);
+    });
+
+    it('resolve vault key in URL', async () => {
+        const url = `https://httpbin.org/get?key=${VAULT_KEY_TEMPLATE_VAR}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.args.key).toEqual(DUMMY_KEY);
+        expect(response.url).toEqual(`https://httpbin.org/get?key=${DUMMY_KEY}`);
+    });
+
+    it('resolve multiple variable types in URL', async () => {
+        const url = `https://httpbin.org/get?user={{user}}&key={{VARVAULTINPUT:Authentication Key:[""]}}&secret=${VAULT_KEY_TEMPLATE_VAR}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': DUMMY_KEY,
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'Authentication Key',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+        const user = 'John Doe';
+        const output = await apiCall.process({ user }, config, agent);
+        const response = output.Response;
+
+        expect(response.args.user).toEqual(user);
+        expect(response.args.key).toEqual(DUMMY_KEY);
+        expect(response.args.secret).toEqual(DUMMY_KEY);
+    });
+});
+
+describe('APICall Component - Content Types', () => {
+    const contentTypes = ['none', 'application/json', 'multipart/form-data', 'binary', 'application/x-www-form-urlencoded', 'text/plain'];
+    contentTypes.forEach((contentType) => {
+        it(`handle ${contentType} content type`, async () => {
+            const config = {
+                data: {
+                    method: 'GET',
+                    url: 'https://httpbin.org/get',
+                    headers: '',
+                    contentType,
+                    oauthService: 'None',
+                },
+            };
+            const output = await apiCall.process({}, config, agent);
+            const response = output.Response;
+
+            const expectedContentType = contentType === 'none' ? undefined : contentType;
+            expect(response.headers['Content-Type']).toEqual(expectedContentType);
+        });
+    });
+});
+
+describe('APICall Component - Body', () => {
+    it('handle application/json content type', async () => {
+        const body = { name: 'John Doe', age: 30 };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: JSON.stringify(body),
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(body);
+    });
+
+    it('handle application/x-www-form-urlencoded content type', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/x-www-form-urlencoded',
+                body: 'name=John+Doe&age=30',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/x-www-form-urlencoded');
+        expect(response.form).toEqual({ name: 'John Doe', age: '30' });
+    });
+
+    it('handle text/plain content type', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'text/plain',
+                body: 'Hello, world!',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('text/plain');
+        expect(response.data).toEqual('Hello, world!');
+    });
+
+    const fetchFileInfoAndContent = async (fileUrl: string): Promise<{ mimetype: string; size: number; buffer: Buffer | null }> => {
+        if (!fileUrl) return { mimetype: '', size: 0, buffer: null };
+
+        try {
+            const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+            const data = response.data || '';
+            const buffer = Buffer.from(data, 'binary');
+            const size = buffer.byteLength;
+
+            return { mimetype: response.headers['content-type'], size, buffer };
+        } catch (error: any) {
+            return { mimetype: '', size: 0, buffer: null };
+        }
+    };
+
+    it('handle multipart/form-data with base64 input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'image',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, buffer } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        // Convert buffer to base64 URL
+        const base64Data = buffer ? buffer.toString('base64') : '';
+        const base64Url = `data:${mimetype};base64,${base64Data}`;
+
+        const output = await apiCall.process({ image: base64Url }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle multipart/form-data with SmythFile object input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                image: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle multipart/form-data with SmythFile object input as Binary type', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'image',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                image: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handle binary content type with base64 input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'binary',
+                body: '{{file}}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'file',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, size, buffer } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        // Convert buffer to base64 URL
+        const base64Data = buffer ? buffer.toString('base64') : '';
+        const base64Url = `data:${mimetype};base64,${base64Data}`;
+
+        const output = await apiCall.process({ file: base64Url }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
+        // for some reason httpbin returns data as application/octet-stream
+        expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
+    });
+
+    it('handle binary with SmythFile object', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'binary',
+                body: '{{file}}',
+                oauthService: 'None',
+            },
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                file: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
+        // for some reason httpbin returns data as application/octet-stream
+        expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
+    });
+
+    it('handle binary with SmythFile object as binary input', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'binary',
+                body: '{{file}}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'file',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const { mimetype, size } = await fetchFileInfoAndContent(IMAGE_URL);
+
+        const output = await apiCall.process(
+            {
+                file: {
+                    mimetype,
+                    size,
+                    url: IMAGE_URL,
+                },
+            },
+            config,
+            agent
+        );
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(mimetype);
+        expect(response.headers['Content-Length']).toEqual(size.toString());
+        // for some reason httpbin returns data as application/octet-stream
+        expect(response.data).toMatch(/^data:application\/octet-stream;base64,/);
+    });
+
+    it('handle empty body', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toEqual('application/x-www-form-urlencoded');
+        expect(response.data).toEqual('');
+        expect(response.headers['Content-Length']).toEqual('0');
+    });
+
+    it('handle application/xml content type', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/xml',
+                body: '<root><name>John Doe</name><age>30</age></root>',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/xml');
+        expect(response.data).toContain('<root><name>John Doe</name><age>30</age></root>');
+    });
+
+    // TODO [Forhad]: Need to make it work
+    it('resolve input template variable in body', async () => {
+        const body = { name: 'John Doe', age: 30 };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{{body}}',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({ body: JSON.stringify(body) }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(body);
+    });
+
+    it('resolve input template variable inside body properties', async () => {
+        const name = 'John Doe';
+        const age = 30;
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{name: "{{name}}", age: {{age}}}',
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({ name, age }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual({ name, age });
+    });
+
+    it('resolve component template variable in body', async () => {
+        const userData = { name: 'John Doe', age: 30 };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{{VARVAULTINPUT:User Data:[""]}}',
+                oauthService: 'None',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(userData),
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'User Data',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual(userData);
+    });
+
+    it('resolve vault key in body', async () => {
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: `{"key": ${VAULT_KEY_TEMPLATE_VAR}}`,
+                oauthService: 'None',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json.key).toEqual(DUMMY_KEY);
+    });
+
+    it('resolve multiple variable types in Body', async () => {
+        const userName = 'John Doe';
+        const userData = { name: userName, age: 30 };
+
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: `{"name": "{{name}}", "userData": {{VARVAULTINPUT:User Data:[""]}}, "key": ${VAULT_KEY_TEMPLATE_VAR}}`,
+                oauthService: 'None',
+                _templateVars: {
+                    'VARVAULTINPUT-LTH3E8AB028': JSON.stringify(userData),
+                },
+            },
+            template: {
+                settings: {
+                    'VARVAULTINPUT-LTH3E8AB028': {
+                        id: 'VARVAULTINPUT-LTH3E8AB028',
+                        type: 'INPUT',
+                        label: 'User Data',
+                        value: '',
+                        options: [''],
+                        attributes: {
+                            'data-template-vars': 'true',
+                            'data-vault': 'APICall,ALL',
+                        },
+                        _templateEntry: true,
+                    },
+                },
+            },
+        };
+
+        const output = await apiCall.process({ name: userName }, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toContain('application/json');
+        expect(response.json).toEqual({
+            name: userName,
+            userData: userData,
+            key: DUMMY_KEY,
+        });
+    });
+});
+
+describe('APICall Component - OAuth', () => {
+    it('handle OAuth1 authentication', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/get',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                oauthService: 'OAuth1',
+                consumerKey: 'consumerKey',
+                consumerSecret: 'consumerSecret',
+                token: 'token',
+                tokenSecret: 'tokenSecret',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+
+        expect(output).toBeDefined();
+    });
+
+    it('handle OAuth2 authentication', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/get',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                oauthService: 'OAuth2',
+                clientID: 'clientID',
+                clientSecret: 'clientSecret',
+                tokenURL: 'https://oauth2.example.com/token',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        expect(output).toBeDefined();
+    });
+});
+
+describe('APICall Component - Proxy', () => {
+    it('handle proxy settings', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://httpbin.org/get',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                proxy: 'http://proxy.example.com:8080',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        expect(output).toBeDefined();
+    });
+});
+
+describe('APICall Component - Error Handling', () => {
+    it('handle network errors', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'https://invalid.url',
+                headers: '',
+                contentType: 'none',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        expect(output._error).toBeDefined();
+    });
+
+    it('handle invalid URL errors', async () => {
+        const config = {
+            data: {
+                method: 'GET',
+                url: 'invalid-url',
+                headers: '',
+                contentType: 'none',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        expect(output._error).toBeDefined();
+    });
+});
+
 describe('APICall Component', () => {
     it('Parses url passed as input variable', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        const apiCall = new APICall();
-
         const inputs = {
             url: "https://www.example.com/test?a=hello world&b=I'm%20a+robot&token=123456=hmac~dldmlkdmslk",
         };
@@ -187,10 +1409,6 @@ describe('APICall Component', () => {
     });
 
     it('handle binary data in the body', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        const apiCall = new APICall();
-
         const inputs = {
             image: 'https://smythos.com/wp-content/uploads/2024/07/smythos-500px.png',
             mime: 'image/png',
@@ -262,10 +1480,6 @@ describe('APICall Component', () => {
     });
 
     it('handles application/json body', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        const apiCall = new APICall();
-
         const inputs = {
             id: '123456',
             mime: 'image/png',
@@ -337,10 +1551,6 @@ describe('APICall Component', () => {
     });
 
     it('handles array query parameters ', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        const apiCall = new APICall();
-
         const inputs = {
             id: '123456',
             mime: 'image/png',
@@ -412,10 +1622,6 @@ describe('APICall Component', () => {
     });
     ///
     it('Parses template variables', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        const apiCall = new APICall();
-
         const output = await apiCall.process(
             {
                 Input: { url: 'https://www.example.com/test?a=b' },

@@ -14,7 +14,7 @@ import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHe
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
-        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD').required().label('Method'),
+        method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').required().label('Method'),
         url: Joi.string()
             .max(8192) /*.custom(isUrlValid, 'URL validation')*/
             .required()
@@ -64,9 +64,11 @@ export default class APICall extends Component {
 
             reqConfig.url = await parseUrl(input, config, agent);
 
-            reqConfig.data = await parseData(input, config, agent);
+            const { data, headers } = await parseData(input, config, agent);
 
-            reqConfig.headers = await parseHeaders(input, config, agent);
+            reqConfig.data = data;
+
+            reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
 
             reqConfig.proxy = await parseProxy(input, config, agent);
 
@@ -89,10 +91,10 @@ export default class APICall extends Component {
                 const response = await axios.request(reqConfig);
 
                 Response = await parseArrayBufferResponse(response, agent);
-                Headers = response.headers;
+                Headers = Object.fromEntries(Object.entries(response.headers));
             } catch (error) {
                 logger.debug(`Error making API call: ${error.message}`);
-                Headers = error?.response?.headers || {};
+                Headers = error?.response?.headers ? Object.fromEntries(Object.entries(error.response.headers)) : {};
                 Response = await parseArrayBufferResponse(error.response, agent);
                 _error = error.message;
             }

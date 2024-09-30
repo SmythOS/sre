@@ -47,7 +47,7 @@ describe('GPTPlugin Component', () => {
                 method: 'POST',
                 path: '/api/test-gpt-plugin',
                 body: {
-                    Input: 'Best selling Books',
+                    Input: 'Monitors',
                 },
             });
 
@@ -99,7 +99,7 @@ describe('GPTPlugin Component', () => {
                 method: 'POST',
                 path: '/api/test-gpt-plugin',
                 body: {
-                    Input: 'Best selling Books',
+                    Input: 'Monitors',
                 },
             });
 
@@ -121,10 +121,10 @@ describe('GPTPlugin Component', () => {
             const agentProcess = AgentProcess.load(data);
 
             const testCases = [
-                { Input: 'Simple string query' },
-                { Input: JSON.stringify({ complex: 'object', with: ['array', 'elements'] }) },
-                { Input: '42' },
-                { Input: 'true' },
+                { Input: 'LED Monitors' },
+                { Input: JSON.stringify({ complex: 'Monitors', with: ['Energy Saving', 'Eye protector'] }) },
+                { Input: 42 },
+                { Input: true },
             ];
 
             for (let testCase of testCases) {

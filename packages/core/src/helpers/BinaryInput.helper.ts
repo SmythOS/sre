@@ -210,6 +210,11 @@ export class BinaryInput {
         return data;
     }
 
+    public async getName() {
+        await this.ready();
+        return this._name;
+    }
+
     public async getBuffer() {
         await this.ready();
 

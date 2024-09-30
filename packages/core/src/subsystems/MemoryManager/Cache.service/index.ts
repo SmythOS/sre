@@ -2,7 +2,6 @@
 export * from './CacheConnector';
 import { ConnectorServiceProvider, ConnectorService } from '@sre/Core/ConnectorsService';
 import { TConnectorService } from '@sre/types/SRE.types';
-import { ICacheConnector } from './CacheConnector';
 import { RedisCache } from './connectors/RedisCache.class';
 
 export class CacheService extends ConnectorServiceProvider {

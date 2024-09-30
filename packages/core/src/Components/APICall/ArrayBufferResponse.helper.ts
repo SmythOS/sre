@@ -12,7 +12,7 @@ const contentHandlers = {
 };
 
 function parseJson(data) {
-    return JSON.parse(Buffer.from(data).toString('utf8'));
+    return JSON.parse(Buffer.from(data).toString('utf8') || '{}');
 }
 
 function parseText(data) {
