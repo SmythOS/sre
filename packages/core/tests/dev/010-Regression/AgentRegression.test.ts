@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it, beforeAll } from 'vitest';
 import express from 'express';
-
 import config from '@sre/config';
 import { AgentProcess, ConnectorService, Conversation, SmythRuntime } from '@sre/index';
 import http, { Server } from 'http';
@@ -67,6 +66,48 @@ if (!SREInstance.ready()) {
 
 let agentFiles = fsSync.readdirSync('./tests/data/RegressionAgents');
 
+// Preload and prepare all data
+type PreparedAgentData = {
+    agentFile: string;
+    agentProcess: AgentProcess;
+    systemPrompt: string;
+    endpointPaths: string[];
+};
+
+const prepareAgentData = async (agentFile: string): Promise<PreparedAgentData> => {
+    try {
+        console.log(`Loading agent file: ${agentFile}`);
+        const agentData = await fs.readFile(`./tests/data/RegressionAgents/${agentFile}`, 'utf-8');
+        const data = JSON.parse(agentData);
+        const agentProcess = await AgentProcess.load(data);
+
+        if (!agentProcess || !agentProcess.agent || !agentProcess.agent.data) {
+            throw new Error('Invalid agent data structure');
+        }
+
+        const systemPrompt = agentProcess.agent.data.behavior || agentProcess.agent.data.shortDescription || agentProcess.agent.data.description;
+
+        if (!Array.isArray(agentProcess.agent.data.components)) {
+            throw new Error('AgentProcess.agent.data.components is not an array');
+        }
+
+        const endpointPaths = agentProcess.agent.data.components
+            .filter((c) => c && c.name === 'APIEndpoint')
+            .map((c) => c.data && c.data.endpoint)
+            .filter(Boolean);
+
+        console.log(`Endpoint paths for ${agentFile}:`, endpointPaths);
+
+        return { agentFile, agentProcess, systemPrompt, endpointPaths };
+    } catch (error) {
+        console.error(`Error loading agent ${agentFile}:`, error);
+        throw error;
+    }
+};
+
+let preparedAgents: PreparedAgentData[];
+preparedAgents = await Promise.all(agentFiles.map(prepareAgentData)); // Preload all agent data
+
 describe('Agent Regression Tests', () => {
     beforeAll(async () => {
         const listen = promisify(server.listen.bind(server));
@@ -80,41 +121,29 @@ describe('Agent Regression Tests', () => {
         console.log('Server has been shut down');
     });
 
-    it.each(agentFiles)('should run agent file %s', async (agentFile) => {
-        const agentData = await fs.readFile(`./tests/data/RegressionAgents/${agentFile}`, 'utf-8');
-        const data = JSON.parse(agentData);
-        const agentId = data.id;
-        const agentProcess = await AgentProcess.load(data);
-        console.log();
+    describe.each(preparedAgents)('Agent File: $agentFile', ({ agentFile, agentProcess, systemPrompt, endpointPaths }) => {
+        it('should have valid endpoint paths', () => {
+            expect(Array.isArray(endpointPaths)).toBe(true);
+            expect(endpointPaths.length).toBeGreaterThan(0);
+        });
 
-        let systemPrompt = agentProcess.agent.data.behavior || agentProcess.agent.data.shortDescription;
-        if (!systemPrompt) systemPrompt = agentProcess.agent.data.description; //data.description is deprecated, we just use it as a fallback for now
+        it.each(endpointPaths)('should correctly handle endpoint: %s', async (path) => {
+            const sampleInput = agentProcess.agent.data.components.find((c) => c.title === `${path}:input`)?.data?.description;
+            const expectedOutput = agentProcess.agent.data.components.find((c) => c.title === `${path}:output`)?.data?.description;
 
-        const endpointPaths = agentProcess.agent.data.components.filter((c) => c.name === 'APIEndpoint').map((c) => c.data.endpoint);
-
-        const evaluatorAgent = await fs.readFile('./tests/data/regression-tests-evalator.smyth', 'utf-8');
-        const evaluatorAgentData = JSON.parse(evaluatorAgent);
-
-        for (const path of endpointPaths) {
-            //* get the Note components that hold the special names "test:input" and "test:output"
-
-            const sampleInput = agentProcess.agent.data.components.find((c) => c.title === `${path}:input`).data.description;
-            const expectedOutput = agentProcess.agent.data.components.find((c) => c.title === `${path}:output`).data.description;
-            console.log(sampleInput, expectedOutput);
-            if (!sampleInput) {
-                console.log(`No sample input for ${path}`);
-                continue;
+            if (!sampleInput || !expectedOutput) {
+                console.log(`Skipping test for ${path} due to missing input or output`);
+                return;
             }
-            if (!expectedOutput) {
-                console.log(`No expected output for ${path}`);
-                continue;
-            }
-            // const openapi = await ConnectorService.getAgentDataConnector().getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true);
-            const conv = new Conversation('gpt-4o-mini', agentId, { systemPrompt });
+
+            const conv = new Conversation('gpt-4o-mini', agentProcess.agent.data.id, { systemPrompt });
 
             const result = await conv.prompt(`call the endpoint ${path} with the following input: ${sampleInput}`, {
-                'X-AGENT-ID': data.id,
+                'X-AGENT-ID': agentProcess.agent.data.id,
             });
+
+            const evaluatorAgent = await fs.readFile('./tests/data/regression-tests-evalator.smyth', 'utf-8');
+            const evaluatorAgentData = JSON.parse(evaluatorAgent);
 
             const evaluatorResult = await AgentProcess.load(evaluatorAgentData).run({
                 method: 'POST',
@@ -126,10 +155,6 @@ describe('Agent Regression Tests', () => {
             });
 
             expect(evaluatorResult?.data?.result?.valid).toEqual('true');
-        }
-
-        /*
-       
-        */
+        });
     });
 });
