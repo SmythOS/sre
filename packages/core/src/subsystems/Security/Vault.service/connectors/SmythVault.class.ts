@@ -40,16 +40,23 @@ export class SmythVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
-        const vaultSecretByIdResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
-        if (vaultSecretByIdResponse?.data?.secret?.value) {
-            return vaultSecretByIdResponse?.data?.secret?.value;
-        } else {
-            const vaultSecretByNameResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
-            if (vaultSecretByNameResponse?.data?.secret?.value) {
-                return vaultSecretByNameResponse?.data?.secret?.value;
-            }
+        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+        let key = vaultResponse?.data?.secret?.value || null;
+
+        if (!key) {
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
+
+            key = vaultResponse?.data?.secret?.value || null;
         }
-        return null;
+
+        // Ensure backward compatibility: In SaaS the key was stored under 'claude';
+        if (!key && keyId === 'anthropicai') {
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/claude`, { headers: vaultAPIHeaders });
+
+            return vaultResponse?.data?.secret?.value;
+        }
+
+        return key || null;
     }
 
     @SecureConnector.AccessControl
