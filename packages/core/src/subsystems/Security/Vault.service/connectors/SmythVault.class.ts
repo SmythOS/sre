@@ -40,8 +40,16 @@ export class SmythVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
-        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
-        return vaultResponse?.data?.secret?.value;
+        const vaultSecretByIdResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+        if (vaultSecretByIdResponse?.data?.secret?.value) {
+            return vaultSecretByIdResponse?.data?.secret?.value;
+        } else {
+            const vaultSecretByNameResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
+            if (vaultSecretByNameResponse?.data?.secret?.value) {
+                return vaultSecretByNameResponse?.data?.secret?.value;
+            }
+        }
+        return null;
     }
 
     @SecureConnector.AccessControl
