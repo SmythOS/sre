@@ -1,3 +1,8 @@
+// AB
+// npm run build:aws:prod
+// node distributions/AWS/dist/aws.prod.js --port=9090 --agent=/Users/anthonybudd/Development/SmythOS/vault-test.smyth --vault=/Users/anthonybudd/Development/SmythOS/vault.json
+
+
 import 'dotenv/config';
 import createMemoryStore from 'memorystore';
 import session from 'express-session';
@@ -47,6 +52,12 @@ SmythRuntime.Instance.init({
     Vault,
     AgentData: {
         Connector: 'CLI',
+    },
+    Account: {
+        Connector: 'DummyAccount',
+        Settings: {
+
+        },
     },
 });
 
