@@ -138,23 +138,25 @@ describe('Agent Regression Tests', () => {
 
             const conv = new Conversation('gpt-4o-mini', agentProcess.agent.data.id, { systemPrompt });
 
-            const result = await conv.prompt(`call the endpoint ${path} with the following input: ${sampleInput}`, {
+            const result = await conv.prompt(`call the endpoint ${path} with the following input: ${sampleInput}.`, {
                 'X-AGENT-ID': agentProcess.agent.data.id,
             });
 
             const evaluatorAgent = await fs.readFile('./tests/data/regression-tests-evalator.smyth', 'utf-8');
             const evaluatorAgentData = JSON.parse(evaluatorAgent);
 
+            console.log(`Recieved: ${JSON.stringify(result)}. \n Expected: ${expectedOutput}`);
+
             const evaluatorResult = await AgentProcess.load(evaluatorAgentData).run({
                 method: 'POST',
                 path: '/api/test',
                 body: {
-                    data: result,
+                    data: JSON.stringify(result),
                     expectations: expectedOutput,
                 },
             });
 
-            expect(evaluatorResult?.data?.result?.valid).toEqual('true');
+            expect(evaluatorResult?.data?.result?.valid, `Evaluator result for ${path} is not valid`).toEqual('true');
         });
     });
 });
