@@ -55,6 +55,19 @@ const sre = SmythRuntime.Instance.init({
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+    ManagedVault: {
+        Connector: 'SmythManagedVault',
+        Id: 'oauth',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            vaultName: 'oauth',
+        },
+    },
 });
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -1219,60 +1232,111 @@ describe('APICall Component - Body', () => {
 });
 
 describe('APICall Component - OAuth', () => {
-    it('handle OAuth1 authentication', async () => {
-        const config = {
-            data: {
-                method: 'GET',
-                url: 'https://httpbin.org/get',
-                headers: '',
-                contentType: 'none',
-                body: '',
-                oauthService: 'OAuth1',
-                consumerKey: 'consumerKey',
-                consumerSecret: 'consumerSecret',
-                token: 'token',
-                tokenSecret: 'tokenSecret',
-            },
-        };
-        const output = await apiCall.process({}, config, agent);
-
-        expect(output).toBeDefined();
-    });
-
     it('handle OAuth2 authentication', async () => {
         const config = {
+            id: 'M1LWWLNL1V',
+            name: 'APICall',
+            title: 'OAuth2 with Google',
             data: {
-                method: 'GET',
-                url: 'https://httpbin.org/get',
+                method: 'POST',
+                url: 'https://httpbin.org/post',
                 headers: '',
                 contentType: 'none',
                 body: '',
-                oauthService: 'OAuth2',
-                clientID: 'clientID',
-                clientSecret: 'clientSecret',
-                tokenURL: 'https://oauth2.example.com/token',
+                proxy: '',
+                oauthService: 'Google',
+                scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
+                tokenURL: 'https://oauth2.googleapis.com/token',
+                clientID: '{{KEY(Google Client ID)}}',
+                clientSecret: '{{KEY(Google Client Secret)}}',
+                requestTokenURL: '',
+                accessTokenURL: '',
+                userAuthorizationURL: '',
+                consumerKey: '',
+                consumerSecret: '',
+                authenticate: '',
             },
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
+        const response = output.Response;
+
+        expect(response.headers['Authorization']).toMatch(/^Bearer .{200,}$/);
+    });
+
+    it('handle OAuth1 authentication', async () => {
+        const config = {
+            id: 'CM1LXC1LAZV9',
+            name: 'APICall',
+            title: 'OAuth1 with X',
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'none',
+                body: '',
+                proxy: '',
+                oauthService: 'Twitter',
+                scope: '',
+                authorizationURL: '',
+                tokenURL: '',
+                clientID: '',
+                clientSecret: '',
+                requestTokenURL: 'https://api.twitter.com/oauth/request_token',
+                accessTokenURL: 'https://api.twitter.com/oauth/access_token',
+                userAuthorizationURL: 'https://api.twitter.com/oauth/authorize',
+                consumerKey: '{{KEY(X Consumer Key)}}',
+                consumerSecret: '{{KEY(X Consumer Secret)}}',
+                authenticate: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+        expect(response.headers['Authorization']).toMatch(
+            /OAuth oauth_consumer_key="[^"]+", oauth_nonce="[^"]+", oauth_signature="[^"]+", oauth_signature_method="HMAC-SHA1", oauth_timestamp="[^"]+", oauth_token="[^"]+", oauth_version="1.0"/
+        );
     });
 });
 
 describe('APICall Component - Proxy', () => {
-    it('handle proxy settings', async () => {
-        const config = {
-            data: {
-                method: 'GET',
-                url: 'https://httpbin.org/get',
-                headers: '',
-                contentType: 'none',
-                body: '',
-                proxy: 'http://proxy.example.com:8080',
-            },
-        };
-        const output = await apiCall.process({}, config, agent);
-        expect(output).toBeDefined();
-    });
+    const proxyHost = '207.244.217.165';
+
+    function handleProxy(scheme: string, proxyUrl: string) {
+        it(`handle proxy settings with ${scheme} protocol`, async () => {
+            const config = {
+                data: {
+                    method: 'GET',
+                    url: 'http://httpbin.org/get',
+                    headers: '',
+                    contentType: 'none',
+                    body: '',
+                    proxy: proxyUrl,
+                    oauthService: 'None',
+                },
+            };
+            const output = await apiCall.process({}, config, agent);
+            const response = output.Response;
+            const headers = output.Headers;
+
+            expect(headers['access-control-allow-credentials']).toEqual('true');
+            expect(response.origin).toEqual(proxyHost);
+        });
+    }
+
+    const proxyUser = '{{KEY(WEBSHARE PROXY USERNAME)}}';
+    const proxyPass = '{{KEY(WEBSHARE PROXY PASSWORD)}}';
+    const proxyPort = 6712;
+
+    const proxyUrls = {
+        http: `http://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
+        socks: `socks://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
+        socks4: `socks4://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
+        socks5: `socks5://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
+    };
+
+    for (const [scheme, proxyUrl] of Object.entries(proxyUrls)) {
+        handleProxy(scheme, proxyUrl);
+    }
 });
 
 describe('APICall Component - Error Handling', () => {
@@ -1284,10 +1348,11 @@ describe('APICall Component - Error Handling', () => {
                 headers: '',
                 contentType: 'none',
                 body: '',
+                oauthService: 'None',
             },
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output._error).toBeDefined();
+        expect(output._error).toContain('ENOTFOUND');
     });
 
     it('handle invalid URL errors', async () => {
@@ -1301,442 +1366,6 @@ describe('APICall Component - Error Handling', () => {
             },
         };
         const output = await apiCall.process({}, config, agent);
-        expect(output._error).toBeDefined();
-    });
-});
-
-describe('APICall Component', () => {
-    it('Parses url passed as input variable', async () => {
-        const inputs = {
-            url: "https://www.example.com/test?a=hello world&b=I'm%20a+robot&token=123456=hmac~dldmlkdmslk",
-        };
-        const output = await apiCall.process(
-            inputs,
-            {
-                data: {
-                    method: 'GET',
-                    url: '{{url}}',
-                    headers: '',
-                    contentType: 'none',
-                    body: '',
-                    proxy: '',
-                    oauthService: 'None',
-                    scope: '',
-                    authorizationURL: '',
-                    tokenURL: '',
-                    clientID: '',
-                    clientSecret: '',
-                    requestTokenURL: '',
-                    accessTokenURL: '',
-                    userAuthorizationURL: '',
-                    consumerKey: '',
-                    consumerSecret: '',
-                    authenticate: '',
-                },
-                outputs: [
-                    {
-                        name: 'Response',
-                        index: 0,
-                        default: true,
-                    },
-                    {
-                        name: 'Headers',
-                        index: 1,
-                        default: true,
-                    },
-                    {
-                        name: '_error',
-                        index: 2,
-                        default: false,
-                    },
-                ],
-            },
-            agent
-        );
-
-        expect(output).toBeDefined();
-    });
-
-    it('Handles OAuth tokens', async () => {
-        // @ts-ignore
-        const agent = new Agent();
-        agent.id = 'cm186sv0a0jrecgim4ysl6vtj';
-        agent.teamId = '9';
-        const apiCall = new APICall();
-
-        const inputs = {};
-        const output = await apiCall.process(
-            inputs,
-            {
-                id: 'CM1AJB22RBOI', //required to retrieve oauth tokens
-                data: {
-                    method: 'POST',
-                    url: 'https://www.example.com/test',
-                    headers: '{  "Authorization": "Bearer sqlkjsdqlmsdqkjlsdkjsdqlkjsdqlkjsqdlksdj"}',
-                    contentType: 'none',
-                    body: '',
-                    proxy: '',
-                    oauthService: 'Google',
-                    authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
-                    clientID: '{{KEY(Google_Gmail_Client_ID)}}',
-                    clientSecret: '{{KEY(Google_Gmail_ClientSecret)}}',
-                    scope: 'https://www.googleapis.com/auth/gmail.readonly',
-                    tokenURL: 'https://oauth2.googleapis.com/token',
-                    requestTokenURL: '',
-                    accessTokenURL: '',
-                    userAuthorizationURL: '',
-                    consumerKey: '',
-                    consumerSecret: '',
-                    authenticate: '',
-                },
-                outputs: [
-                    {
-                        name: 'Response',
-                        index: 0,
-                        default: true,
-                    },
-                    {
-                        name: 'Headers',
-                        index: 1,
-                        default: true,
-                    },
-                ],
-            },
-            agent
-        );
-
-        expect(output).toBeDefined();
-    });
-
-    it('handle binary data in the body', async () => {
-        const inputs = {
-            image: 'https://smythos.com/wp-content/uploads/2024/07/smythos-500px.png',
-            mime: 'image/png',
-        };
-
-        const config = {
-            id: 'M0ZNCIZU09I',
-            name: 'APICall',
-            outputs: [
-                {
-                    name: 'Response',
-                    index: 0,
-                    default: true,
-                },
-                {
-                    name: 'Headers',
-                    index: 1,
-                    default: true,
-                },
-                {
-                    name: '_error',
-                    index: 2,
-                    default: false,
-                },
-            ],
-            inputs: [
-                {
-                    name: 'image',
-                    type: 'Binary',
-                    optional: false,
-                    index: 0,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-                {
-                    name: 'mime',
-                    type: 'String',
-                    optional: false,
-                    index: 1,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-            ],
-            data: {
-                method: 'POST',
-                url: 'https://www.example.com',
-                headers: '{\n  "Content-Type": "{{mime}}"\n}',
-                contentType: 'binary',
-                body: '{{image}}',
-                proxy: '',
-                oauthService: 'None',
-                scope: '',
-                authorizationURL: '',
-                tokenURL: '',
-                clientID: '',
-                clientSecret: '',
-                requestTokenURL: '',
-                accessTokenURL: '',
-                userAuthorizationURL: '',
-                consumerKey: '',
-                consumerSecret: '',
-                authenticate: '',
-            },
-        };
-
-        const output = await apiCall.process(inputs, config, agent);
-
-        expect(output).toBeDefined();
-    });
-
-    it('handles application/json body', async () => {
-        const inputs = {
-            id: '123456',
-            mime: 'image/png',
-        };
-
-        const config = {
-            id: 'M0ZNCIZU09I',
-            name: 'APICall',
-            outputs: [
-                {
-                    name: 'Response',
-                    index: 0,
-                    default: true,
-                },
-                {
-                    name: 'Headers',
-                    index: 1,
-                    default: true,
-                },
-                {
-                    name: '_error',
-                    index: 2,
-                    default: false,
-                },
-            ],
-            inputs: [
-                {
-                    name: 'id',
-                    type: 'String',
-                    optional: false,
-                    index: 0,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-                {
-                    name: 'mime',
-                    type: 'String',
-                    optional: false,
-                    index: 1,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-            ],
-            data: {
-                method: 'POST',
-                url: 'https://www.example.com',
-                headers: '{\n  "Content-Type": "{{mime}}", "Authorization": "Bearer 123456789654231"\n}',
-                contentType: 'application/json',
-                body: '{\n    "id":{{id}},\n    "name":"image",\n    \'data\':\'hello world\'\n}',
-                proxy: '',
-                oauthService: 'None',
-                scope: '',
-                authorizationURL: '',
-                tokenURL: '',
-                clientID: '',
-                clientSecret: '',
-                requestTokenURL: '',
-                accessTokenURL: '',
-                userAuthorizationURL: '',
-                consumerKey: '',
-                consumerSecret: '',
-                authenticate: '',
-            },
-        };
-
-        const output = await apiCall.process(inputs, config, agent);
-
-        expect(output).toBeDefined();
-    });
-
-    it('handles array query parameters ', async () => {
-        const inputs = {
-            id: '123456',
-            mime: 'image/png',
-        };
-
-        const config = {
-            id: 'M0ZNCIZU09I',
-            name: 'APICall',
-            outputs: [
-                {
-                    name: 'Response',
-                    index: 0,
-                    default: true,
-                },
-                {
-                    name: 'Headers',
-                    index: 1,
-                    default: true,
-                },
-                {
-                    name: '_error',
-                    index: 2,
-                    default: false,
-                },
-            ],
-            inputs: [
-                {
-                    name: 'id',
-                    type: 'String',
-                    optional: false,
-                    index: 0,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-                {
-                    name: 'mime',
-                    type: 'String',
-                    optional: false,
-                    index: 1,
-                    default: false,
-                    prev: ['CM0ZNJXEQI1'],
-                },
-            ],
-            data: {
-                method: 'GET',
-                url: 'https://www.example.com/',
-                headers: '',
-                contentType: 'application/json',
-                body: '',
-                proxy: '',
-                oauthService: 'None',
-                scope: '',
-                authorizationURL: '',
-                tokenURL: '',
-                clientID: '',
-                clientSecret: '',
-                requestTokenURL: '',
-                accessTokenURL: '',
-                userAuthorizationURL: '',
-                consumerKey: '',
-                consumerSecret: '',
-                authenticate: '',
-            },
-        };
-
-        const output = await apiCall.process(inputs, config, agent);
-
-        expect(output).toBeDefined();
-    });
-    ///
-    it('Parses template variables', async () => {
-        const output = await apiCall.process(
-            {
-                Input: { url: 'https://www.example.com/test?a=b' },
-            },
-            {
-                data: {
-                    method: 'GET',
-                    url: 'https://api.github.com/repos/{{repo_owner}}/{{repo_name}}/issues/{{issue_number}}/labels',
-                    headers:
-                        '{\n  "Authorization": "Bearer {{VARVAULTINPUT:Access Token:[\\"\\"]}}",\n  "Accept": "application/vnd.github+json",\n  "X-GitHub-Api-Version": "2022-11-28"\n}',
-                    contentType: 'none',
-                    body: '',
-                    proxy: '',
-                    oauthService: 'None',
-                    scope: '',
-                    authorizationURL: '',
-                    tokenURL: '',
-                    clientID: '',
-                    clientSecret: '',
-                    requestTokenURL: '',
-                    accessTokenURL: '',
-                    userAuthorizationURL: '',
-                    consumerKey: '',
-                    consumerSecret: '',
-                    _templateVars: {
-                        'VARVAULTINPUT-LT8VG9P4U8': '{{KEY(KIWICOM_API_KEY)}}',
-                    },
-                },
-                template: {
-                    name: 'Github - Get Issue Labels',
-                    componentName: 'APICall',
-                    description: 'Get labels for an issue',
-                    settings: {
-                        'VARVAULTINPUT-LT8VG9P4U8': {
-                            id: 'VARVAULTINPUT-LT8VG9P4U8',
-                            type: 'INPUT',
-                            label: 'Access Token',
-                            value: '',
-                            options: [''],
-                            attributes: {
-                                'data-template-vars': 'true',
-                                'data-vault': 'APICall,ALL',
-                            },
-                            _templateEntry: true,
-                        },
-                    },
-                    data: {
-                        method: 'GET',
-                        url: 'https://api.github.com/repos/{{repo_owner}}/{{repo_name}}/issues/{{issue_number}}/labels',
-                        headers:
-                            '{\n  "Authorization": "Bearer {{VARVAULTINPUT:Access Token:[\\"\\"]}}",\n  "Accept": "application/vnd.github+json",\n  "X-GitHub-Api-Version": "2022-11-28"\n}',
-                        contentType: 'none',
-                        body: '',
-                        proxy: '',
-                        _templateVars: {},
-                    },
-                    inputs: [
-                        {
-                            name: 'repo_owner',
-                            color: '#F35063',
-                            optional: false,
-                            isFile: false,
-                            default: false,
-                        },
-                        {
-                            name: 'repo_name',
-                            color: '#F35063',
-                            optional: false,
-                            isFile: false,
-                            default: false,
-                        },
-                        {
-                            name: 'issue_number',
-                            color: '#F35063',
-                            optional: false,
-                            isFile: false,
-                            default: false,
-                        },
-                    ],
-                    outputs: [],
-                    templateInfo: {
-                        name: 'Github - Get Issue Labels',
-                        description: 'Get labels for an issue',
-                        icon: '',
-                        color: '#000000',
-                        docPath: '',
-                        ytLink: '',
-                        collection: 'custarjway0002nlnwaked4d01',
-                        version: '1.0.0',
-                        published: true,
-                        includedSettings: [],
-                        id: 'clt684fi57tsve9je5gz05zm3',
-                    },
-                },
-                outputs: [
-                    {
-                        name: 'Response',
-                        index: 0,
-                        default: true,
-                    },
-                    {
-                        name: 'Headers',
-                        index: 1,
-                        default: true,
-                    },
-                    {
-                        name: '_error',
-                        index: 2,
-                        default: false,
-                    },
-                ],
-            },
-            agent
-        );
-
-        expect(output).toBeDefined();
+        expect(output._error).toContain('Invalid URL');
     });
 });

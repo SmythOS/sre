@@ -27,7 +27,7 @@ async function parseBinary(data, contentType, agentId) {
 }
 
 export async function parseArrayBufferResponse(response: AxiosResponse, agent: Agent): Promise<any> {
-    if (!response.data) {
+    if (!response?.data) {
         return null;
     }
     const data = response.data;
