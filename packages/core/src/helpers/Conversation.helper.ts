@@ -420,7 +420,8 @@ export class Conversation extends EventEmitter {
 
                 this._context.push(...messagesWithToolResult);
 
-                const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+
                 //console.log('Result after tool call: ', result);
             });
 
