@@ -53,7 +53,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
     public name = 'AgentDataConnector';
     public abstract getAgentData(agentId: string, version?: string): Promise<any>;
     public abstract getAgentIdByDomain(domain: string): Promise<string>;
-    public abstract getAgentSettings(agentId: string, version?: string): Promise<any>;
+    public abstract getAgentSettings(agentId: string, version?: string): Promise<{ [key: string]: any }>;
     public abstract isDeployed(agentId: string): Promise<boolean>;
 
     /**
