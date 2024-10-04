@@ -88,7 +88,8 @@ describe('DataSourceIndexer Component', () => {
         // index some data using the connector
         const namespace = faker.lorem.word();
         const vectorDBHelper = VectorsHelper.load();
-        await vectorDBHelper.createNamespace(agent.teamId, namespace);
+        const vectorDbConnector = ConnectorService.getVectorDBConnector();
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -113,7 +114,7 @@ describe('DataSourceIndexer Component', () => {
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
 
-        const vectors = await vectorDBHelper.search('default', namespace, 'Paris');
+        const vectors = await vectorDbConnector.user(AccessCandidate.team('default')).search(namespace, 'Paris');
 
         expect(vectors).toBeDefined();
         expect(vectors.length).toBeGreaterThan(0);
@@ -123,7 +124,9 @@ describe('DataSourceIndexer Component', () => {
 
         // make sure that the datasource was created
 
-        const ds = await vectorDBHelper.getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+        const ds = await vectorDbConnector
+            .user(AccessCandidate.team(agent.teamId))
+            .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
         expect(ds).toBeDefined();
     });
@@ -138,8 +141,10 @@ describe('DataSourceIndexer Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
-        const vectorDBHelper = await VectorsHelper.forTeam(agent.teamId); // load an instance that can access the custom storage (if it exists)
-        await vectorDBHelper.createNamespace(agent.teamId, namespace);
+        // const vectorDBHelper = await VectorsHelper.forTeam(agent.teamId); // load an instance that can access the custom storage (if it exists)
+        const vectorDBHelper = VectorsHelper.load();
+        const vectorDbConnector = await vectorDBHelper.getTeamConnector(agent.teamId);
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -166,17 +171,22 @@ describe('DataSourceIndexer Component', () => {
 
         // make sure that the datasource was created
 
-        const ds = await vectorDBHelper.getDatasource(agent.teamId, namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
+        const ds = await vectorDbConnector
+            .user(AccessCandidate.team(agent.teamId))
+            .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
         expect(ds).toBeDefined();
 
-        const vectors = await vectorDBHelper.search(agent.teamId, namespace, 'Paris');
+        const vectors = await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
         expect(vectors).toBeDefined();
         expect(vectors.length).toBeGreaterThan(0);
         expect(vectors.some((result) => result.metadata?.text.includes('Paris'))).toBeTruthy();
 
-        const globalStorageHelper = VectorsHelper.load();
+        const globalVectorDbConnector = ConnectorService.getVectorDBConnector();
         //* expect an error because we tried to access a namespace that exists on custom storage
-        const globalVectors = await globalStorageHelper.search(agent.teamId, namespace, 'Paris').catch((e) => []);
+        const globalVectors = await globalVectorDbConnector
+            .user(AccessCandidate.team(agent.teamId))
+            .search(namespace, 'Paris')
+            .catch((e) => []);
         expect(globalVectors).toBeDefined();
         expect(globalVectors.length).toBe(0);
     });

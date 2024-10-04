@@ -11,6 +11,7 @@ export type PineconeConfig = {
     pineconeApiKey: string;
     openaiApiKey: string;
     indexName: string;
+    isCustomStorageInstance?: boolean;
 };
 
 export interface NsKnownMetadata {
@@ -69,4 +70,13 @@ export interface IStorageVectorNamespace {
 export type StorageVectorNamespaceMetadata = Partial<PineconeNamespaceMetadata> & { [key: string]: any };
 export interface PineconeNamespaceMetadata {
     indexName: string;
+}
+
+export interface DatasourceDto {
+    text: string;
+    metadata?: Record<string, string>;
+    chunkSize?: number;
+    chunkOverlap?: number;
+    label?: string;
+    id?: string;
 }

@@ -60,15 +60,17 @@ export default class DataSourceLookup extends Component {
         const topK = Math.max(config.data.topK, 50);
 
         let vectorDBHelper = VectorsHelper.load();
+        let vectorDbConnector = ConnectorService.getVectorDBConnector();
         const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespace);
         if (isOnCustomStorage) {
-            vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+            // vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+            vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId);
         }
 
         let results: string[] | { content: string; metadata: any }[];
         let _error;
         try {
-            const response = await vectorDBHelper.search(teamId, namespace, _input, { topK, includeMetadata: true });
+            const response = await vectorDbConnector.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
             results = response.slice(0, config.data.topK).map((result) => ({
                 content: result.metadata?.text,
                 metadata: result.metadata,

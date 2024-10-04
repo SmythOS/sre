@@ -46,7 +46,8 @@ export default class DataSourceIndexer extends Component {
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
 
             const vectorDBHelper = VectorsHelper.load();
-            const nsExists = await vectorDBHelper.namespaceExists(teamId, namespaceId);
+            const vectorDbConnector = ConnectorService.getVectorDBConnector();
+            const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
 
             if (!nsExists) {
                 throw new Error(`Namespace ${namespaceId} does not exist`);
@@ -152,12 +153,13 @@ export default class DataSourceIndexer extends Component {
 
     private async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
         let vectorDBHelper = VectorsHelper.load();
+        let vectorDbConnector = ConnectorService.getVectorDBConnector();
         const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
         if (isOnCustomStorage) {
-            vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
+            vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId);
         }
-        const id = await vectorDBHelper.createDatasource(text, namespaceId, {
-            teamId,
+        const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
+            text,
             metadata,
             id: sourceId,
             label: name,

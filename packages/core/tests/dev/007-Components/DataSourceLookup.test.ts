@@ -87,12 +87,14 @@ describe('DataSourceLookup Component', () => {
         // index some data using the connector
         const namespace = faker.lorem.word();
         const vectorDBHelper = VectorsHelper.load();
-        await vectorDBHelper.createNamespace(agent.teamId, namespace);
+        const vectorDbConnector = ConnectorService.getVectorDBConnector();
+
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDBHelper.createDatasource(sourceText.join(' '), namespace, {
-            teamId: 'default',
+        await vectorDbConnector.user(AccessCandidate.team('default')).createDatasource(namespace, {
+            text: sourceText.join(' '),
             chunkSize: 1000,
             chunkOverlap: 0,
             metadata: {
@@ -144,19 +146,29 @@ describe('DataSourceLookup Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
-        const vectorDB = ConnectorService.getVectorDBConnector();
-        await VectorsHelper.load().createNamespace(agent.teamId, namespace);
+        const vectorDBHelper = VectorsHelper.load();
+        const vectorDbConnector = ConnectorService.getVectorDBConnector();
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDB.user(AccessCandidate.team(agent.teamId)).insert(namespace, {
+        // await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).insert(namespace, {
+        //     id,
+        //     source: Array.from({ length: 1536 }, () => Math.floor(Math.random() * 100)),
+        //     metadata: {
+        //         user: VectorsHelper.stringifyMetadata({
+        //             text: 'Paris',
+        //             meta2: 'meta2',
+        //         }),
+        //     },
+        // });
+        const text = 'Any matching text';
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createDatasource(namespace, {
             id,
-            source: Array.from({ length: 1536 }, () => Math.floor(Math.random() * 100)),
+            text,
             metadata: {
-                user: VectorsHelper.stringifyMetadata({
-                    text: 'Paris',
-                    meta2: 'meta2',
-                }),
+                text: 'Paris',
+                meta2: 'meta2',
             },
         });
 
@@ -206,13 +218,15 @@ describe('DataSourceLookup Component', () => {
         const lookupComp = new DataSourceLookup();
 
         const namespace = faker.lorem.word();
-        const vectorDbHelper = await VectorsHelper.forTeam(agent.teamId);
-        await vectorDbHelper.createNamespace(agent.teamId, namespace);
+        // const vectorDbHelper = await VectorsHelper.forTeam(agent.teamId);
+        const vectorDBHelper = VectorsHelper.load();
+        const vectorDbConnector = await vectorDBHelper.getTeamConnector(agent.teamId);
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDbHelper.createDatasource(sourceText.join(' '), namespace, {
-            teamId: 'default',
+        await vectorDbConnector.user(AccessCandidate.team('default')).createDatasource(namespace, {
+            text: sourceText.join(' '),
             chunkSize: 1000,
             chunkOverlap: 0,
             metadata: {
