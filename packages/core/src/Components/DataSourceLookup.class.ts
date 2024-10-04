@@ -49,7 +49,7 @@ export default class DataSourceLookup extends Component {
             outputs[con.name] = '';
         }
 
-        const namespace = config.data.namespace;
+        const namespace = config.data.namespace.split('_')[1] || config.data.namespace;
         const model = config.data.model;
         const prompt = config.data.prompt?.trim?.() || '';
         const postprocess = config.data.postprocess;

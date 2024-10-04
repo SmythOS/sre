@@ -43,7 +43,7 @@ export default class DataSourceCleaner extends Component {
                 throw new Error(`Input validation error: ${inputSchema.error}\n EXITING...`);
             }
 
-            const namespaceId = configSchema.value.namespaceId;
+            const namespaceId = configSchema.value.namespaceId.split('_')?.[1] || configSchema.value.namespaceId;
             let vectorDBHelper = VectorsHelper.load();
             let vectorDbConnector = ConnectorService.getVectorDBConnector();
 

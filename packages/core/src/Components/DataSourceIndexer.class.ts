@@ -42,7 +42,7 @@ export default class DataSourceIndexer extends Component {
                 outputs[con.name] = con?.description ? `<${con?.description}>` : '';
             }
 
-            const namespaceId = _config.namespace;
+            const namespaceId = _config.namespace.split('_')[1] || _config.namespace;
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
 
             const vectorDBHelper = VectorsHelper.load();
