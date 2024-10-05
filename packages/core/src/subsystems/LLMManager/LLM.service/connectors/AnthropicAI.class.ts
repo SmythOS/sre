@@ -398,38 +398,41 @@ export class AnthropicAIConnector extends LLMConnector {
     private getConsistentMessages(messages) {
         let _messages = [...messages];
 
-        _messages = _messages
-            .map((message) => {
-                let content;
+        _messages = _messages.map((message) => {
+            let content;
 
-                if (message?.parts) {
-                    content = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
-                } else if (Array.isArray(message?.content)) {
-                    if (Array.isArray(message.content)) {
-                        const toolBlocks = message.content.filter(
-                            (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
-                        );
+            if (message?.parts) {
+                content = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
+                if (Array.isArray(message.content)) {
+                    const toolBlocks = message.content.filter(
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
+                    );
 
-                        if (toolBlocks?.length > 0) {
-                            content = message.content;
-                        } else {
-                            content = message.content
-                                .map((block) => block?.text || '')
-                                .join(' ')
-                                .trim();
-                        }
+                    if (toolBlocks?.length > 0) {
+                        content = message.content.map((item) => {
+                            if (item.type === 'text' && (!item.text || item.text.trim() === '')) {
+                                return { ...item, text: '...' }; // empty text causes error that's why we added '...'
+                            }
+                            return item;
+                        });
                     } else {
-                        content = message.content;
+                        content = message.content
+                            .map((block) => block?.text || '')
+                            .join(' ')
+                            .trim();
                     }
-                } else if (message?.content) {
-                    content = message.content as string;
+                } else {
+                    content = message.content;
                 }
+            } else if (message?.content) {
+                content = message.content as string;
+            }
 
-                message.content = content || '[No content provided]'; // empty content causes error that's why we added '[No content provided]'
+            message.content = content || '...'; // empty content causes error that's why we added '...'
 
-                return message;
-            })
-            .filter((message) => message?.content);
+            return message;
+        });
 
         //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
         if (_messages[0]?.role === TLLMMessageRole.User && Array.isArray(_messages[0].content)) {
