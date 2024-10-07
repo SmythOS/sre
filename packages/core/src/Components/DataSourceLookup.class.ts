@@ -42,6 +42,7 @@ export default class DataSourceLookup extends Component {
         const componentId = config.id;
         const component = agent.components[componentId];
         const teamId = agent.teamId;
+        let debugOutput = agent.agentRuntime?.debug ? '== Data Source Lookup Log ==\n' : null;
 
         const outputs = {};
         for (let con of config.outputs) {
@@ -60,11 +61,17 @@ export default class DataSourceLookup extends Component {
         const topK = Math.max(config.data.topK, 50);
 
         let vectorDBHelper = VectorsHelper.load();
-        let vectorDbConnector = ConnectorService.getVectorDBConnector();
-        const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespace);
-        if (isOnCustomStorage) {
-            // vectorDBHelper = await VectorsHelper.forTeam(teamId); // load an instance that can access the custom storage
-            vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId);
+
+        const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+        let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+
+        let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
+        if (!existingNs) {
+            await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespace);
+            debugOutput += `[Created namespace] \n${namespace}\n\n`;
+        } else if (!existingNs.metadata.isOnCustomStorage) {
+            // If the namespace exists but is not on custom storage, switch to the default connector.
+            vectorDbConnector = ConnectorService.getVectorDBConnector();
         }
 
         let results: string[] | { content: string; metadata: any }[];
@@ -87,6 +94,7 @@ export default class DataSourceLookup extends Component {
             } else {
                 results = results.map((result) => result.content);
             }
+            debugOutput += `[Results] \nLoaded ${results.length} results from namespace: ${namespace}\n\n`;
         } catch (error) {
             _error = error.toString();
         }
@@ -112,10 +120,11 @@ export default class DataSourceLookup extends Component {
         }
 
         const totalLength = JSON.stringify(results).length;
+        debugOutput += `[Total Length] \n${totalLength}\n\n`;
         return {
             Results: results,
             _error,
-            _debug: `totalLength = ${totalLength}`,
+            _debug: debugOutput,
             //_debug: `Query: ${_input}. \nTotal Length = ${totalLength} \nResults: ${JSON.stringify(results)}`,
         };
     }

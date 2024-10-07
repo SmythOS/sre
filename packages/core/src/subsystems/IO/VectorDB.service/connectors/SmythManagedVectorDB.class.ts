@@ -215,12 +215,12 @@ export class SmythManagedVectorDB extends VectorDBConnector {
                 })
                 .catch((e: AxiosError) => {
                     if (e.response.status === 404) {
-                        return null; // not found
+                        return undefined; // not found
                     }
                     throw e;
                 });
             const namespaceRecord = res.data?.namespace;
-            if (!namespaceRecord) throw new Error('Namespace not found');
+            if (!namespaceRecord) return undefined;
             return {
                 displayName: namespaceRecord.name,
                 teamId,

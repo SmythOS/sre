@@ -133,6 +133,49 @@ describe('DataSourceLookup Component', () => {
         expect(error).toBeUndefined();
     });
 
+    it('run a similarity search for non-existing namespace (implicitly creates it)', async () => {
+        let error;
+        const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
+        const data = JSON.parse(agentData);
+        const date = new Date();
+
+        const agent = new Agent(10, data, new AgentSettings(10));
+        agent.teamId = 'default';
+
+        const lookupComp = new DataSourceLookup();
+
+        // index some data using the connector
+        const namespace = faker.lorem.word();
+
+        const sourceText = ['What is the capital of France?', 'Paris'];
+
+        const output = await lookupComp.process(
+            {
+                Query: sourceText[0],
+            },
+            {
+                data: {
+                    namespace,
+                    postprocess: false,
+                    prompt: '',
+                    includeMetadata: false,
+                    topK: 10,
+                },
+                outputs: [],
+            },
+            agent
+        );
+
+        const results = output.Results;
+
+        expect(results).toBeDefined();
+        expect(results.length).toBe(0);
+
+        expect(output._error).toBeUndefined();
+
+        expect(error).toBeUndefined();
+    });
+
     it('include metadata', async () => {
         let error;
         const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');

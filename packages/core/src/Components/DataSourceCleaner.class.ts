@@ -45,16 +45,17 @@ export default class DataSourceCleaner extends Component {
 
             const namespaceId = configSchema.value.namespaceId.split('_')?.[1] || configSchema.value.namespaceId;
             let vectorDBHelper = VectorsHelper.load();
-            let vectorDbConnector = ConnectorService.getVectorDBConnector();
 
-            const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
-            if (isOnCustomStorage) {
-                vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId);
-            }
+            const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+            let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
 
-            const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
-            if (!nsExists) {
-                throw new Error(`Namespace ${namespaceId} does not exist`);
+            let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
+            if (!existingnamespace) {
+                await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+                debugOutput += `[Created namespace] \n${namespaceId}\n\n`;
+            } else if (!existingnamespace.metadata.isOnCustomStorage) {
+                // If the namespace exists but is not on custom storage, switch to the default connector.
+                vectorDbConnector = ConnectorService.getVectorDBConnector();
             }
 
             const providedId = TemplateString(config.data.id).parse(input).result;
