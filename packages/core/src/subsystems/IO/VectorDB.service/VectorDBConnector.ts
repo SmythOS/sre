@@ -21,7 +21,7 @@ export interface IVectorDBRequest {
     // insert(namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
     // delete(namespace: string, id: string | string[]): Promise<void>;
 
-    createDatasource(namespace: string, datasource: DatasourceDto): Promise<{id: string; vectorIds: string[]}>;
+    createDatasource(namespace: string, datasource: DatasourceDto): Promise<{ id: string; vectorIds: string[] }>;
     deleteDatasource(namespace: string, datasourceId: string): Promise<void>;
     listDatasources(namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]>;
     getDatasource(namespace: string, datasourceId: string): Promise<IStorageVectorDataSource>;
@@ -85,7 +85,11 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void>;
 
-    protected abstract createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<{id: string; vectorIds: string[]}>;
+    protected abstract createDatasource(
+        acRequest: AccessRequest,
+        namespace: string,
+        datasource: DatasourceDto
+    ): Promise<{ id: string; vectorIds: string[] }>;
 
     protected abstract deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void>;
 
@@ -102,22 +106,23 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void>;
 
-    protected abstract listNamespaces(acRequest: AccessRequest): Promise<any[]>;
+    protected abstract listNamespaces(acRequest: AccessRequest): Promise<IStorageVectorNamespace[]>;
 
     protected abstract namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean>;
 
     protected abstract getNamespace(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorNamespace>;
 
-    public static constructNsName(name: string, teamId: string) {
-        return `${teamId}::${name}`;
+    public static constructNsName(teamId: string, name: string) {
+        const joinedName = name.trim().replace(/\s/g, '_').toLowerCase();
+        return `${teamId}_${joinedName}`;
     }
 
     public static parseNsName(nsName: string) {
-        const parts = nsName.split('::');
-        if (parts.length != 2) return null;
+        const parts = nsName.split('_');
+        if (parts.length < 2) return null;
         return {
             teamId: parts[0],
-            name: parts[1],
+            name: parts.slice(1).join('_'),
         };
     }
 }

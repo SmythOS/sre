@@ -253,7 +253,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         datasource: DatasourceDto
     ): Promise<{ id: string; vectorIds: string[] }> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         const chunkedText = await VectorsHelper.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
@@ -298,7 +298,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
         // await SmythFS.Instance.delete(url, AccessCandidate.team(teamId));
         let ds: IStorageVectorDataSource = JSONContentHelper.create(
@@ -328,7 +328,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
             (ds) => {
                 return {
@@ -342,7 +342,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         return JSONContentHelper.create(
             (
                 await this.nkvConnector
@@ -352,19 +352,19 @@ export class PineconeVectorDB extends VectorDBConnector {
         ).tryParse() as IStorageVectorDataSource;
     }
 
-    private async setACL(acRequest: AccessRequest, namespace: string, acl: IACL): Promise<void> {
+    private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
         await this.redisCache
             .user(AccessCandidate.clone(acRequest.candidate))
-            .set(`vectorDB:pinecone:namespace:${namespace}:acl`, JSON.stringify(acl));
+            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
-    private async getACL(ac: AccessCandidate, namespace: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${namespace}:acl`);
+    private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
+        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
 
-    private async deleteACL(ac: AccessCandidate, namespace: string): Promise<void> {
-        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${namespace}:acl`);
+    private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
+        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 }
