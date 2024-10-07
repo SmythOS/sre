@@ -42,7 +42,7 @@ export class JSONContentHelper {
 
     private extractJsonFromString(str) {
         try {
-            const regex = /(\{.*\})/s;
+            const regex = /(\{.*\}|\[.*\])/s;
 
             const match = str.match(regex);
 
