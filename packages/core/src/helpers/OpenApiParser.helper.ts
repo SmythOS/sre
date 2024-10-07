@@ -4,11 +4,12 @@ import yaml from 'js-yaml';
 import { REQUEST_METHODS } from '../constants';
 
 // * We need a couple of packages to resolve references in the OpenAPI specification
-import SwaggerParser from '@apidevtools/swagger-parser';
-import $RefParser from '@apidevtools/json-schema-ref-parser';
+//FIXME : YAML support temporarly disabled to allow executable packaging
+//import SwaggerParser from '@apidevtools/swagger-parser';
+//import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { JSONSchema } from '@apidevtools/json-schema-ref-parser/dist/lib/types';
 
-const swaggerParser = new SwaggerParser();
+//const swaggerParser = new SwaggerParser();
 
 export class OpenAPIParser {
     static mapReqMethods(paths: Array<Record<string, any>>): Map<string, any> {
@@ -49,7 +50,9 @@ export class OpenAPIParser {
 
     static async yamlToJson(yamlData: string): Promise<JSONSchema> {
         const data = yaml.load(yamlData);
-        const schema = await $RefParser.dereference(data);
+        //FIXME : YAML support temporarly disabled to allow executable packaging
+        //const schema = await $RefParser.dereference(data);
+        const schema: any = {};
 
         return schema;
     }
@@ -59,7 +62,9 @@ export class OpenAPIParser {
             if (typeof data === 'string') {
                 _data = JSON.parse(_data as string);
             }
-            const result = swaggerParser.dereference(_data as any);
+            //FIXME : YAML support temporarly disabled to allow executable packaging
+            //const result = swaggerParser.dereference(_data as any);
+            const result: any = {};
             return result;
         } catch (error) {
             try {

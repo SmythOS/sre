@@ -1,4 +1,4 @@
-import { xxh3 } from '@node-rs/xxhash';
+import xxhash from 'xxhashjs';
 import { describe, expect, it } from 'vitest';
 
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
@@ -15,6 +15,12 @@ import { ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { TestAccountConnector } from '../../utils/TestConnectors';
+
+function xxh3(source) {
+    const h64 = xxhash.h64(); // Use xxhashjs's h64 function
+    return h64.update(source.toString()).digest().toString(16);
+}
+
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -33,11 +39,11 @@ const testAdditionalACLMetadata = {
     entries: {
         [TAccessRole.Team]: {
             //hash 'team1'
-            [xxh3.xxh64('team1').toString(16)]: [TAccessLevel.Read, TAccessLevel.Write],
+            [xxh3('team1')]: [TAccessLevel.Read, TAccessLevel.Write],
         },
         [TAccessRole.Agent]: {
             //hash 'team1'
-            [xxh3.xxh64('agent1').toString(16)]: [TAccessLevel.Owner],
+            [xxh3('agent1')]: [TAccessLevel.Owner],
         },
     },
 };

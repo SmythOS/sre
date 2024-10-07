@@ -26,16 +26,21 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    // Account: {
+    //     Connector: 'SmythAccount',
+    //     Settings: {
+    //         oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+    //         oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+    //         oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+    //         oAuthResource: process.env.LOGTO_API_RESOURCE,
+    //         oAuthScope: '',
+    //         smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+    //     },
+    // },
+
     Account: {
         Connector: 'DummyAccount',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-        },
+        Settings: {},
     },
 });
 

@@ -487,7 +487,11 @@ export default class Agent {
         if (output.error || output._error) {
             //TODO : check if we need to keep loop data while clearing runtime data here
             //in fact, output._error might be connected to a next component, in which case we need to keep the loop data
-            this.agentRuntime.resetComponent(componentId);
+            if (!runtimeData?._ChildLoopData?._in_progress) {
+                //don't reset if we are inside a loop, otherwise ._error branches will break the loop
+
+                this.agentRuntime.resetComponent(componentId);
+            }
 
             if (logId) {
                 //update log

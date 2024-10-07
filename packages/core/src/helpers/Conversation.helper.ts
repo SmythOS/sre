@@ -424,7 +424,11 @@ export class Conversation extends EventEmitter {
                 //console.log('Result after tool call: ', result);
             });
 
-            eventEmitter.on('end', async (toolsData) => {
+            eventEmitter.on('end', async (toolsData, usage_data) => {
+                if (usage_data) {
+                    //FIXME : normalize the usage data format
+                    this.emit('usage', usage_data);
+                }
                 if (hasError) return;
 
                 if (!hasTools) {
