@@ -25,6 +25,9 @@ const sre = SmythRuntime.Instance.init({
             password: process.env.REDIS_PASSWORD || '',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+    },
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {

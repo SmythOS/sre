@@ -17,6 +17,9 @@ const sre = SmythRuntime.Instance.init({
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+    },
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {

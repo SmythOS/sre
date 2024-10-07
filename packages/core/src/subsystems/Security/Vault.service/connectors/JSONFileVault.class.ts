@@ -59,7 +59,7 @@ export class JSONFileVault extends VaultConnector {
 
         const acl = new ACL();
 
-        if (!this.vaultData?.[teamId]?.[resourceId]) return acl;
+        if (typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') return acl;
 
         acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner)
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Read)

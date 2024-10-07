@@ -1,5 +1,6 @@
 {
     "default": {
+        "Echo": "SET This to any value in order to avoid an error log when trying to set API key for Echo LLM",
         "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY",
         "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
         "OpenAI": "OPEN_AI_API_KEY",
