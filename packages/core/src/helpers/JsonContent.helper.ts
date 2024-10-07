@@ -40,6 +40,26 @@ export class JSONContentHelper {
         }
     }
 
+    // Same as tryParse but it does not extract JSON from string
+    public tryFullParse() {
+        const str = this._current;
+        if (!str) return str;
+
+        if ((isDigits(str) && !isSafeNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
+
+        try {
+            return JSON.parse(str);
+        } catch (e) {
+            try {
+                return JSON.parse(jsonrepair(str));
+            } catch (e: any) {
+                console.warn('Error on parseJson: ', e.toString());
+                console.warn('   Tried to parse: ', str);
+                return { result: str, error: e.toString() };
+            }
+        }
+    }
+
     private extractJsonFromString(str) {
         try {
             const regex = /(\{.*\}|\[.*\])/s;

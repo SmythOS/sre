@@ -58,6 +58,29 @@ ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
 const TIMEOUT = 30000;
 
+describe('PromptGenerator Component with with - Echo', () => {
+    it('should echo the prompt', async () => {
+        const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+        const data = JSON.parse(agentData);
+
+        const agentProcess = AgentProcess.load(data);
+
+        const obj = { a: 1, b: 2, c: [1, 2] };
+
+        let res = await agentProcess.run({
+            method: 'POST',
+            path: '/api/test-echo',
+            body: {
+                Input: JSON.stringify(obj),
+            },
+        });
+
+        const output = res?.data?.result?.Reply;
+
+        expect(output).toEqual(obj);
+    });
+});
+
 function runTestCases(endpoint: string) {
     it(
         'should generate a relevant response for a given prompt',
