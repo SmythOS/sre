@@ -159,9 +159,11 @@ export class TogetherAIConnector extends LLMConnector {
             baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
+        const messages = this.getConsistentMessages(_params.messages);
+
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
-            messages: _params.messages,
+            messages,
             max_tokens: _params.max_tokens,
             stream: true,
         };

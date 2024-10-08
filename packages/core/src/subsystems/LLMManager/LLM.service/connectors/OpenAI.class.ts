@@ -407,9 +407,12 @@ export class OpenAIConnector extends LLMConnector {
         //TODO: check token limits for non api key users
         console.debug('model', _params.model);
         console.debug('messages', _params.messages);
+
+        const messages = this.getConsistentMessages(_params.messages);
+
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
-            messages: _params.messages,
+            messages,
             max_tokens: _params.max_tokens,
             stream_options: { include_usage: true }, //add usage statis
             stream: true,
