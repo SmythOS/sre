@@ -1,4 +1,3 @@
-import { xxh3 } from '@node-rs/xxhash';
 import { describe, expect, it } from 'vitest';
 
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
@@ -13,6 +12,9 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
 const SREInstance = SmythRuntime.Instance.init({
+    Account: {
+        Connector: 'DummyAccount',
+    },
     Storage: {
         Connector: 'S3',
         Settings: {

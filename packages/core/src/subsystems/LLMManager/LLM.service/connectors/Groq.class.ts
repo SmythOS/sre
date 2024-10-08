@@ -155,6 +155,7 @@ export class GroqConnector extends LLMConnector {
         let chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
             messages: _params.messages,
+            max_tokens: _params.max_tokens,
             stream: true,
         };
 

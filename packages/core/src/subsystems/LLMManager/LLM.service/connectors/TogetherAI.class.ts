@@ -162,6 +162,7 @@ export class TogetherAIConnector extends LLMConnector {
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
             messages: _params.messages,
+            max_tokens: _params.max_tokens,
             stream: true,
         };
 

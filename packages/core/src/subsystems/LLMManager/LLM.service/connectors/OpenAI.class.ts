@@ -185,7 +185,7 @@ export class OpenAIConnector extends LLMConnector {
 
             return response;
         } catch (error: any) {
-            console.log('Error generating image(s) with DALL·E: ', error);
+            console.warn('Error generating image(s) with DALL·E: ', error);
 
             throw error;
         }
@@ -256,8 +256,8 @@ export class OpenAIConnector extends LLMConnector {
                 throw new Error('Invalid messages argument for chat completion.');
             }
 
-            console.log('model', model);
-            console.log('messages', messages);
+            console.debug('model', model);
+            console.debug('messages', messages);
             let args: OpenAI.ChatCompletionCreateParamsStreaming = {
                 model,
                 messages,
@@ -333,7 +333,7 @@ export class OpenAIConnector extends LLMConnector {
                 data: { useTool, message, stream: _stream, toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
+            console.warn('Error on toolUseLLMRequest: ', error);
             return { error };
         }
     }
@@ -399,17 +399,19 @@ export class OpenAIConnector extends LLMConnector {
         const _params = { ...params };
 
         const emitter = new EventEmitter();
+        const usage_data = [];
         const openai = new OpenAI({
             apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
         });
 
         //TODO: check token limits for non api key users
-        console.log('model', _params.model);
-        console.log('messages', _params.messages);
+        console.debug('model', _params.model);
+        console.debug('messages', _params.messages);
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
             messages: _params.messages,
             max_tokens: _params.max_tokens,
+            stream_options: { include_usage: true }, //add usage statis
             stream: true,
         };
 
@@ -426,7 +428,11 @@ export class OpenAIConnector extends LLMConnector {
                 let toolsData: any = [];
 
                 for await (const part of stream) {
-                    delta = part.choices[0].delta;
+                    delta = part.choices[0]?.delta;
+                    const usage = part.usage;
+                    if (usage) {
+                        usage_data.push(usage);
+                    }
                     emitter.emit('data', delta);
 
                     if (!delta?.tool_calls && delta?.content) {
@@ -452,7 +458,7 @@ export class OpenAIConnector extends LLMConnector {
                 }
 
                 setTimeout(() => {
-                    emitter.emit('end', toolsData);
+                    emitter.emit('end', toolsData, usage_data);
                 }, 100);
             })();
             return emitter;

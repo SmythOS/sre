@@ -1,9 +1,14 @@
-import { xxh3 } from '@node-rs/xxhash';
+//import { xxh3 } from '@node-rs/xxhash';
+import xxhash from 'xxhashjs';
 import { IACL, IAccessRequest, LevelMap, ReverseLevelMap, ReverseRoleMap, RoleMap, TACLEntry, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 
 const ACLHashAlgo = {
     none: (source) => source,
-    xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
+    //xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
+    xxh3: (source) => {
+        const h64 = xxhash.h64(); // Use xxhashjs's h64 function
+        return h64.update(source.toString()).digest().toString(16);
+    },
 };
 
 export class ACL implements IACL {

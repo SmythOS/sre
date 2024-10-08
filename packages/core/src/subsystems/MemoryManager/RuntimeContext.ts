@@ -11,6 +11,7 @@ const console = Logger('RuntimeContext');
 type TRuntimeData = {
     input?: { [key: string]: any };
     _LoopData?: any;
+    _ChildLoopData?: any;
 };
 type TComponentContext = {
     active: boolean;

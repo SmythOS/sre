@@ -15,7 +15,10 @@
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
         "start:web": "node ./tests/build/web/index.js --model claude-3-5-sonnet-20240620",
         "build:aws:dev": "cross-env BUILD=dev rollup -c distributions/AWS/rollup.config.js",
-        "build:aws:prod": "cross-env BUILD=prod rollup -c distributions/AWS/rollup.config.js"
+        "build:aws:prod": "cross-env BUILD=prod rollup -c distributions/AWS/rollup.config.js",
+        "build:cli:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/cli/rollup.config.js",
+        "build:cli:dev:exe": "pkg ./distributions/cli/dist/cli.dev.cjs --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/cli/dist",
+        "build:cli:dev": "npm run build:cli:dev:cjs && npm run build:cli:dev:exe"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -43,6 +46,7 @@
         "node-global-key-listener": "^0.3.0",
         "nyc": "^17.0.0",
         "ora": "^8.1.0",
+        "pkg": "^5.8.1",
         "rollup-plugin-copy": "^3.5.0",
         "rollup-plugin-esbuild": "^6.1.1",
         "rollup-plugin-sourcemaps": "^0.6.3",
@@ -60,7 +64,6 @@
     "dependencies": {
         "@anthropic-ai/sdk": "^0.25.0",
         "@apidevtools/json-schema-ref-parser": "^11.6.4",
-        "@apidevtools/swagger-parser": "^10.1.0",
         "@aws-sdk/client-bedrock-runtime": "^3.651.1",
         "@aws-sdk/client-s3": "^3.529.0",
         "@aws-sdk/client-secrets-manager": "^3.649.0",
@@ -68,7 +71,6 @@
         "@google/generative-ai": "^0.14.1",
         "@huggingface/inference": "^2.8.0",
         "@langchain/pinecone": "^0.0.8",
-        "@node-rs/xxhash": "^1.7.3",
         "@pinecone-database/pinecone": "^3.0.0",
         "axios": "^1.7.2",
         "dayjs": "^1.11.11",
@@ -90,6 +92,7 @@
         "p-limit": "^6.1.0",
         "qs": "^6.13.0",
         "winston": "^3.13.0",
-        "winston-transport": "^4.7.0"
+        "winston-transport": "^4.7.0",
+        "xxhashjs": "^0.2.2"
     }
 }

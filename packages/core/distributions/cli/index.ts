@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 process.env.LOG_LEVEL = 'none';
 
-import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../../dist/index.dev.js';
+import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../src/index.ts';
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -15,14 +15,6 @@ const sre = SmythRuntime.Instance.init({
             region: process.env.AWS_S3_REGION || '',
             accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: process.env.REDIS_SENTINEL_HOSTS,
-            name: process.env.REDIS_MASTER_NAME || '',
-            password: process.env.REDIS_PASSWORD || '',
         },
     },
     Account: {
@@ -41,8 +33,8 @@ const sre = SmythRuntime.Instance.init({
 
 async function main() {
     try {
-        //const cliConnector = ConnectorService.getCLIConnector();
-        //console.log('CLI Connector:', cliConnector.params);
+        const cliConnector = ConnectorService.getCLIConnector();
+        console.log('CLI Connector:', cliConnector.params);
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         const data = await agentDataConnector.getAgentData('test', '1.0');
 
@@ -65,4 +57,5 @@ async function main() {
     }
 }
 
+console.log('Starting CLI');
 main();

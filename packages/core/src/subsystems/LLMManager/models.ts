@@ -26,15 +26,22 @@ export const models = {
     },
     'gpt-4o': {
         llm: 'OpenAI',
-        alias: 'gpt-4o-2024-05-13',
+        alias: 'gpt-4o-2024-08-06',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
+    },
+    'gpt-4o-2024-08-06': {
+        llm: 'OpenAI',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        keyOptions: { tokens: 128000, completionTokens: 16384 },
     },
     'gpt-4o-2024-05-13': {
         llm: 'OpenAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: true,
-        keyOptions: { tokens: 128000, completionTokens: 4096 },
+        keyOptions: { tokens: 128000, completionTokens: 8192 },
     },
 
     // GPT-4-turbo
@@ -830,6 +837,14 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
     },
+    'Qwen/Qwen2-72B-Instruct': {
+        // ! DEPRECATED: will be removed (404 - not found)
+        llm: 'TogetherAI',
+        tokens: 32768,
+        enabled: false,
+        keyOptions: { tokens: 32768, enabled: true },
+    },
+
     'togethercomputer/RedPajama-INCITE-Chat-3B-v1': {
         // ! DEPRECATED: will be removed (Weird response)
         llm: 'TogetherAI',
