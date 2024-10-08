@@ -89,6 +89,10 @@ const DUMMY_KEY = 'sdl7k8lsd93ko4iu39';
 
 const IMAGE_URL = 'https://app.smythos.dev/img/smythos-logo.png';
 
+// TODO [Forhad]: Need to write more advance tests for URL
+//- {{baseUrl}}/path/goes/here - baseUrl = https://httpbin.org
+//- https://httpbin.org/{{path}} - path = /path/goes/here?q=some+query+params
+
 describe('APICall Component - HTTP Methods', () => {
     const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
     methods.forEach((method) => {
