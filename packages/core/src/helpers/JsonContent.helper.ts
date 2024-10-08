@@ -62,7 +62,7 @@ export class JSONContentHelper {
 
     private extractJsonFromString(str) {
         try {
-            const regex = /(\{.*\}|\[.*\])/s;
+            const regex = /(\{.*\})/s; // LLMs in smythOS are expected to generate json between curly brackets only
 
             const match = str.match(regex);
 
