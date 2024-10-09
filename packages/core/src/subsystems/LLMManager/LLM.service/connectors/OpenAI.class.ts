@@ -415,9 +415,9 @@ export class OpenAIConnector extends LLMConnector {
         //console.debug('messages', _params.messages);
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
-            messages,
+            messages: _params.messages,
             max_tokens: _params.max_tokens,
-            stream_options: { include_usage: true }, //add usage statis
+            stream_options: { include_usage: true }, //add usage statis //TODO: @Forhad check this
             stream: true,
         };
 

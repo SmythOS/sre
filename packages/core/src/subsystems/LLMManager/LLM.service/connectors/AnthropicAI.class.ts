@@ -263,6 +263,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         {
                             type: 'text',
                             text: messageCreateArgs.system,
+                            //cache_control: { type: 'ephemeral' }, //TODO: @Forhad check this
                         },
                     ];
                 }
