@@ -38,21 +38,21 @@ export class GroqConnector extends LLMConnector {
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params };
 
-        _params.messages = _params?.messages || [];
+        let messages = _params?.messages || [];
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-            _params.messages = [systemMessage, ...otherMessages];
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            messages = [systemMessage, ...otherMessages];
         } else {
-            _params.messages.unshift({
+            messages.unshift({
                 role: 'system',
                 content: JSON_RESPONSE_INSTRUCTION,
             });
         }
 
         if (prompt) {
-            _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+            messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
         const apiKey = _params?.apiKey;
@@ -63,7 +63,7 @@ export class GroqConnector extends LLMConnector {
         // TODO: implement groq specific token counting
         // this.validateTokensLimit(_params);
 
-        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
@@ -152,9 +152,11 @@ export class GroqConnector extends LLMConnector {
         const emitter = new EventEmitter();
         const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
 
+        const messages = this.getConsistentMessages(_params.messages);
+
         let chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
-            messages: _params.messages,
+            messages,
             max_tokens: _params.max_tokens,
             stream: true,
         };

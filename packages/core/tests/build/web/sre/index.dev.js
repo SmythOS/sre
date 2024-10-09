@@ -4148,7 +4148,7 @@ async function parseBinary(data, contentType, agentId) {
   return smythFile;
 }
 async function parseArrayBufferResponse(response, agent) {
-  if (!response.data) {
+  if (!response?.data) {
     return null;
   }
   const data = response.data;
@@ -6462,7 +6462,7 @@ class Conversation extends EventEmitter$1 {
           toolsData: processedToolsData
         });
         this._context.push(...messagesWithToolResult);
-        await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+        this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
       });
       eventEmitter.on("end", async (toolsData) => {
         if (hasError) return;
@@ -11557,7 +11557,7 @@ class AnthropicAIConnector extends LLMConnector {
             // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
             name: toolUseBlock?.name,
             arguments: toolUseBlock?.input,
-            role: TLLMMessageRole.User
+            role: result?.role
           });
         });
         useTool = true;
@@ -11623,7 +11623,7 @@ class AnthropicAIConnector extends LLMConnector {
               // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
               name: toolUseBlock?.name,
               arguments: toolUseBlock?.input,
-              role: TLLMMessageRole.User
+              role: finalMessage?.role
             });
           });
           emitter.emit("toolsData", toolsData);
@@ -11685,19 +11685,18 @@ class AnthropicAIConnector extends LLMConnector {
         content
       });
     }
-    const transformedToolsData = toolsData.map(
-      (toolData) => ({
+    const toolResultsContent = toolsData.map((toolData) => ({
+      type: "tool_result",
+      tool_use_id: toolData.id,
+      content: toolData.result
+    }));
+    if (toolResultsContent.length > 0) {
+      messageBlocks.push({
         role: TLLMMessageRole.User,
-        content: [
-          {
-            type: "tool_result",
-            tool_use_id: toolData.id,
-            content: toolData.result
-          }
-        ]
-      })
-    );
-    return [...messageBlocks, ...transformedToolsData];
+        content: toolResultsContent
+      });
+    }
+    return messageBlocks;
   }
   getConsistentMessages(messages) {
     let _messages = [...messages];
@@ -11721,19 +11720,19 @@ class AnthropicAIConnector extends LLMConnector {
       } else if (message?.content) {
         content = message.content;
       }
-      message.content = content;
+      message.content = content || "[No content provided]";
       return message;
-    });
-    if (messages[0]?.role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
-      const hasToolResult = messages[0].content.find((content) => "type" in content && content.type === "tool_result");
+    }).filter((message) => message?.content);
+    if (_messages[0]?.role === TLLMMessageRole.User && Array.isArray(_messages[0].content)) {
+      const hasToolResult = _messages[0].content.find((content) => "type" in content && content.type === "tool_result");
       if (hasToolResult) {
-        messages.shift();
+        _messages.shift();
       }
     }
-    if (messages[0]?.role !== TLLMMessageRole.User) {
-      messages.unshift({ role: TLLMMessageRole.User, content: "continue" });
+    if (_messages[0]?.role !== TLLMMessageRole.User) {
+      _messages.unshift({ role: TLLMMessageRole.User, content: "continue" });
     }
-    return messages;
+    return _messages;
   }
   getValidImageFileSources(fileSources) {
     const validSources = [];
@@ -12773,16 +12772,17 @@ class SmythVault extends VaultConnector {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
     const vaultAPIHeaders = await this.getVaultRequestHeaders();
-    const vaultSecretByIdResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
-    if (vaultSecretByIdResponse?.data?.secret?.value) {
-      return vaultSecretByIdResponse?.data?.secret?.value;
-    } else {
-      const vaultSecretByNameResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
-      if (vaultSecretByNameResponse?.data?.secret?.value) {
-        return vaultSecretByNameResponse?.data?.secret?.value;
-      }
+    const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+    let key = vaultResponse?.data?.secret?.value || null;
+    if (!key) {
+      const vaultResponse2 = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
+      key = vaultResponse2?.data?.secret?.value || null;
     }
-    return null;
+    if (!key && keyId === "anthropicai") {
+      const vaultResponse2 = await this.vaultAPI.get(`/vault/${teamId}/secrets/claude`, { headers: vaultAPIHeaders });
+      return vaultResponse2?.data?.secret?.value;
+    }
+    return key || null;
   }
   async exists(acRequest, keyId) {
     const accountConnector = ConnectorService.getAccountConnector();

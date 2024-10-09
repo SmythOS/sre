@@ -427,7 +427,9 @@ export class Conversation extends EventEmitter {
                     toolsData: processedToolsData,
                 });
 
-                const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
+                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+
+                //const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
                 //console.log('Result after tool call: ', result);
             });
 

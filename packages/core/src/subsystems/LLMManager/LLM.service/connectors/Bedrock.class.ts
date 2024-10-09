@@ -25,16 +25,16 @@ export class BedrockConnector extends LLMConnector {
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params };
-        _params.messages = _params?.messages || [];
+        let messages = _params?.messages || [];
 
         if (prompt) {
-            _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+            messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-            _params.messages = otherMessages;
+            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            messages = otherMessages;
             _params.system = [{ text: (systemMessage as TLLMMessageBlock)?.content }];
         } else {
             _params.system = [{ text: JSON_RESPONSE_INSTRUCTION }];
@@ -43,7 +43,7 @@ export class BedrockConnector extends LLMConnector {
         const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
 
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const inferenceConfig: InferenceConfig = {};
         if (_params?.max_tokens !== undefined) inferenceConfig.maxTokens = _params.max_tokens;

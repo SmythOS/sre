@@ -8,8 +8,6 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
-import { IAccessCandidate } from '@sre/types/ACL.types';
-import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -199,7 +197,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
-                        role: TLLMMessageRole.User,
+                        role: result?.role,
                     });
                 });
 
@@ -314,7 +312,7 @@ export class AnthropicAIConnector extends LLMConnector {
                             type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
                             name: toolUseBlock?.name,
                             arguments: toolUseBlock?.input,
-                            role: TLLMMessageRole.User,
+                            role: finalMessage?.role,
                         });
                     });
 
@@ -379,7 +377,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
-            const content = [];
+            const content: any[] = []; // TODO: set proper type for content
             if (Array.isArray(messageBlock.content)) {
                 content.push(...messageBlock.content);
             } else {
@@ -402,20 +400,21 @@ export class AnthropicAIConnector extends LLMConnector {
             });
         }
 
-        const transformedToolsData = toolsData.map(
-            (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.User,
-                content: [
-                    {
-                        type: 'tool_result',
-                        tool_use_id: toolData.id,
-                        content: toolData.result,
-                    },
-                ],
-            })
-        );
+        // Combine all tool results into a single user message
+        const toolResultsContent = toolsData.map((toolData): any => ({
+            type: 'tool_result',
+            tool_use_id: toolData.id,
+            content: toolData.result,
+        }));
 
-        return [...messageBlocks, ...transformedToolsData];
+        if (toolResultsContent.length > 0) {
+            messageBlocks.push({
+                role: TLLMMessageRole.User,
+                content: toolResultsContent,
+            });
+        }
+
+        return messageBlocks;
     }
 
     private getConsistentMessages(messages) {
@@ -433,7 +432,12 @@ export class AnthropicAIConnector extends LLMConnector {
                     );
 
                     if (toolBlocks?.length > 0) {
-                        content = message.content;
+                        content = message.content.map((item) => {
+                            if (item.type === 'text' && (!item.text || item.text.trim() === '')) {
+                                return { ...item, text: '...' }; // empty text causes error that's why we added '...'
+                            }
+                            return item;
+                        });
                     } else {
                         content = message.content
                             .map((block) => block?.text || '')
@@ -447,27 +451,27 @@ export class AnthropicAIConnector extends LLMConnector {
                 content = message.content as string;
             }
 
-            message.content = content;
+            message.content = content || '...'; // empty content causes error that's why we added '...'
 
             return message;
         });
 
         //[FIXED] - `tool_result` block(s) provided when previous message does not contain any `tool_use` blocks" (handler)
-        if (messages[0]?.role === TLLMMessageRole.User && Array.isArray(messages[0].content)) {
-            const hasToolResult = messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
+        if (_messages[0]?.role === TLLMMessageRole.User && Array.isArray(_messages[0].content)) {
+            const hasToolResult = _messages[0].content.find((content) => 'type' in content && content.type === 'tool_result');
 
             //we found a tool result in the first message, so we need to remove the user message
             if (hasToolResult) {
-                messages.shift();
+                _messages.shift();
             }
         }
 
         //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
-        if (messages[0]?.role !== TLLMMessageRole.User) {
-            messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
+        if (_messages[0]?.role !== TLLMMessageRole.User) {
+            _messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
         }
 
-        return messages;
+        return _messages;
     }
 
     private getValidImageFileSources(fileSources: BinaryInput[]) {
