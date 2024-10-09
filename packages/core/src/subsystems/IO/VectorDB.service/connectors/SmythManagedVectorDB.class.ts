@@ -152,7 +152,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
                     headers: await this.getSmythRequestHeaders(),
                 })
                 .catch((e: AxiosError) => {
-                    if (e.response.status === 404) {
+                    if (e.response?.status === 404) {
                         return undefined; // not found
                     }
                     throw e;
@@ -219,7 +219,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
                     }
                     throw e;
                 });
-            const namespaceRecord = res.data?.namespace;
+            const namespaceRecord = res?.data?.namespace;
             if (!namespaceRecord) return undefined;
             return {
                 displayName: namespaceRecord.name,
@@ -340,7 +340,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
         const nsRecord = await this.smythAPI
             .get(`/v1/vectors/namespaces/${preparedNs}`, { headers: await this.getSmythRequestHeaders() })
             .catch((e: AxiosError) => {
-                if (e.response.status === 404) {
+                if (e.response?.status === 404) {
                     return null; // not found
                 }
                 throw e;

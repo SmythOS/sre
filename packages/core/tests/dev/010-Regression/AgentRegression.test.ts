@@ -7,11 +7,13 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { promisify } from 'util';
 import fs from 'fs/promises'; // for promise-based file reading
 import fsSync from 'fs';
+import { createRegressionTestSuite } from './setup';
 
+const BASE_DIR = './tests/data/RegressionAgents';
 const PORT = 8083;
 const BASE_URL = `http://localhost:${PORT}`;
-
 const app = express();
+const server = http.createServer(app);
 
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
@@ -21,8 +23,8 @@ const SREInstance = SmythRuntime.Instance.init({
     AgentData: {
         Connector: 'Local',
         Settings: {
-            devDir: './tests/data/RegressionAgents',
-            prodDir: './tests/data/RegressionAgents',
+            devDir: BASE_DIR,
+            prodDir: BASE_DIR,
         },
     },
     Storage: {
@@ -58,105 +60,8 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-const server = http.createServer(app);
-
 if (!SREInstance.ready()) {
     process.exit(1);
 } //force SmythRuntime to initialize
 
-let agentFiles = fsSync.readdirSync('./tests/data/RegressionAgents');
-
-// Preload and prepare all data
-type PreparedAgentData = {
-    agentFile: string;
-    agentProcess: AgentProcess;
-    systemPrompt: string;
-    endpointPaths: string[];
-};
-
-const prepareAgentData = async (agentFile: string): Promise<PreparedAgentData> => {
-    try {
-        console.log(`Loading agent file: ${agentFile}`);
-        const agentData = await fs.readFile(`./tests/data/RegressionAgents/${agentFile}`, 'utf-8');
-        const data = JSON.parse(agentData);
-        const agentProcess = await AgentProcess.load(data);
-
-        if (!agentProcess || !agentProcess.agent || !agentProcess.agent.data) {
-            throw new Error('Invalid agent data structure');
-        }
-
-        const systemPrompt = agentProcess.agent.data.behavior || agentProcess.agent.data.shortDescription || agentProcess.agent.data.description;
-
-        if (!Array.isArray(agentProcess.agent.data.components)) {
-            throw new Error('AgentProcess.agent.data.components is not an array');
-        }
-
-        const endpointPaths = agentProcess.agent.data.components
-            .filter((c) => c && c.name === 'APIEndpoint')
-            .map((c) => c.data && c.data.endpoint)
-            .filter(Boolean);
-
-        console.log(`Endpoint paths for ${agentFile}:`, endpointPaths);
-
-        return { agentFile, agentProcess, systemPrompt, endpointPaths };
-    } catch (error) {
-        console.error(`Error loading agent ${agentFile}:`, error);
-        throw error;
-    }
-};
-
-let preparedAgents: PreparedAgentData[];
-preparedAgents = await Promise.all(agentFiles.map(prepareAgentData)); // Preload all agent data
-
-describe('Agent Regression Tests', () => {
-    beforeAll(async () => {
-        const listen = promisify(server.listen.bind(server));
-        await listen(PORT);
-        console.log(`Server is running on port ${PORT}`);
-    });
-
-    afterAll(async () => {
-        const close = promisify(server.close.bind(server));
-        await close();
-        console.log('Server has been shut down');
-    });
-
-    describe.each(preparedAgents)('Agent File: $agentFile', ({ agentFile, agentProcess, systemPrompt, endpointPaths }) => {
-        it('should have valid endpoint paths', () => {
-            expect(Array.isArray(endpointPaths)).toBe(true);
-            expect(endpointPaths.length).toBeGreaterThan(0);
-        });
-
-        it.each(endpointPaths)('should correctly handle endpoint: %s', async (path) => {
-            const sampleInput = agentProcess.agent.data.components.find((c) => c.title === `${path}:input`)?.data?.description;
-            const expectedOutput = agentProcess.agent.data.components.find((c) => c.title === `${path}:output`)?.data?.description;
-
-            if (!sampleInput || !expectedOutput) {
-                console.log(`Skipping test for ${path} due to missing input or output`);
-                return;
-            }
-
-            const conv = new Conversation('gpt-4o-mini', agentProcess.agent.data.id, { systemPrompt });
-
-            const result = await conv.prompt(`call the endpoint ${path} with the following input: ${sampleInput}.`, {
-                'X-AGENT-ID': agentProcess.agent.data.id,
-            });
-
-            const evaluatorAgent = await fs.readFile('./tests/data/regression-tests-evalator.smyth', 'utf-8');
-            const evaluatorAgentData = JSON.parse(evaluatorAgent);
-
-            console.log(`Recieved: ${JSON.stringify(result)}. \n Expected: ${expectedOutput}`);
-
-            const evaluatorResult = await AgentProcess.load(evaluatorAgentData).run({
-                method: 'POST',
-                path: '/api/test',
-                body: {
-                    data: JSON.stringify(result),
-                    expectations: expectedOutput,
-                },
-            });
-
-            expect(evaluatorResult?.data?.result?.valid, `Evaluator result for ${path} is not valid`).toEqual('true');
-        });
-    });
-});
+await createRegressionTestSuite(BASE_DIR, { server, port: PORT });

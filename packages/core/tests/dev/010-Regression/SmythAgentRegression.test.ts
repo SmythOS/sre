@@ -1,12 +1,18 @@
 import { afterAll, describe, expect, it, beforeAll } from 'vitest';
 import express from 'express';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { AgentProcess, ConnectorService, Conversation, SmythRuntime } from '@sre/index';
 import http, { Server } from 'http';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { promisify } from 'util';
+import fs from 'fs/promises'; // for promise-based file reading
+import fsSync from 'fs';
+import { createRegressionTestSuite } from './setup';
 
 const PORT = 8083;
 const BASE_URL = `http://localhost:${PORT}`;
+
+const BASE_DIR = './tests/data/SmythRegressionAgents';
 
 const app = express();
 
@@ -23,16 +29,10 @@ const SREInstance = SmythRuntime.Instance.init({
         },
     },
     AgentData: {
-        Connector: 'Smyth',
+        Connector: 'Local',
         Settings: {
-            agentStageDomain: config.env.AGENT_DOMAIN || '',
-            agentProdDomain: config.env.PROD_AGENT_DOMAIN || '',
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            devDir: BASE_DIR,
+            prodDir: BASE_DIR,
         },
     },
     Storage: {
@@ -71,6 +71,19 @@ const SREInstance = SmythRuntime.Instance.init({
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+
+    VectorDB: {
+        Connector: 'SmythManaged',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            openaiApiKey: config.env.OPENAI_API_KEY || '',
+        },
+    },
 });
 
 const server = http.createServer(app);
@@ -79,16 +92,4 @@ if (!SREInstance.ready()) {
     process.exit(1);
 } //force SmythRuntime to initialize
 
-describe('Smyth Agent Regression Tests', () => {
-    beforeAll(async () => {
-        const listen = promisify(server.listen.bind(server));
-        await listen(PORT);
-        console.log(`Server is running on port ${PORT}`);
-    });
-
-    afterAll(async () => {
-        const close = promisify(server.close.bind(server));
-        await close();
-        console.log('Server has been shut down');
-    });
-});
+await createRegressionTestSuite(BASE_DIR, { server, port: PORT });
