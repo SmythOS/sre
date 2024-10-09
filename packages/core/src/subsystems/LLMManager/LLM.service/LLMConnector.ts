@@ -94,7 +94,7 @@ export abstract class LLMConnector extends Connector {
     constructor() {
         super();
 
-        this.llmHelper = new LLMHelper();
+        this._llmHelper = new LLMHelper();
     }
 
     public get llmHelper(): LLMHelper {
