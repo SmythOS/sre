@@ -1,4 +1,4 @@
-import { xxh3 } from '@node-rs/xxhash';
+import xxhash from 'xxhashjs';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -7,6 +7,11 @@ import { describe, expect, it } from 'vitest';
 
 import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
+
+function xxh3(source) {
+    const h64 = xxhash.h64(); // Use xxhashjs's h64 function
+    return h64.update(source.toString()).digest().toString(16);
+}
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -37,7 +42,7 @@ const testAdditionalACLMetadata = {
     entries: {
         [TAccessRole.Team]: {
             //hash 'team1'
-            [xxh3.xxh64('team1').toString(16)]: [TAccessLevel.Read, TAccessLevel.Write],
+            [xxh3('team1')]: [TAccessLevel.Read, TAccessLevel.Write],
         },
     },
 };

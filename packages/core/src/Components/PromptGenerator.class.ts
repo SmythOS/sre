@@ -46,6 +46,11 @@ export default class PromptGenerator extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
+            // with 'Echo' model we may have object as input
+            if (prompt === '[object Object]') {
+                prompt = TemplateString(config.data.prompt).parseRaw(input).result;
+            }
+
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
             // request to LLM

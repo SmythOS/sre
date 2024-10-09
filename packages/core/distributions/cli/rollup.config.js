@@ -13,10 +13,11 @@ import resolve from '@rollup/plugin-node-resolve';
 const isProduction = process.env.BUILD === 'prod';
 
 const projectRootDir = __dirname;
+
 const devConfig = {
-    input: 'distributions/AWS/index.ts',
+    input: './distributions/cli/index.ts',
     output: {
-        file: 'distributions/AWS/dist/aws.dev.cjs',
+        file: './distributions/cli/dist/cli.dev.cjs', // CommonJS output
         format: 'cjs', // Specify the CommonJS format
         sourcemap: true,
         inlineDynamicImports: true, // Inline all dynamic imports into one file
@@ -39,35 +40,68 @@ const devConfig = {
             treeShaking: false,
         }),
         sourcemaps(),
+        copy({
+            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
+        }),
     ],
 };
+// const devConfig = {
+//     input: 'distributions/cli/index.ts',
+//     output: {
+//         file: 'distributions/cli/dist/cli.dev.js',
+//         format: 'es',
+//         sourcemap: true,
+//     },
+//     plugins: [
+//         json(),
+//         typescriptPaths({
+//             tsconfig: '../tsconfig.json', // Ensure this points to your tsconfig file
+//             preserveExtensions: true,
+//             nonRelative: false,
+//         }),
+//         esbuild({
+//             sourceMap: true,
+//             minify: false, //do not enable minify here, it will break the sourcemap (minification is done by terser plugin below)
+//             treeShaking: false,
+//         }),
+
+//         // typescript({
+//         //     tsconfig: './tsconfig.json',
+//         //     clean: true,
+//         //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
+//         //     exclude: ['node_modules'],
+//         // }),
+//         filenameReplacePlugin(),
+//         sourcemaps(),
+//     ],
+// };
 
 const prodConfig = {
-    input: 'distributions/AWS/index.ts',
+    input: 'distributions/cli/index.ts',
     output: {
-        file: 'distributions/AWS/dist/aws.prod.cjs',
-        format: 'cjs', // Specify the CommonJS format
+        file: 'distributions/cli/dist/cli.prod.js',
+        format: 'es',
         sourcemap: true,
-        inlineDynamicImports: true, // Inline all dynamic imports into one file
     },
     plugins: [
-        resolve({
-            browser: false, // Allow bundling of modules from `node_modules`
-            preferBuiltins: true, // Prefer Node.js built-in modules
-            exportConditions: ['node'],
-        }),
-        commonjs(), // Convert CommonJS modules to ES6 for Rollup to bundle them
         json(),
         typescriptPaths({
-            tsconfig: './tsconfig.json',
+            tsconfig: '../tsconfig.json', // Ensure this points to your tsconfig file
             preserveExtensions: true,
             nonRelative: false,
         }),
         esbuild({
             sourceMap: true,
-            minify: false,
-            treeShaking: false,
+            minify: true,
+            treeShaking: true,
         }),
+        // typescript({
+        //     tsconfig: './tsconfig.json',
+        //     clean: true,
+        //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
+        //     exclude: ['node_modules'],
+        // }),
+        filenameReplacePlugin(),
         sourcemaps(),
         terser(),
     ],

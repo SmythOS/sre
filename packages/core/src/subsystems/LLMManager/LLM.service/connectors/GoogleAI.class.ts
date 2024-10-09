@@ -209,6 +209,12 @@ export class GoogleAIConnector extends LLMConnector {
 
             const imageData = this.getFileData(uploadedFiles);
 
+            const responseFormat = _params?.responseFormat || 'json';
+            if (responseFormat) {
+                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
+                else prompt += JSON_RESPONSE_INSTRUCTION;
+            }
+
             // Adjust input structure handling for multiple image files to accommodate variations.
             const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
 
@@ -230,12 +236,6 @@ export class GoogleAIConnector extends LLMConnector {
 
             const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel(modelParams);
-
-            const responseFormat = _params?.responseFormat || 'json';
-            if (responseFormat) {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
-            }
 
             // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
@@ -295,6 +295,12 @@ export class GoogleAIConnector extends LLMConnector {
 
         const fileData = this.getFileData(uploadedFiles);
 
+        const responseFormat = _params?.responseFormat || 'json';
+        if (responseFormat) {
+            if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
+            else prompt += JSON_RESPONSE_INSTRUCTION;
+        }
+
         // Adjust input structure handling for multiple image files to accommodate variations.
         const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
 
@@ -317,12 +323,6 @@ export class GoogleAIConnector extends LLMConnector {
         try {
             const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel(modelParams);
-
-            const responseFormat = _params?.responseFormat || 'json';
-            if (responseFormat) {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
-            }
 
             // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
@@ -366,6 +366,8 @@ export class GoogleAIConnector extends LLMConnector {
             } else {
                 formattedMessages = messages;
             }
+
+            formattedMessages = this.getConsistentMessages(formattedMessages);
 
             const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
             const $model = genAI.getGenerativeModel({ model: _params.model });

@@ -12,6 +12,10 @@ export class TokenManager {
         const modelInfo = await this.modelRegistry.getModelInfo(modelName, hasAPIKey);
         return modelInfo?.completionTokens || modelInfo?.tokens;
     }
+    public async adjustMaxCompletionTokens(modelName: string, maxTokens: number, hasAPIKey: boolean = false): Promise<number> {
+        const modelInfo = await this.modelRegistry.getModelInfo(modelName, hasAPIKey);
+        return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
+    }
 
     public async getSafeMaxTokens({
         givenMaxTokens,

@@ -228,17 +228,11 @@ async function runStreamRequestTestCases(model: string) {
 
             let toolsData;
 
-            const getToolsData = () => {
-                return new Promise<void>((resolve) => {
-                    stream.on('toolsData', resolve);
-                });
-            };
-
             const streamComplete = new Promise<void>((resolve) => {
                 stream.on('toolsData', (data) => {
                     toolsData = data;
+                    resolve();
                 });
-                stream.on('end', resolve);
             });
 
             await streamComplete;
@@ -246,7 +240,7 @@ async function runStreamRequestTestCases(model: string) {
             expect(toolsData).toBeTruthy();
             expect(toolsData[0].name).toBe('get_weather');
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 
     it(

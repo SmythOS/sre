@@ -15,6 +15,7 @@ export class LLMService extends ConnectorServiceProvider {
     public register() {
         ConnectorService.register(TConnectorService.LLM, 'Echo', EchoConnector);
         ConnectorService.register(TConnectorService.LLM, 'OpenAI', OpenAIConnector);
+        ConnectorService.register(TConnectorService.LLM, 'DeepSeek', OpenAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'GoogleAI', GoogleAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'AnthropicAI', AnthropicAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Groq', GroqConnector);
@@ -27,6 +28,7 @@ export class LLMService extends ConnectorServiceProvider {
         //auto initialize builting models
         ConnectorService.init(TConnectorService.LLM, 'Echo');
         ConnectorService.init(TConnectorService.LLM, 'OpenAI');
+        ConnectorService.init(TConnectorService.LLM, 'DeepSeek');
         ConnectorService.init(TConnectorService.LLM, 'GoogleAI');
         ConnectorService.init(TConnectorService.LLM, 'AnthropicAI');
         ConnectorService.init(TConnectorService.LLM, 'Groq');

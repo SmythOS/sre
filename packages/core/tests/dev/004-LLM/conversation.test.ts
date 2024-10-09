@@ -26,16 +26,21 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    // Account: {
+    //     Connector: 'SmythAccount',
+    //     Settings: {
+    //         oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+    //         oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+    //         oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+    //         oAuthResource: process.env.LOGTO_API_RESOURCE,
+    //         oAuthScope: '',
+    //         smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+    //     },
+    // },
+
     Account: {
         Connector: 'DummyAccount',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-        },
+        Settings: {},
     },
 });
 
@@ -91,38 +96,37 @@ function runTestCases(model: string) {
         TIMEOUT
     );
 
-    // TODO [Forhad]: properly test that multiple tool calls are working as expected
-    /* it(
-            'handles multiple tool calls in a single conversation',
-            async () => {
-                const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-                const system = `You are a helpful assistant that can answer questions about SmythOS.
+    it(
+        'handles multiple tool calls in a single conversation',
+        async () => {
+            const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
+            const system = `You are a helpful assistant that can answer questions about SmythOS.
                 If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-                const conv = new Conversation(model, specUrl);
-                conv.systemPrompt = system;
+            const conv = new Conversation(model, specUrl);
+            conv.systemPrompt = system;
 
-                let streamResult = '';
+            let streamResult = '';
 
-                // * The order is important to ensure proper event handling:
-                // 1. Set up event listeners before calling streamPrompt to capture all events. ie. const streamComplete = new Promise<string>((resolve) => {...
-                // 2. Call streamPrompt to initiate the streaming process. ie. const result = await conv.streamPrompt(...);
-                // 3. Wait for the stream to complete to ensure all content is received. ie. await streamComplete;
-                const streamComplete = new Promise<string>((resolve) => {
-                    conv.on('content', (content) => {
-                        streamResult += content;
-                    });
-                    conv.on('end', resolve);
+            // * The order is important to ensure proper event handling:
+            // 1. Set up event listeners before calling streamPrompt to capture all events. ie. const streamComplete = new Promise<string>((resolve) => {...
+            // 2. Call streamPrompt to initiate the streaming process. ie. const result = await conv.streamPrompt(...);
+            // 3. Wait for the stream to complete to ensure all content is received. ie. await streamComplete;
+            const streamComplete = new Promise<string>((resolve) => {
+                conv.on('content', (content) => {
+                    streamResult += content;
                 });
+                conv.on('end', resolve);
+            });
 
-                const result = await conv.streamPrompt('First, tell me about SmythOS. Then, explain how it handles data storage.');
+            const result = await conv.streamPrompt('First, tell me about SmythOS. Then, explain how it handles data storage.');
 
-                await streamComplete;
+            await streamComplete;
 
-                expect(result).toBeTruthy();
-                expect(streamResult).toBeTruthy();
-            },
-            TIMEOUT
-        ); */
+            expect(result).toBeTruthy();
+            expect(streamResult).toBeTruthy();
+        },
+        TIMEOUT * 2
+    );
 
     it(
         'handles follow-up questions correctly',
@@ -140,33 +144,33 @@ function runTestCases(model: string) {
 
     // TODO [Forhad]: Need to fix "It seems that I am unable to access the "smyth" repository due to a requirement for an access token.", with Gemini it does not work
     /* it(
-            'runs a conversation with remote sentinel agent',
-            async () => {
-                const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
-                const conv = new Conversation(model, specUrl);
+        'runs a conversation with remote sentinel agent',
+        async () => {
+            const specUrl = 'https://closz0vak00009tsctm7e8xzs.agent.stage.smyth.ai/api-docs/openapi.json';
+            const conv = new Conversation(model, specUrl);
 
-                let streamResult = '';
+            let streamResult = '';
 
-                // * The order is important to ensure proper event handling:
-                // 1. Set up event listeners before calling streamPrompt to capture all events. ie. const streamComplete = new Promise<string>((resolve) => {...
-                // 2. Call streamPrompt to initiate the streaming process. ie. const result = await conv.streamPrompt(...);
-                // 3. Wait for the stream to complete to ensure all content is received. ie. await streamComplete;
-                const streamComplete = new Promise<string>((resolve) => {
-                    conv.on('content', (content) => {
-                        streamResult += content;
-                    });
-                    conv.on('end', resolve);
+            // * The order is important to ensure proper event handling:
+            // 1. Set up event listeners before calling streamPrompt to capture all events. ie. const streamComplete = new Promise<string>((resolve) => {...
+            // 2. Call streamPrompt to initiate the streaming process. ie. const result = await conv.streamPrompt(...);
+            // 3. Wait for the stream to complete to ensure all content is received. ie. await streamComplete;
+            const streamComplete = new Promise<string>((resolve) => {
+                conv.on('content', (content) => {
+                    streamResult += content;
                 });
+                conv.on('end', resolve);
+            });
 
-                const result = await conv.streamPrompt('Analyze smyth runtime dependencies and tell me what S3Storage.class.ts depends on');
+            const result = await conv.streamPrompt('Analyze smyth runtime dependencies and tell me what S3Storage.class.ts depends on');
 
-                await streamComplete;
+            await streamComplete;
 
-                expect(result).toBeTruthy();
-                expect(streamResult).toBeTruthy();
-            },
-            TIMEOUT * 2
-        ); */
+            expect(result).toBeTruthy();
+            expect(streamResult).toBeTruthy();
+        },
+        TIMEOUT * 2
+    ); */
 
     // TODO [Forhad]: Need to check why it provides empty response with Google AI
     /* it(
