@@ -50,6 +50,7 @@ export class OpenAIConnector extends LLMConnector {
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
             apiKey: apiKey || process.env.OPENAI_API_KEY,
+            baseURL: _params.baseURL,
         });
 
         // Validate token limit
@@ -123,6 +124,7 @@ export class OpenAIConnector extends LLMConnector {
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: _params.baseURL,
             });
 
             // Validate token limit
@@ -179,6 +181,7 @@ export class OpenAIConnector extends LLMConnector {
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: params?.baseURL,
             });
 
             const response = await openai.images.generate(args);
@@ -197,6 +200,7 @@ export class OpenAIConnector extends LLMConnector {
         // We provide
         const openai = new OpenAI({
             apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
+            baseURL: _params.baseURL,
         });
 
         const messages = this.getConsistentMessages(_params.messages);
@@ -243,12 +247,13 @@ export class OpenAIConnector extends LLMConnector {
     // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' }
     ): Promise<any> {
         try {
             // We provide
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: baseURL,
             });
 
             // sanity check
@@ -402,14 +407,12 @@ export class OpenAIConnector extends LLMConnector {
         const usage_data = [];
         const openai = new OpenAI({
             apiKey: _params.apiKey || process.env.OPENAI_API_KEY,
+            baseURL: _params.baseURL,
         });
 
         //TODO: check token limits for non api key users
         console.debug('model', _params.model);
-        console.debug('messages', _params.messages);
-
-        const messages = this.getConsistentMessages(_params.messages);
-
+        //console.debug('messages', _params.messages);
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
             messages,
@@ -515,12 +518,18 @@ export class OpenAIConnector extends LLMConnector {
                 ...messageBlock,
                 content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
             };
+            if (transformedMessageBlock.tool_calls) {
+                for (let toolCall of transformedMessageBlock.tool_calls) {
+                    toolCall.function.arguments =
+                        typeof toolCall.function.arguments === 'object' ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
+                }
+            }
             messageBlocks.push(transformedMessageBlock);
         }
 
         const transformedToolsData = toolsData.map((toolData) => ({
             tool_call_id: toolData.id,
-            role: toolData.role as TLLMMessageRole,
+            role: TLLMMessageRole.Tool, // toolData.role as TLLMMessageRole, //should always be 'tool' for OpenAI
             name: toolData.name,
             content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
         }));

@@ -56,6 +56,7 @@ export type ToolData = {
     arguments: string | Record<string, any>;
     role: 'user' | 'tool' | 'assistant';
     result?: string; // result string from the used tool
+    function?: any;
 };
 
 export interface AnthropicToolDefinition {

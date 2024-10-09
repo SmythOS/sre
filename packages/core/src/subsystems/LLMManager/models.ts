@@ -10,6 +10,19 @@ export const models = {
         enabled: true,
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
+    'deepseek-v2.5': {
+        llm: 'DeepSeek',
+        baseURL: 'https://api.deepseek.com/beta',
+        alias: 'deepseek-chat',
+    },
+    'deepseek-chat': {
+        llm: 'DeepSeek',
+        baseURL: 'https://api.deepseek.com/beta',
+        tokens: 128000,
+        completionTokens: 8192,
+        enabled: true,
+        keyOptions: { tokens: 128000, completionTokens: 8192 },
+    },
 
     // GPT-4o
     'gpt-4o-mini': {
@@ -168,7 +181,7 @@ export const models = {
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
-        keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
     'claude-3-sonnet-20240229': {
         llm: 'AnthropicAI',
@@ -843,6 +856,15 @@ export const models = {
         tokens: 32768,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
+    },
+    'microsoft/WizardLM-2-8x22B': {
+        llm: 'TogetherAI',
+        tokens: 65536,
+        completionTokens: 8192,
+        enabled: false,
+        keyOptions: { tokens: 65536, completionTokens: 8192, enabled: true },
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
     },
 
     'togethercomputer/RedPajama-INCITE-Chat-3B-v1': {
