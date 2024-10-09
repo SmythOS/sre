@@ -15,7 +15,8 @@
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
         "start:web": "node ./tests/build/web/index.js --model claude-3-5-sonnet-20240620",
         "build:aws:dev": "cross-env BUILD=dev rollup -c distributions/AWS/rollup.config.js",
-        "build:aws:prod": "cross-env BUILD=prod rollup -c distributions/AWS/rollup.config.js",
+        "build:aws:prod": "cross-env BUILD=prod FORMAT=cjs rollup -c distributions/AWS/rollup.config.js",
+        "build:aws:exe": "pkg ./distributions/AWS/dist/aws.cjs --targets node18-linux-x64 --out-path ./distributions/aws/dist",
         "build:cli:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/cli/rollup.config.js",
         "build:cli:dev:exe": "pkg ./distributions/cli/dist/cli.dev.cjs --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/cli/dist",
         "build:cli:dev": "npm run build:cli:dev:cjs && npm run build:cli:dev:exe"

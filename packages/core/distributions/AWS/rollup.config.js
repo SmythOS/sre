@@ -15,8 +15,9 @@ const devConfig = {
     input: 'distributions/AWS/index.ts',
     output: {
         file: 'distributions/AWS/dist/aws.dev.js',
-        format: 'es',
+        format: 'cjs', // Specify the CommonJS format
         sourcemap: true,
+        inlineDynamicImports: true, // Inline all dynamic imports into one file
     },
     plugins: [
         json(),
@@ -45,9 +46,10 @@ const devConfig = {
 const prodConfig = {
     input: 'distributions/AWS/index.ts',
     output: {
-        file: 'distributions/AWS/dist/aws.prod.js',
-        format: 'es',
+        file: 'distributions/AWS/dist/aws.js',
+        format: 'cjs', // Specify the CommonJS format
         sourcemap: true,
+        inlineDynamicImports: true, // Inline all dynamic imports into one file
     },
     plugins: [
         json(),
