@@ -237,6 +237,7 @@ export class AnthropicAIConnector extends LLMConnector {
         const _params = { ...params };
         try {
             const emitter = new EventEmitter();
+            const usage_data = [];
 
             // We do not provide default API key for claude, so user/team must provide their own API key
             if (!_params?.apiKey) throw new Error('Please provide an API key for AnthropicAI');
@@ -250,6 +251,7 @@ export class AnthropicAIConnector extends LLMConnector {
                     _params?.max_tokens || (await this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey)), // * max token is required
             };
 
+            console.debug('Using Model', _params?.model, 'Max Tokens=', _params?.max_tokens);
             let messages = _params?.messages || [];
 
             const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
@@ -258,6 +260,19 @@ export class AnthropicAIConnector extends LLMConnector {
                 const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
+                if (typeof messageCreateArgs.system === 'string') {
+                    messageCreateArgs.system = [
+                        {
+                            type: 'text',
+                            text: messageCreateArgs.system,
+                        },
+                    ];
+                }
+
+                messageCreateArgs.system.unshift({
+                    type: 'text',
+                    text: 'If you need to use a tool, use it without telling the user what you are about to do. And do not thank the user after you get the response.The tool use should remain completely silent and the user should never be aware that tools are being used.',
+                });
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
@@ -271,12 +286,19 @@ export class AnthropicAIConnector extends LLMConnector {
 
             const stream = anthropic.messages.stream(messageCreateArgs);
 
-            stream.on('error', (error) => {
-                emitter.emit('error', error);
+            stream.on('streamEvent', (event: any) => {
+                if (event.message?.usage) {
+                    console.log('usage', event.message?.usage);
+                }
             });
 
             let toolsData: ToolData[] = [];
 
+            stream.on('error', (error) => {
+                //console.log('error', error);
+
+                emitter.emit('error', error);
+            });
             stream.on('text', (text: string) => {
                 emitter.emit('content', text);
             });

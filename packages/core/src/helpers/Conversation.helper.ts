@@ -99,7 +99,7 @@ export class Conversation extends EventEmitter {
         //this event listener avoids unhandled errors that can cause crashes
         this.on('error', (error) => {
             this._lastError = error;
-            console.warn('Conversation Error: ', error);
+            console.warn('Conversation Error: ', error?.message);
         });
         if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
         if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
@@ -265,9 +265,11 @@ export class Conversation extends EventEmitter {
                 toolsData.push({ ...tool, result: functionResponse });
             }
 
-            const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
+            // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
 
-            this._context.push(...messagesWithToolResult);
+            // this._context.push(...messagesWithToolResult);
+
+            this._context.push({ messageBlock: llmResponse?.message, toolsData });
 
             return this.prompt(null, toolHeaders);
         }
@@ -413,12 +415,17 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+                // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+                //     messageBlock: llmMessage,
+                //     toolsData: processedToolsData,
+                // });
+
+                // this._context.push(...messagesWithToolResult);
+                this._context.push({
+                    //store raw tool call data, we'll convert it when reading the context window
                     messageBlock: llmMessage,
                     toolsData: processedToolsData,
                 });
-
-                this._context.push(...messagesWithToolResult);
 
                 const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
                 //console.log('Result after tool call: ', result);
@@ -442,7 +449,7 @@ export class Conversation extends EventEmitter {
         const toolsContent = await toolsPromise.catch((error) => {
             console.error('Error in toolsPromise: ', error);
             //this.emit('error', error);
-            this.emit('warning', error);
+            this.emit('error', error);
             return '';
         });
         _content += toolsContent;
@@ -570,12 +577,17 @@ export class Conversation extends EventEmitter {
 
             const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-            const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+            // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+            //     messageBlock: llmMessage,
+            //     toolsData: processedToolsData,
+            // });
+
+            // this._context.push(...messagesWithToolResult);
+            this._context.push({
+                //store raw tool call data, we'll convert it when reading the context window
                 messageBlock: llmMessage,
                 toolsData: processedToolsData,
             });
-
-            this._context.push(...messagesWithToolResult);
 
             return this.streamPrompt(null, toolHeaders, concurrentToolCalls);
         }
@@ -705,7 +717,7 @@ export class Conversation extends EventEmitter {
                 let messages = [];
                 if (this._context) messages = this._context.messages; // preserve messages
 
-                this._context = new LLMContext(this._model, this.systemPrompt, messages);
+                this._context = new LLMContext(this._model, llmInference, this.systemPrompt, messages);
             } else {
                 this._toolsConfig = null;
                 this._reqMethods = null;

@@ -122,6 +122,17 @@ export abstract class LLMConnector extends Connector {
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
 
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
+
                 return this.chatRequest(candidate.readRequest, prompt, params);
             },
             visionRequest: async (prompt, params: any) => {
@@ -132,6 +143,17 @@ export abstract class LLMConnector extends Connector {
                     .user(candidate)
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
+
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
 
                 return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
             },
@@ -144,6 +166,17 @@ export abstract class LLMConnector extends Connector {
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
 
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
+
                 return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
             },
             imageGenRequest: async (prompt, params: any) => {
@@ -154,6 +187,17 @@ export abstract class LLMConnector extends Connector {
                     .user(candidate)
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
+
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
 
                 return this.imageGenRequest(candidate.readRequest, prompt, params);
             },
@@ -166,6 +210,17 @@ export abstract class LLMConnector extends Connector {
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
 
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
+
                 return this.toolRequest(candidate.readRequest, params);
             },
             streamToolRequest: async (params: any) => {
@@ -177,6 +232,17 @@ export abstract class LLMConnector extends Connector {
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
 
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
+
                 return this.streamToolRequest(candidate.readRequest, params);
             },
             streamRequest: async (params: any) => {
@@ -187,6 +253,17 @@ export abstract class LLMConnector extends Connector {
                     .user(candidate)
                     .get(llmProvider)
                     .catch((e) => ''); //if vault access is denied we just return empty key
+
+                if (params.max_tokens) {
+                    params.max_tokens = await this.llmHelper
+                        .TokenManager()
+                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
+                }
+
+                const baseUrl = llmRegistry.getBaseURL(params.model);
+                if (baseUrl) {
+                    params.baseURL = baseUrl;
+                }
 
                 return this.streamRequest(candidate.readRequest, params);
             },

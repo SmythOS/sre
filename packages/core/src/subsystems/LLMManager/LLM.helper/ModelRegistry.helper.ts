@@ -52,6 +52,14 @@ export class ModelRegistry {
         const modelId = this.getModelId(modelName);
         return this.models?.[modelId]?.llm;
     }
+    public getBaseURL(modelName: string): string {
+        const modelId = this.getModelId(modelName);
+        return this.models?.[modelId]?.baseURL || undefined;
+    }
+    public getMaxComletionTokens(modelName: string): number {
+        const modelId = this.getModelId(modelName);
+        return this.models?.[modelId]?.completionTokens || 1024;
+    }
 
     public modelExists(modelName: string): boolean {
         if (modelName.toLowerCase() === 'echo') return true;

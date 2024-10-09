@@ -1,6 +1,8 @@
 import { encode, encodeChat } from 'gpt-tokenizer';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
 
 // TODO [Forhad]: we can move methods to MessageProcessor
 
@@ -26,7 +28,7 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private _model, _systemPrompt: string = '', private _messages: any[] = []) {
+    constructor(private _model, private llmInference, _systemPrompt: string = '', private _messages: any[] = []) {
         this._systemPrompt = _systemPrompt;
         //TODO:allow configuring a storage service
         this._llmHelper = new LLMHelper();
@@ -61,45 +63,60 @@ export class LLMContext {
 
         let tokens = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
         for (let i = this._messages.length - 1; i >= 0; i--) {
-            const message = this._messages[i] as ChatMessage;
+            // internal_messages are smythOS specific intermediate formats that enable us to store certain data and only convert them when needed
+            let internal_message: any;
 
-            //skip system messages because we will add our own
-
-            if (message.role === 'system') continue;
-
-            //skip empty messages
-            if (!message.content) {
-                //FIXME: tool call messages does not have a content but have a tool field do we need to count them as tokens ?
-                messages.unshift(message);
-                continue;
+            //parse specific tools messages
+            if (this._messages[i]?.messageBlock && this._messages[i]?.toolsData) {
+                internal_message = this.llmInference.connector
+                    .transformToolMessageBlocks({
+                        messageBlock: this._messages[i]?.messageBlock,
+                        toolsData: this._messages[i]?.toolsData,
+                    })
+                    .reverse(); //need to reverse because we are iterating from last to first
+            } else {
+                internal_message = [this._messages[i] as ChatMessage];
             }
 
-            delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
+            for (let message of internal_message) {
+                //skip system messages because we will add our own
 
-            const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
-            const encoded = encode(textContent);
-            tokens += encoded.length;
-            if (tokens > maxInputContext) {
-                if (typeof message.content !== 'string') {
-                    //FIXME: handle this case for object contents (used by Anthropic for tool calls for example)
-                    break;
+                if (message.role === 'system') continue;
+
+                //skip empty messages
+                if (!message.content) {
+                    //FIXME: tool call messages does not have a content but have a tool field do we need to count them as tokens ?
+                    messages.unshift(message);
+                    continue;
                 }
-                //handle context window overflow
-                //FIXME: the logic here is weak, we need a better one
-                const diff = tokens - maxInputContext;
-                const excessPercentage = diff / encoded.length;
 
-                //truncate message content
-                //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+                delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
 
-                message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
-                message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
+                const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+                const encoded = encode(textContent);
+                tokens += encoded.length;
+                if (tokens > maxInputContext) {
+                    if (typeof message.content !== 'string') {
+                        //FIXME: handle this case for object contents (used by Anthropic for tool calls for example)
+                        break;
+                    }
+                    //handle context window overflow
+                    //FIXME: the logic here is weak, we need a better one
+                    const diff = tokens - maxInputContext;
+                    const excessPercentage = diff / encoded.length;
 
-                tokens -= encoded.length;
-                tokens += encodeChat([message], 'gpt-4').length;
-                //break;
+                    //truncate message content
+                    //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+
+                    message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
+                    message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
+
+                    tokens -= encoded.length;
+                    tokens += encodeChat([message], 'gpt-4').length;
+                    //break;
+                }
+                messages.unshift(message);
             }
-            messages.unshift(message);
         }
         //add system message as first message in the context window
         messages.unshift(systemMessage);
