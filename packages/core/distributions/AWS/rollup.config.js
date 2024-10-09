@@ -54,6 +54,7 @@ const prodConfig = {
         resolve({
             browser: false, // Allow bundling of modules from `node_modules`
             preferBuiltins: true, // Prefer Node.js built-in modules
+            exportConditions: ['node'],
         }),
         commonjs(), // Convert CommonJS modules to ES6 for Rollup to bundle them
         json(),
