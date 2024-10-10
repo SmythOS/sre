@@ -5,9 +5,8 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
-import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { TLLMParams, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -23,7 +22,7 @@ type InferenceConfig = {
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params };
         let messages = _params?.messages || [];
 
@@ -31,25 +30,27 @@ export class BedrockConnector extends LLMConnector {
             messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+        let systemPrompt;
+
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
             messages = otherMessages;
-            _params.system = [{ text: (systemMessage as TLLMMessageBlock)?.content }];
+            systemPrompt = [{ text: (systemMessage as TLLMMessageBlock)?.content }];
         } else {
-            _params.system = [{ text: JSON_RESPONSE_INSTRUCTION }];
+            systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
         }
 
-        const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
+        const modelInfo = _params.modelInfo;
 
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
         messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const inferenceConfig: InferenceConfig = {};
-        if (_params?.max_tokens !== undefined) inferenceConfig.maxTokens = _params.max_tokens;
+        if (_params?.maxTokens !== undefined) inferenceConfig.maxTokens = _params.maxTokens;
         if (_params?.temperature !== undefined) inferenceConfig.temperature = _params.temperature;
-        if (_params?.stop_sequences?.length) inferenceConfig.stopSequences = _params.stop_sequences;
-        if (_params?.top_p !== undefined) inferenceConfig.topP = _params.top_p;
+        if (_params?.topP !== undefined) inferenceConfig.topP = _params.topP;
+        if (_params?.stopSequences?.length) inferenceConfig.stopSequences = _params.stopSequences;
 
         const converseCommandInput: any = {
             modelId,
@@ -60,17 +61,31 @@ export class BedrockConnector extends LLMConnector {
             converseCommandInput.inferenceConfig = inferenceConfig;
         }
 
-        if (_params?.system) {
-            converseCommandInput.system = _params?.system;
+        if (systemPrompt) {
+            converseCommandInput.system = systemPrompt;
         }
 
         const command = new ConverseCommand(converseCommandInput);
 
         try {
-            const accountConnector = ConnectorService.getAccountConnector();
-            const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+            const keyId = _params?.credentials?.keyId;
+            const secretKey = _params?.credentials?.secretKey;
+            const sessionToken = _params?.credentials?.sessionKey;
 
-            const client = await this.getBedrockClient(modelInfo, teamId);
+            const credentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string } = {
+                accessKeyId: keyId,
+                secretAccessKey: secretKey,
+            };
+
+            if (sessionToken) {
+                credentials.sessionToken = sessionToken;
+            }
+
+            const client = new BedrockRuntimeClient({
+                region: modelInfo.settings.region,
+                credentials,
+            });
+
             const response = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
             return { content, finishReason: 'stop' };
@@ -103,38 +118,8 @@ export class BedrockConnector extends LLMConnector {
         throw new Error('Streaming is not supported for Bedrock.');
     }
 
-    public async extractVisionLLMParams(config: any) {
-        const params: TLLMParams = await super.extractVisionLLMParams(config);
-        return params;
-    }
-
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         throw new Error('Tool configuration is not supported for Bedrock.');
-    }
-
-    private async getBedrockClient(modelInfo: any, teamId: string) {
-        try {
-            const keyId = await VaultHelper.getTeamKey(modelInfo.settings?.keyIDName, teamId);
-            const secretKey = await VaultHelper.getTeamKey(modelInfo.settings?.secretKeyName, teamId);
-            const sessionKey = await VaultHelper.getTeamKey(modelInfo.settings?.sessionKeyName, teamId);
-
-            const credentials: any = {
-                accessKeyId: keyId || '',
-                secretAccessKey: secretKey || '',
-            };
-
-            if (sessionKey) {
-                credentials['sessionToken'] = sessionKey;
-            }
-
-            return new BedrockRuntimeClient({
-                region: modelInfo.settings.region,
-                credentials,
-            });
-        } catch (error) {
-            console.error('Error on initializing Bedrock client.');
-            throw error;
-        }
     }
 
     private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {

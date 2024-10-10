@@ -5,7 +5,8 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -27,7 +28,7 @@ type ToolRequestParams = {
     model: string;
     messages: TLLMMessageBlock[];
     toolsConfig: { tools: ToolData[]; tool_choice: string };
-    apiKey: string;
+    credentials: { apiKey: string };
 };
 
 // TODO [Forhad]: Apply proper types at for function params and return value
@@ -35,14 +36,14 @@ type ToolRequestParams = {
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params };
 
         let messages = _params?.messages || [];
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
             messages = [systemMessage, ...otherMessages];
         } else {
             messages.unshift({
@@ -55,7 +56,7 @@ export class GroqConnector extends LLMConnector {
             messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        const apiKey = _params?.apiKey;
+        const apiKey = _params?.credentials?.apiKey;
         if (!apiKey) throw new Error('Please provide an API key for Groq');
 
         const groq = new Groq({ apiKey });
@@ -70,10 +71,10 @@ export class GroqConnector extends LLMConnector {
             messages,
         };
 
-        if (_params.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
-        if (_params.temperature) chatCompletionArgs.temperature = _params.temperature;
-        if (_params.stop) chatCompletionArgs.stop = _params.stop;
-        if (_params.top_p) chatCompletionArgs.top_p = _params.top_p;
+        if (_params.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+        if (_params.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
+        if (_params.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
+        if (_params.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
 
         try {
             const response: any = await groq.chat.completions.create(chatCompletionArgs);
@@ -86,19 +87,21 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Groq');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for OpenAI.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: ToolRequestParams): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
         const _params = { ...params };
 
         try {
-            const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
+            const apiKey = _params?.credentials?.apiKey;
+
+            const groq = new Groq({ apiKey });
 
             const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
@@ -136,10 +139,11 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Groq.');
     }
 
+    // ! DEPRECATED METHOD
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -147,22 +151,24 @@ export class GroqConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
         const _params = { ...params };
         const emitter = new EventEmitter();
-        const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
+        const apiKey = _params?.credentials?.apiKey;
+
+        const groq = new Groq({ apiKey });
 
         const messages = this.getConsistentMessages(_params.messages);
 
         let chatCompletionArgs: ChatCompletionCreateParams = {
             model: _params.model,
             messages,
-            max_tokens: _params.max_tokens,
+            max_tokens: _params.maxTokens,
             stream: true,
         };
 
         if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
-        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
 
         try {
             const stream = await groq.chat.completions.create(chatCompletionArgs);
@@ -209,12 +215,6 @@ export class GroqConnector extends LLMConnector {
         } catch (error: any) {
             throw error;
         }
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params = await super.extractVisionLLMParams(config);
-
-        return params;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {

@@ -189,7 +189,7 @@ export class Conversation extends EventEmitter {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig,
-                    max_tokens: this._maxOutputTokens,
+                    maxTokens: this._maxOutputTokens,
                 },
                 this._agentId
             )
@@ -322,7 +322,7 @@ export class Conversation extends EventEmitter {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig,
-                    max_tokens: this._maxOutputTokens,
+                    maxTokens: this._maxOutputTokens,
                 },
                 this._agentId
             )

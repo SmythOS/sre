@@ -109,7 +109,7 @@ export default class LLMAssistant extends Component {
 
             const apiKey = await VaultHelper.getTeamKey(provider, agent.teamId);
 
-            const maxTokens = (await llmInference.llmHelper.TokenManager().getAllowedCompletionTokens(model, !!apiKey)) ?? 2048;
+            const maxTokens = (await llmInference.llmHelper.TokenManager().getMaxCompletionTokens(model, !!apiKey)) ?? 2048;
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 

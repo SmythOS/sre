@@ -5,23 +5,34 @@ import { FunctionCallingMode } from '@google/generative-ai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
 export type TLLMParams = {
-    messages?: TLLMMessageBlock[];
-    apiKey?: string; // for all
-    temperature?: number; // for all
-    max_tokens?: number; // for OpenAI, cohere, together.ai, AnthropicAI
-    maxOutputTokens?: number; // for GoogleAI
-    stop?: string[] | null; // for OpenAI, together.ai
-    stop_sequences?: string[] | null; // for cohere, AnthropicAI
-    top_p?: number; // for OpenAI, together.ai, AnthropicAI
-    top_k?: number; // for together.ai, AnthropicAI
-    topP?: number; // for GoogleAI
-    topK?: number; // for GoogleAI
-    p?: number; // Top P for cohere
-    k?: number; // Top K for cohere
-    frequency_penalty?: number; // for OpenAI, cohere
-    repetition_penalty?: number; // Frequency Penalty for together.ai
-    presence_penalty?: number; // for OpenAI, cohere
-    sources?: BinaryInput[];
+    model: string;
+    credentials:
+        | Record<string, string> // for VertexAI
+        | {
+              apiKey?: string; // for standard models
+              keyId?: string; // for Bedrock
+              secretKey?: string; // for Bedrock
+              sessionKey?: string; // for Bedrock
+          };
+
+    messages?: any[]; // TODO [Forhad]: apply proper typing
+    temperature?: number;
+    maxTokens?: number;
+    stopSequences?: string[];
+    topP?: number;
+    topK?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    responseFormat?: any; // TODO [Forhad]: apply proper typing
+    modelInfo?: TVertexAIModel | TBedrockModel;
+    fileSources?: BinaryInput[];
+    toolsConfig?: ToolsConfig;
+    baseURL?: string;
+
+    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'; // for image generation
+    quality?: 'standard' | 'hd'; // for image generation
+    n?: number; // for image generation
+    style?: 'vivid' | 'natural'; // for image generation
 };
 
 export type TLLMModelEntry = {
@@ -152,3 +163,13 @@ export type TLLMInputMessage = {
     content?: string | { text: string }[];
     parts?: { text: string }[]; // * 'part' is for Google Vertex AI
 };
+
+export enum TLLMProvider {
+    OpenAI = 'OpenAI',
+    AnthropicAI = 'AnthropicAI',
+    GoogleAI = 'GoogleAI',
+    Groq = 'Groq',
+    TogetherAI = 'TogetherAI',
+    Bedrock = 'Bedrock',
+    VertexAI = 'VertexAI',
+}

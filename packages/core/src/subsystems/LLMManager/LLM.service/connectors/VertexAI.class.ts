@@ -5,9 +5,9 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, TLLMMessageRole, TVertexAIModel } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -16,48 +16,58 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params };
-        _params.messages = _params?.messages || [];
+        let messages = _params?.messages || [];
 
         if (prompt) {
-            _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+            messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+        let systemInstruction;
+
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-            _params.messages = otherMessages;
-            _params.systemInstruction = { role: 'system', parts: [{ text: (systemMessage as TLLMMessageBlock)?.content }] };
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+            messages = otherMessages;
+            systemInstruction = { role: 'system', parts: [{ text: (systemMessage as TLLMMessageBlock)?.content }] };
         } else {
-            _params.systemInstruction = { role: 'system', parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
+            systemInstruction = { role: 'system', parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
         }
 
-        const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
+        const modelInfo = _params.modelInfo as TVertexAIModel;
 
         const generationConfig: GenerationConfig = {};
-        if (_params?.max_tokens !== undefined) generationConfig.maxOutputTokens = _params.max_tokens;
+        if (_params?.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
         if (_params?.temperature !== undefined) generationConfig.temperature = _params.temperature;
-        if (_params?.stop_sequences?.length) generationConfig.stopSequences = _params.stop_sequences;
-        if (_params?.top_p !== undefined) generationConfig.topP = _params.top_p;
-        if (_params?.top_k !== undefined) generationConfig.topK = _params.top_k;
+        if (_params?.topP !== undefined) generationConfig.topP = _params.topP;
+        if (_params?.topK !== undefined) generationConfig.topK = _params.topK;
+        if (_params?.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
 
         const modelParams: ModelParams = {
-            model: modelInfo.settings?.customModel || modelInfo.settings?.foundationModel,
+            model: modelInfo?.settings?.customModel || modelInfo?.settings?.foundationModel,
         };
+
+        if (systemInstruction) {
+            modelParams.systemInstruction = systemInstruction;
+        }
 
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
         }
 
         try {
-            const accountConnector = ConnectorService.getAccountConnector();
-            const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-
-            const client = await this.getVertexAIClient(modelInfo, teamId);
+            const client = new VertexAI({
+                project: modelInfo.settings.projectId,
+                location: modelInfo?.settings?.region,
+                googleAuthOptions: {
+                    credentials: _params.credentials as any, // TODO [Forhad]: apply proper typing
+                },
+                apiEndpoint: `${modelInfo?.settings?.region}-aiplatform.googleapis.com`,
+            });
             const generativeModel = client.getGenerativeModel(modelParams);
 
-            const contents = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+            const contents = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
             const result = await generativeModel.generateContent({ contents });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -89,11 +99,6 @@ export class VertexAIConnector extends LLMConnector {
 
     protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
         throw new Error('Streaming is not currently implemented for Vertex AI');
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: TLLMParams = await super.extractVisionLLMParams(config);
-        return params;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {

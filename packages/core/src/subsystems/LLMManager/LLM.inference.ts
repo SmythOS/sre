@@ -4,13 +4,17 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig } from '@sre/types/LLM.types';
+import { GenerateImageConfig, TLLMParams } from '@sre/types/LLM.types';
 import { LLMHelper } from './LLM.helper';
 
 export class LLMInference {
     private modelName: string;
-    private _llmConnector: LLMConnector;
+    private llmConnector: LLMConnector;
     private _llmHelper: LLMHelper;
+
+    constructor() {
+        this.llmConnector = ConnectorService.getLLMConnector(provider);
+    }
 
     static async load(modelName: string, teamId?: string): Promise<LLMInference> {
         const llmHelper = await LLMHelper.load(teamId);
@@ -46,7 +50,7 @@ export class LLMInference {
             throw new Error(`Model ${this.modelName} not supported`);
         }
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractLLMComponentParams(config)) || {};
+        const params: any = this.prepareParams(config) || {};
         params.model = this.modelName;
 
         //override params with customParams
@@ -77,7 +81,7 @@ export class LLMInference {
 
     public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
+        const params: any = this.prepareParams(config) || {};
         params.model = this.modelName;
 
         const promises = [];
@@ -119,7 +123,7 @@ export class LLMInference {
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
+        const params: any = this.prepareParams(config) || {};
         params.model = this.modelName;
         const promises = [];
         const _fileSources = [];
@@ -204,5 +208,28 @@ export class LLMInference {
             });
             return dummyEmitter;
         }
+    }
+
+    private prepareParams(config: any) {
+        const clonedConfigData = JSON.parse(JSON.stringify(config.data || {})); // We need to keep the config.data unchanged to avoid any side effects, especially when run components with loop
+        const configParams = {};
+
+        for (const [key, value] of Object.entries(clonedConfigData)) {
+            let _value: string | number | string[] | null = value as string;
+
+            // When we have stopSequences, we need to split it into an array
+            if (key === 'stopSequences') {
+                _value = _value ? _value?.split(',') : null;
+            }
+
+            // When we have a string that is a number, we need to convert it to a number
+            if (typeof _value === 'string' && !isNaN(Number(_value))) {
+                _value = +_value;
+            }
+
+            configParams[key] = _value;
+        }
+
+        return configParams;
     }
 }

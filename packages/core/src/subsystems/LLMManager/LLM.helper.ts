@@ -1,9 +1,58 @@
+import type { TLLMMessageBlock } from '@sre/types/LLM.types';
+
 import axios from 'axios';
 import imageSize from 'image-size';
 import { encode } from 'gpt-tokenizer';
 import { isBase64FileUrl, isUrl } from '@sre/utils';
 
-export class FileProcessor {
+export class LLMHelper {
+    /**
+     * Checks if the given array of messages contains a system message.
+     *
+     * @param {any} messages - The array of messages to check.
+     * @returns {boolean} True if a system message is found, false otherwise.
+     *
+     * @example
+     * const messages = [
+     *   { role: 'user', content: 'Hello' },
+     *   { role: 'system', content: 'You are a helpful assistant' }
+     * ];
+     * const hasSystem = LLMHelper.hasSystemMessage(messages);
+     * console.log(hasSystem); // true
+     */
+    public static hasSystemMessage(messages: any): boolean {
+        if (!Array.isArray(messages)) return false;
+        return messages?.some((message) => message.role === 'system');
+    }
+
+    /**
+     * Separates system messages from other messages in an array of LLM message blocks.
+     *
+     * @param {TLLMMessageBlock[]} messages - The array of message blocks to process.
+     * @returns {Object} An object containing the system message (if any) and an array of other messages.
+     * @property {TLLMMessageBlock | {}} systemMessage - The first system message found, or an empty object if none.
+     * @property {TLLMMessageBlock[]} otherMessages - An array of all non-system messages.
+     *
+     * @example
+     * const messages = [
+     *   { role: 'system', content: 'You are a helpful assistant' },
+     *   { role: 'user', content: 'Hello' },
+     *   { role: 'assistant', content: 'Hi there!' }
+     * ];
+     * const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+     * console.log(systemMessage); // { role: 'system', content: 'You are a helpful assistant' }
+     * console.log(otherMessages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
+     */
+    public static separateSystemMessages(messages: TLLMMessageBlock[]): {
+        systemMessage: TLLMMessageBlock | {};
+        otherMessages: TLLMMessageBlock[];
+    } {
+        const systemMessage = messages.find((message) => message.role === 'system') || {};
+        const otherMessages = messages.filter((message) => message.role !== 'system');
+
+        return { systemMessage, otherMessages };
+    }
+
     /**
      * Counts the total number of tokens in a vision prompt, including both text and image tokens.
      *
@@ -24,7 +73,7 @@ export class FileProcessor {
      * const tokenCount = await countVisionPromptTokens(prompt);
      * console.log(tokenCount); // e.g., 150
      */
-    public async countVisionPromptTokens(prompt: any): Promise<number> {
+    public static async countVisionPromptTokens(prompt: any): Promise<number> {
         let tokens = 0;
 
         const textObj = prompt?.filter((item) => item.type === 'text');
@@ -61,7 +110,7 @@ export class FileProcessor {
      * const dimensions = await getImageDimensions('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
      * console.log(dimensions); // { width: 1, height: 1 }
      */
-    public async getImageDimensions(imageUrl: string): Promise<{ width: number; height: number }> {
+    public static async getImageDimensions(imageUrl: string): Promise<{ width: number; height: number }> {
         try {
             let buffer: Buffer;
 
@@ -110,7 +159,7 @@ export class FileProcessor {
      * const tokenCount = countImageTokens(1024, 768);
      * console.log(tokenCount); // Outputs the calculated token count
      */
-    public countImageTokens(width: number, height: number, detailMode: string = 'auto'): number {
+    public static countImageTokens(width: number, height: number, detailMode: string = 'auto'): number {
         if (detailMode === 'low') return 85;
 
         const maxDimension = Math.max(width, height);
