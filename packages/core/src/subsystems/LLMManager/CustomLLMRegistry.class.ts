@@ -48,7 +48,11 @@ export class CustomLLMRegistry {
     }
 
     private getModelId(model: string): string {
-        return this.models?.[model]?.id || this.models?.[model]?.alias || model;
+        for (const [id, modelInfo] of Object.entries(this.models)) {
+            if (modelInfo.name === model) return id;
+        }
+
+        return model;
     }
 
     private async getCustomModels(teamId: string): Promise<Record<string, any>> {
@@ -63,9 +67,9 @@ export class CustomLLMRegistry {
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
                 const foundationModel = entry.settings.foundationModel;
-                const tokens = customModels[foundationModel].tokens;
-                const completionTokens = customModels[foundationModel].completionTokens;
-                const supportsSystemPrompt = customModels[foundationModel].supportsSystemPrompt;
+                const tokens = customModels[foundationModel]?.tokens || entry?.tokens;
+                const completionTokens = customModels[foundationModel]?.completionTokens || entry?.completionTokens;
+                const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
 
                 models[entryId] = {
                     id: entryId,
