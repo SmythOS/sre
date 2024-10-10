@@ -67,7 +67,7 @@ export class LLMRegistry {
         return modelInfo?.completionTokens || modelInfo?.tokens;
     }
 
-    public static async adjustMaxCompletionTokens(model: string, maxTokens: number, hasAPIKey: boolean = false): Promise<number> {
+    public static adjustMaxCompletionTokens(model: string, maxTokens: number, hasAPIKey: boolean = false): number {
         const modelInfo = this.getModelInfo(model, hasAPIKey);
         return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
     }

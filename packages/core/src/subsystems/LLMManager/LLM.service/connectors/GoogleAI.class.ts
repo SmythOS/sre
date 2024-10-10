@@ -165,7 +165,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             // * the function will throw an error if the token limit is exceeded
             await LLMRegistry.validateTokensLimit({
-                modelName: model,
+                model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
@@ -243,7 +243,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             // * the function will throw an error if the token limit is exceeded
             await LLMRegistry.validateTokensLimit({
-                modelName: model,
+                model,
                 promptTokens,
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
@@ -330,7 +330,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             // * the function will throw an error if the token limit is exceeded
             await LLMRegistry.validateTokensLimit({
-                modelName: model,
+                model,
                 promptTokens,
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,

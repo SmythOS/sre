@@ -6,11 +6,11 @@ export class CustomLLMRegistry {
     private models: Record<string, any> = {}; // TODO [Forhad]: apply proper typing
 
     public static async getInstance(teamId: string) {
-        const _this = new CustomLLMRegistry();
+        const registry = new CustomLLMRegistry();
 
-        await _this.loadCustomModels(teamId);
+        await registry.loadCustomModels(teamId);
 
-        return _this;
+        return registry;
     }
 
     public getProvider(model: string): string {
@@ -25,7 +25,18 @@ export class CustomLLMRegistry {
         return modelInfo;
     }
 
-    public async adjustMaxCompletionTokens(model: string, maxTokens: number): Promise<number> {
+    public getMaxContextTokens(model: string): number {
+        const modelInfo = this.getModelInfo(model);
+        return modelInfo?.tokens;
+    }
+
+    public async getMaxCompletionTokens(model: string) {
+        const modelInfo = this.getModelInfo(model);
+
+        return modelInfo?.completionTokens || modelInfo?.tokens;
+    }
+
+    public adjustMaxCompletionTokens(model: string, maxTokens: number): number {
         const modelInfo = this.getModelInfo(model);
         return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
     }

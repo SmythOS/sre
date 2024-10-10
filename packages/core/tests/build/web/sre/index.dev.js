@@ -11,14 +11,14 @@ import crypto, { createHash } from 'crypto';
 import EventEmitter$1, { EventEmitter } from 'events';
 import Joi from 'joi';
 import dayjs from 'dayjs';
-import { xxh3 } from '@node-rs/xxhash';
+import xxhash from 'xxhashjs';
 import mime from 'mime';
 import { Readable } from 'stream';
 import { jsonrepair } from 'jsonrepair';
-import imageSize from 'image-size';
-import { encode, encodeChat } from 'gpt-tokenizer';
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import OpenAI from 'openai';
+import { encode, encodeChat } from 'gpt-tokenizer';
+import imageSize from 'image-size';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -35,30 +35,28 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import yaml from 'js-yaml';
-import SwaggerParser from '@apidevtools/swagger-parser';
-import $RefParser from '@apidevtools/json-schema-ref-parser';
 import FormData from 'form-data';
 import OAuth from 'oauth-1.0a';
 import { HfInference } from '@huggingface/inference';
 import querystring from 'querystring';
 import 'process';
 
-var __defProp$1a = Object.defineProperty;
-var __defNormalProp$1a = (obj, key, value) => key in obj ? __defProp$1a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$1a = (obj, key, value) => __defNormalProp$1a(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$19 = Object.defineProperty;
+var __defNormalProp$19 = (obj, key, value) => key in obj ? __defProp$19(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$19 = (obj, key, value) => __defNormalProp$19(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentRequest {
   constructor(req) {
-    __publicField$1a(this, "headers");
-    __publicField$1a(this, "body");
-    __publicField$1a(this, "query");
-    __publicField$1a(this, "params");
-    __publicField$1a(this, "method", "GET");
-    __publicField$1a(this, "path", "");
-    __publicField$1a(this, "sessionID", "");
-    __publicField$1a(this, "res", null);
-    __publicField$1a(this, "req", null);
-    __publicField$1a(this, "files", []);
-    __publicField$1a(this, "_agent_authinfo");
+    __publicField$19(this, "headers");
+    __publicField$19(this, "body");
+    __publicField$19(this, "query");
+    __publicField$19(this, "params");
+    __publicField$19(this, "method", "GET");
+    __publicField$19(this, "path", "");
+    __publicField$19(this, "sessionID", "");
+    __publicField$19(this, "res", null);
+    __publicField$19(this, "req", null);
+    __publicField$19(this, "files", []);
+    __publicField$19(this, "_agent_authinfo");
     if (!req) return;
     this.headers = JSON.parse(JSON.stringify(req.headers || {}));
     this.body = JSON.parse(JSON.stringify(req.body || req.data || {}));
@@ -435,9 +433,9 @@ const config = {
   }
 };
 
-var __defProp$19 = Object.defineProperty;
-var __defNormalProp$19 = (obj, key, value) => key in obj ? __defProp$19(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$19 = (obj, key, value) => __defNormalProp$19(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$18 = Object.defineProperty;
+var __defNormalProp$18 = (obj, key, value) => key in obj ? __defProp$18(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$18 = (obj, key, value) => __defNormalProp$18(obj, typeof key !== "symbol" ? key + "" : key, value);
 winston.addColors({
   error: "red",
   warn: "yellow",
@@ -458,7 +456,7 @@ const namespaceFilter = winston.format((info) => {
 class ArrayTransport extends Transport {
   constructor(opts) {
     super(opts);
-    __publicField$19(this, "logs");
+    __publicField$18(this, "logs");
     this.logs = opts.logs;
   }
   log(info, callback) {
@@ -474,7 +472,7 @@ class LogHelper {
     this._logger = _logger;
     this.data = data;
     this.labels = labels;
-    __publicField$19(this, "startTime", Date.now());
+    __publicField$18(this, "startTime", Date.now());
   }
   get output() {
     return Array.isArray(this.data) ? this.data.join("\n") : void 0;
@@ -610,15 +608,15 @@ const DummyConnector = new Proxy(
   }
 );
 
-var __defProp$18 = Object.defineProperty;
-var __defNormalProp$18 = (obj, key, value) => key in obj ? __defProp$18(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$18 = (obj, key, value) => __defNormalProp$18(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$17 = Object.defineProperty;
+var __defNormalProp$17 = (obj, key, value) => key in obj ? __defProp$17(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$17 = (obj, key, value) => __defNormalProp$17(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LocalCache {
   constructor(defaultTTL = 60 * 60 * 1e3) {
-    __publicField$18(this, "cache");
-    __publicField$18(this, "expiryMap");
-    __publicField$18(this, "timeouts");
-    __publicField$18(this, "defaultTTL", 60 * 60 * 1e3);
+    __publicField$17(this, "cache");
+    __publicField$17(this, "expiryMap");
+    __publicField$17(this, "timeouts");
+    __publicField$17(this, "defaultTTL", 60 * 60 * 1e3);
     this.defaultTTL = defaultTTL;
     this.cache = /* @__PURE__ */ new Map();
     this.expiryMap = /* @__PURE__ */ new Map();
@@ -673,16 +671,16 @@ class LocalCache {
   }
 }
 
-var __defProp$17 = Object.defineProperty;
-var __defNormalProp$17 = (obj, key, value) => key in obj ? __defProp$17(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$17 = (obj, key, value) => __defNormalProp$17(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$16 = Object.defineProperty;
+var __defNormalProp$16 = (obj, key, value) => key in obj ? __defProp$16(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$16 = (obj, key, value) => __defNormalProp$16(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$h = Logger("Connector");
 const lCache = new LocalCache();
 class Connector {
   constructor(config = {}) {
-    __publicField$17(this, "name");
-    __publicField$17(this, "started", false);
-    __publicField$17(this, "_readyPromise");
+    __publicField$16(this, "name");
+    __publicField$16(this, "started", false);
+    __publicField$16(this, "_readyPromise");
   }
   /**
    * Creates a new instance of the current class using the provided settings.
@@ -885,14 +883,14 @@ class ConnectorServiceProvider {
   }
 }
 
-var __defProp$16 = Object.defineProperty;
-var __defNormalProp$16 = (obj, key, value) => key in obj ? __defProp$16(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$16 = (obj, key, value) => __defNormalProp$16(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$15 = Object.defineProperty;
+var __defNormalProp$15 = (obj, key, value) => key in obj ? __defProp$15(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$15 = (obj, key, value) => __defNormalProp$15(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("EmbodimentSettings");
 class EmbodimentSettings {
   constructor(agentId) {
-    __publicField$16(this, "_embodiments");
-    __publicField$16(this, "_ready", false);
+    __publicField$15(this, "_embodiments");
+    __publicField$15(this, "_ready", false);
     this.init(agentId);
   }
   async init(data) {
@@ -924,15 +922,15 @@ class EmbodimentSettings {
   }
 }
 
-var __defProp$15 = Object.defineProperty;
-var __defNormalProp$15 = (obj, key, value) => key in obj ? __defProp$15(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$15 = (obj, key, value) => __defNormalProp$15(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$14 = Object.defineProperty;
+var __defNormalProp$14 = (obj, key, value) => key in obj ? __defProp$14(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$14 = (obj, key, value) => __defNormalProp$14(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentSettings");
 class AgentSettings {
   constructor(agentId) {
-    __publicField$15(this, "_settings");
-    __publicField$15(this, "embodiments");
-    __publicField$15(this, "_ready", false);
+    __publicField$14(this, "_settings");
+    __publicField$14(this, "embodiments");
+    __publicField$14(this, "_ready", false);
     if (agentId) {
       this.init(agentId);
     }
@@ -1010,15 +1008,15 @@ class ACLAccessDeniedError extends Error {
   }
 }
 
-var __defProp$14 = Object.defineProperty;
-var __defNormalProp$14 = (obj, key, value) => key in obj ? __defProp$14(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$14 = (obj, key, value) => __defNormalProp$14(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$13 = Object.defineProperty;
+var __defNormalProp$13 = (obj, key, value) => key in obj ? __defProp$13(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$13 = (obj, key, value) => __defNormalProp$13(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessRequest {
   constructor(object) {
-    __publicField$14(this, "id");
-    __publicField$14(this, "resourceId");
-    __publicField$14(this, "level", []);
-    __publicField$14(this, "candidate");
+    __publicField$13(this, "id");
+    __publicField$13(this, "resourceId");
+    __publicField$13(this, "level", []);
+    __publicField$13(this, "candidate");
     if (!object) {
       this.id = "aclR:" + uid();
     }
@@ -1054,14 +1052,14 @@ class AccessRequest {
   }
 }
 
-var __defProp$13 = Object.defineProperty;
-var __defNormalProp$13 = (obj, key, value) => key in obj ? __defProp$13(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$13 = (obj, key, value) => __defNormalProp$13(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$12 = Object.defineProperty;
+var __defNormalProp$12 = (obj, key, value) => key in obj ? __defProp$12(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$12 = (obj, key, value) => __defNormalProp$12(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessCandidate {
   //public _candidate: TAccessCandidate;
   constructor(candidate) {
-    __publicField$13(this, "role");
-    __publicField$13(this, "id");
+    __publicField$12(this, "role");
+    __publicField$12(this, "id");
     this.role = candidate ? candidate.role : TAccessRole.Public;
     this.id = candidate ? candidate.id : "";
   }
@@ -1114,18 +1112,22 @@ class AccessCandidate {
   }
 }
 
-var __defProp$12 = Object.defineProperty;
-var __defNormalProp$12 = (obj, key, value) => key in obj ? __defProp$12(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$12 = (obj, key, value) => __defNormalProp$12(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$11 = Object.defineProperty;
+var __defNormalProp$11 = (obj, key, value) => key in obj ? __defProp$11(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$11 = (obj, key, value) => __defNormalProp$11(obj, typeof key !== "symbol" ? key + "" : key, value);
 const ACLHashAlgo = {
   none: (source) => source,
-  xxh3: (source) => xxh3.xxh64(source.toString()).toString(16)
+  //xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
+  xxh3: (source) => {
+    const h64 = xxhash.h64();
+    return h64.update(source.toString()).digest().toString(16);
+  }
 };
 class ACL {
   constructor(acl) {
-    __publicField$12(this, "hashAlgorithm");
-    __publicField$12(this, "entries");
-    __publicField$12(this, "migrated");
+    __publicField$11(this, "hashAlgorithm");
+    __publicField$11(this, "entries");
+    __publicField$11(this, "migrated");
     if (typeof acl === "string") {
       this.deserializeACL(acl);
     } else {
@@ -1269,13 +1271,13 @@ class ACL {
   }
 }
 
-var __defProp$11 = Object.defineProperty;
-var __defNormalProp$11 = (obj, key, value) => key in obj ? __defProp$11(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$11 = (obj, key, value) => __defNormalProp$11(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$10 = Object.defineProperty;
+var __defNormalProp$10 = (obj, key, value) => key in obj ? __defProp$10(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$10 = (obj, key, value) => __defNormalProp$10(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONContentHelper {
   constructor(dataString) {
     this.dataString = dataString;
-    __publicField$11(this, "_current");
+    __publicField$10(this, "_current");
     this._current = dataString;
   }
   get result() {
@@ -1304,6 +1306,23 @@ class JSONContentHelper {
       }
     }
   }
+  // Same as tryParse but it does not extract JSON from string
+  tryFullParse() {
+    const str = this._current;
+    if (!str) return str;
+    if (isDigits(str) && !isSafeNumber(str) || !str.startsWith("{") && !str.startsWith("[")) return str;
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      try {
+        return JSON.parse(jsonrepair(str));
+      } catch (e2) {
+        console.warn("Error on parseJson: ", e2.toString());
+        console.warn("   Tried to parse: ", str);
+        return { result: str, error: e2.toString() };
+      }
+    }
+  }
   extractJsonFromString(str) {
     try {
       const regex = /(\{.*\})/s;
@@ -1318,9 +1337,9 @@ function JSONContent(dataString) {
   return JSONContentHelper.create(dataString);
 }
 
-var __defProp$10 = Object.defineProperty;
-var __defNormalProp$10 = (obj, key, value) => key in obj ? __defProp$10(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$10 = (obj, key, value) => __defNormalProp$10(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$$ = Object.defineProperty;
+var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
 SystemEvents.on("SRE:Booted", () => {
   const router = ConnectorService.getRouterConnector();
   if (router && router?.get instanceof Function) {
@@ -1329,8 +1348,8 @@ SystemEvents.on("SRE:Booted", () => {
 });
 const _SmythFS = class _SmythFS {
   constructor() {
-    __publicField$10(this, "storage");
-    __publicField$10(this, "cache");
+    __publicField$$(this, "storage");
+    __publicField$$(this, "cache");
     if (!ConnectorService.ready) {
       throw new Error("SRE not available");
     }
@@ -1502,23 +1521,23 @@ const _SmythFS = class _SmythFS {
   }
 };
 //singleton
-__publicField$10(_SmythFS, "instance");
+__publicField$$(_SmythFS, "instance");
 let SmythFS = _SmythFS;
 
-var __defProp$$ = Object.defineProperty;
-var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$_ = Object.defineProperty;
+var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
 class BinaryInput {
   constructor(data, _name, mimetype, candidate) {
     this._name = _name;
     this.mimetype = mimetype;
     this.candidate = candidate;
-    __publicField$$(this, "size");
-    __publicField$$(this, "url");
-    __publicField$$(this, "_ready");
-    __publicField$$(this, "_readyPromise");
-    __publicField$$(this, "_source");
-    __publicField$$(this, "_uploading", false);
+    __publicField$_(this, "size");
+    __publicField$_(this, "url");
+    __publicField$_(this, "_ready");
+    __publicField$_(this, "_readyPromise");
+    __publicField$_(this, "_source");
+    __publicField$_(this, "_uploading", false);
     if (!_name) _name = uid();
     this._name = _name;
     this.load(data, _name, mimetype, candidate);
@@ -1793,18 +1812,18 @@ async function inferAnyType(value) {
   return value;
 }
 
-var __defProp$_ = Object.defineProperty;
-var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Z = Object.defineProperty;
+var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Component {
   constructor() {
-    __publicField$_(this, "hasReadOutput", false);
-    __publicField$_(this, "hasPostProcess", true);
-    __publicField$_(this, "alwaysActive", false);
+    __publicField$Z(this, "hasReadOutput", false);
+    __publicField$Z(this, "hasPostProcess", true);
+    __publicField$Z(this, "alwaysActive", false);
     //for components like readable memories
-    __publicField$_(this, "exclusive", false);
+    __publicField$Z(this, "exclusive", false);
     //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    __publicField$_(this, "configSchema");
+    __publicField$Z(this, "configSchema");
   }
   init() {
   }
@@ -1874,9 +1893,9 @@ class VaultHelper {
   }
 }
 
-var __defProp$Z = Object.defineProperty;
-var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Y = Object.defineProperty;
+var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
 const Match = {
   default: /{{(.*?)}}/g,
   //matches all placeholders
@@ -1932,11 +1951,11 @@ const TPLProcessor = {
 class TemplateStringHelper {
   constructor(templateString) {
     this.templateString = templateString;
-    __publicField$Z(this, "_current");
+    __publicField$Y(this, "_current");
     //this queue is used to wait for asyncronous results when async processors are used
     //if all processors are synchronous, this queue will be empty and .result getter can be used
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
-    __publicField$Z(this, "_promiseQueue", []);
+    __publicField$Y(this, "_promiseQueue", []);
     this._current = templateString;
   }
   get result() {
@@ -2057,9 +2076,9 @@ function TemplateString(templateString) {
   return TemplateStringHelper.create(templateString);
 }
 
-var __defProp$Y = Object.defineProperty;
-var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$X = Object.defineProperty;
+var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
 function isEmpty(value) {
   return value === void 0 || value === null || typeof value === "string" && value.trim() === "" || Array.isArray(value) && value.length === 0 || typeof value === "object" && value !== null && Object.keys(value).length === 0;
 }
@@ -2079,7 +2098,7 @@ function parseKey(str = "", teamId) {
 class APIEndpoint extends Component {
   constructor() {
     super();
-    __publicField$Y(this, "configSchema", Joi.object({
+    __publicField$X(this, "configSchema", Joi.object({
       endpoint: Joi.string().pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/).max(50).required(),
       method: Joi.string().valid("POST", "GET").allow(""),
       //we're accepting empty value because we consider it POST by default.
@@ -2210,16 +2229,16 @@ class APIEndpoint extends Component {
   }
 }
 
-var __defProp$X = Object.defineProperty;
-var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$W = Object.defineProperty;
+var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APIOutput extends Component {
   constructor() {
     super();
-    __publicField$X(this, "configSchema", Joi.object({
+    __publicField$W(this, "configSchema", Joi.object({
       format: Joi.string().valid("full", "minimal").required().label("Output Format")
     }));
-    __publicField$X(this, "hasPostProcess", true);
+    __publicField$W(this, "hasPostProcess", true);
   }
   init() {
   }
@@ -2273,6 +2292,19 @@ const models = {
     enabled: true,
     components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
   },
+  "deepseek-v2.5": {
+    llm: "DeepSeek",
+    baseURL: "https://api.deepseek.com/beta",
+    alias: "deepseek-chat"
+  },
+  "deepseek-chat": {
+    llm: "DeepSeek",
+    baseURL: "https://api.deepseek.com/beta",
+    tokens: 128e3,
+    completionTokens: 8192,
+    enabled: true,
+    keyOptions: { tokens: 128e3, completionTokens: 8192 }
+  },
   // GPT-4o
   "gpt-4o-mini": {
     llm: "OpenAI",
@@ -2288,15 +2320,22 @@ const models = {
   },
   "gpt-4o": {
     llm: "OpenAI",
-    alias: "gpt-4o-2024-05-13",
+    alias: "gpt-4o-2024-08-06",
     components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot", "GPTPlugin"]
+  },
+  "gpt-4o-2024-08-06": {
+    llm: "OpenAI",
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: true,
+    keyOptions: { tokens: 128e3, completionTokens: 16384 }
   },
   "gpt-4o-2024-05-13": {
     llm: "OpenAI",
     tokens: 2048,
     completionTokens: 2048,
     enabled: true,
-    keyOptions: { tokens: 128e3, completionTokens: 4096 }
+    keyOptions: { tokens: 128e3, completionTokens: 8192 }
   },
   // GPT-4-turbo
   "gpt-4-turbo-latest": {
@@ -2419,7 +2458,7 @@ const models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 2e5, completionTokens: 4096, enabled: true }
+    keyOptions: { tokens: 2e5, completionTokens: 8192, enabled: true }
   },
   "claude-3-sonnet-20240229": {
     llm: "AnthropicAI",
@@ -3077,6 +3116,22 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true }
   },
+  "Qwen/Qwen2-72B-Instruct": {
+    // ! DEPRECATED: will be removed (404 - not found)
+    llm: "TogetherAI",
+    tokens: 32768,
+    enabled: false,
+    keyOptions: { tokens: 32768, enabled: true }
+  },
+  "microsoft/WizardLM-2-8x22B": {
+    llm: "TogetherAI",
+    tokens: 65536,
+    completionTokens: 8192,
+    enabled: false,
+    keyOptions: { tokens: 65536, completionTokens: 8192, enabled: true },
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["new"]
+  },
   "togethercomputer/RedPajama-INCITE-Chat-3B-v1": {
     // ! DEPRECATED: will be removed (Weird response)
     llm: "TogetherAI",
@@ -3365,116 +3420,72 @@ const models = {
   }
 };
 
-var __defProp$W = Object.defineProperty;
-var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
-class ModelRegistry {
-  constructor() {
-    __publicField$W(this, "_models", models);
+var __defProp$V = Object.defineProperty;
+var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
+const _LLMRegistry = class _LLMRegistry {
+  constructor(model) {
+    this.model = model;
+    this.model = model;
   }
-  get models() {
-    return this._models;
+  static getInstance(model) {
+    if (!this.instance) {
+      this.instance = new _LLMRegistry(model);
+    }
+    return this.instance;
   }
-  set models(models2) {
-    this._models = models2;
+  static isStandardLLM(model) {
+    return this.modelExists(model);
   }
-  addCustomModels(customModels) {
-    this._models = { ...this._models, ...customModels };
+  static getModelId(model) {
+    return models?.[model]?.alias || model;
   }
-  /**
-   * Retrieves information about a specific model.
-   *
-   * @param {string} modelName - The name of the model to retrieve information for.
-   * @param {boolean} hasAPIKey - Indicates whether the user has an API key.
-   * @returns {Promise<Record<string, any>>} A promise that resolves to an object containing model information.
-   *
-   * @description
-   * This method fetches information about a specific model. If the user has an API key,
-   * it includes additional key options in the returned information.
-   *
-   * The process is as follows:
-   * 1. Get the model ID from the model name.
-   * 2. Retrieve the base model information from the models object.
-   * 3. If the user has an API key, fetch additional key options and merge them with the base info.
-   * 4. Return the combined model information.
-   *
-   * @example
-   * const modelInfo = await modelRegistry.getModelInfo('gpt-3.5-turbo', true);
-   */
-  async getModelInfo(modelName, hasAPIKey = false) {
-    const modelId = this.getModelId(modelName);
-    const baseModelInfo = this.models[modelId] || {};
+  static getBaseURL(model) {
+    const modelId = this.getModelId(model);
+    return models?.[modelId]?.baseURL || void 0;
+  }
+  static getModelKeyOptions(model) {
+    const modelId = this.getModelId(model);
+    return models?.[modelId]?.keyOptions || {};
+  }
+  static getProvider(model) {
+    const modelId = this.getModelId(model);
+    return models?.[modelId]?.llm;
+  }
+  static getModelInfo(model, hasAPIKey = false) {
+    const modelId = this.getModelId(model);
+    const modelInfo = models?.[modelId] || {};
     if (hasAPIKey) {
-      const keyOptions = this.getModelKeyOptions(modelId);
-      return { ...baseModelInfo, ...keyOptions };
+      const keyOptions = _LLMRegistry.getModelKeyOptions(modelId);
+      return { ...modelInfo, ...keyOptions };
     }
-    return baseModelInfo;
+    return modelInfo;
   }
-  getProvider(modelName) {
-    const modelId = this.getModelId(modelName);
-    return this.models?.[modelId]?.llm;
+  static modelExists(model) {
+    if (model.toLowerCase() === "echo") return true;
+    const modelId = this.getModelId(model);
+    return !!models?.[modelId];
   }
-  modelExists(modelName) {
-    if (modelName.toLowerCase() === "echo") return true;
-    const modelId = this.getModelId(modelName);
-    return !!this.models?.[modelId];
-  }
-  getModelId(modelName) {
-    if (this.models[modelName]) {
-      return this.models?.[modelName]?.alias || modelName;
-    }
-    for (const [id, model] of Object.entries(this.models)) {
-      if (model.name === modelName) {
-        return id;
-      }
-    }
-    return modelName;
-  }
-  getModelName(modelName) {
-    return this.models?.[modelName]?.alias || modelName;
-  }
-  getModelKeyOptions(modelId) {
-    return this.models?.[modelId]?.keyOptions || {};
-  }
-}
-
-class TokenManager {
-  constructor(modelRegistry) {
-    this.modelRegistry = modelRegistry;
-  }
-  async getAllowedContextTokens(modelName, hasAPIKey = false) {
-    const modelInfo = await this.modelRegistry.getModelInfo(modelName, hasAPIKey);
+  //#region tokens related methods
+  static getMaxContextTokens(model, hasAPIKey = false) {
+    const modelInfo = this.getModelInfo(model, hasAPIKey);
     return modelInfo?.tokens;
   }
-  async getAllowedCompletionTokens(modelName, hasAPIKey = false) {
-    const modelInfo = await this.modelRegistry.getModelInfo(modelName, hasAPIKey);
+  static getMaxCompletionTokens(model, hasAPIKey = false) {
+    const modelInfo = this.getModelInfo(model, hasAPIKey);
     return modelInfo?.completionTokens || modelInfo?.tokens;
   }
-  async getSafeMaxTokens({
-    givenMaxTokens,
-    modelName,
-    hasAPIKey = false
-  }) {
-    let allowedTokens = await this.getAllowedCompletionTokens(modelName, hasAPIKey);
-    return Math.min(givenMaxTokens, allowedTokens);
+  static async adjustMaxCompletionTokens(model, maxTokens, hasAPIKey = false) {
+    const modelInfo = this.getModelInfo(model, hasAPIKey);
+    return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
   }
-  /**
-   * Validates if the total tokens (prompt input token + maximum output token) exceed the allowed context tokens for a given model.
-   *
-   * @param {Object} params - The function parameters.
-   * @param {string} params.model - The model identifier.
-   * @param {number} params.promptTokens - The number of tokens in the input prompt.
-   * @param {number} params.completionTokens - The number of tokens in the output completion.
-   * @param {boolean} [params.hasTeamAPIKey=false] - Indicates if the user has a team API key.
-   * @throws {Error} - Throws an error if the total tokens exceed the allowed context tokens.
-   */
-  async validateTokensLimit({
-    modelName,
+  static async validateTokensLimit({
+    model,
     promptTokens,
     completionTokens,
     hasAPIKey = false
   }) {
-    const allowedContextTokens = await this.getAllowedContextTokens(modelName, hasAPIKey);
+    const allowedContextTokens = this.getMaxContextTokens(model, hasAPIKey);
     const totalTokens = promptTokens + completionTokens;
     const teamAPIKeyExceededMessage = `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`;
     const noAPIKeyExceededMessage = `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`;
@@ -3482,287 +3493,369 @@ class TokenManager {
       throw new Error(hasAPIKey ? teamAPIKeyExceededMessage : noAPIKeyExceededMessage);
     }
   }
-}
+  //#endregion tokens related methods
+};
+__publicField$V(_LLMRegistry, "instance", null);
+let LLMRegistry = _LLMRegistry;
 
-class MessageProcessor {
-  /**
-   * Checks if the given messages array contains a system message.
-   *
-   * @param {any} messages - The array of messages to check.
-   * @returns {boolean} True if a system message is found, false otherwise.
-   *
-   * @description
-   * This method determines whether the provided messages array contains a message with the role 'system'.
-   * It first checks if the input is an array, returning false if it's not.
-   * Then it uses the Array.some() method to check if any message in the array has a role of 'system'.
-   *
-   * @example
-   * const messages = [
-   *   { role: 'user', content: 'Hello' },
-   *   { role: 'system', content: 'You are a helpful assistant' }
-   * ];
-   * const hasSystem = messageProcessor.hasSystemMessage(messages);
-   * console.log(hasSystem); // true
-   */
-  hasSystemMessage(messages) {
-    if (!Array.isArray(messages)) return false;
-    return messages?.some((message) => message.role === "system");
+const customModels = {
+  //#region AI21 Labs Models
+  "AI21 Labs - Jamba-Instruct": {
+    alias: "ai21.jamba-instruct-v1:0"
+  },
+  "ai21.jamba-instruct-v1:0": {
+    llm: "Bedrock",
+    tokens: 256e3,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "AI21 Labs - Jurassic-2 Ultra": {
+    alias: "ai21.j2-ultra-v1"
+  },
+  "ai21.j2-ultra-v1": {
+    llm: "Bedrock",
+    tokens: 8191,
+    completionTokens: 8191,
+    supportsSystemPrompt: false
+  },
+  "AI21 Labs - Jurassic-2 Mid": {
+    alias: "ai21.j2-mid-v1"
+  },
+  "ai21.j2-mid-v1": {
+    llm: "Bedrock",
+    tokens: 8191,
+    completionTokens: 8191,
+    supportsSystemPrompt: false
+  },
+  //#region AI21 Labs Models
+  //#region Amazon Models
+  "Amazon - Titan Text Premier": {
+    alias: "amazon.titan-text-premier-v1:0"
+  },
+  "amazon.titan-text-premier-v1:0": {
+    llm: "Bedrock",
+    tokens: 32e3,
+    completionTokens: 3e3,
+    supportsSystemPrompt: false
+  },
+  "Amazon - Titan Text G1 - Express": {
+    alias: "amazon.titan-text-express-v1"
+  },
+  "amazon.titan-text-express-v1": {
+    llm: "Bedrock",
+    tokens: 8192,
+    completionTokens: 4096,
+    supportsSystemPrompt: false
+  },
+  "Amazon - Titan Text G1 - Lite": {
+    alias: "amazon.titan-text-lite-v1"
+  },
+  "amazon.titan-text-lite-v1": {
+    llm: "Bedrock",
+    tokens: 4096,
+    completionTokens: 4096,
+    supportsSystemPrompt: false
+  },
+  // 'Amazon - Titan Embeddings G1 - Text': { alias: 'amazon.titan-embed-text-v1' }, // Converse API doesn't support
+  // 'Amazon - Titan Embedding Text v2': { alias: 'amazon.titan-embed-text-v2:0' }, // Converse API doesn't support
+  // 'Amazon - Titan Multimodal Embeddings G1': { alias: 'amazon.titan-embed-image-v1' }, // Converse API doesn't support
+  // 'Amazon - Titan Image Generator G1 V1': { alias: 'amazon.titan-image-generator-v1' }, // Converse API doesn't support
+  // 'Amazon - Titan Image Generator G1 V2': { alias: 'amazon.titan-image-generator-v2:0' }, // Converse API doesn't support
+  //#endregion Amazon Models
+  //#region Anthropic Models
+  // * NOTE: It's required to submit business info to get access for Anthropic models
+  // * @Ref of Anthropic tokens and completionTokens - https://docs.anthropic.com/en/docs/about-claude/models
+  "Anthropic - Claude 3.5 Sonnet": {
+    alias: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  },
+  "anthropic.claude-3-5-sonnet-20240620-v1:0": {
+    llm: "Bedrock",
+    tokens: 2e5,
+    completionTokens: 8192,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude 3 Sonnet": {
+    alias: "anthropic.claude-3-sonnet-20240229-v1:0"
+  },
+  "anthropic.claude-3-sonnet-20240229-v1:0": {
+    llm: "Bedrock",
+    tokens: 2e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude 3 Haiku": {
+    alias: "anthropic.claude-3-haiku-20240307-v1:0"
+  },
+  "anthropic.claude-3-haiku-20240307-v1:0": {
+    llm: "Bedrock",
+    tokens: 2e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude 3 Opus": {
+    alias: "anthropic.claude-3-opus-20240229-v1:0"
+  },
+  "anthropic.claude-3-opus-20240229-v1:0": {
+    llm: "Bedrock",
+    tokens: 2e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude 2.1": {
+    alias: "anthropic.claude-v2:1"
+  },
+  "anthropic.claude-v2:1": {
+    llm: "Bedrock",
+    tokens: 2e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude 2.0": {
+    alias: "anthropic.claude-v2"
+  },
+  "anthropic.claude-v2": {
+    llm: "Bedrock",
+    tokens: 1e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  "Anthropic - Claude Instant": {
+    alias: "anthropic.claude-instant-v1"
+  },
+  "anthropic.claude-instant-v1": {
+    llm: "Bedrock",
+    tokens: 1e5,
+    completionTokens: 4096,
+    supportsSystemPrompt: true
+  },
+  //#endregion Anthropic Models
+  //#region Cohere Models
+  "Cohere - Command R+": {
+    alias: "cohere.command-r-plus-v1:0"
+  },
+  "cohere.command-r-plus-v1:0": {
+    llm: "Bedrock",
+    tokens: 128e3,
+    completionTokens: 4e3,
+    // Found 4000 Max tokens in the Playground
+    supportsSystemPrompt: true
+  },
+  "Cohere - Command R": {
+    alias: "cohere.command-r-v1:0"
+  },
+  "cohere.command-r-v1:0": {
+    llm: "Bedrock",
+    tokens: 128e3,
+    completionTokens: 4e3,
+    // Found 4000 Max tokens in the Playground
+    supportsSystemPrompt: true
+  },
+  "Cohere - Command": {
+    alias: "cohere.command-text-v14"
+  },
+  "cohere.command-text-v14": {
+    llm: "Bedrock",
+    tokens: 4e3,
+    // Found 4k
+    completionTokens: 4e3,
+    // Found 4000 Max tokens in the Playground
+    supportsSystemPrompt: false
+  },
+  "Cohere - Command Light": {
+    alias: "cohere.command-light-text-v14"
+  },
+  "cohere.command-light-text-v14": {
+    llm: "Bedrock",
+    tokens: 4e3,
+    // 4k tokens
+    completionTokens: 4e3,
+    // Found 4000 Max tokens in the Playground
+    supportsSystemPrompt: false
+  },
+  // 'Cohere - Embed English': { alias: 'cohere.embed-english-v3' }, // Converse API doesn't support
+  // 'Cohere - Embed Multilingual': { alias: 'cohere.embed-multilingual-v3' }, // Converse API doesn't support
+  //#endregion Cohere Models
+  //#region Meta Models
+  // 'Meta - Llama 2 Chat 13B' : { alias: 'meta.llama2-13b-chat-v1' } // Don't have access to the model
+  // 'Meta - Llama 2 Chat 70B' : { alias: 'meta.llama2-70b-chat-v1' } // Don't have access to the model
+  "Meta - Llama 3 8B Instruct": {
+    alias: "meta.llama3-8b-instruct-v1:0"
+  },
+  "meta.llama3-8b-instruct-v1:0": {
+    llm: "Bedrock",
+    tokens: 8192,
+    completionTokens: 2048,
+    supportsSystemPrompt: true
+  },
+  "Meta - Llama 3 70B Instruct": {
+    alias: "meta.llama3-70b-instruct-v1:0"
+  },
+  "meta.llama3-70b-instruct-v1:0": {
+    llm: "Bedrock",
+    tokens: 8192,
+    completionTokens: 2048,
+    supportsSystemPrompt: true
+  },
+  // 'Meta - Llama 3.1 8B Instruct': { alias: 'meta.llama3-1-8b-instruct-v1:0' }, // The provided model identifier is invalid.
+  // 'Meta - Llama 3.1 70B Instruct': { alias: 'meta.llama3-1-70b-instruct-v1:0' }, // The provided model identifier is invalid.
+  // 'Meta - Llama 3.1 405B Instruct': { alias: 'meta.llama3-1-405b-instruct-v1:0' }, // The provided model identifier is invalid.
+  //#endregion Meta Models
+  //#region Mistral Models
+  "Mistral AI - Mistral 7B Instruct": {
+    alias: "mistral.mistral-7b-instruct-v0:2"
+  },
+  "mistral.mistral-7b-instruct-v0:2": {
+    llm: "Bedrock",
+    tokens: 32e3,
+    completionTokens: 8192,
+    supportsSystemPrompt: false
+  },
+  "Mistral AI - Mixtral 8X7B Instruct": {
+    alias: "mistral.mixtral-8x7b-instruct-v0:1"
+  },
+  "mistral.mixtral-8x7b-instruct-v0:1": {
+    llm: "Bedrock",
+    tokens: 32e3,
+    completionTokens: 4096,
+    supportsSystemPrompt: false
+  },
+  "Mistral AI - Mistral Large": {
+    alias: "mistral.mistral-large-2402-v1:0"
+  },
+  "mistral.mistral-large-2402-v1:0": {
+    llm: "Bedrock",
+    tokens: 32e3,
+    completionTokens: 8192,
+    supportsSystemPrompt: true
+  },
+  // 'Mistral AI - Mistral Large 2 (24.07)' : { alias: 'mistral.mistral-large-2407-v1:0' } // The provided model identifier is invalid.
+  "Mistral AI - Mistral Small": {
+    alias: "mistral.mistral-small-2402-v1:0"
+  },
+  "mistral.mistral-small-2402-v1:0": {
+    llm: "Bedrock",
+    tokens: 32e3,
+    completionTokens: 8192,
+    supportsSystemPrompt: true
   }
-  /**
-   * Separates system messages from other messages in an array of LLM input messages.
-   *
-   * @param {TLLMMessageBlock[]} messages - An array of LLM input messages to process.
-   * @returns {{ systemMessage: TLLMMessageBlock | {}, otherMessages: TLLMMessageBlock[] }} An object containing the separated messages.
-   *
-   * @description
-   * This method takes an array of LLM input messages and separates them into two categories:
-   * 1. System message: The first message with a 'system' role, if any.
-   * 2. Other messages: All messages that are not system messages.
-   *
-   * If no system message is found, an empty object is returned as the systemMessage.
-   *
-   * @example
-   * const messages = [
-   *   { role: 'system', content: 'You are a helpful assistant' },
-   *   { role: 'user', content: 'Hello' },
-   *   { role: 'assistant', content: 'Hi there!' }
-   * ];
-   * const { systemMessage, otherMessages } = messageProcessor.separateSystemMessages(messages);
-   * console.log(systemMessage); // { role: 'system', content: 'You are a helpful assistant' }
-   * console.log(otherMessages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
-   */
-  separateSystemMessages(messages) {
-    const systemMessage = messages.find((message) => message.role === "system") || {};
-    const otherMessages = messages.filter((message) => message.role !== "system");
-    return { systemMessage, otherMessages };
-  }
-}
+  //#endregion Mistral Models
+  //#region Stability Models
+  // 'Stability AI - Stable Diffusion XL 0.x' : { alias: 'stability.stable-diffusion-xl-v0' } // Converse API doesn't support
+  // 'Stability AI - Stable Diffusion XL 1.x' : { alias: 'stability.stable-diffusion-xl-v1' } // Converse API doesn't support
+  //#endregion Stability Models
+};
 
-class FileProcessor {
-  /**
-   * Counts the total number of tokens in a vision prompt, including both text and image tokens.
-   *
-   * @param {any} prompt - The vision prompt object containing text and image items.
-   * @returns {Promise<number>} A promise that resolves to the total number of tokens in the prompt.
-   *
-   * @description
-   * This method processes a vision prompt by:
-   * 1. Counting tokens in the text portion of the prompt.
-   * 2. Calculating tokens for each image in the prompt based on its dimensions.
-   * 3. Summing up text and image tokens to get the total token count.
-   *
-   * @example
-   * const prompt = [
-   *   { type: 'text', text: 'Describe this image:' },
-   *   { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }
-   * ];
-   * const tokenCount = await countVisionPromptTokens(prompt);
-   * console.log(tokenCount); // e.g., 150
-   */
-  async countVisionPromptTokens(prompt) {
-    let tokens = 0;
-    const textObj = prompt?.filter((item) => item.type === "text");
-    const textTokens = encode(textObj?.[0]?.text).length;
-    const images = prompt?.filter((item) => item.type === "image_url");
-    let imageTokens = 0;
-    for (const image of images) {
-      const imageUrl = image?.image_url?.url;
-      const { width, height } = await this.getImageDimensions(imageUrl);
-      const tokens2 = this.countImageTokens(width, height);
-      imageTokens += tokens2;
-    }
-    tokens = textTokens + imageTokens;
-    return tokens;
-  }
-  /**
-   * Retrieves the dimensions (width and height) of an image from a given URL or base64 encoded string.
-   *
-   * @param {string} imageUrl - The URL or base64 encoded string of the image.
-   * @returns {Promise<{ width: number; height: number }>} A promise that resolves to an object containing the width and height of the image.
-   * @throws {Error} If the provided imageUrl is invalid or if there's an error retrieving the image dimensions.
-   *
-   * @example
-   * // Using a URL
-   * const dimensions = await getImageDimensions('https://example.com/image.jpg');
-   * console.log(dimensions); // { width: 800, height: 600 }
-   *
-   * @example
-   * // Using a base64 encoded string
-   * const dimensions = await getImageDimensions('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
-   * console.log(dimensions); // { width: 1, height: 1 }
-   */
-  async getImageDimensions(imageUrl) {
-    try {
-      let buffer;
-      if (isBase64FileUrl(imageUrl)) {
-        const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
-        buffer = Buffer.from(base64Data, "base64");
-      } else if (isUrl(imageUrl)) {
-        const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-        buffer = Buffer.from(response.data);
-      } else {
-        throw new Error("Please provide a valid image url!");
-      }
-      const dimensions = imageSize(buffer);
-      return {
-        width: dimensions?.width || 0,
-        height: dimensions?.height || 0
-      };
-    } catch (error) {
-      console.error("Error getting image dimensions", error);
-      throw new Error("Please provide a valid image url!");
-    }
-  }
-  /**
-   * Calculates the number of tokens required to process an image based on its dimensions and detail mode.
-   *
-   * @param {number} width - The width of the image in pixels.
-   * @param {number} height - The height of the image in pixels.
-   * @param {string} detailMode - The detail mode for processing the image. Defaults to 'auto'.
-   * @returns {number} The number of tokens required to process the image.
-   *
-   * @description
-   * This method estimates the token count for image processing based on the image dimensions and detail mode.
-   * It uses a tiling approach to calculate the token count, scaling the image if necessary.
-   *
-   * - If detailMode is 'low', it returns a fixed token count of 85.
-   * - For other modes, it calculates based on the image dimensions:
-   *   - Scales down images larger than 2048 pixels in any dimension.
-   *   - Adjusts the scaled dimension to fit within a 768x1024 aspect ratio.
-   *   - Calculates the number of 512x512 tiles needed to cover the image.
-   *   - Returns the total token count based on the number of tiles.
-   *
-   * @example
-   * const tokenCount = countImageTokens(1024, 768);
-   * console.log(tokenCount); // Outputs the calculated token count
-   */
-  countImageTokens(width, height, detailMode = "auto") {
-    if (detailMode === "low") return 85;
-    const maxDimension = Math.max(width, height);
-    const minDimension = Math.min(width, height);
-    let scaledMinDimension = minDimension;
-    if (maxDimension > 2048) {
-      scaledMinDimension = 2048 / maxDimension * minDimension;
-    }
-    scaledMinDimension = Math.floor(768 / 1024 * scaledMinDimension);
-    let tileSize = 512;
-    let tiles = Math.ceil(scaledMinDimension / tileSize);
-    if (minDimension !== scaledMinDimension) {
-      tiles *= Math.ceil(scaledMinDimension * (maxDimension / minDimension) / tileSize);
-    }
-    return tiles * 170 + 85;
-  }
-}
-
-var __defProp$V = Object.defineProperty;
-var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
-class LLMHelper {
+var __defProp$U = Object.defineProperty;
+var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
+class CustomLLMRegistry {
   constructor() {
-    __publicField$V(this, "modelRegistry");
-    __publicField$V(this, "tokenManager");
-    __publicField$V(this, "messageProcessor");
-    __publicField$V(this, "fileProcessor");
-    this.modelRegistry = new ModelRegistry();
-    this.tokenManager = new TokenManager(this.modelRegistry);
-    this.messageProcessor = new MessageProcessor();
-    this.fileProcessor = new FileProcessor();
+    __publicField$U(this, "models", {});
   }
-  static async load(teamId) {
-    const llmHelper = new LLMHelper();
-    if (teamId) {
-      await llmHelper.initializeWithCustomModels(teamId);
-    }
-    return llmHelper;
+  // TODO [Forhad]: apply proper typing
+  static async getInstance(teamId) {
+    const registry = new CustomLLMRegistry();
+    await registry.loadCustomModels(teamId);
+    return registry;
   }
-  async initializeWithCustomModels(teamId) {
-    const customModels = await this.getCustomModels(teamId);
-    this.modelRegistry.addCustomModels(customModels);
+  getProvider(model) {
+    const modelId = this.getModelId(model);
+    return this.models?.[modelId]?.llm;
+  }
+  getModelInfo(model) {
+    const modelId = this.getModelId(model);
+    const modelInfo = this.models?.[modelId] || {};
+    return modelInfo;
+  }
+  async getMaxCompletionTokens(model) {
+    const modelInfo = this.getModelInfo(model);
+    return modelInfo?.completionTokens || modelInfo?.tokens;
+  }
+  async adjustMaxCompletionTokens(model, maxTokens) {
+    const modelInfo = this.getModelInfo(model);
+    return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
+  }
+  async loadCustomModels(teamId) {
+    const savedCustomModels = await this.getCustomModels(teamId);
+    this.models = { ...this.models, ...savedCustomModels };
+  }
+  getModelId(model) {
+    return this.models?.[model]?.id || this.models?.[model]?.alias || model;
   }
   async getCustomModels(teamId) {
-    const customModels = {};
+    const models = {};
     const settingsKey = "custom-llm";
     try {
       const accountConnector = ConnectorService.getAccountConnector();
       const teamSettings = await accountConnector.user(AccessCandidate.team(teamId)).getTeamSetting(settingsKey);
       const savedCustomModelsData = JSON.parse(teamSettings || "{}");
       for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
-        customModels[entryId] = {
+        const foundationModel = entry.settings.foundationModel;
+        const tokens = customModels[foundationModel].tokens;
+        const completionTokens = customModels[foundationModel].completionTokens;
+        const supportsSystemPrompt = customModels[foundationModel].supportsSystemPrompt;
+        models[entryId] = {
           id: entryId,
           name: entry.name,
+          alias: foundationModel,
           llm: entry.provider,
+          tokens,
+          completionTokens,
+          enabled: true,
           components: entry.components,
           tags: entry.tags,
-          tokens: entry?.tokens ?? 1e5,
-          completionTokens: entry?.completionTokens ?? 4096,
+          supportsSystemPrompt,
           provider: entry.provider,
           features: entry.features,
-          settings: entry.settings,
-          enabled: true,
-          isCustomLLM: true
+          settings: entry.settings
         };
       }
-      return customModels;
+      return models;
     } catch (error) {
       return {};
     }
   }
-  // Expose instances
-  ModelRegistry() {
-    return this.modelRegistry;
-  }
-  TokenManager() {
-    return this.tokenManager;
-  }
-  MessageProcessor() {
-    return this.messageProcessor;
-  }
-  FileProcessor() {
-    return this.fileProcessor;
-  }
 }
 
-var __defProp$U = Object.defineProperty;
-var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$T = Object.defineProperty;
+var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMInference$1 {
   constructor() {
-    __publicField$U(this, "modelName");
-    __publicField$U(this, "_llmConnector");
-    __publicField$U(this, "_llmHelper");
+    __publicField$T(this, "modelName");
+    __publicField$T(this, "llmConnector");
   }
-  static async load(modelName, teamId) {
-    const llmHelper = await LLMHelper.load(teamId);
+  static async getInstance(model, teamId) {
     const llmInference = new LLMInference$1();
-    const llmRegistry = llmHelper.ModelRegistry();
-    const provider = llmRegistry.getProvider(modelName);
-    llmInference.modelName = llmRegistry.getModelName(modelName);
-    llmInference._llmConnector = ConnectorService.getLLMConnector(provider);
-    llmInference._llmConnector.llmHelper = llmHelper;
-    llmInference._llmHelper = llmHelper;
+    const isStandardLLM = LLMRegistry.isStandardLLM(model);
+    if (isStandardLLM) {
+      const llmProvider = LLMRegistry.getProvider(model);
+      llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+    } else {
+      const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+      const llmProvider = customLLMRegistry.getProvider(model);
+      llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+    }
     return llmInference;
   }
-  get llmHelper() {
-    return this._llmHelper;
-  }
   get connector() {
-    return this._llmConnector;
+    return this.llmConnector;
   }
   async promptRequest(prompt, config = {}, agent, customParams = {}) {
     if (!prompt && !customParams.messages?.length) {
       throw new Error("Prompt or messages are required");
     }
-    if (!this._llmConnector) {
+    if (!this.llmConnector) {
       throw new Error(`Model ${this.modelName} not supported`);
     }
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const params = await this._llmConnector.extractLLMComponentParams(config) || {};
+    const params = this.prepareParams(config) || {};
     params.model = this.modelName;
     Object.assign(params, customParams);
     try {
-      prompt = this._llmConnector.enhancePrompt(prompt, config);
-      let response = await this._llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
-      const result = this._llmConnector.postProcess(response?.content);
+      prompt = this.llmConnector.enhancePrompt(prompt, config);
+      let response = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
+      const result = this.llmConnector.postProcess(response?.content);
       if (result.error) {
         if (response.finishReason !== "stop") {
           throw new Error("The model stopped before completing the response, this is usually due to output token limit reached.");
@@ -3777,7 +3870,7 @@ class LLMInference$1 {
   }
   async visionRequest(prompt, fileSources, config = {}, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const params = await this._llmConnector.extractVisionLLMParams(config) || {};
+    const params = this.prepareParams(config) || {};
     params.model = this.modelName;
     const promises = [];
     const _fileSources = [];
@@ -3789,9 +3882,9 @@ class LLMInference$1 {
     await Promise.all(promises);
     params.fileSources = _fileSources;
     try {
-      prompt = this._llmConnector.enhancePrompt(prompt, config);
-      let response = await this._llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
-      const result = this._llmConnector.postProcess(response?.content);
+      prompt = this.llmConnector.enhancePrompt(prompt, config);
+      let response = await this.llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
+      const result = this.llmConnector.postProcess(response?.content);
       if (result.error) {
         if (response.finishReason !== "stop") {
           throw new Error("The model stopped before completing the response, this is usually due to output token limit reached.");
@@ -3807,7 +3900,7 @@ class LLMInference$1 {
   // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
   async multimodalRequest(prompt, fileSources, config = {}, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const params = await this._llmConnector.extractVisionLLMParams(config) || {};
+    const params = this.prepareParams(config) || {};
     params.model = this.modelName;
     const promises = [];
     const _fileSources = [];
@@ -3819,9 +3912,9 @@ class LLMInference$1 {
     await Promise.all(promises);
     params.fileSources = _fileSources;
     try {
-      prompt = this._llmConnector.enhancePrompt(prompt, config);
-      let response = await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
-      const result = this._llmConnector.postProcess(response?.content);
+      prompt = this.llmConnector.enhancePrompt(prompt, config);
+      let response = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
+      const result = this.llmConnector.postProcess(response?.content);
       if (result.error) {
         if (response.finishReason !== "stop") {
           throw new Error("The model stopped before completing the response, this is usually due to output token limit reached.");
@@ -3837,7 +3930,7 @@ class LLMInference$1 {
   async imageGenRequest(prompt, params, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
     params.model = this.modelName;
-    return this._llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
+    return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
   }
   async toolRequest(params, agent) {
     if (!params.messages || !params.messages?.length) {
@@ -3846,7 +3939,7 @@ class LLMInference$1 {
     try {
       const agentId = agent instanceof Agent ? agent.id : agent;
       params.model = this.modelName;
-      return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
+      return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
     } catch (error) {
       console.error("Error in toolRequest: ", error);
       throw error;
@@ -3854,7 +3947,7 @@ class LLMInference$1 {
   }
   async streamToolRequest(params, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
-    return this._llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
+    return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
   }
   async streamRequest(params, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
@@ -3863,7 +3956,7 @@ class LLMInference$1 {
         throw new Error("Input messages are required.");
       }
       params.model = this.modelName;
-      return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+      return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
     } catch (error) {
       console.error("Error in streamRequest:", error);
       const dummyEmitter = new EventEmitter();
@@ -3874,15 +3967,30 @@ class LLMInference$1 {
       return dummyEmitter;
     }
   }
+  prepareParams(config) {
+    const clonedConfigData = JSON.parse(JSON.stringify(config.data || {}));
+    const configParams = {};
+    for (const [key, value] of Object.entries(clonedConfigData)) {
+      let _value = value;
+      if (key === "stopSequences") {
+        _value = _value ? _value?.split(",") : null;
+      }
+      if (typeof _value === "string" && !isNaN(Number(_value))) {
+        _value = +_value;
+      }
+      configParams[key] = _value;
+    }
+    return configParams;
+  }
 }
 
-var __defProp$T = Object.defineProperty;
-var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$S = Object.defineProperty;
+var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
 class PromptGenerator extends Component {
   constructor() {
     super();
-    __publicField$T(this, "configSchema", Joi.object({
+    __publicField$S(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().required().label("Prompt"),
       temperature: Joi.number().min(0).max(5).label("Temperature"),
@@ -3904,7 +4012,7 @@ class PromptGenerator extends Component {
     try {
       logger.debug(`=== LLM Prompt Log ===`);
       const model = config.data.model || "echo";
-      const llmInference = await LLMInference$1.load(model, agent.teamId);
+      const llmInference = await LLMInference$1.getInstance(model, agent.teamId);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -3913,6 +4021,9 @@ class PromptGenerator extends Component {
       }
       logger.debug(` Model : ${model}`);
       let prompt = TemplateString(config.data.prompt).parse(input).result;
+      if (prompt === "[object Object]") {
+        prompt = TemplateString(config.data.prompt).parseRaw(input).result;
+      }
       logger.debug(` Parsed prompt
 `, prompt, "\n");
       const response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error }));
@@ -4169,9 +4280,9 @@ async function parseArrayBufferResponse(response, agent) {
   }
 }
 
-var __defProp$S = Object.defineProperty;
-var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$R = Object.defineProperty;
+var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$f = Logger("AccessTokenManager");
 let managedVault$1;
 SystemEvents.on("SRE:Booted", () => {
@@ -4179,22 +4290,22 @@ SystemEvents.on("SRE:Booted", () => {
 });
 class AccessTokenManager {
   constructor(clientId, clientSecret, secondaryToken, tokenUrl, expires_in, primaryToken, data, keyId, logger, agent) {
-    __publicField$S(this, "clientId");
-    __publicField$S(this, "clientSecret");
-    __publicField$S(this, "primaryToken");
+    __publicField$R(this, "clientId");
+    __publicField$R(this, "clientSecret");
+    __publicField$R(this, "primaryToken");
     // accessToken || token
-    __publicField$S(this, "secondaryToken");
+    __publicField$R(this, "secondaryToken");
     // refreshToken || tokenSecret
-    __publicField$S(this, "tokenUrl");
+    __publicField$R(this, "tokenUrl");
     // tokenURL to refresh accessToken
-    __publicField$S(this, "expires_in");
-    __publicField$S(this, "data");
+    __publicField$R(this, "expires_in");
+    __publicField$R(this, "data");
     // value of key(keyId) in teamSettings that needs to be updated if required
-    __publicField$S(this, "keyId");
+    __publicField$R(this, "keyId");
     // key of object  in teamSettings
-    __publicField$S(this, "logger");
+    __publicField$R(this, "logger");
     // Use to log console in debugger
-    __publicField$S(this, "agent");
+    __publicField$R(this, "agent");
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.primaryToken = primaryToken;
@@ -4475,13 +4586,13 @@ async function getClientCredentialToken(data, logger, keyId, oauthTokens, config
   }
 }
 
-var __defProp$R = Object.defineProperty;
-var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Q = Object.defineProperty;
+var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APICall extends Component {
   constructor() {
     super();
-    __publicField$R(this, "configSchema", Joi.object({
+    __publicField$Q(this, "configSchema", Joi.object({
       method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS").required().label("Method"),
       url: Joi.string().max(8192).required().label("URL"),
       headers: Joi.string().allow("").label("Headers"),
@@ -4551,13 +4662,13 @@ class APICall extends Component {
   }
 }
 
-var __defProp$Q = Object.defineProperty;
-var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$P = Object.defineProperty;
+var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VisionLLM extends Component {
   constructor() {
     super();
-    __publicField$Q(this, "configSchema", Joi.object({
+    __publicField$P(this, "configSchema", Joi.object({
       prompt: Joi.string().required().label("Prompt"),
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
@@ -4571,7 +4682,7 @@ class VisionLLM extends Component {
     try {
       logger.debug(`=== Vision LLM Log ===`);
       const model = config.data.model || "gpt-4-vision-preview";
-      const llmInference = await LLMInference$1.load(model);
+      const llmInference = await LLMInference$1.getInstance(model);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -4815,15 +4926,15 @@ class VectorDBConnector extends SecureConnector {
   }
 }
 
-var __defProp$P = Object.defineProperty;
-var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$O = Object.defineProperty;
+var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
 const logger = Logger("SRE");
 const CInstance = ConnectorService;
 const _SmythRuntime = class _SmythRuntime {
   constructor() {
-    __publicField$P(this, "started", false);
-    __publicField$P(this, "initialized", false);
+    __publicField$O(this, "started", false);
+    __publicField$O(this, "initialized", false);
     this.started = true;
   }
   static get Instance() {
@@ -4888,32 +4999,32 @@ const _SmythRuntime = class _SmythRuntime {
     this.started = false;
   }
 };
-__publicField$P(_SmythRuntime, "instance");
+__publicField$O(_SmythRuntime, "instance");
 let SmythRuntime = _SmythRuntime;
 
-var __defProp$O = Object.defineProperty;
+var __defProp$N = Object.defineProperty;
 var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$7 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$7(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$O(target, key, result);
+  if (kind && result) __defProp$N(target, key, result);
   return result;
 };
-var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$c = Logger("Pinecone VectorDB");
 class PineconeVectorDB extends VectorDBConnector {
   constructor(config) {
     super();
-    __publicField$O(this, "name", "PineconeVectorDB");
-    __publicField$O(this, "id", "pinecone");
-    __publicField$O(this, "client");
-    __publicField$O(this, "indexName");
-    __publicField$O(this, "redisCache");
-    __publicField$O(this, "accountConnector");
-    __publicField$O(this, "openaiApiKey");
+    __publicField$N(this, "name", "PineconeVectorDB");
+    __publicField$N(this, "id", "pinecone");
+    __publicField$N(this, "client");
+    __publicField$N(this, "indexName");
+    __publicField$N(this, "redisCache");
+    __publicField$N(this, "accountConnector");
+    __publicField$N(this, "openaiApiKey");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     if (!config.pineconeApiKey) throw new Error("Pinecone API key is required");
     if (!config.indexName) throw new Error("Pinecone index name is required");
@@ -5057,19 +5168,19 @@ __decorateClass$7([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "getNsMetadata", 1);
 
-var __defProp$N = Object.defineProperty;
-var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$M = Object.defineProperty;
+var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VectorsHelper {
   constructor(connectorName, options = {}) {
-    __publicField$N(this, "_vectorDBconnector");
-    __publicField$N(this, "embeddingsProvider");
-    __publicField$N(this, "_vectorDimention");
-    __publicField$N(this, "_nkvConnector");
-    __publicField$N(this, "_vaultConnector");
-    __publicField$N(this, "cusStorageKeyName");
-    __publicField$N(this, "isCustomStorageInstance", false);
-    __publicField$N(this, "openaiApiKey");
+    __publicField$M(this, "_vectorDBconnector");
+    __publicField$M(this, "embeddingsProvider");
+    __publicField$M(this, "_vectorDimention");
+    __publicField$M(this, "_nkvConnector");
+    __publicField$M(this, "_vaultConnector");
+    __publicField$M(this, "cusStorageKeyName");
+    __publicField$M(this, "isCustomStorageInstance", false);
+    __publicField$M(this, "openaiApiKey");
     this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
     this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
     this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: this.openaiApiKey });
@@ -5315,18 +5426,18 @@ class VectorsHelper {
   // }
 }
 
-var __defProp$M = Object.defineProperty;
-var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$L = Object.defineProperty;
+var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMInference {
-  static async load(model) {
+  static async getInstance(model) {
     throw new Error("Method not implemented.");
   }
 }
 class DataSourceLookup extends Component {
   constructor() {
     super();
-    __publicField$M(this, "configSchema", Joi.object({
+    __publicField$L(this, "configSchema", Joi.object({
       topK: Joi.string().custom(validateInteger$2({ min: 0 }), "custom range validation").label("Result Count"),
       model: Joi.string().valid("gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "gpt-4", "gpt-3.5-turbo-16k").required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt"),
@@ -5388,7 +5499,7 @@ class DataSourceLookup extends Component {
       const promises = [];
       for (let result of results) {
         TemplateString(prompt.replace(/{{result}}/g, JSON.stringify(result))).parse(input).result;
-        await LLMInference.load(model);
+        await LLMInference.getInstance(model);
       }
       results = await Promise.all(promises);
       for (let i = 0; i < results.length; i++) {
@@ -5425,14 +5536,14 @@ class DataSourceLookup extends Component {
   }
 }
 
-var __defProp$L = Object.defineProperty;
-var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$K = Object.defineProperty;
+var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceIndexer extends Component {
   constructor() {
     super();
-    __publicField$L(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
-    __publicField$L(this, "configSchema", Joi.object({
+    __publicField$K(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
+    __publicField$K(this, "configSchema", Joi.object({
       namespace: Joi.string().max(50).allow(""),
       id: Joi.string().custom(validateCharacterSet, "id custom validation").allow("").label("source identifier"),
       name: Joi.string().max(50).allow("").label("label"),
@@ -5550,13 +5661,13 @@ ${namespaceId}
   }
 }
 
-var __defProp$K = Object.defineProperty;
-var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$J = Object.defineProperty;
+var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceCleaner extends Component {
   constructor() {
     super();
-    __publicField$K(this, "configSchema", Joi.object({
+    __publicField$J(this, "configSchema", Joi.object({
       namespaceId: Joi.string().max(50).allow("").label("namespace"),
       id: Joi.string().custom(validateCharacterSet, "custom validation characterSet").allow("").label("source identifier")
     }));
@@ -5631,13 +5742,13 @@ class DataSourceCleaner extends Component {
   }
 }
 
-var __defProp$J = Object.defineProperty;
-var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$I = Object.defineProperty;
+var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONFilter extends Component {
   constructor() {
     super();
-    __publicField$J(this, "configSchema", Joi.object({
+    __publicField$I(this, "configSchema", Joi.object({
       fields: Joi.string().max(3e4).allow("").label("Prompt")
     }));
   }
@@ -5754,13 +5865,13 @@ class LogicXOR extends Component {
   }
 }
 
-var __defProp$I = Object.defineProperty;
-var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$H = Object.defineProperty;
+var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtLeast extends Component {
   constructor() {
     super();
-    __publicField$I(this, "configSchema", Joi.object({
+    __publicField$H(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       minSetInputs: Joi.string().custom(validateInteger$1({ min: 0, max: 9 }), "custom range validation").label("Minimum Inputs")
     }));
@@ -5818,13 +5929,13 @@ function validateInteger$1(args) {
   };
 }
 
-var __defProp$H = Object.defineProperty;
-var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$G = Object.defineProperty;
+var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtMost extends Component {
   constructor() {
     super();
-    __publicField$H(this, "configSchema", Joi.object({
+    __publicField$G(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       maxSetInputs: Joi.string().custom(validateInteger({ min: 0, max: 9 }), "custom range validation").label("Maximum Inputs")
     }));
@@ -5884,14 +5995,14 @@ function validateInteger(args) {
   };
 }
 
-var __defProp$G = Object.defineProperty;
-var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$F = Object.defineProperty;
+var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentProcess {
   constructor(agentData) {
     this.agentData = agentData;
-    __publicField$G(this, "agent");
-    __publicField$G(this, "_loadPromise");
+    __publicField$F(this, "agent");
+    __publicField$F(this, "_loadPromise");
     this.initAgent(agentData);
   }
   async initAgent(agentData) {
@@ -6036,20 +6147,178 @@ class AgentProcess {
   }
 }
 
-var __defProp$F = Object.defineProperty;
-var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
+class LLMHelper {
+  /**
+   * Checks if the given array of messages contains a system message.
+   *
+   * @param {any} messages - The array of messages to check.
+   * @returns {boolean} True if a system message is found, false otherwise.
+   *
+   * @example
+   * const messages = [
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'system', content: 'You are a helpful assistant' }
+   * ];
+   * const hasSystem = LLMHelper.hasSystemMessage(messages);
+   * console.log(hasSystem); // true
+   */
+  static hasSystemMessage(messages) {
+    if (!Array.isArray(messages)) return false;
+    return messages?.some((message) => message.role === "system");
+  }
+  /**
+   * Separates system messages from other messages in an array of LLM message blocks.
+   *
+   * @param {TLLMMessageBlock[]} messages - The array of message blocks to process.
+   * @returns {Object} An object containing the system message (if any) and an array of other messages.
+   * @property {TLLMMessageBlock | {}} systemMessage - The first system message found, or an empty object if none.
+   * @property {TLLMMessageBlock[]} otherMessages - An array of all non-system messages.
+   *
+   * @example
+   * const messages = [
+   *   { role: 'system', content: 'You are a helpful assistant' },
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'assistant', content: 'Hi there!' }
+   * ];
+   * const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+   * console.log(systemMessage); // { role: 'system', content: 'You are a helpful assistant' }
+   * console.log(otherMessages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
+   */
+  static separateSystemMessages(messages) {
+    const systemMessage = messages.find((message) => message.role === "system") || {};
+    const otherMessages = messages.filter((message) => message.role !== "system");
+    return { systemMessage, otherMessages };
+  }
+  /**
+   * Counts the total number of tokens in a vision prompt, including both text and image tokens.
+   *
+   * @param {any} prompt - The vision prompt object containing text and image items.
+   * @returns {Promise<number>} A promise that resolves to the total number of tokens in the prompt.
+   *
+   * @description
+   * This method processes a vision prompt by:
+   * 1. Counting tokens in the text portion of the prompt.
+   * 2. Calculating tokens for each image in the prompt based on its dimensions.
+   * 3. Summing up text and image tokens to get the total token count.
+   *
+   * @example
+   * const prompt = [
+   *   { type: 'text', text: 'Describe this image:' },
+   *   { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }
+   * ];
+   * const tokenCount = await countVisionPromptTokens(prompt);
+   * console.log(tokenCount); // e.g., 150
+   */
+  static async countVisionPromptTokens(prompt) {
+    let tokens = 0;
+    const textObj = prompt?.filter((item) => item.type === "text");
+    const textTokens = encode(textObj?.[0]?.text).length;
+    const images = prompt?.filter((item) => item.type === "image_url");
+    let imageTokens = 0;
+    for (const image of images) {
+      const imageUrl = image?.image_url?.url;
+      const { width, height } = await this.getImageDimensions(imageUrl);
+      const tokens2 = this.countImageTokens(width, height);
+      imageTokens += tokens2;
+    }
+    tokens = textTokens + imageTokens;
+    return tokens;
+  }
+  /**
+   * Retrieves the dimensions (width and height) of an image from a given URL or base64 encoded string.
+   *
+   * @param {string} imageUrl - The URL or base64 encoded string of the image.
+   * @returns {Promise<{ width: number; height: number }>} A promise that resolves to an object containing the width and height of the image.
+   * @throws {Error} If the provided imageUrl is invalid or if there's an error retrieving the image dimensions.
+   *
+   * @example
+   * // Using a URL
+   * const dimensions = await getImageDimensions('https://example.com/image.jpg');
+   * console.log(dimensions); // { width: 800, height: 600 }
+   *
+   * @example
+   * // Using a base64 encoded string
+   * const dimensions = await getImageDimensions('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
+   * console.log(dimensions); // { width: 1, height: 1 }
+   */
+  static async getImageDimensions(imageUrl) {
+    try {
+      let buffer;
+      if (isBase64FileUrl(imageUrl)) {
+        const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
+        buffer = Buffer.from(base64Data, "base64");
+      } else if (isUrl(imageUrl)) {
+        const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+        buffer = Buffer.from(response.data);
+      } else {
+        throw new Error("Please provide a valid image url!");
+      }
+      const dimensions = imageSize(buffer);
+      return {
+        width: dimensions?.width || 0,
+        height: dimensions?.height || 0
+      };
+    } catch (error) {
+      console.error("Error getting image dimensions", error);
+      throw new Error("Please provide a valid image url!");
+    }
+  }
+  /**
+   * Calculates the number of tokens required to process an image based on its dimensions and detail mode.
+   *
+   * @param {number} width - The width of the image in pixels.
+   * @param {number} height - The height of the image in pixels.
+   * @param {string} detailMode - The detail mode for processing the image. Defaults to 'auto'.
+   * @returns {number} The number of tokens required to process the image.
+   *
+   * @description
+   * This method estimates the token count for image processing based on the image dimensions and detail mode.
+   * It uses a tiling approach to calculate the token count, scaling the image if necessary.
+   *
+   * - If detailMode is 'low', it returns a fixed token count of 85.
+   * - For other modes, it calculates based on the image dimensions:
+   *   - Scales down images larger than 2048 pixels in any dimension.
+   *   - Adjusts the scaled dimension to fit within a 768x1024 aspect ratio.
+   *   - Calculates the number of 512x512 tiles needed to cover the image.
+   *   - Returns the total token count based on the number of tiles.
+   *
+   * @example
+   * const tokenCount = countImageTokens(1024, 768);
+   * console.log(tokenCount); // Outputs the calculated token count
+   */
+  static countImageTokens(width, height, detailMode = "auto") {
+    if (detailMode === "low") return 85;
+    const maxDimension = Math.max(width, height);
+    const minDimension = Math.min(width, height);
+    let scaledMinDimension = minDimension;
+    if (maxDimension > 2048) {
+      scaledMinDimension = 2048 / maxDimension * minDimension;
+    }
+    scaledMinDimension = Math.floor(768 / 1024 * scaledMinDimension);
+    let tileSize = 512;
+    let tiles = Math.ceil(scaledMinDimension / tileSize);
+    if (minDimension !== scaledMinDimension) {
+      tiles *= Math.ceil(scaledMinDimension * (maxDimension / minDimension) / tileSize);
+    }
+    return tiles * 170 + 85;
+  }
+}
+
+var __defProp$E = Object.defineProperty;
+var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMContext {
   /**
    *
    * @param source a messages[] object, or smyth file system uri (smythfs://...)
    */
-  constructor(_model, _systemPrompt = "", _messages = []) {
+  constructor(_model, llmInference, _systemPrompt = "", _messages = []) {
     this._model = _model;
+    this.llmInference = llmInference;
     this._messages = _messages;
-    __publicField$F(this, "_systemPrompt", "");
-    __publicField$F(this, "_llmHelper");
-    __publicField$F(this, "contextLength");
+    __publicField$E(this, "_systemPrompt", "");
+    __publicField$E(this, "_llmHelper");
+    __publicField$E(this, "contextLength");
     this._systemPrompt = _systemPrompt;
     this._llmHelper = new LLMHelper();
   }
@@ -6084,35 +6353,69 @@ class LLMContext {
     const systemMessage = { role: "system", content: this._systemPrompt };
     let tokens = encodeChat([systemMessage], "gpt-4o").length;
     for (let i = this._messages.length - 1; i >= 0; i--) {
-      const message = this._messages[i];
-      if (message.role === "system") continue;
-      if (!message.content) {
-        messages.unshift(message);
-        continue;
+      let internal_message;
+      if (this._messages[i]?.messageBlock && this._messages[i]?.toolsData) {
+        internal_message = this.llmInference.connector.transformToolMessageBlocks({
+          messageBlock: this._messages[i]?.messageBlock,
+          toolsData: this._messages[i]?.toolsData
+        }).reverse();
+      } else {
+        internal_message = [this._messages[i]];
       }
-      delete message["__smyth_data__"];
-      const textContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
-      const encoded = encode(textContent);
-      tokens += encoded.length;
-      if (tokens > maxInputContext) {
-        if (typeof message.content !== "string") {
-          break;
+      for (let message of internal_message) {
+        if (message.role === "system") continue;
+        if (!message.content) {
+          messages.unshift(message);
+          continue;
         }
-        const diff = tokens - maxInputContext;
-        const excessPercentage = diff / encoded.length;
-        message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
-        message.content += "...\n\nWARNING : The context window has been truncated to fit the maximum token limit.";
-        tokens -= encoded.length;
-        tokens += encodeChat([message], "gpt-4").length;
+        delete message["__smyth_data__"];
+        const textContent = typeof message.content === "string" ? message.content : JSON.stringify(message.content);
+        const encoded = encode(textContent);
+        tokens += encoded.length;
+        if (tokens > maxInputContext) {
+          if (typeof message.content !== "string") {
+            break;
+          }
+          const diff = tokens - maxInputContext;
+          const excessPercentage = diff / encoded.length;
+          message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
+          message.content += "...\n\nWARNING : The context window has been truncated to fit the maximum token limit.";
+          tokens -= encoded.length;
+          tokens += encodeChat([message], "gpt-4").length;
+        }
+        messages.unshift(message);
       }
-      messages.unshift(message);
     }
     messages.unshift(systemMessage);
     return messages;
   }
 }
 
-const swaggerParser = new SwaggerParser();
+const dereferenceSchema = async (schema, root = schema) => {
+  if (typeof schema !== "object" || schema === null) {
+    return schema;
+  }
+  if (schema.$ref) {
+    const ref = schema.$ref;
+    const path = ref.replace(/^#\//, "").split("/");
+    let resolved = root;
+    for (const segment of path) {
+      if (resolved[segment] === void 0) {
+        throw new Error(`Could not resolve $ref: ${ref}`);
+      }
+      resolved = resolved[segment];
+    }
+    return dereferenceSchema(resolved, root);
+  }
+  if (Array.isArray(schema)) {
+    return Promise.all(schema.map((item) => dereferenceSchema(item, root)));
+  }
+  const result = {};
+  for (const key of Object.keys(schema)) {
+    result[key] = await dereferenceSchema(schema[key], root);
+  }
+  return result;
+};
 class OpenAPIParser {
   static mapReqMethods(paths) {
     const methods = /* @__PURE__ */ new Map();
@@ -6140,24 +6443,48 @@ class OpenAPIParser {
     }
     return operationIds;
   }
+  // static async yamlToJson(yamlData: string): Promise<JSONSchema> {
+  //     const data = yaml.load(yamlData);
+  //     //FIXME : YAML support temporarly disabled to allow executable packaging
+  //     const schema = await $RefParser.dereference(data);
+  //     //const schema: any = {};
+  //     return schema;
+  // }
   static async yamlToJson(yamlData) {
     const data = yaml.load(yamlData);
-    const schema = await $RefParser.dereference(data);
+    const schema = await dereferenceSchema(data);
     return schema;
   }
+  // static async getJson(data: string | Record<string, any>): Promise<Record<string, any>> {
+  //     try {
+  //         let _data = data;
+  //         if (typeof data === 'string') {
+  //             _data = JSON.parse(_data as string);
+  //         }
+  //         //FIXME : YAML support temporarly disabled to allow executable packaging
+  //         const result = swaggerParser.dereference(_data as any);
+  //         //const result: any = {};
+  //         return result;
+  //     } catch (error) {
+  //         try {
+  //             return OpenAPIParser.yamlToJson(data as string);
+  //         } catch (error) {
+  //             throw new Error('Invalid OpenAPI specification data format');
+  //         }
+  //     }
+  // }
   static async getJson(data) {
     try {
-      let _data = data;
+      let parsedData = data;
       if (typeof data === "string") {
-        _data = JSON.parse(_data);
+        parsedData = JSON.parse(data);
       }
-      const result = swaggerParser.dereference(_data);
-      return result;
+      return await dereferenceSchema(parsedData);
     } catch (error) {
       try {
-        return OpenAPIParser.yamlToJson(data);
-      } catch (error2) {
-        throw new Error("Invalid OpenAPI specification data format");
+        return await OpenAPIParser.yamlToJson(data);
+      } catch (innerError) {
+        throw new Error("Invalid OpenAPI specification or JSON data format");
       }
     }
   }
@@ -6171,9 +6498,9 @@ class OpenAPIParser {
   }
 }
 
-var __defProp$E = Object.defineProperty;
-var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$D = Object.defineProperty;
+var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$b = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
@@ -6181,25 +6508,27 @@ class Conversation extends EventEmitter$1 {
     this._model = _model;
     this._specSource = _specSource;
     this._settings = _settings;
-    __publicField$E(this, "_agentId", "");
-    __publicField$E(this, "_systemPrompt");
-    __publicField$E(this, "userDefinedSystemPrompt", "");
-    __publicField$E(this, "assistantName");
-    __publicField$E(this, "_reqMethods");
-    __publicField$E(this, "_toolsConfig");
-    __publicField$E(this, "_endpoints");
-    __publicField$E(this, "_baseUrl");
-    __publicField$E(this, "_status", "");
-    __publicField$E(this, "_currentWaitPromise");
-    __publicField$E(this, "_context");
-    __publicField$E(this, "_maxContextSize", 1024 * 16);
-    __publicField$E(this, "_maxOutputTokens", 1024);
-    __publicField$E(this, "_lastError");
-    __publicField$E(this, "_spec");
-    __publicField$E(this, "stop", false);
+    __publicField$D(this, "_agentId", "");
+    __publicField$D(this, "_systemPrompt");
+    __publicField$D(this, "userDefinedSystemPrompt", "");
+    __publicField$D(this, "assistantName");
+    __publicField$D(this, "_reqMethods");
+    __publicField$D(this, "_toolsConfig");
+    __publicField$D(this, "_endpoints");
+    __publicField$D(this, "_baseUrl");
+    __publicField$D(this, "_status", "");
+    __publicField$D(this, "_currentWaitPromise");
+    __publicField$D(this, "_context");
+    __publicField$D(this, "_maxContextSize", 1024 * 16);
+    __publicField$D(this, "_maxOutputTokens", 1024);
+    __publicField$D(this, "_lastError");
+    __publicField$D(this, "_spec");
+    __publicField$D(this, "_customToolsDeclarations", []);
+    __publicField$D(this, "_customToolsHandlers", {});
+    __publicField$D(this, "stop", false);
     this.on("error", (error) => {
       this._lastError = error;
-      console$b.warn("Conversation Error: ", error);
+      console$b.warn("Conversation Error: ", error?.message);
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
@@ -6297,7 +6626,7 @@ class Conversation extends EventEmitter$1 {
       message,
       toolsConfig
     });
-    const llmInference = await LLMInference$1.load(this.model);
+    const llmInference = await LLMInference$1.getInstance(this.model);
     if (message) this._context.addUserMessage(message);
     const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
     const { data: llmResponse } = await llmInference.toolRequest(
@@ -6305,7 +6634,7 @@ class Conversation extends EventEmitter$1 {
         model: this.model,
         messages: contextWindow,
         toolsConfig,
-        max_tokens: this._maxOutputTokens
+        maxTokens: this._maxOutputTokens
       },
       this._agentId
     ).catch((error) => {
@@ -6324,7 +6653,7 @@ class Conversation extends EventEmitter$1 {
       });
       const toolsData = [];
       for (const tool of llmResponse?.toolsData) {
-        const endpoint = endpoints?.get(tool?.name);
+        const endpoint = endpoints?.get(tool?.name) || tool?.name;
         const parsedArgs = JSONContent(tool?.arguments).tryParse();
         let args = typeof tool?.arguments === "string" ? parsedArgs || {} : tool?.arguments;
         if (args?.error) {
@@ -6359,8 +6688,7 @@ class Conversation extends EventEmitter$1 {
         this.emit("afterToolCall", toolArgs, functionResponse);
         toolsData.push({ ...tool, result: functionResponse });
       }
-      const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
-      this._context.push(...messagesWithToolResult);
+      this._context.push({ messageBlock: llmResponse?.message, toolsData });
       return this.prompt(null, toolHeaders);
     }
     this._context.push(llmResponse?.message);
@@ -6381,7 +6709,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    const llmInference = await LLMInference$1.load(this.model);
+    const llmInference = await LLMInference$1.getInstance(this.model);
     if (message) this._context.addUserMessage(message);
     const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
     const eventEmitter = await llmInference.streamRequest(
@@ -6389,7 +6717,7 @@ class Conversation extends EventEmitter$1 {
         model: this.model,
         messages: contextWindow,
         toolsConfig,
-        max_tokens: this._maxOutputTokens
+        maxTokens: this._maxOutputTokens
       },
       this._agentId
     ).catch((error) => {
@@ -6433,7 +6761,7 @@ class Conversation extends EventEmitter$1 {
         this.emit("toolInfo", toolsData);
         const toolProcessingTasks = toolsData.map(
           (tool) => async () => {
-            const endpoint = endpoints?.get(tool?.name);
+            const endpoint = endpoints?.get(tool?.name) || tool?.name;
             let args = typeof tool?.arguments === "string" ? JSONContent(tool?.arguments).tryParse() || {} : tool?.arguments;
             if (args?.error) {
               throw new Error("[Tool] Arguments Parsing Error\n" + JSON.stringify({ message: args?.error }));
@@ -6457,14 +6785,17 @@ class Conversation extends EventEmitter$1 {
           }
         );
         const processedToolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
-        const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+        this._context.push({
+          //store raw tool call data, we'll convert it when reading the context window
           messageBlock: llmMessage,
           toolsData: processedToolsData
         });
-        this._context.push(...messagesWithToolResult);
         this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
       });
-      eventEmitter.on("end", async (toolsData) => {
+      eventEmitter.on("end", async (toolsData, usage_data) => {
+        if (usage_data) {
+          this.emit("usage", usage_data);
+        }
         if (hasError) return;
         if (!hasTools) {
           this._context.push({ role: "assistant", content: _content });
@@ -6474,7 +6805,7 @@ class Conversation extends EventEmitter$1 {
     });
     const toolsContent = await toolsPromise.catch((error) => {
       console$b.error("Error in toolsPromise: ", error);
-      this.emit("warning", error);
+      this.emit("error", error);
       return "";
     });
     _content += toolsContent;
@@ -6490,7 +6821,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    const llmInference = await LLMInference$1.load(this.model);
+    const llmInference = await LLMInference$1.getInstance(this.model);
     if (message) this._context.addUserMessage(message);
     const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
     const { data: llmResponse, error } = await llmInference.streamToolRequest(
@@ -6515,7 +6846,7 @@ class Conversation extends EventEmitter$1 {
       this.emit("toolInfo", toolsData);
       const toolProcessingTasks = toolsData.map(
         (tool) => async () => {
-          const endpoint = endpoints?.get(tool?.name);
+          const endpoint = endpoints?.get(tool?.name) || tool?.name;
           let args = typeof tool?.arguments === "string" ? JSONContent(tool?.arguments).tryParse() || {} : tool?.arguments;
           if (args?.error) {
             throw new Error("[Tool] Arguments Parsing Error\n" + JSON.stringify({ message: args?.error }));
@@ -6539,11 +6870,11 @@ class Conversation extends EventEmitter$1 {
         }
       );
       const processedToolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
-      const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
+      this._context.push({
+        //store raw tool call data, we'll convert it when reading the context window
         messageBlock: llmMessage,
         toolsData: processedToolsData
       });
-      this._context.push(...messagesWithToolResult);
       return this.streamPrompt(null, toolHeaders, concurrentToolCalls);
     }
     let _content = "";
@@ -6584,6 +6915,15 @@ class Conversation extends EventEmitter$1 {
   async useTool(params) {
     const { type, endpoint, args, method, baseUrl, headers = {} } = params;
     if (type === "function") {
+      const toolHandler = this._customToolsHandlers[endpoint];
+      if (toolHandler) {
+        try {
+          const result = await toolHandler(args);
+          return { data: result, error: null };
+        } catch (error) {
+          return { data: null, error: error?.message || "Custom tool handler failed" };
+        }
+      }
       try {
         const url = this.resolveToolEndpoint(baseUrl, method, endpoint, method == "get" ? args : {});
         const reqConfig = {
@@ -6613,6 +6953,32 @@ class Conversation extends EventEmitter$1 {
     }
     return { data: null, error: `'${type}' tool type not supported at the moment` };
   }
+  async addTool(tool) {
+    const requiredFields = Object.values(tool.arguments).map((arg) => arg.required ? arg.name : null).filter((arg) => arg !== null);
+    const properties = {};
+    for (let entry in tool.arguments) {
+      properties[entry] = {
+        type: typeof tool.arguments[entry],
+        description: tool.arguments[entry].description
+      };
+    }
+    const toolDefinition = {
+      name: tool.name,
+      description: tool.description,
+      properties,
+      requiredFields
+    };
+    this._customToolsDeclarations.push(toolDefinition);
+    this._customToolsHandlers[tool.name] = tool.handler;
+    const llmInference = await LLMInference$1.getInstance(this.model);
+    const toolsConfig = llmInference.connector.formatToolsConfig({
+      type: "function",
+      toolDefinitions: [toolDefinition],
+      toolChoice: "auto"
+    });
+    if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
+    else this._toolsConfig = toolsConfig;
+  }
   /**
    * updates LLM model, if spec is available, it will update the tools config
    * @param model
@@ -6626,7 +6992,8 @@ class Conversation extends EventEmitter$1 {
         this._endpoints = OpenAPIParser.mapEndpoints(this._spec?.paths);
         this._baseUrl = this._spec?.servers?.[0].url;
         const functionDeclarations = this.getFunctionDeclarations(this._spec);
-        const llmInference = await LLMInference$1.load(this._model);
+        functionDeclarations.push(...this._customToolsDeclarations);
+        const llmInference = await LLMInference$1.getInstance(this._model);
         this._toolsConfig = llmInference.connector.formatToolsConfig({
           type: "function",
           toolDefinitions: functionDeclarations,
@@ -6634,7 +7001,7 @@ class Conversation extends EventEmitter$1 {
         });
         let messages = [];
         if (this._context) messages = this._context.messages;
-        this._context = new LLMContext(this._model, this.systemPrompt, messages);
+        this._context = new LLMContext(this._model, llmInference, this.systemPrompt, messages);
       } else {
         this._toolsConfig = null;
         this._reqMethods = null;
@@ -6754,13 +7121,13 @@ ${this.systemPrompt}`;
   }
 }
 
-var __defProp$D = Object.defineProperty;
-var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$C = Object.defineProperty;
+var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentPlugin extends Component {
   constructor() {
     super();
-    __publicField$D(this, "configSchema", Joi.object({
+    __publicField$C(this, "configSchema", Joi.object({
       agentId: Joi.string().max(200).required(),
       openAiModel: Joi.string().max(200).required(),
       descForModel: Joi.string().max(5e3).allow("").label("Description for Model"),
@@ -6834,9 +7201,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$C = Object.defineProperty;
-var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$B = Object.defineProperty;
+var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
 let cacheConnector;
 function getCacheConnector() {
   if (!cacheConnector) {
@@ -6878,7 +7245,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
 class LLMAssistant extends Component {
   constructor() {
     super();
-    __publicField$C(this, "configSchema", Joi.object({
+    __publicField$B(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       behavior: Joi.string().max(3e4).allow("").label("Behavior")
     }));
@@ -6892,7 +7259,7 @@ class LLMAssistant extends Component {
       logger.debug("== LLM Assistant Log ==\n");
       const model = config.data.model || "echo";
       const ttl = config.data.ttl || void 0;
-      const llmInference = await LLMInference$1.load(model);
+      const llmInference = await LLMInference$1.getInstance(model);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -6908,9 +7275,17 @@ class LLMAssistant extends Component {
 ${behavior}
 
 `);
-      const provider = llmInference.llmHelper.ModelRegistry().getProvider(model);
-      const apiKey = await VaultHelper.getTeamKey(provider, agent.teamId);
-      const maxTokens = await llmInference.llmHelper.TokenManager().getAllowedCompletionTokens(model, !!apiKey) ?? 2048;
+      let maxTokens = 2048;
+      const teamId = agent.teamId;
+      const isStandardLLM = LLMRegistry.isStandardLLM(model);
+      if (isStandardLLM) {
+        const provider = LLMRegistry.getProvider(model);
+        const apiKey = await VaultHelper.getTeamKey(provider, teamId);
+        maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
+      } else {
+        const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+        maxTokens = await customLLMRegistry.getMaxCompletionTokens(model);
+      }
       const messages = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
       if (messages[0]?.role != "system") messages.unshift({ role: "system", content: behavior });
       messages.push({ role: "user", content: userInput });
@@ -6936,14 +7311,14 @@ ${behavior}
   }
 }
 
-var __defProp$B = Object.defineProperty;
-var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$A = Object.defineProperty;
+var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("ForkedAgent");
 class ForkedAgent {
   constructor(parent, componentId) {
     this.parent = parent;
-    __publicField$B(this, "agent");
+    __publicField$A(this, "agent");
     const data = fork(this.parent.data, componentId);
     const content = { name: this.parent.name, data, teamId: this.parent.teamId, debugSessionEnabled: false, version: this.parent.version };
     const agentRequest = new AgentRequest(this.parent.agentRequest.req);
@@ -7044,13 +7419,13 @@ function fork(componentData, componentID) {
   };
 }
 
-var __defProp$A = Object.defineProperty;
-var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$z = Object.defineProperty;
+var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Async = class _Async extends Component {
   constructor() {
     super();
-    __publicField$A(this, "configSchema", null);
+    __publicField$z(this, "configSchema", null);
   }
   init() {
   }
@@ -7155,17 +7530,17 @@ const _Async = class _Async extends Component {
     this.removeOrphanedBranches(agent);
   }
 };
-__publicField$A(_Async, "JOBS", {});
-__publicField$A(_Async, "ForkedAgent");
+__publicField$z(_Async, "JOBS", {});
+__publicField$z(_Async, "ForkedAgent");
 let Async = _Async;
 
-var __defProp$z = Object.defineProperty;
-var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$y = Object.defineProperty;
+var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Await = class _Await extends Component {
   constructor() {
     super();
-    __publicField$z(this, "configSchema", Joi.object({
+    __publicField$y(this, "configSchema", Joi.object({
       jobs_count: Joi.number().min(1).max(100).default(1).label("Jobs Count"),
       max_time: Joi.number().min(1).max(21600).default(1).label("Max time")
     }));
@@ -7235,16 +7610,16 @@ ${_error}
     }
   }
 };
-__publicField$z(_Await, "WAITS", {});
+__publicField$y(_Await, "WAITS", {});
 let Await = _Await;
 
-var __defProp$y = Object.defineProperty;
-var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$x = Object.defineProperty;
+var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ForEach extends Component {
   constructor() {
     super();
-    __publicField$y(this, "configSchema", null);
+    __publicField$x(this, "configSchema", null);
   }
   init() {
   }
@@ -7314,13 +7689,13 @@ function cleanupResult(result) {
   return result;
 }
 
-var __defProp$x = Object.defineProperty;
-var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$w = Object.defineProperty;
+var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Code extends Component {
   constructor() {
     super();
-    __publicField$x(this, "configSchema", Joi.object({
+    __publicField$w(this, "configSchema", Joi.object({
       code_vars: Joi.string().max(1e3).allow("").label("Variables"),
       code_body: Joi.string().max(5e5).allow("").label("Code"),
       _templateSettings: Joi.object().allow(null).label("Template Settings"),
@@ -7971,9 +8346,9 @@ var hfParams = {
 }
 };
 
-var __defProp$w = Object.defineProperty;
-var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$v = Object.defineProperty;
+var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
 function shouldNestInputs(formatRequestPattern) {
   const trimmedPattern = formatRequestPattern?.trim();
   return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
@@ -7998,7 +8373,7 @@ function validateAndParseJson$1(value, helpers) {
 class HuggingFace extends Component {
   constructor() {
     super();
-    __publicField$w(this, "configSchema", Joi.object({
+    __publicField$v(this, "configSchema", Joi.object({
       accessToken: Joi.string().max(350).required().label("Access Token"),
       modelName: Joi.string().max(100).required(),
       modelTask: Joi.string().max(100).required(),
@@ -8181,9 +8556,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$v = Object.defineProperty;
-var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$u = Object.defineProperty;
+var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
 function validateAndParseJson(value, helpers) {
   let parsedJson = null;
   try {
@@ -8204,7 +8579,7 @@ function validateAndParseJson(value, helpers) {
 class ZapierAction extends Component {
   constructor() {
     super();
-    __publicField$v(this, "configSchema", Joi.object({
+    __publicField$u(this, "configSchema", Joi.object({
       actionName: Joi.string().max(100).required(),
       actionId: Joi.string().max(100).required(),
       logoUrl: Joi.string().max(500).allow(""),
@@ -8271,13 +8646,13 @@ class ZapierAction extends Component {
   }
 }
 
-var __defProp$u = Object.defineProperty;
-var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$t = Object.defineProperty;
+var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
 class GPTPlugin extends Component {
   constructor() {
     super();
-    __publicField$u(this, "configSchema", Joi.object({
+    __publicField$t(this, "configSchema", Joi.object({
       model: Joi.string().optional(),
       openAiModel: Joi.string().required(),
       // ! Legacy
@@ -8326,13 +8701,13 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$t = Object.defineProperty;
-var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$s = Object.defineProperty;
+var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ImageGenerator extends Component {
   constructor() {
     super();
-    __publicField$t(this, "configSchema", Joi.object({
+    __publicField$s(this, "configSchema", Joi.object({
       model: Joi.string().valid("dall-e-2", "dall-e-3").required(),
       sizeDalle2: Joi.string().valid("256x256", "512x512", "1024x1024").required(),
       sizeDalle3: Joi.string().valid("1024x1024", "1792x1024", "1024x1792").required(),
@@ -8381,7 +8756,7 @@ class ImageGenerator extends Component {
       args.n = numberOfImages;
     }
     try {
-      const llmInference = await LLMInference$1.load(model);
+      const llmInference = await LLMInference$1.getInstance(model);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -8404,13 +8779,13 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$s = Object.defineProperty;
-var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$r = Object.defineProperty;
+var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Classifier extends Component {
   constructor() {
     super();
-    __publicField$s(this, "configSchema", Joi.object({
+    __publicField$r(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt")
     }));
@@ -8464,7 +8839,7 @@ ${prompt}
       logger.error(` Missing information, Cannot run classifier`);
       return { _error: "Missing information, Cannot run classifier", _debug: logger.output };
     }
-    const llmInference = await LLMInference$1.load(model || "echo");
+    const llmInference = await LLMInference$1.getInstance(model || "echo");
     if (!llmInference.connector) {
       return {
         _error: `The model '${model}' is not available. Please try a different one.`,
@@ -8567,13 +8942,13 @@ ${_error}
   }
 }
 
-var __defProp$r = Object.defineProperty;
-var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$q = Object.defineProperty;
+var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
 class MultimodalLLM extends Component {
   constructor() {
     super();
-    __publicField$r(this, "configSchema", Joi.object({
+    __publicField$q(this, "configSchema", Joi.object({
       prompt: Joi.string().required().label("Prompt"),
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
@@ -8587,7 +8962,7 @@ class MultimodalLLM extends Component {
     logger.debug(`=== Multimodal LLM Log ===`);
     try {
       const model = config.data.model || "gpt-4o-mini";
-      const llmInference = await LLMInference$1.load(model, agent.teamId);
+      const llmInference = await LLMInference$1.getInstance(model, agent.teamId);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -8677,9 +9052,9 @@ const components = {
   MultimodalLLM: new MultimodalLLM()
 };
 
-var __defProp$q = Object.defineProperty;
-var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$p = Object.defineProperty;
+var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentLogger");
 const _AgentLogger = class _AgentLogger {
   constructor(agent) {
@@ -8701,25 +9076,25 @@ const _AgentLogger = class _AgentLogger {
   static async logTask(agent, tasks) {
   }
 };
-__publicField$q(_AgentLogger, "transactions", {});
+__publicField$p(_AgentLogger, "transactions", {});
 let AgentLogger = _AgentLogger;
 
-var __defProp$p = Object.defineProperty;
-var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$o = Object.defineProperty;
+var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$a = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
     this.runtime = runtime;
-    __publicField$p(this, "circularLimitReached", false);
-    __publicField$p(this, "step", 0);
-    __publicField$p(this, "sessionResult", false);
-    __publicField$p(this, "sessionResults");
-    __publicField$p(this, "components", {});
-    __publicField$p(this, "checkRuntimeContext", null);
-    __publicField$p(this, "ctxFile", "");
-    __publicField$p(this, "_runtimeFileReady");
+    __publicField$o(this, "circularLimitReached", false);
+    __publicField$o(this, "step", 0);
+    __publicField$o(this, "sessionResult", false);
+    __publicField$o(this, "sessionResults");
+    __publicField$o(this, "components", {});
+    __publicField$o(this, "checkRuntimeContext", null);
+    __publicField$o(this, "ctxFile", "");
+    __publicField$o(this, "_runtimeFileReady");
     const agent = runtime.agent;
     const dbgFolder = path.join(config.env.DATA_PATH, `/debug/${agent.id}/`);
     if (!fs.existsSync(dbgFolder)) {
@@ -8837,9 +9212,9 @@ class RuntimeContext extends EventEmitter$1 {
   }
 }
 
-var __defProp$o = Object.defineProperty;
-var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$n = Object.defineProperty;
+var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$9 = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
@@ -8858,28 +9233,28 @@ const AgentRuntimeUnavailable = new Proxy(
 const _AgentRuntime = class _AgentRuntime {
   constructor(agent) {
     this.agent = agent;
-    __publicField$o(this, "agentContext");
+    __publicField$n(this, "agentContext");
     //private ctxFile: string = '';
-    __publicField$o(this, "xDebugRun", "");
-    __publicField$o(this, "xDebugInject", "");
-    __publicField$o(this, "xDebugRead", "");
-    __publicField$o(this, "xDebugStop", "");
-    __publicField$o(this, "xDebugPendingInject", null);
-    __publicField$o(this, "xDebugId", "");
-    __publicField$o(this, "xDebugCmd", "");
-    __publicField$o(this, "_debugActive", false);
-    __publicField$o(this, "_runtimeFileReady", false);
-    __publicField$o(this, "sessionClosed", false);
-    __publicField$o(this, "reqTagOwner", false);
+    __publicField$n(this, "xDebugRun", "");
+    __publicField$n(this, "xDebugInject", "");
+    __publicField$n(this, "xDebugRead", "");
+    __publicField$n(this, "xDebugStop", "");
+    __publicField$n(this, "xDebugPendingInject", null);
+    __publicField$n(this, "xDebugId", "");
+    __publicField$n(this, "xDebugCmd", "");
+    __publicField$n(this, "_debugActive", false);
+    __publicField$n(this, "_runtimeFileReady", false);
+    __publicField$n(this, "sessionClosed", false);
+    __publicField$n(this, "reqTagOwner", false);
     //reqTag is used to identify the current running workflow including nested calls, it allows us to identify circular calls
-    __publicField$o(this, "reqTag");
-    __publicField$o(this, "processID");
+    __publicField$n(this, "reqTag");
+    __publicField$n(this, "processID");
     //this identifies the current processID, a process ID is the full set of runCycles that is executed by the agent.
-    __publicField$o(this, "workflowReqId");
+    __publicField$n(this, "workflowReqId");
     //this identifies the current running workflow. a workflow starts when and agent endpoint is called, or a debug session is initiated, and ends when no more steps can be executed.
-    __publicField$o(this, "alwaysActiveComponents", {});
-    __publicField$o(this, "exclusiveComponents", {});
-    __publicField$o(this, "checkRuntimeContext", null);
+    __publicField$n(this, "alwaysActiveComponents", {});
+    __publicField$n(this, "exclusiveComponents", {});
+    __publicField$n(this, "checkRuntimeContext", null);
     this.reqTag = agent.agentRequest.header("X-REQUEST-TAG");
     const isNestedProcess = !!this.reqTag;
     if (!this.reqTag) {
@@ -9108,6 +9483,9 @@ const _AgentRuntime = class _AgentRuntime {
         !agent.connections.find((c) => c.sourceId == e.id)
       );
       let errorResults = dbgResults.flat().filter((e) => e.id && (e.error || e.result?._error));
+      errorResults = errorResults.filter((e) => {
+        return !ctxData?.components?.[e.id]?.ctx?.runtimeData?._ChildLoopData;
+      });
       if (ctxData.sessionResult && sessionResults.length == 0 && runtime.sessionClosed) {
         sessionResults = errorResults;
       }
@@ -9227,9 +9605,9 @@ const _AgentRuntime = class _AgentRuntime {
     return this.agentContext.getComponentData(componentId);
   }
 };
-__publicField$o(_AgentRuntime, "processResults", {});
-__publicField$o(_AgentRuntime, "tagsData", {});
-__publicField$o(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
+__publicField$n(_AgentRuntime, "processResults", {});
+__publicField$n(_AgentRuntime, "tagsData", {});
+__publicField$n(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
 let AgentRuntime = _AgentRuntime;
 
 const OSResourceMonitor = {
@@ -9273,40 +9651,40 @@ function getMemoryUsage() {
   };
 }
 
-var __defProp$n = Object.defineProperty;
-var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$m = Object.defineProperty;
+var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$8 = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
     this.id = id;
     this.agentSettings = agentSettings;
-    __publicField$n(this, "name");
-    __publicField$n(this, "data");
-    __publicField$n(this, "teamId");
-    __publicField$n(this, "components");
-    __publicField$n(this, "connections");
-    __publicField$n(this, "endpoints", {});
-    __publicField$n(this, "sessionId");
-    __publicField$n(this, "sessionTag", "");
-    __publicField$n(this, "callerSessionId");
-    __publicField$n(this, "apiBasePath", "/api");
-    __publicField$n(this, "agentRuntime");
-    __publicField$n(this, "usingTestDomain", false);
-    __publicField$n(this, "domain", "");
-    __publicField$n(this, "debugSessionEnabled", false);
-    __publicField$n(this, "circularLimit", 100);
+    __publicField$m(this, "name");
+    __publicField$m(this, "data");
+    __publicField$m(this, "teamId");
+    __publicField$m(this, "components");
+    __publicField$m(this, "connections");
+    __publicField$m(this, "endpoints", {});
+    __publicField$m(this, "sessionId");
+    __publicField$m(this, "sessionTag", "");
+    __publicField$m(this, "callerSessionId");
+    __publicField$m(this, "apiBasePath", "/api");
+    __publicField$m(this, "agentRuntime");
+    __publicField$m(this, "usingTestDomain", false);
+    __publicField$m(this, "domain", "");
+    __publicField$m(this, "debugSessionEnabled", false);
+    __publicField$m(this, "circularLimit", 100);
     //TODO : make it configurable from agent settings
-    __publicField$n(this, "version", "");
+    __publicField$m(this, "version", "");
     //public baseUrl = '';
-    __publicField$n(this, "agentVariables", {});
-    __publicField$n(this, "_kill", false);
+    __publicField$m(this, "agentVariables", {});
+    __publicField$m(this, "_kill", false);
     //public agentRequest: Request | AgentRequest | any;
-    __publicField$n(this, "async", false);
-    __publicField$n(this, "jobID", "");
-    __publicField$n(this, "planInfo", {});
-    __publicField$n(this, "agentRequest");
+    __publicField$m(this, "async", false);
+    __publicField$m(this, "jobID", "");
+    __publicField$m(this, "planInfo", {});
+    __publicField$m(this, "agentRequest");
     const json = typeof agentData === "string" ? JSON.parse(agentData) : agentData;
     this.data = json.data;
     this.name = this.data.name;
@@ -9615,7 +9993,9 @@ class Agent {
       agentRuntime.updateComponent(componentId, { active: true, status: "in_progress" });
     }
     if (output.error || output._error) {
-      this.agentRuntime.resetComponent(componentId);
+      if (!runtimeData?._ChildLoopData?._in_progress) {
+        this.agentRuntime.resetComponent(componentId);
+      }
       if (logId) {
         AgentLogger.log(this, logId, { error: output.error || output._error });
       }
@@ -9907,25 +10287,25 @@ class StorageConnector extends SecureConnector {
   }
 }
 
-var __defProp$m = Object.defineProperty;
+var __defProp$l = Object.defineProperty;
 var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __decorateClass$6 = (decorators, target, key, kind) => {
   var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$m(target, key, result);
+  if (kind && result) __defProp$l(target, key, result);
   return result;
 };
-var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$7 = Logger("S3Storage");
 class S3Storage extends StorageConnector {
   constructor(config) {
     super();
-    __publicField$m(this, "name", "S3Storage");
-    __publicField$m(this, "client");
-    __publicField$m(this, "bucket");
+    __publicField$l(this, "name", "S3Storage");
+    __publicField$l(this, "client");
+    __publicField$l(this, "bucket");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.bucket = config.bucket;
     const clientConfig = {};
@@ -10179,138 +10559,58 @@ class StorageService extends ConnectorServiceProvider {
   }
 }
 
-var paramMappings = {
-  Echo: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop",
-    topP: "top_p",
-    frequencyPenalty: "frequency_penalty",
-    presencePenalty: "presence_penalty"
-  },
-  OpenAI: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop",
-    topP: "top_p",
-    frequencyPenalty: "frequency_penalty",
-    presencePenalty: "presence_penalty"
-  },
-  cohere: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop_sequences",
-    topP: "p",
-    topK: "k",
-    frequencyPenalty: "frequency_penalty",
-    presencePenalty: "presence_penalty"
-  },
-  TogetherAI: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop",
-    topP: "top_p",
-    topK: "top_k",
-    frequencyPenalty: "repetition_penalty"
-  },
-  AnthropicAI: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop_sequences",
-    topP: "top_p",
-    topK: "top_k"
-  },
-  GoogleAI: {
-    maxTokens: "maxOutputTokens",
-    temperature: "temperature",
-    stopSequences: "stopSequences",
-    topP: "topP",
-    topK: "topK"
-  },
-  Groq: {
-    maxTokens: "max_tokens",
-    temperature: "temperature",
-    stopSequences: "stop",
-    topP: "top_p"
-  },
-  Bedrock: {
-    maxTokens: "maxTokens",
-    temperature: "temperature",
-    stopSequences: "stopSequences",
-    topP: "topP"
-  },
-  VertexAI: {
-    maxTokens: "maxOutputTokens",
-    temperature: "temperature",
-    stopSequences: "stopSequences",
-    topP: "topP",
-    topK: "topK"
-  }
-};
+var TLLMMessageRole = /* @__PURE__ */ ((TLLMMessageRole2) => {
+  TLLMMessageRole2["User"] = "user";
+  TLLMMessageRole2["Assistant"] = "assistant";
+  TLLMMessageRole2["System"] = "system";
+  TLLMMessageRole2["Model"] = "model";
+  TLLMMessageRole2["Tool"] = "tool";
+  TLLMMessageRole2["Function"] = "function";
+  return TLLMMessageRole2;
+})(TLLMMessageRole || {});
+var TLLMProvider = /* @__PURE__ */ ((TLLMProvider2) => {
+  TLLMProvider2["OpenAI"] = "OpenAI";
+  TLLMProvider2["AnthropicAI"] = "AnthropicAI";
+  TLLMProvider2["GoogleAI"] = "GoogleAI";
+  TLLMProvider2["Groq"] = "Groq";
+  TLLMProvider2["TogetherAI"] = "TogetherAI";
+  TLLMProvider2["Bedrock"] = "Bedrock";
+  TLLMProvider2["VertexAI"] = "VertexAI";
+  return TLLMProvider2;
+})(TLLMProvider || {});
 
-var __defProp$l = Object.defineProperty;
-var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("LLMConnector");
 class LLMConnector extends Connector {
-  constructor() {
-    super();
-    __publicField$l(this, "_llmHelper");
-    this.llmHelper = new LLMHelper();
-  }
-  get llmHelper() {
-    return this._llmHelper;
-  }
-  set llmHelper(llmHelper) {
-    this._llmHelper = llmHelper;
-  }
   user(candidate) {
     if (candidate.role !== "agent") throw new Error("Only agents can use LLM connector");
-    const vaultConnector = ConnectorService.getVaultConnector();
-    if (!vaultConnector) throw new Error("Vault Connector unavailable, cannot proceed");
-    const llmRegistry = this.llmHelper.ModelRegistry();
     return {
       chatRequest: async (prompt, params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.chatRequest(candidate.readRequest, prompt, params);
+        const _params = await this.prepareParams(candidate, params);
+        return this.chatRequest(candidate.readRequest, prompt, _params);
       },
       visionRequest: async (prompt, params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+        const _params = await this.prepareParams(candidate, params);
+        return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
       },
       multimodalRequest: async (prompt, params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
+        const _params = await this.prepareParams(candidate, params);
+        return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
       },
       imageGenRequest: async (prompt, params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.imageGenRequest(candidate.readRequest, prompt, params);
+        const _params = await this.prepareParams(candidate, params);
+        return this.imageGenRequest(candidate.readRequest, prompt, _params);
       },
       toolRequest: async (params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.toolRequest(candidate.readRequest, params);
+        const _params = await this.prepareParams(candidate, params);
+        return this.toolRequest(candidate.readRequest, _params);
       },
       streamToolRequest: async (params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.streamToolRequest(candidate.readRequest, params);
+        const _params = await this.prepareParams(candidate, params);
+        return this.streamToolRequest(candidate.readRequest, _params);
       },
       streamRequest: async (params) => {
-        const llmProvider = llmRegistry.getProvider(params.model);
-        if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
-        params.apiKey = await vaultConnector.user(candidate).get(llmProvider).catch((e) => "");
-        return this.streamRequest(candidate.readRequest, params);
+        const _params = await this.prepareParams(candidate, params);
+        return this.streamRequest(candidate.readRequest, _params);
       }
     };
   }
@@ -10333,52 +10633,6 @@ class LLMConnector extends Connector {
     }
     return newPrompt;
   }
-  // TODO [Forhad]: Need to check if we need the params mapping anymore as we set the parameters explicitly now
-  async extractLLMComponentParams(config) {
-    const params = {};
-    const model = config.data.model;
-    const apiKey = "";
-    const clonedConfigData = JSON.parse(JSON.stringify(config.data || {}));
-    const configParams = {};
-    for (const [key, value] of Object.entries(clonedConfigData)) {
-      let _value = value;
-      if (key === "stopSequences") {
-        _value = _value ? _value?.split(",") : null;
-      }
-      if (typeof _value === "string" && !isNaN(Number(_value))) {
-        _value = +_value;
-      }
-      if (key === "maxTokens") {
-        let maxTokens = Number(_value);
-        if (!maxTokens) {
-          throw new Error("Max output token not provided");
-        }
-        maxTokens = await this.llmHelper.TokenManager().getSafeMaxTokens({ givenMaxTokens: maxTokens, modelName: model, hasAPIKey: !!apiKey });
-        _value = maxTokens;
-      }
-      configParams[key] = _value;
-    }
-    const llmProvider = this.llmHelper.ModelRegistry().getProvider(model);
-    for (const [configKey, paramKey] of Object.entries(paramMappings?.[llmProvider] || {})) {
-      if (configParams?.[configKey] !== void 0 || configParams?.[configKey] !== null || configParams?.[configKey] !== "") {
-        const value = configParams[configKey];
-        if (value !== void 0) {
-          params[paramKey] = value;
-        }
-      }
-    }
-    return params;
-  }
-  // TODO [Forhad]: Need to support other params like temperature, topP, topK, etc.
-  async extractVisionLLMParams(config) {
-    const params = {};
-    const model = config.data.model;
-    const apiKey = "";
-    const maxTokens = await this.llmHelper.TokenManager().getSafeMaxTokens({ givenMaxTokens: +config.data.maxTokens, modelName: model, hasAPIKey: !!apiKey }) || 300;
-    const llm = this.llmHelper.ModelRegistry().getProvider(model);
-    params[paramMappings[llm]?.maxTokens] = maxTokens;
-    return params;
-  }
   postProcess(response) {
     try {
       return JSONContent(response).tryParse();
@@ -10398,6 +10652,53 @@ class LLMConnector extends Connector {
     toolsData
   }) {
     throw new Error("This model does not support tools");
+  }
+  // TODO [Forhad]: simplify this method
+  async prepareParams(candidate, params) {
+    const _params = { ...params };
+    const model = _params.model;
+    const accountConnector = ConnectorService.getAccountConnector();
+    const vaultConnector = ConnectorService.getVaultConnector();
+    if (!accountConnector) throw new Error("Account Connector unavailable, cannot proceed");
+    if (!vaultConnector) throw new Error("Vault Connector unavailable, cannot proceed");
+    const isStandardLLM = LLMRegistry.isStandardLLM(model);
+    if (isStandardLLM) {
+      const llmProvider = LLMRegistry.getProvider(model);
+      _params.credentials = {
+        apiKey: await vaultConnector.user(candidate).get(llmProvider).catch(() => "")
+      };
+      if (_params.maxTokens) {
+        _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params.apiKey);
+      }
+      const baseUrl = LLMRegistry.getBaseURL(params.model);
+      if (baseUrl) {
+        _params.baseURL = baseUrl;
+      }
+    } else {
+      const teamId = await accountConnector.getCandidateTeam(candidate);
+      const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+      const modelInfo = customLLMRegistry.getModelInfo(model);
+      _params.modelInfo = modelInfo;
+      const llmProvider = customLLMRegistry.getProvider(model);
+      if (llmProvider === TLLMProvider.Bedrock) {
+        const keyIdName = modelInfo.settings?.keyIDName;
+        const secretKeyName = modelInfo.settings?.secretKeyName;
+        const sessionKeyName = modelInfo.settings?.sessionKeyName;
+        _params.credentials = {
+          keyId: await vaultConnector.user(candidate).get(keyIdName).catch(() => ""),
+          secretKey: await vaultConnector.user(candidate).get(secretKeyName).catch(() => ""),
+          sessionKey: await vaultConnector.user(candidate).get(sessionKeyName).catch(() => "")
+        };
+      } else if (llmProvider === TLLMProvider.VertexAI) {
+        const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
+        let jsonCredentials = await vaultConnector.user(candidate).get(jsonCredentialsName).catch(() => "");
+        _params.credentials = JSON.parse(jsonCredentials);
+      }
+      if (_params.maxTokens) {
+        _params.maxTokens = await customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+      }
+    }
+    return _params;
   }
 }
 
@@ -10435,22 +10736,12 @@ class EchoConnector extends LLMConnector {
   }
   postProcess(response) {
     try {
-      return JSONContent(response).tryParse();
+      return JSONContent(response).tryFullParse();
     } catch (error) {
       return response;
     }
   }
 }
-
-var TLLMMessageRole = /* @__PURE__ */ ((TLLMMessageRole2) => {
-  TLLMMessageRole2["User"] = "user";
-  TLLMMessageRole2["Assistant"] = "assistant";
-  TLLMMessageRole2["System"] = "system";
-  TLLMMessageRole2["Model"] = "model";
-  TLLMMessageRole2["Tool"] = "tool";
-  TLLMMessageRole2["Function"] = "function";
-  return TLLMMessageRole2;
-})(TLLMMessageRole || {});
 
 var __defProp$j = Object.defineProperty;
 var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
@@ -10473,36 +10764,38 @@ class OpenAIConnector extends LLMConnector {
         content: "All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations."
       });
       if (MODELS_WITH_JSON_RESPONSE$1.includes(_params.model)) {
-        _params.response_format = { type: "json_object" };
+        _params.responseFormat = { type: "json_object" };
       }
     }
     if (prompt && messages.length === 1) {
       messages.push({ role: TLLMMessageRole.User, content: prompt });
     }
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
       //FIXME: use config.env instead of process.env
-      apiKey: apiKey || process.env.OPENAI_API_KEY
-    });
-    const promptTokens = encodeChat(messages, "gpt-4")?.length;
-    await this.llmHelper.TokenManager().validateTokensLimit({
-      modelName: _params?.model,
-      promptTokens,
-      completionTokens: _params?.max_tokens,
-      hasAPIKey: !!apiKey
+      apiKey: apiKey || process.env.OPENAI_API_KEY,
+      // we provide default API key for OpenAI with limited quota
+      baseURL: _params.baseURL
     });
     const chatCompletionArgs = {
       model: _params.model,
       messages
     };
-    if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
-    if (_params?.temperature) chatCompletionArgs.temperature = _params.temperature;
-    if (_params?.stop) chatCompletionArgs.stop = _params.stop;
-    if (_params?.top_p) chatCompletionArgs.top_p = _params.top_p;
-    if (_params?.frequency_penalty) chatCompletionArgs.frequency_penalty = _params.frequency_penalty;
-    if (_params?.presence_penalty) chatCompletionArgs.presence_penalty = _params.presence_penalty;
-    if (_params?.response_format) chatCompletionArgs.response_format = _params.response_format;
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
+    if (_params?.temperature !== void 0) chatCompletionArgs.temperature = _params.temperature;
+    if (_params?.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
+    if (_params?.frequencyPenalty !== void 0) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
+    if (_params?.presencePenalty !== void 0) chatCompletionArgs.presence_penalty = _params.presencePenalty;
+    if (_params?.responseFormat !== void 0) chatCompletionArgs.response_format = _params.responseFormat;
+    if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
     try {
+      const promptTokens = encodeChat(messages, "gpt-4")?.length;
+      await LLMRegistry.validateTokensLimit({
+        model: _params?.model,
+        promptTokens,
+        completionTokens: _params?.maxTokens,
+        hasAPIKey: !!apiKey
+      });
       const response = await openai.chat.completions.create(chatCompletionArgs);
       const content = response?.choices?.[0]?.message.content;
       const finishReason = response?.choices?.[0]?.finish_reason;
@@ -10520,7 +10813,7 @@ class OpenAIConnector extends LLMConnector {
         content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}'
       });
       if (MODELS_WITH_JSON_RESPONSE$1.includes(_params.model)) {
-        _params.response_format = { type: "json_object" };
+        _params.responseFormat = { type: "json_object" };
       }
     }
     const agentId = agent instanceof Agent ? agent.id : agent;
@@ -10532,24 +10825,29 @@ class OpenAIConnector extends LLMConnector {
       messages.push({ role: "user", content: promptData });
     }
     try {
-      const apiKey = _params?.apiKey;
+      const apiKey = _params?.credentials?.apiKey;
       const openai = new OpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY
-      });
-      const promptTokens = await this.llmHelper.FileProcessor().countVisionPromptTokens(promptData);
-      await this.llmHelper.TokenManager().validateTokensLimit({
-        modelName: _params?.model,
-        promptTokens,
-        completionTokens: _params?.max_tokens,
-        hasAPIKey: !!apiKey
+        apiKey: apiKey || process.env.OPENAI_API_KEY,
+        baseURL: _params.baseURL
       });
       const chatCompletionArgs = {
         model: _params.model,
         messages
       };
-      if (_params?.max_tokens) {
-        chatCompletionArgs.max_tokens = _params.max_tokens;
-      }
+      if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
+      if (_params?.temperature !== void 0) chatCompletionArgs.temperature = _params.temperature;
+      if (_params?.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
+      if (_params?.frequencyPenalty !== void 0) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
+      if (_params?.presencePenalty !== void 0) chatCompletionArgs.presence_penalty = _params.presencePenalty;
+      if (_params?.responseFormat !== void 0) chatCompletionArgs.response_format = _params.responseFormat;
+      if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+      const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+      await LLMRegistry.validateTokensLimit({
+        model: _params?.model,
+        promptTokens,
+        completionTokens: _params?.maxTokens,
+        hasAPIKey: !!apiKey
+      });
       const response = await openai.chat.completions.create(chatCompletionArgs);
       const content = response?.choices?.[0]?.message.content;
       return { content, finishReason: response?.choices?.[0]?.finish_reason };
@@ -10562,42 +10860,49 @@ class OpenAIConnector extends LLMConnector {
   }
   async imageGenRequest(acRequest, prompt, params, agent) {
     try {
-      const { model, size, quality, n, response_format, style } = params;
+      const { model, size, quality, n, responseFormat, style } = params;
       const args = {
         prompt,
         model,
         size,
         quality,
         n,
-        response_format
+        response_format: responseFormat
       };
       if (style) {
         args.style = style;
       }
-      const apiKey = params?.apiKey;
+      const apiKey = params?.credentials?.apiKey;
       const openai = new OpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY
+        apiKey: apiKey || process.env.OPENAI_API_KEY,
+        baseURL: params?.baseURL
       });
       const response = await openai.images.generate(args);
       return response;
     } catch (error) {
-      console$6.log("Error generating image(s) with DALL\xB7E: ", error);
+      console$6.warn("Error generating image(s) with DALL\xB7E: ", error);
       throw error;
     }
   }
   async toolRequest(acRequest, params) {
     const _params = { ...params };
+    const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
-      apiKey: _params.apiKey || process.env.OPENAI_API_KEY
+      apiKey: apiKey || process.env.OPENAI_API_KEY,
+      baseURL: _params.baseURL
     });
     const messages = this.getConsistentMessages(_params.messages);
     let chatCompletionArgs = {
       model: _params.model,
       messages,
-      max_tokens: _params.max_tokens
+      max_tokens: _params.maxTokens
     };
-    if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
-    if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+    if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
+      chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+    }
+    if (_params?.toolsConfig?.tool_choice) {
+      chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+    }
     try {
       const result = await openai.chat.completions.create(chatCompletionArgs);
       const message = result?.choices?.[0]?.message;
@@ -10623,16 +10928,17 @@ class OpenAIConnector extends LLMConnector {
     }
   }
   // ! DEPRECATED: will be removed
-  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
+  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "", baseURL = "" }) {
     try {
       const openai = new OpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY
+        apiKey: apiKey || process.env.OPENAI_API_KEY,
+        baseURL
       });
       if (!Array.isArray(messages) || !messages?.length) {
         throw new Error("Invalid messages argument for chat completion.");
       }
-      console$6.log("model", model);
-      console$6.log("messages", messages);
+      console$6.debug("model", model);
+      console$6.debug("messages", messages);
       let args = {
         model,
         messages,
@@ -10689,78 +10995,46 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, stream: _stream, toolsData }
       };
     } catch (error) {
-      console$6.log("Error on toolUseLLMRequest: ", error);
+      console$6.warn("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
-  // protected async stremRequest(
-  //     acRequest: AccessRequest,
-  //     { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-  // ): Promise<Readable> {
-  //     const stream = new LLMStream();
-  //     const openai = new OpenAI({
-  //         apiKey: apiKey || process.env.OPENAI_API_KEY,
-  //     });
-  //     console.log('model', model);
-  //     console.log('messages', messages);
-  //     let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-  //         model,
-  //         messages,
-  //         stream: true,
-  //     };
-  //     if (tools && tools.length > 0) args.tools = tools;
-  //     if (tool_choice) args.tool_choice = tool_choice;
-  //     const openaiStream: any = await openai.chat.completions.create(args);
-  //     let toolsData: any = [];
-  //     stream.enqueueData({ start: true });
-  //     (async () => {
-  //         for await (const part of openaiStream) {
-  //             const delta = part.choices[0].delta;
-  //             //stream.enqueueData(delta);
-  //             if (!delta?.tool_calls && delta?.content) {
-  //                 stream.enqueueData({ content: delta.content, role: delta.role });
-  //             }
-  //             if (delta?.tool_calls) {
-  //                 const toolCall = delta.tool_calls[0];
-  //                 const index = toolCall.index;
-  //                 toolsData[index] = {
-  //                     index,
-  //                     role: 'tool',
-  //                     id: (toolsData[index]?.id || '') + (toolCall?.id || ''),
-  //                     type: (toolsData[index]?.type || '') + (toolCall?.type || ''),
-  //                     name: (toolsData[index]?.name || '') + (toolCall?.function?.name || ''),
-  //                     arguments: (toolsData[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-  //                 };
-  //             }
-  //         }
-  //         stream.enqueueData({ toolsData });
-  //         //stream.endStream();
-  //     })();
-  //     return stream;
-  // }
   async streamRequest(acRequest, params) {
     const _params = { ...params };
     const emitter = new EventEmitter$1();
+    const usage_data = [];
+    const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
-      apiKey: _params.apiKey || process.env.OPENAI_API_KEY
+      apiKey: apiKey || process.env.OPENAI_API_KEY,
+      // we provide default API key for OpenAI with limited quota
+      baseURL: _params.baseURL
     });
-    console$6.log("model", _params.model);
-    console$6.log("messages", _params.messages);
+    console$6.debug("model", _params.model);
     let chatCompletionArgs = {
       model: _params.model,
       messages: _params.messages,
-      max_tokens: _params.max_tokens,
+      max_tokens: _params.maxTokens,
+      stream_options: { include_usage: true },
+      //add usage statis //TODO: @Forhad check this
       stream: true
     };
-    if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
-    if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+    if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
+      chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+    }
+    if (_params?.toolsConfig?.tool_choice) {
+      chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+    }
     try {
       const stream = await openai.chat.completions.create(chatCompletionArgs);
       (async () => {
         let delta = {};
         let toolsData = [];
         for await (const part of stream) {
-          delta = part.choices[0].delta;
+          delta = part.choices[0]?.delta;
+          const usage = part.usage;
+          if (usage) {
+            usage_data.push(usage);
+          }
           emitter.emit("data", delta);
           if (!delta?.tool_calls && delta?.content) {
             emitter.emit("content", delta?.content, delta?.role);
@@ -10782,17 +11056,13 @@ class OpenAIConnector extends LLMConnector {
           emitter.emit("toolsData", toolsData);
         }
         setTimeout(() => {
-          emitter.emit("end", toolsData);
+          emitter.emit("end", toolsData, usage_data);
         }, 100);
       })();
       return emitter;
     } catch (error) {
       throw error;
     }
-  }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     let tools = [];
@@ -10825,11 +11095,17 @@ class OpenAIConnector extends LLMConnector {
         ...messageBlock,
         content: typeof messageBlock.content === "object" ? JSON.stringify(messageBlock.content) : messageBlock.content
       };
+      if (transformedMessageBlock.tool_calls) {
+        for (let toolCall of transformedMessageBlock.tool_calls) {
+          toolCall.function.arguments = typeof toolCall.function.arguments === "object" ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
+        }
+      }
       messageBlocks.push(transformedMessageBlock);
     }
     const transformedToolsData = toolsData.map((toolData) => ({
       tool_call_id: toolData.id,
-      role: toolData.role,
+      role: TLLMMessageRole.Tool,
+      // toolData.role as TLLMMessageRole, //should always be 'tool' for OpenAI
       name: toolData.name,
       content: typeof toolData.result === "string" ? toolData.result : JSON.stringify(toolData.result)
       // Ensure content is a string
@@ -10948,13 +11224,13 @@ class GoogleAIConnector extends LLMConnector {
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
     const model = _params?.model || DEFAULT_MODEL;
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     let messages = _params?.messages || [];
     let systemInstruction;
     let systemMessage = {};
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params?.messages);
+    const hasSystemMessage = LLMHelper.hasSystemMessage(_params?.messages);
     if (hasSystemMessage) {
-      const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+      const separateMessages = LLMHelper.separateSystemMessages(messages);
       const systemMessageContent = separateMessages.systemMessage?.content;
       systemInstruction = typeof systemMessageContent === "string" ? systemMessageContent : "";
       messages = separateMessages.otherMessages;
@@ -10980,11 +11256,11 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     };
     if (systemInstruction) modelParams.systemInstruction = systemInstruction;
     const generationConfig = {};
-    if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-    if (_params.temperature) generationConfig.temperature = _params.temperature;
-    if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-    if (_params.topP) generationConfig.topP = _params.topP;
-    if (_params.topK) generationConfig.topK = _params.topK;
+    if (_params.maxTokens !== void 0) generationConfig.maxOutputTokens = _params.maxTokens;
+    if (_params.temperature !== void 0) generationConfig.temperature = _params.temperature;
+    if (_params.topP !== void 0) generationConfig.topP = _params.topP;
+    if (_params.topK !== void 0) generationConfig.topK = _params.topK;
+    if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
     if (Object.keys(generationConfig).length > 0) {
       modelParams.generationConfig = generationConfig;
     }
@@ -10992,10 +11268,10 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
       const $model = genAI.getGenerativeModel(modelParams);
       const { totalTokens: promptTokens } = await $model.countTokens(prompt);
-      await this.llmHelper.TokenManager().validateTokensLimit({
-        modelName: model,
+      await LLMRegistry.validateTokensLimit({
+        model,
         promptTokens,
-        completionTokens: params?.maxOutputTokens,
+        completionTokens: params?.maxTokens,
         hasAPIKey: !!apiKey
       });
       const result = await $model.generateContent(prompt);
@@ -11010,7 +11286,7 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
   async visionRequest(acRequest, prompt, params, agent) {
     const _params = { ...params };
     const model = _params?.model || "gemini-pro-vision";
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     const fileSources = _params?.fileSources || [];
     const agentId = agent instanceof Agent ? agent.id : agent;
     const validFiles = this.getValidFileSources(fileSources, "image");
@@ -11028,31 +11304,31 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
         throw new Error(`There is an issue during upload file in Google AI Server!`);
       }
       const imageData = this.getFileData(uploadedFiles);
-      const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
-      const modelParams = {
-        model
-      };
-      const generationConfig = {};
-      if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-      if (_params.temperature) generationConfig.temperature = _params.temperature;
-      if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-      if (_params.topP) generationConfig.topP = _params.topP;
-      if (_params.topK) generationConfig.topK = _params.topK;
-      if (Object.keys(generationConfig).length > 0) {
-        modelParams.generationConfig = generationConfig;
-      }
-      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-      const $model = genAI.getGenerativeModel(modelParams);
       const responseFormat = _params?.responseFormat || "json";
       if (responseFormat) {
         if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
         else prompt += JSON_RESPONSE_INSTRUCTION;
       }
+      const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+      const modelParams = {
+        model
+      };
+      const generationConfig = {};
+      if (_params.maxTokens !== void 0) generationConfig.maxOutputTokens = _params.maxTokens;
+      if (_params.temperature !== void 0) generationConfig.temperature = _params.temperature;
+      if (_params.topP !== void 0) generationConfig.topP = _params.topP;
+      if (_params.topK !== void 0) generationConfig.topK = _params.topK;
+      if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+      if (Object.keys(generationConfig).length > 0) {
+        modelParams.generationConfig = generationConfig;
+      }
+      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+      const $model = genAI.getGenerativeModel(modelParams);
       const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
-      await this.llmHelper.TokenManager().validateTokensLimit({
-        modelName: model,
+      await LLMRegistry.validateTokensLimit({
+        model,
         promptTokens,
-        completionTokens: _params?.maxOutputTokens,
+        completionTokens: _params?.maxTokens,
         hasAPIKey: !!apiKey
       });
       const result = await $model.generateContent(promptWithFiles);
@@ -11067,7 +11343,7 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
   async multimodalRequest(acRequest, prompt, params, agent) {
     const _params = { ...params };
     const model = _params?.model || DEFAULT_MODEL;
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     const fileSources = _params?.fileSources || [];
     const agentId = agent instanceof Agent ? agent.id : agent;
     const validFiles = this.getValidFileSources(fileSources, "all");
@@ -11088,32 +11364,32 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       throw new Error(`There is an issue during upload file in Google AI Server!`);
     }
     const fileData = this.getFileData(uploadedFiles);
+    const responseFormat = _params?.responseFormat || "json";
+    if (responseFormat) {
+      if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
+      else prompt += JSON_RESPONSE_INSTRUCTION;
+    }
     const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
     const modelParams = {
       model
     };
     const generationConfig = {};
-    if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-    if (_params.temperature) generationConfig.temperature = _params.temperature;
-    if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-    if (_params.topP) generationConfig.topP = _params.topP;
-    if (_params.topK) generationConfig.topK = _params.topK;
+    if (_params.maxTokens !== void 0) generationConfig.maxOutputTokens = _params.maxTokens;
+    if (_params.temperature !== void 0) generationConfig.temperature = _params.temperature;
+    if (_params.topP !== void 0) generationConfig.topP = _params.topP;
+    if (_params.topK !== void 0) generationConfig.topK = _params.topK;
+    if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
     if (Object.keys(generationConfig).length > 0) {
       modelParams.generationConfig = generationConfig;
     }
     try {
       const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
       const $model = genAI.getGenerativeModel(modelParams);
-      const responseFormat = _params?.responseFormat || "json";
-      if (responseFormat) {
-        if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
-        else prompt += JSON_RESPONSE_INSTRUCTION;
-      }
       const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
-      await this.llmHelper.TokenManager().validateTokensLimit({
-        modelName: model,
+      await LLMRegistry.validateTokensLimit({
+        model,
         promptTokens,
-        completionTokens: _params?.maxOutputTokens,
+        completionTokens: _params?.maxTokens,
         hasAPIKey: !!apiKey
       });
       const result = await $model.generateContent(promptWithFiles);
@@ -11131,16 +11407,18 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       let systemInstruction = "";
       let formattedMessages;
       const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-      const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+      const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
       if (hasSystemMessage) {
-        const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+        const separateMessages = LLMHelper.separateSystemMessages(messages);
         const systemMessageContent = separateMessages.systemMessage?.content;
         systemInstruction = typeof systemMessageContent === "string" ? systemMessageContent : "";
         formattedMessages = separateMessages.otherMessages;
       } else {
         formattedMessages = messages;
       }
-      const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+      formattedMessages = this.getConsistentMessages(formattedMessages);
+      const apiKey = _params?.credentials?.apiKey;
+      const genAI = new GoogleGenerativeAI(apiKey);
       const $model = genAI.getGenerativeModel({ model: _params.model });
       const generationConfig = {
         contents: formattedMessages
@@ -11187,14 +11465,15 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
   async streamRequest(acRequest, params) {
     const _params = { ...params };
     const emitter = new EventEmitter$1();
-    const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
+    const apiKey = _params?.credentials?.apiKey;
+    const genAI = new GoogleGenerativeAI(apiKey);
     const $model = genAI.getGenerativeModel({ model: _params.model });
     let systemInstruction = "";
     let formattedMessages;
     const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
-      const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+      const separateMessages = LLMHelper.separateSystemMessages(messages);
       const systemMessageContent = separateMessages.systemMessage?.content;
       systemInstruction = typeof systemMessageContent === "string" ? systemMessageContent : "";
       formattedMessages = separateMessages.otherMessages;
@@ -11242,10 +11521,6 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     } catch (error) {
       throw error;
     }
-  }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
   }
   formatToolsConfig({ toolDefinitions, toolChoice = "auto" }) {
     const tools = toolDefinitions.map((tool) => {
@@ -11432,10 +11707,11 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
 var __defProp$h = Object.defineProperty;
 var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-Logger("AnthropicAIConnector");
+const console$5 = Logger("AnthropicAIConnector");
 const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = "{";
 const TOOL_USE_DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
+const API_KEY_ERROR_MESSAGE = "Please provide an API key for AnthropicAI";
 class AnthropicAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -11451,30 +11727,33 @@ class AnthropicAIConnector extends LLMConnector {
         content: prompt
       });
     }
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+    let systemPrompt;
+    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
       messages = otherMessages;
-      _params.system = systemMessage?.content;
+      systemPrompt = systemMessage?.content;
     }
     messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
     const responseFormat = _params?.responseFormat || "json";
     if (responseFormat === "json") {
-      _params.system += JSON_RESPONSE_INSTRUCTION;
+      systemPrompt += JSON_RESPONSE_INSTRUCTION;
       messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
     }
-    const apiKey = _params?.apiKey;
-    if (!apiKey) throw new Error("Please provide an API key for AnthropicAI");
+    const apiKey = _params?.credentials?.apiKey;
+    if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
     const anthropic = new Anthropic({ apiKey });
     const messageCreateArgs = {
       model: _params.model,
       messages,
-      max_tokens: _params?.max_tokens || await this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey)
+      max_tokens: _params?.maxTokens || LLMRegistry.getMaxCompletionTokens(_params?.model, !!apiKey)
+      // * max token is required
     };
-    if (_params?.temperature) messageCreateArgs.temperature = _params.temperature;
-    if (_params?.stop_sequences) messageCreateArgs.stop_sequences = _params.stop_sequences;
-    if (_params?.top_p) messageCreateArgs.top_p = _params.top_p;
-    if (_params?.top_k) messageCreateArgs.top_k = _params.top_k;
+    if (systemPrompt) messageCreateArgs.system = systemPrompt;
+    if (_params?.temperature !== void 0) messageCreateArgs.temperature = _params.temperature;
+    if (_params?.topP !== void 0) messageCreateArgs.top_p = _params.topP;
+    if (_params?.topK !== void 0) messageCreateArgs.top_k = _params.topK;
+    if (_params?.stopSequences?.length) messageCreateArgs.stop_sequences = _params.stopSequences;
     try {
       const response = await anthropic.messages.create(messageCreateArgs);
       let content = response.content?.[0]?.text;
@@ -11487,6 +11766,7 @@ class AnthropicAIConnector extends LLMConnector {
       throw error;
     }
   }
+  // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
   async visionRequest(acRequest, prompt, params, agent) {
     const _params = { ...params };
     const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params.messages) : [];
@@ -11496,14 +11776,19 @@ class AnthropicAIConnector extends LLMConnector {
     const imageData = await this.getImageData(validSources, agentId);
     const content = [{ type: "text", text: prompt }, ...imageData];
     messages.push({ role: TLLMMessageRole.User, content });
-    const apiKey = _params?.apiKey;
-    if (!apiKey) throw new Error("Please provide an API key for AnthropicAI");
+    const apiKey = _params?.credentials?.apiKey;
+    if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
     const anthropic = new Anthropic({ apiKey });
     const messageCreateArgs = {
       model: _params.model,
       messages,
-      max_tokens: _params?.max_tokens || await this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!apiKey)
+      max_tokens: _params?.maxTokens || LLMRegistry.getMaxCompletionTokens(_params?.model, !!apiKey)
+      // * max token is required
     };
+    if (_params?.temperature !== void 0) messageCreateArgs.temperature = _params.temperature;
+    if (_params?.topP !== void 0) messageCreateArgs.top_p = _params.topP;
+    if (_params?.topK !== void 0) messageCreateArgs.top_k = _params.topK;
+    if (_params?.stopSequences?.length) messageCreateArgs.stop_sequences = _params.stopSequences;
     try {
       const response = await anthropic.messages.create(messageCreateArgs);
       let content2 = response?.content?.[0]?.text;
@@ -11519,24 +11804,27 @@ class AnthropicAIConnector extends LLMConnector {
   async toolRequest(acRequest, params) {
     const _params = { ...params };
     try {
-      if (!_params?.apiKey) throw new Error("Please provide an API key for AnthropicAI");
-      const anthropic = new Anthropic({ apiKey: _params?.apiKey });
+      const apiKey = _params?.credentials?.apiKey;
+      if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+      const anthropic = new Anthropic({ apiKey });
       const messageCreateArgs = {
         model: _params?.model,
         messages: [],
-        max_tokens: _params?.max_tokens || await this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey)
+        max_tokens: _params?.maxTokens || LLMRegistry.getMaxCompletionTokens(_params?.model, !!apiKey)
         // * max token is required
       };
       let messages = _params?.messages || [];
-      const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+      const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
       if (hasSystemMessage) {
-        const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
         messageCreateArgs.system = systemMessage?.content || "";
         messages = otherMessages;
       }
       messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
       messageCreateArgs.messages = messages;
-      if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) messageCreateArgs.tools = _params?.toolsConfig?.tools;
+      if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) {
+        messageCreateArgs.tools = _params?.toolsConfig?.tools;
+      }
       const result = await anthropic.messages.create(messageCreateArgs);
       const message = {
         role: result?.role || TLLMMessageRole.User,
@@ -11586,29 +11874,52 @@ class AnthropicAIConnector extends LLMConnector {
     const _params = { ...params };
     try {
       const emitter = new EventEmitter$1();
-      if (!_params?.apiKey) throw new Error("Please provide an API key for AnthropicAI");
-      const anthropic = new Anthropic({ apiKey: _params?.apiKey });
+      const usage_data = [];
+      const apiKey = _params?.credentials?.apiKey;
+      if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+      const anthropic = new Anthropic({ apiKey });
       const messageCreateArgs = {
         model: _params?.model,
         messages: [],
-        max_tokens: _params?.max_tokens || await this.llmHelper.TokenManager().getAllowedCompletionTokens(_params?.model, !!_params?.apiKey)
+        max_tokens: _params?.maxTokens || LLMRegistry.getMaxCompletionTokens(_params?.model, !!apiKey)
         // * max token is required
       };
+      console$5.debug("Using Model", _params?.model, "Max Tokens=", _params?.maxTokens);
       let messages = _params?.messages || [];
-      const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+      const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
       if (hasSystemMessage) {
-        const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
         messageCreateArgs.system = systemMessage?.content || "";
+        if (typeof messageCreateArgs.system === "string") {
+          messageCreateArgs.system = [
+            {
+              type: "text",
+              text: messageCreateArgs.system
+              //cache_control: { type: 'ephemeral' }, //TODO: @Forhad check this
+            }
+          ];
+        }
+        messageCreateArgs.system.unshift({
+          type: "text",
+          text: "If you need to use a tool, use it without telling the user what you are about to do. And do not thank the user after you get the response.The tool use should remain completely silent and the user should never be aware that tools are being used."
+        });
         messages = otherMessages;
       }
       messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
       messageCreateArgs.messages = messages;
-      if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) messageCreateArgs.tools = _params?.toolsConfig?.tools;
+      if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) {
+        messageCreateArgs.tools = _params?.toolsConfig?.tools;
+      }
       const stream = anthropic.messages.stream(messageCreateArgs);
+      stream.on("streamEvent", (event) => {
+        if (event.message?.usage) {
+          console$5.log("usage", event.message?.usage);
+        }
+      });
+      let toolsData = [];
       stream.on("error", (error) => {
         emitter.emit("error", error);
       });
-      let toolsData = [];
       stream.on("text", (text) => {
         emitter.emit("content", text);
       });
@@ -11636,10 +11947,6 @@ class AnthropicAIConnector extends LLMConnector {
     } catch (error) {
       throw error;
     }
-  }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     let tools = [];
@@ -11710,7 +12017,12 @@ class AnthropicAIConnector extends LLMConnector {
             (item) => typeof item === "object" && "type" in item && (item.type === "tool_use" || item.type === "tool_result")
           );
           if (toolBlocks?.length > 0) {
-            content = message.content;
+            content = message.content.map((item) => {
+              if (item.type === "text" && (!item.text || item.text.trim() === "")) {
+                return { ...item, text: "..." };
+              }
+              return item;
+            });
           } else {
             content = message.content.map((block) => block?.text || "").join(" ").trim();
           }
@@ -11720,9 +12032,9 @@ class AnthropicAIConnector extends LLMConnector {
       } else if (message?.content) {
         content = message.content;
       }
-      message.content = content || "[No content provided]";
+      message.content = content || "...";
       return message;
-    }).filter((message) => message?.content);
+    });
     if (_messages[0]?.role === TLLMMessageRole.User && Array.isArray(_messages[0].content)) {
       const hasToolResult = _messages[0].content.find((content) => "type" in content && content.type === "tool_result");
       if (hasToolResult) {
@@ -11779,32 +12091,32 @@ class GroqConnector extends LLMConnector {
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
-    _params.messages = _params?.messages || [];
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+    let messages = _params?.messages || [];
+    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-      _params.messages = [systemMessage, ...otherMessages];
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+      messages = [systemMessage, ...otherMessages];
     } else {
-      _params.messages.unshift({
+      messages.unshift({
         role: "system",
         content: JSON_RESPONSE_INSTRUCTION
       });
     }
     if (prompt) {
-      _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+      messages.push({ role: TLLMMessageRole.User, content: prompt });
     }
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     if (!apiKey) throw new Error("Please provide an API key for Groq");
     const groq = new Groq({ apiKey });
-    const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+    messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
     const chatCompletionArgs = {
       model: _params.model,
       messages
     };
-    if (_params.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
-    if (_params.temperature) chatCompletionArgs.temperature = _params.temperature;
-    if (_params.stop) chatCompletionArgs.stop = _params.stop;
-    if (_params.top_p) chatCompletionArgs.top_p = _params.top_p;
+    if (_params.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
+    if (_params.temperature !== void 0) chatCompletionArgs.temperature = _params.temperature;
+    if (_params.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
+    if (_params.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
     try {
       const response = await groq.chat.completions.create(chatCompletionArgs);
       const content = response.choices[0]?.message?.content;
@@ -11823,7 +12135,8 @@ class GroqConnector extends LLMConnector {
   async toolRequest(acRequest, params) {
     const _params = { ...params };
     try {
-      const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
+      const apiKey = _params?.credentials?.apiKey;
+      const groq = new Groq({ apiKey });
       const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
       let args = {
         model: _params.model,
@@ -11857,16 +12170,20 @@ class GroqConnector extends LLMConnector {
   async imageGenRequest(acRequest, prompt, params, agent) {
     throw new Error("Image generation request is not supported for Groq.");
   }
+  // ! DEPRECATED METHOD
   async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
     throw new Error("streamToolRequest() is Deprecated!");
   }
   async streamRequest(acRequest, params) {
     const _params = { ...params };
     const emitter = new EventEmitter$1();
-    const groq = new Groq({ apiKey: _params.apiKey || process.env.GROQ_API_KEY });
+    const apiKey = _params?.credentials?.apiKey;
+    const groq = new Groq({ apiKey });
+    const messages = this.getConsistentMessages(_params.messages);
     let chatCompletionArgs = {
       model: _params.model,
-      messages: _params.messages,
+      messages,
+      max_tokens: _params.maxTokens,
       stream: true
     };
     if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
@@ -11909,10 +12226,6 @@ class GroqConnector extends LLMConnector {
     } catch (error) {
       throw error;
     }
-  }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     let tools = [];
@@ -11975,30 +12288,30 @@ class TogetherAIConnector extends LLMConnector {
     if (prompt && messages.length === 1) {
       messages.push({ role: "user", content: prompt });
     }
-    const apiKey = _params?.apiKey;
+    const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
-      apiKey: apiKey || process.env.TOGETHER_AI_API_KEY,
+      apiKey,
       baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
-    });
-    const promptTokens = encodeChat(messages, "gpt-4")?.length;
-    await this.llmHelper.TokenManager().validateTokensLimit({
-      modelName: _params?.model,
-      promptTokens,
-      completionTokens: _params?.max_tokens,
-      hasAPIKey: !!apiKey
     });
     const chatCompletionArgs = {
       model: _params.model,
       messages
     };
-    if (_params?.max_tokens) chatCompletionArgs.max_tokens = _params.max_tokens;
-    if (_params?.temperature) chatCompletionArgs.temperature = _params.temperature;
-    if (_params?.stop) chatCompletionArgs.stop = _params.stop;
-    if (_params?.top_p) chatCompletionArgs.top_p = _params.top_p;
-    if (_params?.top_k) chatCompletionArgs.top_k = _params.top_k;
-    if (_params?.repetition_penalty) chatCompletionArgs.repetition_penalty = _params.presence_penalty;
-    if (_params?.response_format) chatCompletionArgs.response_format = _params.response_format;
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
+    if (_params?.temperature !== void 0) chatCompletionArgs.temperature = _params.temperature;
+    if (_params?.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
+    if (_params?.topK !== void 0) chatCompletionArgs.top_k = _params.topK;
+    if (_params?.frequencyPenalty !== void 0) chatCompletionArgs.repetition_penalty = _params.frequencyPenalty;
+    if (_params?.responseFormat !== void 0) chatCompletionArgs.response_format = _params.responseFormat;
+    if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
     try {
+      const promptTokens = encodeChat(messages, "gpt-4")?.length;
+      await LLMRegistry.validateTokensLimit({
+        model: _params?.model,
+        promptTokens,
+        completionTokens: _params?.maxTokens,
+        hasAPIKey: !!apiKey
+      });
       const response = await openai.chat.completions.create(chatCompletionArgs);
       const content = response?.choices?.[0]?.message.content;
       const finishReason = response?.choices?.[0]?.finish_reason;
@@ -12019,8 +12332,9 @@ class TogetherAIConnector extends LLMConnector {
   async toolRequest(acRequest, params) {
     const _params = { ...params };
     try {
+      const apiKey = _params?.credentials?.apiKey;
       const openai = new OpenAI({
-        apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
+        apiKey,
         baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
       });
       const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
@@ -12028,8 +12342,12 @@ class TogetherAIConnector extends LLMConnector {
         model: _params.model,
         messages
       };
-      if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
-      if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+      if (_params.toolsConfig?.tools) {
+        chatCompletionArgs.tools = _params.toolsConfig?.tools;
+      }
+      if (_params.toolsConfig?.tool_choice) {
+        chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+      }
       const result = await openai.chat.completions.create(chatCompletionArgs);
       const message = result?.choices?.[0]?.message;
       const finishReason = result?.choices?.[0]?.finish_reason;
@@ -12059,17 +12377,23 @@ class TogetherAIConnector extends LLMConnector {
   async streamRequest(acRequest, params) {
     const _params = { ...params };
     const emitter = new EventEmitter$1();
+    const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
-      apiKey: _params.apiKey || process.env.TOGETHER_AI_API_KEY,
+      apiKey,
       baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
     });
+    const messages = this.getConsistentMessages(_params.messages);
     let chatCompletionArgs = {
       model: _params.model,
-      messages: _params.messages,
+      messages,
       stream: true
     };
-    if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
-    if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+    if (_params.toolsConfig?.tools) {
+      chatCompletionArgs.tools = _params.toolsConfig?.tools;
+    }
+    if (_params.toolsConfig?.tool_choice) {
+      chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+    }
     try {
       const stream = await openai.chat.completions.create(chatCompletionArgs);
       let toolsData = [];
@@ -12104,10 +12428,6 @@ class TogetherAIConnector extends LLMConnector {
     } catch (error) {
       throw error;
     }
-  }
-  async extractVisionLLMParams(config2) {
-    const params = await super.extractVisionLLMParams(config2);
-    return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     let tools = [];
@@ -12150,7 +12470,7 @@ class TogetherAIConnector extends LLMConnector {
 var __defProp$e = Object.defineProperty;
 var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$5 = Logger("BedrockConnector");
+Logger("BedrockConnector");
 class BedrockConnector extends LLMConnector {
   constructor() {
     super(...arguments);
@@ -12158,26 +12478,27 @@ class BedrockConnector extends LLMConnector {
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
-    _params.messages = _params?.messages || [];
+    let messages = _params?.messages || [];
     if (prompt) {
-      _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+      messages.push({ role: TLLMMessageRole.User, content: prompt });
     }
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+    let systemPrompt;
+    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-      _params.messages = otherMessages;
-      _params.system = [{ text: systemMessage?.content }];
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+      messages = otherMessages;
+      systemPrompt = [{ text: systemMessage?.content }];
     } else {
-      _params.system = [{ text: JSON_RESPONSE_INSTRUCTION }];
+      systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
     }
-    const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
+    const modelInfo = _params.modelInfo;
     const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-    const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+    messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
     const inferenceConfig = {};
-    if (_params?.max_tokens !== void 0) inferenceConfig.maxTokens = _params.max_tokens;
+    if (_params?.maxTokens !== void 0) inferenceConfig.maxTokens = _params.maxTokens;
     if (_params?.temperature !== void 0) inferenceConfig.temperature = _params.temperature;
-    if (_params?.stop_sequences?.length) inferenceConfig.stopSequences = _params.stop_sequences;
-    if (_params?.top_p !== void 0) inferenceConfig.topP = _params.top_p;
+    if (_params?.topP !== void 0) inferenceConfig.topP = _params.topP;
+    if (_params?.stopSequences?.length) inferenceConfig.stopSequences = _params.stopSequences;
     const converseCommandInput = {
       modelId,
       messages
@@ -12185,14 +12506,25 @@ class BedrockConnector extends LLMConnector {
     if (Object.keys(inferenceConfig).length > 0) {
       converseCommandInput.inferenceConfig = inferenceConfig;
     }
-    if (_params?.system) {
-      converseCommandInput.system = _params?.system;
+    if (systemPrompt) {
+      converseCommandInput.system = systemPrompt;
     }
     const command = new ConverseCommand(converseCommandInput);
     try {
-      const accountConnector = ConnectorService.getAccountConnector();
-      const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-      const client = await this.getBedrockClient(modelInfo, teamId);
+      const keyId = _params?.credentials?.keyId;
+      const secretKey = _params?.credentials?.secretKey;
+      const sessionToken = _params?.credentials?.sessionKey;
+      const credentials = {
+        accessKeyId: keyId,
+        secretAccessKey: secretKey
+      };
+      if (sessionToken) {
+        credentials.sessionToken = sessionToken;
+      }
+      const client = new BedrockRuntimeClient({
+        region: modelInfo.settings.region,
+        credentials
+      });
       const response = await client.send(command);
       const content = response.output?.message?.content?.[0]?.text;
       return { content, finishReason: "stop" };
@@ -12218,33 +12550,8 @@ class BedrockConnector extends LLMConnector {
   async streamRequest(acRequest, params) {
     throw new Error("Streaming is not supported for Bedrock.");
   }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
-  }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     throw new Error("Tool configuration is not supported for Bedrock.");
-  }
-  async getBedrockClient(modelInfo, teamId) {
-    try {
-      const keyId = await VaultHelper.getTeamKey(modelInfo.settings?.keyIDName, teamId);
-      const secretKey = await VaultHelper.getTeamKey(modelInfo.settings?.secretKeyName, teamId);
-      const sessionKey = await VaultHelper.getTeamKey(modelInfo.settings?.sessionKeyName, teamId);
-      const credentials = {
-        accessKeyId: keyId || "",
-        secretAccessKey: secretKey || ""
-      };
-      if (sessionKey) {
-        credentials["sessionToken"] = sessionKey;
-      }
-      return new BedrockRuntimeClient({
-        region: modelInfo.settings.region,
-        credentials
-      });
-    } catch (error) {
-      console$5.error("Error on initializing Bedrock client.");
-      throw error;
-    }
   }
   getConsistentMessages(messages) {
     return messages.map((message) => {
@@ -12273,37 +12580,47 @@ class VertexAIConnector extends LLMConnector {
   }
   async chatRequest(acRequest, prompt, params) {
     const _params = { ...params };
-    _params.messages = _params?.messages || [];
+    let messages = _params?.messages || [];
     if (prompt) {
-      _params.messages.push({ role: TLLMMessageRole.User, content: prompt });
+      messages.push({ role: TLLMMessageRole.User, content: prompt });
     }
-    const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params.messages);
+    let systemInstruction;
+    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = this.llmHelper.MessageProcessor().separateSystemMessages(_params.messages);
-      _params.messages = otherMessages;
-      _params.systemInstruction = { role: "system", parts: [{ text: systemMessage?.content }] };
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+      messages = otherMessages;
+      systemInstruction = { role: "system", parts: [{ text: systemMessage?.content }] };
     } else {
-      _params.systemInstruction = { role: "system", parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
+      systemInstruction = { role: "system", parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
     }
-    const modelInfo = await this.llmHelper.ModelRegistry().getModelInfo(_params.model);
+    const modelInfo = _params.modelInfo;
     const generationConfig = {};
-    if (_params?.max_tokens !== void 0) generationConfig.maxOutputTokens = _params.max_tokens;
+    if (_params?.maxTokens !== void 0) generationConfig.maxOutputTokens = _params.maxTokens;
     if (_params?.temperature !== void 0) generationConfig.temperature = _params.temperature;
-    if (_params?.stop_sequences?.length) generationConfig.stopSequences = _params.stop_sequences;
-    if (_params?.top_p !== void 0) generationConfig.topP = _params.top_p;
-    if (_params?.top_k !== void 0) generationConfig.topK = _params.top_k;
+    if (_params?.topP !== void 0) generationConfig.topP = _params.topP;
+    if (_params?.topK !== void 0) generationConfig.topK = _params.topK;
+    if (_params?.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
     const modelParams = {
-      model: modelInfo.settings?.customModel || modelInfo.settings?.foundationModel
+      model: modelInfo?.settings?.customModel || modelInfo?.settings?.foundationModel
     };
+    if (systemInstruction) {
+      modelParams.systemInstruction = systemInstruction;
+    }
     if (Object.keys(generationConfig).length > 0) {
       modelParams.generationConfig = generationConfig;
     }
     try {
-      const accountConnector = ConnectorService.getAccountConnector();
-      const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-      const client = await this.getVertexAIClient(modelInfo, teamId);
+      const client = new VertexAI({
+        project: modelInfo.settings.projectId,
+        location: modelInfo?.settings?.region,
+        googleAuthOptions: {
+          credentials: _params.credentials
+          // TODO [Forhad]: apply proper typing
+        },
+        apiEndpoint: `${modelInfo?.settings?.region}-aiplatform.googleapis.com`
+      });
       const generativeModel = client.getGenerativeModel(modelParams);
-      const contents = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+      const contents = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
       const result = await generativeModel.generateContent({ contents });
       const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
       return { content, finishReason: "stop" };
@@ -12328,10 +12645,6 @@ class VertexAIConnector extends LLMConnector {
   }
   async streamRequest(acRequest, params) {
     throw new Error("Streaming is not currently implemented for Vertex AI");
-  }
-  async extractVisionLLMParams(config) {
-    const params = await super.extractVisionLLMParams(config);
-    return params;
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     throw new Error("Tool configuration is not currently implemented for Vertex AI");
@@ -12373,6 +12686,7 @@ class LLMService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.LLM, "Echo", EchoConnector);
     ConnectorService.register(TConnectorService.LLM, "OpenAI", OpenAIConnector);
+    ConnectorService.register(TConnectorService.LLM, "DeepSeek", OpenAIConnector);
     ConnectorService.register(TConnectorService.LLM, "GoogleAI", GoogleAIConnector);
     ConnectorService.register(TConnectorService.LLM, "AnthropicAI", AnthropicAIConnector);
     ConnectorService.register(TConnectorService.LLM, "Groq", GroqConnector);
@@ -12383,6 +12697,7 @@ class LLMService extends ConnectorServiceProvider {
   init() {
     ConnectorService.init(TConnectorService.LLM, "Echo");
     ConnectorService.init(TConnectorService.LLM, "OpenAI");
+    ConnectorService.init(TConnectorService.LLM, "DeepSeek");
     ConnectorService.init(TConnectorService.LLM, "GoogleAI");
     ConnectorService.init(TConnectorService.LLM, "AnthropicAI");
     ConnectorService.init(TConnectorService.LLM, "Groq");
@@ -12694,7 +13009,7 @@ class JSONFileVault extends VaultConnector {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(candidate);
     const acl = new ACL();
-    if (!this.vaultData?.[teamId]?.[resourceId]) return acl;
+    if (typeof this.vaultData?.[teamId]?.[resourceId] !== "string") return acl;
     acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner).addAccess(TAccessRole.Team, teamId, TAccessLevel.Read).addAccess(TAccessRole.Team, teamId, TAccessLevel.Write);
     return acl;
   }

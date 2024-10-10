@@ -68,7 +68,7 @@ export class TogetherAIConnector extends LLMConnector {
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
             await LLMRegistry.validateTokensLimit({
-                modelName: _params?.model,
+                model: _params?.model,
                 promptTokens,
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,

@@ -1,8 +1,7 @@
 import { encode, encodeChat } from 'gpt-tokenizer';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 
 // TODO [Forhad]: we can move methods to MessageProcessor
 
@@ -15,11 +14,7 @@ export class LLMContext {
     public set systemPrompt(systemPrompt) {
         this._systemPrompt = systemPrompt;
     }
-    private _llmHelper: LLMHelper;
     public contextLength: number;
-    public get llmHelper() {
-        return this._llmHelper;
-    }
 
     public get messages() {
         return this._messages;
@@ -31,7 +26,6 @@ export class LLMContext {
     constructor(private _model, private llmInference, _systemPrompt: string = '', private _messages: any[] = []) {
         this._systemPrompt = _systemPrompt;
         //TODO:allow configuring a storage service
-        this._llmHelper = new LLMHelper();
     }
 
     public push(...message: any[]) {
@@ -49,7 +43,19 @@ export class LLMContext {
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 256): Promise<any[]> {
         //TODO: handle non key accounts (limit tokens)
         // const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
-        const maxModelContext = await this._llmHelper.TokenManager().getAllowedContextTokens(this._model, true);
+
+        //#region get max model context
+        let maxModelContext;
+        const isStandardLLM = LLMRegistry.isStandardLLM(this._model);
+
+        if (isStandardLLM) {
+            maxModelContext = LLMRegistry.getMaxContextTokens(this._model, true); // we just provide true for hasAPIKey to get the original max context
+        } else {
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(this._model);
+            maxModelContext = customLLMRegistry.getMaxContextTokens(this._model);
+        }
+        //#endregion get max model context
+
         let maxInputContext = Math.min(maxTokens, maxModelContext);
 
         if (maxInputContext + maxOutputTokens > maxModelContext) {

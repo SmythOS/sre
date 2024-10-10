@@ -63,7 +63,7 @@ async function runVisionTestCases(model: string) {
             maxTokens: 200,
         },
     };
-    const llmInference: LLMInference = await LLMInference.load(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     const imageUrl1 = 'https://fastly.picsum.photos/id/478/536/354.jpg?hmac=adxYyHX8WcCfHkk07quT2s92fbC7vY2QttaeBztwxgI';
     const imageUrl2 = 'https://fastly.picsum.photos/id/1038/536/354.jpg?hmac=Hu6nao4zkSvq_pHo5pIssp8oYizJus3yfL956AXww70';

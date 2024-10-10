@@ -25,7 +25,7 @@ export default class MultimodalLLM extends Component {
 
         try {
             const model: string = config.data.model || 'gpt-4o-mini';
-            const llmInference: LLMInference = await LLMInference.load(model, agent.teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, agent.teamId);
 
             if (!llmInference.connector) {
                 return {

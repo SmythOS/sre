@@ -254,7 +254,7 @@ export abstract class LLMConnector extends Connector {
             }
 
             if (_params.maxTokens) {
-                _params.maxTokens = await customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+                _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
             }
         }
 

@@ -73,7 +73,7 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
             await LLMRegistry.validateTokensLimit({
-                modelName: _params?.model,
+                model: _params?.model,
                 promptTokens,
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
@@ -146,7 +146,7 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
 
             await LLMRegistry.validateTokensLimit({
-                modelName: _params?.model,
+                model: _params?.model,
                 promptTokens,
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
