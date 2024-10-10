@@ -215,8 +215,9 @@ export class OpenAIConnector extends LLMConnector {
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: _params.model,
             messages: messages,
-            max_tokens: _params.maxTokens,
         };
+
+        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
 
         if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
             chatCompletionArgs.tools = _params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
@@ -373,10 +374,11 @@ export class OpenAIConnector extends LLMConnector {
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
             messages: _params.messages,
-            max_tokens: _params.maxTokens,
             stream_options: { include_usage: true }, //add usage statis //TODO: @Forhad check this
             stream: true,
         };
+
+        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
 
         if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
             chatCompletionArgs.tools = _params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];

@@ -372,24 +372,36 @@ export class GoogleAIConnector extends LLMConnector {
 
             const apiKey = _params?.credentials?.apiKey;
 
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const $model = genAI.getGenerativeModel({ model: _params.model });
+            const generationConfig: GenerationConfig = {};
 
-            const generationConfig: GenerateContentRequest = {
+            if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+
+            const modelParams: ModelParams = {
+                model: _params.model,
+            };
+
+            if (Object.keys(generationConfig).length > 0) {
+                modelParams.generationConfig = generationConfig;
+            }
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            const toolsPrompt: GenerateContentRequest = {
                 contents: formattedMessages,
             };
 
             if (systemInstruction) {
-                generationConfig.systemInstruction = systemInstruction;
+                toolsPrompt.systemInstruction = systemInstruction;
             }
 
-            if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+            if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
             if (_params?.toolsConfig?.tool_choice)
-                generationConfig.toolConfig = {
+                toolsPrompt.toolConfig = {
                     functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
                 };
 
-            const result = await $model.generateContent(generationConfig);
+            const result = await $model.generateContent(toolsPrompt);
 
             const response = await result.response;
             const content = response.text();
@@ -436,9 +448,6 @@ export class GoogleAIConnector extends LLMConnector {
         const emitter = new EventEmitter();
         const apiKey = _params?.credentials?.apiKey;
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const $model = genAI.getGenerativeModel({ model: _params.model });
-
         let systemInstruction = '';
         let formattedMessages;
         const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
@@ -453,22 +462,37 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = messages;
         }
 
-        const generationConfig: GenerateContentRequest = {
+        const generationConfig: GenerationConfig = {};
+
+        if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+
+        const modelParams: ModelParams = {
+            model: _params.model,
+        };
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const $model = genAI.getGenerativeModel(modelParams);
+
+        const toolsPrompt: GenerateContentRequest = {
             contents: formattedMessages,
         };
 
         if (systemInstruction) {
-            generationConfig.systemInstruction = systemInstruction;
+            toolsPrompt.systemInstruction = systemInstruction;
         }
 
-        if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
         if (_params?.toolsConfig?.tool_choice)
-            generationConfig.toolConfig = {
+            toolsPrompt.toolConfig = {
                 functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
             };
 
         try {
-            const result = await $model.generateContentStream(generationConfig);
+            const result = await $model.generateContentStream(toolsPrompt);
 
             let toolsData: ToolData[] = [];
 

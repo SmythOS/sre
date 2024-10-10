@@ -114,6 +114,8 @@ export class TogetherAIConnector extends LLMConnector {
                 messages,
             };
 
+            if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+
             if (_params.toolsConfig?.tools) {
                 chatCompletionArgs.tools = _params.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
             }
@@ -174,6 +176,8 @@ export class TogetherAIConnector extends LLMConnector {
             messages,
             stream: true,
         };
+
+        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
 
         if (_params.toolsConfig?.tools) {
             chatCompletionArgs.tools = _params.toolsConfig?.tools as OpenAI.ChatCompletionTool[];

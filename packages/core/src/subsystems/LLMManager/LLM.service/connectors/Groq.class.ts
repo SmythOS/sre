@@ -20,7 +20,7 @@ type ChatCompletionCreateParams = {
     stop?: string[];
     top_p?: number;
     tools?: any;
-    tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
+    tool_choice?: string;
     stream?: boolean;
 };
 
@@ -66,7 +66,14 @@ export class GroqConnector extends LLMConnector {
 
         messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
-        const chatCompletionArgs: ChatCompletionCreateParams = {
+        const chatCompletionArgs: {
+            model: string;
+            messages: any; // TODO [Forhad]: apply proper typing
+            max_tokens?: number;
+            temperature?: number;
+            top_p?: number;
+            stop?: string[];
+        } = {
             model: _params.model,
             messages,
         };
@@ -105,14 +112,17 @@ export class GroqConnector extends LLMConnector {
 
             const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
-            let args = {
+            let chatCompletionArgs: ChatCompletionCreateParams = {
                 model: _params.model,
                 messages,
-                tools: _params.toolsConfig.tools,
-                tool_choice: _params.toolsConfig.tool_choice,
             };
 
-            const result = await groq.chat.completions.create(args as any);
+            if (_params.maxTokens) chatCompletionArgs.max_tokens = _params.maxTokens;
+
+            if (_params?.toolsConfig?.tools) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+            if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
+
+            const result = await groq.chat.completions.create(chatCompletionArgs as any); // TODO [Forhad]: apply proper typing
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
 
@@ -160,15 +170,23 @@ export class GroqConnector extends LLMConnector {
 
         const messages = this.getConsistentMessages(_params.messages);
 
-        let chatCompletionArgs: ChatCompletionCreateParams = {
+        let chatCompletionArgs: {
+            model: string;
+            messages: any; // TODO [Forhad]: apply proper typing
+            max_tokens?: number;
+            tools?: any; // TODO [Forhad]: apply proper typing
+            tool_choice?: any; // TODO [Forhad]: apply proper typing
+            stream?: boolean;
+        } = {
             model: _params.model,
             messages,
-            max_tokens: _params.maxTokens,
             stream: true,
         };
 
+        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+
         if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
-        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
+        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
 
         try {
             const stream = await groq.chat.completions.create(chatCompletionArgs);
