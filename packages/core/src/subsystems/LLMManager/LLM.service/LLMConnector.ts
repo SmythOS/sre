@@ -2,20 +2,15 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import paramMappings from '@sre/LLMManager/paramMappings';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { IAccessCandidate } from '@sre/types/ACL.types';
-import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
-import { isDataUrl, isUrl } from '@sre/utils';
-import axios from 'axios';
-import { encode } from 'gpt-tokenizer';
-import imageSize from 'image-size';
+import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData, TLLMProvider } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 
 const console = Logger('LLMConnector');
 
@@ -89,183 +84,44 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
 
-    protected _llmHelper: LLMHelper;
-
-    constructor() {
-        super();
-
-        this._llmHelper = new LLMHelper();
-    }
-
-    public get llmHelper(): LLMHelper {
-        return this._llmHelper;
-    }
-
-    public set llmHelper(llmHelper: LLMHelper) {
-        this._llmHelper = llmHelper;
-    }
-
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
-        const vaultConnector = ConnectorService.getVaultConnector();
-        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
-
-        const llmRegistry = this.llmHelper.ModelRegistry();
 
         return {
             chatRequest: async (prompt, params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.chatRequest(candidate.readRequest, prompt, params);
+                return this.chatRequest(candidate.readRequest, prompt, _params);
             },
             visionRequest: async (prompt, params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+                return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             multimodalRequest: async (prompt, params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.multimodalRequest(candidate.readRequest, prompt, params, candidate.id);
+                return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             imageGenRequest: async (prompt, params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.imageGenRequest(candidate.readRequest, prompt, params);
+                return this.imageGenRequest(candidate.readRequest, prompt, _params);
             },
             toolRequest: async (params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.toolRequest(candidate.readRequest, params);
+                return this.toolRequest(candidate.readRequest, _params);
             },
             streamToolRequest: async (params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.streamToolRequest(candidate.readRequest, params);
+                return this.streamToolRequest(candidate.readRequest, _params);
             },
             streamRequest: async (params: any) => {
-                const llmProvider = llmRegistry.getProvider(params.model);
-                if (!llmProvider) throw new Error(`Model ${params.model} not supported`);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-
-                if (params.max_tokens) {
-                    params.max_tokens = await this.llmHelper
-                        .TokenManager()
-                        .adjustMaxCompletionTokens(params.model, params.max_tokens, !!params.apiKey);
-                }
-
-                const baseUrl = llmRegistry.getBaseURL(params.model);
-                if (baseUrl) {
-                    params.baseURL = baseUrl;
-                }
-
-                return this.streamRequest(candidate.readRequest, params);
+                return this.streamRequest(candidate.readRequest, _params);
             },
         };
     }
@@ -300,94 +156,6 @@ export abstract class LLMConnector extends Connector {
         return newPrompt;
     }
 
-    // TODO [Forhad]: Need to check if we need the params mapping anymore as we set the parameters explicitly now
-    public async extractLLMComponentParams(config: any) {
-        const params: TLLMParams = {};
-        const model: string = config.data.model;
-        // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
-
-        const apiKey = '';
-        //TODO: implement apiKey extraction from team vault
-        //const apiKey = await getLLMApiKey(model, agent?.teamId);
-        //if (apiKey) params.apiKey = apiKey;
-
-        /*** Prepare parameters from config data ***/
-
-        // * We need to keep the config.data unchanged to avoid any side effects, especially when run components with loop
-        const clonedConfigData = JSON.parse(JSON.stringify(config.data || {}));
-        const configParams = {};
-
-        for (const [key, value] of Object.entries(clonedConfigData)) {
-            let _value: string | number | string[] | null = value as string;
-
-            // When we have stopSequences, we need to split it into an array
-            if (key === 'stopSequences') {
-                _value = _value ? _value?.split(',') : null;
-            }
-
-            // When we have a string that is a number, we need to convert it to a number
-            if (typeof _value === 'string' && !isNaN(Number(_value))) {
-                _value = +_value;
-            }
-
-            // Always provide safe max tokens based on the model and apiKey
-            if (key === 'maxTokens') {
-                let maxTokens = Number(_value);
-
-                if (!maxTokens) {
-                    throw new Error('Max output token not provided');
-                }
-
-                maxTokens = await this.llmHelper
-                    .TokenManager()
-                    .getSafeMaxTokens({ givenMaxTokens: maxTokens, modelName: model, hasAPIKey: !!apiKey });
-                _value = maxTokens;
-            }
-
-            configParams[key] = _value;
-        }
-
-        /*** Prepare LLM specific parameters ***/
-
-        const llmProvider = this.llmHelper.ModelRegistry().getProvider(model);
-
-        for (const [configKey, paramKey] of Object.entries(paramMappings?.[llmProvider] || {})) {
-            // we need to allow 0 as truthy
-            if (configParams?.[configKey] !== undefined || configParams?.[configKey] !== null || configParams?.[configKey] !== '') {
-                const value = configParams[configKey];
-
-                if (value !== undefined) {
-                    params[paramKey as string] = value;
-                }
-            }
-        }
-
-        return params;
-    }
-
-    // TODO [Forhad]: Need to support other params like temperature, topP, topK, etc.
-    public async extractVisionLLMParams(config: any) {
-        const params: TLLMParams = {};
-        const model: string = config.data.model;
-        // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
-
-        const apiKey = '';
-        //TODO: implement apiKey extraction from team vault
-        //const apiKey = await getLLMApiKey(model, agent?.teamId);
-        //if (apiKey) params.apiKey = apiKey;
-
-        const maxTokens =
-            (await this.llmHelper
-                .TokenManager()
-                .getSafeMaxTokens({ givenMaxTokens: +config.data.maxTokens, modelName: model, hasAPIKey: !!apiKey })) || 300;
-
-        const llm = this.llmHelper.ModelRegistry().getProvider(model);
-
-        // as max output token prop name differs based on LLM provider, we need to get the actual prop from paramMappings
-        params[paramMappings[llm]?.maxTokens] = maxTokens;
-
-        return params;
-    }
     public postProcess(response: string) {
         try {
             return JSONContent(response).tryParse();
@@ -411,5 +179,85 @@ export abstract class LLMConnector extends Connector {
         toolsData: ToolData[];
     }): TLLMToolResultMessageBlock[] {
         throw new Error('This model does not support tools');
+    }
+
+    // TODO [Forhad]: simplify this method
+    private async prepareParams(candidate: AccessCandidate, params: any) {
+        const _params = { ...params };
+
+        const model = _params.model;
+        const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
+        const vaultConnector = ConnectorService.getVaultConnector();
+
+        if (!accountConnector) throw new Error('Account Connector unavailable, cannot proceed');
+        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+
+        const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+        if (isStandardLLM) {
+            const llmProvider = LLMRegistry.getProvider(model);
+
+            _params.credentials = {
+                apiKey: await vaultConnector
+                    .user(candidate)
+                    .get(llmProvider)
+                    .catch(() => ''),
+            };
+
+            if (_params.maxTokens) {
+                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params.apiKey);
+            }
+
+            const baseUrl = LLMRegistry.getBaseURL(params.model);
+
+            if (baseUrl) {
+                _params.baseURL = baseUrl;
+            }
+        } else {
+            const teamId = await accountConnector.getCandidateTeam(candidate);
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+
+            const modelInfo = customLLMRegistry.getModelInfo(model);
+
+            _params.modelInfo = modelInfo;
+
+            const llmProvider = customLLMRegistry.getProvider(model);
+
+            if (llmProvider === TLLMProvider.Bedrock) {
+                const keyIdName = modelInfo.settings?.keyIDName;
+                const secretKeyName = modelInfo.settings?.secretKeyName;
+                const sessionKeyName = modelInfo.settings?.sessionKeyName;
+
+                _params.credentials = {
+                    keyId: await vaultConnector
+                        .user(candidate)
+                        .get(keyIdName)
+                        .catch(() => ''),
+                    secretKey: await vaultConnector
+                        .user(candidate)
+                        .get(secretKeyName)
+                        .catch(() => ''),
+                    sessionKey: await vaultConnector
+                        .user(candidate)
+                        .get(sessionKeyName)
+                        .catch(() => ''),
+                };
+            } else if (llmProvider === TLLMProvider.VertexAI) {
+                const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
+
+                let jsonCredentials = await vaultConnector
+                    .user(candidate)
+                    .get(jsonCredentialsName)
+                    .catch(() => '');
+
+                _params.credentials = JSON.parse(jsonCredentials);
+            }
+
+            if (_params.maxTokens) {
+                _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+            }
+        }
+
+        return _params;
     }
 }

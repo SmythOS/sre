@@ -70,7 +70,7 @@ async function runTestCases(model: string) {
             presencePenalty: 0.1,
         },
     };
-    const llmInference: LLMInference = await LLMInference.load(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     it(
         `runs a simple prompt with Model: ${model}`,

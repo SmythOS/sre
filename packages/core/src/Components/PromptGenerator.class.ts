@@ -32,7 +32,7 @@ export default class PromptGenerator extends Component {
             logger.debug(`=== LLM Prompt Log ===`);
 
             const model: string = config.data.model || 'echo';
-            const llmInference: LLMInference = await LLMInference.load(model, agent.teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, agent.teamId);
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {

@@ -4,37 +4,38 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig } from '@sre/types/LLM.types';
+import { GenerateImageConfig, TLLMParams } from '@sre/types/LLM.types';
 import { LLMHelper } from './LLM.helper';
+import { LLMRegistry } from './LLMRegistry.class';
+import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 
 export class LLMInference {
-    private modelName: string;
-    private _llmConnector: LLMConnector;
-    private _llmHelper: LLMHelper;
+    private model: string;
+    private llmConnector: LLMConnector;
 
-    static async load(modelName: string, teamId?: string): Promise<LLMInference> {
-        const llmHelper = await LLMHelper.load(teamId);
+    public static async getInstance(model: string, teamId?: string) {
         const llmInference = new LLMInference();
 
-        const llmRegistry = llmHelper.ModelRegistry();
+        const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
-        const provider = llmRegistry.getProvider(modelName);
+        if (isStandardLLM) {
+            const llmProvider = LLMRegistry.getProvider(model);
 
-        llmInference.modelName = llmRegistry.getModelName(modelName);
-        llmInference._llmConnector = ConnectorService.getLLMConnector(provider);
+            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        } else {
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+            const llmProvider = customLLMRegistry.getProvider(model);
 
-        llmInference._llmConnector.llmHelper = llmHelper;
-        llmInference._llmHelper = llmHelper;
+            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        }
+
+        llmInference.model = model;
 
         return llmInference;
     }
 
-    public get llmHelper(): LLMHelper {
-        return this._llmHelper;
-    }
-
     public get connector(): LLMConnector {
-        return this._llmConnector;
+        return this.llmConnector;
     }
 
     public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
@@ -42,22 +43,22 @@ export class LLMInference {
             throw new Error('Prompt or messages are required');
         }
 
-        if (!this._llmConnector) {
-            throw new Error(`Model ${this.modelName} not supported`);
-        }
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractLLMComponentParams(config)) || {};
-        params.model = this.modelName;
+        const params: any = this.prepareParams(config) || {};
+
+        if (!this.llmConnector) {
+            throw new Error(`Model ${params.model} not supported`);
+        }
 
         //override params with customParams
         Object.assign(params, customParams);
 
         try {
-            prompt = this._llmConnector.enhancePrompt(prompt, config);
+            prompt = this.llmConnector.enhancePrompt(prompt, config);
 
-            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
+            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
 
-            const result = this._llmConnector.postProcess(response?.content);
+            const result = this.llmConnector.postProcess(response?.content);
             if (result.error) {
                 // If the model stopped before completing the response, this is usually due to output token limit reached.
                 if (response.finishReason !== 'stop') {
@@ -77,8 +78,7 @@ export class LLMInference {
 
     public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
-        params.model = this.modelName;
+        const params: any = this.prepareParams(config) || {};
 
         const promises = [];
         const _fileSources = [];
@@ -94,10 +94,10 @@ export class LLMInference {
         params.fileSources = _fileSources;
 
         try {
-            prompt = this._llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
+            prompt = this.llmConnector.enhancePrompt(prompt, config);
+            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
 
-            const result = this._llmConnector.postProcess(response?.content);
+            const result = this.llmConnector.postProcess(response?.content);
 
             if (result.error) {
                 if (response.finishReason !== 'stop') {
@@ -119,8 +119,8 @@ export class LLMInference {
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = (await this._llmConnector.extractVisionLLMParams(config)) || {};
-        params.model = this.modelName;
+        const params: any = this.prepareParams(config) || {}; // TODO [Forhad]: apply proper typing
+
         const promises = [];
         const _fileSources = [];
 
@@ -135,10 +135,10 @@ export class LLMInference {
         params.fileSources = _fileSources;
 
         try {
-            prompt = this._llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this._llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
+            prompt = this.llmConnector.enhancePrompt(prompt, config);
+            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
 
-            const result = this._llmConnector.postProcess(response?.content);
+            const result = this.llmConnector.postProcess(response?.content);
 
             if (result.error) {
                 if (response.finishReason !== 'stop') {
@@ -159,9 +159,8 @@ export class LLMInference {
 
     public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        params.model = this.modelName;
 
-        return this._llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
+        return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
     }
 
     public async toolRequest(params: any, agent: string | Agent) {
@@ -169,10 +168,15 @@ export class LLMInference {
             throw new Error('Input messages are required.');
         }
 
+        const _params = { ...params };
+
+        if (!_params.model) {
+            _params.model = this.model;
+        }
+
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
-            params.model = this.modelName;
-            return this._llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
+            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
         } catch (error: any) {
             console.error('Error in toolRequest: ', error);
 
@@ -182,7 +186,8 @@ export class LLMInference {
 
     public async streamToolRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        return this._llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
+
+        return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
 
     public async streamRequest(params: any, agent: string | Agent) {
@@ -192,8 +197,13 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            params.model = this.modelName;
-            return await this._llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+            const _params = { ...params };
+
+            if (!_params.model) {
+                _params.model = this.model;
+            }
+
+            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
         } catch (error) {
             console.error('Error in streamRequest:', error);
 
@@ -204,5 +214,34 @@ export class LLMInference {
             });
             return dummyEmitter;
         }
+    }
+
+    private prepareParams(config: any) {
+        const clonedConfigData = JSON.parse(JSON.stringify(config.data || {})); // We need to keep the config.data unchanged to avoid any side effects, especially when run components with loop
+        const configParams: {
+            model?: string;
+        } = {};
+
+        for (const [key, value] of Object.entries(clonedConfigData)) {
+            let _value: string | number | string[] | null = value as string;
+
+            // When we have stopSequences, we need to split it into an array
+            if (key === 'stopSequences') {
+                _value = _value ? _value?.split(',') : null;
+            }
+
+            // When we have a string that is a number, we need to convert it to a number
+            if (typeof _value === 'string' && !isNaN(Number(_value))) {
+                _value = +_value;
+            }
+
+            configParams[key] = _value;
+        }
+
+        if (!configParams?.model) {
+            configParams.model = this.model;
+        }
+
+        return configParams;
     }
 }

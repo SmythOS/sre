@@ -78,7 +78,7 @@ ${JSON.stringify(categories, null, 2)}`;
             return { _error: 'Missing information, Cannot run classifier', _debug: logger.output };
         }
 
-        const llmInference: LLMInference = await LLMInference.load(model || 'echo');
+        const llmInference: LLMInference = await LLMInference.getInstance(model || 'echo');
         if (!llmInference.connector) {
             return {
                 _error: `The model '${model}' is not available. Please try a different one.`,

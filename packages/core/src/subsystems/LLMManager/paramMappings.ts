@@ -1,3 +1,4 @@
+// ! DEPRECATED: will be removed this file
 export default {
     Echo: {
         maxTokens: 'max_tokens',

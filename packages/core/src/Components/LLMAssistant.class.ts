@@ -11,6 +11,8 @@ import Component from './Component.class';
 import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -87,7 +89,7 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const llmInference: LLMInference = await LLMInference.load(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model);
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
                 return {
@@ -105,11 +107,20 @@ export default class LLMAssistant extends Component {
             let behavior = TemplateString(config.data.behavior).parse(input).result;
             logger.debug(`[Parsed Behavior] \n${behavior}\n\n`);
 
-            const provider = llmInference.llmHelper.ModelRegistry().getProvider(model);
+            //#region get max tokens
+            let maxTokens = 2048;
+            const teamId = agent.teamId;
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
-            const apiKey = await VaultHelper.getTeamKey(provider, agent.teamId);
-
-            const maxTokens = (await llmInference.llmHelper.TokenManager().getAllowedCompletionTokens(model, !!apiKey)) ?? 2048;
+            if (isStandardLLM) {
+                const provider = LLMRegistry.getProvider(model);
+                const apiKey = await VaultHelper.getTeamKey(provider, teamId);
+                maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
+            } else {
+                const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+                maxTokens = await customLLMRegistry.getMaxCompletionTokens(model);
+            }
+            //#endregion get max tokens
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 

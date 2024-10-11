@@ -93,7 +93,7 @@ export default class ToolExecutor {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
         const { data: llmResponse } = await llmInference
             .toolRequest(
@@ -287,7 +287,7 @@ export default class ToolExecutor {
 
     private async toolsConfig(model: string): Promise<ToolsConfig | void> {
         const functionDeclarations = await this.functionDeclarations();
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
         const toolsConfig = llmInference.connector.formatToolsConfig({ type: 'function', toolDefinitions: functionDeclarations, toolChoice: 'auto' });
 

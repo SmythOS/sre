@@ -18,7 +18,8 @@ import { uid } from '@sre/utils';
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
 import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
-import { IAccessCandidate } from '@sre/types/ACL.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -98,17 +99,17 @@ export class GoogleAIConnector extends LLMConnector {
 
         const model = _params?.model || DEFAULT_MODEL;
 
-        const apiKey = _params?.apiKey;
+        const apiKey = _params?.credentials?.apiKey;
 
         let messages = _params?.messages || [];
 
         let systemInstruction;
         let systemMessage: TLLMMessageBlock | {} = {};
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(_params?.messages);
+        const hasSystemMessage = LLMHelper.hasSystemMessage(_params?.messages);
 
         if (hasSystemMessage) {
-            const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            const separateMessages = LLMHelper.separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             messages = separateMessages.otherMessages;
@@ -146,11 +147,11 @@ export class GoogleAIConnector extends LLMConnector {
 
         const generationConfig: GenerationConfig = {};
 
-        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-        if (_params.temperature) generationConfig.temperature = _params.temperature;
-        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-        if (_params.topP) generationConfig.topP = _params.topP;
-        if (_params.topK) generationConfig.topK = _params.topK;
+        if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
+        if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
+        if (_params.topP !== undefined) generationConfig.topP = _params.topP;
+        if (_params.topK !== undefined) generationConfig.topK = _params.topK;
+        if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
 
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
@@ -163,10 +164,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.TokenManager().validateTokensLimit({
-                modelName: model,
+            await LLMRegistry.validateTokensLimit({
+                model,
                 promptTokens,
-                completionTokens: params?.maxOutputTokens,
+                completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -184,7 +185,7 @@ export class GoogleAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
         const model = _params?.model || 'gemini-pro-vision';
-        const apiKey = _params?.apiKey;
+        const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -224,11 +225,11 @@ export class GoogleAIConnector extends LLMConnector {
 
             const generationConfig: GenerationConfig = {};
 
-            if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-            if (_params.temperature) generationConfig.temperature = _params.temperature;
-            if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-            if (_params.topP) generationConfig.topP = _params.topP;
-            if (_params.topK) generationConfig.topK = _params.topK;
+            if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
+            if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
+            if (_params.topP !== undefined) generationConfig.topP = _params.topP;
+            if (_params.topK !== undefined) generationConfig.topK = _params.topK;
+            if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
 
             if (Object.keys(generationConfig).length > 0) {
                 modelParams.generationConfig = generationConfig;
@@ -241,10 +242,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.TokenManager().validateTokensLimit({
-                modelName: model,
+            await LLMRegistry.validateTokensLimit({
+                model,
                 promptTokens,
-                completionTokens: _params?.maxOutputTokens,
+                completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -262,7 +263,7 @@ export class GoogleAIConnector extends LLMConnector {
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
         const model = _params?.model || DEFAULT_MODEL;
-        const apiKey = _params?.apiKey;
+        const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -310,11 +311,11 @@ export class GoogleAIConnector extends LLMConnector {
 
         const generationConfig: GenerationConfig = {};
 
-        if (_params.maxOutputTokens) generationConfig.maxOutputTokens = _params.maxOutputTokens;
-        if (_params.temperature) generationConfig.temperature = _params.temperature;
-        if (_params.stopSequences) generationConfig.stopSequences = _params.stopSequences;
-        if (_params.topP) generationConfig.topP = _params.topP;
-        if (_params.topK) generationConfig.topK = _params.topK;
+        if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
+        if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
+        if (_params.topP !== undefined) generationConfig.topP = _params.topP;
+        if (_params.topK !== undefined) generationConfig.topK = _params.topK;
+        if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
 
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
@@ -328,10 +329,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await this.llmHelper.TokenManager().validateTokensLimit({
-                modelName: model,
+            await LLMRegistry.validateTokensLimit({
+                model,
                 promptTokens,
-                completionTokens: _params?.maxOutputTokens,
+                completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -356,10 +357,10 @@ export class GoogleAIConnector extends LLMConnector {
 
             const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
 
-            const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+            const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
 
             if (hasSystemMessage) {
-                const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+                const separateMessages = LLMHelper.separateSystemMessages(messages);
                 const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
                 systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
                 formattedMessages = separateMessages.otherMessages;
@@ -369,24 +370,38 @@ export class GoogleAIConnector extends LLMConnector {
 
             formattedMessages = this.getConsistentMessages(formattedMessages);
 
-            const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
-            const $model = genAI.getGenerativeModel({ model: _params.model });
+            const apiKey = _params?.credentials?.apiKey;
 
-            const generationConfig: GenerateContentRequest = {
+            const generationConfig: GenerationConfig = {};
+
+            if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+
+            const modelParams: ModelParams = {
+                model: _params.model,
+            };
+
+            if (Object.keys(generationConfig).length > 0) {
+                modelParams.generationConfig = generationConfig;
+            }
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            const toolsPrompt: GenerateContentRequest = {
                 contents: formattedMessages,
             };
 
             if (systemInstruction) {
-                generationConfig.systemInstruction = systemInstruction;
+                toolsPrompt.systemInstruction = systemInstruction;
             }
 
-            if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+            if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
             if (_params?.toolsConfig?.tool_choice)
-                generationConfig.toolConfig = {
+                toolsPrompt.toolConfig = {
                     functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
                 };
 
-            const result = await $model.generateContent(generationConfig);
+            const result = await $model.generateContent(toolsPrompt);
 
             const response = await result.response;
             const content = response.text();
@@ -431,16 +446,15 @@ export class GoogleAIConnector extends LLMConnector {
         const _params = { ...params };
 
         const emitter = new EventEmitter();
-        const genAI = new GoogleGenerativeAI(_params.apiKey || process.env.GOOGLEAI_API_KEY);
-        const $model = genAI.getGenerativeModel({ model: _params.model });
+        const apiKey = _params?.credentials?.apiKey;
 
         let systemInstruction = '';
         let formattedMessages;
         const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
 
-        const hasSystemMessage = this.llmHelper.MessageProcessor().hasSystemMessage(messages);
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
-            const separateMessages = this.llmHelper.MessageProcessor().separateSystemMessages(messages);
+            const separateMessages = LLMHelper.separateSystemMessages(messages);
             const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
             systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
             formattedMessages = separateMessages.otherMessages;
@@ -448,22 +462,37 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = messages;
         }
 
-        const generationConfig: GenerateContentRequest = {
+        const generationConfig: GenerationConfig = {};
+
+        if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+
+        const modelParams: ModelParams = {
+            model: _params.model,
+        };
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const $model = genAI.getGenerativeModel(modelParams);
+
+        const toolsPrompt: GenerateContentRequest = {
             contents: formattedMessages,
         };
 
         if (systemInstruction) {
-            generationConfig.systemInstruction = systemInstruction;
+            toolsPrompt.systemInstruction = systemInstruction;
         }
 
-        if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+        if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
         if (_params?.toolsConfig?.tool_choice)
-            generationConfig.toolConfig = {
+            toolsPrompt.toolConfig = {
                 functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
             };
 
         try {
-            const result = await $model.generateContentStream(generationConfig);
+            const result = await $model.generateContentStream(toolsPrompt);
 
             let toolsData: ToolData[] = [];
 
@@ -498,12 +527,6 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error: any) {
             throw error;
         }
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: TLLMParams = await super.extractVisionLLMParams(config);
-
-        return params;
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {

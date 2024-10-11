@@ -64,7 +64,7 @@ let agent = new Agent();
 const TIMEOUT = 30000;
 
 async function runToolTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.load(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     it(
         'should execute a simple tool request',
@@ -169,7 +169,7 @@ async function runToolTestCases(model: string) {
 }
 
 async function runStreamRequestTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.load(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     it(
         'should stream a simple request',
@@ -271,7 +271,7 @@ async function runStreamRequestTestCases(model: string) {
 }
 
 async function runMultipleToolRequestTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.load(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     const toolDefinitions = [
         {
@@ -299,7 +299,13 @@ async function runMultipleToolRequestTestCases(model: string) {
     });
 
     const params = {
-        messages: [{ role: 'user', content: "What's the weather like in New York and what's the population?" }],
+        messages: [
+            {
+                role: 'user',
+                content:
+                    "I need two pieces of information: 1) What's the current weather in New York City? 2) What's the exact population of New York City? Please use the appropriate tools to answer both questions accurately.",
+            },
+        ],
         toolsConfig,
     };
 

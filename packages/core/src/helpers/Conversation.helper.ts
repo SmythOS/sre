@@ -177,7 +177,7 @@ export class Conversation extends EventEmitter {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
         if (message) this._context.addUserMessage(message);
 
@@ -189,7 +189,7 @@ export class Conversation extends EventEmitter {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig,
-                    max_tokens: this._maxOutputTokens,
+                    maxTokens: this._maxOutputTokens,
                 },
                 this._agentId
             )
@@ -310,7 +310,7 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
         if (message) this._context.addUserMessage(message);
 
@@ -322,7 +322,7 @@ export class Conversation extends EventEmitter {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig,
-                    max_tokens: this._maxOutputTokens,
+                    maxTokens: this._maxOutputTokens,
                 },
                 this._agentId
             )
@@ -499,7 +499,7 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
         if (message) this._context.addUserMessage(message);
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
@@ -732,7 +732,7 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
-        const llmInference: LLMInference = await LLMInference.load(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: [toolDefinition],
@@ -758,7 +758,7 @@ export class Conversation extends EventEmitter {
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
-                const llmInference: LLMInference = await LLMInference.load(this._model);
+                const llmInference: LLMInference = await LLMInference.getInstance(this._model);
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,

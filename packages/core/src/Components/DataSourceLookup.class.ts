@@ -14,7 +14,7 @@ import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
-    static async load(model: string) {
+    static async getInstance(model: string) {
         throw new Error('Method not implemented.');
     }
 }
@@ -96,7 +96,7 @@ export default class DataSourceLookup extends Component {
             const promises: any = [];
             for (let result of results) {
                 const _prompt = TemplateString(prompt.replace(/{{result}}/g, JSON.stringify(result))).parse(input).result;
-                const llmInference = await LLMInference.load(model);
+                const llmInference = await LLMInference.getInstance(model);
                 // const req = llmInference.promptRequest(_prompt, config, agent).catch((error) => ({ error: error }));
                 // promises.push(req);
             }
