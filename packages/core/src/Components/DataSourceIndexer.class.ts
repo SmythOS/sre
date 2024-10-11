@@ -158,7 +158,10 @@ export default class DataSourceIndexer extends Component {
         let vectorDbConnector = ConnectorService.getVectorDBConnector();
         const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
         if (isOnCustomStorage) {
-            vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId);
+            const customTeamConnector = await vectorDBHelper.getTeamConnector(teamId);
+            if (customTeamConnector) {
+                vectorDbConnector = customTeamConnector;
+            }
         }
         const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
             text,
