@@ -32,15 +32,17 @@ type FileObject = {
 
 const DEFAULT_MODEL = 'gemini-1.5-pro';
 
-const MODELS_WITH_SYSTEM_MESSAGE = [
+const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
+    'gemini-1.5-pro-exp-0801',
+    'gemini-1.5-pro-latest',
     'gemini-1.5-pro-latest',
     'gemini-1.5-pro',
     'gemini-1.5-pro-001',
     'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
     'gemini-1.5-flash-001',
+    'gemini-1.5-flash',
 ];
-const MODELS_WITH_JSON_RESPONSE = MODELS_WITH_SYSTEM_MESSAGE;
+const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
@@ -96,6 +98,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
+        let _prompt = prompt;
 
         const model = _params?.model || DEFAULT_MODEL;
 
@@ -103,38 +106,38 @@ export class GoogleAIConnector extends LLMConnector {
 
         let messages = _params?.messages || [];
 
-        let systemInstruction;
-        let systemMessage: TLLMMessageBlock | {} = {};
+        //#region Separate system message and add JSON response instruction if needed
+        let systemInstruction = '';
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
-        const hasSystemMessage = LLMHelper.hasSystemMessage(_params?.messages);
-
-        if (hasSystemMessage) {
-            const separateMessages = LLMHelper.separateSystemMessages(messages);
-            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
-            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
-            messages = separateMessages.otherMessages;
+        if ('content' in systemMessage) {
+            systemInstruction = systemMessage.content as string;
         }
 
-        if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-            systemInstruction = 'content' in systemMessage ? systemMessage.content : '';
-        } else {
-            prompt = `${prompt}\n${'content' in systemMessage ? systemMessage.content : ''}`;
-        }
+        messages = otherMessages;
 
-        if (_params?.messages) {
-            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-            // Concatenate messages with prompt and remove messages from params as it's not supported
-            prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
-        }
+        const responseFormat = _params?.responseFormat || '';
 
-        // Need to return JSON for LLM Prompt component
-        const responseFormat = _params?.responseFormat || 'json';
         if (responseFormat === 'json') {
-            if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
-            else prompt += JSON_RESPONSE_INSTRUCTION;
+            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                _params.responseMimeType = 'application/json';
+            } else {
+                systemInstruction += JSON_RESPONSE_INSTRUCTION;
+            }
         }
 
-        if (!prompt) throw new Error('Prompt is required!');
+        // if the the model does not support system instruction, we will add it to the prompt
+        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+            _prompt = `${_prompt}\n${systemInstruction}`;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        if (messages) {
+            // Concatenate messages with prompt and remove messages from params as it's not supported
+            _prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
+        }
+
+        if (!_prompt) throw new Error('Prompt is required!');
 
         // TODO: implement claude specific token counting to validate token limit
         // this.validateTokenLimit(_params);
@@ -142,8 +145,6 @@ export class GoogleAIConnector extends LLMConnector {
         const modelParams: ModelParams = {
             model,
         };
-
-        if (systemInstruction) modelParams.systemInstruction = systemInstruction;
 
         const generationConfig: GenerationConfig = {};
 
@@ -153,15 +154,18 @@ export class GoogleAIConnector extends LLMConnector {
         if (_params.topK !== undefined) generationConfig.topK = _params.topK;
         if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
 
+        if (systemInstruction) modelParams.systemInstruction = systemInstruction;
+        if (_params.responseMimeType) generationConfig.responseMimeType = _params.responseMimeType;
+
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
         }
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+            const genAI = new GoogleGenerativeAI(apiKey);
             const $model = genAI.getGenerativeModel(modelParams);
 
-            const { totalTokens: promptTokens } = await $model.countTokens(prompt);
+            const { totalTokens: promptTokens } = await $model.countTokens(_prompt);
 
             // * the function will throw an error if the token limit is exceeded
             await LLMRegistry.validateTokensLimit({
@@ -171,7 +175,7 @@ export class GoogleAIConnector extends LLMConnector {
                 hasAPIKey: !!apiKey,
             });
 
-            const result = await $model.generateContent(prompt);
+            const result = await $model.generateContent(_prompt);
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
@@ -188,6 +192,7 @@ export class GoogleAIConnector extends LLMConnector {
         const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
+        let _prompt = prompt;
 
         const validFiles = this.getValidFileSources(fileSources, 'image');
 
@@ -210,14 +215,27 @@ export class GoogleAIConnector extends LLMConnector {
 
             const imageData = this.getFileData(uploadedFiles);
 
-            const responseFormat = _params?.responseFormat || 'json';
-            if (responseFormat) {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
+            //#region Separate system message and add JSON response instruction if needed
+            let systemInstruction = '';
+
+            const responseFormat = _params?.responseFormat || '';
+
+            if (responseFormat === 'json') {
+                if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                    _params.responseMimeType = 'application/json';
+                } else {
+                    systemInstruction += JSON_RESPONSE_INSTRUCTION;
+                }
             }
 
+            // if the the model does not support system instruction, we will add it to the prompt
+            if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+                _prompt = `${_prompt}\n${systemInstruction}`;
+            }
+            //#endregion Separate system message and add JSON response instruction if needed
+
             // Adjust input structure handling for multiple image files to accommodate variations.
-            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: _prompt }] : [_prompt, ...imageData];
 
             const modelParams: ModelParams = {
                 model,
@@ -235,7 +253,7 @@ export class GoogleAIConnector extends LLMConnector {
                 modelParams.generationConfig = generationConfig;
             }
 
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+            const genAI = new GoogleGenerativeAI(apiKey);
             const $model = genAI.getGenerativeModel(modelParams);
 
             // Check token limit
@@ -266,6 +284,7 @@ export class GoogleAIConnector extends LLMConnector {
         const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
         const agentId = agent instanceof Agent ? agent.id : agent;
+        let _prompt = prompt;
 
         // If user provide mix of valid and invalid files, we will only process the valid files
         const validFiles = this.getValidFileSources(fileSources, 'all');
@@ -296,14 +315,27 @@ export class GoogleAIConnector extends LLMConnector {
 
         const fileData = this.getFileData(uploadedFiles);
 
-        const responseFormat = _params?.responseFormat || 'json';
-        if (responseFormat) {
-            if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = 'application/json';
-            else prompt += JSON_RESPONSE_INSTRUCTION;
+        //#region Separate system message and add JSON response instruction if needed
+        let systemInstruction = '';
+
+        const responseFormat = _params?.responseFormat || '';
+
+        if (responseFormat === 'json') {
+            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                _params.responseMimeType = 'application/json';
+            } else {
+                systemInstruction += JSON_RESPONSE_INSTRUCTION;
+            }
         }
 
+        // if the the model does not support system instruction, we will add it to the prompt
+        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+            _prompt = `${_prompt}\n${systemInstruction}`;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
         // Adjust input structure handling for multiple image files to accommodate variations.
-        const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
+        const promptWithFiles = fileData.length === 1 ? [...fileData, { text: _prompt }] : [_prompt, ...fileData];
 
         const modelParams: ModelParams = {
             model,
@@ -322,7 +354,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+            const genAI = new GoogleGenerativeAI(apiKey);
             const $model = genAI.getGenerativeModel(modelParams);
 
             // Check token limit
@@ -355,7 +387,7 @@ export class GoogleAIConnector extends LLMConnector {
             let systemInstruction = '';
             let formattedMessages;
 
-            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+            const messages = _params.messages;
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
 
@@ -367,8 +399,6 @@ export class GoogleAIConnector extends LLMConnector {
             } else {
                 formattedMessages = messages;
             }
-
-            formattedMessages = this.getConsistentMessages(formattedMessages);
 
             const apiKey = _params?.credentials?.apiKey;
 
@@ -450,7 +480,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         let systemInstruction = '';
         let formattedMessages;
-        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+        const messages = _params?.messages;
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -704,7 +734,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

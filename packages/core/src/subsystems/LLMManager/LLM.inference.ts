@@ -4,8 +4,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMParams } from '@sre/types/LLM.types';
-import { LLMHelper } from './LLM.helper';
+import { GenerateImageConfig, TLLMMessageBlock } from '@sre/types/LLM.types';
 import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 
@@ -213,6 +212,20 @@ export class LLMInference {
                 dummyEmitter.emit('end');
             });
             return dummyEmitter;
+        }
+    }
+
+    public async getConsistentMessages(messages: TLLMMessageBlock[]) {
+        if (!messages?.length) {
+            throw new Error('Input messages are required.');
+        }
+
+        try {
+            return this.llmConnector.getConsistentMessages(messages);
+        } catch (error) {
+            console.error('Error in getConsistentMessages: ', error);
+
+            return messages; // if something goes wrong then we return the original messages
         }
     }
 

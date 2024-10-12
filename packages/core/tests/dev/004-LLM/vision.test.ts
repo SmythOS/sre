@@ -141,10 +141,14 @@ async function runVisionTestCases(model: string) {
     );
 }
 
-const models = ['gpt-4o-mini', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash'];
+const models = [
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+];
 
 for (const model of models) {
-    describe(`LLM Vision Tests for Model: ${model}`, async () => {
-        await runVisionTestCases(model);
+    describe(`LLM Vision Tests: ${model.provider} (${model.id})`, async () => {
+        await runVisionTestCases(model.id);
     });
 }

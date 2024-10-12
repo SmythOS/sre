@@ -166,10 +166,10 @@ async function runMultimodalTestCases(model: string) {
     );
 }
 
-const models = ['gemini-1.5-flash'];
+const models = [{ provider: 'GoogleAI', id: 'gemini-1.5-flash' }];
 
 for (const model of models) {
-    describe(`LLM Multimodal Tests for Model: ${model}`, async () => {
-        await runMultimodalTestCases(model);
+    describe(`LLM Multimodal Tests: ${model.provider} (${model.id})`, async () => {
+        await runMultimodalTestCases(model.id);
     });
 }

@@ -41,20 +41,20 @@ export class GroqConnector extends LLMConnector {
 
         let messages = _params?.messages || [];
 
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-            messages = [systemMessage, ...otherMessages];
-        } else {
-            messages.unshift({
-                role: 'system',
-                content: JSON_RESPONSE_INSTRUCTION,
-            });
-        }
-
         if (prompt) {
             messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
+
+        //#region Handle JSON response format
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            if (messages?.[0]?.role === 'system') {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: 'system', content: JSON_RESPONSE_INSTRUCTION });
+            }
+        }
+        //#endregion Handle JSON response format
 
         const apiKey = _params?.credentials?.apiKey;
         if (!apiKey) throw new Error('Please provide an API key for Groq');
@@ -63,8 +63,6 @@ export class GroqConnector extends LLMConnector {
 
         // TODO: implement groq specific token counting
         // this.validateTokensLimit(_params);
-
-        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const chatCompletionArgs: {
             model: string;
@@ -110,7 +108,7 @@ export class GroqConnector extends LLMConnector {
 
             const groq = new Groq({ apiKey });
 
-            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+            const messages = _params.messages;
 
             let chatCompletionArgs: ChatCompletionCreateParams = {
                 model: _params.model,
@@ -168,7 +166,7 @@ export class GroqConnector extends LLMConnector {
 
         const groq = new Groq({ apiKey });
 
-        const messages = this.getConsistentMessages(_params.messages);
+        const messages = _params.messages;
 
         let chatCompletionArgs: {
             model: string;
@@ -260,7 +258,7 @@ export class GroqConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
     }
 
-    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

@@ -53,6 +53,9 @@ export default class PromptGenerator extends Component {
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
+            // default to json response format
+            config.responseFormat = config.data?.responseFormat || 'json';
+
             // request to LLM
             const response: any = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 

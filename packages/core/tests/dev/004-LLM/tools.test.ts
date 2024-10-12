@@ -352,20 +352,20 @@ async function runMultipleToolRequestTestCases(model: string) {
 }
 
 const models = [
-    'gpt-4o-mini', // OpenAI
-    'claude-3-5-sonnet-20240620', // Anthropic AI
-    'gemini-1.5-flash', // Google AI
-    'gemma2-9b-it', // Groq
-    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+    { provider: 'Groq', id: 'gemma2-9b-it' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
 ];
 
 for (const model of models) {
-    describe(`Tool Request Tests for Model: ${model}`, async () => {
-        await runToolTestCases(model);
+    describe(`Tool Request Tests: ${model.provider} (${model.id})`, async () => {
+        await runToolTestCases(model.id);
     });
 
-    describe(`Stream Request Tests for Model: ${model}`, async () => {
-        await runStreamRequestTestCases(model);
+    describe(`Stream Request Tests: ${model.provider} (${model.id})`, async () => {
+        await runStreamRequestTestCases(model.id);
     });
 }
 
@@ -376,12 +376,12 @@ for (const model of models) {
  * Tests for the sequence of tool responses are available in conversation.test.ts.
  */
 const modelsWithMultipleToolsResponse = [
-    'gpt-4o-mini', // OpenAI
-    'claude-3-5-sonnet-20240620', // Anthropic AI
-    'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo', // TogetherAI
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
 ];
 for (const model of modelsWithMultipleToolsResponse) {
-    describe(`Multiple Tools Request Tests for Model: ${model}`, async () => {
-        await runMultipleToolRequestTestCases(model);
+    describe(`Multiple Tools Request Tests: ${model.provider} (${model.id})`, async () => {
+        await runMultipleToolRequestTestCases(model.id);
     });
 }

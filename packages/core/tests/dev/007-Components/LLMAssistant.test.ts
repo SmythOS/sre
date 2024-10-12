@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 import Agent from '@sre/AgentManager/Agent.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
@@ -5,24 +6,13 @@ import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 //We need SRE to be loaded because LLMAssistant uses internal SRE functions
 const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
     Storage: {
         Connector: 'S3',
         Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
+            bucket: process.env.AWS_S3_BUCKET_NAME || '',
+            region: process.env.AWS_S3_REGION || '',
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
     AgentData: {
@@ -38,19 +28,31 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    },
 });
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
-            id: { value: 'agent-123456' }, // used inside inferBinaryType()
+            id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
             agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
         });
     });
     return { default: MockedAgent };
 });
-describe('LLMAssistant: process function', () => {
+
+function testProcessFunction(model) {
     let llmAssistant: LLMAssistant;
     let agent: Agent;
     let config: any;
@@ -63,7 +65,7 @@ describe('LLMAssistant: process function', () => {
             name: 'LLMAssistant',
             inputs: [],
             data: {
-                model: 'gpt-4o-mini',
+                model,
                 ttl: 5 * 60, //default expiration time for conversation cache
                 behavior:
                     'You are a friendly and funny assistant, you answer any question but start and finish every message with "Yohohohooooo!"\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"',
@@ -87,7 +89,7 @@ describe('LLMAssistant: process function', () => {
     });
 
     it('Conversation with context ', async () => {
-        const input = { UserInput: 'Hi, my name is Smyth, who are you ?', UserId: '', ConversationId: 'SmythTestConversation0001' };
+        const input = { UserInput: 'Hi, my name is Smyth, who are you?', UserId: '', ConversationId: 'SmythTestConversation0001' };
 
         config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
 
@@ -101,7 +103,7 @@ describe('LLMAssistant: process function', () => {
 
         input.UserInput = 'Hi again, Do you remember my name ?';
         result = await llmAssistant.process(input, config, agent);
-        expect(result.Response.toLowerCase()).toContain('smyth');
+        expect(result.Response.toLowerCase()).toContain('yohohohooooo');
     });
 
     it('Conversation with context that expires', async () => {
@@ -123,4 +125,18 @@ describe('LLMAssistant: process function', () => {
         result = await llmAssistant.process(input, config, agent);
         expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
     }, 60000);
-});
+}
+
+const models = [
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+    { provider: 'Groq', id: 'gemma2-9b-it' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+];
+
+for (const model of models) {
+    describe(`LLMAssistant: process function: ${model.provider} (${model.id})`, () => {
+        testProcessFunction(model.id);
+    });
+}

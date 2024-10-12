@@ -30,21 +30,30 @@ export class BedrockConnector extends LLMConnector {
             messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
-        let systemPrompt;
+        //#region Separate system message and add JSON response instruction if needed
+        let systemText;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-            messages = otherMessages;
-            systemPrompt = [{ text: (systemMessage as TLLMMessageBlock)?.content }];
-        } else {
-            systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
+        if ('content' in systemMessage) {
+            systemText = systemMessage.content;
         }
+
+        messages = otherMessages;
+
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemText = JSON_RESPONSE_INSTRUCTION;
+        }
+
+        let systemPrompt;
+        if (systemText) {
+            systemPrompt = [{ text: systemText }];
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelInfo = _params.modelInfo;
 
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const inferenceConfig: InferenceConfig = {};
         if (_params?.maxTokens !== undefined) inferenceConfig.maxTokens = _params.maxTokens;
@@ -122,7 +131,7 @@ export class BedrockConnector extends LLMConnector {
         throw new Error('Tool configuration is not supported for Bedrock.');
     }
 
-    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
         return messages.map((message) => {
             let textBlock = [];
 

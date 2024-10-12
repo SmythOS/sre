@@ -38,26 +38,20 @@ export class AnthropicAIConnector extends LLMConnector {
             });
         }
 
+        //#region Separate system message and add JSON response instruction if needed
         let systemPrompt;
-
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-            messages = otherMessages;
-
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
             systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
         }
+        messages = otherMessages;
 
-        // We need to get consistent messages after separating system messages to make sure the first message is a user message
-        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
-
-        const responseFormat = _params?.responseFormat || 'json';
+        const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
             systemPrompt += JSON_RESPONSE_INSTRUCTION;
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -101,7 +95,7 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params.messages) : [];
+        let messages = _params?.messages;
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -111,6 +105,21 @@ export class AnthropicAIConnector extends LLMConnector {
 
         const content = [{ type: 'text', text: prompt }, ...imageData];
         messages.push({ role: TLLMMessageRole.User, content });
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        }
+        messages = otherMessages;
+
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -176,9 +185,6 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
-
-            // We need to get consistent messages after separating system messages to make sure the first message is a user message
-            messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
             messageCreateArgs.messages = messages;
 
@@ -292,9 +298,6 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
-
-            // We need to get consistent messages after separating system messages to make sure the first message is a user message
-            messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
             messageCreateArgs.messages = messages;
 
@@ -431,7 +434,7 @@ export class AnthropicAIConnector extends LLMConnector {
         return messageBlocks;
     }
 
-    private getConsistentMessages(messages) {
+    public getConsistentMessages(messages) {
         let _messages = [...messages];
 
         _messages = _messages.map((message) => {

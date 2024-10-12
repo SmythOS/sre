@@ -181,6 +181,10 @@ export abstract class LLMConnector extends Connector {
         throw new Error('This model does not support tools');
     }
 
+    public getConsistentMessages(messages: TLLMMessageBlock[]) {
+        return messages; // if a LLM connector does not implement this method, the messages will not be modified
+    }
+
     // TODO [Forhad]: simplify this method
     private async prepareParams(candidate: AccessCandidate, params: any) {
         const _params = { ...params };

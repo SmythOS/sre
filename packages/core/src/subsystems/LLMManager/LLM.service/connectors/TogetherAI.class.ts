@@ -25,15 +25,18 @@ export class TogetherAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
-        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+        const messages = _params.messages;
 
-        //FIXME: We probably need to separate the json system from default chatRequest
-        if (messages[0]?.role !== 'system') {
-            messages.unshift({
-                role: 'system',
-                content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
-            });
+        //#region Handle JSON response format
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            if (messages?.[0]?.role === 'system') {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: 'system', content: JSON_RESPONSE_INSTRUCTION });
+            }
         }
+        //#endregion Handle JSON response format
 
         if (prompt && messages.length === 1) {
             messages.push({ role: 'user', content: prompt });
@@ -55,12 +58,17 @@ export class TogetherAIConnector extends LLMConnector {
             messages,
         };
 
+        if (_params?.responseFormat !== undefined) {
+            if (_params.responseFormat === 'json') {
+                chatCompletionArgs.response_format = { type: 'json_object' };
+            }
+        }
+
         if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
         if (_params?.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
         if (_params?.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
         if (_params?.topK !== undefined) chatCompletionArgs.top_k = _params.topK;
         if (_params?.frequencyPenalty !== undefined) chatCompletionArgs.repetition_penalty = _params.frequencyPenalty;
-        if (_params?.responseFormat !== undefined) chatCompletionArgs.response_format = _params.responseFormat;
         if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
 
         try {
@@ -107,7 +115,7 @@ export class TogetherAIConnector extends LLMConnector {
                 baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
-            const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+            const messages = _params.messages;
 
             let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
                 model: _params.model,
@@ -169,7 +177,7 @@ export class TogetherAIConnector extends LLMConnector {
             baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
-        const messages = this.getConsistentMessages(_params.messages);
+        const messages = _params.messages;
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,
@@ -255,7 +263,7 @@ export class TogetherAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    private getConsistentMessages(messages) {
+    public getConsistentMessages(messages) {
         return messages.map((message) => {
             const _message = { ...message };
             let textContent = '';

@@ -204,13 +204,15 @@ function runTestCases(model: string) {
 }
 
 const models = [
-    'gpt-4o-mini',
-    'claude-3-5-sonnet-20240620',
-    'gemini-1.5-flash' /* , 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' */,
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+    /* { provider: 'Groq', id: 'gemma2-9b-it' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' }, */
 ];
 
 for (const model of models) {
-    describe(`Conversation Tests for Model: ${model}`, async () => {
-        await runTestCases(model);
+    describe(`Conversation Tests: ${model.provider} (${model.id})`, async () => {
+        await runTestCases(model.id);
     });
 }
