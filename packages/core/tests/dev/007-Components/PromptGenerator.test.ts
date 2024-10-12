@@ -1,10 +1,12 @@
+import fs from 'fs';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+import Agent from '@sre/AgentManager/Agent.class';
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
 import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
-import fs from 'fs';
-
-import { describe, expect, it } from 'vitest';
+import PromptGenerator from '@sre/Components/PromptGenerator.class';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -50,6 +52,18 @@ const sre = SmythRuntime.Instance.init({
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
+// Mock Agent class to keep the test isolated from the actual Agent implementation
+vi.mock('@sre/AgentManager/Agent.class', () => {
+    const MockedAgent = vi.fn().mockImplementation(() => {
+        // Inherit Agent.prototype for proper instanceof Agent checks
+        return Object.create(Agent.prototype, {
+            id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
+            agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
+        });
+    });
+    return { default: MockedAgent };
+});
+
 // TODO [Forhad]: Need to implement more test cases for PromptGenerator
 // - expect JSON output
 // - expect error when model is not supported
@@ -81,7 +95,7 @@ describe('PromptGenerator Component with with - Echo', () => {
     });
 });
 
-function runTestCases(endpoint: string) {
+function runTestCasesWithAgent(endpoint: string) {
     it(
         'should generate a relevant response for a given prompt',
         async () => {
@@ -121,6 +135,6 @@ const llmProviderEndpoints = {
 
 for (const [provider, endpoint] of Object.entries(llmProviderEndpoints)) {
     describe(`PromptGenerator Component with - ${provider} (${endpoint})`, () => {
-        runTestCases(endpoint);
+        runTestCasesWithAgent(endpoint);
     });
 }

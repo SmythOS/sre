@@ -72,6 +72,10 @@ export class OpenAIConnector extends LLMConnector {
         if (_params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = _params.presencePenalty;
         if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
 
+        if (_params.responseFormat !== undefined) {
+            chatCompletionArgs.response_format = _params.responseFormat;
+        }
+
         try {
             // Validate token limit
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;

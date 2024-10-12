@@ -15,6 +15,14 @@ const sre = SmythRuntime.Instance.init({
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: process.env.REDIS_SENTINEL_HOSTS,
+            name: process.env.REDIS_MASTER_NAME || '',
+            password: process.env.REDIS_PASSWORD || '',
+        },
+    },
     AgentData: {
         Connector: 'Local',
         Settings: {
@@ -108,7 +116,7 @@ function testProcessFunction(model) {
 
     it('Conversation with context that expires', async () => {
         const input = { UserInput: 'Hi, my name is Smyth, who are you ?', UserId: '', ConversationId: 'SmythTestConversation0002' };
-        config.data.ttl = 10; // 20 seconds
+        config.data.ttl = 10; // 10 seconds
         config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
 
         let result = await llmAssistant.process(input, config, agent);
@@ -125,6 +133,9 @@ function testProcessFunction(model) {
         result = await llmAssistant.process(input, config, agent);
         expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
     }, 60000);
+
+    // TODO [Forhad]: write more test cases
+    // - switch different model for the same conversation
 }
 
 const models = [
