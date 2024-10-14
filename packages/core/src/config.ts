@@ -15,6 +15,8 @@ const config = {
 
         AGENT_DOMAIN: process.env?.AGENT_DOMAIN,
 
+        PROD_AGENT_DOMAIN: process.env?.PROD_AGENT_DOMAIN,
+
         AGENT_DOMAIN_PORT: process.env?.AGENT_DOMAIN_PORT,
         CODE_SANDBOX_URL: process.env?.CODE_SANDBOX_URL,
         TOGETHER_AI_API_URL: process.env?.TOGETHER_AI_API_URL,
