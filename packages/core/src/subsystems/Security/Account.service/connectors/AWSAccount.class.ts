@@ -15,10 +15,10 @@ export class AWSAccount extends AccountConnector {
         super();
 
         this.pool = mysql.createPool({
-            host: 'smythos-sre-db.cfsmmmcga4pq.us-east-1.rds.amazonaws.com',
-            user: 'app',
-            password: 'yjQvsIvkdZevJlnmxqT8',
-            database: 'app',
+            host: config.host,
+            database: config.database || 'app',
+            user: config.user || 'app',
+            password: config.password,
             connectionLimit: 10
         });
     }
