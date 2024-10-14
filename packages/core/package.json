@@ -24,6 +24,7 @@
         "build:cli:dev:exe": "pkg ./distributions/cli/dist/cli.dev.cjs --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/cli/dist",
         "build:cli:dev": "npm run build:cli:dev:cjs && npm run build:cli:dev:exe",
         "build:agent-builder:dev:es": "cross-env BUILD=dev rollup -c distributions/agent-builder/rollup.config.js",
+        "build:agent-builder:dev:esbundle": "cross-env BUILD=dev FORMAT=esbundle rollup -c distributions/agent-builder/rollup.config.js",
         "build:agent-builder:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/agent-builder/rollup.config.js",
         "build:agent-builder:dev:exe": "pkg ./distributions/agent-builder/dist/agent-builder.dev.js --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/agent-builder/dist",
         "build:agent-builder:dev": "npm run build:agent-builder:dev:cjs && npm run build:agent-builder:dev:exe"

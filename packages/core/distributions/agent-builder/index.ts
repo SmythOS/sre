@@ -6,13 +6,17 @@ import { fileURLToPath } from 'url';
 import { AccessCandidate, ConnectorService, Conversation, SmythRuntime, StorageConnector } from '../../src/index.ts';
 import multer from 'multer';
 import fs from 'fs';
+import { JSON2ADL } from './ADL.ts';
+import { searchTemplates, watchTemplates } from './TemplateHelper.ts';
 dotenv.config();
 //(session);
 
 //==============
 const app = express();
-const port = process.env.PORT || 5555;
+const port = process.env.PORT || 3055;
 const BASE_URL = `http://localhost:${port}`;
+
+console.log('SmythOS Chat Agent Builder v1.1.1');
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -75,10 +79,14 @@ const cliConnector = ConnectorService.getCLIConnector();
 const specUrl = process.env.AGENT_BUILDER_SPEC_URL;
 const model = cliConnector.params?.model || 'claude-3.5-sonnet'; //'claude-3.5-sonnet'; //'llama3-groq-70b-8192-tool-use-preview';
 const alternativeModel = cliConnector.params?.alt || 'gpt-4o-mini';
+const templatesDir = cliConnector.params?.tplDir || path.join(process.env.DATA_DIR || '', '/templates');
 const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 42 * 1024);
 const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 8 * 1024);
 
-console.log('Model ===> ', model, alternativeModel);
+console.log('Using Models ', model, alternativeModel);
+
+console.log('Watching templates in ', templatesDir);
+watchTemplates(templatesDir);
 
 app.use(express.json());
 
@@ -157,17 +165,42 @@ function overrideContextWindow(llmContext, conversationId) {
     llmContext.getContextWindow = async (...args) => {
         const contextWindow = await originalGetContextWindow(...args);
         const agentADL = conversations[conversationId].agentData;
+        const agentMetadata = conversations[conversationId].agentMetadata;
+        const userQuery = (conversations[conversationId]?.initialPrompt || '') + '\n' + (conversations[conversationId]?.userQuery || '');
         const selectionADL = conversations[conversationId].selection;
         const maxADLTokens = 20000;
 
-        const agentADLText = `
+        let agentADLTemplate = '';
+        if (userQuery) {
+            const searchQuery = `${agentMetadata.name} ${agentMetadata.description} ${agentMetadata.behavior} ${userQuery}`;
+            const templates = await searchTemplates(searchQuery, 1);
+            if (templates[0]?.metadata?.json) {
+                const tplADL = JSON2ADL(templates[0]?.metadata?.json);
+                if (tplADL) {
+                    agentADLTemplate += `\n========================
+# Example Agent ADL from our Knowledge base
+${tplADL}`;
+                }
+            }
+        }
+
+        let selectedAgentADL = '';
+        if (agentADL) {
+            selectedAgentADL = `
 ==========================
 # Current Agent ADL : This is the current agent loaded in the workspace.
 # This does not represent the user selected portion of the agent.
 ${agentADL}`;
 
+            if (selectedAgentADL.length / 3 > maxADLTokens) {
+                selectedAgentADL = `===========================
+IMPORTANT : If the user asks a question about the whole agent please inform him that the agent is too big to fit in memory, Ask him to select the portion of agent that he needs to ask about.`;
+            }
+        }
+
+        let agentADLText = `${agentADLTemplate}\n\n${selectedAgentADL}`;
         //append agent ADL to system promptif it does not exceed the max tokens
-        if (agentADL && agentADLText.length / 3 < maxADLTokens) {
+        if (agentADLText) {
             if (llmContext.model.includes('claude')) {
                 if (typeof contextWindow[0].content === 'string') {
                     contextWindow[0].content = [
@@ -272,6 +305,19 @@ app.post('/api/chat/feedback', async (req, res) => {
             const timestamp = Date.now();
             const feedbackFile = `agent-builder/feedback/${feedbackType}/${conversationId}-${timestamp}.json`;
             const teamCandidate = AccessCandidate.team('agent-builder-team');
+
+            const fullConvMessages = conversations[conversationId]?.conv?.context?.messages;
+            const systemPrompt = conversations[conversationId]?.conv?.context?.systemPrompt;
+            const agentData = conversations[conversationId]?.agentData;
+            const selection = conversations[conversationId]?.selection;
+
+            feedback.conversationData = {
+                fullConvMessages,
+                systemPrompt,
+                agentData,
+                selection,
+            };
+
             const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
             await s3Storage.user(teamCandidate).write(feedbackFile, JSON.stringify(feedback, null, 2));
         } catch (e) {
@@ -304,7 +350,19 @@ app.post('/api/chat', async (req, res) => {
             await createConversation(conversationId);
         }
 
-        if (agentData) {
+        if (message) {
+            if (!conversations[conversationId].initialPrompt) {
+                conversations[conversationId].initialPrompt = message;
+            } else {
+                conversations[conversationId].userQuery = message;
+            }
+        }
+        if (agentData && agentData?.components?.length > 0) {
+            conversations[conversationId].agentMetadata = {
+                description: agentData.shortDescription || '',
+                name: agentData.name || '',
+                behavior: agentData.behavior || '',
+            };
             conversations[conversationId].agentData = JSON2ADL(agentData);
             conversations[conversationId].selection = '[SELECTION IS EMPTY]';
         }
@@ -398,6 +456,17 @@ app.get('/api/_internal/getAgentData', async (req, res) => {
     }
 });
 
+app.get('/api/_internal/searchTemplates', async (req, res) => {
+    try {
+        const query = (req.query.query as string) || '';
+        const maxResults = parseInt(req.query.maxResults as string) || 1;
+        const templates = searchTemplates(query, maxResults);
+        res.json({ templates });
+    } catch (error) {
+        res.json({ info: 'cannot get templates' });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
@@ -485,77 +554,3 @@ function promptConversation(conversationId, message, contentCallback, usageCallb
         resolve(streamResult);
     });
 }
-
-function JSON2ADL(jsonString) {
-    const agentData = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
-    let adl = '';
-
-    // Create agent
-    adl += 'CREATE AGENT\n';
-    adl += `NAME = "${agentData.name || agentData?.templateInfo?.name || ''}"\n`;
-    adl += `DESCRIPTION = "${agentData.description || ''}"\n`;
-    adl += `BEHAVIOR = "${agentData.behavior || ''}"\n\n`;
-
-    // Components
-    agentData.components.forEach((component) => {
-        adl += `INSERT COMPONENT ${component.name} ID=${component.id}\n`;
-        adl += `TITLE = "${component.title || ''}"\n`;
-        adl += `DESCRIPTION = "${component.description || ''}"\n`;
-        // Replace POS with separate LEFT and TOP
-        adl += `LEFT = ${parseInt(component.left)}\n`;
-        adl += `TOP = ${parseInt(component.top)}\n`;
-
-        // Settings
-        if (Object.keys(component.data).length > 0) {
-            const settings = JSON.parse(JSON.stringify(component.data));
-            //strip empty values
-            const strippedSettings = Object.fromEntries(
-                Object.entries(settings).filter(([key, value]) => value !== '' && value !== null && value !== undefined)
-            );
-            adl += `SETTINGS = ${JSON.stringify(strippedSettings)}\n`;
-        }
-
-        // Inputs
-        if (component.inputs.length > 0) {
-            const inputs = component.inputs
-                .map((input) => {
-                    let name = input.name;
-                    if (input.optional) name += '?';
-                    if (input.default) name += '*';
-                    return `${name}:${input.type}`;
-                })
-                .join(', ');
-            adl += `INPUTS = [${inputs}]\n`;
-        }
-
-        // Outputs
-        if (component.outputs.length > 0) {
-            const outputs = component.outputs
-                .map((output) => {
-                    let name = output.name;
-                    if (output.optional) name += '?';
-                    if (output.default) name += '*';
-                    return `${name}:${output.type}`;
-                })
-                .join(', ');
-            adl += `OUTPUTS = [${outputs}]\n`;
-        }
-
-        adl += 'COMMIT\n\n';
-    });
-
-    // Connections
-    agentData.connections.forEach((connection) => {
-        const sourceComponent = agentData.components.find((c) => c.id === connection.sourceId);
-        const targetComponent = agentData.components.find((c) => c.id === connection.targetId);
-
-        if (sourceComponent && targetComponent) {
-            const sourceOutput = sourceComponent.outputs[connection.sourceIndex].name;
-            const targetInput = targetComponent.inputs[connection.targetIndex].name;
-            adl += `CONNECT ${connection.sourceId}:${sourceOutput} TO ${connection.targetId}:${targetInput}\n`;
-        }
-    });
-
-    return adl.trim();
-}
-//http://localhost:3000/?openapi=https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json

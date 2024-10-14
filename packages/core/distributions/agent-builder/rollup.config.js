@@ -44,6 +44,48 @@ const devCJSConfig = {
         sourcemaps(),
     ],
 };
+const devESBundleConfig = {
+    input: 'distributions/agent-builder/index.ts',
+    output: {
+        format: 'es',
+        sourcemap: true,
+
+        //Comment this line and uncomment the following lines if you need ES bundle
+        //file: 'distributions/agent-builder/dist/agent-builder.dev.js',
+        dir: 'distributions/agent-builder/dist',
+        inlineDynamicImports: true,
+        entryFileNames: 'agent-builder.dev-bundle.js',
+    },
+    plugins: [
+        //Uncomment the following lines if you need ES Bundle
+        resolve({
+            browser: false,
+            preferBuiltins: true,
+        }),
+        commonjs(),
+        json(),
+        typescriptPaths({
+            tsconfig: '../tsconfig.json',
+            preserveExtensions: true,
+            nonRelative: false,
+        }),
+        esbuild({
+            sourceMap: true,
+            minify: false,
+            treeShaking: false,
+        }),
+
+        // typescript({
+        //     tsconfig: './tsconfig.json',
+        //     clean: true,
+        //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
+        //     exclude: ['node_modules'],
+        // }),
+
+        sourcemaps(),
+    ],
+};
+
 const devESConfig = {
     input: 'distributions/agent-builder/index.ts',
     output: {
@@ -52,17 +94,8 @@ const devESConfig = {
 
         //Comment this line and uncomment the following lines if you need ES bundle
         file: 'distributions/agent-builder/dist/agent-builder.dev.js',
-        //dir: 'distributions/agent-builder/dist',
-        //inlineDynamicImports: true,
-        //entryFileNames: 'agent-builder.dev.js',
     },
     plugins: [
-        //Uncomment the following lines if you need ES Bundle
-        // resolve({
-        //     browser: false,
-        //     preferBuiltins: true,
-        // }),
-        // commonjs(),
         json(),
         typescriptPaths({
             tsconfig: '../tsconfig.json',
@@ -117,7 +150,14 @@ const prodConfig = {
     ],
 };
 
-const devConfig = format === 'cjs' ? devCJSConfig : devESConfig;
+let devConfig = devESConfig;
+if (format === 'cjs') {
+    devConfig = devCJSConfig;
+}
+
+if (format === 'esbundle') {
+    devConfig = devESBundleConfig;
+}
 
 let config = isProduction ? prodConfig : devConfig;
 

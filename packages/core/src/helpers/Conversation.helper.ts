@@ -709,7 +709,8 @@ export class Conversation extends EventEmitter {
 
                 if (spec.info?.title) this.assistantName = spec.info.title;
 
-                const defaultBaseUrl = new URL(specSource as string).origin;
+                const specUrl = new URL(specSource as string);
+                const defaultBaseUrl = specUrl.origin;
 
                 if (!spec?.servers) spec.servers = [{ url: defaultBaseUrl }];
                 if (spec.servers?.length == 0) spec.servers = [{ url: defaultBaseUrl }];
@@ -718,6 +719,7 @@ export class Conversation extends EventEmitter {
                     this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
                 }
 
+                this._agentId = specUrl.hostname; //just set an agent ID in order to identify the agent in SRE //FIXME: maybe this requires a better solution
                 return this.patchSpec(spec);
             }
             //is this an agentId ?
