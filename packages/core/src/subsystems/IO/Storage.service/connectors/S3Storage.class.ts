@@ -1,6 +1,20 @@
 //==[ SRE: S3Storage ]======================
 
+//#region = [Polyfill for CommonJS] =================================
+
+//S3 Methods fail in CommonJS build because they expect a global 'crypto' object with a 'getRandomValues' method
+//getRandomValues is supposed to be for browser environments, but it seems that CommonJS build leaks some browser related code to the packaged AWS-SDK
+import crypto from 'crypto';
+
+Object.defineProperty(global, 'crypto', {
+    value: {
+        getRandomValues: (arr: any) => crypto.randomBytes(arr.length),
+    },
+});
+//#endregion
+
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
+
 import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';

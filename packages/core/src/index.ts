@@ -10,7 +10,21 @@ import { CLIAgentDataConnector } from './subsystems/AgentManager/AgentData.servi
 import { AgentProcess } from './Core/AgentProcess.helper';
 import { Conversation } from './helpers/Conversation.helper';
 import config from './config';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 
 boot();
 
-export { Agent, AgentRequest, AgentSettings, AgentProcess, SmythRuntime, Conversation, ConnectorService, CLIAgentDataConnector, config };
+export {
+    Agent,
+    AgentRequest,
+    AgentSettings,
+    AgentProcess,
+    AccessCandidate,
+    SmythRuntime,
+    Conversation,
+    ConnectorService,
+    CLIAgentDataConnector,
+    StorageConnector,
+    config,
+};

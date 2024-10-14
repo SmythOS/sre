@@ -213,6 +213,8 @@ export abstract class LLMConnector extends Connector {
             if (baseUrl) {
                 _params.baseURL = baseUrl;
             }
+
+            _params.model = LLMRegistry.getModelId(model) || model;
         } else {
             const teamId = await accountConnector.getCandidateTeam(candidate);
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
@@ -256,6 +258,8 @@ export abstract class LLMConnector extends Connector {
             if (_params.maxTokens) {
                 _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
             }
+
+            _params.model = customLLMRegistry.getModelId(model) || model;
         }
 
         return _params;

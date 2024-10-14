@@ -173,3 +173,9 @@ export enum TLLMProvider {
     Bedrock = 'Bedrock',
     VertexAI = 'VertexAI',
 }
+
+export interface ILLMContextStore {
+    save(messages: any[]): Promise<void>;
+    load(count?: number): Promise<any[]>;
+    getMessage(message_id: string): Promise<any[]>;
+}

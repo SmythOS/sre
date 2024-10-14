@@ -2,12 +2,14 @@ import { encode, encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { ILLMContextStore } from '@sre/types/LLM.types';
 
 // TODO [Forhad]: we can move methods to MessageProcessor
 
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
     private _systemPrompt: string = '';
+    private _llmContextStore: ILLMContextStore;
     public get systemPrompt() {
         return this._systemPrompt;
     }
@@ -16,28 +18,46 @@ export class LLMContext {
     }
     public contextLength: number;
 
+    private _messages: any[] = [];
     public get messages() {
+        //TODO : check if the store is ready
         return this._messages;
+    }
+
+    public get model() {
+        return this.llmInference.model;
     }
     /**
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private _model, private llmInference, _systemPrompt: string = '', private _messages: any[] = []) {
+    constructor(private llmInference, _systemPrompt: string = '', /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore) {
         this._systemPrompt = _systemPrompt;
+
         //TODO:allow configuring a storage service
+        if (llmContextStore) {
+            this._llmContextStore = llmContextStore;
+            this._llmContextStore.load().then((messages) => {
+                this._messages = messages;
+            });
+        }
     }
 
-    public push(...message: any[]) {
+    private push(...message: any[]) {
         this._messages.push(...message);
-
         //TODO: persist to storage
+        if (this._llmContextStore) {
+            this._llmContextStore.save(this._messages);
+        }
     }
-    public addUserMessage(content: string) {
-        this.push({ role: 'user', content });
+    public addUserMessage(content: string, message_id: string) {
+        this.push({ role: 'user', content, __smyth_data__: { message_id } });
     }
-    public addAssistantMessage(content: string) {
-        this.push({ role: 'assistant', content });
+    public addAssistantMessage(content: string, message_id: string) {
+        this.push({ role: 'assistant', content, __smyth_data__: { message_id } });
+    }
+    public addToolMessage(messageBlock: any, toolsData: any, message_id: string) {
+        this.push({ messageBlock, toolsData, __smyth_data__: { message_id } });
     }
 
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 256): Promise<any[]> {
@@ -46,13 +66,13 @@ export class LLMContext {
 
         //#region get max model context
         let maxModelContext;
-        const isStandardLLM = LLMRegistry.isStandardLLM(this._model);
+        const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
 
         if (isStandardLLM) {
-            maxModelContext = LLMRegistry.getMaxContextTokens(this._model, true); // we just provide true for hasAPIKey to get the original max context
+            maxModelContext = LLMRegistry.getMaxContextTokens(this.model, true); // we just provide true for hasAPIKey to get the original max context
         } else {
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(this._model);
-            maxModelContext = customLLMRegistry.getMaxContextTokens(this._model);
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(this.model);
+            maxModelContext = customLLMRegistry.getMaxContextTokens(this.model);
         }
         //#endregion get max model context
 
