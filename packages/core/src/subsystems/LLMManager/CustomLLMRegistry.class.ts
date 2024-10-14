@@ -47,7 +47,7 @@ export class CustomLLMRegistry {
         this.models = { ...this.models, ...savedCustomModels };
     }
 
-    private getModelId(model: string): string {
+    public getModelId(model: string): string {
         for (const [id, modelInfo] of Object.entries(this.models)) {
             if (modelInfo.name === model) return id;
         }

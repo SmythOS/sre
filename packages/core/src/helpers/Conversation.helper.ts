@@ -4,7 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
-import { ToolData } from '@sre/types/LLM.types';
+import { ILLMContextStore, ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit, uid } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -52,6 +52,7 @@ export class Conversation extends EventEmitter {
     private _status = '';
     private _currentWaitPromise;
 
+    private _llmContextStore: ILLMContextStore;
     private _context: LLMContext;
     private _maxContextSize = 1024 * 16;
     private _maxOutputTokens = 1024;
@@ -94,7 +95,15 @@ export class Conversation extends EventEmitter {
     constructor(
         private _model: string,
         private _specSource?: string | Record<string, any>,
-        private _settings?: { maxContextSize?: number; maxOutputTokens?: number; systemPrompt?: string; toolChoice?: string }
+        private _settings?: {
+            maxContextSize?: number;
+            maxOutputTokens?: number;
+            systemPrompt?: string;
+            toolChoice?: string;
+            store?: ILLMContextStore;
+            experimentalCache?: boolean;
+            toolsStrategy?: (toolsConfig) => any;
+        }
     ) {
         //TODO: handle loading previous session (messages)
         super();
@@ -193,7 +202,7 @@ export class Conversation extends EventEmitter {
                 {
                     model: this.model,
                     messages: contextWindow,
-                    toolsConfig,
+                    toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                 },
                 this._agentId
@@ -276,12 +285,14 @@ export class Conversation extends EventEmitter {
 
             // this._context.push(...messagesWithToolResult);
 
-            this._context.push({ messageBlock: llmResponse?.message, toolsData });
+            //this._context.push({ messageBlock: llmResponse?.message, toolsData });
+            this._context.addToolMessage(llmResponse?.message, toolsData, message_id);
 
             return this.prompt(null, toolHeaders);
         }
 
-        this._context.push(llmResponse?.message);
+        //this._context.push(llmResponse?.message);
+        this._context.addAssistantMessage(llmResponse?.message?.content, message_id);
 
         let content = JSONContent(llmResponse?.content).tryParse();
 
@@ -327,8 +338,9 @@ export class Conversation extends EventEmitter {
                 {
                     model: this.model,
                     messages: contextWindow,
-                    toolsConfig,
+                    toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
+                    cache: this._settings?.experimentalCache,
                 },
                 this._agentId
             )
@@ -493,147 +505,6 @@ export class Conversation extends EventEmitter {
         return content;
     }
 
-    public async _streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
-        await this.ready;
-
-        const reqMethods = this._reqMethods;
-        const toolsConfig = this._toolsConfig;
-        const endpoints = this._endpoints;
-        const baseUrl = this._baseUrl;
-
-        /* ==================== STEP ENTRY ==================== */
-        // console.debug('Request to LLM with the given model, messages and functions properties.', {
-        //     model: this.model,
-        //     message,
-        //     toolsConfig,
-        // });
-        /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
-
-        if (message) this._context.addUserMessage(message);
-        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
-
-        const { data: llmResponse, error } = await llmInference.streamToolRequest(
-            {
-                model: this.model,
-                messages: contextWindow,
-                toolsConfig,
-            },
-            this._agentId
-        );
-
-        if (error) {
-            throw new Error(
-                '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
-            );
-        }
-
-        // useTool = true means we need to use it
-        if (llmResponse?.useTool) {
-            const llmMessage = llmResponse?.message;
-            const toolsData = llmResponse?.toolsData;
-
-            /* ==================== STEP ENTRY ==================== */
-            // console.debug({
-            //     type: 'ToolsData',
-            //     message: 'Tool(s) is available for use.',
-            //     toolsData: llmResponse?.toolsData,
-            // });
-            /* ==================== STEP ENTRY ==================== */
-
-            this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
-
-            const toolProcessingTasks = toolsData.map(
-                (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
-                    const endpoint = endpoints?.get(tool?.name) || tool?.name;
-                    // Sometimes we have object response from the LLM such as Anthropic
-
-                    let args = typeof tool?.arguments === 'string' ? JSONContent(tool?.arguments).tryParse() || {} : tool?.arguments;
-
-                    if (args?.error) {
-                        throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
-                    }
-
-                    //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
-                    this.emit('beforeToolCall', { tool, args });
-
-                    const toolArgs = {
-                        type: tool?.type,
-                        method: reqMethods?.get(tool?.name),
-                        endpoint,
-                        args,
-                        baseUrl,
-                        headers: toolHeaders,
-                    };
-
-                    let { data: functionResponse, error } = await this.useTool(toolArgs);
-
-                    if (error) {
-                        functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
-                    }
-
-                    functionResponse =
-                        typeof functionResponse === 'object' && typeof functionResponse !== null
-                            ? JSON.stringify(functionResponse)
-                            : functionResponse;
-
-                    //await afterFunctionCall(functionResponse, toolsData[tool.index]);
-                    this.emit('afterToolCall', { tool, args }, functionResponse);
-
-                    return { ...tool, result: functionResponse };
-                }
-            );
-
-            const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
-
-            // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
-            //     messageBlock: llmMessage,
-            //     toolsData: processedToolsData,
-            // });
-
-            // this._context.push(...messagesWithToolResult);
-            this._context.push({
-                //store raw tool call data, we'll convert it when reading the context window
-                messageBlock: llmMessage,
-                toolsData: processedToolsData,
-            });
-
-            return this.streamPrompt(null, toolHeaders, concurrentToolCalls);
-        }
-        let _content = '';
-        if (llmResponse.content) {
-            _content = llmResponse.content;
-        }
-        if (llmResponse.stream) {
-            this.emit('start');
-            for await (const part of llmResponse.stream) {
-                const delta = part.choices[0].delta;
-
-                //if (!_content) delta.content = '\n\n' + delta.content;
-                //onResponse(delta);
-                this.emit('data', delta);
-                if (delta.content) this.emit('content', delta.content);
-                _content += delta.content || '';
-            }
-
-            this.emit('end');
-        }
-        let content = JSONContent(_content).tryParse();
-
-        /* ==================== STEP ENTRY ==================== */
-        // console.debug({
-        //     type: 'FinalResult',
-        //     message: 'Here is the final result after processing all the tools and LLM response.',
-        //     response: content,
-        // });
-        /* ==================== STEP ENTRY ==================== */
-
-        return content;
-    }
     private resolveToolEndpoint(baseUrl: string, method: string, endpoint: string, params: Record<string, any>): string {
         //handle query params
         let templateParams = {};
@@ -780,7 +651,7 @@ export class Conversation extends EventEmitter {
                 let messages = [];
                 if (this._context) messages = this._context.messages; // preserve messages
 
-                this._context = new LLMContext(this._model, llmInference, this.systemPrompt, messages);
+                this._context = new LLMContext(llmInference, this.systemPrompt, this._llmContextStore);
             } else {
                 this._toolsConfig = null;
                 this._reqMethods = null;
@@ -819,11 +690,15 @@ export class Conversation extends EventEmitter {
      */
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
         if (typeof specSource === 'object') {
+            //is this a valid OpenAPI spec?
             if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+            //is this a valid agent data?
+            if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
             return null;
         }
 
         if (typeof specSource === 'string') {
+            //is this an openAPI url?
             if (isUrl(specSource as string)) {
                 const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
 
@@ -845,23 +720,30 @@ export class Conversation extends EventEmitter {
 
                 return this.patchSpec(spec);
             }
+            //is this an agentId ?
             const agentDataConnector = ConnectorService.getAgentDataConnector();
             const agentId = specSource as string;
             const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
             if (!agentData) return null;
             this._agentId = agentId;
-            this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
 
-            // we always overwrite system prompt with user defined one
-            if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
-
-            this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
-            if (this.assistantName) {
-                this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
-            }
-            const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true).catch((error) => null);
-            return this.patchSpec(spec);
+            const spec = await this.loadSpecFromAgent(agentData);
+            return spec;
         }
+    }
+    private async loadSpecFromAgent(agentData: Record<string, any>) {
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+        this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+
+        // we always overwrite system prompt with user defined one
+        if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
+
+        this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
+        if (this.assistantName) {
+            this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
+        }
+        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true).catch((error) => null);
+        return this.patchSpec(spec);
     }
 
     /**

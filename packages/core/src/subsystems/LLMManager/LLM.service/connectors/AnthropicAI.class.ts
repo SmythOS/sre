@@ -12,6 +12,7 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 
 const console = Logger('AnthropicAIConnector');
 
@@ -248,7 +249,7 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params: any = { ...params };
         try {
             const emitter = new EventEmitter();
             const usage_data = [];
@@ -274,7 +275,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 // in Anthropic AI we need to provide system message separately
                 const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
-                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
+                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string | Array<TextBlockParam>) || '';
                 if (typeof messageCreateArgs.system === 'string') {
                     messageCreateArgs.system = [
                         {
@@ -287,8 +288,12 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messageCreateArgs.system.unshift({
                     type: 'text',
-                    text: 'If you need to use a tool, use it without telling the user what you are about to do. And do not thank the user after you get the response.The tool use should remain completely silent and the user should never be aware that tools are being used.',
+                    text: 'If you need to call a function, Do NOT inform the user that you are about to do so, and do not thank the user after you get the response. Just say something like "Give me a moment...", then when you get the response, Just continue answering the user without saying anything about the function you just called',
                 });
+
+                if (_params?.cache) {
+                    messageCreateArgs.system[messageCreateArgs.system.length - 1]['cache_control'] = { type: 'ephemeral' };
+                }
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
@@ -299,14 +304,27 @@ export class AnthropicAIConnector extends LLMConnector {
             messageCreateArgs.messages = messages;
 
             if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) {
-                messageCreateArgs.tools = _params?.toolsConfig?.tools as Anthropic.Tool[];
+                messageCreateArgs.tools = JSON.parse(JSON.stringify(_params?.toolsConfig?.tools)) as Anthropic.Tool[];
+                if (_params?.cache) {
+                    messageCreateArgs.tools[messageCreateArgs.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
+                }
+            }
+            if (_params?.toolsConfig?.tool_choice) {
+                messageCreateArgs.tool_choice = _params?.toolsConfig?.tool_choice;
             }
 
-            const stream = anthropic.messages.stream(messageCreateArgs);
+            let stream;
+            if (_params?.cache) {
+                stream = anthropic.beta.promptCaching.messages.stream(messageCreateArgs, {
+                    headers: { 'anthropic-beta': 'prompt-caching-2024-07-31' },
+                });
+            } else {
+                stream = anthropic.messages.stream(messageCreateArgs);
+            }
 
             stream.on('streamEvent', (event: any) => {
                 if (event.message?.usage) {
-                    console.log('usage', event.message?.usage);
+                    //console.log('usage', event.message?.usage);
                 }
             });
 
@@ -321,7 +339,9 @@ export class AnthropicAIConnector extends LLMConnector {
                 emitter.emit('content', text);
             });
 
-            stream.on('finalMessage', (finalMessage) => {
+            const finalMessage = _params?.cache ? 'finalPromptCachingBetaMessage' : 'finalMessage';
+            stream.on(finalMessage, (finalMessage) => {
+                //console.log('finalMessage', finalMessage);
                 const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
 
                 if (toolUseContentBlocks?.length > 0) {
@@ -339,9 +359,19 @@ export class AnthropicAIConnector extends LLMConnector {
                     emitter.emit('toolsData', toolsData);
                 }
 
+                if (finalMessage?.usage) {
+                    const usage = finalMessage.usage;
+                    usage_data.push({
+                        prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
+                        completion_tokens: usage.output_tokens,
+                        total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
+                        prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
+                        completion_tokens_details: { reasoning_tokens: 0 },
+                    });
+                }
                 //only emit end event after processing the final message
                 setTimeout(() => {
-                    emitter.emit('end', toolsData);
+                    emitter.emit('end', toolsData, usage_data);
                 }, 100);
             });
 
