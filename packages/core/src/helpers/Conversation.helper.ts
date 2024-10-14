@@ -6,7 +6,7 @@ import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
-import { processWithConcurrencyLimit } from '@sre/utils/general.utils';
+import { processWithConcurrencyLimit, uid } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
 import EventEmitter from 'events';
 import { JSONContent } from './JsonContent.helper';
@@ -34,6 +34,7 @@ export class Conversation extends EventEmitter {
     private _agentId: string = '';
     private _systemPrompt;
     private userDefinedSystemPrompt: string = '';
+    public toolChoice: string = 'auto';
     public get systemPrompt() {
         return this._systemPrompt;
     }
@@ -93,7 +94,7 @@ export class Conversation extends EventEmitter {
     constructor(
         private _model: string,
         private _specSource?: string | Record<string, any>,
-        private _settings?: { maxContextSize?: number; maxOutputTokens?: number; systemPrompt?: string }
+        private _settings?: { maxContextSize?: number; maxOutputTokens?: number; systemPrompt?: string; toolChoice?: string }
     ) {
         //TODO: handle loading previous session (messages)
         super();
@@ -107,6 +108,9 @@ export class Conversation extends EventEmitter {
         if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
         if (_settings?.systemPrompt) {
             this.userDefinedSystemPrompt = _settings.systemPrompt;
+        }
+        if (_settings?.toolChoice) {
+            this.toolChoice = _settings.toolChoice;
         }
 
         if (_specSource) {
@@ -169,6 +173,7 @@ export class Conversation extends EventEmitter {
         const toolsConfig = this._toolsConfig;
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
+        const message_id = 'msg_' + uid();
 
         /* ==================== STEP ENTRY ==================== */
         console.debug('Request to LLM with the given model, messages and functions properties.', {
@@ -179,7 +184,7 @@ export class Conversation extends EventEmitter {
         /* ==================== STEP ENTRY ==================== */
         const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
-        if (message) this._context.addUserMessage(message);
+        if (message) this._context.addUserMessage(message, message_id);
 
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
@@ -302,6 +307,7 @@ export class Conversation extends EventEmitter {
         const toolsConfig = this._toolsConfig;
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
+        const message_id = 'msg_' + uid();
 
         /* ==================== STEP ENTRY ==================== */
         // console.debug('Request to LLM with the given model, messages and functions properties.', {
@@ -312,7 +318,7 @@ export class Conversation extends EventEmitter {
         /* ==================== STEP ENTRY ==================== */
         const llmInference: LLMInference = await LLMInference.getInstance(this.model);
 
-        if (message) this._context.addUserMessage(message);
+        if (message) this._context.addUserMessage(message, message_id);
 
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
@@ -423,11 +429,13 @@ export class Conversation extends EventEmitter {
                 // });
 
                 // this._context.push(...messagesWithToolResult);
-                this._context.push({
-                    //store raw tool call data, we'll convert it when reading the context window
-                    messageBlock: llmMessage,
-                    toolsData: processedToolsData,
-                });
+                // this._context.push({
+                //     //store raw tool call data, we'll convert it when reading the context window
+                //     messageBlock: llmMessage,
+                //     toolsData: processedToolsData,
+                // });
+
+                this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
                 this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
 
@@ -444,7 +452,8 @@ export class Conversation extends EventEmitter {
 
                 if (!hasTools) {
                     //console.log(' ===> resolved content no tool', _content);
-                    this._context.push({ role: 'assistant', content: _content });
+                    //this._context.push({ role: 'assistant', content: _content });
+                    this._context.addAssistantMessage(_content, message_id);
                     resolve(''); //the content were already emitted through 'content' event
                 }
             });
@@ -673,14 +682,17 @@ export class Conversation extends EventEmitter {
                 const reqConfig: AxiosRequestConfig = {
                     method,
                     url,
-                    headers,
+                    headers: {
+                        ...headers,
+                    },
                 };
 
                 if (method !== 'get') {
                     if (Object.keys(args).length) {
                         reqConfig.data = args;
                     }
-                    (reqConfig.headers as Record<string, unknown>)['Content-Type'] = 'application/json';
+                    //(reqConfig.headers as Record<string, unknown>)['Content-Type'] = 'application/json';
+                    reqConfig.headers['Content-Type'] = 'application/json';
                 }
 
                 console.debug('Calling tool: ', reqConfig);
@@ -736,7 +748,7 @@ export class Conversation extends EventEmitter {
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: [toolDefinition],
-            toolChoice: 'auto',
+            toolChoice: this.toolChoice,
         });
 
         if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
@@ -762,7 +774,7 @@ export class Conversation extends EventEmitter {
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
-                    toolChoice: 'auto',
+                    toolChoice: this.toolChoice,
                 });
 
                 let messages = [];
