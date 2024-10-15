@@ -52,18 +52,6 @@ const sre = SmythRuntime.Instance.init({
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
 ConnectorService.init(TConnectorService.AgentData, 'CLI');
 
-// Mock Agent class to keep the test isolated from the actual Agent implementation
-vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => {
-        // Inherit Agent.prototype for proper instanceof Agent checks
-        return Object.create(Agent.prototype, {
-            id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
-            agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
-        });
-    });
-    return { default: MockedAgent };
-});
-
 // TODO [Forhad]: Need to implement more test cases for PromptGenerator
 // - expect JSON output
 // - expect error when model is not supported

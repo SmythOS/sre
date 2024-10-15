@@ -19,7 +19,7 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 const console = Logger('OpenAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-const MODELS_WITH_JSON_RESPONSE = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
@@ -47,6 +47,8 @@ export class OpenAIConnector extends LLMConnector {
 
             if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.responseFormat = { type: 'json_object' };
+            } else {
+                _params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
         //#endregion Handle JSON response format
