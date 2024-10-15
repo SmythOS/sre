@@ -33,7 +33,9 @@ export class VertexAIConnector extends LLMConnector {
             systemInstruction = systemMessage.content;
         }
 
-        messages = otherMessages;
+        // We need the getConsistentMessages() for PromptGenerator as well
+        messages = this.getConsistentMessages(otherMessages);
+
         //#endregion Handle JSON response format
 
         const modelInfo = _params.modelInfo as TVertexAIModel;

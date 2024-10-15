@@ -38,7 +38,8 @@ export class BedrockConnector extends LLMConnector {
             systemText = systemMessage.content;
         }
 
-        messages = otherMessages;
+        // We need the getConsistentMessages() for PromptGenerator as well
+        messages = this.getConsistentMessages(otherMessages);
 
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
