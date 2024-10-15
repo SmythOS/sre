@@ -8,27 +8,26 @@ import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IVectorDBRequest, VectorDBConnector } from '../VectorDBConnector';
+import { VectorDBConnector } from '../VectorDBConnector';
 import {
+    DatasourceDto,
+    IStorageVectorDataSource,
     IStorageVectorNamespace,
     IVectorDataSourceDto,
     PineconeConfig,
     QueryOptions,
-    Source,
     StorageVectorNamespaceMetadata,
-    VectorDBMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { OpenAIEmbeddings } from '@langchain/openai';
 import { VectorsHelper } from '../Vectors.helper';
-import { isUrl } from '@sre/utils/data.utils';
 import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import crypto from 'crypto';
 
 const console = Logger('Pinecone VectorDB');
 
@@ -40,6 +39,9 @@ export class PineconeVectorDB extends VectorDBConnector {
     private redisCache: CacheConnector;
     private accountConnector: AccountConnector;
     private openaiApiKey: string;
+    private nkvConnector: NKVConnector;
+    private isCustomStorageInstance: boolean;
+    private helper: VectorsHelper;
 
     constructor(config: PineconeConfig) {
         super();
@@ -55,10 +57,11 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.indexName = config.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.redisCache = ConnectorService.getCacheConnector('Redis');
+        this.nkvConnector = ConnectorService.getNKVConnector();
         this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+        this.helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
+        this.isCustomStorageInstance = config.isCustomStorageInstance || false;
     }
-
-    
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
@@ -76,10 +79,25 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async createNamespace(acRequest: AccessRequest, namespace: string, metadata?: { [key: string]: any }): Promise<void> {
         //* Pinecone does not need explicit namespace creation, instead, it creates the namespace when the first vector is inserted
-
-        // save namespace for listing
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
+        const candidate = AccessCandidate.team(teamId);
+        const nsExists = await this.nkvConnector.user(candidate).exists(`vectorDB:${this.id}`, `namespace:${preparedNs}`);
+
+        if (!nsExists) {
+            const nsData: IStorageVectorNamespace = {
+                namespace: preparedNs,
+                displayName: namespace,
+                teamId,
+                metadata: {
+                    ...metadata,
+                    isOnCustomStorage: this.isCustomStorageInstance,
+                    indexName: this.indexName,
+                },
+            };
+            await this.nkvConnector.user(candidate).set(`vectorDB:${this.id}:namespaces`, preparedNs, JSON.stringify(nsData));
+        }
 
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
         await this.setACL(acRequest, preparedNs, acl);
@@ -89,22 +107,34 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
-        throw new Error('Pinecone does not support namespace existence check');
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        return await this.nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
     }
 
     @SecureConnector.AccessControl
     protected async getNamespace(acRequest: AccessRequest, namespace: string): Promise<any> {
-        throw new Error('Pinecone does not support getting a namespace');
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        const nsData = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, preparedNs);
+        return JSONContentHelper.create(nsData?.toString()).tryParse() as IStorageVectorNamespace;
     }
 
     @SecureConnector.AccessControl
     protected async listNamespaces(acRequest: AccessRequest): Promise<any[]> {
-        throw new Error('Pinecone does not support listing namespaces');
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const candidate = AccessCandidate.team(teamId);
+        const nsKeys = await this.nkvConnector.user(candidate).list(`vectorDB:${this.id}:namespaces`);
+        return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse() as IStorageVectorNamespace);
     }
 
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const candidate = AccessCandidate.team(teamId);
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
         await this.client
             .Index(this.indexName)
             .namespace(VectorDBConnector.constructNsName(teamId, namespace))
@@ -118,6 +148,8 @@ export class PineconeVectorDB extends VectorDBConnector {
             });
 
         await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
+
+        await this.nkvConnector.user(candidate).delete('vectorDB:pinecone:namespaces', preparedNs);
     }
 
     @SecureConnector.AccessControl
@@ -128,6 +160,20 @@ export class PineconeVectorDB extends VectorDBConnector {
         options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        let ns = await this.nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .get(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+
+        if (!ns) {
+            throw new Error('Namespace does not exist');
+        }
+
+        const nsData = JSONContentHelper.create(ns.toString()).tryParse() as IStorageVectorNamespace;
+        if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
+            throw new Error('Tried to access namespace on custom storage.');
+        } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
+            throw new Error('Tried to access namespace that is not on custom storage.');
+        }
 
         const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
@@ -142,11 +188,16 @@ export class PineconeVectorDB extends VectorDBConnector {
             includeValues: true,
         });
 
-        return results.matches.map((match) => ({
-            id: match.id,
-            values: match.values,
-            metadata: match.metadata,
-        }));
+        return results.matches.map((match) => {
+            if (match.metadata?.user) {
+                match.metadata.user = VectorsHelper.parseMetadata(match.metadata.user);
+            }
+            return {
+                id: match.id,
+                values: match.values,
+                metadata: match.metadata,
+            };
+        });
     }
 
     @SecureConnector.AccessControl
@@ -196,25 +247,124 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected getNsMetadata(acRequest: AccessRequest, namespace: string): Promise<StorageVectorNamespaceMetadata> {
-        return Promise.resolve({
-            indexName: this.indexName,
+    protected async createDatasource(
+        acRequest: AccessRequest,
+        namespace: string,
+        datasource: DatasourceDto
+    ): Promise<{ id: string; vectorIds: string[] }> {
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        const chunkedText = await VectorsHelper.chunkText(datasource.text, {
+            chunkSize: datasource.chunkSize,
+            chunkOverlap: datasource.chunkOverlap,
         });
+        const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
+        const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
+            return {
+                id: ids[i],
+                source: doc,
+                metadata: {
+                    user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-speficied metadata
+                },
+            };
+        });
+        const nsExists = await this.nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+        if (!nsExists) {
+            throw new Error('Namespace does not exist');
+        }
+
+        const _vIds = await this.insert(acRequest, namespace, source);
+
+        const dsId = datasource.id || crypto.randomUUID();
+
+        const dsData: IStorageVectorDataSource = {
+            namespaceId: formattedNs,
+            teamId,
+            name: datasource.label || 'Untitled',
+            metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
+            text: datasource.text,
+            embeddingIds: _vIds,
+        };
+        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
+        // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
+        await this.nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
+        return { id: dsId, vectorIds: _vIds };
     }
 
-    private async setACL(acRequest: AccessRequest, namespace: string, acl: IACL): Promise<void> {
+    @SecureConnector.AccessControl
+    protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
+        // await SmythFS.Instance.delete(url, AccessCandidate.team(teamId));
+        let ds: IStorageVectorDataSource = JSONContentHelper.create(
+            (
+                await this.nkvConnector
+                    .user(AccessCandidate.team(teamId))
+                    .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
+            )?.toString()
+        ).tryParse();
+
+        if (!ds || typeof ds !== 'object') {
+            throw new Error(`Data source not found with id: ${datasourceId}`);
+        }
+
+        const nsExists = await this.nkvConnector
+            .user(AccessCandidate.team(teamId))
+            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+        if (!nsExists) {
+            throw new Error('Namespace does not exist');
+        }
+
+        await this.delete(acRequest, namespace, ds.embeddingIds || []);
+
+        await this.nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
+    }
+
+    @SecureConnector.AccessControl
+    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]> {
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
+            (ds) => {
+                return {
+                    id: ds.key,
+                    data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
+                };
+            }
+        );
+    }
+
+    @SecureConnector.AccessControl
+    protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource> {
+        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        return JSONContentHelper.create(
+            (
+                await this.nkvConnector
+                    .user(AccessCandidate.team(teamId))
+                    .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
+            )?.toString()
+        ).tryParse() as IStorageVectorDataSource;
+    }
+
+    private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
         await this.redisCache
             .user(AccessCandidate.clone(acRequest.candidate))
-            .set(`vectorDB:pinecone:namespace:${namespace}:acl`, JSON.stringify(acl));
+            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
-    private async getACL(ac: AccessCandidate, namespace: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${namespace}:acl`);
+    private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
+        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
 
-    private async deleteACL(ac: AccessCandidate, namespace: string): Promise<void> {
-        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${namespace}:acl`);
+    private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
+        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 }

@@ -209,7 +209,7 @@ export abstract class LLMConnector extends Connector {
             };
 
             if (_params.maxTokens) {
-                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params.apiKey);
+                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
             }
 
             const baseUrl = LLMRegistry.getBaseURL(params.model);
@@ -217,6 +217,8 @@ export abstract class LLMConnector extends Connector {
             if (baseUrl) {
                 _params.baseURL = baseUrl;
             }
+
+            _params.model = LLMRegistry.getModelId(model) || model;
         } else {
             const teamId = await accountConnector.getCandidateTeam(candidate);
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
@@ -260,6 +262,8 @@ export abstract class LLMConnector extends Connector {
             if (_params.maxTokens) {
                 _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
             }
+
+            _params.model = customLLMRegistry.getModelId(model) || model;
         }
 
         return _params;

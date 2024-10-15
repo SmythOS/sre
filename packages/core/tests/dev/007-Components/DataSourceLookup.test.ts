@@ -87,12 +87,14 @@ describe('DataSourceLookup Component', () => {
         // index some data using the connector
         const namespace = faker.lorem.word();
         const vectorDBHelper = VectorsHelper.load();
-        await vectorDBHelper.createNamespace(agent.teamId, namespace);
+        const vectorDbConnector = ConnectorService.getVectorDBConnector();
+
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDBHelper.createDatasource(sourceText.join(' '), namespace, {
-            teamId: 'default',
+        await vectorDbConnector.user(AccessCandidate.team('default')).createDatasource(namespace, {
+            text: sourceText.join(' '),
             chunkSize: 1000,
             chunkOverlap: 0,
             metadata: {
@@ -131,6 +133,49 @@ describe('DataSourceLookup Component', () => {
         expect(error).toBeUndefined();
     });
 
+    it('run a similarity search for non-existing namespace (implicitly creates it)', async () => {
+        let error;
+        const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
+        const data = JSON.parse(agentData);
+        const date = new Date();
+
+        const agent = new Agent(10, data, new AgentSettings(10));
+        agent.teamId = 'default';
+
+        const lookupComp = new DataSourceLookup();
+
+        // index some data using the connector
+        const namespace = faker.lorem.word();
+
+        const sourceText = ['What is the capital of France?', 'Paris'];
+
+        const output = await lookupComp.process(
+            {
+                Query: sourceText[0],
+            },
+            {
+                data: {
+                    namespace,
+                    postprocess: false,
+                    prompt: '',
+                    includeMetadata: false,
+                    topK: 10,
+                },
+                outputs: [],
+            },
+            agent
+        );
+
+        const results = output.Results;
+
+        expect(results).toBeDefined();
+        expect(results.length).toBe(0);
+
+        expect(output._error).toBeUndefined();
+
+        expect(error).toBeUndefined();
+    });
+
     it('include metadata', async () => {
         let error;
         const agentData = fs.readFileSync('./tests/data/data-components.smyth', 'utf-8');
@@ -144,19 +189,29 @@ describe('DataSourceLookup Component', () => {
 
         // index some data using the connector
         const namespace = faker.lorem.word();
-        const vectorDB = ConnectorService.getVectorDBConnector();
-        await VectorsHelper.load().createNamespace(agent.teamId, namespace);
+        const vectorDBHelper = VectorsHelper.load();
+        const vectorDbConnector = ConnectorService.getVectorDBConnector();
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDB.user(AccessCandidate.team(agent.teamId)).insert(namespace, {
+        // await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).insert(namespace, {
+        //     id,
+        //     source: Array.from({ length: 1536 }, () => Math.floor(Math.random() * 100)),
+        //     metadata: {
+        //         user: VectorsHelper.stringifyMetadata({
+        //             text: 'Paris',
+        //             meta2: 'meta2',
+        //         }),
+        //     },
+        // });
+        const text = 'Any matching text';
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createDatasource(namespace, {
             id,
-            source: Array.from({ length: 1536 }, () => Math.floor(Math.random() * 100)),
+            text,
             metadata: {
-                user: VectorsHelper.stringifyMetadata({
-                    text: 'Paris',
-                    meta2: 'meta2',
-                }),
+                text: 'Paris',
+                meta2: 'meta2',
             },
         });
 
@@ -206,13 +261,15 @@ describe('DataSourceLookup Component', () => {
         const lookupComp = new DataSourceLookup();
 
         const namespace = faker.lorem.word();
-        const vectorDbHelper = await VectorsHelper.forTeam(agent.teamId);
-        await vectorDbHelper.createNamespace(agent.teamId, namespace);
+        // const vectorDbHelper = await VectorsHelper.forTeam(agent.teamId);
+        const vectorDBHelper = VectorsHelper.load();
+        const vectorDbConnector = await vectorDBHelper.getTeamConnector(agent.teamId);
+        await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
         const id = faker.lorem.word();
         const sourceText = ['What is the capital of France?', 'Paris'];
 
-        await vectorDbHelper.createDatasource(sourceText.join(' '), namespace, {
-            teamId: 'default',
+        await vectorDbConnector.user(AccessCandidate.team('default')).createDatasource(namespace, {
+            text: sourceText.join(' '),
             chunkSize: 1000,
             chunkOverlap: 0,
             metadata: {

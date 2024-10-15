@@ -18,7 +18,6 @@ export class VectorsHelper {
     private _vectorDBconnector: VectorDBConnector;
     private embeddingsProvider: OpenAIEmbeddings;
     private _vectorDimention: number;
-    private _nkvConnector: NKVConnector;
     private _vaultConnector: VaultConnector;
     public cusStorageKeyName: string;
     private isCustomStorageInstance: boolean = false;
@@ -30,7 +29,6 @@ export class VectorsHelper {
         if (this._vectorDimention && !isNaN(this._vectorDimention)) {
             this.embeddingsProvider.dimensions = this._vectorDimention;
         }
-        this._nkvConnector = ConnectorService.getNKVConnector();
         this._vaultConnector = ConnectorService.getVaultConnector();
         this.cusStorageKeyName = `vectorDB:customStorage:${this._vectorDBconnector.id}`;
     }
@@ -39,24 +37,6 @@ export class VectorsHelper {
         const instance = new VectorsHelper(options.connectorName, { openaiApiKey: options.openaiApiKey });
         options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
 
-        return instance;
-    }
-
-    /**
-     * Loads a VectorsHelper instance for a team. If the team has a custom storage, it will use the custom storage.
-     * @param teamId - The team ID.
-     * @param options - The options.
-     * @returns The VectorsHelper instance.
-     */
-    public static async forTeam(teamId: string, options: { vectorDimention?: number; connectorName?: string } = {}) {
-        const instance = new VectorsHelper(options.connectorName);
-        options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
-
-        let teamVectorDB = await instance.getTeamVectorDB(teamId);
-        if (teamVectorDB && teamVectorDB instanceof VectorDBConnector) {
-            instance._vectorDBconnector = teamVectorDB;
-            instance.isCustomStorageInstance = true;
-        }
         return instance;
     }
 
@@ -83,193 +63,8 @@ export class VectorsHelper {
         return output;
     }
 
-    public async createDatasource(
-        text: string,
-        namespace: string,
-        {
-            teamId,
-            metadata,
-            chunkSize = 4000,
-            chunkOverlap = 500,
-            label,
-            id,
-        }: {
-            teamId?: string;
-            metadata?: Record<string, string>;
-            chunkSize?: number;
-            chunkOverlap?: number;
-            label?: string;
-            id?: string;
-        } = {}
-    ) {
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-        const chunkedText = await VectorsHelper.chunkText(text, { chunkSize, chunkOverlap });
-        const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
-        const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
-            return {
-                id: ids[i],
-                source: doc,
-                metadata: {
-                    user: VectorsHelper.stringifyMetadata(metadata), // user-speficied metadata
-                },
-            };
-        });
-        const nsExists = await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-        if (!nsExists) {
-            throw new Error('Namespace does not exist');
-        }
-
-        const _vIds = await this._vectorDBconnector.user(AccessCandidate.team(teamId)).insert(namespace, source);
-
-        const dsId = id || crypto.randomUUID();
-
-        const dsData: IStorageVectorDataSource = {
-            namespaceId: formattedNs,
-            teamId,
-            name: label || 'Untitled',
-            metadata: VectorsHelper.stringifyMetadata(metadata),
-            text,
-            embeddingIds: _vIds,
-        };
-        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-        // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
-        await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .set(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
-        return dsId;
-    }
-
-    public async listDatasources(teamId: string, namespace: string) {
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-        return (
-            await this._nkvConnector
-                .user(AccessCandidate.team(teamId))
-                .list(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`)
-        ).map((ds) => {
-            return {
-                id: ds.key,
-                data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
-            };
-        });
-    }
-
-    public async getDatasource(teamId: string, namespace: string, dsId: string) {
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-        return JSONContentHelper.create(
-            (
-                await this._nkvConnector
-                    .user(AccessCandidate.team(teamId))
-                    .get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId)
-            )?.toString()
-        ).tryParse() as IStorageVectorDataSource;
-    }
-
-    public async deleteDatasource(teamId: string, namespace: string, dsId: string) {
-        const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-        // await SmythFS.Instance.delete(url, AccessCandidate.team(teamId));
-        let ds: IStorageVectorDataSource = JSONContentHelper.create(
-            (
-                await this._nkvConnector
-                    .user(AccessCandidate.team(teamId))
-                    .get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId)
-            )?.toString()
-        ).tryParse();
-
-        if (!ds || typeof ds !== 'object') {
-            throw new Error(`Data source not found with id: ${dsId}`);
-        }
-
-        const nsExists = await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-        if (!nsExists) {
-            throw new Error('Namespace does not exist');
-        }
-
-        await this._vectorDBconnector.user(AccessCandidate.team(teamId)).delete(namespace, ds.embeddingIds || []);
-
-        await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .delete(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId);
-    }
-
-    public async createNamespace(teamId: string, name: string, metadata: { [key: string]: any } = {}) {
-        const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-
-        const candidate = AccessCandidate.team(teamId);
-        const nsExists = await this._nkvConnector.user(candidate).exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${preparedNs}`);
-        const nsSysMetadata = await this._vectorDBconnector.user(candidate).getNsMetadata(preparedNs);
-
-        if (!nsExists) {
-            const nsData: IStorageVectorNamespace = {
-                namespace: preparedNs,
-                displayName: name,
-                teamId,
-                metadata: {
-                    ...metadata,
-                    isOnCustomStorage: this.isCustomStorageInstance,
-                    ...nsSysMetadata,
-                },
-            };
-            await this._nkvConnector.user(candidate).set(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs, JSON.stringify(nsData));
-        }
-
-        await this._vectorDBconnector.user(candidate).createNamespace(name, { ...metadata, isOnCustomStorage: this.isCustomStorageInstance });
-    }
-
-    public async deleteNamespace(teamId: string, name: string) {
-        const candidate = AccessCandidate.team(teamId);
-        await this._vectorDBconnector.user(candidate).deleteNamespace(name);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-        await this._nkvConnector.user(candidate).delete('vectorDB:pinecone:namespaces', preparedNs);
-    }
-
-    public async listNamespaces(teamId: string) {
-        const candidate = AccessCandidate.team(teamId);
-        const nsKeys = await this._nkvConnector.user(candidate).list(`vectorDB:${this._vectorDBconnector.id}:namespaces`);
-        return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse() as IStorageVectorNamespace);
-    }
-
-    public async namespaceExists(teamId: string, name: string) {
-        return await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, name));
-    }
-
-    public async search(teamId: string, namespace: string, query: string | number[], options: QueryOptions = {}) {
-        let ns = await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-
-        if (!ns) {
-            throw new Error('Namespace does not exist');
-        }
-
-        const nsData = JSONContentHelper.create(ns.toString()).tryParse() as IStorageVectorNamespace;
-        if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace on custom storage.');
-        } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace that is not on custom storage.');
-        }
-
-        return this._vectorDBconnector.user(AccessCandidate.team(teamId)).search(namespace, query, options);
-    }
-
-    public async getNamespace(teamId: string, name: string) {
-        const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-        const nsData = await this._nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs);
-        return JSONContentHelper.create(nsData?.toString()).tryParse() as IStorageVectorNamespace;
-    }
-
     public async isNewNs(ac: AccessCandidate, namespace: string): Promise<boolean> {
-        return !(await this._nkvConnector
-            .user(AccessCandidate.clone(ac))
-            .exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${namespace}:acl`));
+        return !(await this._vectorDBconnector.user(ac).namespaceExists(namespace));
     }
 
     public async embedText(text: string) {
@@ -287,11 +82,18 @@ export class VectorsHelper {
             return metadata;
         }
     }
+    public static parseMetadata(metadata: any) {
+        try {
+            return JSON.parse(metadata);
+        } catch (err) {
+            return metadata;
+        }
+    }
 
-    async getTeamVectorDB(teamId: string): Promise<VectorDBConnector | null> {
+    async getTeamConnector(teamId: string): Promise<VectorDBConnector | null> {
         const config = await this.getCustomStorageConfig(teamId).catch((e) => null);
         if (!config) return null;
-        return this._vectorDBconnector.instance(config);
+        return this._vectorDBconnector.instance({ ...config, isCustomStorageInstance: true });
     }
 
     async getCustomStorageConfig(teamId: string) {
@@ -307,7 +109,7 @@ export class VectorsHelper {
     }
 
     public async isNamespaceOnCustomStorage(teamId: string, namespace: string) {
-        const ns = await this.getNamespace(teamId, namespace);
+        const ns = await this._vectorDBconnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
         return (ns.metadata?.isOnCustomStorage as boolean) ?? false;
     }
 

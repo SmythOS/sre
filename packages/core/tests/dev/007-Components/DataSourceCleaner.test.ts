@@ -90,7 +90,8 @@ describe('DataSourceCleaner Component', () => {
             // index some data using the connector
             const namespace = faker.lorem.word();
             const vectorDBHelper = VectorsHelper.load();
-            await vectorDBHelper.createNamespace(agent.teamId, namespace);
+            const vectorDbConnector = ConnectorService.getVectorDBConnector();
+            await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
             const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -118,11 +119,9 @@ describe('DataSourceCleaner Component', () => {
 
             expect(id).toBeDefined();
 
-            const dsBeforeDel = await VectorsHelper.load().getDatasource(
-                agent.teamId,
-                namespace,
-                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
-            );
+            const dsBeforeDel = await vectorDbConnector
+                .user(AccessCandidate.team(agent.teamId))
+                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsBeforeDel).toBeDefined();
 
@@ -143,17 +142,15 @@ describe('DataSourceCleaner Component', () => {
             // expect that the datasource file does not exist now
             // const existsAfterDelete = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
 
-            const dsAfterDel = await VectorsHelper.load().getDatasource(
-                agent.teamId,
-                namespace,
-                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
-            );
+            const dsAfterDel = await vectorDbConnector
+                .user(AccessCandidate.team(agent.teamId))
+                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsAfterDel).toBeUndefined();
 
             // expect that all the embeddings are deleted. we can do that by doing a similar search on the data we indexed
 
-            const vectors = await vectorDBHelper.search(agent.teamId, namespace, 'Paris');
+            const vectors = await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
 
             expect(vectors).toBeDefined();
             expect(vectors.length).toBe(0);

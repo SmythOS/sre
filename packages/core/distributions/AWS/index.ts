@@ -15,7 +15,7 @@ import { SmythRuntime, AgentProcess } from '../../src/index';
 //============== CLI Args ==============//
 const argv = minimist(process.argv.slice(2));
 if (argv['v']) {
-    console.log('v1.0.3');
+    console.log('v1.0.4 SM');
     process.exit();
 }
 if (!argv['port']) throw Error('You must provide --port argument');
@@ -54,9 +54,10 @@ SmythRuntime.Instance.init({
         Connector: 'CLI',
     },
     Account: {
-        Connector: 'DummyAccount',
+        Connector: 'AWSAccount',
         Settings: {
-
+            host: process.env.AWS_RDS_DB_HOST,
+            password: process.env.AWS_RDS_DB_PASSWORD,
         },
     },
 });
