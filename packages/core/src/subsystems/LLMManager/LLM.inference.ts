@@ -215,7 +215,7 @@ export class LLMInference {
         }
     }
 
-    public async getConsistentMessages(messages: TLLMMessageBlock[]) {
+    public getConsistentMessages(messages: TLLMMessageBlock[]) {
         if (!messages?.length) {
             throw new Error('Input messages are required.');
         }

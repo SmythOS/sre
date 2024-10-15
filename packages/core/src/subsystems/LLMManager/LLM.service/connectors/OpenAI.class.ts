@@ -29,24 +29,24 @@ export class OpenAIConnector extends LLMConnector {
     protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
-        if (prompt && messages.length === 1) {
+        if (prompt) {
             messages.push({ role: TLLMMessageRole.User, content: prompt });
         }
 
         //#region Handle JSON response format
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
             if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.responseFormat = { type: 'json_object' };
-            } else {
-                // We assume that the system message is first item in messages array
-                if (messages?.[0]?.role === TLLMMessageRole.System) {
-                    messages[0].content += JSON_RESPONSE_INSTRUCTION;
-                } else {
-                    messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-                }
             }
         }
         //#endregion Handle JSON response format
@@ -101,20 +101,20 @@ export class OpenAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
         //#region Handle JSON response format
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
             if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.responseFormat = { type: 'json_object' };
-            } else {
-                // We assume that the system message is first item in messages array
-                if (messages?.[0]?.role === TLLMMessageRole.System) {
-                    messages[0].content += JSON_RESPONSE_INSTRUCTION;
-                } else {
-                    messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-                }
             }
         }
         //#endregion Handle JSON response format
@@ -126,11 +126,9 @@ export class OpenAIConnector extends LLMConnector {
         const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
-        const promptData = [{ type: 'text', text: prompt }, ...imageData];
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
 
-        if (prompt && messages.length === 1) {
-            messages.push({ role: 'user', content: promptData });
-        }
+        messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
@@ -222,7 +220,7 @@ export class OpenAIConnector extends LLMConnector {
             baseURL: _params.baseURL,
         });
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: _params.model,

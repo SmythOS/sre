@@ -60,6 +60,8 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     return { default: MockedAgent };
 });
 
+const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
+
 function testProcessFunction(model) {
     let llmAssistant: LLMAssistant;
     let agent: Agent;
@@ -75,8 +77,7 @@ function testProcessFunction(model) {
             data: {
                 model,
                 ttl: 5 * 60, //default expiration time for conversation cache
-                behavior:
-                    'You are a friendly and funny assistant, you answer any question but start and finish every message with "Yohohohooooo!"\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"',
+                behavior: `You are a friendly and funny assistant, you answer any question but start and finish every message with ${LLM_OUTPUT_VALIDATOR}\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"`,
             },
         };
     });
@@ -93,7 +94,7 @@ function testProcessFunction(model) {
 
         const result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain('Yohohohooooo!');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
     });
 
     it('Conversation with context ', async () => {
@@ -103,15 +104,15 @@ function testProcessFunction(model) {
 
         let result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain('Yohohohooooo!');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
         input.UserInput = 'What is your prefered movie?';
         result = await llmAssistant.process(input, config, agent);
-        expect(result.Response).toContain('Yohohohooooo!');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
         input.UserInput = 'Hi again, Do you remember my name ?';
         result = await llmAssistant.process(input, config, agent);
-        expect(result.Response.toLowerCase()).toContain('yohohohooooo');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
     });
 
     it('Conversation with context that expires', async () => {
@@ -121,11 +122,11 @@ function testProcessFunction(model) {
 
         let result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain('Yohohohooooo!');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
         input.UserInput = 'What is your prefered movie?';
         result = await llmAssistant.process(input, config, agent);
-        expect(result.Response).toContain('Yohohohooooo!');
+        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
         await delay(15 * 1000); // wait for the conversation context to expire
 
@@ -133,9 +134,6 @@ function testProcessFunction(model) {
         result = await llmAssistant.process(input, config, agent);
         expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
     }, 60000);
-
-    // TODO [Forhad]: write more test cases
-    // - switch different model for the same conversation
 }
 
 const models = [
@@ -144,10 +142,81 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+    { provider: 'Bedrock', id: 'Bedrock A21' },
+    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' },
 ];
 
-for (const model of models) {
-    describe(`LLMAssistant: process function: ${model.provider} (${model.id})`, () => {
+models.forEach((model, index) => {
+    describe(`LLMAssistant: test process function: ${model.provider} (${model.id})`, () => {
         testProcessFunction(model.id);
     });
-}
+});
+
+describe('LLMAssistant: test process function with model switching', () => {
+    it(
+        'should switch models for the same conversation and maintain context',
+        async () => {
+            const llmAssistant = new LLMAssistant();
+            // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
+            const agent = new Agent();
+            const conversationId = 'ModelSwitchingTest001';
+
+            const config = {
+                name: 'LLMAssistant',
+                inputs: [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }],
+                data: {
+                    model: '',
+                    ttl: 5 * 60,
+                    behavior: '',
+                },
+            };
+
+            for (const model of models) {
+                config.data.model = model.id;
+                config.data.behavior = `You are an AI assistant specializing in different types of Large Language Models (LLMs). Follow these instructions:
+                1. Begin and end every message with ${LLM_OUTPUT_VALIDATOR}
+                2. Always include the name of the current model (${model.id}) in lowercase somewhere in your response.
+                3. If you don't know something, simply say "I don't know" instead of guessing.
+                4. Maintain context from previous messages in the conversation.
+                5. Provide concise, accurate answers related to LLMs and general knowledge.
+                6. Be friendly and engaging in your responses.`;
+
+                const input = {
+                    UserInput: `What is the provider of model ${model.id} and is it a good model?`,
+                    UserId: '',
+                    ConversationId: conversationId,
+                };
+
+                const result = await llmAssistant.process(input, config, agent);
+                const response = result.Response;
+
+                expect(response).toBeTruthy();
+                expect(response).toContain(LLM_OUTPUT_VALIDATOR);
+                expect(response.toLowerCase()).toContain(model.id.toLowerCase());
+            }
+
+            // Set up the final test with GPT-4
+            config.data.model = 'gpt-4o-mini';
+            config.data.behavior = `You are an AI assistant tasked with summarizing a conversation about various LLM models. Follow these instructions:
+                1. Begin and end every message with ${LLM_OUTPUT_VALIDATOR}
+                2. Provide a concise summary of the previous conversation, mentioning each model discussed.
+                3. Include at least one strength or characteristic for each model mentioned.
+                4. If you're unsure about any details, state "I'm not certain about [specific detail]" rather than guessing.
+                5. Keep your response friendly and engaging.`;
+
+            const input = {
+                UserInput: `Summarize our conversation about the different LLM models we discussed.`,
+                UserId: '',
+                ConversationId: conversationId,
+            };
+
+            const result = await llmAssistant.process(input, config, agent);
+            const response = result.Response;
+
+            expect(response).toBeTruthy();
+            expect(response).toContain(LLM_OUTPUT_VALIDATOR);
+            expect(response.split(' ').length).toBeGreaterThan(20); // Ensure a substantial summary
+        },
+        30000 * models.length
+    );
+});

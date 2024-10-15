@@ -108,7 +108,7 @@ export class GroqConnector extends LLMConnector {
 
             const groq = new Groq({ apiKey });
 
-            const messages = _params.messages;
+            const messages = _params?.messages || [];
 
             let chatCompletionArgs: ChatCompletionCreateParams = {
                 model: _params.model,
@@ -166,7 +166,7 @@ export class GroqConnector extends LLMConnector {
 
         const groq = new Groq({ apiKey });
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
         let chatCompletionArgs: {
             model: string;

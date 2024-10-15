@@ -131,7 +131,7 @@ export default class LLMAssistant extends Component {
 
             messages.push({ role: TLLMMessageRole.User, content: userInput });
 
-            const consistentMessages = await llmInference.getConsistentMessages(messages);
+            const consistentMessages = llmInference.getConsistentMessages(messages);
 
             if (consistentMessages[0]?.role != TLLMMessageRole.System) {
                 consistentMessages.unshift({ role: TLLMMessageRole.System, content: behavior });

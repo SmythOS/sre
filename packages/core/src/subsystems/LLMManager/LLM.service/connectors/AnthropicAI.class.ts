@@ -39,16 +39,17 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt;
+        let systemPrompt = '';
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
         if ('content' in systemMessage) {
-            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+            systemPrompt = systemMessage?.content as string;
         }
         messages = otherMessages;
 
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
             systemPrompt += JSON_RESPONSE_INSTRUCTION;
+
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
         //#endregion Separate system message and add JSON response instruction if needed

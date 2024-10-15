@@ -69,6 +69,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
 // - expect error when model is not supported
 // - run test cases for all providers
 // - Need to separate test cases for custom models, as custom models require SmythAccount account connector
+// - provide some outputs params and check if it's response with those params properly
 
 const TIMEOUT = 30000;
 

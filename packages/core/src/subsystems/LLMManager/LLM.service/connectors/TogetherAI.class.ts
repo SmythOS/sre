@@ -2,7 +2,6 @@ import EventEmitter from 'events';
 import OpenAI from 'openai';
 import { encodeChat } from 'gpt-tokenizer';
 
-import config from '@sre/config';
 import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -25,7 +24,7 @@ export class TogetherAIConnector extends LLMConnector {
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
         //#region Handle JSON response format
         const responseFormat = _params?.responseFormat || '';
@@ -38,7 +37,7 @@ export class TogetherAIConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        if (prompt && messages.length === 1) {
+        if (prompt) {
             messages.push({ role: 'user', content: prompt });
         }
 
@@ -47,7 +46,7 @@ export class TogetherAIConnector extends LLMConnector {
 
         const openai = new OpenAI({
             apiKey,
-            baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+            baseURL: process.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams & {
@@ -57,12 +56,6 @@ export class TogetherAIConnector extends LLMConnector {
             model: _params.model,
             messages,
         };
-
-        if (_params?.responseFormat !== undefined) {
-            if (_params.responseFormat === 'json') {
-                chatCompletionArgs.response_format = { type: 'json_object' };
-            }
-        }
 
         if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
         if (_params?.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
@@ -81,7 +74,8 @@ export class TogetherAIConnector extends LLMConnector {
                 completionTokens: _params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
-            const response = await openai.chat.completions.create(chatCompletionArgs);
+
+            const response = await openai.chat.completions.create(chatCompletionArgs as any);
 
             const content = response?.choices?.[0]?.message.content;
             const finishReason = response?.choices?.[0]?.finish_reason;
@@ -112,10 +106,10 @@ export class TogetherAIConnector extends LLMConnector {
 
             const openai = new OpenAI({
                 apiKey,
-                baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+                baseURL: process.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
             });
 
-            const messages = _params.messages;
+            const messages = _params?.messages || [];
 
             let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
                 model: _params.model,
@@ -174,10 +168,10 @@ export class TogetherAIConnector extends LLMConnector {
 
         const openai = new OpenAI({
             apiKey: apiKey,
-            baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
+            baseURL: process.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL,
         });
 
-        const messages = _params.messages;
+        const messages = _params?.messages || [];
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: _params.model,

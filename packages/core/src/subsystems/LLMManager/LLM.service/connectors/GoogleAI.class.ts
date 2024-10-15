@@ -119,10 +119,10 @@ export class GoogleAIConnector extends LLMConnector {
         const responseFormat = _params?.responseFormat || '';
 
         if (responseFormat === 'json') {
+            systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
             if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
                 _params.responseMimeType = 'application/json';
-            } else {
-                systemInstruction += JSON_RESPONSE_INSTRUCTION;
             }
         }
 
@@ -132,9 +132,9 @@ export class GoogleAIConnector extends LLMConnector {
         }
         //#endregion Separate system message and add JSON response instruction if needed
 
-        if (messages) {
+        if (messages?.length > 0) {
             // Concatenate messages with prompt and remove messages from params as it's not supported
-            _prompt = messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
+            _prompt += messages.map((message) => message?.parts?.[0]?.text || message?.content || '').join('\n');
         }
 
         if (!_prompt) throw new Error('Prompt is required!');
@@ -221,10 +221,10 @@ export class GoogleAIConnector extends LLMConnector {
             const responseFormat = _params?.responseFormat || '';
 
             if (responseFormat === 'json') {
+                systemInstruction += JSON_RESPONSE_INSTRUCTION;
+    
                 if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
                     _params.responseMimeType = 'application/json';
-                } else {
-                    systemInstruction += JSON_RESPONSE_INSTRUCTION;
                 }
             }
 
@@ -321,10 +321,10 @@ export class GoogleAIConnector extends LLMConnector {
         const responseFormat = _params?.responseFormat || '';
 
         if (responseFormat === 'json') {
+            systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
             if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
                 _params.responseMimeType = 'application/json';
-            } else {
-                systemInstruction += JSON_RESPONSE_INSTRUCTION;
             }
         }
 
@@ -387,7 +387,7 @@ export class GoogleAIConnector extends LLMConnector {
             let systemInstruction = '';
             let formattedMessages;
 
-            const messages = _params.messages;
+            const messages = _params?.messages || [];
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
 
