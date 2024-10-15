@@ -165,14 +165,14 @@ function overrideContextWindow(llmContext, conversationId) {
     llmContext.getContextWindow = async (...args) => {
         const contextWindow = await originalGetContextWindow(...args);
         const agentADL = conversations[conversationId].agentData;
-        const agentMetadata = conversations[conversationId].agentMetadata;
+        const agentMetadata = conversations[conversationId].agentMetadata || { name };
         const userQuery = (conversations[conversationId]?.initialPrompt || '') + '\n' + (conversations[conversationId]?.userQuery || '');
         const selectionADL = conversations[conversationId].selection;
         const maxADLTokens = 20000;
 
         let agentADLTemplate = '';
         if (userQuery) {
-            const searchQuery = `${agentMetadata.name} ${agentMetadata.description} ${agentMetadata.behavior} ${userQuery}`;
+            const searchQuery = `${agentMetadata?.name || ''} ${agentMetadata?.description || ''} ${agentMetadata?.behavior || ''} ${userQuery}`;
             const templates = await searchTemplates(searchQuery, 1);
             if (templates[0]?.metadata?.json) {
                 const tplADL = JSON2ADL(templates[0]?.metadata?.json);
@@ -357,11 +357,12 @@ app.post('/api/chat', async (req, res) => {
                 conversations[conversationId].userQuery = message;
             }
         }
+        conversations[conversationId].agentMetadata = {};
         if (agentData && agentData?.components?.length > 0) {
             conversations[conversationId].agentMetadata = {
-                description: agentData.shortDescription || '',
-                name: agentData.name || '',
-                behavior: agentData.behavior || '',
+                description: agentData?.shortDescription || '',
+                name: agentData?.name || '',
+                behavior: agentData?.behavior || '',
             };
             conversations[conversationId].agentData = JSON2ADL(agentData);
             conversations[conversationId].selection = '[SELECTION IS EMPTY]';

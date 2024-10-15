@@ -1,5 +1,17 @@
 export function JSON2ADL(jsonString) {
-    const agentData = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+    let agentData = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+
+    //Workaround : replace agent variables with their values for now
+    //TODO: remove this when Agent weaver supports variables
+    let agentDataStr = JSON.stringify(agentData);
+    if (agentData.variables) {
+        for (const v in agentData.variables) {
+            //replace all instances of the variable with its value
+            agentDataStr = agentDataStr.replace(new RegExp(`{{${v}}}`, 'g'), agentData.variables[v]);
+        }
+    }
+    agentData = JSON.parse(agentDataStr);
+
     let adl = '';
 
     // Create agent

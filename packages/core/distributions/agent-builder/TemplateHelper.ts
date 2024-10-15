@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { VectorDB } from './VectorDB';
 import { JSON2ADL } from './ADL';
+import chokidar from 'chokidar';
 
 const vectorDB = new VectorDB();
 
@@ -35,11 +36,30 @@ export function watchTemplates(templatesDir: string) {
         { leading: false, trailing: true, maxWait: 10000 }
     );
 
-    fs.watch(templatesDir, (event, filename) => {
-        if (filename) {
-            debouncedReindex();
-        }
+    const watcher = chokidar.watch(templatesDir, {
+        ignored: /(^|[\/\\])\../, // ignore dotfiles
+        persistent: true,
+        awaitWriteFinish: {
+            stabilityThreshold: 2000,
+            pollInterval: 100,
+        },
     });
+
+    watcher
+        .on('add', (path) => {
+            console.log(`File ${path} has been added`);
+            debouncedReindex();
+        })
+        .on('change', (path) => {
+            console.log(`File ${path} has been changed`);
+            debouncedReindex();
+        })
+        .on('unlink', (path) => {
+            console.log(`File ${path} has been removed`);
+            debouncedReindex();
+        });
+
+    console.log(`Watching for changes in ${templatesDir}`);
 }
 
 function debounce(func: Function, wait: number, options: { leading: boolean; trailing: boolean; maxWait?: number }) {
