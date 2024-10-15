@@ -142,8 +142,9 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
-    { provider: 'Bedrock', id: 'Bedrock A21' },
-    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' },
+    // TODO [Froahd]: Need to test with custom models
+    /* { provider: 'Bedrock', id: 'Bedrock A21' },
+    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' }, */
 ];
 
 models.forEach((model, index) => {
@@ -165,8 +166,8 @@ describe('LLMAssistant: test process function with model switching', () => {
                 name: 'LLMAssistant',
                 inputs: [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }],
                 data: {
-                    model: '',
-                    ttl: 5 * 60,
+                    model: 'gpt-4o-mini',
+                    ttl: 30 * models.length,
                     behavior: '',
                 },
             };
