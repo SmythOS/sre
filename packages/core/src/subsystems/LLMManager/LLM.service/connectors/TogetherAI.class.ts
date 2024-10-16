@@ -10,6 +10,7 @@ import { TLLMParams, TLLMMessageBlock, ToolData } from '@sre/types/LLM.types';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 const console = Logger('TogetherAIConnector');
 
@@ -18,7 +19,7 @@ const TOGETHER_AI_API_URL = 'https://api.together.xyz/v1';
 export class TogetherAIConnector extends LLMConnector {
     public name = 'LLM:TogetherAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
@@ -36,10 +37,6 @@ export class TogetherAIConnector extends LLMConnector {
             }
         }
         //#endregion Handle JSON response format
-
-        if (prompt) {
-            messages.push({ role: 'user', content: prompt });
-        }
 
         // Check if the team has their own API key, then use it
         const apiKey = _params?.credentials?.apiKey;
@@ -258,7 +255,9 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages) {
-        return messages.map((message) => {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             const _message = { ...message };
             let textContent = '';
 

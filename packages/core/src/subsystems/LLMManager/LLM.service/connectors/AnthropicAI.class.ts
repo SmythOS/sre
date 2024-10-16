@@ -26,18 +26,10 @@ export class AnthropicAIConnector extends LLMConnector {
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-    protected async chatRequest(acRequest: AccessRequest, prompt: string, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
         let messages = _params?.messages || [];
-
-        // set prompt as user message if provided
-        if (prompt) {
-            messages.push({
-                role: TLLMMessageRole.User,
-                content: prompt,
-            });
-        }
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt = '';
@@ -465,8 +457,17 @@ export class AnthropicAIConnector extends LLMConnector {
         return messageBlocks;
     }
 
+    // TODO [Forhad]: This method is quite lengthy and complex. Consider breaking it down into smaller, more manageable functions for better readability and maintainability.
     public getConsistentMessages(messages) {
         let _messages = [...messages];
+
+        // Extract the system message from the beginning as we have logic that checks 'user' for the first message
+        let systemMessage = null;
+        if (_messages[0]?.role === TLLMMessageRole.System) {
+            systemMessage = _messages.shift();
+        }
+
+        _messages = LLMHelper.removeDuplicateUserMessages(_messages);
 
         _messages = _messages.map((message) => {
             let content;
@@ -514,9 +515,14 @@ export class AnthropicAIConnector extends LLMConnector {
             }
         }
 
-        //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
+        // - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
         if (_messages[0]?.role !== TLLMMessageRole.User) {
             _messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
+        }
+
+        // Add the system message back to the beginning
+        if (systemMessage) {
+            _messages.unshift(systemMessage);
         }
 
         return _messages;

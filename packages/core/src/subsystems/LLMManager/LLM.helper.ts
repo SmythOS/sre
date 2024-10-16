@@ -1,4 +1,4 @@
-import type { TLLMMessageBlock } from '@sre/types/LLM.types';
+import { type TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 
 import axios from 'axios';
 import imageSize from 'image-size';
@@ -179,5 +179,42 @@ export class LLMHelper {
         }
 
         return tiles * 170 + 85;
+    }
+
+    /**
+     * Removes duplicate user messages from the beginning and end of the messages array.
+     *
+     * This method checks if there are two consecutive user messages at the start or end of the array
+     *
+     * @param {Array<{ role: string; content: string }>} messages - The array of message objects to process.
+     *
+     * @example
+     * const messages = [
+     *   { role: 'user', content: 'Hello' },
+     *   { role: 'user', content: 'Hello' },
+     *   { role: 'assistant', content: 'Hi there!' }
+     * ];
+     * LLMHelper.removeDuplicateUserMessages(messages);
+     * console.log(messages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
+     *
+     * @returns {TLLMMessageBlock[]} The modified array of message objects.
+     */
+    public static removeDuplicateUserMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        const _messages = [...messages];
+        // Check for two user messages at the beginning
+        if (_messages.length > 1 && _messages[0].role === TLLMMessageRole.User && _messages[1].role === TLLMMessageRole.User) {
+            _messages.shift(); // Remove the first user message
+        }
+
+        // Check for two user messages at the end
+        if (
+            _messages.length > 1 &&
+            _messages[_messages.length - 1].role === TLLMMessageRole.User &&
+            _messages[_messages.length - 2].role === TLLMMessageRole.User
+        ) {
+            _messages.pop(); // Remove the last user message
+        }
+
+        return _messages;
     }
 }

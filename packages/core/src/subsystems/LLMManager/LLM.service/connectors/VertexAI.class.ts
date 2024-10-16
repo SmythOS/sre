@@ -16,27 +16,25 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params };
         let messages = _params?.messages || [];
 
-        if (prompt) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
-        }
-
-        //#region Handle JSON response format
+        //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
-
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
         if ('content' in systemMessage) {
             systemInstruction = systemMessage.content;
         }
 
-        // We need the getConsistentMessages() for PromptGenerator as well
-        messages = this.getConsistentMessages(otherMessages);
+        messages = otherMessages;
 
-        //#endregion Handle JSON response format
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemInstruction = JSON_RESPONSE_INSTRUCTION;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelInfo = _params.modelInfo as TVertexAIModel;
 
@@ -108,7 +106,9 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages) {
-        return messages.map((message) => {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             let textBlock = [];
 
             if (message?.parts) {

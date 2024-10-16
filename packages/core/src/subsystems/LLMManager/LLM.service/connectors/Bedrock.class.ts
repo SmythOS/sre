@@ -22,13 +22,9 @@ type InferenceConfig = {
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params };
         let messages = _params?.messages || [];
-
-        if (prompt) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
-        }
 
         //#region Separate system message and add JSON response instruction if needed
         let systemText;
@@ -38,8 +34,7 @@ export class BedrockConnector extends LLMConnector {
             systemText = systemMessage.content;
         }
 
-        // We need the getConsistentMessages() for PromptGenerator as well
-        messages = this.getConsistentMessages(otherMessages);
+        messages = otherMessages;
 
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
@@ -133,7 +128,9 @@ export class BedrockConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        return messages.map((message) => {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             let textBlock = [];
 
             if (message?.parts) {

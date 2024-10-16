@@ -4,7 +4,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageBlock } from '@sre/types/LLM.types';
+import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 
@@ -38,24 +38,29 @@ export class LLMInference {
     }
 
     public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
-        if (!prompt && !customParams.messages?.length) {
-            throw new Error('Prompt or messages are required');
+        const messages = customParams?.messages || [];
+
+        if (prompt) {
+            const _prompt = this.llmConnector.enhancePrompt(prompt, config);
+            messages.push({ role: TLLMMessageRole.User, content: _prompt });
         }
 
+        if (!messages?.length) {
+            throw new Error('Input prompt is required!');
+        }
+
+        // override params with customParams
+        let params: any = Object.assign(config.data, { ...customParams, messages });
+
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = this.prepareParams(config) || {};
+        params = this.prepareParams(params) || {};
 
         if (!this.llmConnector) {
             throw new Error(`Model ${params.model} not supported`);
         }
 
-        //override params with customParams
-        Object.assign(params, customParams);
-
         try {
-            prompt = this.llmConnector.enhancePrompt(prompt, config);
-
-            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
+            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
 
             const result = this.llmConnector.postProcess(response?.content);
             if (result.error) {
@@ -229,14 +234,15 @@ export class LLMInference {
         }
     }
 
-    private prepareParams(config: any) {
-        const clonedConfigData = JSON.parse(JSON.stringify(config.data || {})); // We need to keep the config.data unchanged to avoid any side effects, especially when run components with loop
-        const configParams: {
+    private prepareParams(params: any) {
+        const clonedConfigData = JSON.parse(JSON.stringify(params || {})); // We need to keep the params unchanged to avoid any side effects, especially when run components with loop
+
+        const preparedParams: {
             model?: string;
         } = {};
 
         for (const [key, value] of Object.entries(clonedConfigData)) {
-            let _value: string | number | string[] | null = value as string;
+            let _value: any = value; // TODO [Forhad]: apply proper typing
 
             // When we have stopSequences, we need to split it into an array
             if (key === 'stopSequences') {
@@ -248,13 +254,17 @@ export class LLMInference {
                 _value = +_value;
             }
 
-            configParams[key] = _value;
+            if (key === 'messages') {
+                _value = this.getConsistentMessages(_value);
+            }
+
+            preparedParams[key] = _value;
         }
 
-        if (!configParams?.model) {
-            configParams.model = this.model;
+        if (!preparedParams?.model) {
+            preparedParams.model = this.model;
         }
 
-        return configParams;
+        return preparedParams;
     }
 }

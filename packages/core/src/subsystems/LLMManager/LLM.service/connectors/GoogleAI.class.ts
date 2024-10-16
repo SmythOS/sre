@@ -96,9 +96,9 @@ export class GoogleAIConnector extends LLMConnector {
         image: VALID_IMAGE_MIME_TYPES,
     };
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
-        let _prompt = prompt;
+        let prompt = '';
 
         const model = _params?.model || DEFAULT_MODEL;
 
@@ -126,18 +126,18 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
+        if (messages?.length > 0) {
+            // Concatenate messages with prompt and remove messages from params as it's not supported
+            prompt += messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
+        }
+
         // if the the model does not support system instruction, we will add it to the prompt
         if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
-            _prompt = `${_prompt}\n${systemInstruction}`;
+            prompt = `${prompt}\n${systemInstruction}`;
         }
         //#endregion Separate system message and add JSON response instruction if needed
 
-        if (messages?.length > 0) {
-            // Concatenate messages with prompt and remove messages from params as it's not supported
-            _prompt += messages.map((message) => message?.parts?.[0]?.text || message?.content || '').join('\n');
-        }
-
-        if (!_prompt) throw new Error('Prompt is required!');
+        if (!prompt) throw new Error('Prompt is required!');
 
         // TODO: implement claude specific token counting to validate token limit
         // this.validateTokenLimit(_params);
@@ -165,7 +165,7 @@ export class GoogleAIConnector extends LLMConnector {
             const genAI = new GoogleGenerativeAI(apiKey);
             const $model = genAI.getGenerativeModel(modelParams);
 
-            const { totalTokens: promptTokens } = await $model.countTokens(_prompt);
+            const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
             await LLMRegistry.validateTokensLimit({
@@ -175,7 +175,7 @@ export class GoogleAIConnector extends LLMConnector {
                 hasAPIKey: !!apiKey,
             });
 
-            const result = await $model.generateContent(_prompt);
+            const result = await $model.generateContent(prompt);
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
@@ -222,7 +222,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             if (responseFormat === 'json') {
                 systemInstruction += JSON_RESPONSE_INSTRUCTION;
-    
+
                 if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
                     _params.responseMimeType = 'application/json';
                 }
@@ -735,7 +735,9 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        return messages.map((message) => {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             const _message = { ...message };
             let textContent = '';
 

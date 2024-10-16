@@ -50,7 +50,7 @@ export class SmythVault extends VaultConnector {
         }
 
         // Ensure backward compatibility: In SaaS the key was stored under 'claude';
-        if (!key && keyId === 'anthropicai') {
+        if (!key && keyId.toLowerCase() === 'anthropicai') {
             const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/claude`, { headers: vaultAPIHeaders });
 
             return vaultResponse?.data?.secret?.value;

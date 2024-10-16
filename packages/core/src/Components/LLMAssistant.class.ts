@@ -13,6 +13,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -89,7 +90,15 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const teamId = agent.teamId;
+            const agentId = agent.id;
+            let teamId = agent?.teamId;
+
+            // If the team ID is not set then we can get it from the account connector with the agent ID
+            if (!teamId) {
+                const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
+                teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId));
+            }
+
             const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
@@ -117,7 +126,7 @@ export default class LLMAssistant extends Component {
                 const vaultConnector = ConnectorService.getVaultConnector();
                 const apiKey = await vaultConnector
                     .user(AccessCandidate.agent(agent.id))
-                    .get(provider)
+                    .get(provider?.toLowerCase())
                     .catch(() => '');
                 AccessCandidate.agent(agent.id);
                 maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
@@ -131,14 +140,12 @@ export default class LLMAssistant extends Component {
 
             messages.push({ role: TLLMMessageRole.User, content: userInput });
 
-            const consistentMessages = llmInference.getConsistentMessages(messages);
-
-            if (consistentMessages[0]?.role != TLLMMessageRole.System) {
-                consistentMessages.unshift({ role: TLLMMessageRole.System, content: behavior });
+            if (messages[0]?.role != TLLMMessageRole.System) {
+                messages.unshift({ role: TLLMMessageRole.System, content: behavior });
             }
 
             const customParams = {
-                messages: consistentMessages,
+                messages,
             };
 
             const response: any = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));

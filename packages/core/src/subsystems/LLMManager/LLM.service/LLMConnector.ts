@@ -15,7 +15,7 @@ import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
-    chatRequest(prompt, params: any): Promise<any>;
+    chatRequest(params: any): Promise<any>;
     visionRequest(prompt, params: any): Promise<any>;
     multimodalRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
@@ -76,7 +76,7 @@ export class LLMStream extends Readable {
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<LLMChatResponse>;
+    protected abstract chatRequest(acRequest: AccessRequest, params: any): Promise<LLMChatResponse>;
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
@@ -88,12 +88,12 @@ export abstract class LLMConnector extends Connector {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
 
         return {
-            chatRequest: async (prompt, params: any) => {
+            chatRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.chatRequest(candidate.readRequest, prompt, _params);
+                return this.chatRequest(candidate.readRequest, _params);
             },
-            visionRequest: async (prompt, params: any) => {
+            visionRequest: async ( params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
                 return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
@@ -204,7 +204,7 @@ export abstract class LLMConnector extends Connector {
             _params.credentials = {
                 apiKey: await vaultConnector
                     .user(candidate)
-                    .get(llmProvider)
+                    .get(llmProvider?.toLowerCase())
                     .catch(() => ''),
             };
 

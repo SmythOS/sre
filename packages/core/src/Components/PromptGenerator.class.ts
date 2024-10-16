@@ -1,7 +1,11 @@
+import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import Joi from 'joi';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
@@ -30,9 +34,17 @@ export default class PromptGenerator extends Component {
 
         try {
             logger.debug(`=== LLM Prompt Log ===`);
+            const agentId = agent.id;
+            let teamId = agent?.teamId;
+
+            // If the team ID is not set then we can get it from the account connector with the agent ID
+            if (!teamId) {
+                const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
+                teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId));
+            }
 
             const model: string = config.data.model || 'echo';
-            const llmInference: LLMInference = await LLMInference.getInstance(model, agent.teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {

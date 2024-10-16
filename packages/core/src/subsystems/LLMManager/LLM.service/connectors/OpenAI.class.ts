@@ -26,14 +26,10 @@ export class OpenAIConnector extends LLMConnector {
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         const _params = { ...params }; // Avoid mutation of the original params object
 
         const messages = _params?.messages || [];
-
-        if (prompt) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
-        }
 
         //#region Handle JSON response format
         const responseFormat = _params?.responseFormat || '';
@@ -508,7 +504,9 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     public getConsistentMessages(messages) {
-        return messages.map((message) => {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             const _message = { ...message };
             let textContent = '';
 
