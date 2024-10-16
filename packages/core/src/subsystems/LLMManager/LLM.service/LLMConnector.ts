@@ -234,19 +234,25 @@ export abstract class LLMConnector extends Connector {
                 const secretKeyName = modelInfo.settings?.secretKeyName;
                 const sessionKeyName = modelInfo.settings?.sessionKeyName;
 
-                _params.credentials = {
-                    keyId: await vaultConnector
+                const [keyId, secretKey, sessionKey] = await Promise.all([
+                    vaultConnector
                         .user(candidate)
                         .get(keyIdName)
                         .catch(() => ''),
-                    secretKey: await vaultConnector
+                    vaultConnector
                         .user(candidate)
                         .get(secretKeyName)
                         .catch(() => ''),
-                    sessionKey: await vaultConnector
+                    vaultConnector
                         .user(candidate)
                         .get(sessionKeyName)
                         .catch(() => ''),
+                ]);
+
+                _params.credentials = {
+                    keyId,
+                    secretKey,
+                    sessionKey,
                 };
             } else if (llmProvider === TLLMProvider.VertexAI) {
                 const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;

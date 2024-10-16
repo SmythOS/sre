@@ -89,7 +89,8 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            const teamId = agent.teamId;
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
                 return {
@@ -109,7 +110,6 @@ export default class LLMAssistant extends Component {
 
             //#region get max tokens
             let maxTokens = 2048;
-            const teamId = agent.teamId;
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
             if (isStandardLLM) {

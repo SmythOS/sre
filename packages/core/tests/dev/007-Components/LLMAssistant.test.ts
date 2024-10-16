@@ -30,14 +30,8 @@ const sre = SmythRuntime.Instance.init({
             prodDir: './tests/data/AgentData',
         },
     },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
     Account: {
-        Connector: 'DummyAccount',
+        Connector: 'SmythAccount',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -47,6 +41,17 @@ const sre = SmythRuntime.Instance.init({
             smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
+    Vault: {
+        Connector: 'SmythVault',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
+        },
+    },
 });
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
@@ -54,12 +59,14 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
+            teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
             agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
         });
     });
     return { default: MockedAgent };
 });
 
+const TIMEOUT = 30000;
 const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
 
 function testProcessFunction(model) {
@@ -76,7 +83,7 @@ function testProcessFunction(model) {
             inputs: [],
             data: {
                 model,
-                ttl: 5 * 60, //default expiration time for conversation cache
+                ttl: 5 * 60, // default expiration time for conversation cache
                 behavior: `You are a friendly and funny assistant, you answer any question but start and finish every message with ${LLM_OUTPUT_VALIDATOR}\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"`,
             },
         };
@@ -87,53 +94,66 @@ function testProcessFunction(model) {
         vi.clearAllMocks();
     });
 
-    it('Conversation with no context - UserId and ConversationId are empty ', async () => {
-        const input = { UserInput: 'What is your prefered movie?', UserId: '', ConversationId: '' };
+    it(
+        'Conversation with no context - UserId and ConversationId are empty ',
+        async () => {
+            const input = { UserInput: 'What is your prefered movie?', UserId: '', ConversationId: '' };
 
-        config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
+            config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
 
-        const result = await llmAssistant.process(input, config, agent);
+            const result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
-    });
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+        },
+        TIMEOUT
+    );
 
-    it('Conversation with context ', async () => {
-        const input = { UserInput: 'Hi, my name is Smyth, who are you?', UserId: '', ConversationId: 'SmythTestConversation0001' };
+    it(
+        'Conversation with context ',
+        async () => {
+            const input = { UserInput: 'Hi, my name is Smyth, who are you?', UserId: '', ConversationId: 'SmythTestConversation0001' };
 
-        config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
+            config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
 
-        let result = await llmAssistant.process(input, config, agent);
+            let result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
-        input.UserInput = 'What is your prefered movie?';
-        result = await llmAssistant.process(input, config, agent);
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+            input.UserInput = 'What is your prefered movie?';
+            result = await llmAssistant.process(input, config, agent);
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
-        input.UserInput = 'Hi again, Do you remember my name ?';
-        result = await llmAssistant.process(input, config, agent);
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
-    });
+            input.UserInput = 'Hi again, Do you remember my name ?';
+            result = await llmAssistant.process(input, config, agent);
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+            expect(result.Response).toContain('Smyth');
+        },
+        TIMEOUT * 5
+    );
 
-    it('Conversation with context that expires', async () => {
-        const input = { UserInput: 'Hi, my name is Smyth, who are you ?', UserId: '', ConversationId: 'SmythTestConversation0002' };
-        config.data.ttl = 10; // 10 seconds
-        config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
+    it(
+        'Conversation with context that expires',
+        async () => {
+            const input = { UserInput: 'Hi, my name is Smyth, who are you ?', UserId: '', ConversationId: 'SmythTestConversation0002' };
+            config.data.ttl = 10; // 10 seconds
+            config.inputs = [{ name: 'UserInput' }, { name: 'UserId' }, { name: 'ConversationId' }];
 
-        let result = await llmAssistant.process(input, config, agent);
+            let result = await llmAssistant.process(input, config, agent);
 
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
-        input.UserInput = 'What is your prefered movie?';
-        result = await llmAssistant.process(input, config, agent);
-        expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
+            input.UserInput = 'What is your prefered movie?';
+            result = await llmAssistant.process(input, config, agent);
+            expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
-        await delay(15 * 1000); // wait for the conversation context to expire
+            await delay(15 * 1000); // wait for the conversation context to expire
 
-        input.UserInput = 'Hi again, Do you remember my name ?';
-        result = await llmAssistant.process(input, config, agent);
-        expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
-    }, 60000);
+            input.UserInput = 'Hi again, Do you remember my name ?';
+            result = await llmAssistant.process(input, config, agent);
+            expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
+        },
+        TIMEOUT * 5
+    );
 }
 
 const models = [
@@ -142,9 +162,8 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
-    // TODO [Froahd]: Need to test with custom models
-    /* { provider: 'Bedrock', id: 'Bedrock A21' },
-    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' }, */
+    { provider: 'Bedrock', id: 'Bedrock A21' },
+    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' },
 ];
 
 models.forEach((model, index) => {
@@ -218,6 +237,6 @@ describe('LLMAssistant: test process function with model switching', () => {
             expect(response).toContain(LLM_OUTPUT_VALIDATOR);
             expect(response.split(' ').length).toBeGreaterThan(20); // Ensure a substantial summary
         },
-        30000 * models.length
+        TIMEOUT * (models.length + 1) // Additional 30 seconds for getting credentials of custom LLM
     );
 });

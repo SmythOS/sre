@@ -6,6 +6,8 @@ export class CustomLLMRegistry {
     private models: Record<string, any> = {}; // TODO [Forhad]: apply proper typing
 
     public static async getInstance(teamId: string) {
+        if (!teamId) throw new Error('Please provide a valid team ID.');
+
         const registry = new CustomLLMRegistry();
 
         await registry.loadCustomModels(teamId);
