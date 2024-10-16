@@ -205,7 +205,7 @@ export abstract class LLMConnector extends Connector {
             };
 
             if (_params.maxTokens) {
-                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params.apiKey);
+                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
             }
 
             const baseUrl = LLMRegistry.getBaseURL(params.model);
