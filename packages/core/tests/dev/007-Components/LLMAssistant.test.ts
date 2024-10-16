@@ -1,9 +1,14 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TLLMMessageRole } from '@sre/types/LLM.types';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { type LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
+
 //We need SRE to be loaded because LLMAssistant uses internal SRE functions
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -53,13 +58,16 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 });
+
+const TEAM_ID = 'cloilcrl9001v9tkguilsu8dx'; // Team ID of Forhad
+
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
-            teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
+            teamId: { value: TEAM_ID },
             agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
         });
     });
@@ -105,7 +113,7 @@ function testProcessFunction(model) {
 
             expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 
     it(
@@ -158,7 +166,7 @@ function testProcessFunction(model) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
@@ -240,3 +248,72 @@ describe('LLMAssistant: test process function with model switching', () => {
         TIMEOUT * (models.length + 1) // Additional 30 seconds for getting credentials of custom LLM
     );
 });
+
+describe('LLMAssistant: test getConsistentMessages()', () => {
+    for (const model of models) {
+        let llmConnector: LLMConnector;
+
+        const isStandardLLM = LLMRegistry.isStandardLLM(model.id);
+
+        if (isStandardLLM) {
+            llmConnector = ConnectorService.getLLMConnector(model.provider);
+        } else {
+            llmConnector = ConnectorService.getLLMConnector(model.provider);
+        }
+
+        it(`should remove duplicate user messages at the beginning and end: ${model.provider} (${model.id})`, async () => {
+            const content1 = 'Hello, how are you?';
+            const content2 = 'Hello, how are you doing?';
+            const content3 = 'I am fine, thank you!';
+            const content4 = 'What can you do?';
+            const content5 = '';
+
+            const messages = [
+                { role: TLLMMessageRole.User, content: content1 },
+                { role: TLLMMessageRole.User, content: content2 }, // Duplicate at the beginning
+                { role: TLLMMessageRole.Assistant, content: content3 },
+                { role: TLLMMessageRole.User, content: content4 },
+                { role: TLLMMessageRole.User, content: content5 }, // Duplicate at the end
+            ];
+
+            const consistentMessages = llmConnector.getConsistentMessages(messages);
+
+            expect(consistentMessages).toHaveLength(messages.length - 2);
+
+            expect(consistentMessages[0].role).toBe(TLLMMessageRole.User);
+            expect(_getMessageContent(model.provider, consistentMessages[0])).toBe(content2);
+
+            expect(consistentMessages[1].role).toBe(_getLLMMessageRole(model.provider));
+            expect(_getMessageContent(model.provider, consistentMessages[1])).toBe(content3);
+
+            expect(consistentMessages[2].role).toBe(TLLMMessageRole.User);
+            expect(_getMessageContent(model.provider, consistentMessages[2])).toBe(content4);
+        });
+    }
+});
+
+function _getLLMMessageRole(provider): String {
+    let role = '';
+
+    if (provider === 'GoogleAI') {
+        role = TLLMMessageRole.Model;
+    } else {
+        role = TLLMMessageRole.Assistant;
+    }
+
+    return role;
+}
+
+function _getMessageContent(provider, message): String {
+    let content = '';
+
+    if (['GoogleAI', 'VertexAI'].includes(provider)) {
+        content = message?.parts?.[0]?.text;
+    } else if (provider === 'Bedrock') {
+        content = message?.content?.[0]?.text;
+    } else {
+        content = message?.content;
+    }
+
+    return content;
+}
