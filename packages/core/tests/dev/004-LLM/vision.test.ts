@@ -128,10 +128,10 @@ async function runVisionTestCases(model: string) {
     it(
         `handles complex prompts with images for Model: ${model}`,
         async () => {
-            const fileSources = [imageUrl1];
             const complexPrompt =
                 'Analyze this image in detail. Describe the main elements, colors, and any text visible. Then, speculate about the context or purpose of this image.' +
                 WORD_INCLUSION_PROMPT;
+            const fileSources = [imageUrl1];
             const result: any = await llmInference.visionRequest(complexPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
@@ -142,8 +142,8 @@ async function runVisionTestCases(model: string) {
     it(
         `handles prompts with special characters and Unicode for Model: ${model}`,
         async () => {
-            const fileSources = [imageUrl1];
             const specialCharsPrompt = 'Describe this image: 🌍🚀 こんにちは! 你好! مرحبا!' + WORD_INCLUSION_PROMPT;
+            const fileSources = [imageUrl1];
             const result: any = await llmInference.visionRequest(specialCharsPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
