@@ -45,6 +45,8 @@ const sre = SmythRuntime.Instance.init({
 });
 
 const TIMEOUT = 30000;
+const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
+const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
 function runTestCases(model: string) {
     it(
@@ -57,9 +59,12 @@ function runTestCases(model: string) {
             const conv = new Conversation(model, specUrl);
             conv.systemPrompt = system;
 
-            const result = await conv.prompt('What can you help me with?');
+            const prompt = 'What can you help me with?' + WORD_INCLUSION_PROMPT;
+
+            const result = await conv.prompt(prompt);
 
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -86,12 +91,15 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const result = await conv.streamPrompt('What can you help me with?');
+            const prompt = 'What can you help me with?' + WORD_INCLUSION_PROMPT;
+
+            const result = await conv.streamPrompt(prompt);
 
             await streamComplete;
 
             expect(result).toBeTruthy();
             expect(streamResult).toBeTruthy();
+            expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -118,12 +126,15 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const result = await conv.streamPrompt('First, tell me about SmythOS. Then, explain how it handles data storage.');
+            const prompt = 'First, tell me about SmythOS. Then, explain how it handles data storage.' + WORD_INCLUSION_PROMPT;
+
+            const result = await conv.streamPrompt(prompt);
 
             await streamComplete;
 
             expect(result).toBeTruthy();
             expect(streamResult).toBeTruthy();
+            expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT * 2
     );
@@ -134,10 +145,15 @@ function runTestCases(model: string) {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
             const conv = new Conversation(model, specUrl);
 
-            await conv.prompt('What is SmythOS?');
-            const followUpResult = await conv.prompt('Can you provide more details about its features?');
+            const prompt = 'What is SmythOS?' + WORD_INCLUSION_PROMPT;
+
+            await conv.prompt(prompt);
+
+            const followUpPrompt = 'Can you provide more details about its features?' + WORD_INCLUSION_PROMPT;
+            const followUpResult = await conv.prompt(followUpPrompt);
 
             expect(followUpResult).toBeTruthy();
+            expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT * 2
     );
@@ -205,7 +221,7 @@ function runTestCases(model: string) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     /* { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' }, */

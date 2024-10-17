@@ -93,7 +93,7 @@ export abstract class LLMConnector extends Connector {
 
                 return this.chatRequest(candidate.readRequest, _params);
             },
-            visionRequest: async ( params: any) => {
+            visionRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
                 return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
@@ -204,7 +204,7 @@ export abstract class LLMConnector extends Connector {
             _params.credentials = {
                 apiKey: await vaultConnector
                     .user(candidate)
-                    .get(llmProvider?.toLowerCase())
+                    .get(llmProvider)
                     .catch(() => ''),
             };
 

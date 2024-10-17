@@ -126,7 +126,7 @@ export default class LLMAssistant extends Component {
                 const vaultConnector = ConnectorService.getVaultConnector();
                 const apiKey = await vaultConnector
                     .user(AccessCandidate.agent(agent.id))
-                    .get(provider?.toLowerCase())
+                    .get(provider)
                     .catch(() => '');
                 AccessCandidate.agent(agent.id);
                 maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);

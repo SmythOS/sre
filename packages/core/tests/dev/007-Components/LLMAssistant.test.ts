@@ -169,7 +169,7 @@ const models = [
     { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
     { provider: 'Bedrock', id: 'Bedrock A21' },
     { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' },
 ];
