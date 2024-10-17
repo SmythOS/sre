@@ -89,7 +89,7 @@ export class AnthropicAIConnector extends LLMConnector {
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
         const _params = { ...params }; // Avoid mutation of the original params object
 
-        let messages = _params?.messages;
+        let messages = _params?.messages || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 

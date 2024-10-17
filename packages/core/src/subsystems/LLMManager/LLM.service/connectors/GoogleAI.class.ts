@@ -480,7 +480,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         let systemInstruction = '';
         let formattedMessages;
-        const messages = _params?.messages;
+        const messages = _params?.messages || [];
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
