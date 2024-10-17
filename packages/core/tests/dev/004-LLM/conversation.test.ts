@@ -53,13 +53,13 @@ function runTestCases(model: string) {
         'runs a conversation with tool use',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
 
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
-            const prompt = 'What can you help me with?' + WORD_INCLUSION_PROMPT;
+            const prompt = 'What can you help me with?';
 
             const result = await conv.prompt(prompt);
 
@@ -73,10 +73,10 @@ function runTestCases(model: string) {
         'runs a conversation with tool use in stream mode',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -91,7 +91,7 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const prompt = 'What can you help me with?' + WORD_INCLUSION_PROMPT;
+            const prompt = 'What can you help me with?';
 
             const result = await conv.streamPrompt(prompt);
 
@@ -108,10 +108,10 @@ function runTestCases(model: string) {
         'handles multiple tool calls in a single conversation',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -126,7 +126,7 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const prompt = 'First, tell me about SmythOS. Then, explain how it handles data storage.' + WORD_INCLUSION_PROMPT;
+            const prompt = 'First, tell me about SmythOS. Then, explain how it handles data storage.';
 
             const result = await conv.streamPrompt(prompt);
 
