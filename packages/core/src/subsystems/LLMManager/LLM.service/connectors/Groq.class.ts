@@ -37,7 +37,7 @@ export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         let messages = _params?.messages || [];
 
@@ -97,7 +97,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         try {
             const apiKey = _params?.credentials?.apiKey;
@@ -156,7 +156,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const emitter = new EventEmitter();
         const apiKey = _params?.credentials?.apiKey;
 

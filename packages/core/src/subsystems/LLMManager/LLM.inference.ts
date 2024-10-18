@@ -172,7 +172,7 @@ export class LLMInference {
             throw new Error('Input messages are required.');
         }
 
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
         if (!_params.model) {
             _params.model = this.model;
@@ -201,7 +201,7 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            const _params = { ...params };
+            const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
             if (!_params.model) {
                 _params.model = this.model;

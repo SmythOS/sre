@@ -27,7 +27,7 @@ export class OpenAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const messages = _params?.messages || [];
 
@@ -97,7 +97,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const messages = _params?.messages || [];
 
@@ -209,7 +209,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -365,7 +365,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const emitter = new EventEmitter();
         const usage_data = [];

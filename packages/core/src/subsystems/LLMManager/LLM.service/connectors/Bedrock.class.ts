@@ -23,7 +23,7 @@ export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         let messages = _params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed

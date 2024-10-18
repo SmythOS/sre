@@ -200,7 +200,8 @@ export class LLMHelper {
      * @returns {TLLMMessageBlock[]} The modified array of message objects.
      */
     public static removeDuplicateUserMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        const _messages = [...messages];
+        const _messages = JSON.parse(JSON.stringify(messages));
+
         // Check for two user messages at the beginning
         if (_messages.length > 1 && _messages[0].role === TLLMMessageRole.User && _messages[1].role === TLLMMessageRole.User) {
             _messages.shift(); // Remove the first user message

@@ -97,7 +97,7 @@ export class GoogleAIConnector extends LLMConnector {
     };
 
     protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         let prompt = '';
 
         const model = _params?.model || DEFAULT_MODEL;
@@ -187,7 +187,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const model = _params?.model || 'gemini-pro-vision';
         const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
@@ -279,7 +279,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const model = _params?.model || DEFAULT_MODEL;
         const apiKey = _params?.credentials?.apiKey;
         const fileSources = _params?.fileSources || [];
@@ -381,7 +381,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         try {
             let systemInstruction = '';
@@ -473,7 +473,7 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const emitter = new EventEmitter();
         const apiKey = _params?.credentials?.apiKey;

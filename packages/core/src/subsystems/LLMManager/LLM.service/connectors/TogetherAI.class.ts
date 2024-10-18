@@ -20,7 +20,7 @@ export class TogetherAIConnector extends LLMConnector {
     public name = 'LLM:TogetherAI';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         // Open to take system message with params, if no system message found then force to get JSON response in default
         if (!_params.messages) _params.messages = [];
@@ -96,7 +96,7 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         try {
             const apiKey = _params?.credentials?.apiKey;
@@ -159,7 +159,7 @@ export class TogetherAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const emitter = new EventEmitter();
         const apiKey = _params?.credentials?.apiKey;
 

@@ -27,7 +27,7 @@ export class AnthropicAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
         let messages = _params?.messages || [];
 
@@ -87,7 +87,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
     // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
         let messages = _params?.messages || [];
 
@@ -152,7 +152,7 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         try {
             const apiKey = _params?.credentials?.apiKey;
