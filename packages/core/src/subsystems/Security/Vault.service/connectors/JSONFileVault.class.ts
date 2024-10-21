@@ -7,8 +7,9 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { JSONFileVaultConfig } from '@sre/types/Security.types';
-import fs from 'fs';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
+import crypto from 'crypto';
+import fs from 'fs';
 
 const console = Logger('JSONFileVault');
 export class JSONFileVault extends VaultConnector {
@@ -22,7 +23,18 @@ export class JSONFileVault extends VaultConnector {
 
         if (fs.existsSync(config.file)) {
             try {
-                this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+                if (config.fileKey && fs.existsSync(config.fileKey)) {
+                    try {
+                        const PUBKEY = fs.readFileSync(config.fileKey, 'utf8').toString();
+                        const encryptedVault = fs.readFileSync(config.file);
+                        const decryptedVault = crypto.publicDecrypt(PUBKEY, Buffer.from(encryptedVault, 'base64')).toString();
+                        this.vaultData = JSON.parse(decryptedVault);
+                    } catch (error) {
+                        this.vaultData = {};
+                    }
+                } else {
+                    this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+                }
             } catch (e) {
                 this.vaultData = {};
             }
