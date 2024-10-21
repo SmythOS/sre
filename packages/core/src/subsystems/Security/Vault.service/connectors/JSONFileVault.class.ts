@@ -33,8 +33,7 @@ export class JSONFileVault extends VaultConnector {
                         }, Buffer.from(encryptedVault, 'base64'));
                         this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
                     } catch (error) {
-                        console.error(error);
-                        this.vaultData = {};
+                        throw new Error('Failed to decrypt vault');
                     }
                 } else {
                     this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
