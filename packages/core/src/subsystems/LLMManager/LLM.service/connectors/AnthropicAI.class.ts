@@ -459,7 +459,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
     // TODO [Forhad]: This method is quite lengthy and complex. Consider breaking it down into smaller, more manageable functions for better readability and maintainability.
     public getConsistentMessages(messages) {
-        let _messages = [...messages];
+        let _messages = JSON.parse(JSON.stringify(messages));
 
         // Extract the system message from the beginning as we have logic that checks 'user' for the first message
         let systemMessage = null;
