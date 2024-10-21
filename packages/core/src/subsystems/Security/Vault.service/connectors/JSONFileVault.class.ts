@@ -25,11 +25,15 @@ export class JSONFileVault extends VaultConnector {
             try {
                 if (config.fileKey && fs.existsSync(config.fileKey)) {
                     try {
-                        const PUBKEY = fs.readFileSync(config.fileKey, 'utf8').toString();
-                        const encryptedVault = fs.readFileSync(config.file);
-                        const decryptedVault = crypto.publicDecrypt(PUBKEY, Buffer.from(encryptedVault, 'base64')).toString();
-                        this.vaultData = JSON.parse(decryptedVault);
+                        const privateKey = fs.readFileSync(config.fileKey, 'utf8');
+                        const encryptedVault = fs.readFileSync(config.file, 'utf8').toString();
+                        const decryptedBuffer = crypto.privateDecrypt({
+                            key: privateKey,
+                            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                        }, Buffer.from(encryptedVault, 'base64'));
+                        this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
                     } catch (error) {
+                        console.error(error);
                         this.vaultData = {};
                     }
                 } else {
