@@ -17,7 +17,7 @@ const projectRootDir = __dirname;
 const devConfig = {
     input: './distributions/cli/index.ts',
     output: {
-        file: './distributions/cli/dist/cli.dev.cjs', // CommonJS output
+        file: './distributions/cli/dist/smyth-runtime.cjs', // CommonJS output
         format: 'cjs', // Specify the CommonJS format
         sourcemap: true,
         inlineDynamicImports: true, // Inline all dynamic imports into one file
@@ -45,42 +45,13 @@ const devConfig = {
         }),
     ],
 };
-// const devConfig = {
-//     input: 'distributions/cli/index.ts',
-//     output: {
-//         file: 'distributions/cli/dist/cli.dev.js',
-//         format: 'es',
-//         sourcemap: true,
-//     },
-//     plugins: [
-//         json(),
-//         typescriptPaths({
-//             tsconfig: '../tsconfig.json', // Ensure this points to your tsconfig file
-//             preserveExtensions: true,
-//             nonRelative: false,
-//         }),
-//         esbuild({
-//             sourceMap: true,
-//             minify: false, //do not enable minify here, it will break the sourcemap (minification is done by terser plugin below)
-//             treeShaking: false,
-//         }),
 
-//         // typescript({
-//         //     tsconfig: './tsconfig.json',
-//         //     clean: true,
-//         //     include: ['src/**/*.ts', 'distributions/AWS/**/*.ts'],
-//         //     exclude: ['node_modules'],
-//         // }),
-//         filenameReplacePlugin(),
-//         sourcemaps(),
-//     ],
-// };
 
 const prodConfig = {
     input: 'distributions/cli/index.ts',
     output: {
-        file: 'distributions/cli/dist/cli.prod.js',
-        format: 'es',
+        file: 'distributions/cli/dist/smyth-runtime.cjs',
+        format: 'cjs',
         sourcemap: true,
     },
     plugins: [
