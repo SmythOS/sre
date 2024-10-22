@@ -12,6 +12,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         // Inherit Agent.prototype for proper instanceof Agent checks
         return Object.create(Agent.prototype, {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
+            teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
         });
     });
     return { default: MockedAgent };
@@ -79,7 +80,7 @@ async function runTestCases(model: string) {
     it(
         `runs a simple prompt with Model: ${model}`,
         async () => {
-            const prompt = 'Hello, how are you?' + WORD_INCLUSION_PROMPT;
+            const prompt = 'Hello, what is the smallest country in the world?' + WORD_INCLUSION_PROMPT;
             const result: any = await llmInference.promptRequest(prompt, config, agent);
 
             expect(result).toBeTruthy();
