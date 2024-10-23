@@ -18,6 +18,7 @@ export class AgentProcess {
     private constructor(private agentData: any) {
         this.initAgent(agentData);
     }
+
     private async initAgent(agentData: any) {
         let data;
         let agentId;

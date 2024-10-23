@@ -1,18 +1,20 @@
 import minimist from 'minimist';
 
 export function parseArgv(argv: string[]): {
-  method: string;
-  path: string;
+  method?: string;
+  path?: string;
   query?: Record<string, string>;
   body?: Record<string, any>;
+  [key: string]: any;
 } {
   const parsedArgs = minimist(argv.slice(2));
 
   const result: {
-    method: string;
-    path: string;
+    method?: string;
+    path?: string;
     query?: Record<string, string>;
     body?: Record<string, any>;
+    [key: string]: any;
   } = {
     method: parsedArgs.method || 'GET',
     path: parsedArgs.path || '/',
