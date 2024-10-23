@@ -36,7 +36,6 @@ import CLIInput from './CLIInput.class';
 const components = {
     Component: new Component(),
     Note: new Component(), //this is a fake component
-    CLIInput: new CLIInput(),
     APIEndpoint: new APIEndpoint(),
     APIOutput: new APIOutput(),
     PromptGenerator: new PromptGenerator(),

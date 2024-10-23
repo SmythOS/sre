@@ -174,8 +174,6 @@ export default class Agent {
         });
 
         const method = this.agentRequest.method.toUpperCase();
-
-        console.log(this.endpoints);
         const endpoint = this.endpoints[endpointPath]?.[method];
 
         //first check if this is a debug session, and return debug result if it's the case
