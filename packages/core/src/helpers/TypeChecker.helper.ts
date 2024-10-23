@@ -78,8 +78,6 @@ async function inferStringType(value: any, key?: string, agent?: Agent) {
         return `data:${base64Obj.mimetype};base64,${base64Obj.base64}`;
     }*/ else if (typeof value === 'object' || Array.isArray(value)) {
         return JSON.stringify(value);
-    } else if (Array.isArray(value) && value?.length === 1) {
-        return value[0];
     } else {
         return String(value);
     }

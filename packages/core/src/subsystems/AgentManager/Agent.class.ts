@@ -785,7 +785,7 @@ export default class Agent {
                 _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== undefined);
 
                 // Simplify the array to a single value if there is only one element after flattening
-                // if (_input[key].length == 1) _input[key] = _input[key][0];
+                if (_input[key].length == 1) _input[key] = _input[key][0];
             }
         }
 
