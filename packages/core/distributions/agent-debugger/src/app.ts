@@ -126,6 +126,7 @@ app.get('/health', (req, res) => {
         agent_domain,
         success: true,
         node: port?.toString()?.substr(2),
+        name: 'agent-debugger',
         // version: pkg.version,
     });
 });

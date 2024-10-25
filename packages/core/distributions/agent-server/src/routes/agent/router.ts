@@ -5,7 +5,6 @@ import agentAuth from '../../middlewares/agent-oauth.mw';
 import { processAgentRequest } from '../../services/agent-request-handler';
 import uploadHandler from '../../middlewares/uploadHandler.mw';
 import ParallelRequestLimiter from '../../middlewares/ParallelRequestLimiter.mw';
-import { sreAdapter } from '../../services/sre-adapter';
 
 const router = express.Router();
 

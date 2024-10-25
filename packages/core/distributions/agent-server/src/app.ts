@@ -117,6 +117,10 @@ app.use(RateLimiter);
 app.use(cors, express.json({ limit: '10mb' }));
 app.use(cors, express.urlencoded({ extended: false, limit: '100kb' }));
 
+app.get('/', (req, res) => {
+    res.send('Agent Server');
+});
+
 app.get('/health', (req, res) => {
     let agent_domain = config.env.AGENT_DOMAIN;
     if (config.env.AGENT_DOMAIN_PORT) agent_domain += `:${config.env.AGENT_DOMAIN_PORT}`;
@@ -126,6 +130,7 @@ app.get('/health', (req, res) => {
         agent_domain,
         success: true,
         node: port?.toString()?.substr(2),
+        name: 'agent-server',
         // version: pkg.version,
     });
 });

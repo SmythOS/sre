@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 
 import { createLogger } from '../services/logger';
-import { sreAdapter } from './sre-adapter';
+import { AgentProcess, ConnectorService } from '../../../../src';
+
 const console = createLogger('___FILENAME___');
 
 export async function processAgentRequest(agent: any, req: Request) {
@@ -26,7 +27,7 @@ export async function processAgentRequest(agent: any, req: Request) {
     return runAgentProcess(agent, req);
 }
 
-async function runAgentProcess(agent: any, req: Request) {
+async function runAgentProcess(agent: any, req: any) {
     try {
         //extract endpoint path
         //live agents (dev) do not have a version number
@@ -37,7 +38,26 @@ async function runAgentProcess(agent: any, req: Request) {
         }
         const endpointPath = pathMatches[2];
         const input = req.method == 'GET' ? req.query : req.body;
-        const result: any = await sreAdapter.run(agent.id, req);
+
+        // setTimeout(() => {
+        //     console.log('============ Debug Off ============');
+        //     config.env.LOG_LEVEL = 'none';
+        // }, 1000);
+
+        const { data: result } = await AgentProcess.load(req._agent)
+            .run({
+                ...req,
+                path: req.url,
+                url: undefined,
+                // headers: {
+                //     ...req.headers,
+                //     'X-DEBUG-RUN': '',
+                // },
+            })
+            .catch((error) => ({ data: { error: error.toString() } }));
+
+        console.log('>>>>>>>>>>>>>>>>> Result \n', JSON.stringify(result, null, 2));
+
         if (result.error) {
             console.error('ERROR', result.error);
             //res.status(500).json({ ...result, error: result.error.toString(), agentId: agent.id, agentName: agent.name });

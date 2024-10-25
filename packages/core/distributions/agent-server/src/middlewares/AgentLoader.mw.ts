@@ -1,11 +1,13 @@
-import { getAgentDataById, getAgentIdByDomain, extractAgentVerionsAndPath, getAgentDomainById } from '../services/agent-helper';
+import { extractAgentVerionsAndPath, getAgentDomainById } from '../services/agent-helper';
 import config from '../config';
 
 import { createLogger } from '../services/logger';
+import { ConnectorService } from '../../../../src';
 const console = createLogger('___FILENAME___');
 
 export default async function AgentLoader(req, res, next) {
     console.log('AgentLoader', req.path);
+    const agentDataConnector = ConnectorService.getAgentDataConnector();
 
     if (req.path.startsWith('/static/')) {
         return next();
@@ -26,7 +28,7 @@ export default async function AgentLoader(req, res, next) {
         const domain = req.hostname;
         const method = req.method;
 
-        agentId = await getAgentIdByDomain(domain).catch((error) => {
+        agentId = await agentDataConnector.getAgentIdByDomain(domain).catch((error) => {
             console.error(error);
         });
         agentDomain = domain;
@@ -43,7 +45,7 @@ export default async function AgentLoader(req, res, next) {
             //when using a production domain but no version is specified, use latest
             version = 'latest';
         }
-        const agentData = await getAgentDataById(agentId, version).catch((error) => {
+        const agentData = await agentDataConnector.getAgentData(agentId, version).catch((error) => {
             console.error(error);
             return { error: error.message };
         });
@@ -59,9 +61,8 @@ export default async function AgentLoader(req, res, next) {
         cleanAgentData(agentData);
 
         req._plan = parsePlanData(agentData);
-        req._agent = {
-            id: agentId,
-        };
+        const { data } = await agentDataConnector.getAgentData(agentId);
+        req._agent = data;
         req._agent.planInfo = req._plan || {
             planId: undefined,
             planName: undefined,

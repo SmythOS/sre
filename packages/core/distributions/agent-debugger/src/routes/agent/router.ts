@@ -1,7 +1,7 @@
 import express from 'express';
 import AgentLoader from '../../middlewares/AgentLoader.mw';
 import cors from '../../middlewares/cors.mw';
-import { processAgentRequest } from '../../services/agent-request-handler';
+import { getDebugSession, processAgentRequest } from '../../services/agent-request-handler';
 import uploadHandler from '../../middlewares/uploadHandler.mw';
 import ParallelRequestLimiter from '../../middlewares/ParallelRequestLimiter.mw';
 
@@ -12,6 +12,11 @@ Also, uploadHandler should precede AgentLoader to parse multipart/form-data corr
 const middlewares = [cors, uploadHandler, AgentLoader, ParallelRequestLimiter];
 
 router.options('*', [cors]); //enable CORS for preflight requests
+
+router.get('/agent/:id/debugSession', [cors], (req, res, next) => {
+    const dbgSession = getDebugSession(req.params.id);
+    res.send({ dbgSession });
+});
 
 router.post(`/api/*`, middlewares, async (req, res) => {
     const agent = req._agent;

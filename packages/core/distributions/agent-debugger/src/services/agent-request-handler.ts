@@ -12,9 +12,7 @@ export function getDebugSession(id) {
     return debugPromises[id]?.dbgSession;
 }
 export async function processAgentRequest(agentId: string, req: any) {
-    const agentDataConnector = ConnectorService.getAgentDataConnector();
-    const data = await agentDataConnector.getAgentData(agentId);
-    const agentProcess = AgentProcess.load(data);
+    const agentProcess = AgentProcess.load(req._agent);
     if (!agentProcess) {
         return { status: 404, data: 'Agent not found' };
     }

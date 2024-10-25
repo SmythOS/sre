@@ -1,5 +1,4 @@
 import cors from 'cors';
-import { EMBODIMENT_TYPES } from '../constants';
 import config from '../config';
 import { createLogger } from '../services/logger';
 const console = createLogger('___FILENAME___');
