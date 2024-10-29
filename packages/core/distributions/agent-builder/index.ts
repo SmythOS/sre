@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 3055;
 const BASE_URL = `http://localhost:${port}`;
 
-console.log('SmythOS Chat Agent Builder v1.1.1');
+console.log('SmythOS Chat Agent Builder v1.1.3');
 
 const sre = SmythRuntime.Instance.init({
     CLI: {

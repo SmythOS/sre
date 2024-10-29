@@ -1,0 +1,7 @@
+{
+    "method": "GET",
+    "path": "/api/lyrics",
+    "query": {
+        "lyrics": "hello is it me you're looking for"
+    }
+}

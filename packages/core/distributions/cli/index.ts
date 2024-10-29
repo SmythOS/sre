@@ -1,61 +1,63 @@
-import dotenv from 'dotenv';
-dotenv.config();
-process.env.LOG_LEVEL = 'none';
+import 'dotenv/config';
+import minimist from 'minimist';
+import * as fs from 'fs';
+import * as util from 'util';
+import { help } from './help.ts';
 
+
+//============== CLI Args ==============//
+const argv = minimist(process.argv.slice(2));
+if (argv['v']) { console.log('v0.0.1'); process.exit(); }
+if (argv['d']) { console.log(argv); process.exit(); }
+if (argv['h'] | argv['h']) { help(); process.exit(); }
+if (!argv['data-path']) argv['data-path'] = process.cwd();
+if (!argv['agent']) throw Error('You must provide --agent argument');
+if (!fs.existsSync(argv['agent'])) throw Error(`Agent at ${argv['agent']} does not exist`);
+if (!argv['vault']) throw Error('You must provide --vault argument');
+if (!fs.existsSync(argv['vault'])) throw Error(`Vault at ${argv['vault']} does not exist`);
+if (argv['vault-key'] && !fs.existsSync(argv['vault-key'])) throw Error(`Vault at ${argv['vault-key']} does not exist`);
+
+
+process.env.LOG_LEVEL = 'none';
+process.env.DATA_PATH = argv['data-path'];
 import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../src/index.ts';
 
-const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: process.env.AWS_S3_BUCKET_NAME || '',
-            region: process.env.AWS_S3_REGION || '',
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+config.env.DATA_PATH = argv['data-path'];
+
+//============== Main() ==============//
+(async function Main() {
+    SmythRuntime.Instance.init({
+        CLI: {
+            Connector: 'CLI',
         },
-    },
-    Account: {
-        Connector: 'DummyAccount',
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
+        Storage: {
+            Connector: 'S3',
+            Settings: {
+
+            },
         },
-    },
-    AgentData: {
-        Connector: 'CLI',
-    },
-});
+        Vault: {
+            Connector: 'JSONFileVault',
+            Settings: {
+                file: argv['vault'],
+                fileKey: argv['vault-key'],
+            },
+        },
+        AgentData: {
+            Connector: 'CLI',
+        },
+        Account: {
+            Connector: 'DummyAccount',
+            Settings: {
 
-async function main() {
-    try {
-        const cliConnector = ConnectorService.getCLIConnector();
-        console.log('CLI Connector:', cliConnector.params);
-        const agentDataConnector = ConnectorService.getAgentDataConnector();
-        const data = await agentDataConnector.getAgentData('test', '1.0');
+            },
+        },
+    });
 
-        setTimeout(() => {
-            console.log('============ Debug Off ============');
-            config.env.LOG_LEVEL = 'none';
-        }, 1000);
-        //console.log(data);
-        //const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Hello World' } });
-        //const request = new AgentRequest(process.argv);
-        //const result = await sre.runAgent('test', data, request);
+    const agentData = fs.readFileSync(argv['agent'], 'utf-8');
+    const data = JSON.parse(agentData);
 
-        const result = await AgentProcess.load(data).run(process.argv);
-
-        console.log('>>>>>>>>>>>>>>>>> Result \n', JSON.stringify(result, null, 2));
-    } catch (error) {
-        console.error(error);
-    } finally {
-        await sre._stop();
-    }
-}
-
-console.log('Starting CLI');
-main();
+    console.log(argv);
+    const output = await AgentProcess.load(data).run(argv);
+    console.log(util.inspect(output?.data, { showHidden: false, depth: null, colors: true }));
+})();
