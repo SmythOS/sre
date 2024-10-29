@@ -4,26 +4,19 @@ import * as fs from 'fs';
 import * as util from 'util';
 import { help } from './help.ts';
 
+
 //============== CLI Args ==============//
 const argv = minimist(process.argv.slice(2));
-if (argv['v']) {
-    console.log('v0.0.1');
-    process.exit();
-}
-if (argv['d']) {
-    console.log(argv);
-    process.exit();
-}
-if (argv['h'] | argv['h']) {
-    help();
-    process.exit();
-}
+if (argv['v']) { console.log('v0.0.1'); process.exit(); }
+if (argv['d']) { console.log(argv); process.exit(); }
+if (argv['h'] | argv['h']) { help(); process.exit(); }
 if (!argv['data-path']) argv['data-path'] = process.cwd();
 if (!argv['agent']) throw Error('You must provide --agent argument');
 if (!fs.existsSync(argv['agent'])) throw Error(`Agent at ${argv['agent']} does not exist`);
 if (!argv['vault']) throw Error('You must provide --vault argument');
 if (!fs.existsSync(argv['vault'])) throw Error(`Vault at ${argv['vault']} does not exist`);
 if (argv['vault-key'] && !fs.existsSync(argv['vault-key'])) throw Error(`Vault at ${argv['vault-key']} does not exist`);
+
 
 process.env.LOG_LEVEL = 'none';
 process.env.DATA_PATH = argv['data-path'];
@@ -39,7 +32,9 @@ config.env.DATA_PATH = argv['data-path'];
         },
         Storage: {
             Connector: 'S3',
-            Settings: {},
+            Settings: {
+
+            },
         },
         Vault: {
             Connector: 'JSONFileVault',
@@ -53,13 +48,14 @@ config.env.DATA_PATH = argv['data-path'];
         },
         Account: {
             Connector: 'DummyAccount',
-            Settings: {},
+            Settings: {
+
+            },
         },
     });
 
     const agentData = fs.readFileSync(argv['agent'], 'utf-8');
     const data = JSON.parse(agentData);
-    data.teamId = 'default';
 
     console.log(argv);
     const output = await AgentProcess.load(data).run(argv);
