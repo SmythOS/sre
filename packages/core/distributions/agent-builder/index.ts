@@ -7,7 +7,7 @@ import { AccessCandidate, ConnectorService, Conversation, SmythRuntime, StorageC
 import multer from 'multer';
 import fs from 'fs';
 import { JSON2ADL } from './ADL.ts';
-import { searchTemplates, watchTemplates } from './TemplateHelper.ts';
+import { searchTemplates, searchWorkflows, watchTemplates } from './TemplateHelper.ts';
 dotenv.config();
 //(session);
 
@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 3055;
 const BASE_URL = `http://localhost:${port}`;
 
-console.log('SmythOS Chat Agent Builder v1.1.3');
+console.log('SmythOS Chat Agent Builder v1.1.5');
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -43,14 +43,14 @@ const sre = SmythRuntime.Instance.init({
     AgentData: {
         Connector: 'CLI',
     },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: process.env.REDIS_SENTINEL_HOSTS,
-            name: process.env.REDIS_MASTER_NAME || '',
-            password: process.env.REDIS_PASSWORD || '',
-        },
-    },
+    // Cache: {
+    //     Connector: 'Redis',
+    //     Settings: {
+    //         hosts: process.env.REDIS_SENTINEL_HOSTS,
+    //         name: process.env.REDIS_MASTER_NAME || '',
+    //         password: process.env.REDIS_PASSWORD || '',
+    //     },
+    // },
     ManagedVault: {
         Connector: 'SmythManagedVault',
         Id: 'oauth',
@@ -88,7 +88,7 @@ console.log('Using Models ', model, alternativeModel);
 console.log('Watching templates in ', templatesDir);
 watchTemplates(templatesDir);
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 //logger
 app.use((req, res, next) => {
@@ -173,13 +173,29 @@ function overrideContextWindow(llmContext, conversationId) {
         let agentADLTemplate = '';
         if (userQuery) {
             const searchQuery = `${agentMetadata?.name || ''} ${agentMetadata?.description || ''} ${agentMetadata?.behavior || ''} ${userQuery}`;
-            const templates = await searchTemplates(searchQuery, 1);
-            if (templates[0]?.metadata?.json) {
-                const tplADL = JSON2ADL(templates[0]?.metadata?.json);
-                if (tplADL) {
-                    agentADLTemplate += `\n========================
-# Example Agent ADL from our Knowledge base
-${tplADL}`;
+            if (agentADL) {
+                //updating
+                const workflows = await searchWorkflows(searchQuery, 3) || [];
+                let idx = 1;
+                agentADLTemplate += `\n\n========================\n# Examples of Workflows ADL from our Knowledge base\n`;
+                for (let wf of workflows) {
+                    if (wf?.metadata?.json) {
+                        const wfADL = JSON2ADL(wf?.metadata?.json);
+                        if (wfADL) {
+                            agentADLTemplate += `## Example ${idx++}\n${wfADL}`;
+                        }
+                    }
+                }
+            } else {
+                
+                const templates = await searchTemplates(searchQuery, 1);
+                if (templates[0]?.metadata?.json) {
+                    const tplADL = JSON2ADL(templates[0]?.metadata?.json);
+                    if (tplADL) {
+                        agentADLTemplate += `\n========================
+    # Example Agent ADL from our Knowledge base
+    ${tplADL}`;
+                    }
                 }
             }
         }
@@ -322,6 +338,14 @@ app.post('/api/chat/feedback', async (req, res) => {
             await s3Storage.user(teamCandidate).write(feedbackFile, JSON.stringify(feedback, null, 2));
         } catch (e) {
             console.error('failed to save feedback:', e);
+        }
+
+        if (feedback.downvote && conversations[conversationId].curModel == alternativeModel) {
+            //switch back to the previous model
+            conversations[conversationId].curModel = model;
+            conversations[conversationId].advModelUse = 2;
+            await conversations[conversationId].conv.updateModel(model);
+            overrideContextWindow(conversations[conversationId].conv.context, conversationId);
         }
         //console.log('voted:', conversationId, feedback);
     }
