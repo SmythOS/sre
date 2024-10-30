@@ -7,7 +7,6 @@ import * as fs from 'fs';
 import * as util from 'util';
 import { help } from './help.ts';
 
-
 //============== CLI Args ==============//
 const argv = minimist(process.argv.slice(2));
 try {
@@ -54,9 +53,7 @@ import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLI
         },
         Storage: {
             Connector: 'S3',
-            Settings: {
-
-            },
+            Settings: {},
         },
         Vault: {
             Connector: 'JSONFileVault',
@@ -70,9 +67,7 @@ import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLI
         },
         Account: {
             Connector: 'DummyAccount',
-            Settings: {
-
-            },
+            Settings: {},
         },
     });
 
