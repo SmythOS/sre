@@ -11,7 +11,7 @@ winston.addColors({
     debug: 'blue',
 });
 
-let logLevel = parseCLIArgs('debug')?.debug || config.env.LOG_LEVEL || 'info';
+let logLevel = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
 if (!['none', 'error', 'warn', 'info', 'debug'].includes(logLevel)) {
     logLevel = 'none';
 }
@@ -140,7 +140,7 @@ function createBaseLogger(memoryStore?: any[]) {
 
         format: winston.format.combine(
             winston.format((info) => {
-                if (config.env.LOG_LEVEL == 'none') return false; // skip logging if log level is none
+                if (config.env.LOG_LEVEL == 'none' || logLevel == 'none' || logLevel == '') return false; // skip logging if log level is none
 
                 // Apply redaction to the log message
                 //info.message = redactSecrets(info.message, sensitiveOptions);
