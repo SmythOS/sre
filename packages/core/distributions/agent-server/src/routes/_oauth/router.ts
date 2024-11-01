@@ -16,7 +16,7 @@ router.get('/authorize', async (req: Request, res: Response) => {
     if (!agent) {
         return res.status(404).json({ error: 'Agent not found' });
     }
-    const authInfo = await readAgentOAuthConfig(agent?.data);
+    const authInfo = await readAgentOAuthConfig(agent);
     const authorizationURL = authInfo.authorizationURL;
     const tokenUrl = authInfo.tokenURL;
     const client_id = authInfo.clientID;
@@ -44,7 +44,7 @@ router.post('/token', async (req: Request, res: Response) => {
     if (!agent) {
         return res.status(404).json({ error: 'Agent not found' });
     }
-    const authInfo = await readAgentOAuthConfig(agent?.data);
+    const authInfo = await readAgentOAuthConfig(agent);
     const authorizationURL = authInfo.authorizationURL;
     const tokenUrl = authInfo.tokenURL;
     const client_id = authInfo.clientID;

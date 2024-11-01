@@ -47,3 +47,21 @@ export async function getAgentDomainById(agentId: string) {
     }
     return domain;
 }
+
+export async function readAgentOAuthConfig(agentData) {
+    const authInfo = agentData?.auth;
+    const method = authInfo?.method;
+    const provider = authInfo?.provider[authInfo?.method];
+    if (!provider) {
+        return {};
+    }
+    const authOIDCConfigURL = provider.OIDCConfigURL;
+    const clientID = provider.clientID;
+    const clientSecret = provider.clientSecret;
+    const openid: any = await axios.get(authOIDCConfigURL).catch((error) => ({ error }));
+
+    const tokenURL = openid?.data?.token_endpoint;
+    const authorizationURL = openid?.data?.authorization_endpoint;
+
+    return { authorizationURL, tokenURL, clientID, clientSecret, method, provider };
+}

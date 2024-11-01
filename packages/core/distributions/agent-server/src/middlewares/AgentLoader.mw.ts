@@ -14,11 +14,6 @@ export default async function AgentLoader(req, res, next) {
     }
     let agentId = req.header('X-AGENT-ID');
     let agentVersion = req.header('X-AGENT-VERSION') || '';
-    const debugHeader =
-        req.header('X-DEBUG-STOP') !== undefined ||
-        req.header('X-DEBUG-RUN') !== undefined ||
-        req.header('X-DEBUG-INJ') !== undefined ||
-        req.header('X-DEBUG-READ') !== undefined;
 
     let agentDomain: any = '';
     let isTestDomain = false;
@@ -38,13 +33,14 @@ export default async function AgentLoader(req, res, next) {
     }
     if (agentId) {
         if (!isTestDomain && agentId && req.hostname.includes('localhost')) {
-            console.log(`Host ${req.hostname} is using debug session. Assuming test domain`);
+            console.log(`Agent is running on localhost (${req.hostname}), assuming test domain`);
             isTestDomain = true;
         }
         if (agentDomain && !isTestDomain && !version) {
             //when using a production domain but no version is specified, use latest
             version = 'latest';
         }
+
         const agentData = await agentDataConnector.getAgentData(agentId, version).catch((error) => {
             console.error(error);
             return { error: error.message };
@@ -61,8 +57,8 @@ export default async function AgentLoader(req, res, next) {
         cleanAgentData(agentData);
 
         req._plan = parsePlanData(agentData);
-        const { data } = await agentDataConnector.getAgentData(agentId);
-        req._agent = data;
+
+        req._agent = agentData.data;
         req._agent.planInfo = req._plan || {
             planId: undefined,
             planName: undefined,
@@ -72,11 +68,6 @@ export default async function AgentLoader(req, res, next) {
             remainingTasks: 0,
             maxLatency: 100,
         };
-
-        if (!isTestDomain && req._agent.debugSessionEnabled && debugHeader) {
-            console.log(`Host ${req.hostname} is using debug session. Assuming test domain.#2`);
-            isTestDomain = true;
-        }
 
         req._agent.usingTestDomain = isTestDomain;
         req._agent.domain = agentDomain || (await getAgentDomainById(agentId));
