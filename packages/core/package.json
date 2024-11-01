@@ -96,6 +96,7 @@
         "aws-sdk": "^2.1691.0",
         "axios": "^1.7.2",
         "chokidar": "^4.0.1",
+        "commander": "^11.1.0",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
         "dayjs": "^1.11.11",

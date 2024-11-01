@@ -11,10 +11,16 @@ winston.addColors({
     debug: 'blue',
 });
 
-let logLevel = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
-if (!['none', 'error', 'warn', 'info', 'debug'].includes(logLevel)) {
-    logLevel = 'none';
-}
+const logLevelMap = {
+    min: 'info',
+    full: 'debug',
+};
+
+let logLevel = () => {
+    let val = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
+    if (logLevelMap[val]) val = logLevelMap[val];
+    return !['none', 'error', 'warn', 'info', 'debug'].includes(val) ? 'none' : val;
+};
 
 // Retrieve the DEBUG environment variable and split it into an array of namespaces
 const namespaces = (config.env.LOG_FILTER || '').split(',');
@@ -140,7 +146,7 @@ function createBaseLogger(memoryStore?: any[]) {
 
         format: winston.format.combine(
             winston.format((info) => {
-                if (config.env.LOG_LEVEL == 'none' || logLevel == 'none' || logLevel == '') return false; // skip logging if log level is none
+                if (config.env.LOG_LEVEL == 'none' || logLevel() == 'none' || logLevel() == '') return false; // skip logging if log level is none
 
                 // Apply redaction to the log message
                 //info.message = redactSecrets(info.message, sensitiveOptions);
@@ -170,7 +176,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
             new winston.transports.Console({
-                level: logLevel,
+                level: logLevel(),
                 format: winston.format.combine(
                     namespaceFilter,
                     winston.format.printf((info) => {
