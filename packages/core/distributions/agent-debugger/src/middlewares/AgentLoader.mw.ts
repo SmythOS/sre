@@ -61,8 +61,7 @@ export default async function AgentLoader(req, res, next) {
         cleanAgentData(agentData);
 
         req._plan = parsePlanData(agentData);
-        const { data } = await agentDataConnector.getAgentData(agentId);
-        req._agent = data;
+        req._agent = agentData.data;
         req._agent.planInfo = req._plan || {
             planId: undefined,
             planName: undefined,
