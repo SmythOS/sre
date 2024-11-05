@@ -47,7 +47,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     private accountConnector: AccountConnector;
     private redisCache: CacheConnector;
     private openaiApiKey: string;
-    private helper: VectorsHelper;
+
     private isCustomStorageInstance: boolean;
 
     constructor(private config: SmythConfigs & OAuthConfig & { openaiApiKey?: string; isCustomStorageInstance?: boolean }) {
@@ -64,7 +64,6 @@ export class SmythManagedVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
         this.redisCache = ConnectorService.getCacheConnector('Redis');
         this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
         this.isCustomStorageInstance = config.isCustomStorageInstance || false;
     }
 

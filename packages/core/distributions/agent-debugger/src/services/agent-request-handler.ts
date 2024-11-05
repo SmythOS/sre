@@ -29,7 +29,6 @@ export async function processAgentRequest(agentId: string, req: any) {
     const readStateId: string = req.header('X-DEBUG-READ') || '';
     if (readStateId) {
         try {
-            console.log('readStateId', readStateId);
             const result = await agentProcess.readDebugState(readStateId, {
                 ...req,
                 path: req.url,
@@ -38,7 +37,6 @@ export async function processAgentRequest(agentId: string, req: any) {
                     ...req.headers,
                 },
             });
-            console.log('result', result);
             return { status: 200, data: result };
         } catch (error: any) {
             console.error(error);

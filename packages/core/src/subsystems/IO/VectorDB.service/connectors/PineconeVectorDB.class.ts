@@ -41,7 +41,6 @@ export class PineconeVectorDB extends VectorDBConnector {
     private openaiApiKey: string;
     private nkvConnector: NKVConnector;
     private isCustomStorageInstance: boolean;
-    private helper: VectorsHelper;
 
     constructor(config: PineconeConfig) {
         super();
@@ -59,7 +58,6 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.redisCache = ConnectorService.getCacheConnector('Redis');
         this.nkvConnector = ConnectorService.getNKVConnector();
         this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
         this.isCustomStorageInstance = config.isCustomStorageInstance || false;
     }
 
