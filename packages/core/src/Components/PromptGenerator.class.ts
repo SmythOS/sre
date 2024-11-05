@@ -34,14 +34,7 @@ export default class PromptGenerator extends Component {
 
         try {
             logger.debug(`=== LLM Prompt Log ===`);
-            const agentId = agent.id;
             let teamId = agent?.teamId;
-
-            // If the team ID is not set then we can get it from the account connector with the agent ID
-            if (!teamId) {
-                const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
-                teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId));
-            }
 
             const model: string = config.data.model || 'echo';
             const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);

@@ -90,14 +90,7 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const agentId = agent.id;
             let teamId = agent?.teamId;
-
-            // If the team ID is not set then we can get it from the account connector with the agent ID
-            if (!teamId) {
-                const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
-                teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId));
-            }
 
             const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
             // if the llm is undefined, then it means we removed the model from our system
