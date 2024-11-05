@@ -202,4 +202,14 @@ export class AgentProcess {
     public async get(path: string, query?: any, headers?: any) {
         return this.run({ method: 'GET', path, query, headers });
     }
+
+    public async readDebugState(stateId: string, reqConfig: TAgentProcessParams | Array<string> | AgentRequest) {
+        await this.ready();
+        if (!this.agent) throw new Error('Failed to load agent');
+        let request: AgentRequest = this.parseReqConfig(reqConfig);
+
+        this.agent.setRequest(request);
+
+        return this.agent.agentRuntime.readState(stateId, true);
+    }
 }

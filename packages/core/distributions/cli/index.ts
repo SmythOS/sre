@@ -1,130 +1,106 @@
 import 'dotenv/config';
-import minimist from 'minimist';
+import { Command, Option } from 'commander';
 import axios from 'axios';
 import os from 'os';
 import path from 'path';
 import * as fs from 'fs';
 import * as util from 'util';
-import { help } from './help.ts';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-//============== CLI Args ==============//
-const argv = minimist(process.argv.slice(2));
-try {
-    if (argv['v']) { console.log('v0.0.1'); process.exit(); }
-    if (argv['d']) { console.log(argv); process.exit(); }
-    if (argv['h'] | argv['h']) { help(); process.exit(); }
-    //if (!argv['data-path']) argv['data-path'] = process.cwd();
-    if (!argv['agent']) throw Error('You must provide --agent argument');
-    if (!fs.existsSync(argv['agent'])) throw Error(`Agent at ${argv['agent']} does not exist`);
-    //if (!argv['vault']) throw Error('You must provide --vault argument');
-    if (argv['vault'] && !fs.existsSync(argv['vault'])) throw Error(`Vault file ${argv['vault']} does not exist`);
-    if (argv['vault-key'] && !fs.existsSync(argv['vault-key'])) throw Error(`Vault key file at ${argv['vault-key']} does not exist`);
-} catch (error) {
-    console.log(error.message);
+import { AgentProcess, config, SmythRuntime } from '../../src/index.js';
+import { checkNewVersion, validateFilePath } from './utils.js';
+
+// Get package version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const program = new Command();
+
+program
+    .name('smyth')
+    .description('Smyth CLI tool for agent management')
+    .version('0.0.1', '-v, --version', 'Output the current version')
+    .addOption(new Option('-d, --debug <level>', 'Log level').choices(['min', 'full']))
+    .requiredOption('--agent <path>', 'Path to the agent file', validateFilePath('Agent'))
+    .requiredOption('--endpoint <name>', 'Call endpoint')
+    .addOption(new Option('--post <params>', 'Make a POST call').conflicts(['get']))
+    .addOption(new Option('--get <params>', 'Make a GET call').conflicts(['post']))
+    .option('--vault <path>', 'Path to the vault file', validateFilePath('Vault'))
+    .option('--vault-key <path>', 'Path to the vault key file', validateFilePath('Vault Key'))
+    .option('--data-path <path>', 'Path to store data');
+
+program.parse();
+
+const options = program.opts();
+
+if (!options.post && !options.get) {
+    console.error('Error: Either --post or --get must be specified');
     process.exit(1);
 }
 
+// Setup environment
 
-process.env.LOG_LEVEL = 'none';
-process.env.DATA_PATH = argv['data-path'];
-
-if (!process.env.DATA_PATH) {
-    const dataPath = path.join(os.tmpdir(), '/.smyth');
-    console.log(`Using ${dataPath} as data path`);
-    fs.mkdirSync(dataPath, { recursive: true });
-    process.env.DATA_PATH = dataPath;
-    config.env.DATA_PATH = argv['data-path'];
+const isVerboseDebug = options.debug == 'full';
+if (isVerboseDebug) {
+    process.env.LOG_LEVEL = 'debug';
+    config.env.LOG_LEVEL = 'debug';
+} else if (options.debug == 'min') {
+    process.env.LOG_LEVEL = 'info';
+    config.env.LOG_LEVEL = 'info';
 }
-process.env.LOG_LEVEL=""
-process.env.LOG_FILTER=""
-config.env.LOG_LEVEL = process.env.LOG_LEVEL;
-config.env.LOG_FILTER = process.env.LOG_FILTER;
 
+// Setup data path
+const dataPath = options.dataPath || path.join(os.tmpdir(), '/.smyth');
+if (!fs.existsSync(dataPath)) {
+    isVerboseDebug && console.log(`Creating data directory: ${dataPath}`);
+    fs.mkdirSync(dataPath, { recursive: true });
+}
+process.env.DATA_PATH = dataPath;
 
-import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../src/index.ts';
-
-
-
-//============== Main() ==============//
-(async function Main() {
-    SmythRuntime.Instance.init({
-        CLI: {
-            Connector: 'CLI',
-        },
-        Storage: {
-            Connector: 'S3',
-            Settings: {},
-        },
-        Vault: {
-            Connector: 'JSONFileVault',
-            Settings: {
-                file: argv['vault'],
-                fileKey: argv['vault-key'],
-            },
-        },
-        AgentData: {
-            Connector: 'CLI',
-        },
-        Account: {
-            Connector: 'DummyAccount',
-            Settings: {},
-        },
-    });
-
-    const agentData = fs.readFileSync(argv['agent'], 'utf-8');
-    const data = JSON.parse(agentData);
-    data['teamId']='default';
-
-    //console.log(argv);
-    const output = await AgentProcess.load(data).run(process.argv);
-    console.log(util.inspect(output?.data, { showHidden: false, depth: null, colors: true }));
-
-    checkNewVersion();
-})();
-
-
-async function checkNewVersion() {
-    const url = 'https://proxy-02.api.smyth.ai/static/sre/manifest.json';
-    const currentVersion = '0.0.1'; // TODO: Get from package.json
-
+async function main() {
     try {
-        // Fetch manifest JSON using axios instead of fetch
-        const response = await axios.get(url);
-        
-        if (response.status !== 200) {
-            throw new Error(`Failed to fetch manifest: ${response.status} ${response.statusText}`);
-        }
+        // Initialize runtime
+        SmythRuntime.Instance.init({
+            CLI: {
+                Connector: 'CLI',
+            },
+            Storage: {
+                Connector: 'S3',
+                Settings: {},
+            },
+            Vault: {
+                Connector: 'JSONFileVault',
+                Settings: {
+                    file: options.vault,
+                    fileKey: options.vaultKey,
+                },
+            },
+            AgentData: {
+                Connector: 'CLI',
+            },
+            Account: {
+                Connector: 'DummyAccount',
+                Settings: {},
+            },
+        });
 
-        const manifest = response.data as {
-            version: string;
-            url: string;
-            message: string;
-        };
+        // Load and run agent
+        const agentData = JSON.parse(fs.readFileSync(options.agent, 'utf-8'));
+        agentData.teamId = 'default';
 
-        // Compare versions by splitting into components
-        const currentParts = currentVersion.split('.').map(p => parseInt(p, 10));
-        const manifestParts = manifest.version.split('.').map(p => parseInt(p, 10));
+        const output = await AgentProcess.load(agentData).run(process.argv);
+        console.log(util.inspect(output?.data, { showHidden: false, depth: null, colors: true }));
 
-        let hasNewVersion = false;
-        for (let i = 0; i < Math.max(currentParts.length, manifestParts.length); i++) {
-            const current = currentParts[i] || 0;
-            const manifest = manifestParts[i] || 0;
-            if (manifest > current) {
-                hasNewVersion = true;
-                break;
-            } else if (manifest < current) {
-                break;
-            }
-        }
-
-        if (hasNewVersion && manifest.message && manifest.url) {
-            console.log('\n=== New Version Available ===');
-            console.log(manifest.message);
-            console.log(`\nDownload the new version from: ${manifest.url}\n`);
-        }
-
+        await checkNewVersion();
     } catch (error) {
-        // Silently handle errors since version check is non-critical
-        //console.debug('Failed to check for new version:', error);
+        console.error('Error:', error.message);
+
+        process.exit(1);
     }
 }
+
+main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+});
