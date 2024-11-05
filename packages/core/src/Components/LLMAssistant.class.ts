@@ -13,7 +13,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -116,12 +116,7 @@ export default class LLMAssistant extends Component {
 
             if (isStandardLLM) {
                 const provider = LLMRegistry.getProvider(model);
-                const vaultConnector = ConnectorService.getVaultConnector();
-                const apiKey = await vaultConnector
-                    .user(AccessCandidate.agent(agent.id))
-                    .get(provider)
-                    .catch(() => '');
-                AccessCandidate.agent(agent.id);
+                const apiKey = await VaultHelper.getAgentKey(provider, agent?.id);
                 maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
             } else {
                 const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
