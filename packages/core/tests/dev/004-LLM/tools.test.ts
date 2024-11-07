@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
@@ -353,7 +352,7 @@ async function runMultipleToolRequestTestCases(model: string) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
@@ -377,7 +376,7 @@ for (const model of models) {
  */
 const modelsWithMultipleToolsResponse = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-sonnet-20240620' },
+    { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
 ];
 for (const model of modelsWithMultipleToolsResponse) {

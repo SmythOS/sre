@@ -18,7 +18,7 @@ const console = Logger('AnthropicAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-sonnet-20240620';
+const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for AnthropicAI';
 
 export class AnthropicAIConnector extends LLMConnector {

@@ -148,25 +148,34 @@ export const models = {
     },
 
     // AnthropicAI
-    'claude-3-opus': {
-        llm: 'AnthropicAI',
-        alias: 'claude-3-opus-20240229',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    'claude-3.5-haiku': {
+        llm: 'Claude',
+        alias: 'claude-3-5-haiku-latest',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot'],
+        tags: ['new'],
+    },
+    'claude-3-5-haiku-latest': {
+        llm: 'Claude',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: false,
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
     'claude-3.5-sonnet': {
         llm: 'AnthropicAI',
-        alias: 'claude-3-5-sonnet-20240620',
+        alias: 'claude-3-5-sonnet-latest',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
-    'claude-3-sonnet': {
-        llm: 'AnthropicAI',
-        alias: 'claude-3-sonnet-20240229',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
-        tags: ['legacy'],
+    'claude-3-5-sonnet-latest': {
+        llm: 'Claude',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: false,
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
-    'claude-3-haiku': {
+    'claude-3-opus': {
         llm: 'AnthropicAI',
-        alias: 'claude-3-haiku-20240307',
+        alias: 'claude-3-opus-20240229',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-opus-20240229': {
@@ -176,12 +185,11 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     },
-    'claude-3-5-sonnet-20240620': {
+    'claude-3-sonnet': {
         llm: 'AnthropicAI',
-        tokens: 2048,
-        completionTokens: 2048,
-        enabled: false,
-        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
+        alias: 'claude-3-sonnet-20240229',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+        tags: ['legacy'],
     },
     'claude-3-sonnet-20240229': {
         llm: 'AnthropicAI',
@@ -189,6 +197,11 @@ export const models = {
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
+    },
+    'claude-3-haiku': {
+        llm: 'AnthropicAI',
+        alias: 'claude-3-haiku-20240307',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-haiku-20240307': {
         llm: 'AnthropicAI',
