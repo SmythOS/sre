@@ -184,7 +184,6 @@ export class OpenAIConnector extends LLMConnector {
                 size,
                 quality,
                 n,
-                response_format: responseFormat,
             };
 
             if (style) {
@@ -193,8 +192,12 @@ export class OpenAIConnector extends LLMConnector {
 
             const apiKey = params?.credentials?.apiKey;
 
+            if (!apiKey) {
+                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
+            }
+
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                apiKey: apiKey,
                 baseURL: params?.baseURL,
             });
 
