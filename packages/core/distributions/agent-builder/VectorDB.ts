@@ -23,8 +23,9 @@ export class VectorDB {
         this.idCounter = 0;
     }
     private async getEmbedding(text: string): Promise<number[]> {
-        const response = await axios.post(
-            'https://api.openai.com/v1/embeddings',
+        try {
+            const response = await axios.post(
+                'https://api.openai.com/v1/embeddings',
             {
                 model: 'text-embedding-ada-002',
                 input: text,
@@ -35,8 +36,12 @@ export class VectorDB {
                     'Content-Type': 'application/json',
                 },
             }
-        );
-        return response.data.data[0].embedding;
+            );
+            return response.data.data[0].embedding;
+        } catch (error) {
+            console.error('Error getting embedding:', error?.message);
+            return [];
+        }
     }
 
     private cosineSimilarity(a: number[], b: number[]): number {
@@ -49,6 +54,10 @@ export class VectorDB {
     async upsert(data: string | any, metadata?: any): Promise<number> {
         const strData = typeof data == 'string' ? data : JSON.stringify(data);
         const embedding = await this.getEmbedding(strData);
+        if (embedding.length === 0) {
+            console.warn('Embedding is empty');
+            return -1;
+        }
         const id = this.idCounter++;
         this.vectors.push({ id, vector: embedding });
         if (metadata) {

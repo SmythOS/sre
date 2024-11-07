@@ -30,6 +30,8 @@ import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
+import CLIInput from './CLIInput.class';
+
 
 const components = {
     Component: new Component(),

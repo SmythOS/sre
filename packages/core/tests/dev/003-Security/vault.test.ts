@@ -17,6 +17,9 @@ const SREInstance = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+    },
 });
 
 describe('Vault Tests', () => {

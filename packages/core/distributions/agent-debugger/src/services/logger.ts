@@ -1,8 +1,6 @@
 import 'dotenv/config';
 import winston from 'winston';
 import Transport from 'winston-transport';
-import { parseCLIArgs } from '../utils';
-import config from '@sre/config';
 
 winston.addColors({
     error: 'red',
@@ -11,24 +9,13 @@ winston.addColors({
     debug: 'blue',
 });
 
-const logLevelMap = {
-    min: 'info',
-    full: 'debug',
-};
-
-let logLevel = () => {
-    let val = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
-    if (logLevelMap[val]) val = logLevelMap[val];
-    return !['none', 'error', 'warn', 'info', 'debug'].includes(val) ? 'none' : val;
-};
-
 // Retrieve the DEBUG environment variable and split it into an array of namespaces
-const namespaces = (config.env.LOG_FILTER || '').split(',');
+const namespaces = (process.env.LOG_FILTER || '').split(',');
 
 // Create a Winston format that filters messages based on namespaces
 const namespaceFilter = winston.format((info) => {
     // If DEBUG is not set, log everything
-    if (!config.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
+    if (!process.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
         return info;
     }
     return false; // Filter out messages that do not match the namespace
@@ -56,7 +43,7 @@ class ArrayTransport extends Transport {
     }
 }
 
-export class LogHelper {
+export class Logger {
     public startTime = Date.now();
     public get output() {
         return Array.isArray(this.data) ? this.data.join('\n') : undefined;
@@ -64,7 +51,11 @@ export class LogHelper {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {}
+    constructor(
+        private _logger,
+        public data,
+        private labels: { [key: string]: any },
+    ) {}
 
     public log(...args) {
         this._logger.log('info', formatLogMessage(...args), this.labels);
@@ -87,11 +78,6 @@ export class LogHelper {
 
         this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack });
     }
-
-    public close() {
-        this._logger.clear();
-        this._logger.close();
-    }
 }
 
 const colorizedFormat = winston.format.printf((info) => {
@@ -100,66 +86,17 @@ const colorizedFormat = winston.format.printf((info) => {
 
 const MAX_LOG_MESSAGE_LENGTH = 500;
 
-function redactLogMessage(logMessage: string) {
-    if (config.env.NODE_ENV !== 'PROD') return logMessage; //only redact logs in PROD
-    if (logMessage.length > 500) {
-        return logMessage;
-    }
-
-    const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
-    const obfuscatedString = ' [!! SmythOS::REDACTED_DATA !!] ';
-
-    // Iterate through the sensitive words list and replace sensitive data in the log message
-
-    for (const sensitiveWord of sensitiveWords) {
-        // Create a regular expression to find the sensitive word followed by any character (non-greedy) until a space, newline, or separator is found.
-        const regex = new RegExp(`(${sensitiveWord})((?:[^\\n]{0,29}(?=\\n))|(?:[^\\n]{30}\\S*))`, 'gmi');
-
-        // Replace sensitive data with the obfuscated string
-        logMessage = logMessage.replace(regex, `$1${obfuscatedString}`);
-    }
-
-    return logMessage;
-}
-// function redactLogMessage(logMessage: string, beforeChars: number = 15, afterChars: number = 30): string {
-//     const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
-//     const obfuscatedString = ' [!!!REDACTED!!!] ';
-
-//     // Iterate through the sensitive words list and replace sensitive data in the log message
-//     for (const sensitiveWord of sensitiveWords) {
-//         // Escape special regex characters in the sensitive word
-//         const escapedWord = sensitiveWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-//         // Create a regular expression to match characters before and after the sensitive word
-//         const regex = new RegExp(`(.{0,${beforeChars}})(${escapedWord})(.{0,${afterChars}})`, 'gmi');
-
-//         // Replace the entire match with the obfuscated string
-//         logMessage = logMessage.replace(regex, obfuscatedString);
-//     }
-
-//     return logMessage;
-// }
-
 function createBaseLogger(memoryStore?: any[]) {
     const logger = winston.createLogger({
         //level: 'info', // log level
 
         format: winston.format.combine(
-            winston.format((info) => {
-                if (config.env.LOG_LEVEL == 'none' || logLevel() == 'none' || logLevel() == '') return false; // skip logging if log level is none
-
-                // Apply redaction to the log message
-                //info.message = redactSecrets(info.message, sensitiveOptions);
-
-                info.message = redactLogMessage(info.message);
-                return info;
-            })(),
             winston.format.timestamp(),
             winston.format.errors({
                 stack: true,
             }),
             winston.format.splat(),
-            winston.format.json()
+            winston.format.json(),
         ),
 
         transports: [
@@ -169,14 +106,14 @@ function createBaseLogger(memoryStore?: any[]) {
                 format: winston.format.combine(
                     winston.format.printf((info) => {
                         let message = info.message;
-                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
-                    })
+                    }),
                 ),
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
             new winston.transports.Console({
-                level: logLevel(),
+                level: process.env.LOG_LEVEL || 'info',
                 format: winston.format.combine(
                     namespaceFilter,
                     winston.format.printf((info) => {
@@ -184,10 +121,10 @@ function createBaseLogger(memoryStore?: any[]) {
                         const ns = winston.format.colorize().colorize(info.level, `${info.level}${module}`);
 
                         let message = info.message;
-                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
-                    })
+                    }),
                 ),
 
                 //handleExceptions: true,
@@ -200,7 +137,7 @@ function createBaseLogger(memoryStore?: any[]) {
             new ArrayTransport({
                 level: 'debug',
                 logs: memoryStore,
-            })
+            }),
         );
     }
 
@@ -225,11 +162,11 @@ function createLabeledLogger(labels: { [key: string]: any }, memoryStore?: any[]
 
     _logger.defaultMeta = labels;
 
-    const logger = new LogHelper(_logger, memoryStore, labels);
+    const logger = new Logger(_logger, memoryStore, labels);
 
     return logger;
 }
 
-export function Logger(module: string, withMemoryStore = false) {
+export function createLogger(module: string, withMemoryStore = false) {
     return createLabeledLogger({ module }, withMemoryStore ? [] : undefined);
 }

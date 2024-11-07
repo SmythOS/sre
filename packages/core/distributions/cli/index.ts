@@ -1,61 +1,106 @@
-import dotenv from 'dotenv';
-dotenv.config();
-process.env.LOG_LEVEL = 'none';
+import 'dotenv/config';
+import { Command, Option } from 'commander';
+import axios from 'axios';
+import os from 'os';
+import path from 'path';
+import * as fs from 'fs';
+import * as util from 'util';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-import { AgentRequest, config, AgentProcess, SmythRuntime, ConnectorService, CLIAgentDataConnector } from '../../src/index.ts';
+import { AgentProcess, config, SmythRuntime } from '../../src/index.js';
+import { checkNewVersion, validateFilePath } from './utils.js';
 
-const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: process.env.AWS_S3_BUCKET_NAME || '',
-            region: process.env.AWS_S3_REGION || '',
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Account: {
-        Connector: 'DummyAccount',
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-    AgentData: {
-        Connector: 'CLI',
-    },
-});
+// Get package version from package.json
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const program = new Command();
+
+program
+    .name('smyth')
+    .description('Smyth CLI tool for agent management')
+    .version('0.0.1', '-v, --version', 'Output the current version')
+    .addOption(new Option('-d, --debug <level>', 'Log level').choices(['min', 'full']))
+    .requiredOption('--agent <path>', 'Path to the agent file', validateFilePath('Agent'))
+    .requiredOption('--endpoint <name>', 'Call endpoint')
+    .addOption(new Option('--post <params>', 'Make a POST call').conflicts(['get']))
+    .addOption(new Option('--get <params>', 'Make a GET call').conflicts(['post']))
+    .option('--vault <path>', 'Path to the vault file', validateFilePath('Vault'))
+    .option('--vault-key <path>', 'Path to the vault key file', validateFilePath('Vault Key'))
+    .option('--data-path <path>', 'Path to store data');
+
+program.parse();
+
+const options = program.opts();
+
+if (!options.post && !options.get) {
+    console.error('Error: Either --post or --get must be specified');
+    process.exit(1);
+}
+
+// Setup environment
+
+const isVerboseDebug = options.debug == 'full';
+if (isVerboseDebug) {
+    process.env.LOG_LEVEL = 'debug';
+    config.env.LOG_LEVEL = 'debug';
+} else if (options.debug == 'min') {
+    process.env.LOG_LEVEL = 'info';
+    config.env.LOG_LEVEL = 'info';
+}
+
+// Setup data path
+const dataPath = options.dataPath || path.join(os.tmpdir(), '/.smyth');
+if (!fs.existsSync(dataPath)) {
+    isVerboseDebug && console.log(`Creating data directory: ${dataPath}`);
+    fs.mkdirSync(dataPath, { recursive: true });
+}
+process.env.DATA_PATH = dataPath;
 
 async function main() {
     try {
-        const cliConnector = ConnectorService.getCLIConnector();
-        console.log('CLI Connector:', cliConnector.params);
-        const agentDataConnector = ConnectorService.getAgentDataConnector();
-        const data = await agentDataConnector.getAgentData('test', '1.0');
+        // Initialize runtime
+        SmythRuntime.Instance.init({
+            CLI: {
+                Connector: 'CLI',
+            },
+            Storage: {
+                Connector: 'S3',
+                Settings: {},
+            },
+            Vault: {
+                Connector: 'JSONFileVault',
+                Settings: {
+                    file: options.vault,
+                    fileKey: options.vaultKey,
+                },
+            },
+            AgentData: {
+                Connector: 'CLI',
+            },
+            Account: {
+                Connector: 'DummyAccount',
+                Settings: {},
+            },
+        });
 
-        setTimeout(() => {
-            console.log('============ Debug Off ============');
-            config.env.LOG_LEVEL = 'none';
-        }, 1000);
-        //console.log(data);
-        //const request = new AgentRequest({ method: 'POST', path: '/api/say', body: { message: 'Hello World' } });
-        //const request = new AgentRequest(process.argv);
-        //const result = await sre.runAgent('test', data, request);
+        // Load and run agent
+        const agentData = JSON.parse(fs.readFileSync(options.agent, 'utf-8'));
+        agentData.teamId = 'default';
 
-        const result = await AgentProcess.load(data).run(process.argv);
+        const output = await AgentProcess.load(agentData).run(process.argv);
+        console.log(util.inspect(output?.data, { showHidden: false, depth: null, colors: true }));
 
-        console.log('>>>>>>>>>>>>>>>>> Result \n', JSON.stringify(result, null, 2));
+        await checkNewVersion();
     } catch (error) {
-        console.error(error);
-    } finally {
-        await sre._stop();
+        console.error('Error:', error.message);
+
+        process.exit(1);
     }
 }
 
-console.log('Starting CLI');
-main();
+main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+});
