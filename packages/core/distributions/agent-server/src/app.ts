@@ -48,6 +48,7 @@ const sre = SmythRuntime.Instance.init({
             smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
+
     Vault: {
         Connector: 'SmythVault',
         Settings: {
@@ -57,6 +58,20 @@ const sre = SmythRuntime.Instance.init({
             oAuthResource: process.env.LOGTO_API_RESOURCE,
             oAuthScope: '',
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
+        },
+    },
+
+    ManagedVault: {
+        Connector: 'SmythManagedVault',
+        Id: 'oauth',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            vaultName: 'oauth',
         },
     },
 

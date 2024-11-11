@@ -38,7 +38,13 @@
         "build:agent-debugger:dev:esbundle": "cross-env BUILD=dev FORMAT=esbundle rollup -c distributions/agent-debugger/rollup.config.js",
         "build:agent-debugger:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/agent-debugger/rollup.config.js",
         "build:agent-debugger:dev:exe": "pkg ./distributions/agent-debugger/dist/agent-debugger.dev.js --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/agent-builder/dist",
-        "build:agent-debugger:dev": "npm run build:agent-debugger:dev:cjs && npm run build:agent-debugger:dev:exe"
+        "build:agent-debugger:dev": "npm run build:agent-debugger:dev:cjs && npm run build:agent-debugger:dev:exe",
+        "build:embodiments-server:dev:es": "cross-env BUILD=dev rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:esbundle": "cross-env BUILD=dev FORMAT=esbundle rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:exe": "pkg ./distributions/embodiments-server/dist/embodiments-server.dev.js --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/agent-builder/dist",
+        "build:embodiments-server:dev": "npm run build:embodiments-server:dev:cjs && npm run build:embodiments-server:dev:exe",
+        "start:embodiments-server": "npm run build:embodiments-server:dev:es && node ./distributions/embodiments-server/dist/embodiments-server.dev.js"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -102,6 +108,7 @@
         "dayjs": "^1.11.11",
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
+        "express-async-handler": "^1.2.0",
         "file-type": "^19.0.0",
         "gpt-tokenizer": "^2.2.1",
         "groq-sdk": "^0.6.1",
