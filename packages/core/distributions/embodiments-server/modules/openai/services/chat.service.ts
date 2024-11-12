@@ -61,8 +61,24 @@ class OpenAIChatService {
                     choices: [{ index: 0, delta: { content }, finish_reason: null }],
                     system_fingerprint: undefined,
                 };
-                options?.include_status && this.randomlyEmitStatus(readable, completionId, now, params); // for PoC
+                // options?.include_status && this.randomlyEmitStatus(readable, completionId, now, params); // for PoC
                 readable.push(`data: ${JSON.stringify(preparedContent)}\n\n`);
+            });
+
+            conv.on('beforeToolCall', (info) => {
+                console.log('Before Tool Call:', info);
+                // tool name info?.tool?.name
+                const toolStatusChunk: OpenAI.Chat.Completions.ChatCompletionChunk & {
+                    choices: { index: number; delta: { content: string; status: string }; finish_reason: string | null }[];
+                } = {
+                    id: completionId,
+                    object: 'chat.completion.chunk',
+                    created: now,
+                    model: params.model,
+                    choices: [{ index: 0, delta: { content: '', status: info?.tool?.name }, finish_reason: null }],
+                    system_fingerprint: undefined,
+                };
+                readable.push(`data: ${JSON.stringify(toolStatusChunk)}\n\n`);
             });
 
             conv.on('end', () => {

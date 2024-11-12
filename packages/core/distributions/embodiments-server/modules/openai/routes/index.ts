@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { chatService } from '../services/chat.service';
 import { Readable } from 'stream';
-
+import ApiError from '../../../utils/apiError';
+import { validate } from '../../../middlewares/validate.middleware';
+import { chatValidations } from '../validations/openai.validation';
 const router = Router();
 
-router.post('/:agentId/api/chat/completions', async (req, res) => {
+router.post('/:agentId/api/chat/completions', validate(chatValidations.chatCompletion), async (req, res) => {
     try {
         const agentId = req.params.agentId;
         const result = await chatService.chatCompletion(agentId, req.body, req.query);
@@ -29,7 +31,7 @@ router.post('/:agentId/api/chat/completions', async (req, res) => {
         }
     } catch (error) {
         console.error('Chat completion error:', error);
-        res.status(500).json({ error: error.message });
+        throw new ApiError(500, error.message);
     }
 });
 
