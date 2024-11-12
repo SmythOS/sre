@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
+import { delay } from '@sre/utils/index';
 
 /*
  * This file contains tests for the `toolRequest` and `streamRequest` functions.
@@ -269,44 +270,49 @@ async function runStreamRequestTestCases(model: string) {
     );
 }
 
-async function runMultipleToolRequestTestCases(model: string) {
+async function runMultipleToolRequestTestCases(model: string, provider?: string) {
     const llmInference: LLMInference = await LLMInference.getInstance(model);
+    let toolDefinitions;
+    let toolsConfig;
+    let params;
 
-    const toolDefinitions = [
-        {
-            name: 'get_weather',
-            description: 'Get the current weather',
-            properties: {
-                location: { type: 'string' },
-            },
-            requiredFields: ['location'],
-        },
-        {
-            name: 'get_population',
-            description: 'Get the population of a city',
-            properties: {
-                city: { type: 'string' },
-            },
-            requiredFields: ['city'],
-        },
-    ];
-
-    const toolsConfig = llmInference.connector.formatToolsConfig({
-        type: 'function',
-        toolDefinitions,
-        toolChoice: 'auto',
-    });
-
-    const params = {
-        messages: [
+    beforeEach(() => {
+        toolDefinitions = [
             {
-                role: 'user',
-                content:
-                    "I need two pieces of information: 1) What's the current weather in New York City? 2) What's the exact population of New York City? Please use the appropriate tools to answer both questions accurately.",
+                name: 'get_weather',
+                description: 'Get the current weather',
+                properties: {
+                    location: { type: 'string' },
+                },
+                requiredFields: ['location'],
             },
-        ],
-        toolsConfig,
-    };
+            {
+                name: 'get_population',
+                description: 'Get the population of a city',
+                properties: {
+                    city: { type: 'string' },
+                },
+                requiredFields: ['city'],
+            },
+        ];
+
+        toolsConfig = llmInference.connector.formatToolsConfig({
+            type: 'function',
+            toolDefinitions,
+            toolChoice: 'auto',
+        });
+
+        params = {
+            messages: [
+                {
+                    role: 'user',
+                    content:
+                        "I need two pieces of information in a single response: 1) What's the current weather in New York City? 2) What's the exact population of New York City? Please ensure both tools are used simultaneously to provide a comprehensive answer.",
+                },
+            ],
+            toolsConfig,
+        };
+    });
 
     it(
         'should return multiple tools info with toolRequest()',
@@ -326,6 +332,11 @@ async function runMultipleToolRequestTestCases(model: string) {
     it(
         'should return multiple tools info with streamRequest()',
         async () => {
+            // wait 10 seconds to prevent error like "Request was rejected due to request rate limiting..." for TogetherAI
+            if (provider === 'TogetherAI') {
+                await delay(10000);
+            }
+
             const stream = await llmInference.streamRequest(params, agent);
             expect(stream).toBeInstanceOf(EventEmitter);
 
@@ -346,7 +357,7 @@ async function runMultipleToolRequestTestCases(model: string) {
             expect(toolsData[0].name).toBe('get_weather');
             expect(toolsData[1].name).toBe('get_population');
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 }
 
@@ -355,7 +366,7 @@ const models = [
     { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
 ];
 
 for (const model of models) {
@@ -381,6 +392,6 @@ const modelsWithMultipleToolsResponse = [
 ];
 for (const model of modelsWithMultipleToolsResponse) {
     describe(`Multiple Tools Request Tests: ${model.provider} (${model.id})`, async () => {
-        await runMultipleToolRequestTestCases(model.id);
+        await runMultipleToolRequestTestCases(model.id, model.provider);
     });
 }

@@ -149,13 +149,13 @@ export const models = {
 
     // AnthropicAI
     'claude-3.5-haiku': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         alias: 'claude-3-5-haiku-latest',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot'],
         tags: ['new'],
     },
     'claude-3-5-haiku-latest': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -167,7 +167,7 @@ export const models = {
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-5-sonnet-latest': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -497,6 +497,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has "```json...```" with JSON response)
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Austism/chronos-hermes-13b': {
         llm: 'TogetherAI',
@@ -504,6 +505,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Meta
@@ -514,6 +516,7 @@ export const models = {
         keyOptions: { tokens: 128000, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
         llm: 'TogetherAI',
@@ -522,6 +525,7 @@ export const models = {
         keyOptions: { tokens: 128000, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo': {
         llm: 'TogetherAI',
@@ -530,6 +534,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3-8B-Instruct-Turbo': {
         llm: 'TogetherAI',
@@ -538,6 +543,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3-70B-Instruct-Turbo': {
         llm: 'TogetherAI',
@@ -546,6 +552,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3-8B-Instruct-Lite': {
         llm: 'TogetherAI',
@@ -554,6 +561,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Meta-Llama-3-70B-Instruct-Lite': {
         llm: 'TogetherAI',
@@ -562,6 +570,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['LLMAssistant', 'PromptGenerator'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/CodeLlama-13b-Instruct': {
         // ! DEPRECATED: will be removed (replace with codellama/CodeLlama-13b-Instruct-hf)
@@ -569,6 +578,7 @@ export const models = {
         tokens: 1024,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-13b-Instruct-hf': {
         llm: 'TogetherAI',
@@ -576,6 +586,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/CodeLlama-34b-Instruct': {
         // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-34b-Instruct-hf)
@@ -583,6 +594,7 @@ export const models = {
         tokens: 1024,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-34b-Instruct-hf': {
         llm: 'TogetherAI',
@@ -590,6 +602,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-70b-Instruct-hf': {
         llm: 'TogetherAI',
@@ -598,6 +611,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/CodeLlama-7b-Instruct': {
         // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-7b-Instruct-hf)
@@ -605,6 +619,7 @@ export const models = {
         tokens: 1024,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-7b-Instruct-hf': {
         llm: 'TogetherAI',
@@ -612,13 +627,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 16384, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-    },
-    'togethercomputer/llama-2-70b-chat': {
-        // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-70b-chat-hf)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 4096, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Llama-2-70b-chat-hf': {
         llm: 'TogetherAI',
@@ -626,13 +635,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-    },
-    'togethercomputer/llama-2-13b-chat': {
-        // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-13b-chat-hf)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 4096, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Llama-2-13b-chat-hf': {
         llm: 'TogetherAI',
@@ -640,13 +643,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    },
-    'togethercomputer/llama-2-7b-chat': {
-        // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-7b-chat-hf)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 4096, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Llama-2-7b-chat-hf': {
         llm: 'TogetherAI',
@@ -654,6 +651,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Llama-3-8b-chat-hf': {
         llm: 'TogetherAI',
@@ -662,6 +660,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'meta-llama/Llama-3-70b-chat-hf': {
         llm: 'TogetherAI',
@@ -670,21 +669,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
-    },
-
-    'DiscoResearch/DiscoLM-mixtral-8x7b-v2': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 32768, enabled: true },
-    },
-    'togethercomputer/falcon-40b-instruct': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/falcon-7b-instruct': {
         llm: 'TogetherAI',
@@ -692,22 +677,8 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
-    'togethercomputer/GPT-NeoXT-Chat-Base-20B': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
-    },
-    'togethercomputer/Llama-2-7B-32K-Instruct': {
-        // ! DEPRECATED: will be removed
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 32768, enabled: true },
-    },
-
     // mistralai
     'mistralai/Mistral-7B-Instruct-v0.1': {
         llm: 'TogetherAI',
@@ -715,6 +686,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'mistralai/Mistral-7B-Instruct-v0.2': {
         llm: 'TogetherAI',
@@ -722,6 +694,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'mistralai/Mistral-7B-Instruct-v0.3': {
         llm: 'TogetherAI',
@@ -730,6 +703,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'mistralai/Mixtral-8x7B-Instruct-v0.1': {
         llm: 'TogetherAI',
@@ -737,6 +711,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'mistralai/Mixtral-8x22B-Instruct-v0.1': {
         llm: 'TogetherAI',
@@ -745,6 +720,7 @@ export const models = {
         keyOptions: { tokens: 65536, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     'Gryphe/MythoMax-L2-13b': {
@@ -753,6 +729,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // NousResearch
@@ -762,6 +739,7 @@ export const models = {
         tokens: 1024,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Capybara-7B-V1p9': {
         llm: 'TogetherAI',
@@ -769,6 +747,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-2-Mistral-7B-DPO': {
         llm: 'TogetherAI',
@@ -777,6 +756,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
         llm: 'TogetherAI',
@@ -785,6 +765,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT': {
         llm: 'TogetherAI',
@@ -793,6 +774,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-2-Yi-34B': {
         llm: 'TogetherAI',
@@ -801,6 +783,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-llama-2-7b': {
         llm: 'TogetherAI',
@@ -808,6 +791,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Hermes-Llama2-13b': {
         llm: 'TogetherAI',
@@ -815,6 +799,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // OpenChat
@@ -824,6 +809,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Teknium
@@ -833,6 +819,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'teknium/OpenHermes-2p5-Mistral-7B': {
         llm: 'TogetherAI',
@@ -840,6 +827,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     'garage-bAInd/Platypus2-70B-instruct': {
@@ -848,27 +836,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-    },
-    'togethercomputer/Pythia-Chat-Base-7B-v0.16': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
-    },
-    'togethercomputer/Qwen-7B-Chat': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 8192, enabled: true },
-    },
-    'Qwen/Qwen2-72B-Instruct': {
-        // ! DEPRECATED: will be removed (404 - not found)
-        llm: 'TogetherAI',
-        tokens: 32768,
-        enabled: false,
-        keyOptions: { tokens: 32768, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'microsoft/WizardLM-2-8x22B': {
         llm: 'TogetherAI',
@@ -878,28 +846,7 @@ export const models = {
         keyOptions: { tokens: 65536, completionTokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
-    },
-
-    'togethercomputer/RedPajama-INCITE-Chat-3B-v1': {
-        // ! DEPRECATED: will be removed (Weird response)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
-    },
-    'togethercomputer/RedPajama-INCITE-7B-Chat': {
-        // ! DEPRECATED: will be removed (Weird response)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
-    },
-    'upstage/SOLAR-0-70b-16bit': {
-        // ! DEPRECATED: will be removed (404 - not found) (replaced with upstage/SOLAR-10.7B-Instruct-v1.0)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 4096, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
     'upstage/SOLAR-10.7B-Instruct-v1.0': {
         llm: 'TogetherAI',
@@ -907,6 +854,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/StripedHyena-Nous-7B': {
         llm: 'TogetherAI',
@@ -914,6 +862,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'lmsys/vicuna-7b-v1.5': {
         llm: 'TogetherAI',
@@ -921,6 +870,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'lmsys/vicuna-13b-v1.5': {
         llm: 'TogetherAI',
@@ -928,23 +878,10 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
-    },
-    'lmsys/vicuna-13b-v1.5-16k': {
-        // ! DEPRECATED: will be removed (not exists in models page)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 16384, enabled: true },
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Allen AI
-    // ! Response it is not JSON and have unnecessary information
-    /* 'allenai/OLMo-7B-Instruct': {
-          llm: 'TogetherAI',
-          tokens: 1024,
-          enabled: false,
-          keyOptions: { tokens: 2048, enabled: true },
-      }, */
     'allenai/OLMo-7B-Twin-2T': {
         llm: 'TogetherAI',
         tokens: 1024,
@@ -952,6 +889,7 @@ export const models = {
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'allenai/OLMo-7B': {
         llm: 'TogetherAI',
@@ -960,6 +898,7 @@ export const models = {
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Qwen
@@ -970,6 +909,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-1.8B-Chat': {
         llm: 'TogetherAI',
@@ -978,6 +918,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-4B-Chat': {
         llm: 'TogetherAI',
@@ -986,6 +927,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-7B-Chat': {
         llm: 'TogetherAI',
@@ -994,6 +936,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-14B-Chat': {
         llm: 'TogetherAI',
@@ -1002,6 +945,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-32B-Chat': {
         llm: 'TogetherAI',
@@ -1010,6 +954,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-72B-Chat': {
         llm: 'TogetherAI',
@@ -1018,6 +963,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Qwen/Qwen1.5-110B-Chat': {
         llm: 'TogetherAI',
@@ -1026,6 +972,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // DeepSeek
@@ -1036,6 +983,7 @@ export const models = {
         keyOptions: { tokens: 16384, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'deepseek-ai/deepseek-llm-67b-chat': {
         llm: 'TogetherAI',
@@ -1044,6 +992,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Google
@@ -1054,6 +1003,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'google/gemma-7b-it': {
         llm: 'TogetherAI',
@@ -1062,6 +1012,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'google/gemma-2-9b-it': {
         llm: 'TogetherAI',
@@ -1070,6 +1021,7 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'google/gemma-2-27b-it': {
         llm: 'TogetherAI',
@@ -1078,16 +1030,10 @@ export const models = {
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Undi95
-    'Undi95/ReMM-SLERP-L2-13B': {
-        // ! DEPRECATED: will be removed (always have empty response)
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 4096, enabled: true },
-    },
     'Undi95/Toppy-M-7B': {
         llm: 'TogetherAI',
         tokens: 1024,
@@ -1095,6 +1041,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // Others
@@ -1105,6 +1052,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'databricks/dbrx-instruct': {
         llm: 'TogetherAI',
@@ -1113,6 +1061,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Open-Orca/Mistral-7B-OpenOrca': {
         llm: 'TogetherAI',
@@ -1120,6 +1069,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'snorkelai/Snorkel-Mistral-PairRM-DPO': {
         llm: 'TogetherAI',
@@ -1128,6 +1078,7 @@ export const models = {
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has some other text)
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'Snowflake/snowflake-arctic-instruct': {
         llm: 'TogetherAI',
@@ -1136,6 +1087,7 @@ export const models = {
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
         tags: ['new'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'togethercomputer/alpaca-7b': {
         llm: 'TogetherAI',
@@ -1143,6 +1095,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
     'WizardLM/WizardLM-13B-V1.2': {
         llm: 'TogetherAI',
@@ -1150,6 +1103,7 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
+        baseURL: 'https://api.together.xyz/v1',
     },
 
     // We do not get the exact token information for Dalle models, so use the maximum possible values

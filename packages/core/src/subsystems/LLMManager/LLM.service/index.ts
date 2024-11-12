@@ -7,7 +7,6 @@ import { OpenAIConnector } from './connectors/OpenAI.class';
 import { GoogleAIConnector } from './connectors/GoogleAI.class';
 import { AnthropicAIConnector } from './connectors/AnthropicAI.class';
 import { GroqConnector } from './connectors/Groq.class';
-import { TogetherAIConnector } from './connectors/TogetherAI.class';
 import { BedrockConnector } from './connectors/Bedrock.class';
 import { VertexAIConnector } from './connectors/VertexAI.class';
 
@@ -19,7 +18,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'GoogleAI', GoogleAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'AnthropicAI', AnthropicAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Groq', GroqConnector);
-        ConnectorService.register(TConnectorService.LLM, 'TogetherAI', TogetherAIConnector);
+        ConnectorService.register(TConnectorService.LLM, 'TogetherAI', OpenAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Bedrock', BedrockConnector);
         ConnectorService.register(TConnectorService.LLM, 'VertexAI', VertexAIConnector);
     }
