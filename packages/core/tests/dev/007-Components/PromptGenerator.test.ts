@@ -63,7 +63,7 @@ const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDA
 
 describe('PromptGenerator Component - Echo', () => {
     it('should echo the prompt', async () => {
-        const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+        const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
         const data = JSON.parse(agentData);
 
         const agentProcess = AgentProcess.load(data);
@@ -90,7 +90,7 @@ function runTestCasesWithAgent(endpoint: string) {
         async () => {
             let error;
             try {
-                const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+                const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
                 const data = JSON.parse(agentData);
 
                 const agentProcess = AgentProcess.load(data);
@@ -120,18 +120,19 @@ function runTestCasesWithAgent(endpoint: string) {
     );
 }
 
-const llmProviderEndpoints = {
-    OpenAI: '/api/test-openai-model',
-    AnthropicAI: '/api/test-anthropicai-model',
-    GoogleAI: '/api/test-googleai-model',
-    Groq: '/api/test-groq-model',
-    TogetherAI: '/api/test-togetherai-model',
-    Bedrock: '/api/test-bedrock-model',
-    VertexAI: '/api/test-vertexai-model',
-};
+const llmProviderEndpoints = [
+    { provider: 'OpenAI', endpoint: '/api/test-openai-model' },
+    { provider: 'AnthropicAI', endpoint: '/api/test-anthropicai-model' },
+    { provider: 'GoogleAI', endpoint: '/api/test-googleai-model' },
+    { provider: 'Groq', endpoint: '/api/test-groq-model' },
+    { provider: 'TogetherAI', endpoint: '/api/test-togetherai-model' },
+    { provider: 'Bedrock', endpoint: '/api/test-bedrock-model' },
+    { provider: 'Bedrock', endpoint: '/api/test-bedrock-model-that-does-not-support-system' },
+    { provider: 'VertexAI', endpoint: '/api/test-vertexai-model' },
+];
 
-for (const [provider, endpoint] of Object.entries(llmProviderEndpoints)) {
-    describe(`PromptGenerator Component - ${provider} (${endpoint})`, () => {
-        runTestCasesWithAgent(endpoint);
+for (const endpoint of llmProviderEndpoints) {
+    describe(`PromptGenerator Component - ${endpoint.provider} (${endpoint.endpoint})`, () => {
+        runTestCasesWithAgent(endpoint.endpoint);
     });
 }

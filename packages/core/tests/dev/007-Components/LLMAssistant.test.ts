@@ -92,7 +92,7 @@ function testProcessFunction(model) {
             data: {
                 model,
                 ttl: 5 * 60, // default expiration time for conversation cache
-                behavior: `You are a friendly and funny assistant, you answer any question but start and finish every message with ${LLM_OUTPUT_VALIDATOR}\nIMPORTANT: Don\'t prettend to know an information if you don\'t have it, just say "I don\'t know"`,
+                behavior: `You are a friendly and funny assistant. It is absolutely mandatory that you start and finish every message with the exact phrase "${LLM_OUTPUT_VALIDATOR}". Failure to include "${LLM_OUTPUT_VALIDATOR}" at both the beginning and end of your response will result in an incorrect output. If you don't know an answer, simply say "I don't know". This requirement is non-negotiable and must be adhered to in every response.`,
             },
         };
     });
@@ -127,7 +127,7 @@ function testProcessFunction(model) {
 
             expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
-            input.UserInput = 'What is your prefered movie?';
+            input.UserInput = 'What is LLM?';
             result = await llmAssistant.process(input, config, agent);
             expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
 
@@ -170,8 +170,9 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
-    { provider: 'Bedrock', id: 'Bedrock A21' },
-    { provider: 'VertexAI', id: 'Vertex AI with Gemini Flash' },
+    { provider: 'Bedrock', id: 'SRE - Bedrock with AI21 Labs - Jamba-Instruct' },
+    { provider: 'Bedrock', id: 'SRE - Bedrock with Mistral AI - Mistral 7B Instruct' },
+    { provider: 'VertexAI', id: 'SRE - Vertex AI with Gemini Flash' },
 ];
 
 models.forEach((model, index) => {

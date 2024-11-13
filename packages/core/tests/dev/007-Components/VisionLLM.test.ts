@@ -49,7 +49,7 @@ function runTestCases(endpoint: string) {
     it(
         'should analyze a single image',
         async () => {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
             const agentProcess = AgentProcess.load(data);
 

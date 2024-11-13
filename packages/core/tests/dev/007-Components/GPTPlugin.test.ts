@@ -38,7 +38,7 @@ describe('GPTPlugin Component', () => {
     it('runs a simple OpenAPI Plugin request', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
             const agentProcess = AgentProcess.load(data);
@@ -65,7 +65,7 @@ describe('GPTPlugin Component', () => {
     it('should handle missing prompt', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
             const agentProcess = AgentProcess.load(data);
@@ -89,7 +89,7 @@ describe('GPTPlugin Component', () => {
     it('should use template string for descForModel', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
             data.components[0].data.descForModel = 'Description for {{Query}}';
 
@@ -115,7 +115,7 @@ describe('GPTPlugin Component', () => {
     it('should handle different input types', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
             const agentProcess = AgentProcess.load(data);
