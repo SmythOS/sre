@@ -1,13 +1,18 @@
 {
     "name": "smyth-runtime",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "description": "Smyth Runtime Environment",
-    "main": "rollup.config.js",
+    "main": "dist/index.dev.js",
+    "types": "dist/types/index.d.ts",
+    "files": [
+        "dist"
+    ],
     "type": "module",
     "scripts": {
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "build:dev": "cross-env BUILD=dev rollup -c",
+        "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
@@ -38,7 +43,13 @@
         "build:agent-debugger:dev:esbundle": "cross-env BUILD=dev FORMAT=esbundle rollup -c distributions/agent-debugger/rollup.config.js",
         "build:agent-debugger:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/agent-debugger/rollup.config.js",
         "build:agent-debugger:dev:exe": "pkg ./distributions/agent-debugger/dist/agent-debugger.dev.js --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/agent-builder/dist",
-        "build:agent-debugger:dev": "npm run build:agent-debugger:dev:cjs && npm run build:agent-debugger:dev:exe"
+        "build:agent-debugger:dev": "npm run build:agent-debugger:dev:cjs && npm run build:agent-debugger:dev:exe",
+        "build:embodiments-server:dev:es": "cross-env BUILD=dev rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:esbundle": "cross-env BUILD=dev FORMAT=esbundle rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:cjs": "cross-env BUILD=dev FORMAT=cjs rollup -c distributions/embodiments-server/rollup.config.js",
+        "build:embodiments-server:dev:exe": "pkg ./distributions/embodiments-server/dist/embodiments-server.dev.js --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/agent-builder/dist",
+        "build:embodiments-server:dev": "npm run build:embodiments-server:dev:cjs && npm run build:embodiments-server:dev:exe",
+        "start:embodiments-server": "npm run build:embodiments-server:dev:es && node ./distributions/embodiments-server/dist/embodiments-server.dev.js"
     },
     "author": "Alaa-eddine KADDOURI",
     "devDependencies": {
@@ -97,11 +108,12 @@
         "axios": "^1.7.2",
         "chokidar": "^4.0.1",
         "commander": "^11.1.0",
-        "cookie-parser": "^1.4.6",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dayjs": "^1.11.11",
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
+        "express-async-handler": "^1.2.0",
         "file-type": "^19.0.0",
         "gpt-tokenizer": "^2.2.1",
         "groq-sdk": "^0.6.1",

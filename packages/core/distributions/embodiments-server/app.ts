@@ -1,19 +1,18 @@
 import 'source-map-support/register.js';
 import express from 'express';
-import agentRouter from './routes/agent/router';
-import cors from './middlewares/cors.mw';
 import RateLimiter from './middlewares/RateLimiter.mw';
 import config from './config';
 import url from 'url';
 import path from 'path';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middlewares/error.mw';
-import { createLogger } from './services/logger';
+import { createLogger } from './utils/logger';
 
 import { Server } from 'http';
 import { startServers } from './management-router';
 
-import { SmythRuntime } from '../../../src/index.ts';
+import { SmythRuntime } from '../../src/index';
+import { routes } from './routes';
 
 const app = express();
 const port = parseInt(process.env.PORT || '3000');
@@ -59,9 +58,9 @@ const sre = SmythRuntime.Instance.init({
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
-
     ManagedVault: {
         Connector: 'SmythManagedVault',
+        Id: 'oauth',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -127,26 +126,27 @@ app.set('trust proxy', 1);
 app.use(cookieParser());
 
 app.use(RateLimiter);
-app.use(cors, express.json({ limit: '10mb' }));
-app.use(cors, express.urlencoded({ extended: false, limit: '100kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+
+app.get('/', (req, res) => {
+    res.send('Embodiments Server');
+});
 
 app.get('/health', (req, res) => {
-    let agent_domain = config.env.AGENT_DOMAIN;
-    if (config.env.AGENT_DOMAIN_PORT) agent_domain += `:${config.env.AGENT_DOMAIN_PORT}`;
     res.send({
         message: 'Health Check Complete',
         hostname: req.hostname,
-        agent_domain,
         success: true,
         node: port?.toString()?.substr(2),
-        name: 'agent-debugger',
+        name: 'embodiments-server',
         // version: pkg.version,
     });
 });
 
 //app.use(auth);
 
-app.use('/', agentRouter);
+app.use('/', routes);
 
 // @ts-ignore
 app.use(errorHandler);

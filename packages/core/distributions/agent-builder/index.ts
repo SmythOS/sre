@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 3055;
 const BASE_URL = `http://localhost:${port}`;
 
-console.log('SmythOS Chat Agent Builder v1.1.5');
+console.log('SmythOS Chat Agent Builder v1.2.5');
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -175,7 +175,7 @@ function overrideContextWindow(llmContext, conversationId) {
             const searchQuery = `${agentMetadata?.name || ''} ${agentMetadata?.description || ''} ${agentMetadata?.behavior || ''} ${userQuery}`;
             if (agentADL) {
                 //updating
-                const workflows = await searchWorkflows(searchQuery, 3) || [];
+                const workflows = (await searchWorkflows(searchQuery, 3)) || [];
                 let idx = 1;
                 agentADLTemplate += `\n\n========================\n# Examples of Workflows ADL from our Knowledge base\n`;
                 for (let wf of workflows) {
@@ -187,7 +187,6 @@ function overrideContextWindow(llmContext, conversationId) {
                     }
                 }
             } else {
-                
                 const templates = await searchTemplates(searchQuery, 1);
                 if (templates[0]?.metadata?.json) {
                     const tplADL = JSON2ADL(templates[0]?.metadata?.json);
@@ -212,6 +211,9 @@ ${agentADL}`;
                 selectedAgentADL = `===========================
 IMPORTANT : If the user asks a question about the whole agent please inform him that the agent is too big to fit in memory, Ask him to select the portion of agent that he needs to ask about.`;
             }
+        } else {
+            selectedAgentADL = `===========================
+# Current Agent ADL : No Agent present in the workspace, if the user asks a question about the current agent, inform him that you don't have the agent loaded.`;
         }
 
         let agentADLText = `${agentADLTemplate}\n\n${selectedAgentADL}`;
@@ -366,9 +368,25 @@ app.post('/api/chat/refresh', async (req, res) => {
     }
 });
 
-app.post('/api/chat', async (req, res) => {
+const storage = multer.memoryStorage(); // In-memory storage as files are processed immediately
+const upload = multer({ storage });
+app.post('/api/chat', upload.array('attachments'), async (req, res) => {
     try {
         const { message, agentData, selection, conversationId } = req.body;
+        const files = req['files']; // Array of uploaded files for processing
+
+        let attachmentsText = '';
+        if (files && files.length > 0) {
+            attachmentsText = '\n\n### ATTACHMENTS ###\n';
+            if (!conversations[conversationId].attachments) {
+                conversations[conversationId].attachments = {};
+            }
+            for (let file of files) {
+                console.log('Saving Attachment:', conversationId, file.originalname);
+                conversations[conversationId].attachments[file.originalname] = file;
+                attachmentsText += ` - ${file.originalname}\n`;
+            }
+        }
 
         if (!conversations[conversationId]?.conv) {
             await createConversation(conversationId);
@@ -382,21 +400,35 @@ app.post('/api/chat', async (req, res) => {
             }
         }
         conversations[conversationId].agentMetadata = {};
-        if (agentData && agentData?.components?.length > 0) {
+
+        let jsonAgentData;
+        try {
+            jsonAgentData = JSON.parse(agentData);
+        } catch (error) {
+            jsonAgentData = null;
+        }
+        if (jsonAgentData && jsonAgentData?.components?.length > 0) {
             conversations[conversationId].agentMetadata = {
-                description: agentData?.shortDescription || '',
-                name: agentData?.name || '',
-                behavior: agentData?.behavior || '',
+                description: jsonAgentData?.shortDescription || '',
+                name: jsonAgentData?.name || '',
+                behavior: jsonAgentData?.behavior || '',
             };
-            conversations[conversationId].agentData = JSON2ADL(agentData);
+            conversations[conversationId].agentData = JSON2ADL(jsonAgentData);
             conversations[conversationId].selection = '[SELECTION IS EMPTY]';
         }
-        if (selection && Array.isArray(selection)) {
+
+        let jsonSelection;
+        try {
+            jsonSelection = JSON.parse(selection);
+        } catch (error) {
+            jsonSelection = null;
+        }
+        if (jsonSelection && Array.isArray(jsonSelection)) {
             //conversations[reqId].selection = selection;
 
             try {
-                const components = agentData.components.filter((c) => selection.includes(c.id));
-                const connections = agentData.connections.filter((c) => selection.includes(c.sourceId) || selection.includes(c.targetId));
+                const components = jsonAgentData.components.filter((c) => jsonSelection.includes(c.id));
+                const connections = jsonAgentData.connections.filter((c) => jsonSelection.includes(c.sourceId) || jsonSelection.includes(c.targetId));
 
                 const newAgentJson = {
                     components,
@@ -424,7 +456,7 @@ app.post('/api/chat', async (req, res) => {
 
         const response = await promptConversation(
             conversationId,
-            message,
+            message + attachmentsText,
             (data) => {
                 //console.log('Content:', content);
                 res.write(JSON.stringify(data) + '¨');
@@ -450,6 +482,33 @@ app.post('/api/chat', async (req, res) => {
     } catch (error) {
         console.error('Error:', error);
         res.status(500).send('Server Error');
+    }
+});
+
+app.get('/api/_internal/getAttachment', async (req, res) => {
+    try {
+        const conversationId = req.query.conversationId as string;
+        const fileId = req.query.fileId;
+
+        console.log('Getting Attachment:', conversationId, fileId);
+
+        if (!conversationId || !fileId) {
+            res.json({ info: 'Cannot Get Attachment, please provide conversation id and file id' });
+            return;
+        }
+
+        const file = conversations[conversationId].attachments[fileId];
+        if (!file) {
+            res.status(404).json({ info: 'File not found' });
+            return;
+        }
+
+        res.setHeader('Content-Type', file.mimetype);
+        res.setHeader('Content-Disposition', `attachment; filename="${file.originalname}"`);
+        res.send(file.buffer);
+    } catch (error) {
+        console.error('Error getting attachment:', error);
+        res.status(500).json({ info: 'Error retrieving attachment' });
     }
 });
 
