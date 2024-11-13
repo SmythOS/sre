@@ -6,6 +6,7 @@ import { validate } from '../../../middlewares/validate.middleware';
 import { chatValidations } from '../validations/openai.validation';
 const router = Router();
 
+//FIXME: @Moin, the route should be /_openai/v1/chat/completions   (use AgentLoader to get agentId instead of realying on the params)
 router.post('/:agentId/api/chat/completions', validate(chatValidations.chatCompletion), async (req, res) => {
     try {
         const agentId = req.params.agentId;
