@@ -703,9 +703,11 @@ export default class Agent {
 
                     //Fix suggested by Sentinel Agent
                     if (/*value !== null && */ value !== undefined) {
-                        let combinedInput = [...[nextInput[inputEndpoint.name]].flat(), ...[value].flat()].filter(
-                            (e) => e !== undefined /*&& e !== null*/
-                        );
+                        // let combinedInput = [...[nextInput[inputEndpoint.name]].flat(), ...[value].flat()].filter(
+                        //     (e) => e !== undefined /*&& e !== null*/,
+                        // ); // ! Deprecated
+
+                        let combinedInput = _mergeInputs(nextInput[inputEndpoint.name], value).filter((e) => e !== undefined /*&& e !== null*/);
 
                         nextInput[inputEndpoint.name] = combinedInput.length === 1 ? combinedInput[0] : combinedInput;
                     }
@@ -782,7 +784,8 @@ export default class Agent {
             for (let key in inputs) {
                 let value = inputs[key];
                 // Concatenate the existing value with the new input, without using Set to preserve duplicates
-                _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== undefined);
+                // _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== undefined); // ! Deprecated
+                _input[key] = _mergeInputs(rDataInput[key], value).filter((e) => e !== undefined);
 
                 // Simplify the array to a single value if there is only one element after flattening
                 if (_input[key].length == 1) _input[key] = _input[key][0];
@@ -849,4 +852,16 @@ export default class Agent {
 
         //this.recursiveTagAsyncComponents(AsyncComponent, agent);
     }
+}
+
+function _mergeInputs(existing, newValue) {
+    if (existing === undefined) {
+        return [newValue];
+    }
+
+    if (!Array.isArray(existing)) {
+        existing = [existing];
+    }
+
+    return [...existing, newValue];
 }
