@@ -183,7 +183,8 @@ export class OpenAIConnector extends LLMConnector {
                 model,
                 size,
                 quality,
-                n,
+                n: n || 1,
+                response_format: responseFormat || 'url',
             };
 
             if (style) {

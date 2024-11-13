@@ -13,7 +13,7 @@ import Component from './Component.class';
 export default class PromptGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
-        prompt: Joi.string().required().label('Prompt'),
+        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
         temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),

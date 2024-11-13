@@ -45,6 +45,17 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    },
 });
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -56,57 +67,58 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     return { default: MockedAgent };
 });
 
+const TIMEOUT = 30000;
+
 describe('ImageGenerator Component', () => {
     it('should generate an image and return the URL', async () => {
         const imageGenerator = new ImageGenerator();
-        const configData: GenerateImageConfig = {
+        const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
             model: 'dall-e-3',
-            response_format: 'url',
+            responseFormat: 'url',
+            prompt: 'A beautiful landscape with a river and mountains',
         };
-
-        const prompt = 'A beautiful landscape with a river and mountains';
 
         // @ts-ignore
         const agent = new Agent();
-        const result = await imageGenerator.process({ Prompt: prompt }, { data: configData }, agent);
+        const result = await imageGenerator.process({}, { data: configData }, agent);
 
         expect(result._error).toBeUndefined();
         expect(result.Output).toBeDefined();
         // match any valid URL.
         expect(result.Output).toMatch(/^https:\/\/[^ ]+$/);
-    });
+    }, TIMEOUT);
 
     it('should generate an image and return the base64', async () => {
         const imageGenerator = new ImageGenerator();
         const configData = {
             model: 'dall-e-3',
             responseFormat: 'b64_json',
+            prompt: 'A beautiful landscape with a river and mountains',
         };
-
-        const prompt = 'A beautiful landscape with a river and mountains';
 
         // @ts-ignore
         const agent = new Agent();
-        const result = await imageGenerator.process({ Prompt: prompt }, { data: configData }, agent);
+        const result = await imageGenerator.process({}, { data: configData }, agent);
 
         expect(result._error).toBeUndefined();
         expect(result.Output).toBeDefined();
         expect(result.Output).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
         //* it is a base64 image but not base64 URL
-    });
+    }, TIMEOUT);
 
     it('should throw an error when no prompt is given', async () => {
         const imageGenerator = new ImageGenerator();
-        const configData: GenerateImageConfig = {
+        const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
             model: 'dall-e-3',
-            response_format: 'url',
+            responseFormat: 'url',
+            prompt: '',
         };
 
         // @ts-ignore
         const agent = new Agent();
 
-        const result = await imageGenerator.process({ Prompt: '' }, { data: configData }, agent);
+        const result = await imageGenerator.process({}, { data: configData }, agent);
 
         expect(result._error).toBeDefined();
-    });
+    }, TIMEOUT);
 });

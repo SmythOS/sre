@@ -5,7 +5,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export default class MultimodalLLM extends Component {
     protected configSchema = Joi.object({
-        prompt: Joi.string().required().label('Prompt'),
+        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         model: Joi.string().max(200).required(),
     });
