@@ -1,13 +1,18 @@
 {
     "name": "smyth-runtime",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "description": "Smyth Runtime Environment",
-    "main": "rollup.config.js",
+    "main": "dist/index.dev.js",
+    "types": "dist/types/index.d.ts",
+    "files": [
+        "dist"
+    ],
     "type": "module",
     "scripts": {
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "build:dev": "cross-env BUILD=dev rollup -c",
+        "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
@@ -103,7 +108,7 @@
         "axios": "^1.7.2",
         "chokidar": "^4.0.1",
         "commander": "^11.1.0",
-        "cookie-parser": "^1.4.6",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dayjs": "^1.11.11",
         "dotenv": "^16.4.5",

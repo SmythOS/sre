@@ -164,6 +164,11 @@ export const models = {
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
         tags: ['legacy'],
     },
+    'claude-3.5-haiku': {
+        llm: 'AnthropicAI',
+        alias: 'claude-3-5-haiku-20241022',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    },
     'claude-3-haiku': {
         llm: 'AnthropicAI',
         alias: 'claude-3-haiku-20240307',
@@ -196,6 +201,13 @@ export const models = {
         completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
+    },
+    'claude-3-5-haiku-20241022': {
+        llm: 'AnthropicAI',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: false,
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
     'claude-3-haiku-20240307': {
         llm: 'AnthropicAI',

@@ -62,7 +62,6 @@ const sre = SmythRuntime.Instance.init({
 
     ManagedVault: {
         Connector: 'SmythManagedVault',
-        Id: 'oauth',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
