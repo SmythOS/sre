@@ -7,6 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { customModels } from '@sre/LLMManager/custom-models';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -27,27 +28,29 @@ export class BedrockConnector extends LLMConnector {
         let messages = _params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
-        let systemText;
+        let systemPrompt;
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
         if ('content' in systemMessage) {
-            systemText = systemMessage.content;
+            systemPrompt = systemMessage.content;
         }
 
         messages = otherMessages;
 
         const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
-            systemText = JSON_RESPONSE_INSTRUCTION;
+            systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
         }
-
-        let systemPrompt;
-        if (systemText) {
-            systemPrompt = [{ text: systemText }];
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelInfo = _params.modelInfo;
+        const supportsSystemPrompt = customModels[modelInfo?.settings?.foundationModel]?.supportsSystemPrompt;
+
+        if (!supportsSystemPrompt) {
+            messages[0].content?.push(systemPrompt[0]);
+            systemPrompt = undefined; // Reset system prompt if it's not supported
+        }
+
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
 
@@ -93,6 +96,7 @@ export class BedrockConnector extends LLMConnector {
 
             const response = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
+
             return { content, finishReason: 'stop' };
         } catch (error) {
             throw error;
