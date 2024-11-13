@@ -93,7 +93,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
 

@@ -190,7 +190,7 @@ export class GoogleAIConnector extends LLMConnector {
         const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const model = _params?.model || 'gemini-pro-vision';
         const apiKey = _params?.credentials?.apiKey;
-        const fileSources = _params?.fileSources || [];
+        const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const agentId = agent instanceof Agent ? agent.id : agent;
         let _prompt = prompt;
 
@@ -282,7 +282,7 @@ export class GoogleAIConnector extends LLMConnector {
         const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const model = _params?.model || DEFAULT_MODEL;
         const apiKey = _params?.credentials?.apiKey;
-        const fileSources = _params?.fileSources || [];
+        const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const agentId = agent instanceof Agent ? agent.id : agent;
         let _prompt = prompt;
 

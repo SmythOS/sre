@@ -188,6 +188,7 @@ export abstract class LLMConnector extends Connector {
     // TODO [Forhad]: simplify this method
     private async prepareParams(candidate: AccessCandidate, params: any) {
         const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
+        _params.fileSources = params?.fileSources; // Assign fileSource from the original parameters to avoid overwriting the original constructor
 
         const model = _params.model;
         const accountConnector: AccountConnector = ConnectorService.getAccountConnector();

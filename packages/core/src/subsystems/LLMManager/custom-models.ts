@@ -15,6 +15,8 @@ export const customModels = {
    
    Completion token information sourced from the AWS Bedrock Text Playground:
    https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/text-playground
+
+   Supported model features information sourced from - https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
    */
 
   //#region AI21 Labs Models
