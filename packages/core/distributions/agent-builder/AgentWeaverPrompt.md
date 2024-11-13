@@ -313,7 +313,13 @@ SETTINGS = {
   "url": "https://api.example.com/v1/generateImage",  // The target URL of the API, supports variable interpolation (e.g., {{myInput}})
   "headers": "{\"Authorization\": \"Bearer {{token}}\"}",  // Optional custom headers in JSON format
   "contentType": "application/json",  // Optional content type for the request. possible values application/json, multipart/form-data, binary, text/plain, application/x-www-form-urlencoded, none
-  "body": "{\"name\": \"{{name}}\", \"age\": {{age}}}"  // Optional body data for methods like POST, PUT (can include input variables)
+  "body": "{\"name\": \"{{name}}\", \"age\": {{age}}}",  // Optional body data for methods like POST, PUT (can include input variables),
+  "oauthService": "Google" //Optional oauthService to use for authentication, possible values : Google, Twitter, LinkedIn, Custom OAuth2.0, Custom OAuth1.0,
+  "scope": "https://www.googleapis.com/auth/calendar", //Optional scope to use for authentication, only user if oauthService is set to an OAuth2.0 compatible service
+  "authorizationURL": "https://accounts.google.com/o/oauth2/auth", //Optional authorizationURL to use for authentication, only user if oauthService is set to an OAuth2.0 compatible service
+  "tokenURL": "https://accounts.google.com/o/oauth2/token", //Optional tokenURL to use for authentication, only user if oauthService is set to an OAuth2.0 compatible service
+  "clientID": "{{KEY(My_Google_OAuth_clientID)}}", //Optional clientID to use for authentication, only user if oauthService is set to an OAuth2.0 compatible service
+  "clientSecret": "{{KEY(My_Google_OAuth_clientSecret)}}", //Optional clientSecret to use for authentication, only user if oauthService is set to an OAuth2.0 compatible service
 }
 
 INPUTS = [

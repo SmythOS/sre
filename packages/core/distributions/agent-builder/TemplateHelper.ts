@@ -17,16 +17,42 @@ function reindexTemplates(templatesDir: string) {
         const templatePath = path.join(templatesDir, template);
         const templateData = fs.readFileSync(templatePath, 'utf8');
         const templateObject = JSON.parse(templateData);
+        const templateObjectVectorData = JSON.parse(templateData);
+
+        //clean up the templateObjectVectorData from unneeded data
+        delete templateObjectVectorData.connections;
+        for (let c of templateObjectVectorData.components) {
+            for (let input of c.inputs) {
+                delete input.color;
+                delete input.type;
+                delete input.index;
+                delete input.optional;
+                delete input.default;
+            }
+            for (let output of c.outputs) {
+                delete output.color;
+                delete output.index;
+                delete output.default;
+            }
+
+            for (let entry in c.data) {
+                const value = c.data[entry];
+                if (!value || typeof value !== 'string' || value.length < 10) {
+                    delete c.data[entry];
+                }
+            }
+        }
+
         const name = templateObject?.name || templateObject?.templateInfo?.name;
         console.log('Indexing template', template, name);
-        const result:any = await templatesVectorDB.upsert(templateObject, { name, json: templateObject });
+        const result: any = await templatesVectorDB.upsert(templateObjectVectorData, { name, json: templateObject });
         if (result === -1) {
             console.warn('Failed to index template', template);
         }
 
         const workflows = extractWorkflows(templateObject);
         workflows.forEach(async (workflow) => {
-            const result:any = await workflowsVectorDB.upsert(workflow, { json: workflow });
+            const result: any = await workflowsVectorDB.upsert(workflow, { json: workflow });
             if (result === -1) {
                 console.warn('Failed to index workflow', workflow);
             }
@@ -85,8 +111,8 @@ function extractWorkflows(data) {
     function getConnectedComponentsAndConnections(componentId) {
         let visited = new Set();
         let toVisit = [componentId];
-        let workflowComponents:any[] = [];
-        let workflowConnections:any[] = [];
+        let workflowComponents: any[] = [];
+        let workflowConnections: any[] = [];
 
         while (toVisit.length > 0) {
             const currentId = toVisit.pop();
@@ -94,14 +120,14 @@ function extractWorkflows(data) {
                 visited.add(currentId);
 
                 // Find the component by id and add it to the workflow components
-                const component = components.find(c => c.id === currentId);
+                const component = components.find((c) => c.id === currentId);
                 if (component) {
                     workflowComponents.push(component);
 
                     // Find all connections where this component is the source
-                    const connectedConns = connections.filter(conn => conn.sourceId === currentId);
-                    
-                    connectedConns.forEach(conn => {
+                    const connectedConns = connections.filter((conn) => conn.sourceId === currentId);
+
+                    connectedConns.forEach((conn) => {
                         workflowConnections.push(conn);
                         toVisit.push(conn.targetId); // Continue traversing to the target component
                     });
@@ -111,13 +137,13 @@ function extractWorkflows(data) {
 
         return {
             components: workflowComponents,
-            connections: workflowConnections
+            connections: workflowConnections,
         };
     }
 
     // Extract workflows starting with APIEndpoint components
-    const workflows:any[] = [];
-    components.forEach(component => {
+    const workflows: any[] = [];
+    components.forEach((component) => {
         if (component.name === 'APIEndpoint') {
             const workflow = getConnectedComponentsAndConnections(component.id);
             workflows.push(workflow);
