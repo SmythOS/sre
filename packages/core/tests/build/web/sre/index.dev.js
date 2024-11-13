@@ -17,7 +17,7 @@ import { Readable } from 'stream';
 import { jsonrepair } from 'jsonrepair';
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import OpenAI from 'openai';
-import { encode, encodeChat } from 'gpt-tokenizer';
+import { encodeChat, encode } from 'gpt-tokenizer';
 import imageSize from 'image-size';
 import os from 'os';
 import path from 'path';
@@ -3475,7 +3475,7 @@ const _LLMRegistry = class _LLMRegistry {
     const modelInfo = this.getModelInfo(model, hasAPIKey);
     return modelInfo?.completionTokens || modelInfo?.tokens;
   }
-  static async adjustMaxCompletionTokens(model, maxTokens, hasAPIKey = false) {
+  static adjustMaxCompletionTokens(model, maxTokens, hasAPIKey = false) {
     const modelInfo = this.getModelInfo(model, hasAPIKey);
     return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
   }
@@ -3767,11 +3767,15 @@ class CustomLLMRegistry {
     const modelInfo = this.models?.[modelId] || {};
     return modelInfo;
   }
+  getMaxContextTokens(model) {
+    const modelInfo = this.getModelInfo(model);
+    return modelInfo?.tokens;
+  }
   async getMaxCompletionTokens(model) {
     const modelInfo = this.getModelInfo(model);
     return modelInfo?.completionTokens || modelInfo?.tokens;
   }
-  async adjustMaxCompletionTokens(model, maxTokens) {
+  adjustMaxCompletionTokens(model, maxTokens) {
     const modelInfo = this.getModelInfo(model);
     return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
   }
@@ -3780,7 +3784,10 @@ class CustomLLMRegistry {
     this.models = { ...this.models, ...savedCustomModels };
   }
   getModelId(model) {
-    return this.models?.[model]?.id || this.models?.[model]?.alias || model;
+    for (const [id, modelInfo] of Object.entries(this.models)) {
+      if (modelInfo.name === model) return id;
+    }
+    return model;
   }
   async getCustomModels(teamId) {
     const models = {};
@@ -3791,9 +3798,9 @@ class CustomLLMRegistry {
       const savedCustomModelsData = JSON.parse(teamSettings || "{}");
       for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
         const foundationModel = entry.settings.foundationModel;
-        const tokens = customModels[foundationModel].tokens;
-        const completionTokens = customModels[foundationModel].completionTokens;
-        const supportsSystemPrompt = customModels[foundationModel].supportsSystemPrompt;
+        const tokens = customModels[foundationModel]?.tokens || entry?.tokens;
+        const completionTokens = customModels[foundationModel]?.completionTokens || entry?.completionTokens;
+        const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
         models[entryId] = {
           id: entryId,
           name: entry.name,
@@ -3822,7 +3829,7 @@ var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, 
 var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMInference$1 {
   constructor() {
-    __publicField$T(this, "modelName");
+    __publicField$T(this, "model");
     __publicField$T(this, "llmConnector");
   }
   static async getInstance(model, teamId) {
@@ -3836,6 +3843,7 @@ class LLMInference$1 {
       const llmProvider = customLLMRegistry.getProvider(model);
       llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
     }
+    llmInference.model = model;
     return llmInference;
   }
   get connector() {
@@ -3845,12 +3853,11 @@ class LLMInference$1 {
     if (!prompt && !customParams.messages?.length) {
       throw new Error("Prompt or messages are required");
     }
-    if (!this.llmConnector) {
-      throw new Error(`Model ${this.modelName} not supported`);
-    }
     const agentId = agent instanceof Agent ? agent.id : agent;
     const params = this.prepareParams(config) || {};
-    params.model = this.modelName;
+    if (!this.llmConnector) {
+      throw new Error(`Model ${params.model} not supported`);
+    }
     Object.assign(params, customParams);
     try {
       prompt = this.llmConnector.enhancePrompt(prompt, config);
@@ -3871,7 +3878,6 @@ class LLMInference$1 {
   async visionRequest(prompt, fileSources, config = {}, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
     const params = this.prepareParams(config) || {};
-    params.model = this.modelName;
     const promises = [];
     const _fileSources = [];
     for (let image of fileSources) {
@@ -3901,7 +3907,6 @@ class LLMInference$1 {
   async multimodalRequest(prompt, fileSources, config = {}, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
     const params = this.prepareParams(config) || {};
-    params.model = this.modelName;
     const promises = [];
     const _fileSources = [];
     for (let image of fileSources) {
@@ -3929,17 +3934,19 @@ class LLMInference$1 {
   }
   async imageGenRequest(prompt, params, agent) {
     const agentId = agent instanceof Agent ? agent.id : agent;
-    params.model = this.modelName;
     return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
   }
   async toolRequest(params, agent) {
     if (!params.messages || !params.messages?.length) {
       throw new Error("Input messages are required.");
     }
+    const _params = { ...params };
+    if (!_params.model) {
+      _params.model = this.model;
+    }
     try {
       const agentId = agent instanceof Agent ? agent.id : agent;
-      params.model = this.modelName;
-      return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(params);
+      return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
     } catch (error) {
       console.error("Error in toolRequest: ", error);
       throw error;
@@ -3955,8 +3962,11 @@ class LLMInference$1 {
       if (!params.messages || !params.messages?.length) {
         throw new Error("Input messages are required.");
       }
-      params.model = this.modelName;
-      return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(params);
+      const _params = { ...params };
+      if (!_params.model) {
+        _params.model = this.model;
+      }
+      return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
     } catch (error) {
       console.error("Error in streamRequest:", error);
       const dummyEmitter = new EventEmitter();
@@ -3979,6 +3989,9 @@ class LLMInference$1 {
         _value = +_value;
       }
       configParams[key] = _value;
+    }
+    if (!configParams?.model) {
+      configParams.model = this.model;
     }
     return configParams;
   }
@@ -6147,163 +6160,6 @@ class AgentProcess {
   }
 }
 
-class LLMHelper {
-  /**
-   * Checks if the given array of messages contains a system message.
-   *
-   * @param {any} messages - The array of messages to check.
-   * @returns {boolean} True if a system message is found, false otherwise.
-   *
-   * @example
-   * const messages = [
-   *   { role: 'user', content: 'Hello' },
-   *   { role: 'system', content: 'You are a helpful assistant' }
-   * ];
-   * const hasSystem = LLMHelper.hasSystemMessage(messages);
-   * console.log(hasSystem); // true
-   */
-  static hasSystemMessage(messages) {
-    if (!Array.isArray(messages)) return false;
-    return messages?.some((message) => message.role === "system");
-  }
-  /**
-   * Separates system messages from other messages in an array of LLM message blocks.
-   *
-   * @param {TLLMMessageBlock[]} messages - The array of message blocks to process.
-   * @returns {Object} An object containing the system message (if any) and an array of other messages.
-   * @property {TLLMMessageBlock | {}} systemMessage - The first system message found, or an empty object if none.
-   * @property {TLLMMessageBlock[]} otherMessages - An array of all non-system messages.
-   *
-   * @example
-   * const messages = [
-   *   { role: 'system', content: 'You are a helpful assistant' },
-   *   { role: 'user', content: 'Hello' },
-   *   { role: 'assistant', content: 'Hi there!' }
-   * ];
-   * const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-   * console.log(systemMessage); // { role: 'system', content: 'You are a helpful assistant' }
-   * console.log(otherMessages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
-   */
-  static separateSystemMessages(messages) {
-    const systemMessage = messages.find((message) => message.role === "system") || {};
-    const otherMessages = messages.filter((message) => message.role !== "system");
-    return { systemMessage, otherMessages };
-  }
-  /**
-   * Counts the total number of tokens in a vision prompt, including both text and image tokens.
-   *
-   * @param {any} prompt - The vision prompt object containing text and image items.
-   * @returns {Promise<number>} A promise that resolves to the total number of tokens in the prompt.
-   *
-   * @description
-   * This method processes a vision prompt by:
-   * 1. Counting tokens in the text portion of the prompt.
-   * 2. Calculating tokens for each image in the prompt based on its dimensions.
-   * 3. Summing up text and image tokens to get the total token count.
-   *
-   * @example
-   * const prompt = [
-   *   { type: 'text', text: 'Describe this image:' },
-   *   { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }
-   * ];
-   * const tokenCount = await countVisionPromptTokens(prompt);
-   * console.log(tokenCount); // e.g., 150
-   */
-  static async countVisionPromptTokens(prompt) {
-    let tokens = 0;
-    const textObj = prompt?.filter((item) => item.type === "text");
-    const textTokens = encode(textObj?.[0]?.text).length;
-    const images = prompt?.filter((item) => item.type === "image_url");
-    let imageTokens = 0;
-    for (const image of images) {
-      const imageUrl = image?.image_url?.url;
-      const { width, height } = await this.getImageDimensions(imageUrl);
-      const tokens2 = this.countImageTokens(width, height);
-      imageTokens += tokens2;
-    }
-    tokens = textTokens + imageTokens;
-    return tokens;
-  }
-  /**
-   * Retrieves the dimensions (width and height) of an image from a given URL or base64 encoded string.
-   *
-   * @param {string} imageUrl - The URL or base64 encoded string of the image.
-   * @returns {Promise<{ width: number; height: number }>} A promise that resolves to an object containing the width and height of the image.
-   * @throws {Error} If the provided imageUrl is invalid or if there's an error retrieving the image dimensions.
-   *
-   * @example
-   * // Using a URL
-   * const dimensions = await getImageDimensions('https://example.com/image.jpg');
-   * console.log(dimensions); // { width: 800, height: 600 }
-   *
-   * @example
-   * // Using a base64 encoded string
-   * const dimensions = await getImageDimensions('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
-   * console.log(dimensions); // { width: 1, height: 1 }
-   */
-  static async getImageDimensions(imageUrl) {
-    try {
-      let buffer;
-      if (isBase64FileUrl(imageUrl)) {
-        const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
-        buffer = Buffer.from(base64Data, "base64");
-      } else if (isUrl(imageUrl)) {
-        const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
-        buffer = Buffer.from(response.data);
-      } else {
-        throw new Error("Please provide a valid image url!");
-      }
-      const dimensions = imageSize(buffer);
-      return {
-        width: dimensions?.width || 0,
-        height: dimensions?.height || 0
-      };
-    } catch (error) {
-      console.error("Error getting image dimensions", error);
-      throw new Error("Please provide a valid image url!");
-    }
-  }
-  /**
-   * Calculates the number of tokens required to process an image based on its dimensions and detail mode.
-   *
-   * @param {number} width - The width of the image in pixels.
-   * @param {number} height - The height of the image in pixels.
-   * @param {string} detailMode - The detail mode for processing the image. Defaults to 'auto'.
-   * @returns {number} The number of tokens required to process the image.
-   *
-   * @description
-   * This method estimates the token count for image processing based on the image dimensions and detail mode.
-   * It uses a tiling approach to calculate the token count, scaling the image if necessary.
-   *
-   * - If detailMode is 'low', it returns a fixed token count of 85.
-   * - For other modes, it calculates based on the image dimensions:
-   *   - Scales down images larger than 2048 pixels in any dimension.
-   *   - Adjusts the scaled dimension to fit within a 768x1024 aspect ratio.
-   *   - Calculates the number of 512x512 tiles needed to cover the image.
-   *   - Returns the total token count based on the number of tiles.
-   *
-   * @example
-   * const tokenCount = countImageTokens(1024, 768);
-   * console.log(tokenCount); // Outputs the calculated token count
-   */
-  static countImageTokens(width, height, detailMode = "auto") {
-    if (detailMode === "low") return 85;
-    const maxDimension = Math.max(width, height);
-    const minDimension = Math.min(width, height);
-    let scaledMinDimension = minDimension;
-    if (maxDimension > 2048) {
-      scaledMinDimension = 2048 / maxDimension * minDimension;
-    }
-    scaledMinDimension = Math.floor(768 / 1024 * scaledMinDimension);
-    let tileSize = 512;
-    let tiles = Math.ceil(scaledMinDimension / tileSize);
-    if (minDimension !== scaledMinDimension) {
-      tiles *= Math.ceil(scaledMinDimension * (maxDimension / minDimension) / tileSize);
-    }
-    return tiles * 170 + 85;
-  }
-}
-
 var __defProp$E = Object.defineProperty;
 var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
@@ -6317,19 +6173,14 @@ class LLMContext {
     this.llmInference = llmInference;
     this._messages = _messages;
     __publicField$E(this, "_systemPrompt", "");
-    __publicField$E(this, "_llmHelper");
     __publicField$E(this, "contextLength");
     this._systemPrompt = _systemPrompt;
-    this._llmHelper = new LLMHelper();
   }
   get systemPrompt() {
     return this._systemPrompt;
   }
   set systemPrompt(systemPrompt) {
     this._systemPrompt = systemPrompt;
-  }
-  get llmHelper() {
-    return this._llmHelper;
   }
   get messages() {
     return this._messages;
@@ -6344,7 +6195,14 @@ class LLMContext {
     this.push({ role: "assistant", content });
   }
   async getContextWindow(maxTokens, maxOutputTokens = 256) {
-    const maxModelContext = await this._llmHelper.TokenManager().getAllowedContextTokens(this._model, true);
+    let maxModelContext;
+    const isStandardLLM = LLMRegistry.isStandardLLM(this._model);
+    if (isStandardLLM) {
+      maxModelContext = LLMRegistry.getMaxContextTokens(this._model, true);
+    } else {
+      const customLLMRegistry = await CustomLLMRegistry.getInstance(this._model);
+      maxModelContext = customLLMRegistry.getMaxContextTokens(this._model);
+    }
     let maxInputContext = Math.min(maxTokens, maxModelContext);
     if (maxInputContext + maxOutputTokens > maxModelContext) {
       maxInputContext -= maxInputContext + maxOutputTokens - maxModelContext;
@@ -10695,7 +10553,7 @@ class LLMConnector extends Connector {
         _params.credentials = JSON.parse(jsonCredentials);
       }
       if (_params.maxTokens) {
-        _params.maxTokens = await customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+        _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
       }
     }
     return _params;
@@ -10740,6 +10598,163 @@ class EchoConnector extends LLMConnector {
     } catch (error) {
       return response;
     }
+  }
+}
+
+class LLMHelper {
+  /**
+   * Checks if the given array of messages contains a system message.
+   *
+   * @param {any} messages - The array of messages to check.
+   * @returns {boolean} True if a system message is found, false otherwise.
+   *
+   * @example
+   * const messages = [
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'system', content: 'You are a helpful assistant' }
+   * ];
+   * const hasSystem = LLMHelper.hasSystemMessage(messages);
+   * console.log(hasSystem); // true
+   */
+  static hasSystemMessage(messages) {
+    if (!Array.isArray(messages)) return false;
+    return messages?.some((message) => message.role === "system");
+  }
+  /**
+   * Separates system messages from other messages in an array of LLM message blocks.
+   *
+   * @param {TLLMMessageBlock[]} messages - The array of message blocks to process.
+   * @returns {Object} An object containing the system message (if any) and an array of other messages.
+   * @property {TLLMMessageBlock | {}} systemMessage - The first system message found, or an empty object if none.
+   * @property {TLLMMessageBlock[]} otherMessages - An array of all non-system messages.
+   *
+   * @example
+   * const messages = [
+   *   { role: 'system', content: 'You are a helpful assistant' },
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'assistant', content: 'Hi there!' }
+   * ];
+   * const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+   * console.log(systemMessage); // { role: 'system', content: 'You are a helpful assistant' }
+   * console.log(otherMessages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
+   */
+  static separateSystemMessages(messages) {
+    const systemMessage = messages.find((message) => message.role === "system") || {};
+    const otherMessages = messages.filter((message) => message.role !== "system");
+    return { systemMessage, otherMessages };
+  }
+  /**
+   * Counts the total number of tokens in a vision prompt, including both text and image tokens.
+   *
+   * @param {any} prompt - The vision prompt object containing text and image items.
+   * @returns {Promise<number>} A promise that resolves to the total number of tokens in the prompt.
+   *
+   * @description
+   * This method processes a vision prompt by:
+   * 1. Counting tokens in the text portion of the prompt.
+   * 2. Calculating tokens for each image in the prompt based on its dimensions.
+   * 3. Summing up text and image tokens to get the total token count.
+   *
+   * @example
+   * const prompt = [
+   *   { type: 'text', text: 'Describe this image:' },
+   *   { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }
+   * ];
+   * const tokenCount = await countVisionPromptTokens(prompt);
+   * console.log(tokenCount); // e.g., 150
+   */
+  static async countVisionPromptTokens(prompt) {
+    let tokens = 0;
+    const textObj = prompt?.filter((item) => item.type === "text");
+    const textTokens = encode(textObj?.[0]?.text).length;
+    const images = prompt?.filter((item) => item.type === "image_url");
+    let imageTokens = 0;
+    for (const image of images) {
+      const imageUrl = image?.image_url?.url;
+      const { width, height } = await this.getImageDimensions(imageUrl);
+      const tokens2 = this.countImageTokens(width, height);
+      imageTokens += tokens2;
+    }
+    tokens = textTokens + imageTokens;
+    return tokens;
+  }
+  /**
+   * Retrieves the dimensions (width and height) of an image from a given URL or base64 encoded string.
+   *
+   * @param {string} imageUrl - The URL or base64 encoded string of the image.
+   * @returns {Promise<{ width: number; height: number }>} A promise that resolves to an object containing the width and height of the image.
+   * @throws {Error} If the provided imageUrl is invalid or if there's an error retrieving the image dimensions.
+   *
+   * @example
+   * // Using a URL
+   * const dimensions = await getImageDimensions('https://example.com/image.jpg');
+   * console.log(dimensions); // { width: 800, height: 600 }
+   *
+   * @example
+   * // Using a base64 encoded string
+   * const dimensions = await getImageDimensions('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');
+   * console.log(dimensions); // { width: 1, height: 1 }
+   */
+  static async getImageDimensions(imageUrl) {
+    try {
+      let buffer;
+      if (isBase64FileUrl(imageUrl)) {
+        const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
+        buffer = Buffer.from(base64Data, "base64");
+      } else if (isUrl(imageUrl)) {
+        const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+        buffer = Buffer.from(response.data);
+      } else {
+        throw new Error("Please provide a valid image url!");
+      }
+      const dimensions = imageSize(buffer);
+      return {
+        width: dimensions?.width || 0,
+        height: dimensions?.height || 0
+      };
+    } catch (error) {
+      console.error("Error getting image dimensions", error);
+      throw new Error("Please provide a valid image url!");
+    }
+  }
+  /**
+   * Calculates the number of tokens required to process an image based on its dimensions and detail mode.
+   *
+   * @param {number} width - The width of the image in pixels.
+   * @param {number} height - The height of the image in pixels.
+   * @param {string} detailMode - The detail mode for processing the image. Defaults to 'auto'.
+   * @returns {number} The number of tokens required to process the image.
+   *
+   * @description
+   * This method estimates the token count for image processing based on the image dimensions and detail mode.
+   * It uses a tiling approach to calculate the token count, scaling the image if necessary.
+   *
+   * - If detailMode is 'low', it returns a fixed token count of 85.
+   * - For other modes, it calculates based on the image dimensions:
+   *   - Scales down images larger than 2048 pixels in any dimension.
+   *   - Adjusts the scaled dimension to fit within a 768x1024 aspect ratio.
+   *   - Calculates the number of 512x512 tiles needed to cover the image.
+   *   - Returns the total token count based on the number of tiles.
+   *
+   * @example
+   * const tokenCount = countImageTokens(1024, 768);
+   * console.log(tokenCount); // Outputs the calculated token count
+   */
+  static countImageTokens(width, height, detailMode = "auto") {
+    if (detailMode === "low") return 85;
+    const maxDimension = Math.max(width, height);
+    const minDimension = Math.min(width, height);
+    let scaledMinDimension = minDimension;
+    if (maxDimension > 2048) {
+      scaledMinDimension = 2048 / maxDimension * minDimension;
+    }
+    scaledMinDimension = Math.floor(768 / 1024 * scaledMinDimension);
+    let tileSize = 512;
+    let tiles = Math.ceil(scaledMinDimension / tileSize);
+    if (minDimension !== scaledMinDimension) {
+      tiles *= Math.ceil(scaledMinDimension * (maxDimension / minDimension) / tileSize);
+    }
+    return tiles * 170 + 85;
   }
 }
 
@@ -10894,9 +10909,9 @@ class OpenAIConnector extends LLMConnector {
     const messages = this.getConsistentMessages(_params.messages);
     let chatCompletionArgs = {
       model: _params.model,
-      messages,
-      max_tokens: _params.maxTokens
+      messages
     };
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
     if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
       chatCompletionArgs.tools = _params?.toolsConfig?.tools;
     }
@@ -11013,11 +11028,11 @@ class OpenAIConnector extends LLMConnector {
     let chatCompletionArgs = {
       model: _params.model,
       messages: _params.messages,
-      max_tokens: _params.maxTokens,
       stream_options: { include_usage: true },
       //add usage statis //TODO: @Forhad check this
       stream: true
     };
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
     if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
       chatCompletionArgs.tools = _params?.toolsConfig?.tools;
     }
@@ -11418,20 +11433,28 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       }
       formattedMessages = this.getConsistentMessages(formattedMessages);
       const apiKey = _params?.credentials?.apiKey;
+      const generationConfig = {};
+      if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+      const modelParams = {
+        model: _params.model
+      };
+      if (Object.keys(generationConfig).length > 0) {
+        modelParams.generationConfig = generationConfig;
+      }
       const genAI = new GoogleGenerativeAI(apiKey);
-      const $model = genAI.getGenerativeModel({ model: _params.model });
-      const generationConfig = {
+      const $model = genAI.getGenerativeModel(modelParams);
+      const toolsPrompt = {
         contents: formattedMessages
       };
       if (systemInstruction) {
-        generationConfig.systemInstruction = systemInstruction;
+        toolsPrompt.systemInstruction = systemInstruction;
       }
-      if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+      if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
       if (_params?.toolsConfig?.tool_choice)
-        generationConfig.toolConfig = {
+        toolsPrompt.toolConfig = {
           functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || "auto" }
         };
-      const result = await $model.generateContent(generationConfig);
+      const result = await $model.generateContent(toolsPrompt);
       const response = await result.response;
       const content = response.text();
       const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
@@ -11466,8 +11489,6 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     const _params = { ...params };
     const emitter = new EventEmitter$1();
     const apiKey = _params?.credentials?.apiKey;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const $model = genAI.getGenerativeModel({ model: _params.model });
     let systemInstruction = "";
     let formattedMessages;
     const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
@@ -11480,19 +11501,29 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     } else {
       formattedMessages = messages;
     }
-    const generationConfig = {
+    const generationConfig = {};
+    if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+    const modelParams = {
+      model: _params.model
+    };
+    if (Object.keys(generationConfig).length > 0) {
+      modelParams.generationConfig = generationConfig;
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const $model = genAI.getGenerativeModel(modelParams);
+    const toolsPrompt = {
       contents: formattedMessages
     };
     if (systemInstruction) {
-      generationConfig.systemInstruction = systemInstruction;
+      toolsPrompt.systemInstruction = systemInstruction;
     }
-    if (_params?.toolsConfig?.tools) generationConfig.tools = _params?.toolsConfig?.tools;
+    if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
     if (_params?.toolsConfig?.tool_choice)
-      generationConfig.toolConfig = {
+      toolsPrompt.toolConfig = {
         functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || "auto" }
       };
     try {
-      const result = await $model.generateContentStream(generationConfig);
+      const result = await $model.generateContentStream(toolsPrompt);
       let toolsData = [];
       (async () => {
         for await (const chunk of result.stream) {
@@ -12138,13 +12169,14 @@ class GroqConnector extends LLMConnector {
       const apiKey = _params?.credentials?.apiKey;
       const groq = new Groq({ apiKey });
       const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-      let args = {
+      let chatCompletionArgs = {
         model: _params.model,
-        messages,
-        tools: _params.toolsConfig.tools,
-        tool_choice: _params.toolsConfig.tool_choice
+        messages
       };
-      const result = await groq.chat.completions.create(args);
+      if (_params.maxTokens) chatCompletionArgs.max_tokens = _params.maxTokens;
+      if (_params?.toolsConfig?.tools) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
+      if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+      const result = await groq.chat.completions.create(chatCompletionArgs);
       const message = result?.choices?.[0]?.message;
       const toolCalls = message?.tool_calls;
       let toolsData = [];
@@ -12183,9 +12215,9 @@ class GroqConnector extends LLMConnector {
     let chatCompletionArgs = {
       model: _params.model,
       messages,
-      max_tokens: _params.maxTokens,
       stream: true
     };
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
     if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
     if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
     try {
@@ -12342,6 +12374,7 @@ class TogetherAIConnector extends LLMConnector {
         model: _params.model,
         messages
       };
+      if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
       if (_params.toolsConfig?.tools) {
         chatCompletionArgs.tools = _params.toolsConfig?.tools;
       }
@@ -12388,6 +12421,7 @@ class TogetherAIConnector extends LLMConnector {
       messages,
       stream: true
     };
+    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
     if (_params.toolsConfig?.tools) {
       chatCompletionArgs.tools = _params.toolsConfig?.tools;
     }

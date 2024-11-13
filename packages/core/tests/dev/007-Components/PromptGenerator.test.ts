@@ -1,10 +1,10 @@
+import fs from 'fs';
+import { describe, expect, it } from 'vitest';
+
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
 import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
-import fs from 'fs';
-
-import { describe, expect, it } from 'vitest';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -55,12 +55,15 @@ ConnectorService.init(TConnectorService.AgentData, 'CLI');
 // - expect error when model is not supported
 // - run test cases for all providers
 // - Need to separate test cases for custom models, as custom models require SmythAccount account connector
+// - provide some outputs params and check if it's response with those params properly
 
 const TIMEOUT = 30000;
+const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
+const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}". If the response is JSON, then include an additional key-value pair with key as "${LLM_OUTPUT_VALIDATOR}" and value as "${LLM_OUTPUT_VALIDATOR}"`;
 
-describe('PromptGenerator Component with with - Echo', () => {
+describe('PromptGenerator Component - Echo', () => {
     it('should echo the prompt', async () => {
-        const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+        const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
         const data = JSON.parse(agentData);
 
         const agentProcess = AgentProcess.load(data);
@@ -81,13 +84,13 @@ describe('PromptGenerator Component with with - Echo', () => {
     });
 });
 
-function runTestCases(endpoint: string) {
+function runTestCasesWithAgent(endpoint: string) {
     it(
         'should generate a relevant response for a given prompt',
         async () => {
             let error;
             try {
-                const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+                const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
                 const data = JSON.parse(agentData);
 
                 const agentProcess = AgentProcess.load(data);
@@ -96,13 +99,17 @@ function runTestCases(endpoint: string) {
                     method: 'POST',
                     path: endpoint,
                     body: {
-                        Input: 'What is the largest planet in our solar system, and how does it compare to other planets in the Milky Way galaxy?',
+                        Input:
+                            'What is the largest planet in our solar system, and how does it compare to other planets in the Milky Way galaxy?' +
+                            WORD_INCLUSION_PROMPT,
                     },
                 });
 
                 const output = res?.data?.result?.Reply;
 
                 expect(output).toBeTruthy();
+                expect(output).toBeTypeOf('object');
+                expect(JSON.stringify(output)).toContain(LLM_OUTPUT_VALIDATOR);
             } catch (e) {
                 error = e;
                 console.error(e.message);
@@ -113,14 +120,19 @@ function runTestCases(endpoint: string) {
     );
 }
 
-const llmProviderEndpoints = {
-    OpenAI: '/api/test-openai-model',
-    Bedrock: '/api/test-bedrock-model',
-    VertexAI: '/api/test-vertexai-model',
-};
+const llmProviderEndpoints = [
+    { provider: 'OpenAI', endpoint: '/api/test-openai-model' },
+    { provider: 'AnthropicAI', endpoint: '/api/test-anthropicai-model' },
+    { provider: 'GoogleAI', endpoint: '/api/test-googleai-model' },
+    { provider: 'Groq', endpoint: '/api/test-groq-model' },
+    { provider: 'TogetherAI', endpoint: '/api/test-togetherai-model' },
+    { provider: 'Bedrock', endpoint: '/api/test-bedrock-model' },
+    { provider: 'Bedrock', endpoint: '/api/test-bedrock-model-that-does-not-support-system' },
+    { provider: 'VertexAI', endpoint: '/api/test-vertexai-model' },
+];
 
-for (const [provider, endpoint] of Object.entries(llmProviderEndpoints)) {
-    describe(`PromptGenerator Component with - ${provider} (${endpoint})`, () => {
-        runTestCases(endpoint);
+for (const endpoint of llmProviderEndpoints) {
+    describe(`PromptGenerator Component - ${endpoint.provider} (${endpoint.endpoint})`, () => {
+        runTestCasesWithAgent(endpoint.endpoint);
     });
 }

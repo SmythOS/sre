@@ -18,7 +18,7 @@ const console = Logger('AnthropicAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-sonnet-20240620';
+const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for AnthropicAI';
 
 export class AnthropicAIConnector extends LLMConnector {
@@ -26,39 +26,26 @@ export class AnthropicAIConnector extends LLMConnector {
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-    protected async chatRequest(acRequest: AccessRequest, prompt: string, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
         let messages = _params?.messages || [];
 
-        // set prompt as user message if provided
-        if (prompt) {
-            messages.push({
-                role: TLLMMessageRole.User,
-                content: prompt,
-            });
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt = '';
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = systemMessage?.content as string;
         }
+        messages = otherMessages;
 
-        let systemPrompt;
-
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            // in AnthropicAI we need to provide system message separately
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-            messages = otherMessages;
-
-            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
-        }
-
-        // We need to get consistent messages after separating system messages to make sure the first message is a user message
-        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
-
-        const responseFormat = _params?.responseFormat || 'json';
+        const responseFormat = _params?.responseFormat || '';
         if (responseFormat === 'json') {
             systemPrompt += JSON_RESPONSE_INSTRUCTION;
+
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -100,18 +87,33 @@ export class AnthropicAIConnector extends LLMConnector {
 
     // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
-        const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params.messages) : [];
+        let messages = _params?.messages || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
 
         const content = [{ type: 'text', text: prompt }, ...imageData];
         messages.push({ role: TLLMMessageRole.User, content });
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        }
+        messages = otherMessages;
+
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -150,7 +152,7 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         try {
             const apiKey = _params?.credentials?.apiKey;
@@ -177,9 +179,6 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
-
-            // We need to get consistent messages after separating system messages to make sure the first message is a user message
-            messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
             messageCreateArgs.messages = messages;
 
@@ -297,9 +296,6 @@ export class AnthropicAIConnector extends LLMConnector {
 
                 messages = otherMessages as Anthropic.MessageParam[];
             }
-
-            // We need to get consistent messages after separating system messages to make sure the first message is a user message
-            messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
             messageCreateArgs.messages = messages;
 
@@ -461,8 +457,17 @@ export class AnthropicAIConnector extends LLMConnector {
         return messageBlocks;
     }
 
-    private getConsistentMessages(messages) {
-        let _messages = [...messages];
+    // TODO [Forhad]: This method is quite lengthy and complex. Consider breaking it down into smaller, more manageable functions for better readability and maintainability.
+    public getConsistentMessages(messages) {
+        let _messages = JSON.parse(JSON.stringify(messages));
+
+        // Extract the system message from the beginning as we have logic that checks 'user' for the first message
+        let systemMessage = null;
+        if (_messages[0]?.role === TLLMMessageRole.System) {
+            systemMessage = _messages.shift();
+        }
+
+        _messages = LLMHelper.removeDuplicateUserMessages(_messages);
 
         _messages = _messages.map((message) => {
             let content;
@@ -510,9 +515,14 @@ export class AnthropicAIConnector extends LLMConnector {
             }
         }
 
-        //   - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
+        // - Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"messages: first message must use the \"user\" role"}}
         if (_messages[0]?.role !== TLLMMessageRole.User) {
             _messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
+        }
+
+        // Add the system message back to the beginning
+        if (systemMessage) {
+            _messages.unshift(systemMessage);
         }
 
         return _messages;

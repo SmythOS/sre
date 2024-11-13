@@ -3,10 +3,12 @@ import Component from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().valid('dall-e-2', 'dall-e-3').required(),
+        prompt: Joi.string().optional().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').required(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').required(),
         quality: Joi.string().valid('standard', 'hd').required(),
@@ -30,7 +32,9 @@ export default class ImageGenerator extends Component {
             return { _error: 'Model Not Found: Either DALL·E 3 or DALL·E 2 is required!', _debug: logger.output };
         }
 
-        let prompt = typeof input?.Prompt === 'string' ? input?.Prompt : JSON.stringify(input?.Prompt);
+        let prompt = config.data?.prompt || input?.Prompt;
+        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
+        prompt = TemplateString(prompt).parse(input).result;
 
         // ! LATER IMPROVEMENT: support image variation API
         /* let image = input?.Image || null;
@@ -61,8 +65,8 @@ export default class ImageGenerator extends Component {
 
         const responseFormat = config?.data?.responseFormat || 'url';
 
-        let args: GenerateImageConfig = {
-            response_format: responseFormat,
+        let args: GenerateImageConfig & { responseFormat: 'url' | 'b64_json' } = {
+            responseFormat,
             model,
         };
 
@@ -71,13 +75,13 @@ export default class ImageGenerator extends Component {
             args = {
                 image,
                 model,
-                response_format: responseFormat,
+                responseFormat,
             };
         } else {
             args = {
                 prompt,
                 model,
-                response_format: responseFormat,
+                responseFormat,
             };
         } */
 

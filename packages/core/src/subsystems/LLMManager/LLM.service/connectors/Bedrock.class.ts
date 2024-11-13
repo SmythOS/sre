@@ -7,6 +7,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { customModels } from '@sre/LLMManager/custom-models';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
@@ -22,29 +23,36 @@ type InferenceConfig = {
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params };
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         let messages = _params?.messages || [];
 
-        if (prompt) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+
+        if ('content' in systemMessage) {
+            systemPrompt = systemMessage.content;
         }
 
-        let systemPrompt;
+        messages = otherMessages;
 
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-            messages = otherMessages;
-            systemPrompt = [{ text: (systemMessage as TLLMMessageBlock)?.content }];
-        } else {
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
             systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
         }
 
         const modelInfo = _params.modelInfo;
+        const supportsSystemPrompt = customModels[modelInfo?.settings?.foundationModel]?.supportsSystemPrompt;
+
+        if (!supportsSystemPrompt) {
+            messages[0].content?.push(systemPrompt[0]);
+            systemPrompt = undefined; // Reset system prompt if it's not supported
+        }
+
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-        messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
 
         const inferenceConfig: InferenceConfig = {};
         if (_params?.maxTokens !== undefined) inferenceConfig.maxTokens = _params.maxTokens;
@@ -88,6 +96,7 @@ export class BedrockConnector extends LLMConnector {
 
             const response = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
+
             return { content, finishReason: 'stop' };
         } catch (error) {
             throw error;
@@ -122,8 +131,10 @@ export class BedrockConnector extends LLMConnector {
         throw new Error('Tool configuration is not supported for Bedrock.');
     }
 
-    private getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
-        return messages.map((message) => {
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             let textBlock = [];
 
             if (message?.parts) {

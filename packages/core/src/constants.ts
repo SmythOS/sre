@@ -49,5 +49,15 @@ export const COMP_NAMES = {
     visionLLM: 'VisionLLM',
 };
 
-export const JSON_RESPONSE_INSTRUCTION =
-    '\nAll responses should be in valid JSON format, compacted without newlines, indentations, or additional JSON syntax markers.';
+export const JSON_RESPONSE_INSTRUCTION = `
+Respond ONLY with a valid, parsable JSON object. Follow these strict guidelines:
+1. The response must begin with '{' and end with '}'.
+2. Use double quotes for all keys and string values.
+3. Do not include any explanations, markdown, or text outside the JSON object.
+4. Do not use newlines or indentation within the JSON structure.
+5. For single-key responses, use the format: {"result": "your content here"}
+6. For multiple keys, use: {"key1": "value1", "key2": "value2", ...}
+
+Example of a valid response:
+{"result": "This is a valid JSON response without any extra text."}
+`;

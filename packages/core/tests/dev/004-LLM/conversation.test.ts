@@ -45,21 +45,26 @@ const sre = SmythRuntime.Instance.init({
 });
 
 const TIMEOUT = 30000;
+const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
+const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
 function runTestCases(model: string) {
     it(
         'runs a conversation with tool use',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
 
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
-            const result = await conv.prompt('What can you help me with?');
+            const prompt = 'What can you help me with?';
+
+            const result = await conv.prompt(prompt);
 
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -68,10 +73,10 @@ function runTestCases(model: string) {
         'runs a conversation with tool use in stream mode',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -86,12 +91,15 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const result = await conv.streamPrompt('What can you help me with?');
+            const prompt = 'What can you help me with?';
+
+            const result = await conv.streamPrompt(prompt);
 
             await streamComplete;
 
             expect(result).toBeTruthy();
             expect(streamResult).toBeTruthy();
+            expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -100,10 +108,10 @@ function runTestCases(model: string) {
         'handles multiple tool calls in a single conversation',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-            const system = `You are a helpful assistant that can answer questions about SmythOS.
-                If the user asks any question, use /ask endpoint to get information and be able to answer it.`;
-            const conv = new Conversation(model, specUrl);
-            conv.systemPrompt = system;
+            const system =
+                `You are a helpful assistant that can answer questions about SmythOS.
+                If the user asks any question, use /ask endpoint to get information and be able to answer it.` + WORD_INCLUSION_PROMPT;
+            const conv = new Conversation(model, specUrl, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -118,12 +126,15 @@ function runTestCases(model: string) {
                 conv.on('end', resolve);
             });
 
-            const result = await conv.streamPrompt('First, tell me about SmythOS. Then, explain how it handles data storage.');
+            const prompt = 'First, tell me about SmythOS. Then, explain how it handles data storage.';
+
+            const result = await conv.streamPrompt(prompt);
 
             await streamComplete;
 
             expect(result).toBeTruthy();
             expect(streamResult).toBeTruthy();
+            expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT * 2
     );
@@ -134,10 +145,15 @@ function runTestCases(model: string) {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
             const conv = new Conversation(model, specUrl);
 
-            await conv.prompt('What is SmythOS?');
-            const followUpResult = await conv.prompt('Can you provide more details about its features?');
+            const prompt = 'What is SmythOS?' + WORD_INCLUSION_PROMPT;
+
+            await conv.prompt(prompt);
+
+            const followUpPrompt = 'Can you provide more details about its features?' + WORD_INCLUSION_PROMPT;
+            const followUpResult = await conv.prompt(followUpPrompt);
 
             expect(followUpResult).toBeTruthy();
+            expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT * 2
     );
@@ -204,13 +220,15 @@ function runTestCases(model: string) {
 }
 
 const models = [
-    'gpt-4o-mini',
-    'claude-3-5-sonnet-20240620',
-    'gemini-1.5-flash' /* , 'gemma2-9b-it', 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' */,
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+    /* { provider: 'Groq', id: 'gemma2-9b-it' },
+    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' }, */
 ];
 
 for (const model of models) {
-    describe(`Conversation Tests for Model: ${model}`, async () => {
-        await runTestCases(model);
+    describe(`Conversation Tests: ${model.provider} (${model.id})`, async () => {
+        await runTestCases(model.id);
     });
 }

@@ -49,9 +49,11 @@ export class SmythVault extends VaultConnector {
             key = vaultResponse?.data?.secret?.value || null;
         }
 
-        // Ensure backward compatibility: In SaaS the key was stored under 'claude';
-        if (!key && keyId === 'anthropicai') {
-            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/claude`, { headers: vaultAPIHeaders });
+        if (!key) {
+            // * Note: Adjustment for legacy global vault keys, we can remove it after migrating all keys in Hashicorp Vault with proper key ID such as 'googleai' -> 'GoogleAI'
+            const legacyGlobalVaultKey = keyId.toLowerCase();
+            const globalVaultKey = legacyGlobalVaultKey === 'anthropicai' ? 'claude' : legacyGlobalVaultKey; // Ensure backward compatibility: In SaaS the key was stored under 'claude';
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${globalVaultKey}`, { headers: vaultAPIHeaders });
 
             return vaultResponse?.data?.secret?.value;
         }

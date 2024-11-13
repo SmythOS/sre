@@ -18,7 +18,7 @@
         "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
         "knip": "knip",
         "build:web": "npm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model claude-3-5-sonnet-20240620",
+        "start:web": "node ./tests/build/web/index.js --model claude-3-5-haiku-latest",
         "build:aws:dev:cjs": "cross-env BUILD=dev rollup -c distributions/AWS/rollup.config.js",
         "build:aws:dev:exe": "pkg ./distributions/AWS/dist/aws.dev.cjs --targets node18-win32-x64,node18-macos-x64,node18-linux-x64 --out-path ./distributions/AWS/dist",
         "build:aws:dev": "npm run build:aws:dev:cjs && npm run build:aws:dev:exe",

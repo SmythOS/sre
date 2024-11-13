@@ -8,11 +8,12 @@ import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { encode } from 'gpt-tokenizer';
 import Component from './Component.class';
-import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { TLLMMessageRole } from '@sre/types/LLM.types';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -41,7 +42,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
     //if (!sessions[agentId]) return [];
     //if (!sessions[agentId][conv_uid]) return [];
 
-    const sessionData = await cacheConnector.user(AccessCandidate.agent(agentId)).get(conv_uid);
+    const sessionData = await cacheConnector.user(AccessCandidate.agent(agentId))?.get(conv_uid);
 
     const messages = sessionData ? JSONContent(sessionData).tryParse() : [];
     //const messages = sessions[agentId][conv_uid].messages;
@@ -89,7 +90,9 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            let teamId = agent?.teamId;
+
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
                 return {
@@ -109,12 +112,11 @@ export default class LLMAssistant extends Component {
 
             //#region get max tokens
             let maxTokens = 2048;
-            const teamId = agent.teamId;
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
             if (isStandardLLM) {
                 const provider = LLMRegistry.getProvider(model);
-                const apiKey = await VaultHelper.getTeamKey(provider, teamId);
+                const apiKey = await VaultHelper.getAgentKey(provider, agent?.id);
                 maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
             } else {
                 const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
@@ -124,9 +126,11 @@ export default class LLMAssistant extends Component {
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 
-            if (messages[0]?.role != 'system') messages.unshift({ role: 'system', content: behavior });
-            messages.push({ role: 'user', content: userInput });
-            //saveMessagesToSession(agent.id, userId, conversationId, messages);
+            messages.push({ role: TLLMMessageRole.User, content: userInput });
+
+            if (messages[0]?.role != TLLMMessageRole.System) {
+                messages.unshift({ role: TLLMMessageRole.System, content: behavior });
+            }
 
             const customParams = {
                 messages,

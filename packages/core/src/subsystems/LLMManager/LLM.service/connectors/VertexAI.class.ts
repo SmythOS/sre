@@ -16,24 +16,25 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params };
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         let messages = _params?.messages || [];
 
-        if (prompt) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
-        }
-
+        //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
-        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-        if (hasSystemMessage) {
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-            messages = otherMessages;
-            systemInstruction = { role: 'system', parts: [{ text: (systemMessage as TLLMMessageBlock)?.content }] };
-        } else {
-            systemInstruction = { role: 'system', parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
+        if ('content' in systemMessage) {
+            systemInstruction = systemMessage.content;
         }
+
+        messages = otherMessages;
+
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemInstruction = JSON_RESPONSE_INSTRUCTION;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
 
         const modelInfo = _params.modelInfo as TVertexAIModel;
 
@@ -67,8 +68,7 @@ export class VertexAIConnector extends LLMConnector {
             });
             const generativeModel = client.getGenerativeModel(modelParams);
 
-            const contents = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
-            const result = await generativeModel.generateContent({ contents });
+            const result = await generativeModel.generateContent({ contents: messages });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
 
             return { content, finishReason: 'stop' };
@@ -105,27 +105,10 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Tool configuration is not currently implemented for Vertex AI');
     }
 
-    private async getVertexAIClient(modelInfo: any, teamId: string) {
-        try {
-            const jsonCredentials = await VaultHelper.getTeamKey(modelInfo.settings?.jsonCredentialsName, teamId);
-            const credentials = JSON.parse(jsonCredentials);
+    public getConsistentMessages(messages) {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
-            return new VertexAI({
-                project: modelInfo.settings.projectId,
-                location: modelInfo.settings.region,
-                googleAuthOptions: {
-                    credentials,
-                },
-                apiEndpoint: `${modelInfo.settings.region}-aiplatform.googleapis.com`,
-            });
-        } catch (error) {
-            console.error('Error on initializing Vertex AI client.');
-            throw error;
-        }
-    }
-
-    private getConsistentMessages(messages) {
-        return messages.map((message) => {
+        return _messages.map((message) => {
             let textBlock = [];
 
             if (message?.parts) {

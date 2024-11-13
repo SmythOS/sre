@@ -55,6 +55,8 @@ const sre = SmythRuntime.Instance.init({
 let agent = new Agent();
 
 const TIMEOUT = 30000;
+const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
+const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
 async function runVisionTestCases(model: string) {
     const config = {
@@ -72,9 +74,11 @@ async function runVisionTestCases(model: string) {
     it(
         `runs a simple vision request with a single image for Model: ${model}`,
         async () => {
+            const prompt = 'What is in this image?' + WORD_INCLUSION_PROMPT;
             const fileSources = [imageUrl1];
-            const result: any = await llmInference.visionRequest('What is in this image?', fileSources, config, agent);
+            const result: any = await llmInference.visionRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -82,9 +86,11 @@ async function runVisionTestCases(model: string) {
     it(
         `handles multiple images in a single request for Model: ${model}`,
         async () => {
+            const prompt = 'Compare these two images' + WORD_INCLUSION_PROMPT;
             const fileSources = [imageUrl1, imageUrl2];
-            const result: any = await llmInference.visionRequest('Compare these two images', fileSources, config, agent);
+            const result: any = await llmInference.visionRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -92,9 +98,11 @@ async function runVisionTestCases(model: string) {
     it(
         `handles different image formats correctly for Model: ${model}`,
         async () => {
+            const prompt = 'Describe these images' + WORD_INCLUSION_PROMPT;
             const fileSources = [imageUrl1, imageUrl2, imageUrl3];
-            const result: any = await llmInference.visionRequest('Describe these images', fileSources, config, agent);
+            const result: any = await llmInference.visionRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -120,11 +128,13 @@ async function runVisionTestCases(model: string) {
     it(
         `handles complex prompts with images for Model: ${model}`,
         async () => {
-            const fileSources = [imageUrl1];
             const complexPrompt =
-                'Analyze this image in detail. Describe the main elements, colors, and any text visible. Then, speculate about the context or purpose of this image.';
+                'Analyze this image in detail. Describe the main elements, colors, and any text visible. Then, speculate about the context or purpose of this image.' +
+                WORD_INCLUSION_PROMPT;
+            const fileSources = [imageUrl1];
             const result: any = await llmInference.visionRequest(complexPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
@@ -132,19 +142,24 @@ async function runVisionTestCases(model: string) {
     it(
         `handles prompts with special characters and Unicode for Model: ${model}`,
         async () => {
+            const specialCharsPrompt = 'Describe this image: 🌍🚀 こんにちは! 你好! مرحبا!' + WORD_INCLUSION_PROMPT;
             const fileSources = [imageUrl1];
-            const specialCharsPrompt = 'Describe this image: 🌍🚀 こんにちは! 你好! مرحبا!';
             const result: any = await llmInference.visionRequest(specialCharsPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
     );
 }
 
-const models = ['gpt-4o-mini', 'claude-3-5-sonnet-20240620', 'gemini-1.5-flash'];
+const models = [
+    { provider: 'OpenAI', id: 'gpt-4o-mini' },
+    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+];
 
 for (const model of models) {
-    describe(`LLM Vision Tests for Model: ${model}`, async () => {
-        await runVisionTestCases(model);
+    describe(`LLM Vision Tests: ${model.provider} (${model.id})`, async () => {
+        await runVisionTestCases(model.id);
     });
 }

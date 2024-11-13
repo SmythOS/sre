@@ -10,6 +10,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 
 import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig } from '@sre/types/LLM.types';
 
@@ -18,33 +19,35 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 const console = Logger('OpenAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
-const MODELS_WITH_JSON_RESPONSE = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = { ...params }; // Avoid mutation of the original params object
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
-        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+        const messages = _params?.messages || [];
 
-        //FIXME: We probably need to separate the json system from default chatRequest
-        if (messages[0]?.role !== 'system') {
-            messages.unshift({
-                role: TLLMMessageRole.System,
-                content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
-            });
+        //#region Handle JSON response format
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
 
             if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.responseFormat = { type: 'json_object' };
+            } else {
+                _params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
-
-        if (prompt && messages.length === 1) {
-            messages.push({ role: TLLMMessageRole.User, content: prompt });
-        }
+        //#endregion Handle JSON response format
 
         // Check if the team has their own API key, then use it
         const apiKey = _params?.credentials?.apiKey;
@@ -65,8 +68,11 @@ export class OpenAIConnector extends LLMConnector {
         if (_params?.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
         if (_params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
         if (_params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = _params.presencePenalty;
-        if (_params?.responseFormat !== undefined) chatCompletionArgs.response_format = _params.responseFormat;
         if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+
+        if (_params.responseFormat !== undefined) {
+            chatCompletionArgs.response_format = _params.responseFormat;
+        }
 
         try {
             // Validate token limit
@@ -91,34 +97,36 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
-        const _params = { ...params }; // Avoid mutation of the original params object
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
-        const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+        const messages = _params?.messages || [];
 
-        if (messages[0]?.role !== 'system') {
-            messages.unshift({
-                role: 'system',
-                content:
-                    'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
-            });
+        //#region Handle JSON response format
+        const responseFormat = _params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
 
             if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
                 _params.responseFormat = { type: 'json_object' };
             }
         }
+        //#endregion Handle JSON response format
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const fileSources: BinaryInput[] = _params?.fileSources || [];
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
-        const promptData = [{ type: 'text', text: prompt }, ...imageData];
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
 
-        if (prompt && messages.length === 1) {
-            messages.push({ role: 'user', content: promptData });
-        }
+        messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
@@ -175,8 +183,8 @@ export class OpenAIConnector extends LLMConnector {
                 model,
                 size,
                 quality,
-                n,
-                response_format: responseFormat,
+                n: n || 1,
+                response_format: responseFormat || 'url',
             };
 
             if (style) {
@@ -185,8 +193,12 @@ export class OpenAIConnector extends LLMConnector {
 
             const apiKey = params?.credentials?.apiKey;
 
+            if (!apiKey) {
+                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
+            }
+
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                apiKey: apiKey,
                 baseURL: params?.baseURL,
             });
 
@@ -201,7 +213,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const apiKey = _params?.credentials?.apiKey;
 
@@ -210,7 +222,7 @@ export class OpenAIConnector extends LLMConnector {
             baseURL: _params.baseURL,
         });
 
-        const messages = this.getConsistentMessages(_params.messages);
+        const messages = _params?.messages || [];
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: _params.model,
@@ -357,7 +369,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = { ...params };
+        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         const emitter = new EventEmitter();
         const usage_data = [];
@@ -495,8 +507,10 @@ export class OpenAIConnector extends LLMConnector {
         return [...messageBlocks, ...transformedToolsData];
     }
 
-    private getConsistentMessages(messages) {
-        return messages.map((message) => {
+    public getConsistentMessages(messages) {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
             const _message = { ...message };
             let textContent = '';
 

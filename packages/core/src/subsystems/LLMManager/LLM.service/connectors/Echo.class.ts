@@ -6,8 +6,9 @@ import { Readable } from 'stream';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
+    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+        const content = params?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
+        return { content, finishReason: 'stop' } as LLMChatResponse;
     }
     protected async visionRequest(acRequest: AccessRequest, prompt, params) {
         return { content: prompt, finishReason: 'stop' } as LLMChatResponse;

@@ -40,7 +40,7 @@ describe('AgentPlugin Component', () => {
     it('runs a simple Agent Plugin with GET request', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
             const agentProcess = AgentProcess.load(data);
@@ -64,7 +64,7 @@ describe('AgentPlugin Component', () => {
     it('runs a simple Agent Plugin with POST request', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/test-llm.smyth', 'utf-8');
+            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
             const data = JSON.parse(agentData);
 
             const agentProcess = AgentProcess.load(data);
