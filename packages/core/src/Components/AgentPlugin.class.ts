@@ -10,7 +10,8 @@ import Component from './Component.class';
 export default class AgentPlugin extends Component {
     protected configSchema = Joi.object({
         agentId: Joi.string().max(200).required(),
-        openAiModel: Joi.string().max(200).required(),
+        openAiModel: Joi.string().max(200).required(), // for backward compatibility
+        model: Joi.string().max(200).required(),
         descForModel: Joi.string().max(5000).allow('').label('Description for Model'),
         id: Joi.string().max(200),
         name: Joi.string().max(500),
@@ -39,7 +40,7 @@ export default class AgentPlugin extends Component {
             //tag this request to tell the nested agent that the call comes from internal agent
             const reqTag = agent.agentRuntime?.reqTag;
 
-            const model = config?.data?.openAiModel;
+            const model = config?.data?.model || config?.data?.openAiModel;
             const descForModel = TemplateString(config?.data?.descForModel).parse(input).result;
             const prompt = typeof input?.Prompt === 'string' ? input?.Prompt : JSON.stringify(input?.Prompt);
 
@@ -81,7 +82,7 @@ export default class AgentPlugin extends Component {
                 }
             }
 
-            const conv = new Conversation(config?.data?.openAiModel, subAgentId, { systemPrompt: descForModel });
+            const conv = new Conversation(model, subAgentId, { systemPrompt: descForModel });
 
             const result = await conv.prompt(prompt, {
                 'X-AGENT-ID': subAgentId,

@@ -69,20 +69,20 @@ export class CustomLLMRegistry {
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
                 const foundationModel = entry.settings.foundationModel;
-                const tokens = customModels[foundationModel]?.tokens || entry?.tokens;
-                const completionTokens = customModels[foundationModel]?.completionTokens || entry?.completionTokens;
                 const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
+                const customModelData = customModels[foundationModel] || {};
 
                 models[entryId] = {
                     id: entryId,
                     name: entry.name,
                     alias: foundationModel,
                     llm: entry.provider,
-                    tokens,
-                    completionTokens,
                     enabled: true,
-                    components: entry.components,
                     tags: entry.tags,
+
+                    components: customModelData?.components ?? [],
+                    tokens: customModelData?.tokens ?? 100000,
+                    completionTokens: customModelData?.completionTokens ?? 4096,
 
                     supportsSystemPrompt,
                     provider: entry.provider,
