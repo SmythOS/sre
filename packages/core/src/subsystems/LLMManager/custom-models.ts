@@ -26,14 +26,14 @@ export const customModels = {
   */
 
   //#region AI21 Labs Models
-  'ai21.jamba-1-5-mini-v1:0': {
+  /* 'ai21.jamba-1-5-mini-v1:0': {
     llm: 'Bedrock',
     label: 'AI21 Labs - Jamba 1.5 Mini',
     tokens: 256000,
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['new'],
   },
   'ai21.jamba-1-5-large-v1:0': {
@@ -43,9 +43,9 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['new'],
-  },
+  }, */
   'ai21.jamba-instruct-v1:0': {
     llm: 'Bedrock',
     label: 'AI21 Labs - Jamba-Instruct',
@@ -121,7 +121,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v1:0', 'new'],
   },
   'us.anthropic.claude-3-5-sonnet-20241022-v2:0': {
@@ -131,7 +131,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v2:0', 'new'],
   },
   'anthropic.claude-3-5-sonnet-20240620-v1:0': {
@@ -141,7 +141,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v1:0'],
   },
   'anthropic.claude-3-sonnet-20240229-v1:0': {
@@ -151,7 +151,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v1:0'],
   },
   'anthropic.claude-3-haiku-20240307-v1:0': {
@@ -161,7 +161,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v1:0'],
   },
   'anthropic.claude-3-opus-20240229-v1:0': {
@@ -171,7 +171,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['v1:0'],
   },
   'anthropic.claude-v2:1': {
@@ -212,7 +212,7 @@ export const customModels = {
     completionTokens: 4000, // Found 4000 Max tokens in the Playground
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
   },
   'cohere.command-r-v1:0': {
     llm: 'Bedrock',
@@ -221,7 +221,7 @@ export const customModels = {
     completionTokens: 4000, // Found 4000 Max tokens in the Playground
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
   },
   'cohere.command-text-v14': {
     llm: 'Bedrock',
