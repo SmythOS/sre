@@ -26,7 +26,7 @@ export const customModels = {
   */
 
   //#region AI21 Labs Models
-  /* 'ai21.jamba-1-5-mini-v1:0': {
+  'ai21.jamba-1-5-mini-v1:0': {
     llm: 'Bedrock',
     label: 'AI21 Labs - Jamba 1.5 Mini',
     tokens: 256000,
@@ -45,7 +45,7 @@ export const customModels = {
     supportsStreamingToolUse: true,
     components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
     tags: ['new'],
-  }, */
+  },
   'ai21.jamba-instruct-v1:0': {
     llm: 'Bedrock',
     label: 'AI21 Labs - Jamba-Instruct',
