@@ -249,6 +249,26 @@ export const customModels = {
 
   // 'Meta - Llama 2 Chat 13B' : { alias: 'meta.llama2-13b-chat-v1' } // Don't have access to the model
   // 'Meta - Llama 2 Chat 70B' : { alias: 'meta.llama2-70b-chat-v1' } // Don't have access to the model
+  'us.meta.llama3-2-1b-instruct-v1:0': {
+    llm: 'Bedrock',
+    label: 'Meta - Llama 3.2 1B Instruct',
+    tokens: 200000,
+    completionTokens: 2048,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ['PromptGenerator', 'LLMAssistant'],
+    tags: ['new'],
+  },
+  'us.meta.llama3-2-3b-instruct-v1:0': {
+    llm: 'Bedrock',
+    label: 'Meta - Llama 3.2 3B Instruct',
+    tokens: 200000,
+    completionTokens: 2048,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ['PromptGenerator', 'LLMAssistant'],
+    tags: ['new'],
+  },
   'meta.llama3-8b-instruct-v1:0': {
     llm: 'Bedrock',
     label: 'Meta - Llama 3 8B Instruct',
