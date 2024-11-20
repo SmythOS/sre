@@ -92,3 +92,16 @@ export const detectURLSourceType = (url: string) => {
             return 'WEBPAGE';
     }
 };
+
+/**
+ * This function checks if a string is a valid JSON string.
+ * @param str
+ * @returns
+ */
+export const isJSONString = (str: string): boolean => {
+    try {
+        return typeof str === 'string' && !!JSON.parse(str);
+    } catch {
+        return false;
+    }
+};
