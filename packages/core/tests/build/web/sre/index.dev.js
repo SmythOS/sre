@@ -26,11 +26,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 import Anthropic from '@anthropic-ai/sdk';
 import Groq from 'groq-sdk';
-import { ConverseCommand, BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import { ConverseCommand, BedrockRuntimeClient, ConverseStreamCommand } from '@aws-sdk/client-bedrock-runtime';
 import { VertexAI } from '@google-cloud/vertexai';
 import IORedis from 'ioredis';
 import qs from 'qs';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import mysql from 'mysql2/promise';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
@@ -41,22 +42,22 @@ import { HfInference } from '@huggingface/inference';
 import querystring from 'querystring';
 import 'process';
 
-var __defProp$19 = Object.defineProperty;
-var __defNormalProp$19 = (obj, key, value) => key in obj ? __defProp$19(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$19 = (obj, key, value) => __defNormalProp$19(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$1b = Object.defineProperty;
+var __defNormalProp$1b = (obj, key, value) => key in obj ? __defProp$1b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$1b = (obj, key, value) => __defNormalProp$1b(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentRequest {
   constructor(req) {
-    __publicField$19(this, "headers");
-    __publicField$19(this, "body");
-    __publicField$19(this, "query");
-    __publicField$19(this, "params");
-    __publicField$19(this, "method", "GET");
-    __publicField$19(this, "path", "");
-    __publicField$19(this, "sessionID", "");
-    __publicField$19(this, "res", null);
-    __publicField$19(this, "req", null);
-    __publicField$19(this, "files", []);
-    __publicField$19(this, "_agent_authinfo");
+    __publicField$1b(this, "headers");
+    __publicField$1b(this, "body");
+    __publicField$1b(this, "query");
+    __publicField$1b(this, "params");
+    __publicField$1b(this, "method", "GET");
+    __publicField$1b(this, "path", "");
+    __publicField$1b(this, "sessionID", "");
+    __publicField$1b(this, "res", null);
+    __publicField$1b(this, "req", null);
+    __publicField$1b(this, "files", []);
+    __publicField$1b(this, "_agent_authinfo");
     if (!req) return;
     this.headers = JSON.parse(JSON.stringify(req.headers || {}));
     this.body = JSON.parse(JSON.stringify(req.body || req.data || {}));
@@ -119,6 +120,13 @@ async function processWithConcurrencyLimit(tasks, maxConcurrentTasks = 10) {
   const validResults = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []).filter(Boolean);
   return validResults;
 }
+const isJSONString = (str) => {
+  try {
+    return typeof str === "string" && !!JSON.parse(str);
+  } catch {
+    return false;
+  }
+};
 
 function getCurrentFormattedDate() {
   const date = /* @__PURE__ */ new Date();
@@ -188,7 +196,18 @@ const REQUEST_CONTENT_TYPES = {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const DEFAULT_MAX_TOKENS_FOR_LLM = 2048;
 const TOOL_USE_DEFAULT_MODEL$1 = "gpt-4o-mini";
-const JSON_RESPONSE_INSTRUCTION = "\nAll responses should be in valid JSON format, compacted without newlines, indentations, or additional JSON syntax markers.";
+const JSON_RESPONSE_INSTRUCTION = `
+Respond ONLY with a valid, parsable JSON object. Follow these strict guidelines:
+1. The response must begin with '{' and end with '}'.
+2. Use double quotes for all keys and string values.
+3. Do not include any explanations, markdown, or text outside the JSON object.
+4. Do not use newlines or indentation within the JSON structure.
+5. For single-key responses, use the format: {"result": "your content here"}
+6. For multiple keys, use: {"key1": "value1", "key2": "value2", ...}
+
+Example of a valid response:
+{"result": "This is a valid JSON response without any extra text."}
+`;
 
 const isBase64FileUrl = (url) => {
   if (typeof url !== "string") return false;
@@ -413,6 +432,7 @@ const config = {
     DATA_PATH: process.env.DATA_PATH,
     NODE_ENV: process.env?.NODE_ENV,
     AGENT_DOMAIN: process.env?.AGENT_DOMAIN,
+    PROD_AGENT_DOMAIN: process.env?.PROD_AGENT_DOMAIN,
     AGENT_DOMAIN_PORT: process.env?.AGENT_DOMAIN_PORT,
     CODE_SANDBOX_URL: process.env?.CODE_SANDBOX_URL,
     TOGETHER_AI_API_URL: process.env?.TOGETHER_AI_API_URL,
@@ -433,19 +453,24 @@ const config = {
   }
 };
 
-var __defProp$18 = Object.defineProperty;
-var __defNormalProp$18 = (obj, key, value) => key in obj ? __defProp$18(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$18 = (obj, key, value) => __defNormalProp$18(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$1a = Object.defineProperty;
+var __defNormalProp$1a = (obj, key, value) => key in obj ? __defProp$1a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$1a = (obj, key, value) => __defNormalProp$1a(obj, typeof key !== "symbol" ? key + "" : key, value);
 winston.addColors({
   error: "red",
   warn: "yellow",
   info: "green",
   debug: "blue"
 });
-let logLevel = parseCLIArgs("debug")?.debug || config.env.LOG_LEVEL || "info";
-if (!["none", "error", "warn", "info", "debug"].includes(logLevel)) {
-  logLevel = "none";
-}
+const logLevelMap = {
+  min: "info",
+  full: "debug"
+};
+let logLevel = () => {
+  let val = parseCLIArgs("debug")?.debug || config?.env?.LOG_LEVEL || "none";
+  if (logLevelMap[val]) val = logLevelMap[val];
+  return !["none", "error", "warn", "info", "debug"].includes(val) ? "none" : val;
+};
 const namespaces = (config.env.LOG_FILTER || "").split(",");
 const namespaceFilter = winston.format((info) => {
   if (!config.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
@@ -456,7 +481,7 @@ const namespaceFilter = winston.format((info) => {
 class ArrayTransport extends Transport {
   constructor(opts) {
     super(opts);
-    __publicField$18(this, "logs");
+    __publicField$1a(this, "logs");
     this.logs = opts.logs;
   }
   log(info, callback) {
@@ -472,7 +497,7 @@ class LogHelper {
     this._logger = _logger;
     this.data = data;
     this.labels = labels;
-    __publicField$18(this, "startTime", Date.now());
+    __publicField$1a(this, "startTime", Date.now());
   }
   get output() {
     return Array.isArray(this.data) ? this.data.join("\n") : void 0;
@@ -507,6 +532,7 @@ class LogHelper {
 winston.format.printf((info) => {
   return `${info.timestamp} ${winston.format.colorize().colorize(info.level, `${info.level}: ${info.message}`)}`;
 });
+const MAX_LOG_MESSAGE_LENGTH = 500;
 function redactLogMessage(logMessage) {
   if (config.env.NODE_ENV !== "PROD") return logMessage;
   if (logMessage.length > 500) {
@@ -525,7 +551,7 @@ function createBaseLogger(memoryStore) {
     //level: 'info', // log level
     format: winston.format.combine(
       winston.format((info) => {
-        if (config.env.LOG_LEVEL == "none") return false;
+        if (config.env.LOG_LEVEL == "none" || logLevel() == "none" || logLevel() == "") return false;
         info.message = redactLogMessage(info.message);
         return info;
       })(),
@@ -543,6 +569,7 @@ function createBaseLogger(memoryStore) {
         format: winston.format.combine(
           winston.format.printf((info) => {
             let message = info.message;
+            message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + "..." : message;
             return `${info.level}:${info.module || ""} ${message} ${info.stack || ""}`;
           })
         ),
@@ -550,13 +577,14 @@ function createBaseLogger(memoryStore) {
         // Define levels that should be logged to stderr
       }),
       new winston.transports.Console({
-        level: logLevel,
+        level: logLevel(),
         format: winston.format.combine(
           namespaceFilter,
           winston.format.printf((info) => {
             const module = info.module ? winston.format.colorize().colorize(info.level, ` [${info.module}]`) : "";
             const ns = winston.format.colorize().colorize(info.level, `${info.level}${module}`);
             let message = info.message;
+            message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + "..." : message;
             return `${ns} - ${message}`;
           })
         )
@@ -608,15 +636,15 @@ const DummyConnector = new Proxy(
   }
 );
 
-var __defProp$17 = Object.defineProperty;
-var __defNormalProp$17 = (obj, key, value) => key in obj ? __defProp$17(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$17 = (obj, key, value) => __defNormalProp$17(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$19 = Object.defineProperty;
+var __defNormalProp$19 = (obj, key, value) => key in obj ? __defProp$19(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$19 = (obj, key, value) => __defNormalProp$19(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LocalCache {
   constructor(defaultTTL = 60 * 60 * 1e3) {
-    __publicField$17(this, "cache");
-    __publicField$17(this, "expiryMap");
-    __publicField$17(this, "timeouts");
-    __publicField$17(this, "defaultTTL", 60 * 60 * 1e3);
+    __publicField$19(this, "cache");
+    __publicField$19(this, "expiryMap");
+    __publicField$19(this, "timeouts");
+    __publicField$19(this, "defaultTTL", 60 * 60 * 1e3);
     this.defaultTTL = defaultTTL;
     this.cache = /* @__PURE__ */ new Map();
     this.expiryMap = /* @__PURE__ */ new Map();
@@ -671,16 +699,16 @@ class LocalCache {
   }
 }
 
-var __defProp$16 = Object.defineProperty;
-var __defNormalProp$16 = (obj, key, value) => key in obj ? __defProp$16(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$16 = (obj, key, value) => __defNormalProp$16(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$h = Logger("Connector");
+var __defProp$18 = Object.defineProperty;
+var __defNormalProp$18 = (obj, key, value) => key in obj ? __defProp$18(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$18 = (obj, key, value) => __defNormalProp$18(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$g = Logger("Connector");
 const lCache = new LocalCache();
 class Connector {
   constructor(config = {}) {
-    __publicField$16(this, "name");
-    __publicField$16(this, "started", false);
-    __publicField$16(this, "_readyPromise");
+    __publicField$18(this, "name");
+    __publicField$18(this, "started", false);
+    __publicField$18(this, "_readyPromise");
   }
   /**
    * Creates a new instance of the current class using the provided settings.
@@ -701,11 +729,11 @@ class Connector {
     return instance;
   }
   async start() {
-    console$h.info(`Starting ${this.name} connector ...`);
+    console$g.info(`Starting ${this.name} connector ...`);
     this.started = true;
   }
   async stop() {
-    console$h.info(`Stopping ${this.name} connector ...`);
+    console$g.info(`Stopping ${this.name} connector ...`);
   }
   ready() {
     if (!this._readyPromise) {
@@ -735,7 +763,7 @@ class Connector {
 
 const SystemEvents = new EventEmitter();
 
-const console$g = Logger("ConnectorService");
+const console$f = Logger("ConnectorService");
 const Connectors = {};
 const ConnectorInstances = {};
 let ServiceRegistry = {};
@@ -773,7 +801,7 @@ class ConnectorService {
    */
   static register(connectorType, connectorName, connectorConstructor) {
     if (typeof connectorConstructor !== "function" || !isSubclassOf(connectorConstructor, Connector)) {
-      console$g.error(`Invalid Connector ${connectorType}:${connectorName}`);
+      console$f.error(`Invalid Connector ${connectorType}:${connectorName}`);
       return;
     }
     if (!Connectors[connectorType]) {
@@ -825,8 +853,8 @@ class ConnectorService {
       if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
         return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]];
       }
-      console$g.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
-      console$g.debug(new Error().stack);
+      console$f.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+      console$f.debug(new Error().stack);
       return DummyConnector;
     }
     return instance;
@@ -883,14 +911,14 @@ class ConnectorServiceProvider {
   }
 }
 
-var __defProp$15 = Object.defineProperty;
-var __defNormalProp$15 = (obj, key, value) => key in obj ? __defProp$15(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$15 = (obj, key, value) => __defNormalProp$15(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$17 = Object.defineProperty;
+var __defNormalProp$17 = (obj, key, value) => key in obj ? __defProp$17(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$17 = (obj, key, value) => __defNormalProp$17(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("EmbodimentSettings");
 class EmbodimentSettings {
   constructor(agentId) {
-    __publicField$15(this, "_embodiments");
-    __publicField$15(this, "_ready", false);
+    __publicField$17(this, "_embodiments");
+    __publicField$17(this, "_ready", false);
     this.init(agentId);
   }
   async init(data) {
@@ -922,15 +950,15 @@ class EmbodimentSettings {
   }
 }
 
-var __defProp$14 = Object.defineProperty;
-var __defNormalProp$14 = (obj, key, value) => key in obj ? __defProp$14(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$14 = (obj, key, value) => __defNormalProp$14(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$16 = Object.defineProperty;
+var __defNormalProp$16 = (obj, key, value) => key in obj ? __defProp$16(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$16 = (obj, key, value) => __defNormalProp$16(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentSettings");
 class AgentSettings {
   constructor(agentId) {
-    __publicField$14(this, "_settings");
-    __publicField$14(this, "embodiments");
-    __publicField$14(this, "_ready", false);
+    __publicField$16(this, "_settings");
+    __publicField$16(this, "embodiments");
+    __publicField$16(this, "_ready", false);
     if (agentId) {
       this.init(agentId);
     }
@@ -1008,15 +1036,15 @@ class ACLAccessDeniedError extends Error {
   }
 }
 
-var __defProp$13 = Object.defineProperty;
-var __defNormalProp$13 = (obj, key, value) => key in obj ? __defProp$13(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$13 = (obj, key, value) => __defNormalProp$13(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$15 = Object.defineProperty;
+var __defNormalProp$15 = (obj, key, value) => key in obj ? __defProp$15(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$15 = (obj, key, value) => __defNormalProp$15(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessRequest {
   constructor(object) {
-    __publicField$13(this, "id");
-    __publicField$13(this, "resourceId");
-    __publicField$13(this, "level", []);
-    __publicField$13(this, "candidate");
+    __publicField$15(this, "id");
+    __publicField$15(this, "resourceId");
+    __publicField$15(this, "level", []);
+    __publicField$15(this, "candidate");
     if (!object) {
       this.id = "aclR:" + uid();
     }
@@ -1052,14 +1080,14 @@ class AccessRequest {
   }
 }
 
-var __defProp$12 = Object.defineProperty;
-var __defNormalProp$12 = (obj, key, value) => key in obj ? __defProp$12(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$12 = (obj, key, value) => __defNormalProp$12(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$14 = Object.defineProperty;
+var __defNormalProp$14 = (obj, key, value) => key in obj ? __defProp$14(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$14 = (obj, key, value) => __defNormalProp$14(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AccessCandidate {
   //public _candidate: TAccessCandidate;
   constructor(candidate) {
-    __publicField$12(this, "role");
-    __publicField$12(this, "id");
+    __publicField$14(this, "role");
+    __publicField$14(this, "id");
     this.role = candidate ? candidate.role : TAccessRole.Public;
     this.id = candidate ? candidate.id : "";
   }
@@ -1112,9 +1140,9 @@ class AccessCandidate {
   }
 }
 
-var __defProp$11 = Object.defineProperty;
-var __defNormalProp$11 = (obj, key, value) => key in obj ? __defProp$11(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$11 = (obj, key, value) => __defNormalProp$11(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$13 = Object.defineProperty;
+var __defNormalProp$13 = (obj, key, value) => key in obj ? __defProp$13(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$13 = (obj, key, value) => __defNormalProp$13(obj, typeof key !== "symbol" ? key + "" : key, value);
 const ACLHashAlgo = {
   none: (source) => source,
   //xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
@@ -1125,9 +1153,9 @@ const ACLHashAlgo = {
 };
 class ACL {
   constructor(acl) {
-    __publicField$11(this, "hashAlgorithm");
-    __publicField$11(this, "entries");
-    __publicField$11(this, "migrated");
+    __publicField$13(this, "hashAlgorithm");
+    __publicField$13(this, "entries");
+    __publicField$13(this, "migrated");
     if (typeof acl === "string") {
       this.deserializeACL(acl);
     } else {
@@ -1271,13 +1299,13 @@ class ACL {
   }
 }
 
-var __defProp$10 = Object.defineProperty;
-var __defNormalProp$10 = (obj, key, value) => key in obj ? __defProp$10(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$10 = (obj, key, value) => __defNormalProp$10(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$12 = Object.defineProperty;
+var __defNormalProp$12 = (obj, key, value) => key in obj ? __defProp$12(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$12 = (obj, key, value) => __defNormalProp$12(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONContentHelper {
   constructor(dataString) {
     this.dataString = dataString;
-    __publicField$10(this, "_current");
+    __publicField$12(this, "_current");
     this._current = dataString;
   }
   get result() {
@@ -1337,9 +1365,9 @@ function JSONContent(dataString) {
   return JSONContentHelper.create(dataString);
 }
 
-var __defProp$$ = Object.defineProperty;
-var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$11 = Object.defineProperty;
+var __defNormalProp$11 = (obj, key, value) => key in obj ? __defProp$11(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$11 = (obj, key, value) => __defNormalProp$11(obj, typeof key !== "symbol" ? key + "" : key, value);
 SystemEvents.on("SRE:Booted", () => {
   const router = ConnectorService.getRouterConnector();
   if (router && router?.get instanceof Function) {
@@ -1348,8 +1376,8 @@ SystemEvents.on("SRE:Booted", () => {
 });
 const _SmythFS = class _SmythFS {
   constructor() {
-    __publicField$$(this, "storage");
-    __publicField$$(this, "cache");
+    __publicField$11(this, "storage");
+    __publicField$11(this, "cache");
     if (!ConnectorService.ready) {
       throw new Error("SRE not available");
     }
@@ -1521,23 +1549,23 @@ const _SmythFS = class _SmythFS {
   }
 };
 //singleton
-__publicField$$(_SmythFS, "instance");
+__publicField$11(_SmythFS, "instance");
 let SmythFS = _SmythFS;
 
-var __defProp$_ = Object.defineProperty;
-var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$10 = Object.defineProperty;
+var __defNormalProp$10 = (obj, key, value) => key in obj ? __defProp$10(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$10 = (obj, key, value) => __defNormalProp$10(obj, typeof key !== "symbol" ? key + "" : key, value);
 class BinaryInput {
   constructor(data, _name, mimetype, candidate) {
     this._name = _name;
     this.mimetype = mimetype;
     this.candidate = candidate;
-    __publicField$_(this, "size");
-    __publicField$_(this, "url");
-    __publicField$_(this, "_ready");
-    __publicField$_(this, "_readyPromise");
-    __publicField$_(this, "_source");
-    __publicField$_(this, "_uploading", false);
+    __publicField$10(this, "size");
+    __publicField$10(this, "url");
+    __publicField$10(this, "_ready");
+    __publicField$10(this, "_readyPromise");
+    __publicField$10(this, "_source");
+    __publicField$10(this, "_uploading", false);
     if (!_name) _name = uid();
     this._name = _name;
     this.load(data, _name, mimetype, candidate);
@@ -1812,18 +1840,18 @@ async function inferAnyType(value) {
   return value;
 }
 
-var __defProp$Z = Object.defineProperty;
-var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$$ = Object.defineProperty;
+var __defNormalProp$$ = (obj, key, value) => key in obj ? __defProp$$(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$$ = (obj, key, value) => __defNormalProp$$(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Component {
   constructor() {
-    __publicField$Z(this, "hasReadOutput", false);
-    __publicField$Z(this, "hasPostProcess", true);
-    __publicField$Z(this, "alwaysActive", false);
+    __publicField$$(this, "hasReadOutput", false);
+    __publicField$$(this, "hasPostProcess", true);
+    __publicField$$(this, "alwaysActive", false);
     //for components like readable memories
-    __publicField$Z(this, "exclusive", false);
+    __publicField$$(this, "exclusive", false);
     //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    __publicField$Z(this, "configSchema");
+    __publicField$$(this, "configSchema");
   }
   init() {
   }
@@ -1893,9 +1921,9 @@ class VaultHelper {
   }
 }
 
-var __defProp$Y = Object.defineProperty;
-var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$_ = Object.defineProperty;
+var __defNormalProp$_ = (obj, key, value) => key in obj ? __defProp$_(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$_ = (obj, key, value) => __defNormalProp$_(obj, typeof key !== "symbol" ? key + "" : key, value);
 const Match = {
   default: /{{(.*?)}}/g,
   //matches all placeholders
@@ -1951,11 +1979,11 @@ const TPLProcessor = {
 class TemplateStringHelper {
   constructor(templateString) {
     this.templateString = templateString;
-    __publicField$Y(this, "_current");
+    __publicField$_(this, "_current");
     //this queue is used to wait for asyncronous results when async processors are used
     //if all processors are synchronous, this queue will be empty and .result getter can be used
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
-    __publicField$Y(this, "_promiseQueue", []);
+    __publicField$_(this, "_promiseQueue", []);
     this._current = templateString;
   }
   get result() {
@@ -2076,9 +2104,9 @@ function TemplateString(templateString) {
   return TemplateStringHelper.create(templateString);
 }
 
-var __defProp$X = Object.defineProperty;
-var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Z = Object.defineProperty;
+var __defNormalProp$Z = (obj, key, value) => key in obj ? __defProp$Z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Z = (obj, key, value) => __defNormalProp$Z(obj, typeof key !== "symbol" ? key + "" : key, value);
 function isEmpty(value) {
   return value === void 0 || value === null || typeof value === "string" && value.trim() === "" || Array.isArray(value) && value.length === 0 || typeof value === "object" && value !== null && Object.keys(value).length === 0;
 }
@@ -2098,7 +2126,7 @@ function parseKey(str = "", teamId) {
 class APIEndpoint extends Component {
   constructor() {
     super();
-    __publicField$X(this, "configSchema", Joi.object({
+    __publicField$Z(this, "configSchema", Joi.object({
       endpoint: Joi.string().pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/).max(50).required(),
       method: Joi.string().valid("POST", "GET").allow(""),
       //we're accepting empty value because we consider it POST by default.
@@ -2229,16 +2257,16 @@ class APIEndpoint extends Component {
   }
 }
 
-var __defProp$W = Object.defineProperty;
-var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Y = Object.defineProperty;
+var __defNormalProp$Y = (obj, key, value) => key in obj ? __defProp$Y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Y = (obj, key, value) => __defNormalProp$Y(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APIOutput extends Component {
   constructor() {
     super();
-    __publicField$W(this, "configSchema", Joi.object({
+    __publicField$Y(this, "configSchema", Joi.object({
       format: Joi.string().valid("full", "minimal").required().label("Output Format")
     }));
-    __publicField$W(this, "hasPostProcess", true);
+    __publicField$Y(this, "hasPostProcess", true);
   }
   init() {
   }
@@ -2279,6 +2307,26 @@ class APIOutput extends Component {
     return output;
   }
 }
+
+var TLLMMessageRole = /* @__PURE__ */ ((TLLMMessageRole2) => {
+  TLLMMessageRole2["User"] = "user";
+  TLLMMessageRole2["Assistant"] = "assistant";
+  TLLMMessageRole2["System"] = "system";
+  TLLMMessageRole2["Model"] = "model";
+  TLLMMessageRole2["Tool"] = "tool";
+  TLLMMessageRole2["Function"] = "function";
+  return TLLMMessageRole2;
+})(TLLMMessageRole || {});
+var TLLMProvider = /* @__PURE__ */ ((TLLMProvider2) => {
+  TLLMProvider2["OpenAI"] = "OpenAI";
+  TLLMProvider2["AnthropicAI"] = "AnthropicAI";
+  TLLMProvider2["GoogleAI"] = "GoogleAI";
+  TLLMProvider2["Groq"] = "Groq";
+  TLLMProvider2["TogetherAI"] = "TogetherAI";
+  TLLMProvider2["Bedrock"] = "Bedrock";
+  TLLMProvider2["VertexAI"] = "VertexAI";
+  return TLLMProvider2;
+})(TLLMProvider || {});
 
 const models = {
   echo: {
@@ -2425,25 +2473,34 @@ const models = {
     tags: ["deprecated"]
   },
   // AnthropicAI
-  "claude-3-opus": {
+  "claude-3.5-haiku": {
     llm: "AnthropicAI",
-    alias: "claude-3-opus-20240229",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
+    alias: "claude-3-5-haiku-latest",
+    components: ["PromptGenerator", "LLMAssistant", "Classifier", "AgentPlugin", "Chatbot"],
+    tags: ["new"]
+  },
+  "claude-3-5-haiku-latest": {
+    llm: "AnthropicAI",
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 2e5, completionTokens: 8192, enabled: true }
   },
   "claude-3.5-sonnet": {
     llm: "AnthropicAI",
-    alias: "claude-3-5-sonnet-20240620",
+    alias: "claude-3-5-sonnet-latest",
     components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
   },
-  "claude-3-sonnet": {
+  "claude-3-5-sonnet-latest": {
     llm: "AnthropicAI",
-    alias: "claude-3-sonnet-20240229",
-    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"],
-    tags: ["legacy"]
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 2e5, completionTokens: 8192, enabled: true }
   },
-  "claude-3-haiku": {
+  "claude-3-opus": {
     llm: "AnthropicAI",
-    alias: "claude-3-haiku-20240307",
+    alias: "claude-3-opus-20240229",
     components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
   },
   "claude-3-opus-20240229": {
@@ -2453,12 +2510,11 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 2e5, completionTokens: 4096, enabled: true }
   },
-  "claude-3-5-sonnet-20240620": {
+  "claude-3-sonnet": {
     llm: "AnthropicAI",
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2e5, completionTokens: 8192, enabled: true }
+    alias: "claude-3-sonnet-20240229",
+    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"],
+    tags: ["legacy"]
   },
   "claude-3-sonnet-20240229": {
     llm: "AnthropicAI",
@@ -2466,6 +2522,11 @@ const models = {
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 2e5, completionTokens: 4096, enabled: true }
+  },
+  "claude-3-haiku": {
+    llm: "AnthropicAI",
+    alias: "claude-3-haiku-20240307",
+    components: ["PromptGenerator", "LLMAssistant", "Classifier", "VisionLLM", "AgentPlugin", "Chatbot"]
   },
   "claude-3-haiku-20240307": {
     llm: "AnthropicAI",
@@ -2754,15 +2815,17 @@ const models = {
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["LLMAssistant"]
+    components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has "```json...```" with JSON response)
+    baseURL: "https://api.together.xyz/v1"
   },
   "Austism/chronos-hermes-13b": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Meta
   "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo": {
@@ -2771,7 +2834,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 128e3, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {
     llm: "TogetherAI",
@@ -2779,7 +2843,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 128e3, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo": {
     llm: "TogetherAI",
@@ -2787,7 +2852,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3-8B-Instruct-Turbo": {
     llm: "TogetherAI",
@@ -2795,7 +2861,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3-70B-Instruct-Turbo": {
     llm: "TogetherAI",
@@ -2803,7 +2870,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3-8B-Instruct-Lite": {
     llm: "TogetherAI",
@@ -2811,7 +2879,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Meta-Llama-3-70B-Instruct-Lite": {
     llm: "TogetherAI",
@@ -2819,35 +2888,40 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["LLMAssistant", "PromptGenerator"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/CodeLlama-13b-Instruct": {
     // ! DEPRECATED: will be removed (replace with codellama/CodeLlama-13b-Instruct-hf)
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
-    keyOptions: { tokens: 8192, enabled: true }
+    keyOptions: { tokens: 8192, enabled: true },
+    baseURL: "https://api.together.xyz/v1"
   },
   "codellama/CodeLlama-13b-Instruct-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/CodeLlama-34b-Instruct": {
     // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-34b-Instruct-hf)
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
-    keyOptions: { tokens: 8192, enabled: true }
+    keyOptions: { tokens: 8192, enabled: true },
+    baseURL: "https://api.together.xyz/v1"
   },
   "codellama/CodeLlama-34b-Instruct-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "codellama/CodeLlama-70b-Instruct-hf": {
     llm: "TogetherAI",
@@ -2855,65 +2929,50 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/CodeLlama-7b-Instruct": {
     // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-7b-Instruct-hf)
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
-    keyOptions: { tokens: 8192, enabled: true }
+    keyOptions: { tokens: 8192, enabled: true },
+    baseURL: "https://api.together.xyz/v1"
   },
   "codellama/CodeLlama-7b-Instruct-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 16384, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
-  },
-  "togethercomputer/llama-2-70b-chat": {
-    // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-70b-chat-hf)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Llama-2-70b-chat-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
-  },
-  "togethercomputer/llama-2-13b-chat": {
-    // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-13b-chat-hf)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Llama-2-13b-chat-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["LLMAssistant"]
+    components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-  },
-  "togethercomputer/llama-2-7b-chat": {
-    // ! DEPRECATED: will be removed (replaced with meta-llama/Llama-2-7b-chat-hf)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Llama-2-7b-chat-hf": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["LLMAssistant"]
+    components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Llama-3-8b-chat-hf": {
     llm: "TogetherAI",
@@ -2921,7 +2980,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "meta-llama/Llama-3-70b-chat-hf": {
     llm: "TogetherAI",
@@ -2929,42 +2989,16 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
-  },
-  "DiscoResearch/DiscoLM-mixtral-8x7b-v2": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true }
-  },
-  "togethercomputer/falcon-40b-instruct": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true }
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/falcon-7b-instruct": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
-  },
-  "togethercomputer/GPT-NeoXT-Chat-Base-20B": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true }
-  },
-  "togethercomputer/Llama-2-7B-32K-Instruct": {
-    // ! DEPRECATED: will be removed
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true }
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // mistralai
   "mistralai/Mistral-7B-Instruct-v0.1": {
@@ -2972,14 +3006,16 @@ const models = {
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "mistralai/Mistral-7B-Instruct-v0.2": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "mistralai/Mistral-7B-Instruct-v0.3": {
     llm: "TogetherAI",
@@ -2987,14 +3023,16 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant", "Classifier"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "mistralai/Mixtral-8x7B-Instruct-v0.1": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant", "Classifier"]
+    components: ["PromptGenerator", "LLMAssistant", "Classifier"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "mistralai/Mixtral-8x22B-Instruct-v0.1": {
     llm: "TogetherAI",
@@ -3002,14 +3040,16 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 65536, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Gryphe/MythoMax-L2-13b": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // NousResearch
   "NousResearch/Nous-Hermes-Llama2-70b": {
@@ -3017,14 +3057,16 @@ const models = {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
+    keyOptions: { tokens: 4096, enabled: true },
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Capybara-7B-V1p9": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-2-Mistral-7B-DPO": {
     llm: "TogetherAI",
@@ -3032,7 +3074,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO": {
     llm: "TogetherAI",
@@ -3040,7 +3083,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT": {
     llm: "TogetherAI",
@@ -3048,7 +3092,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-2-Yi-34B": {
     llm: "TogetherAI",
@@ -3056,21 +3101,24 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-llama-2-7b": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "NousResearch/Nous-Hermes-Llama2-13b": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // OpenChat
   "openchat/openchat-3.5-1210": {
@@ -3078,7 +3126,8 @@ const models = {
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Teknium
   "teknium/OpenHermes-2-Mistral-7B": {
@@ -3086,42 +3135,24 @@ const models = {
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "teknium/OpenHermes-2p5-Mistral-7B": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "garage-bAInd/Platypus2-70B-instruct": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
-  },
-  "togethercomputer/Pythia-Chat-Base-7B-v0.16": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true }
-  },
-  "togethercomputer/Qwen-7B-Chat": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true }
-  },
-  "Qwen/Qwen2-72B-Instruct": {
-    // ! DEPRECATED: will be removed (404 - not found)
-    llm: "TogetherAI",
-    tokens: 32768,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true }
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "microsoft/WizardLM-2-8x22B": {
     llm: "TogetherAI",
@@ -3130,79 +3161,50 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 65536, completionTokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
-  },
-  "togethercomputer/RedPajama-INCITE-Chat-3B-v1": {
-    // ! DEPRECATED: will be removed (Weird response)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true }
-  },
-  "togethercomputer/RedPajama-INCITE-7B-Chat": {
-    // ! DEPRECATED: will be removed (Weird response)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true }
-  },
-  "upstage/SOLAR-0-70b-16bit": {
-    // ! DEPRECATED: will be removed (404 - not found) (replaced with upstage/SOLAR-10.7B-Instruct-v1.0)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "upstage/SOLAR-10.7B-Instruct-v1.0": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/StripedHyena-Nous-7B": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "lmsys/vicuna-7b-v1.5": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "lmsys/vicuna-13b-v1.5": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
-  },
-  "lmsys/vicuna-13b-v1.5-16k": {
-    // ! DEPRECATED: will be removed (not exists in models page)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 16384, enabled: true }
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Allen AI
-  // ! Response it is not JSON and have unnecessary information
-  /* 'allenai/OLMo-7B-Instruct': {
-        llm: 'TogetherAI',
-        tokens: 1024,
-        enabled: false,
-        keyOptions: { tokens: 2048, enabled: true },
-    }, */
   "allenai/OLMo-7B-Twin-2T": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "allenai/OLMo-7B": {
     llm: "TogetherAI",
@@ -3210,7 +3212,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Qwen
   "Qwen/Qwen1.5-0.5B-Chat": {
@@ -3220,7 +3223,8 @@ const models = {
     keyOptions: { tokens: 32768, enabled: true },
     components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-1.8B-Chat": {
     llm: "TogetherAI",
@@ -3228,7 +3232,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-4B-Chat": {
     llm: "TogetherAI",
@@ -3236,7 +3241,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-7B-Chat": {
     llm: "TogetherAI",
@@ -3244,7 +3250,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-14B-Chat": {
     llm: "TogetherAI",
@@ -3252,7 +3259,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-32B-Chat": {
     llm: "TogetherAI",
@@ -3260,7 +3268,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-72B-Chat": {
     llm: "TogetherAI",
@@ -3268,7 +3277,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Qwen/Qwen1.5-110B-Chat": {
     llm: "TogetherAI",
@@ -3276,7 +3286,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // DeepSeek
   "deepseek-ai/deepseek-coder-33b-instruct": {
@@ -3285,7 +3296,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 16384, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "deepseek-ai/deepseek-llm-67b-chat": {
     llm: "TogetherAI",
@@ -3293,7 +3305,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Google
   "google/gemma-2b-it": {
@@ -3302,7 +3315,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "google/gemma-7b-it": {
     llm: "TogetherAI",
@@ -3310,7 +3324,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "google/gemma-2-9b-it": {
     llm: "TogetherAI",
@@ -3318,7 +3333,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "google/gemma-2-27b-it": {
     llm: "TogetherAI",
@@ -3326,23 +3342,18 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Undi95
-  "Undi95/ReMM-SLERP-L2-13B": {
-    // ! DEPRECATED: will be removed (always have empty response)
-    llm: "TogetherAI",
-    tokens: 1024,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true }
-  },
   "Undi95/Toppy-M-7B": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // Others
   "cognitivecomputations/dolphin-2.5-mixtral-8x7b": {
@@ -3351,7 +3362,8 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "databricks/dbrx-instruct": {
     llm: "TogetherAI",
@@ -3359,14 +3371,16 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 32768, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Open-Orca/Mistral-7B-OpenOrca": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 8192, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "snorkelai/Snorkel-Mistral-PairRM-DPO": {
     llm: "TogetherAI",
@@ -3375,7 +3389,8 @@ const models = {
     keyOptions: { tokens: 32768, enabled: true },
     components: ["LLMAssistant"],
     // * Excluded from 'PromptGenerator' (has some other text)
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "Snowflake/snowflake-arctic-instruct": {
     llm: "TogetherAI",
@@ -3383,21 +3398,24 @@ const models = {
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
     components: ["PromptGenerator", "LLMAssistant"],
-    tags: ["new"]
+    tags: ["new"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "togethercomputer/alpaca-7b": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 2048, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   "WizardLM/WizardLM-13B-V1.2": {
     llm: "TogetherAI",
     tokens: 1024,
     enabled: false,
     keyOptions: { tokens: 4096, enabled: true },
-    components: ["PromptGenerator", "LLMAssistant"]
+    components: ["PromptGenerator", "LLMAssistant"],
+    baseURL: "https://api.together.xyz/v1"
   },
   // We do not get the exact token information for Dalle models, so use the maximum possible values
   "dall-e-3": {
@@ -3420,9 +3438,9 @@ const models = {
   }
 };
 
-var __defProp$V = Object.defineProperty;
-var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$X = Object.defineProperty;
+var __defNormalProp$X = (obj, key, value) => key in obj ? __defProp$X(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$X = (obj, key, value) => __defNormalProp$X(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _LLMRegistry = class _LLMRegistry {
   constructor(model) {
     this.model = model;
@@ -3495,66 +3513,100 @@ const _LLMRegistry = class _LLMRegistry {
   }
   //#endregion tokens related methods
 };
-__publicField$V(_LLMRegistry, "instance", null);
+__publicField$X(_LLMRegistry, "instance", null);
 let LLMRegistry = _LLMRegistry;
 
+//! ***IMPORTANT***
+//! ***IMPORTANT***
 const customModels = {
+  /**************************************************
+   * AWS Bedrock Models
+   **************************************************/
+  /*
+    Context token information sourced from the AWS Bedrock Console:
+    https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/overview
+    
+    Completion token information sourced from the AWS Bedrock Text Playground:
+    https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/text-playground
+  
+    Supported model features information sourced from - https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
+    */
   //#region AI21 Labs Models
-  "AI21 Labs - Jamba-Instruct": {
-    alias: "ai21.jamba-instruct-v1:0"
+  "ai21.jamba-1-5-mini-v1:0": {
+    llm: "Bedrock",
+    label: "AI21 Labs - Jamba 1.5 Mini",
+    tokens: 256e3,
+    completionTokens: 4096,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["new"]
+  },
+  "ai21.jamba-1-5-large-v1:0": {
+    llm: "Bedrock",
+    label: "AI21 Labs - Jamba 1.5 Large",
+    tokens: 256e3,
+    completionTokens: 4096,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["new"]
   },
   "ai21.jamba-instruct-v1:0": {
     llm: "Bedrock",
+    label: "AI21 Labs - Jamba-Instruct",
     tokens: 256e3,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "AI21 Labs - Jurassic-2 Ultra": {
-    alias: "ai21.j2-ultra-v1"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   "ai21.j2-ultra-v1": {
     llm: "Bedrock",
+    label: "AI21 Labs - Jurassic-2 Ultra",
     tokens: 8191,
     completionTokens: 8191,
-    supportsSystemPrompt: false
-  },
-  "AI21 Labs - Jurassic-2 Mid": {
-    alias: "ai21.j2-mid-v1"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "ai21.j2-mid-v1": {
     llm: "Bedrock",
+    label: "AI21 Labs - Jurassic-2 Mid",
     tokens: 8191,
     completionTokens: 8191,
-    supportsSystemPrompt: false
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
-  //#region AI21 Labs Models
+  //#endregion AI21 Labs Models
   //#region Amazon Models
-  "Amazon - Titan Text Premier": {
-    alias: "amazon.titan-text-premier-v1:0"
-  },
   "amazon.titan-text-premier-v1:0": {
     llm: "Bedrock",
+    label: "Amazon - Titan Text Premier",
     tokens: 32e3,
     completionTokens: 3e3,
-    supportsSystemPrompt: false
-  },
-  "Amazon - Titan Text G1 - Express": {
-    alias: "amazon.titan-text-express-v1"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "amazon.titan-text-express-v1": {
     llm: "Bedrock",
+    label: "Amazon - Titan Text G1 - Express",
     tokens: 8192,
     completionTokens: 4096,
-    supportsSystemPrompt: false
-  },
-  "Amazon - Titan Text G1 - Lite": {
-    alias: "amazon.titan-text-lite-v1"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "amazon.titan-text-lite-v1": {
     llm: "Bedrock",
+    label: "Amazon - Titan Text G1 - Lite",
     tokens: 4096,
     completionTokens: 4096,
-    supportsSystemPrompt: false
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   // 'Amazon - Titan Embeddings G1 - Text': { alias: 'amazon.titan-embed-text-v1' }, // Converse API doesn't support
   // 'Amazon - Titan Embedding Text v2': { alias: 'amazon.titan-embed-text-v2:0' }, // Converse API doesn't support
@@ -3565,112 +3617,137 @@ const customModels = {
   //#region Anthropic Models
   // * NOTE: It's required to submit business info to get access for Anthropic models
   // * @Ref of Anthropic tokens and completionTokens - https://docs.anthropic.com/en/docs/about-claude/models
-  "Anthropic - Claude 3.5 Sonnet": {
-    alias: "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  "us.anthropic.claude-3-5-haiku-20241022-v1:0": {
+    llm: "Bedrock",
+    label: "Anthropic - Claude 3.5 Haiku",
+    tokens: 2e5,
+    completionTokens: 8192,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v1:0", "new"]
+  },
+  "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {
+    llm: "Bedrock",
+    label: "Anthropic - Claude 3.5 Sonnet",
+    tokens: 2e5,
+    completionTokens: 8192,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v2:0", "new"]
   },
   "anthropic.claude-3-5-sonnet-20240620-v1:0": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 3.5 Sonnet",
     tokens: 2e5,
     completionTokens: 8192,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude 3 Sonnet": {
-    alias: "anthropic.claude-3-sonnet-20240229-v1:0"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v1:0"]
   },
   "anthropic.claude-3-sonnet-20240229-v1:0": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 3 Sonnet",
     tokens: 2e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude 3 Haiku": {
-    alias: "anthropic.claude-3-haiku-20240307-v1:0"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v1:0"]
   },
   "anthropic.claude-3-haiku-20240307-v1:0": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 3 Haiku",
     tokens: 2e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude 3 Opus": {
-    alias: "anthropic.claude-3-opus-20240229-v1:0"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v1:0"]
   },
   "anthropic.claude-3-opus-20240229-v1:0": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 3 Opus",
     tokens: 2e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude 2.1": {
-    alias: "anthropic.claude-v2:1"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+    tags: ["v1:0"]
   },
   "anthropic.claude-v2:1": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 2.1",
     tokens: 2e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude 2.0": {
-    alias: "anthropic.claude-v2"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["v2:1"]
   },
   "anthropic.claude-v2": {
     llm: "Bedrock",
+    label: "Anthropic - Claude 2.0",
     tokens: 1e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
-  },
-  "Anthropic - Claude Instant": {
-    alias: "anthropic.claude-instant-v1"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   "anthropic.claude-instant-v1": {
     llm: "Bedrock",
+    label: "Anthropic - Claude Instant",
     tokens: 1e5,
     completionTokens: 4096,
-    supportsSystemPrompt: true
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   //#endregion Anthropic Models
   //#region Cohere Models
-  "Cohere - Command R+": {
-    alias: "cohere.command-r-plus-v1:0"
-  },
   "cohere.command-r-plus-v1:0": {
     llm: "Bedrock",
+    label: "Cohere - Command R+",
     tokens: 128e3,
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
-    supportsSystemPrompt: true
-  },
-  "Cohere - Command R": {
-    alias: "cohere.command-r-v1:0"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"]
   },
   "cohere.command-r-v1:0": {
     llm: "Bedrock",
+    label: "Cohere - Command R",
     tokens: 128e3,
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
-    supportsSystemPrompt: true
-  },
-  "Cohere - Command": {
-    alias: "cohere.command-text-v14"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: true,
+    components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"]
   },
   "cohere.command-text-v14": {
     llm: "Bedrock",
+    label: "Cohere - Command",
     tokens: 4e3,
     // Found 4k
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
-    supportsSystemPrompt: false
-  },
-  "Cohere - Command Light": {
-    alias: "cohere.command-light-text-v14"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "cohere.command-light-text-v14": {
     llm: "Bedrock",
+    label: "Cohere - Command Light",
     tokens: 4e3,
     // 4k tokens
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
-    supportsSystemPrompt: false
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   // 'Cohere - Embed English': { alias: 'cohere.embed-english-v3' }, // Converse API doesn't support
   // 'Cohere - Embed Multilingual': { alias: 'cohere.embed-multilingual-v3' }, // Converse API doesn't support
@@ -3678,82 +3755,720 @@ const customModels = {
   //#region Meta Models
   // 'Meta - Llama 2 Chat 13B' : { alias: 'meta.llama2-13b-chat-v1' } // Don't have access to the model
   // 'Meta - Llama 2 Chat 70B' : { alias: 'meta.llama2-70b-chat-v1' } // Don't have access to the model
-  "Meta - Llama 3 8B Instruct": {
-    alias: "meta.llama3-8b-instruct-v1:0"
+  "us.meta.llama3-2-1b-instruct-v1:0": {
+    llm: "Bedrock",
+    label: "Meta - Llama 3.2 1B Instruct",
+    tokens: 2e5,
+    completionTokens: 2048,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["new"]
+  },
+  "us.meta.llama3-2-3b-instruct-v1:0": {
+    llm: "Bedrock",
+    label: "Meta - Llama 3.2 3B Instruct",
+    tokens: 2e5,
+    completionTokens: 2048,
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"],
+    tags: ["new"]
   },
   "meta.llama3-8b-instruct-v1:0": {
     llm: "Bedrock",
+    label: "Meta - Llama 3 8B Instruct",
     tokens: 8192,
     completionTokens: 2048,
-    supportsSystemPrompt: true
-  },
-  "Meta - Llama 3 70B Instruct": {
-    alias: "meta.llama3-70b-instruct-v1:0"
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   "meta.llama3-70b-instruct-v1:0": {
     llm: "Bedrock",
+    label: "Meta - Llama 3 70B Instruct",
     tokens: 8192,
     completionTokens: 2048,
-    supportsSystemPrompt: true
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   // 'Meta - Llama 3.1 8B Instruct': { alias: 'meta.llama3-1-8b-instruct-v1:0' }, // The provided model identifier is invalid.
   // 'Meta - Llama 3.1 70B Instruct': { alias: 'meta.llama3-1-70b-instruct-v1:0' }, // The provided model identifier is invalid.
   // 'Meta - Llama 3.1 405B Instruct': { alias: 'meta.llama3-1-405b-instruct-v1:0' }, // The provided model identifier is invalid.
   //#endregion Meta Models
   //#region Mistral Models
-  "Mistral AI - Mistral 7B Instruct": {
-    alias: "mistral.mistral-7b-instruct-v0:2"
-  },
   "mistral.mistral-7b-instruct-v0:2": {
     llm: "Bedrock",
+    label: "Mistral AI - Mistral 7B Instruct",
     tokens: 32e3,
     completionTokens: 8192,
-    supportsSystemPrompt: false
-  },
-  "Mistral AI - Mixtral 8X7B Instruct": {
-    alias: "mistral.mixtral-8x7b-instruct-v0:1"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "mistral.mixtral-8x7b-instruct-v0:1": {
     llm: "Bedrock",
+    label: "Mistral AI - Mixtral 8X7B Instruct",
     tokens: 32e3,
     completionTokens: 4096,
-    supportsSystemPrompt: false
-  },
-  "Mistral AI - Mistral Large": {
-    alias: "mistral.mistral-large-2402-v1:0"
+    supportsSystemPrompt: false,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator"]
   },
   "mistral.mistral-large-2402-v1:0": {
     llm: "Bedrock",
+    label: "Mistral AI - Mistral Large",
     tokens: 32e3,
     completionTokens: 8192,
-    supportsSystemPrompt: true
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
   },
   // 'Mistral AI - Mistral Large 2 (24.07)' : { alias: 'mistral.mistral-large-2407-v1:0' } // The provided model identifier is invalid.
-  "Mistral AI - Mistral Small": {
-    alias: "mistral.mistral-small-2402-v1:0"
-  },
   "mistral.mistral-small-2402-v1:0": {
     llm: "Bedrock",
+    label: "Mistral AI - Mistral Small",
     tokens: 32e3,
     completionTokens: 8192,
-    supportsSystemPrompt: true
-  }
+    supportsSystemPrompt: true,
+    supportsStreamingToolUse: false,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
   //#endregion Mistral Models
   //#region Stability Models
   // 'Stability AI - Stable Diffusion XL 0.x' : { alias: 'stability.stable-diffusion-xl-v0' } // Converse API doesn't support
   // 'Stability AI - Stable Diffusion XL 1.x' : { alias: 'stability.stable-diffusion-xl-v1' } // Converse API doesn't support
   //#endregion Stability Models
+  /**************************************************
+   * Vertex AI Models
+   **************************************************/
+  /*
+  Context token information sourced from :
+  Vertex AI documentation - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
+  Anthropic - https://docs.anthropic.com/en/docs/about-claude/models
+  
+  Completion token information sourced from:
+  Vertex AI Text Playground - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522
+  */
+  "gemini-1.5-flash": {
+    llm: "VertexAI",
+    label: "Gemini 1.5 Flash",
+    supportsSystemPrompt: true,
+    tokens: 1048576,
+    completionTokens: 8192,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "gemini-1.5-pro": {
+    llm: "VertexAI",
+    label: "Gemini 1.5 Pro",
+    supportsSystemPrompt: true,
+    tokens: 2097152,
+    completionTokens: 8192,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "gemini-1.0-pro": {
+    llm: "VertexAI",
+    label: "Gemini 1.0 Pro",
+    supportsSystemPrompt: true,
+    tokens: 32760,
+    completionTokens: 8192,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-5-haiku": {
+    llm: "VertexAI",
+    label: "Claude 3.5 Haiku",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 8192,
+    tags: ["new"],
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-5-sonnet-v2": {
+    llm: "VertexAI",
+    label: "Claude 3.5 Sonnet",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 8192,
+    tags: ["v2", "new"],
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-5-sonnet": {
+    llm: "VertexAI",
+    label: "Claude 3.5 Sonnet",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 8192,
+    tags: ["v1"],
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-sonnet": {
+    llm: "VertexAI",
+    label: "Claude 3 Sonnet",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 4096,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-opus": {
+    llm: "VertexAI",
+    label: "Claude 3 Opus",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 4096,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "claude-3-haiku": {
+    llm: "VertexAI",
+    label: "Claude 3 Haiku",
+    supportsSystemPrompt: true,
+    tokens: 2e5,
+    completionTokens: 4096,
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  gemma2: {
+    llm: "VertexAI",
+    label: "Gemma 2",
+    supportsSystemPrompt: true,
+    tokens: 8192,
+    // @Ref https://huggingface.co/blog/gemma2
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma2?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  gemma: {
+    llm: "VertexAI",
+    label: "Gemma",
+    supportsSystemPrompt: true,
+    tokens: 8192,
+    // @Ref https://huggingface.co/blog/gemma2
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  codegemma: {
+    llm: "VertexAI",
+    label: "CodeGemma",
+    supportsSystemPrompt: true,
+    tokens: 8192,
+    // @Ref - https://huggingface.co/google/gemma-7b-it/discussions/73
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/codegemma?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "llama3-405b-instruct-maas": {
+    llm: "VertexAI",
+    label: "Llama 3.1 API Service",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // @Ref - https://docs.together.ai/docs/chat-models
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3-405b-instruct-maas?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  llama3_1: {
+    llm: "VertexAI",
+    label: "Llama 3.1",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // by querying with Gemini - https://gemini.google.com/
+    completionTokens: 4096,
+    // by querying with Gemini - https://gemini.google.com/
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "llama-guard": {
+    llm: "VertexAI",
+    label: "Llama Guard",
+    supportsSystemPrompt: true,
+    tokens: 8192,
+    // @Ref - by querying with Gemini - https://gemini.google.com/
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama-guard?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  llama3: {
+    llm: "VertexAI",
+    label: "Llama 3",
+    supportsSystemPrompt: true,
+    tokens: 8192,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  llama2: {
+    llm: "VertexAI",
+    label: "Llama 2",
+    value: "llama2",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "mistral-large": {
+    llm: "VertexAI",
+    label: "Mistral Large (2407)",
+    supportsSystemPrompt: true,
+    tokens: 128e3,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-large?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 8192,
+    // Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "mistral-nemo": {
+    llm: "VertexAI",
+    label: "Mistral Nemo",
+    supportsSystemPrompt: true,
+    tokens: 128e3,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-nemo?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 8192,
+    // Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  codestral: {
+    llm: "VertexAI",
+    label: "Codestral",
+    supportsSystemPrompt: true,
+    tokens: 32e3,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/codestral?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 4096,
+    // Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  mixtral: {
+    llm: "VertexAI",
+    label: "Mixtral",
+    supportsSystemPrompt: true,
+    tokens: 32e3,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 4096,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "chat-bison": {
+    llm: "VertexAI",
+    label: "PaLM 2 Chat Bison",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // @Ref - by querying with Gemini - https://gemini.google.com/
+    completionTokens: 2048,
+    // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/chat?model=chat-bison@002&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "text-bison": {
+    llm: "VertexAI",
+    label: "PaLM 2 Text Bison",
+    supportsSystemPrompt: true,
+    tokens: 32768,
+    // by querying with Gemini - https://gemini.google.com/
+    completionTokens: 2048,
+    // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  phi3: {
+    llm: "VertexAI",
+    label: "Phi-3",
+    supportsSystemPrompt: true,
+    tokens: 128e3,
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/microsoft/model-garden/phi3?authuser=1&project=opt-smythos-vertexia-432522
+    completionTokens: 8192,
+    // Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  qwen2: {
+    llm: "VertexAI",
+    label: "Qwen2",
+    supportsSystemPrompt: true,
+    tokens: 131072,
+    // @Ref - https://huggingface.co/Qwen/Qwen2-72B-Instruct
+    completionTokens: 8192,
+    // Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  mammut: {
+    llm: "VertexAI",
+    label: "MaMMUT",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // @Ref - by querying with Gemini - https://gemini.google.com/
+    completionTokens: 2048,
+    // @Ref - by querying with Gemini - https://gemini.google.com/
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "lmsys-vicuna-7b": {
+    llm: "VertexAI",
+    label: "Vicuna",
+    supportsSystemPrompt: true,
+    tokens: 4096,
+    // @Ref - https://docs.together.ai/docs/chat-models
+    completionTokens: 2048,
+    // @Ref - Guessing from the context window (tokens)
+    components: ["PromptGenerator", "LLMAssistant"]
+  },
+  "bio-gpt": {
+    llm: "VertexAI",
+    label: "BioGPT",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "microsoft-biomedclip": {
+    llm: "VertexAI",
+    label: "BiomedCLIP",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  mistral: {
+    llm: "VertexAI",
+    label: "Mistral Self-host (7B & Nemo)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  nllb: {
+    llm: "VertexAI",
+    label: "NLLB",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "codellama-7b-hf": {
+    llm: "VertexAI",
+    label: "Code Llama",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "palmyra-med": {
+    llm: "VertexAI",
+    label: "Palmyra Med (Writer)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "llama-2-quantized": {
+    llm: "VertexAI",
+    label: "Llama 2 (Quantized)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "bert-base-uncased": {
+    llm: "VertexAI",
+    label: "BERT (PEFT)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "falcon-instruct-7b-peft": {
+    llm: "VertexAI",
+    label: "Falcon-instruct (PEFT)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  openllama: {
+    llm: "VertexAI",
+    label: "OpenLLaMA (PEFT)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "roberta-large": {
+    llm: "VertexAI",
+    label: "RoBERTa-large (PEFT)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "xlm-roberta-large": {
+    llm: "VertexAI",
+    label: "XLM-RoBERTa-large (PEFT)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "bart-large-cnn": {
+    llm: "VertexAI",
+    label: "Bart-large-cnn",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "dolly-v2": {
+    llm: "VertexAI",
+    label: "Dolly-v2",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  imagetext: {
+    llm: "VertexAI",
+    label: "Imagen for Captioning & VQA",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "codechat-bison": {
+    llm: "VertexAI",
+    label: "Codey for Code Chat",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "code-bison": {
+    llm: "VertexAI",
+    label: "Codey for Code Generation",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "code-gecko": {
+    llm: "VertexAI",
+    label: "Codey for Code Completion",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "text-unicorn": {
+    llm: "VertexAI",
+    label: "PaLM 2 Text Unicorn",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "textembedding-gecko": {
+    llm: "VertexAI",
+    label: "Embeddings for Text",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "t5-flan": {
+    llm: "VertexAI",
+    label: "T5-FLAN",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "t5-1.1": {
+    llm: "VertexAI",
+    label: "T5-1.1",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "blip2-opt-2.7-b": {
+    llm: "VertexAI",
+    label: "BLIP2",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "instruct-pix2pix": {
+    llm: "VertexAI",
+    label: "InstructPix2Pix",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "bert-base": {
+    llm: "VertexAI",
+    label: "BERT",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "mediapipe-mobile-bert-classifier": {
+    llm: "VertexAI",
+    label: "MobileBERT Classifier (MediaPipe)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "mediapipe-average-word-embedding-classifier": {
+    llm: "VertexAI",
+    label: "Average Word Embedding Classifier (MediaPipe)",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  pic2word: {
+    llm: "VertexAI",
+    label: "Pic2Word Composed Image Retrieval",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "text-translation": {
+    llm: "VertexAI",
+    label: "Text Translation",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "language-v1-moderate-text": {
+    llm: "VertexAI",
+    label: "Text Moderation",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "language-v1-analyze-syntax": {
+    llm: "VertexAI",
+    label: "Syntax analysis",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "language-v1-analyze-entity-sentiment": {
+    llm: "VertexAI",
+    label: "Entity sentiment analysis",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "language-v1-analyze-sentiment": {
+    llm: "VertexAI",
+    label: "Sentiment analysis",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "language-v1-classify-text-v1": {
+    llm: "VertexAI",
+    label: "Content classification",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  },
+  "pt-test": {
+    llm: "VertexAI",
+    label: "Entity analysis",
+    supportsSystemPrompt: false,
+    tokens: 4096,
+    // Guessed value, no reference
+    completionTokens: 4096,
+    // Guessed value, no reference
+    components: ["PromptGenerator"]
+  }
 };
 
-var __defProp$U = Object.defineProperty;
-var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$W = Object.defineProperty;
+var __defNormalProp$W = (obj, key, value) => key in obj ? __defProp$W(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$W = (obj, key, value) => __defNormalProp$W(obj, typeof key !== "symbol" ? key + "" : key, value);
 class CustomLLMRegistry {
   constructor() {
-    __publicField$U(this, "models", {});
+    __publicField$W(this, "models", {});
   }
   // TODO [Forhad]: apply proper typing
   static async getInstance(teamId) {
+    if (!teamId) throw new Error("Please provide a valid team ID.");
     const registry = new CustomLLMRegistry();
     await registry.loadCustomModels(teamId);
     return registry;
@@ -3798,19 +4513,18 @@ class CustomLLMRegistry {
       const savedCustomModelsData = JSON.parse(teamSettings || "{}");
       for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
         const foundationModel = entry.settings.foundationModel;
-        const tokens = customModels[foundationModel]?.tokens || entry?.tokens;
-        const completionTokens = customModels[foundationModel]?.completionTokens || entry?.completionTokens;
         const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
+        const customModelData = customModels[foundationModel] || {};
         models[entryId] = {
           id: entryId,
           name: entry.name,
           alias: foundationModel,
           llm: entry.provider,
-          tokens,
-          completionTokens,
           enabled: true,
-          components: entry.components,
           tags: entry.tags,
+          components: customModelData?.components ?? [],
+          tokens: customModelData?.tokens ?? 1e5,
+          completionTokens: customModelData?.completionTokens ?? 4096,
           supportsSystemPrompt,
           provider: entry.provider,
           features: entry.features,
@@ -3824,13 +4538,13 @@ class CustomLLMRegistry {
   }
 }
 
-var __defProp$T = Object.defineProperty;
-var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$V = Object.defineProperty;
+var __defNormalProp$V = (obj, key, value) => key in obj ? __defProp$V(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$V = (obj, key, value) => __defNormalProp$V(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMInference$1 {
   constructor() {
-    __publicField$T(this, "model");
-    __publicField$T(this, "llmConnector");
+    __publicField$V(this, "model");
+    __publicField$V(this, "llmConnector");
   }
   static async getInstance(model, teamId) {
     const llmInference = new LLMInference$1();
@@ -3850,18 +4564,22 @@ class LLMInference$1 {
     return this.llmConnector;
   }
   async promptRequest(prompt, config = {}, agent, customParams = {}) {
-    if (!prompt && !customParams.messages?.length) {
-      throw new Error("Prompt or messages are required");
+    const messages = customParams?.messages || [];
+    if (prompt) {
+      const _prompt = this.llmConnector.enhancePrompt(prompt, config);
+      messages.push({ role: TLLMMessageRole.User, content: _prompt });
     }
+    if (!messages?.length) {
+      throw new Error("Input prompt is required!");
+    }
+    let params = Object.assign(config.data, { ...customParams, messages });
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const params = this.prepareParams(config) || {};
+    params = this.prepareParams(params) || {};
     if (!this.llmConnector) {
       throw new Error(`Model ${params.model} not supported`);
     }
-    Object.assign(params, customParams);
     try {
-      prompt = this.llmConnector.enhancePrompt(prompt, config);
-      let response = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(prompt, params);
+      let response = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
       const result = this.llmConnector.postProcess(response?.content);
       if (result.error) {
         if (response.finishReason !== "stop") {
@@ -3940,7 +4658,7 @@ class LLMInference$1 {
     if (!params.messages || !params.messages?.length) {
       throw new Error("Input messages are required.");
     }
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     if (!_params.model) {
       _params.model = this.model;
     }
@@ -3962,7 +4680,7 @@ class LLMInference$1 {
       if (!params.messages || !params.messages?.length) {
         throw new Error("Input messages are required.");
       }
-      const _params = { ...params };
+      const _params = JSON.parse(JSON.stringify(params));
       if (!_params.model) {
         _params.model = this.model;
       }
@@ -3977,9 +4695,20 @@ class LLMInference$1 {
       return dummyEmitter;
     }
   }
-  prepareParams(config) {
-    const clonedConfigData = JSON.parse(JSON.stringify(config.data || {}));
-    const configParams = {};
+  getConsistentMessages(messages) {
+    if (!messages?.length) {
+      throw new Error("Input messages are required.");
+    }
+    try {
+      return this.llmConnector.getConsistentMessages(messages);
+    } catch (error) {
+      console.error("Error in getConsistentMessages: ", error);
+      return messages;
+    }
+  }
+  prepareParams(params) {
+    const clonedConfigData = JSON.parse(JSON.stringify(params || {}));
+    const preparedParams = {};
     for (const [key, value] of Object.entries(clonedConfigData)) {
       let _value = value;
       if (key === "stopSequences") {
@@ -3988,24 +4717,28 @@ class LLMInference$1 {
       if (typeof _value === "string" && !isNaN(Number(_value))) {
         _value = +_value;
       }
-      configParams[key] = _value;
+      if (key === "messages") {
+        _value = this.getConsistentMessages(_value);
+      }
+      preparedParams[key] = _value;
     }
-    if (!configParams?.model) {
-      configParams.model = this.model;
+    if (!preparedParams?.model) {
+      preparedParams.model = this.model;
     }
-    return configParams;
+    return preparedParams;
   }
 }
 
-var __defProp$S = Object.defineProperty;
-var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$U = Object.defineProperty;
+var __defNormalProp$U = (obj, key, value) => key in obj ? __defProp$U(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$U = (obj, key, value) => __defNormalProp$U(obj, typeof key !== "symbol" ? key + "" : key, value);
 class PromptGenerator extends Component {
   constructor() {
     super();
-    __publicField$S(this, "configSchema", Joi.object({
+    __publicField$U(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
-      prompt: Joi.string().required().label("Prompt"),
+      prompt: Joi.string().required().max(4e6).label("Prompt"),
+      // 1M tokens is around 4M characters
       temperature: Joi.number().min(0).max(5).label("Temperature"),
       // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
@@ -4024,8 +4757,9 @@ class PromptGenerator extends Component {
     const logger = this.createComponentLogger(agent, config.name);
     try {
       logger.debug(`=== LLM Prompt Log ===`);
+      let teamId = agent?.teamId;
       const model = config.data.model || "echo";
-      const llmInference = await LLMInference$1.getInstance(model, agent.teamId);
+      const llmInference = await LLMInference$1.getInstance(model, teamId);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -4039,6 +4773,7 @@ class PromptGenerator extends Component {
       }
       logger.debug(` Parsed prompt
 `, prompt, "\n");
+      config.data.responseFormat = config.data?.responseFormat || "json";
       const response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error }));
       logger.debug(` Enhanced prompt 
 `, prompt, "\n");
@@ -4293,32 +5028,32 @@ async function parseArrayBufferResponse(response, agent) {
   }
 }
 
-var __defProp$R = Object.defineProperty;
-var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$f = Logger("AccessTokenManager");
+var __defProp$T = Object.defineProperty;
+var __defNormalProp$T = (obj, key, value) => key in obj ? __defProp$T(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$T = (obj, key, value) => __defNormalProp$T(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$e = Logger("AccessTokenManager");
 let managedVault$1;
 SystemEvents.on("SRE:Booted", () => {
   managedVault$1 = ConnectorService.getManagedVaultConnector("oauth");
 });
 class AccessTokenManager {
   constructor(clientId, clientSecret, secondaryToken, tokenUrl, expires_in, primaryToken, data, keyId, logger, agent) {
-    __publicField$R(this, "clientId");
-    __publicField$R(this, "clientSecret");
-    __publicField$R(this, "primaryToken");
+    __publicField$T(this, "clientId");
+    __publicField$T(this, "clientSecret");
+    __publicField$T(this, "primaryToken");
     // accessToken || token
-    __publicField$R(this, "secondaryToken");
+    __publicField$T(this, "secondaryToken");
     // refreshToken || tokenSecret
-    __publicField$R(this, "tokenUrl");
+    __publicField$T(this, "tokenUrl");
     // tokenURL to refresh accessToken
-    __publicField$R(this, "expires_in");
-    __publicField$R(this, "data");
+    __publicField$T(this, "expires_in");
+    __publicField$T(this, "data");
     // value of key(keyId) in teamSettings that needs to be updated if required
-    __publicField$R(this, "keyId");
+    __publicField$T(this, "keyId");
     // key of object  in teamSettings
-    __publicField$R(this, "logger");
+    __publicField$T(this, "logger");
     // Use to log console in debugger
-    __publicField$R(this, "agent");
+    __publicField$T(this, "agent");
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.primaryToken = primaryToken;
@@ -4336,19 +5071,19 @@ class AccessTokenManager {
       if (!this.expires_in || currentTime >= Number(this.expires_in)) {
         if (!this.secondaryToken) {
           this.logger.debug("Refresh token is missing. Please re authenticate");
-          console$f.log("Refresh token is missing. Please re authenticate...");
+          console$e.log("Refresh token is missing. Please re authenticate...");
           throw new Error("Reauthentication required");
         }
         this.logger.debug("Access token is expired or missing. Refreshing access token...");
-        console$f.log("Access token is expired or missing. Refreshing access token...");
+        console$e.log("Access token is expired or missing. Refreshing access token...");
         return await this.refreshAccessToken();
       } else {
-        console$f.log("Access token is still valid");
+        console$e.log("Access token is still valid");
         this.logger.debug("Access token is still valid.");
         return this.primaryToken;
       }
     } catch (error) {
-      console$f.error("Error fetching access token:", error);
+      console$e.error("Error fetching access token:", error);
       this.logger.debug("Error fetching access token");
       throw error;
     }
@@ -4370,7 +5105,7 @@ class AccessTokenManager {
         }
       );
       const newAccessToken = response.data.access_token;
-      console$f.log("Access token refreshed successfully.");
+      console$e.log("Access token refreshed successfully.");
       this.logger.debug("Access token refreshed successfully.");
       const expiresInMilliseconds = response.data.expires_in * 1e3;
       const expirationTimestamp = (/* @__PURE__ */ new Date()).getTime() + expiresInMilliseconds;
@@ -4378,22 +5113,22 @@ class AccessTokenManager {
       this.data.expires_in = expirationTimestamp?.toString();
       const save = await managedVault$1.user(AccessCandidate.agent(this.agent.id)).set(this.keyId, JSON.stringify(this.data));
       if (save && save.status === 200) {
-        console$f.log("Access token value is updated successfully.");
+        console$e.log("Access token value is updated successfully.");
         this.logger.debug("Access token value is updated successfully.");
       } else {
-        console$f.log("Warning: new access token value is not updated.");
+        console$e.log("Warning: new access token value is not updated.");
         this.logger.debug("Warning: new access token value is not updated.");
       }
       return newAccessToken;
     } catch (error) {
-      console$f.error("Failed to refresh access token:", error);
+      console$e.error("Failed to refresh access token:", error);
       this.logger.debug(`Failed to refresh access token: ${error}`);
       throw new Error("Failed to refresh access token.");
     }
   }
 }
 
-const console$e = Logger("OAuth.helper");
+const console$d = Logger("OAuth.helper");
 let managedVault;
 SystemEvents.on("SRE:Booted", () => {
   managedVault = ConnectorService.getManagedVaultConnector("oauth");
@@ -4483,7 +5218,7 @@ const retrieveOAuthTokens = async (agent, config) => {
       throw new Error(`Failed to parse retrieved tokens: ${error}`);
     }
   } catch (error) {
-    console$e.error("Error retrieving OAuth tokens:", error);
+    console$d.error("Error retrieving OAuth tokens:", error);
     throw error;
   }
 };
@@ -4563,7 +5298,7 @@ async function getClientCredentialToken(data, logger, keyId, oauthTokens, config
       const response = await axios.post(tokenURL, params.toString(), {
         headers: { "Content-Type": "application/x-www-form-urlencoded" }
       });
-      console$e.log("Access token refreshed successfully.");
+      console$d.log("Access token refreshed successfully.");
       logger.debug("Access token refreshed successfully.");
       const newAccessToken = response.data.access_token;
       const expiresInMilliseconds = response.data.expires_in * 1e3;
@@ -4590,7 +5325,7 @@ async function getClientCredentialToken(data, logger, keyId, oauthTokens, config
       await managedVault.user(AccessCandidate.agent(agent.id)).set(keyId, data);
       return newAccessToken;
     } else {
-      console$e.log("Access token value is still valid.");
+      console$d.log("Access token value is still valid.");
       logger.debug("Access token value is still valid.");
       return oauthTokens.primaryToken;
     }
@@ -4599,13 +5334,13 @@ async function getClientCredentialToken(data, logger, keyId, oauthTokens, config
   }
 }
 
-var __defProp$Q = Object.defineProperty;
-var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$S = Object.defineProperty;
+var __defNormalProp$S = (obj, key, value) => key in obj ? __defProp$S(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$S = (obj, key, value) => __defNormalProp$S(obj, typeof key !== "symbol" ? key + "" : key, value);
 class APICall extends Component {
   constructor() {
     super();
-    __publicField$Q(this, "configSchema", Joi.object({
+    __publicField$S(this, "configSchema", Joi.object({
       method: Joi.string().valid("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS").required().label("Method"),
       url: Joi.string().max(8192).required().label("URL"),
       headers: Joi.string().allow("").label("Headers"),
@@ -4675,14 +5410,15 @@ class APICall extends Component {
   }
 }
 
-var __defProp$P = Object.defineProperty;
-var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$R = Object.defineProperty;
+var __defNormalProp$R = (obj, key, value) => key in obj ? __defProp$R(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$R = (obj, key, value) => __defNormalProp$R(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VisionLLM extends Component {
   constructor() {
     super();
-    __publicField$P(this, "configSchema", Joi.object({
-      prompt: Joi.string().required().label("Prompt"),
+    __publicField$R(this, "configSchema", Joi.object({
+      prompt: Joi.string().required().max(4e6).label("Prompt"),
+      // 1M tokens is around 4M characters
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
     }));
@@ -4694,7 +5430,7 @@ class VisionLLM extends Component {
     const logger = this.createComponentLogger(agent, config.name);
     try {
       logger.debug(`=== Vision LLM Log ===`);
-      const model = config.data.model || "gpt-4-vision-preview";
+      const model = config.data.model || "gpt-4o-mini";
       const llmInference = await LLMInference$1.getInstance(model);
       if (!llmInference.connector) {
         return {
@@ -4833,121 +5569,15 @@ ${_error}
   }
 }
 
-const console$d = Logger("SecureConnector");
-class SecureConnector extends Connector {
-  async start() {
-    console$d.info(`Starting ${this.name} connector ...`);
-  }
-  async stop() {
-    console$d.info(`Stopping ${this.name} connector ...`);
-  }
-  async hasAccess(acRequest) {
-    const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
-    const exactAccess = aclHelper.checkExactAccess(acRequest);
-    if (exactAccess) return true;
-    const ownerRequest = AccessRequest.clone(acRequest).setLevel(TAccessLevel.Owner);
-    const ownerAccess = aclHelper.checkExactAccess(ownerRequest);
-    if (ownerAccess) return true;
-    const publicRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.public());
-    const publicAccess = aclHelper.checkExactAccess(publicRequest);
-    if (publicAccess) return true;
-    const accountConnector = ConnectorService.getAccountConnector();
-    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-    const teamRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
-    const teamAccess = aclHelper.checkExactAccess(teamRequest);
-    if (teamAccess) return true;
-    const teamOwnerRequest = AccessRequest.clone(teamRequest).setLevel(TAccessLevel.Owner);
-    const teamOwnerAccess = aclHelper.checkExactAccess(teamOwnerRequest);
-    if (teamOwnerAccess) return true;
-    return false;
-  }
-  async getAccessTicket(resourceId, request) {
-    const sysAcRequest = AccessRequest.clone(request).resource(resourceId);
-    const accessTicket = {
-      request,
-      access: await this.hasAccess(sysAcRequest) ? TAccessResult.Granted : TAccessResult.Denied
-    };
-    return accessTicket;
-  }
-  //#region [ Decorators ]==========================
-  //AccessControl decorator
-  //This decorator will inject the access control logic into storage connector methods
-  // in order to work properly, the connector expects the resourceId to be the first argument and the access request to be the second argument
-  static AccessControl(target, propertyKey, descriptor) {
-    const originalMethod = descriptor.value;
-    descriptor.value = async function(...args) {
-      const [acRequest, resourceId] = args;
-      const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-      if (accessTicket.access !== TAccessResult.Granted) {
-        console$d.error(`Access denied for ${acRequest.candidate.id} on ${resourceId}`);
-        throw new ACLAccessDeniedError("Access Denied");
-      }
-      return originalMethod.apply(this, args);
-    };
-    return descriptor;
-  }
-  //#endregion
-}
-
-class VectorDBConnector extends SecureConnector {
-  user(candidate) {
-    return {
-      search: async (namespace, query, options) => {
-        return await this.search(candidate.readRequest, namespace, query, options);
-      },
-      insert: async (namespace, source) => {
-        return this.insert(candidate.writeRequest, namespace, source);
-      },
-      delete: async (namespace, id) => {
-        await this.delete(candidate.writeRequest, namespace, id);
-      },
-      createNamespace: async (namespace, metadata) => {
-        await this.createNamespace(candidate.writeRequest, namespace, metadata);
-      },
-      deleteNamespace: async (namespace) => {
-        await this.deleteNamespace(candidate.writeRequest, namespace);
-      },
-      listNamespaces: async () => {
-        return await this.listNamespaces(candidate.readRequest);
-      },
-      namespaceExists: async (namespace) => {
-        return await this.namespaceExists(candidate.readRequest, namespace);
-      },
-      getNamespace: async (namespace) => {
-        return await this.getNamespace(candidate.readRequest, namespace);
-      },
-      getNsMetadata: async (namespace) => {
-        return this.getNsMetadata(candidate.readRequest, namespace);
-      }
-    };
-  }
-  // protected abstract updateVectors(acRequest: AccessRequest, resourceId: string): Promise<void>;
-  // protected abstract getMetadata(acRequest: AccessRequest, resourceId: string): Promise<StorageMetadata | undefined>;
-  // protected abstract setMetadata(acRequest: AccessRequest, resourceId: string, metadata: StorageMetadata): Promise<void>;
-  // protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
-  // protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
-  static constructNsName(name, teamId) {
-    return `${teamId}::${name}`;
-  }
-  static parseNsName(nsName) {
-    const parts = nsName.split("::");
-    if (parts.length != 2) return null;
-    return {
-      teamId: parts[0],
-      name: parts[1]
-    };
-  }
-}
-
-var __defProp$O = Object.defineProperty;
-var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$Q = Object.defineProperty;
+var __defNormalProp$Q = (obj, key, value) => key in obj ? __defProp$Q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$Q = (obj, key, value) => __defNormalProp$Q(obj, typeof key !== "symbol" ? key + "" : key, value);
 const logger = Logger("SRE");
 const CInstance = ConnectorService;
 const _SmythRuntime = class _SmythRuntime {
   constructor() {
-    __publicField$O(this, "started", false);
-    __publicField$O(this, "initialized", false);
+    __publicField$Q(this, "started", false);
+    __publicField$Q(this, "initialized", false);
     this.started = true;
   }
   static get Instance() {
@@ -5012,44 +5642,153 @@ const _SmythRuntime = class _SmythRuntime {
     this.started = false;
   }
 };
-__publicField$O(_SmythRuntime, "instance");
+__publicField$Q(_SmythRuntime, "instance");
 let SmythRuntime = _SmythRuntime;
 
-var __defProp$N = Object.defineProperty;
-var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$7 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$7(target, key) : target;
+const console$c = Logger("SecureConnector");
+class SecureConnector extends Connector {
+  async start() {
+    console$c.info(`Starting ${this.name} connector ...`);
+  }
+  async stop() {
+    console$c.info(`Stopping ${this.name} connector ...`);
+  }
+  async hasAccess(acRequest) {
+    const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
+    const exactAccess = aclHelper.checkExactAccess(acRequest);
+    if (exactAccess) return true;
+    const ownerRequest = AccessRequest.clone(acRequest).setLevel(TAccessLevel.Owner);
+    const ownerAccess = aclHelper.checkExactAccess(ownerRequest);
+    if (ownerAccess) return true;
+    const publicRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.public());
+    const publicAccess = aclHelper.checkExactAccess(publicRequest);
+    if (publicAccess) return true;
+    const accountConnector = ConnectorService.getAccountConnector();
+    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+    const teamRequest = AccessRequest.clone(acRequest).setCandidate(AccessCandidate.team(teamId));
+    const teamAccess = aclHelper.checkExactAccess(teamRequest);
+    if (teamAccess) return true;
+    const teamOwnerRequest = AccessRequest.clone(teamRequest).setLevel(TAccessLevel.Owner);
+    const teamOwnerAccess = aclHelper.checkExactAccess(teamOwnerRequest);
+    if (teamOwnerAccess) return true;
+    return false;
+  }
+  async getAccessTicket(resourceId, request) {
+    const sysAcRequest = AccessRequest.clone(request).resource(resourceId);
+    const accessTicket = {
+      request,
+      access: await this.hasAccess(sysAcRequest) ? TAccessResult.Granted : TAccessResult.Denied
+    };
+    return accessTicket;
+  }
+  //#region [ Decorators ]==========================
+  //AccessControl decorator
+  //This decorator will inject the access control logic into storage connector methods
+  // in order to work properly, the connector expects the resourceId to be the first argument and the access request to be the second argument
+  static AccessControl(target, propertyKey, descriptor) {
+    const originalMethod = descriptor.value;
+    descriptor.value = async function(...args) {
+      const [acRequest, resourceId] = args;
+      const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+      if (accessTicket.access !== TAccessResult.Granted) {
+        console$c.error(`Access denied for ${acRequest.candidate.id} on ${resourceId}`);
+        throw new ACLAccessDeniedError("Access Denied");
+      }
+      return originalMethod.apply(this, args);
+    };
+    return descriptor;
+  }
+  //#endregion
+}
+
+class VectorDBConnector extends SecureConnector {
+  user(candidate) {
+    return {
+      search: async (namespace, query, options) => {
+        return await this.search(candidate.readRequest, namespace, query, options);
+      },
+      createDatasource: async (namespace, datasource) => {
+        return await this.createDatasource(candidate.writeRequest, namespace, datasource);
+      },
+      deleteDatasource: async (namespace, datasourceId) => {
+        await this.deleteDatasource(candidate.writeRequest, namespace, datasourceId);
+      },
+      listDatasources: async (namespace) => {
+        return await this.listDatasources(candidate.readRequest, namespace);
+      },
+      getDatasource: async (namespace, datasourceId) => {
+        return await this.getDatasource(candidate.readRequest, namespace, datasourceId);
+      },
+      createNamespace: async (namespace, metadata) => {
+        await this.createNamespace(candidate.writeRequest, namespace, metadata);
+      },
+      deleteNamespace: async (namespace) => {
+        await this.deleteNamespace(candidate.writeRequest, namespace);
+      },
+      listNamespaces: async () => {
+        return await this.listNamespaces(candidate.readRequest);
+      },
+      namespaceExists: async (namespace) => {
+        return await this.namespaceExists(candidate.readRequest, namespace);
+      },
+      getNamespace: async (namespace) => {
+        return await this.getNamespace(candidate.readRequest, namespace);
+      }
+    };
+  }
+  static constructNsName(teamId, name) {
+    const joinedName = name.trim().replace(/\s/g, "_").toLowerCase();
+    return `${teamId}_${joinedName}`;
+  }
+  static parseNsName(nsName) {
+    const parts = nsName.split("_");
+    if (parts.length < 2) return null;
+    return {
+      teamId: parts[0],
+      name: parts.slice(1).join("_")
+    };
+  }
+}
+
+var __defProp$P = Object.defineProperty;
+var __getOwnPropDesc$8 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$P = (obj, key, value) => key in obj ? __defProp$P(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$8 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$8(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$N(target, key, result);
+  if (kind && result) __defProp$P(target, key, result);
   return result;
 };
-var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$c = Logger("Pinecone VectorDB");
+var __publicField$P = (obj, key, value) => __defNormalProp$P(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$b = Logger("Pinecone VectorDB");
 class PineconeVectorDB extends VectorDBConnector {
   constructor(config) {
     super();
-    __publicField$N(this, "name", "PineconeVectorDB");
-    __publicField$N(this, "id", "pinecone");
-    __publicField$N(this, "client");
-    __publicField$N(this, "indexName");
-    __publicField$N(this, "redisCache");
-    __publicField$N(this, "accountConnector");
-    __publicField$N(this, "openaiApiKey");
+    __publicField$P(this, "name", "PineconeVectorDB");
+    __publicField$P(this, "id", "pinecone");
+    __publicField$P(this, "client");
+    __publicField$P(this, "indexName");
+    __publicField$P(this, "redisCache");
+    __publicField$P(this, "accountConnector");
+    __publicField$P(this, "openaiApiKey");
+    __publicField$P(this, "nkvConnector");
+    __publicField$P(this, "isCustomStorageInstance");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     if (!config.pineconeApiKey) throw new Error("Pinecone API key is required");
     if (!config.indexName) throw new Error("Pinecone index name is required");
     this.client = new Pinecone({
       apiKey: config.pineconeApiKey
     });
-    console$c.info("Pinecone client initialized");
-    console$c.info("Pinecone index name:", config.indexName);
+    console$b.info("Pinecone client initialized");
+    console$b.info("Pinecone index name:", config.indexName);
     this.indexName = config.indexName;
     this.accountConnector = ConnectorService.getAccountConnector();
     this.redisCache = ConnectorService.getCacheConnector("Redis");
+    this.nkvConnector = ConnectorService.getNKVConnector();
     this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+    this.isCustomStorageInstance = config.isCustomStorageInstance || false;
   }
   async getResourceACL(resourceId, candidate) {
     const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
@@ -5064,32 +5803,67 @@ class PineconeVectorDB extends VectorDBConnector {
   async createNamespace(acRequest, namespace, metadata) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
     const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    const candidate = AccessCandidate.team(teamId);
+    const nsExists = await this.nkvConnector.user(candidate).exists(`vectorDB:${this.id}`, `namespace:${preparedNs}`);
+    if (!nsExists) {
+      const nsData = {
+        namespace: preparedNs,
+        displayName: namespace,
+        teamId,
+        metadata: {
+          ...metadata,
+          isOnCustomStorage: this.isCustomStorageInstance,
+          indexName: this.indexName
+        }
+      };
+      await this.nkvConnector.user(candidate).set(`vectorDB:${this.id}:namespaces`, preparedNs, JSON.stringify(nsData));
+    }
     const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
     await this.setACL(acRequest, preparedNs, acl);
     return new Promise((resolve) => resolve());
   }
   async namespaceExists(acRequest, namespace) {
-    throw new Error("Pinecone does not support namespace existence check");
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    return await this.nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
   }
   async getNamespace(acRequest, namespace) {
-    throw new Error("Pinecone does not support getting a namespace");
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    const nsData = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, preparedNs);
+    return JSONContentHelper.create(nsData?.toString()).tryParse();
   }
   async listNamespaces(acRequest) {
-    throw new Error("Pinecone does not support listing namespaces");
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const candidate = AccessCandidate.team(teamId);
+    const nsKeys = await this.nkvConnector.user(candidate).list(`vectorDB:${this.id}:namespaces`);
+    return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse());
   }
   async deleteNamespace(acRequest, namespace) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const candidate = AccessCandidate.team(teamId);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
     await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteAll().catch((e) => {
       if (e?.name == "PineconeNotFoundError") {
-        console$c.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
+        console$b.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
         return;
       }
       throw e;
     });
     await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
+    await this.nkvConnector.user(candidate).delete("vectorDB:pinecone:namespaces", preparedNs);
   }
   async search(acRequest, namespace, query, options = {}) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    let ns = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+    if (!ns) {
+      throw new Error("Namespace does not exist");
+    }
+    const nsData = JSONContentHelper.create(ns.toString()).tryParse();
+    if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
+      throw new Error("Tried to access namespace on custom storage.");
+    } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
+      throw new Error("Tried to access namespace that is not on custom storage.");
+    }
     const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
     let _vector = query;
     if (typeof query === "string") {
@@ -5101,11 +5875,16 @@ class PineconeVectorDB extends VectorDBConnector {
       includeMetadata: true,
       includeValues: true
     });
-    return results.matches.map((match) => ({
-      id: match.id,
-      values: match.values,
-      metadata: match.metadata
-    }));
+    return results.matches.map((match) => {
+      if (match.metadata?.user) {
+        match.metadata.user = VectorsHelper.parseMetadata(match.metadata.user);
+      }
+      return {
+        id: match.id,
+        values: match.values,
+        metadata: match.metadata
+      };
+    });
   }
   async insert(acRequest, namespace, sourceWrapper) {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
@@ -5136,93 +5915,149 @@ class PineconeVectorDB extends VectorDBConnector {
     const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
     await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteMany(_ids);
   }
-  getNsMetadata(acRequest, namespace) {
-    return Promise.resolve({
-      indexName: this.indexName
+  async createDatasource(acRequest, namespace, datasource) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    const chunkedText = await VectorsHelper.chunkText(datasource.text, {
+      chunkSize: datasource.chunkSize,
+      chunkOverlap: datasource.chunkOverlap
     });
+    const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
+    const source = chunkedText.map((doc, i) => {
+      return {
+        id: ids[i],
+        source: doc,
+        metadata: {
+          user: VectorsHelper.stringifyMetadata(datasource.metadata)
+          // user-speficied metadata
+        }
+      };
+    });
+    const nsExists = await this.nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+    if (!nsExists) {
+      throw new Error("Namespace does not exist");
+    }
+    const _vIds = await this.insert(acRequest, namespace, source);
+    const dsId = datasource.id || crypto.randomUUID();
+    const dsData = {
+      namespaceId: formattedNs,
+      teamId,
+      name: datasource.label || "Untitled",
+      metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
+      text: datasource.text,
+      embeddingIds: _vIds
+    };
+    await this.nkvConnector.user(AccessCandidate.team(teamId)).set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
+    return { id: dsId, vectorIds: _vIds };
   }
-  async setACL(acRequest, namespace, acl) {
-    await this.redisCache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${namespace}:acl`, JSON.stringify(acl));
+  async deleteDatasource(acRequest, namespace, datasourceId) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    let ds = JSONContentHelper.create(
+      (await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId))?.toString()
+    ).tryParse();
+    if (!ds || typeof ds !== "object") {
+      throw new Error(`Data source not found with id: ${datasourceId}`);
+    }
+    const nsExists = await this.nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+    if (!nsExists) {
+      throw new Error("Namespace does not exist");
+    }
+    await this.delete(acRequest, namespace, ds.embeddingIds || []);
+    await this.nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
   }
-  async getACL(ac, namespace) {
-    let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${namespace}:acl`);
+  async listDatasources(acRequest, namespace) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
+      (ds) => {
+        return {
+          id: ds.key,
+          data: JSONContentHelper.create(ds.data?.toString()).tryParse()
+        };
+      }
+    );
+  }
+  async getDatasource(acRequest, namespace, datasourceId) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    return JSONContentHelper.create(
+      (await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId))?.toString()
+    ).tryParse();
+  }
+  async setACL(acRequest, preparedNs, acl) {
+    await this.redisCache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
+  }
+  async getACL(ac, preparedNs) {
+    let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
     return acl;
   }
-  async deleteACL(ac, namespace) {
-    this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${namespace}:acl`);
+  async deleteACL(ac, preparedNs) {
+    this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
   }
 }
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "createNamespace", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "namespaceExists", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "getNamespace", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "listNamespaces", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "deleteNamespace", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "search", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "insert", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
 ], PineconeVectorDB.prototype, "delete", 1);
-__decorateClass$7([
+__decorateClass$8([
   SecureConnector.AccessControl
-], PineconeVectorDB.prototype, "getNsMetadata", 1);
+], PineconeVectorDB.prototype, "createDatasource", 1);
+__decorateClass$8([
+  SecureConnector.AccessControl
+], PineconeVectorDB.prototype, "deleteDatasource", 1);
+__decorateClass$8([
+  SecureConnector.AccessControl
+], PineconeVectorDB.prototype, "listDatasources", 1);
+__decorateClass$8([
+  SecureConnector.AccessControl
+], PineconeVectorDB.prototype, "getDatasource", 1);
 
-var __defProp$M = Object.defineProperty;
-var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$O = Object.defineProperty;
+var __defNormalProp$O = (obj, key, value) => key in obj ? __defProp$O(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$O = (obj, key, value) => __defNormalProp$O(obj, typeof key !== "symbol" ? key + "" : key, value);
 class VectorsHelper {
   constructor(connectorName, options = {}) {
-    __publicField$M(this, "_vectorDBconnector");
-    __publicField$M(this, "embeddingsProvider");
-    __publicField$M(this, "_vectorDimention");
-    __publicField$M(this, "_nkvConnector");
-    __publicField$M(this, "_vaultConnector");
-    __publicField$M(this, "cusStorageKeyName");
-    __publicField$M(this, "isCustomStorageInstance", false);
-    __publicField$M(this, "openaiApiKey");
+    __publicField$O(this, "_vectorDBconnector");
+    __publicField$O(this, "embeddingsProvider");
+    __publicField$O(this, "_vectorDimention");
+    __publicField$O(this, "_vaultConnector");
+    __publicField$O(this, "cusStorageKeyName");
+    __publicField$O(this, "isCustomStorageInstance", false);
+    __publicField$O(this, "openaiApiKey");
     this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
     this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
     this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: this.openaiApiKey });
     if (this._vectorDimention && !isNaN(this._vectorDimention)) {
       this.embeddingsProvider.dimensions = this._vectorDimention;
     }
-    this._nkvConnector = ConnectorService.getNKVConnector();
     this._vaultConnector = ConnectorService.getVaultConnector();
     this.cusStorageKeyName = `vectorDB:customStorage:${this._vectorDBconnector.id}`;
   }
   static load(options = {}) {
     const instance = new VectorsHelper(options.connectorName, { openaiApiKey: options.openaiApiKey });
     options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
-    return instance;
-  }
-  /**
-   * Loads a VectorsHelper instance for a team. If the team has a custom storage, it will use the custom storage.
-   * @param teamId - The team ID.
-   * @param options - The options.
-   * @returns The VectorsHelper instance.
-   */
-  static async forTeam(teamId, options = {}) {
-    const instance = new VectorsHelper(options.connectorName);
-    options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
-    let teamVectorDB = await instance.getTeamVectorDB(teamId);
-    if (teamVectorDB && teamVectorDB instanceof VectorDBConnector) {
-      instance._vectorDBconnector = teamVectorDB;
-      instance.isCustomStorageInstance = true;
-    }
     return instance;
   }
   setVectorDimention(vectorDimention) {
@@ -5239,128 +6074,8 @@ class VectorsHelper {
     let output = await textSplitter.splitText(text);
     return output;
   }
-  async createDatasource(text, namespace, {
-    teamId,
-    metadata,
-    chunkSize = 4e3,
-    chunkOverlap = 500,
-    label,
-    id
-  } = {}) {
-    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-    const chunkedText = await VectorsHelper.chunkText(text, { chunkSize, chunkOverlap });
-    const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
-    const source = chunkedText.map((doc, i) => {
-      return {
-        id: ids[i],
-        source: doc,
-        metadata: {
-          user: VectorsHelper.stringifyMetadata(metadata)
-          // user-speficied metadata
-        }
-      };
-    });
-    const nsExists = await this._nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-    if (!nsExists) {
-      throw new Error("Namespace does not exist");
-    }
-    const _vIds = await this._vectorDBconnector.user(AccessCandidate.team(teamId)).insert(namespace, source);
-    const dsId = id || crypto.randomUUID();
-    const dsData = {
-      namespaceId: formattedNs,
-      teamId,
-      name: label || "Untitled",
-      metadata: VectorsHelper.stringifyMetadata(metadata),
-      text,
-      embeddingIds: _vIds
-    };
-    await this._nkvConnector.user(AccessCandidate.team(teamId)).set(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
-    return dsId;
-  }
-  async listDatasources(teamId, namespace) {
-    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-    return (await this._nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`)).map((ds) => {
-      return {
-        id: ds.key,
-        data: JSONContentHelper.create(ds.data?.toString()).tryParse()
-      };
-    });
-  }
-  async getDatasource(teamId, namespace, dsId) {
-    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-    return JSONContentHelper.create(
-      (await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId))?.toString()
-    ).tryParse();
-  }
-  async deleteDatasource(teamId, namespace, dsId) {
-    const formattedNs = VectorDBConnector.constructNsName(namespace, teamId);
-    let ds = JSONContentHelper.create(
-      (await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId))?.toString()
-    ).tryParse();
-    if (!ds || typeof ds !== "object") {
-      throw new Error(`Data source not found with id: ${dsId}`);
-    }
-    const nsExists = await this._nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-    if (!nsExists) {
-      throw new Error("Namespace does not exist");
-    }
-    await this._vectorDBconnector.user(AccessCandidate.team(teamId)).delete(namespace, ds.embeddingIds || []);
-    await this._nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this._vectorDBconnector.id}:namespaces:${formattedNs}:datasources`, dsId);
-  }
-  async createNamespace(teamId, name, metadata = {}) {
-    const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-    const candidate = AccessCandidate.team(teamId);
-    const nsExists = await this._nkvConnector.user(candidate).exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${preparedNs}`);
-    const nsSysMetadata = await this._vectorDBconnector.user(candidate).getNsMetadata(preparedNs);
-    if (!nsExists) {
-      const nsData = {
-        namespace: preparedNs,
-        displayName: name,
-        teamId,
-        metadata: {
-          ...metadata,
-          isOnCustomStorage: this.isCustomStorageInstance,
-          ...nsSysMetadata
-        }
-      };
-      await this._nkvConnector.user(candidate).set(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs, JSON.stringify(nsData));
-    }
-    await this._vectorDBconnector.user(candidate).createNamespace(name, { ...metadata, isOnCustomStorage: this.isCustomStorageInstance });
-  }
-  async deleteNamespace(teamId, name) {
-    const candidate = AccessCandidate.team(teamId);
-    await this._vectorDBconnector.user(candidate).deleteNamespace(name);
-    const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-    await this._nkvConnector.user(candidate).delete("vectorDB:pinecone:namespaces", preparedNs);
-  }
-  async listNamespaces(teamId) {
-    const candidate = AccessCandidate.team(teamId);
-    const nsKeys = await this._nkvConnector.user(candidate).list(`vectorDB:${this._vectorDBconnector.id}:namespaces`);
-    return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse());
-  }
-  async namespaceExists(teamId, name) {
-    return await this._nkvConnector.user(AccessCandidate.team(teamId)).exists(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, name));
-  }
-  async search(teamId, namespace, query, options = {}) {
-    let ns = await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-    if (!ns) {
-      throw new Error("Namespace does not exist");
-    }
-    const nsData = JSONContentHelper.create(ns.toString()).tryParse();
-    if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
-      throw new Error("Tried to access namespace on custom storage.");
-    } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
-      throw new Error("Tried to access namespace that is not on custom storage.");
-    }
-    return this._vectorDBconnector.user(AccessCandidate.team(teamId)).search(namespace, query, options);
-  }
-  async getNamespace(teamId, name) {
-    const preparedNs = VectorDBConnector.constructNsName(teamId, name);
-    const nsData = await this._nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this._vectorDBconnector.id}:namespaces`, preparedNs);
-    return JSONContentHelper.create(nsData?.toString()).tryParse();
-  }
   async isNewNs(ac, namespace) {
-    return !await this._nkvConnector.user(AccessCandidate.clone(ac)).exists(`vectorDB:${this._vectorDBconnector.id}`, `namespace:${namespace}:acl`);
+    return !await this._vectorDBconnector.user(ac).namespaceExists(namespace);
   }
   async embedText(text) {
     return this.embeddingsProvider.embedQuery(text);
@@ -5375,10 +6090,17 @@ class VectorsHelper {
       return metadata;
     }
   }
-  async getTeamVectorDB(teamId) {
+  static parseMetadata(metadata) {
+    try {
+      return JSON.parse(metadata);
+    } catch (err) {
+      return metadata;
+    }
+  }
+  async getTeamConnector(teamId) {
     const config = await this.getCustomStorageConfig(teamId).catch((e) => null);
     if (!config) return null;
-    return this._vectorDBconnector.instance(config);
+    return this._vectorDBconnector.instance({ ...config, isCustomStorageInstance: true });
   }
   async getCustomStorageConfig(teamId) {
     const config = await this._vaultConnector.user(AccessCandidate.team(teamId)).get(this.cusStorageKeyName);
@@ -5389,7 +6111,7 @@ class VectorsHelper {
     return JSONContentHelper.create(config).tryParse();
   }
   async isNamespaceOnCustomStorage(teamId, namespace) {
-    const ns = await this.getNamespace(teamId, namespace);
+    const ns = await this._vectorDBconnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
     return ns.metadata?.isOnCustomStorage ?? false;
   }
   detectSourceType(source) {
@@ -5439,9 +6161,9 @@ class VectorsHelper {
   // }
 }
 
-var __defProp$L = Object.defineProperty;
-var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$N = Object.defineProperty;
+var __defNormalProp$N = (obj, key, value) => key in obj ? __defProp$N(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$N = (obj, key, value) => __defNormalProp$N(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMInference {
   static async getInstance(model) {
     throw new Error("Method not implemented.");
@@ -5450,11 +6172,11 @@ class LLMInference {
 class DataSourceLookup extends Component {
   constructor() {
     super();
-    __publicField$L(this, "configSchema", Joi.object({
+    __publicField$N(this, "configSchema", Joi.object({
       topK: Joi.string().custom(validateInteger$2({ min: 0 }), "custom range validation").label("Result Count"),
-      model: Joi.string().valid("gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "gpt-4", "gpt-3.5-turbo-16k").required(),
-      prompt: Joi.string().max(3e4).allow("").label("Prompt"),
-      postprocess: Joi.boolean().strict().required(),
+      model: Joi.string().valid("gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "gpt-4", "gpt-3.5-turbo-16k").optional(),
+      prompt: Joi.string().max(3e4).allow("").label("Prompt").optional(),
+      postprocess: Joi.boolean().strict().optional(),
       includeMetadata: Joi.boolean().strict().optional(),
       namespace: Joi.string().allow("").max(80).messages({
         // Need to reserve 30 characters for the prefixed unique id
@@ -5469,27 +6191,36 @@ class DataSourceLookup extends Component {
     const componentId = config.id;
     agent.components[componentId];
     const teamId = agent.teamId;
+    let debugOutput = agent.agentRuntime?.debug ? "== Data Source Lookup Log ==\n" : null;
     const outputs = {};
     for (let con of config.outputs) {
       if (con.default) continue;
       outputs[con.name] = "";
     }
-    const namespace = config.data.namespace;
-    const model = config.data.model;
-    const prompt = config.data.prompt?.trim?.() || "";
-    const postprocess = config.data.postprocess;
-    const includeMetadata = config.data.includeMetadata || false;
+    const namespace = config.data.namespace.split("_").slice(1).join("_") || config.data.namespace;
+    const model = config.data?.model || "gpt-4o-mini";
+    const prompt = config.data?.prompt?.trim?.() || "";
+    const postprocess = config.data?.postprocess || false;
+    const includeMetadata = config.data?.includeMetadata || false;
     const _input = typeof input.Query === "string" ? input.Query : JSON.stringify(input.Query);
-    const topK = Math.max(config.data.topK, 50);
+    const topK = Math.max(config.data?.topK || 50, 50);
     let vectorDBHelper = VectorsHelper.load();
-    const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespace);
-    if (isOnCustomStorage) {
-      vectorDBHelper = await VectorsHelper.forTeam(teamId);
+    const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+    let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+    let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
+    if (!existingNs) {
+      await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespace);
+      debugOutput += `[Created namespace] 
+${namespace}
+
+`;
+    } else if (!existingNs.metadata.isOnCustomStorage) {
+      vectorDbConnector = ConnectorService.getVectorDBConnector();
     }
     let results;
     let _error;
     try {
-      const response = await vectorDBHelper.search(teamId, namespace, _input, { topK, includeMetadata: true });
+      const response = await vectorDbConnector.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
       results = response.slice(0, config.data.topK).map((result) => ({
         content: result.metadata?.text,
         metadata: result.metadata
@@ -5505,6 +6236,10 @@ class DataSourceLookup extends Component {
       } else {
         results = results.map((result) => result.content);
       }
+      debugOutput += `[Results] 
+Loaded ${results.length} results from namespace: ${namespace}
+
+`;
     } catch (error) {
       _error = error.toString();
     }
@@ -5522,10 +6257,14 @@ class DataSourceLookup extends Component {
       }
     }
     const totalLength = JSON.stringify(results).length;
+    debugOutput += `[Total Length] 
+${totalLength}
+
+`;
     return {
       Results: results,
       _error,
-      _debug: `totalLength = ${totalLength}`
+      _debug: debugOutput
       //_debug: `Query: ${_input}. \nTotal Length = ${totalLength} \nResults: ${JSON.stringify(results)}`,
     };
   }
@@ -5549,14 +6288,14 @@ class DataSourceLookup extends Component {
   }
 }
 
-var __defProp$K = Object.defineProperty;
-var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$M = Object.defineProperty;
+var __defNormalProp$M = (obj, key, value) => key in obj ? __defProp$M(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$M = (obj, key, value) => __defNormalProp$M(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceIndexer extends Component {
   constructor() {
     super();
-    __publicField$K(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
-    __publicField$K(this, "configSchema", Joi.object({
+    __publicField$M(this, "MAX_ALLOWED_URLS_PER_INPUT", 20);
+    __publicField$M(this, "configSchema", Joi.object({
       namespace: Joi.string().max(50).allow(""),
       id: Joi.string().custom(validateCharacterSet, "id custom validation").allow("").label("source identifier"),
       name: Joi.string().max(50).allow("").label("label"),
@@ -5582,15 +6321,20 @@ class DataSourceIndexer extends Component {
         if (con.default) continue;
         outputs[con.name] = con?.description ? `<${con?.description}>` : "";
       }
-      const namespaceId = _config.namespace;
+      const namespaceId = _config.namespace.split("_").slice(1).join("_") || _config.namespace;
       debugOutput += `[Selected namespace id] 
 ${namespaceId}
 
 `;
       const vectorDBHelper = VectorsHelper.load();
-      const nsExists = await vectorDBHelper.namespaceExists(teamId, namespaceId);
+      const vectorDbConnector = await vectorDBHelper.getTeamConnector(teamId) || ConnectorService.getVectorDBConnector();
+      const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
       if (!nsExists) {
-        throw new Error(`Namespace ${namespaceId} does not exist`);
+        const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+        debugOutput += `[Created namespace] 
+${newNs}
+
+`;
       }
       const inputSchema = this.validateInput(input);
       if (inputSchema.error) {
@@ -5654,12 +6398,16 @@ ${namespaceId}
   }
   async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
     let vectorDBHelper = VectorsHelper.load();
+    let vectorDbConnector = ConnectorService.getVectorDBConnector();
     const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
     if (isOnCustomStorage) {
-      vectorDBHelper = await VectorsHelper.forTeam(teamId);
+      const customTeamConnector = await vectorDBHelper.getTeamConnector(teamId);
+      if (customTeamConnector) {
+        vectorDbConnector = customTeamConnector;
+      }
     }
-    const id = await vectorDBHelper.createDatasource(text, namespaceId, {
-      teamId,
+    const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
+      text,
       metadata,
       id: sourceId,
       label: name
@@ -5674,13 +6422,13 @@ ${namespaceId}
   }
 }
 
-var __defProp$J = Object.defineProperty;
-var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$L = Object.defineProperty;
+var __defNormalProp$L = (obj, key, value) => key in obj ? __defProp$L(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$L = (obj, key, value) => __defNormalProp$L(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DataSourceCleaner extends Component {
   constructor() {
     super();
-    __publicField$J(this, "configSchema", Joi.object({
+    __publicField$L(this, "configSchema", Joi.object({
       namespaceId: Joi.string().max(50).allow("").label("namespace"),
       id: Joi.string().custom(validateCharacterSet, "custom validation characterSet").allow("").label("source identifier")
     }));
@@ -5708,11 +6456,19 @@ class DataSourceCleaner extends Component {
         throw new Error(`Input validation error: ${inputSchema.error}
  EXITING...`);
       }
-      const namespaceId = configSchema.value.namespaceId;
+      const namespaceId = configSchema.value.namespaceId.split("_")?.slice(1).join("_") || configSchema.value.namespaceId;
       let vectorDBHelper = VectorsHelper.load();
-      const nsExists = await vectorDBHelper.namespaceExists(teamId, namespaceId);
-      if (!nsExists) {
-        throw new Error(`Namespace ${namespaceId} does not exist`);
+      const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+      let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+      let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
+      if (!existingnamespace) {
+        await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+        debugOutput += `[Created namespace] 
+${namespaceId}
+
+`;
+      } else if (!existingnamespace.metadata.isOnCustomStorage) {
+        vectorDbConnector = ConnectorService.getVectorDBConnector();
       }
       const providedId = TemplateString(config.data.id).parse(input).result;
       const idRegex = /^[a-zA-Z0-9\-\_\.]+$/;
@@ -5722,11 +6478,7 @@ class DataSourceCleaner extends Component {
       debugOutput += `Searching for data source with id: ${providedId}
 `;
       const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
-      const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
-      if (isOnCustomStorage) {
-        vectorDBHelper = await VectorsHelper.forTeam(teamId);
-      }
-      await vectorDBHelper.deleteDatasource(teamId, namespaceId, dsId);
+      await vectorDbConnector.user(AccessCandidate.team(teamId)).deleteDatasource(namespaceId, dsId);
       debugOutput += `Deleted data source with id: ${providedId}
 `;
       return {
@@ -5755,13 +6507,13 @@ class DataSourceCleaner extends Component {
   }
 }
 
-var __defProp$I = Object.defineProperty;
-var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$K = Object.defineProperty;
+var __defNormalProp$K = (obj, key, value) => key in obj ? __defProp$K(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$K = (obj, key, value) => __defNormalProp$K(obj, typeof key !== "symbol" ? key + "" : key, value);
 class JSONFilter extends Component {
   constructor() {
     super();
-    __publicField$I(this, "configSchema", Joi.object({
+    __publicField$K(this, "configSchema", Joi.object({
       fields: Joi.string().max(3e4).allow("").label("Prompt")
     }));
   }
@@ -5878,13 +6630,13 @@ class LogicXOR extends Component {
   }
 }
 
-var __defProp$H = Object.defineProperty;
-var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$J = Object.defineProperty;
+var __defNormalProp$J = (obj, key, value) => key in obj ? __defProp$J(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$J = (obj, key, value) => __defNormalProp$J(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtLeast extends Component {
   constructor() {
     super();
-    __publicField$H(this, "configSchema", Joi.object({
+    __publicField$J(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       minSetInputs: Joi.string().custom(validateInteger$1({ min: 0, max: 9 }), "custom range validation").label("Minimum Inputs")
     }));
@@ -5942,13 +6694,13 @@ function validateInteger$1(args) {
   };
 }
 
-var __defProp$G = Object.defineProperty;
-var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$I = Object.defineProperty;
+var __defNormalProp$I = (obj, key, value) => key in obj ? __defProp$I(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$I = (obj, key, value) => __defNormalProp$I(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LogicAtMost extends Component {
   constructor() {
     super();
-    __publicField$G(this, "configSchema", Joi.object({
+    __publicField$I(this, "configSchema", Joi.object({
       // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
       maxSetInputs: Joi.string().custom(validateInteger({ min: 0, max: 9 }), "custom range validation").label("Maximum Inputs")
     }));
@@ -6008,14 +6760,14 @@ function validateInteger(args) {
   };
 }
 
-var __defProp$F = Object.defineProperty;
-var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$H = Object.defineProperty;
+var __defNormalProp$H = (obj, key, value) => key in obj ? __defProp$H(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$H = (obj, key, value) => __defNormalProp$H(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentProcess {
   constructor(agentData) {
     this.agentData = agentData;
-    __publicField$F(this, "agent");
-    __publicField$F(this, "_loadPromise");
+    __publicField$H(this, "agent");
+    __publicField$H(this, "_loadPromise");
     this.initAgent(agentData);
   }
   async initAgent(agentData) {
@@ -6158,23 +6910,36 @@ class AgentProcess {
   async get(path2, query, headers) {
     return this.run({ method: "GET", path: path2, query, headers });
   }
+  async readDebugState(stateId, reqConfig) {
+    await this.ready();
+    if (!this.agent) throw new Error("Failed to load agent");
+    let request = this.parseReqConfig(reqConfig);
+    this.agent.setRequest(request);
+    return this.agent.agentRuntime.readState(stateId, true);
+  }
 }
 
-var __defProp$E = Object.defineProperty;
-var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$G = Object.defineProperty;
+var __defNormalProp$G = (obj, key, value) => key in obj ? __defProp$G(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$G = (obj, key, value) => __defNormalProp$G(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LLMContext {
   /**
    *
    * @param source a messages[] object, or smyth file system uri (smythfs://...)
    */
-  constructor(_model, llmInference, _systemPrompt = "", _messages = []) {
-    this._model = _model;
+  constructor(llmInference, _systemPrompt = "", llmContextStore) {
     this.llmInference = llmInference;
-    this._messages = _messages;
-    __publicField$E(this, "_systemPrompt", "");
-    __publicField$E(this, "contextLength");
+    __publicField$G(this, "_systemPrompt", "");
+    __publicField$G(this, "_llmContextStore");
+    __publicField$G(this, "contextLength");
+    __publicField$G(this, "_messages", []);
     this._systemPrompt = _systemPrompt;
+    if (llmContextStore) {
+      this._llmContextStore = llmContextStore;
+      this._llmContextStore.load().then((messages) => {
+        this._messages = messages;
+      });
+    }
   }
   get systemPrompt() {
     return this._systemPrompt;
@@ -6185,23 +6950,32 @@ class LLMContext {
   get messages() {
     return this._messages;
   }
+  get model() {
+    return this.llmInference.model;
+  }
   push(...message) {
     this._messages.push(...message);
+    if (this._llmContextStore) {
+      this._llmContextStore.save(this._messages);
+    }
   }
-  addUserMessage(content) {
-    this.push({ role: "user", content });
+  addUserMessage(content, message_id) {
+    this.push({ role: "user", content, __smyth_data__: { message_id } });
   }
-  addAssistantMessage(content) {
-    this.push({ role: "assistant", content });
+  addAssistantMessage(content, message_id) {
+    this.push({ role: "assistant", content, __smyth_data__: { message_id } });
+  }
+  addToolMessage(messageBlock, toolsData, message_id) {
+    this.push({ messageBlock, toolsData, __smyth_data__: { message_id } });
   }
   async getContextWindow(maxTokens, maxOutputTokens = 256) {
     let maxModelContext;
-    const isStandardLLM = LLMRegistry.isStandardLLM(this._model);
+    const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
     if (isStandardLLM) {
-      maxModelContext = LLMRegistry.getMaxContextTokens(this._model, true);
+      maxModelContext = LLMRegistry.getMaxContextTokens(this.model, true);
     } else {
-      const customLLMRegistry = await CustomLLMRegistry.getInstance(this._model);
-      maxModelContext = customLLMRegistry.getMaxContextTokens(this._model);
+      const customLLMRegistry = await CustomLLMRegistry.getInstance(this.model);
+      maxModelContext = customLLMRegistry.getMaxContextTokens(this.model);
     }
     let maxInputContext = Math.min(maxTokens, maxModelContext);
     if (maxInputContext + maxOutputTokens > maxModelContext) {
@@ -6356,42 +7130,47 @@ class OpenAPIParser {
   }
 }
 
-var __defProp$D = Object.defineProperty;
-var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$b = Logger("ConversationHelper");
+var __defProp$F = Object.defineProperty;
+var __defNormalProp$F = (obj, key, value) => key in obj ? __defProp$F(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$F = (obj, key, value) => __defNormalProp$F(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$a = Logger("ConversationHelper");
 class Conversation extends EventEmitter$1 {
   constructor(_model, _specSource, _settings) {
     super();
     this._model = _model;
     this._specSource = _specSource;
     this._settings = _settings;
-    __publicField$D(this, "_agentId", "");
-    __publicField$D(this, "_systemPrompt");
-    __publicField$D(this, "userDefinedSystemPrompt", "");
-    __publicField$D(this, "assistantName");
-    __publicField$D(this, "_reqMethods");
-    __publicField$D(this, "_toolsConfig");
-    __publicField$D(this, "_endpoints");
-    __publicField$D(this, "_baseUrl");
-    __publicField$D(this, "_status", "");
-    __publicField$D(this, "_currentWaitPromise");
-    __publicField$D(this, "_context");
-    __publicField$D(this, "_maxContextSize", 1024 * 16);
-    __publicField$D(this, "_maxOutputTokens", 1024);
-    __publicField$D(this, "_lastError");
-    __publicField$D(this, "_spec");
-    __publicField$D(this, "_customToolsDeclarations", []);
-    __publicField$D(this, "_customToolsHandlers", {});
-    __publicField$D(this, "stop", false);
+    __publicField$F(this, "_agentId", "");
+    __publicField$F(this, "_systemPrompt");
+    __publicField$F(this, "userDefinedSystemPrompt", "");
+    __publicField$F(this, "toolChoice", "auto");
+    __publicField$F(this, "assistantName");
+    __publicField$F(this, "_reqMethods");
+    __publicField$F(this, "_toolsConfig");
+    __publicField$F(this, "_endpoints");
+    __publicField$F(this, "_baseUrl");
+    __publicField$F(this, "_status", "");
+    __publicField$F(this, "_currentWaitPromise");
+    __publicField$F(this, "_llmContextStore");
+    __publicField$F(this, "_context");
+    __publicField$F(this, "_maxContextSize", 1024 * 16);
+    __publicField$F(this, "_maxOutputTokens", 1024);
+    __publicField$F(this, "_lastError");
+    __publicField$F(this, "_spec");
+    __publicField$F(this, "_customToolsDeclarations", []);
+    __publicField$F(this, "_customToolsHandlers", {});
+    __publicField$F(this, "stop", false);
     this.on("error", (error) => {
       this._lastError = error;
-      console$b.warn("Conversation Error: ", error?.message);
+      console$a.warn("Conversation Error: ", error?.message);
     });
     if (_settings?.maxContextSize) this._maxContextSize = _settings.maxContextSize;
     if (_settings?.maxOutputTokens) this._maxOutputTokens = _settings.maxOutputTokens;
     if (_settings?.systemPrompt) {
       this.userDefinedSystemPrompt = _settings.systemPrompt;
+    }
+    if (_settings?.toolChoice) {
+      this.toolChoice = _settings.toolChoice;
     }
     if (_specSource) {
       this.loadSpecFromSource(_specSource).then((spec) => {
@@ -6479,19 +7258,20 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
-    console$b.debug("Request to LLM with the given model, messages and functions properties.", {
+    const message_id = "msg_" + uid();
+    console$a.debug("Request to LLM with the given model, messages and functions properties.", {
       model: this.model,
       message,
       toolsConfig
     });
     const llmInference = await LLMInference$1.getInstance(this.model);
-    if (message) this._context.addUserMessage(message);
+    if (message) this._context.addUserMessage(message, message_id);
     const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
     const { data: llmResponse } = await llmInference.toolRequest(
       {
         model: this.model,
         messages: contextWindow,
-        toolsConfig,
+        toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
         maxTokens: this._maxOutputTokens
       },
       this._agentId
@@ -6504,7 +7284,7 @@ class Conversation extends EventEmitter$1 {
       );
     });
     if (llmResponse?.useTool) {
-      console$b.debug({
+      console$a.debug({
         type: "ToolsData",
         message: "Tool(s) is available for use.",
         toolsData: llmResponse?.toolsData
@@ -6525,7 +7305,7 @@ class Conversation extends EventEmitter$1 {
           baseUrl,
           headers: toolHeaders
         };
-        console$b.debug({
+        console$a.debug({
           type: "UseTool",
           message: "As LLM returned a tool to use, so use it with the provided arguments.",
           plugin_url: { baseUrl, endpoint, args },
@@ -6538,7 +7318,7 @@ class Conversation extends EventEmitter$1 {
           functionResponse = typeof error === "object" && typeof error !== null ? JSON.stringify(error) : error;
         }
         functionResponse = typeof functionResponse === "object" && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-        console$b.debug({
+        console$a.debug({
           type: "ToolResult",
           message: "Result from the tool",
           response: functionResponse
@@ -6546,12 +7326,12 @@ class Conversation extends EventEmitter$1 {
         this.emit("afterToolCall", toolArgs, functionResponse);
         toolsData.push({ ...tool, result: functionResponse });
       }
-      this._context.push({ messageBlock: llmResponse?.message, toolsData });
+      this._context.addToolMessage(llmResponse?.message, toolsData, message_id);
       return this.prompt(null, toolHeaders);
     }
-    this._context.push(llmResponse?.message);
+    this._context.addAssistantMessage(llmResponse?.message?.content, message_id);
     let content = JSONContent(llmResponse?.content).tryParse();
-    console$b.debug({
+    console$a.debug({
       type: "FinalResult",
       message: "Here is the final result after processing all the tools and LLM response.",
       response: content
@@ -6567,19 +7347,21 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = this._toolsConfig;
     const endpoints = this._endpoints;
     const baseUrl = this._baseUrl;
+    const message_id = "msg_" + uid();
     const llmInference = await LLMInference$1.getInstance(this.model);
-    if (message) this._context.addUserMessage(message);
+    if (message) this._context.addUserMessage(message, message_id);
     const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
     const eventEmitter = await llmInference.streamRequest(
       {
         model: this.model,
         messages: contextWindow,
-        toolsConfig,
-        maxTokens: this._maxOutputTokens
+        toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
+        maxTokens: this._maxOutputTokens,
+        cache: this._settings?.experimentalCache
       },
       this._agentId
     ).catch((error) => {
-      console$b.error("Error on streamRequest: ", error);
+      console$a.error("Error on streamRequest: ", error);
     });
     if (!eventEmitter || eventEmitter.error) {
       throw new Error("[LLM Request Error]");
@@ -6643,11 +7425,7 @@ class Conversation extends EventEmitter$1 {
           }
         );
         const processedToolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
-        this._context.push({
-          //store raw tool call data, we'll convert it when reading the context window
-          messageBlock: llmMessage,
-          toolsData: processedToolsData
-        });
+        this._context.addToolMessage(llmMessage, processedToolsData, message_id);
         this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
       });
       eventEmitter.on("end", async (toolsData, usage_data) => {
@@ -6656,13 +7434,13 @@ class Conversation extends EventEmitter$1 {
         }
         if (hasError) return;
         if (!hasTools) {
-          this._context.push({ role: "assistant", content: _content });
+          this._context.addAssistantMessage(_content, message_id);
           resolve("");
         }
       });
     });
     const toolsContent = await toolsPromise.catch((error) => {
-      console$b.error("Error in toolsPromise: ", error);
+      console$a.error("Error in toolsPromise: ", error);
       this.emit("error", error);
       return "";
     });
@@ -6671,85 +7449,6 @@ class Conversation extends EventEmitter$1 {
     if (message) {
       this.emit("end");
     }
-    return content;
-  }
-  async _streamPrompt(message, toolHeaders = {}, concurrentToolCalls = 4) {
-    await this.ready;
-    const reqMethods = this._reqMethods;
-    const toolsConfig = this._toolsConfig;
-    const endpoints = this._endpoints;
-    const baseUrl = this._baseUrl;
-    const llmInference = await LLMInference$1.getInstance(this.model);
-    if (message) this._context.addUserMessage(message);
-    const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
-    const { data: llmResponse, error } = await llmInference.streamToolRequest(
-      {
-        model: this.model,
-        messages: contextWindow,
-        toolsConfig
-      },
-      this._agentId
-    );
-    if (error) {
-      throw new Error(
-        "[LLM Request Error]\n" + JSON.stringify({
-          code: error?.name || "LLMRequestFailed",
-          message: error?.message || "Something went wrong while calling LLM."
-        })
-      );
-    }
-    if (llmResponse?.useTool) {
-      const llmMessage = llmResponse?.message;
-      const toolsData = llmResponse?.toolsData;
-      this.emit("toolInfo", toolsData);
-      const toolProcessingTasks = toolsData.map(
-        (tool) => async () => {
-          const endpoint = endpoints?.get(tool?.name) || tool?.name;
-          let args = typeof tool?.arguments === "string" ? JSONContent(tool?.arguments).tryParse() || {} : tool?.arguments;
-          if (args?.error) {
-            throw new Error("[Tool] Arguments Parsing Error\n" + JSON.stringify({ message: args?.error }));
-          }
-          this.emit("beforeToolCall", { tool, args });
-          const toolArgs = {
-            type: tool?.type,
-            method: reqMethods?.get(tool?.name),
-            endpoint,
-            args,
-            baseUrl,
-            headers: toolHeaders
-          };
-          let { data: functionResponse, error: error2 } = await this.useTool(toolArgs);
-          if (error2) {
-            functionResponse = typeof error2 === "object" && typeof error2 !== null ? JSON.stringify(error2) : error2;
-          }
-          functionResponse = typeof functionResponse === "object" && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-          this.emit("afterToolCall", { tool, args }, functionResponse);
-          return { ...tool, result: functionResponse };
-        }
-      );
-      const processedToolsData = await processWithConcurrencyLimit(toolProcessingTasks, concurrentToolCalls);
-      this._context.push({
-        //store raw tool call data, we'll convert it when reading the context window
-        messageBlock: llmMessage,
-        toolsData: processedToolsData
-      });
-      return this.streamPrompt(null, toolHeaders, concurrentToolCalls);
-    }
-    let _content = "";
-    if (llmResponse.content) {
-      _content = llmResponse.content;
-    }
-    if (llmResponse.stream) {
-      this.emit("start");
-      for await (const part of llmResponse.stream) {
-        const delta = part.choices[0].delta;
-        this.emit("data", delta);
-        if (delta.content) this.emit("content", delta.content);
-        _content += delta.content || "";
-      }
-      this.emit("end");
-    }
-    let content = JSONContent(_content).tryParse();
     return content;
   }
   resolveToolEndpoint(baseUrl, method, endpoint, params) {
@@ -6787,7 +7486,9 @@ class Conversation extends EventEmitter$1 {
         const reqConfig = {
           method,
           url,
-          headers
+          headers: {
+            ...headers
+          }
         };
         if (method !== "get") {
           if (Object.keys(args).length) {
@@ -6795,7 +7496,7 @@ class Conversation extends EventEmitter$1 {
           }
           reqConfig.headers["Content-Type"] = "application/json";
         }
-        console$b.debug("Calling tool: ", reqConfig);
+        console$a.debug("Calling tool: ", reqConfig);
         if (reqConfig.url.includes("localhost")) {
           const response = await AgentProcess.load(reqConfig.headers["X-AGENT-ID"]).run(reqConfig);
           return { data: response.data, error: null };
@@ -6804,8 +7505,8 @@ class Conversation extends EventEmitter$1 {
           return { data: response.data, error: null };
         }
       } catch (error) {
-        console$b.warn("Failed to call Tool: ", baseUrl, endpoint);
-        console$b.warn("  ====>", error);
+        console$a.warn("Failed to call Tool: ", baseUrl, endpoint);
+        console$a.warn("  ====>", error);
         return { data: null, error: error?.response?.data || error?.message };
       }
     }
@@ -6832,7 +7533,7 @@ class Conversation extends EventEmitter$1 {
     const toolsConfig = llmInference.connector.formatToolsConfig({
       type: "function",
       toolDefinitions: [toolDefinition],
-      toolChoice: "auto"
+      toolChoice: this.toolChoice
     });
     if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
     else this._toolsConfig = toolsConfig;
@@ -6855,11 +7556,11 @@ class Conversation extends EventEmitter$1 {
         this._toolsConfig = llmInference.connector.formatToolsConfig({
           type: "function",
           toolDefinitions: functionDeclarations,
-          toolChoice: "auto"
+          toolChoice: this.toolChoice
         });
         let messages = [];
         if (this._context) messages = this._context.messages;
-        this._context = new LLMContext(this._model, llmInference, this.systemPrompt, messages);
+        this._context = new LLMContext(llmInference, this.systemPrompt, this._llmContextStore);
       } else {
         this._toolsConfig = null;
         this._reqMethods = null;
@@ -6895,6 +7596,7 @@ class Conversation extends EventEmitter$1 {
   async loadSpecFromSource(specSource) {
     if (typeof specSource === "object") {
       if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+      if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
       return null;
     }
     if (typeof specSource === "string") {
@@ -6903,7 +7605,8 @@ class Conversation extends EventEmitter$1 {
         if (spec2.info?.description) this.systemPrompt = spec2.info.description;
         if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
         if (spec2.info?.title) this.assistantName = spec2.info.title;
-        const defaultBaseUrl = new URL(specSource).origin;
+        const specUrl = new URL(specSource);
+        const defaultBaseUrl = specUrl.origin;
         if (!spec2?.servers) spec2.servers = [{ url: defaultBaseUrl }];
         if (spec2.servers?.length == 0) spec2.servers = [{ url: defaultBaseUrl }];
         if (this.assistantName) {
@@ -6911,6 +7614,7 @@ class Conversation extends EventEmitter$1 {
 
 ${this.systemPrompt}`;
         }
+        this._agentId = specUrl.hostname;
         return this.patchSpec(spec2);
       }
       const agentDataConnector = ConnectorService.getAgentDataConnector();
@@ -6918,17 +7622,22 @@ ${this.systemPrompt}`;
       const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
       if (!agentData) return null;
       this._agentId = agentId;
-      this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
-      if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
-      this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
-      if (this.assistantName) {
-        this.systemPrompt = `Assistant Name : ${this.assistantName}
+      const spec = await this.loadSpecFromAgent(agentData);
+      return spec;
+    }
+  }
+  async loadSpecFromAgent(agentData) {
+    const agentDataConnector = ConnectorService.getAgentDataConnector();
+    this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
+    if (this.userDefinedSystemPrompt) this.systemPrompt = this.userDefinedSystemPrompt;
+    this.assistantName = agentData?.data?.name || agentData?.data?.templateInfo?.name || this.assistantName;
+    if (this.assistantName) {
+      this.systemPrompt = `Assistant Name : ${this.assistantName}
 
 ${this.systemPrompt}`;
-      }
-      const spec = await agentDataConnector.getOpenAPIJSON(agentData, "http://localhost/", "latest", true).catch((error) => null);
-      return this.patchSpec(spec);
     }
+    const spec = await agentDataConnector.getOpenAPIJSON(agentData, "http://localhost/", "latest", true).catch((error) => null);
+    return this.patchSpec(spec);
   }
   /**
    * Extracts function declarations from OpenAPI specification
@@ -6979,15 +7688,17 @@ ${this.systemPrompt}`;
   }
 }
 
-var __defProp$C = Object.defineProperty;
-var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$E = Object.defineProperty;
+var __defNormalProp$E = (obj, key, value) => key in obj ? __defProp$E(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$E = (obj, key, value) => __defNormalProp$E(obj, typeof key !== "symbol" ? key + "" : key, value);
 class AgentPlugin extends Component {
   constructor() {
     super();
-    __publicField$C(this, "configSchema", Joi.object({
+    __publicField$E(this, "configSchema", Joi.object({
       agentId: Joi.string().max(200).required(),
       openAiModel: Joi.string().max(200).required(),
+      // for backward compatibility
+      model: Joi.string().max(200).required(),
       descForModel: Joi.string().max(5e3).allow("").label("Description for Model"),
       id: Joi.string().max(200),
       name: Joi.string().max(500),
@@ -7007,7 +7718,7 @@ class AgentPlugin extends Component {
         return { _error: "Agent Component ID is required!", _debug: logger.output };
       }
       const reqTag = agent.agentRuntime?.reqTag;
-      const model = config?.data?.openAiModel;
+      const model = config?.data?.model || config?.data?.openAiModel;
       const descForModel = TemplateString(config?.data?.descForModel).parse(input).result;
       const prompt = typeof input?.Prompt === "string" ? input?.Prompt : JSON.stringify(input?.Prompt);
       const agentDataConnector = ConnectorService.getAgentDataConnector();
@@ -7040,7 +7751,7 @@ class AgentPlugin extends Component {
           };
         }
       }
-      const conv = new Conversation(config?.data?.openAiModel, subAgentId, { systemPrompt: descForModel });
+      const conv = new Conversation(model, subAgentId, { systemPrompt: descForModel });
       const result = await conv.prompt(prompt, {
         "X-AGENT-ID": subAgentId,
         "X-AGENT-VERSION": version,
@@ -7059,9 +7770,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$B = Object.defineProperty;
-var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$D = Object.defineProperty;
+var __defNormalProp$D = (obj, key, value) => key in obj ? __defProp$D(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$D = (obj, key, value) => __defNormalProp$D(obj, typeof key !== "symbol" ? key + "" : key, value);
 let cacheConnector;
 function getCacheConnector() {
   if (!cacheConnector) {
@@ -7079,7 +7790,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
   if (!userId && !conversationId) return [];
   const cacheConnector2 = getCacheConnector();
   const conv_uid = `${agentId}:conv-u${userId}-c${conversationId}`;
-  const sessionData = await cacheConnector2.user(AccessCandidate.agent(agentId)).get(conv_uid);
+  const sessionData = await cacheConnector2.user(AccessCandidate.agent(agentId))?.get(conv_uid);
   const messages = sessionData ? JSONContent(sessionData).tryParse() : [];
   const filteredMessages = [];
   let tokens = 0;
@@ -7103,7 +7814,7 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
 class LLMAssistant extends Component {
   constructor() {
     super();
-    __publicField$B(this, "configSchema", Joi.object({
+    __publicField$D(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       behavior: Joi.string().max(3e4).allow("").label("Behavior")
     }));
@@ -7117,7 +7828,8 @@ class LLMAssistant extends Component {
       logger.debug("== LLM Assistant Log ==\n");
       const model = config.data.model || "echo";
       const ttl = config.data.ttl || void 0;
-      const llmInference = await LLMInference$1.getInstance(model);
+      let teamId = agent?.teamId;
+      const llmInference = await LLMInference$1.getInstance(model, teamId);
       if (!llmInference.connector) {
         return {
           _error: `The model '${model}' is not available. Please try a different one.`,
@@ -7134,19 +7846,20 @@ ${behavior}
 
 `);
       let maxTokens = 2048;
-      const teamId = agent.teamId;
       const isStandardLLM = LLMRegistry.isStandardLLM(model);
       if (isStandardLLM) {
         const provider = LLMRegistry.getProvider(model);
-        const apiKey = await VaultHelper.getTeamKey(provider, teamId);
+        const apiKey = await VaultHelper.getAgentKey(provider, agent?.id);
         maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
       } else {
         const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
         maxTokens = await customLLMRegistry.getMaxCompletionTokens(model);
       }
       const messages = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
-      if (messages[0]?.role != "system") messages.unshift({ role: "system", content: behavior });
-      messages.push({ role: "user", content: userInput });
+      messages.push({ role: TLLMMessageRole.User, content: userInput });
+      if (messages[0]?.role != TLLMMessageRole.System) {
+        messages.unshift({ role: TLLMMessageRole.System, content: behavior });
+      }
       const customParams = {
         messages
       };
@@ -7169,14 +7882,14 @@ ${behavior}
   }
 }
 
-var __defProp$A = Object.defineProperty;
-var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$C = Object.defineProperty;
+var __defNormalProp$C = (obj, key, value) => key in obj ? __defProp$C(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$C = (obj, key, value) => __defNormalProp$C(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("ForkedAgent");
 class ForkedAgent {
   constructor(parent, componentId) {
     this.parent = parent;
-    __publicField$A(this, "agent");
+    __publicField$C(this, "agent");
     const data = fork(this.parent.data, componentId);
     const content = { name: this.parent.name, data, teamId: this.parent.teamId, debugSessionEnabled: false, version: this.parent.version };
     const agentRequest = new AgentRequest(this.parent.agentRequest.req);
@@ -7277,13 +7990,13 @@ function fork(componentData, componentID) {
   };
 }
 
-var __defProp$z = Object.defineProperty;
-var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$B = Object.defineProperty;
+var __defNormalProp$B = (obj, key, value) => key in obj ? __defProp$B(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$B = (obj, key, value) => __defNormalProp$B(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Async = class _Async extends Component {
   constructor() {
     super();
-    __publicField$z(this, "configSchema", null);
+    __publicField$B(this, "configSchema", null);
   }
   init() {
   }
@@ -7388,17 +8101,17 @@ const _Async = class _Async extends Component {
     this.removeOrphanedBranches(agent);
   }
 };
-__publicField$z(_Async, "JOBS", {});
-__publicField$z(_Async, "ForkedAgent");
+__publicField$B(_Async, "JOBS", {});
+__publicField$B(_Async, "ForkedAgent");
 let Async = _Async;
 
-var __defProp$y = Object.defineProperty;
-var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$A = Object.defineProperty;
+var __defNormalProp$A = (obj, key, value) => key in obj ? __defProp$A(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$A = (obj, key, value) => __defNormalProp$A(obj, typeof key !== "symbol" ? key + "" : key, value);
 const _Await = class _Await extends Component {
   constructor() {
     super();
-    __publicField$y(this, "configSchema", Joi.object({
+    __publicField$A(this, "configSchema", Joi.object({
       jobs_count: Joi.number().min(1).max(100).default(1).label("Jobs Count"),
       max_time: Joi.number().min(1).max(21600).default(1).label("Max time")
     }));
@@ -7468,16 +8181,16 @@ ${_error}
     }
   }
 };
-__publicField$y(_Await, "WAITS", {});
+__publicField$A(_Await, "WAITS", {});
 let Await = _Await;
 
-var __defProp$x = Object.defineProperty;
-var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$z = Object.defineProperty;
+var __defNormalProp$z = (obj, key, value) => key in obj ? __defProp$z(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$z = (obj, key, value) => __defNormalProp$z(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ForEach extends Component {
   constructor() {
     super();
-    __publicField$x(this, "configSchema", null);
+    __publicField$z(this, "configSchema", null);
   }
   init() {
   }
@@ -7547,13 +8260,13 @@ function cleanupResult(result) {
   return result;
 }
 
-var __defProp$w = Object.defineProperty;
-var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$y = Object.defineProperty;
+var __defNormalProp$y = (obj, key, value) => key in obj ? __defProp$y(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$y = (obj, key, value) => __defNormalProp$y(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Code extends Component {
   constructor() {
     super();
-    __publicField$w(this, "configSchema", Joi.object({
+    __publicField$y(this, "configSchema", Joi.object({
       code_vars: Joi.string().max(1e3).allow("").label("Variables"),
       code_body: Joi.string().max(5e5).allow("").label("Code"),
       _templateSettings: Joi.object().allow(null).label("Template Settings"),
@@ -8204,9 +8917,9 @@ var hfParams = {
 }
 };
 
-var __defProp$v = Object.defineProperty;
-var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$x = Object.defineProperty;
+var __defNormalProp$x = (obj, key, value) => key in obj ? __defProp$x(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$x = (obj, key, value) => __defNormalProp$x(obj, typeof key !== "symbol" ? key + "" : key, value);
 function shouldNestInputs(formatRequestPattern) {
   const trimmedPattern = formatRequestPattern?.trim();
   return /^(inputs|data):\s*{(?![{])/.test(trimmedPattern);
@@ -8231,7 +8944,7 @@ function validateAndParseJson$1(value, helpers) {
 class HuggingFace extends Component {
   constructor() {
     super();
-    __publicField$v(this, "configSchema", Joi.object({
+    __publicField$x(this, "configSchema", Joi.object({
       accessToken: Joi.string().max(350).required().label("Access Token"),
       modelName: Joi.string().max(100).required(),
       modelTask: Joi.string().max(100).required(),
@@ -8414,9 +9127,9 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$u = Object.defineProperty;
-var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$w = Object.defineProperty;
+var __defNormalProp$w = (obj, key, value) => key in obj ? __defProp$w(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$w = (obj, key, value) => __defNormalProp$w(obj, typeof key !== "symbol" ? key + "" : key, value);
 function validateAndParseJson(value, helpers) {
   let parsedJson = null;
   try {
@@ -8437,7 +9150,7 @@ function validateAndParseJson(value, helpers) {
 class ZapierAction extends Component {
   constructor() {
     super();
-    __publicField$u(this, "configSchema", Joi.object({
+    __publicField$w(this, "configSchema", Joi.object({
       actionName: Joi.string().max(100).required(),
       actionId: Joi.string().max(100).required(),
       logoUrl: Joi.string().max(500).allow(""),
@@ -8504,13 +9217,13 @@ class ZapierAction extends Component {
   }
 }
 
-var __defProp$t = Object.defineProperty;
-var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$v = Object.defineProperty;
+var __defNormalProp$v = (obj, key, value) => key in obj ? __defProp$v(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$v = (obj, key, value) => __defNormalProp$v(obj, typeof key !== "symbol" ? key + "" : key, value);
 class GPTPlugin extends Component {
   constructor() {
     super();
-    __publicField$t(this, "configSchema", Joi.object({
+    __publicField$v(this, "configSchema", Joi.object({
       model: Joi.string().optional(),
       openAiModel: Joi.string().required(),
       // ! Legacy
@@ -8559,14 +9272,16 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$s = Object.defineProperty;
-var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$u = Object.defineProperty;
+var __defNormalProp$u = (obj, key, value) => key in obj ? __defProp$u(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$u = (obj, key, value) => __defNormalProp$u(obj, typeof key !== "symbol" ? key + "" : key, value);
 class ImageGenerator extends Component {
   constructor() {
     super();
-    __publicField$s(this, "configSchema", Joi.object({
+    __publicField$u(this, "configSchema", Joi.object({
       model: Joi.string().valid("dall-e-2", "dall-e-3").required(),
+      prompt: Joi.string().optional().max(4e6).label("Prompt"),
+      // 1M tokens is around 4M characters
       sizeDalle2: Joi.string().valid("256x256", "512x512", "1024x1024").required(),
       sizeDalle3: Joi.string().valid("1024x1024", "1792x1024", "1024x1792").required(),
       quality: Joi.string().valid("standard", "hd").required(),
@@ -8584,7 +9299,9 @@ class ImageGenerator extends Component {
     if (!model) {
       return { _error: "Model Not Found: Either DALL\xB7E 3 or DALL\xB7E 2 is required!", _debug: logger.output };
     }
-    let prompt = typeof input?.Prompt === "string" ? input?.Prompt : JSON.stringify(input?.Prompt);
+    let prompt = config.data?.prompt || input?.Prompt;
+    prompt = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
+    prompt = TemplateString(prompt).parse(input).result;
     if (!prompt) {
       return { _error: "Please provide a prompt or Image", _debug: logger.output };
     }
@@ -8593,7 +9310,7 @@ class ImageGenerator extends Component {
 `, prompt);
     const responseFormat = config?.data?.responseFormat || "url";
     let args = {
-      response_format: responseFormat,
+      responseFormat,
       model
     };
     if (model === "dall-e-3") {
@@ -8637,13 +9354,13 @@ ${error?.message || JSON.stringify(error)}`, _debug: logger.output };
   }
 }
 
-var __defProp$r = Object.defineProperty;
-var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$t = Object.defineProperty;
+var __defNormalProp$t = (obj, key, value) => key in obj ? __defProp$t(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$t = (obj, key, value) => __defNormalProp$t(obj, typeof key !== "symbol" ? key + "" : key, value);
 class Classifier extends Component {
   constructor() {
     super();
-    __publicField$r(this, "configSchema", Joi.object({
+    __publicField$t(this, "configSchema", Joi.object({
       model: Joi.string().max(200).required(),
       prompt: Joi.string().max(3e4).allow("").label("Prompt")
     }));
@@ -8800,14 +9517,15 @@ ${_error}
   }
 }
 
-var __defProp$q = Object.defineProperty;
-var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$s = Object.defineProperty;
+var __defNormalProp$s = (obj, key, value) => key in obj ? __defProp$s(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$s = (obj, key, value) => __defNormalProp$s(obj, typeof key !== "symbol" ? key + "" : key, value);
 class MultimodalLLM extends Component {
   constructor() {
     super();
-    __publicField$q(this, "configSchema", Joi.object({
-      prompt: Joi.string().required().label("Prompt"),
+    __publicField$s(this, "configSchema", Joi.object({
+      prompt: Joi.string().required().max(4e6).label("Prompt"),
+      // 1M tokens is around 4M characters
       maxTokens: Joi.number().min(1).label("Maximum Tokens"),
       model: Joi.string().max(200).required()
     }));
@@ -8910,9 +9628,9 @@ const components = {
   MultimodalLLM: new MultimodalLLM()
 };
 
-var __defProp$p = Object.defineProperty;
-var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$r = Object.defineProperty;
+var __defNormalProp$r = (obj, key, value) => key in obj ? __defProp$r(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$r = (obj, key, value) => __defNormalProp$r(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("AgentLogger");
 const _AgentLogger = class _AgentLogger {
   constructor(agent) {
@@ -8934,27 +9652,27 @@ const _AgentLogger = class _AgentLogger {
   static async logTask(agent, tasks) {
   }
 };
-__publicField$p(_AgentLogger, "transactions", {});
+__publicField$r(_AgentLogger, "transactions", {});
 let AgentLogger = _AgentLogger;
 
-var __defProp$o = Object.defineProperty;
-var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$a = Logger("RuntimeContext");
+var __defProp$q = Object.defineProperty;
+var __defNormalProp$q = (obj, key, value) => key in obj ? __defProp$q(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$q = (obj, key, value) => __defNormalProp$q(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$9 = Logger("RuntimeContext");
 class RuntimeContext extends EventEmitter$1 {
   constructor(runtime) {
     super();
     this.runtime = runtime;
-    __publicField$o(this, "circularLimitReached", false);
-    __publicField$o(this, "step", 0);
-    __publicField$o(this, "sessionResult", false);
-    __publicField$o(this, "sessionResults");
-    __publicField$o(this, "components", {});
-    __publicField$o(this, "checkRuntimeContext", null);
-    __publicField$o(this, "ctxFile", "");
-    __publicField$o(this, "_runtimeFileReady");
+    __publicField$q(this, "circularLimitReached", false);
+    __publicField$q(this, "step", 0);
+    __publicField$q(this, "sessionResult", false);
+    __publicField$q(this, "sessionResults");
+    __publicField$q(this, "components", {});
+    __publicField$q(this, "checkRuntimeContext", null);
+    __publicField$q(this, "ctxFile", "");
+    __publicField$q(this, "_runtimeFileReady");
     const agent = runtime.agent;
-    const dbgFolder = path.join(config.env.DATA_PATH, `/debug/${agent.id}/`);
+    const dbgFolder = path.join(config.env.DATA_PATH || path.join(os.tmpdir(), ".smyth"), `/debug/${agent.id}/`);
     if (!fs.existsSync(dbgFolder)) {
       fs.mkdirSync(dbgFolder, { recursive: true });
     }
@@ -8987,7 +9705,7 @@ class RuntimeContext extends EventEmitter$1 {
   initRuntimeContext() {
     if (this._runtimeFileReady) return;
     const endpointDBGCall = this.runtime.xDebugId?.startsWith("dbg-");
-    console$a.debug("Init ctxFile", this.ctxFile);
+    console$9.debug("Init ctxFile", this.ctxFile);
     const agent = this.runtime.agent;
     let method = (agent.agentRequest.method || "POST").toUpperCase();
     const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
@@ -9037,9 +9755,9 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$a.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
-      console$a.log(">>> ctxFile", this.ctxFile);
-      console$a.log(">>> ctxData", ctxData);
+      console$9.log(">>>>>>> updateComponent Component debug data not found", componentId, component);
+      console$9.log(">>> ctxFile", this.ctxFile);
+      console$9.log(">>> ctxData", ctxData);
     }
     component.ctx = { ...component.ctx, ...data, step: this.step };
     this.sync();
@@ -9048,9 +9766,9 @@ class RuntimeContext extends EventEmitter$1 {
     const ctxData = this;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$a.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
-      console$a.log(">>> ctxFile", this.ctxFile);
-      console$a.log(">>> ctxData", ctxData);
+      console$9.log(">>>>>>> resetComponent Component debug data not found", componentId, component);
+      console$9.log(">>> ctxFile", this.ctxFile);
+      console$9.log(">>> ctxData", ctxData);
     }
     component.ctx.runtimeData = {};
     component.ctx.active = false;
@@ -9061,19 +9779,19 @@ class RuntimeContext extends EventEmitter$1 {
     if (!ctxData) return null;
     const component = ctxData.components[componentId];
     if (!component) {
-      console$a.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
-      console$a.log(">>> ctxFile", this.ctxFile);
-      console$a.log(">>> ctxData", ctxData);
+      console$9.log(">>>>>>> getComponentData Component debug data not found", componentId, component);
+      console$9.log(">>> ctxFile", this.ctxFile);
+      console$9.log(">>> ctxData", ctxData);
     }
     const data = component.ctx;
     return data;
   }
 }
 
-var __defProp$n = Object.defineProperty;
-var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$9 = Logger("AgentRuntime");
+var __defProp$p = Object.defineProperty;
+var __defNormalProp$p = (obj, key, value) => key in obj ? __defProp$p(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$p = (obj, key, value) => __defNormalProp$p(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$8 = Logger("AgentRuntime");
 const AgentRuntimeUnavailable = new Proxy(
   {},
   {
@@ -9082,7 +9800,7 @@ const AgentRuntimeUnavailable = new Proxy(
         return target[prop];
       } else {
         return function() {
-          console$9.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
+          console$8.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
         };
       }
     }
@@ -9091,28 +9809,28 @@ const AgentRuntimeUnavailable = new Proxy(
 const _AgentRuntime = class _AgentRuntime {
   constructor(agent) {
     this.agent = agent;
-    __publicField$n(this, "agentContext");
+    __publicField$p(this, "agentContext");
     //private ctxFile: string = '';
-    __publicField$n(this, "xDebugRun", "");
-    __publicField$n(this, "xDebugInject", "");
-    __publicField$n(this, "xDebugRead", "");
-    __publicField$n(this, "xDebugStop", "");
-    __publicField$n(this, "xDebugPendingInject", null);
-    __publicField$n(this, "xDebugId", "");
-    __publicField$n(this, "xDebugCmd", "");
-    __publicField$n(this, "_debugActive", false);
-    __publicField$n(this, "_runtimeFileReady", false);
-    __publicField$n(this, "sessionClosed", false);
-    __publicField$n(this, "reqTagOwner", false);
+    __publicField$p(this, "xDebugRun", "");
+    __publicField$p(this, "xDebugInject", "");
+    __publicField$p(this, "xDebugRead", "");
+    __publicField$p(this, "xDebugStop", "");
+    __publicField$p(this, "xDebugPendingInject", null);
+    __publicField$p(this, "xDebugId", "");
+    __publicField$p(this, "xDebugCmd", "");
+    __publicField$p(this, "_debugActive", false);
+    __publicField$p(this, "_runtimeFileReady", false);
+    __publicField$p(this, "sessionClosed", false);
+    __publicField$p(this, "reqTagOwner", false);
     //reqTag is used to identify the current running workflow including nested calls, it allows us to identify circular calls
-    __publicField$n(this, "reqTag");
-    __publicField$n(this, "processID");
+    __publicField$p(this, "reqTag");
+    __publicField$p(this, "processID");
     //this identifies the current processID, a process ID is the full set of runCycles that is executed by the agent.
-    __publicField$n(this, "workflowReqId");
+    __publicField$p(this, "workflowReqId");
     //this identifies the current running workflow. a workflow starts when and agent endpoint is called, or a debug session is initiated, and ends when no more steps can be executed.
-    __publicField$n(this, "alwaysActiveComponents", {});
-    __publicField$n(this, "exclusiveComponents", {});
-    __publicField$n(this, "checkRuntimeContext", null);
+    __publicField$p(this, "alwaysActiveComponents", {});
+    __publicField$p(this, "exclusiveComponents", {});
+    __publicField$p(this, "checkRuntimeContext", null);
     this.reqTag = agent.agentRequest.header("X-REQUEST-TAG");
     const isNestedProcess = !!this.reqTag;
     if (!this.reqTag) {
@@ -9163,7 +9881,7 @@ const _AgentRuntime = class _AgentRuntime {
       for (let component of this.agent.data.components) {
         const cpt = components[component.name];
         if (!cpt) {
-          console$9.warn(`Component ${component.name} Exists in agent but has no implementation`);
+          console$8.warn(`Component ${component.name} Exists in agent but has no implementation`);
           continue;
         }
         if (cpt.alwaysActive) {
@@ -9205,7 +9923,7 @@ const _AgentRuntime = class _AgentRuntime {
   async sync() {
     const deleteTag = this.reqTagOwner && this.sessionClosed || this.circularLimitReached;
     if (deleteTag) {
-      console$9.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
+      console$8.log(">>>>>>>>>>>> deleting tagsData", this.reqTag);
       delete _AgentRuntime.tagsData[this.reqTag];
     }
     this.agentContext.sync();
@@ -9279,7 +9997,7 @@ const _AgentRuntime = class _AgentRuntime {
    * @returns
    */
   async runCycle() {
-    console$9.debug(
+    console$8.debug(
       `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
     );
     const runtime = this;
@@ -9463,9 +10181,9 @@ const _AgentRuntime = class _AgentRuntime {
     return this.agentContext.getComponentData(componentId);
   }
 };
-__publicField$n(_AgentRuntime, "processResults", {});
-__publicField$n(_AgentRuntime, "tagsData", {});
-__publicField$n(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
+__publicField$p(_AgentRuntime, "processResults", {});
+__publicField$p(_AgentRuntime, "tagsData", {});
+__publicField$p(_AgentRuntime, "dummy", AgentRuntimeUnavailable);
 let AgentRuntime = _AgentRuntime;
 
 const OSResourceMonitor = {
@@ -9509,40 +10227,40 @@ function getMemoryUsage() {
   };
 }
 
-var __defProp$m = Object.defineProperty;
-var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$8 = Logger("Agent");
+var __defProp$o = Object.defineProperty;
+var __defNormalProp$o = (obj, key, value) => key in obj ? __defProp$o(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$o = (obj, key, value) => __defNormalProp$o(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$7 = Logger("Agent");
 const idPromise = (id) => id;
 class Agent {
   constructor(id, agentData, agentSettings, agentRequest) {
     this.id = id;
     this.agentSettings = agentSettings;
-    __publicField$m(this, "name");
-    __publicField$m(this, "data");
-    __publicField$m(this, "teamId");
-    __publicField$m(this, "components");
-    __publicField$m(this, "connections");
-    __publicField$m(this, "endpoints", {});
-    __publicField$m(this, "sessionId");
-    __publicField$m(this, "sessionTag", "");
-    __publicField$m(this, "callerSessionId");
-    __publicField$m(this, "apiBasePath", "/api");
-    __publicField$m(this, "agentRuntime");
-    __publicField$m(this, "usingTestDomain", false);
-    __publicField$m(this, "domain", "");
-    __publicField$m(this, "debugSessionEnabled", false);
-    __publicField$m(this, "circularLimit", 100);
+    __publicField$o(this, "name");
+    __publicField$o(this, "data");
+    __publicField$o(this, "teamId");
+    __publicField$o(this, "components");
+    __publicField$o(this, "connections");
+    __publicField$o(this, "endpoints", {});
+    __publicField$o(this, "sessionId");
+    __publicField$o(this, "sessionTag", "");
+    __publicField$o(this, "callerSessionId");
+    __publicField$o(this, "apiBasePath", "/api");
+    __publicField$o(this, "agentRuntime");
+    __publicField$o(this, "usingTestDomain", false);
+    __publicField$o(this, "domain", "");
+    __publicField$o(this, "debugSessionEnabled", false);
+    __publicField$o(this, "circularLimit", 100);
     //TODO : make it configurable from agent settings
-    __publicField$m(this, "version", "");
+    __publicField$o(this, "version", "");
     //public baseUrl = '';
-    __publicField$m(this, "agentVariables", {});
-    __publicField$m(this, "_kill", false);
+    __publicField$o(this, "agentVariables", {});
+    __publicField$o(this, "_kill", false);
     //public agentRequest: Request | AgentRequest | any;
-    __publicField$m(this, "async", false);
-    __publicField$m(this, "jobID", "");
-    __publicField$m(this, "planInfo", {});
-    __publicField$m(this, "agentRequest");
+    __publicField$o(this, "async", false);
+    __publicField$o(this, "jobID", "");
+    __publicField$o(this, "planInfo", {});
+    __publicField$o(this, "agentRequest");
     const json = typeof agentData === "string" ? JSON.parse(agentData) : agentData;
     this.data = json.data;
     this.name = this.data.name;
@@ -9651,7 +10369,7 @@ class Agent {
       await delay(30 + qosLatency);
     } while (!step?.finalResult && !this._kill);
     if (this._kill) {
-      console$8.warn(`Agent ${this.id} was killed`);
+      console$7.warn(`Agent ${this.id} was killed`);
       return { error: "Agent killed" };
     }
     result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -9782,7 +10500,7 @@ class Agent {
     const componentData = this.components[componentId];
     const component = components[componentData.name];
     if (this._kill) {
-      console$8.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
+      console$7.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
       return { id: componentData.id, name: componentData.displayName, result: null, error: "Agent killed" };
     }
     if (!component) {
@@ -9836,9 +10554,9 @@ class Agent {
           try {
             await this.parseVariables();
             output = await component.process({ ...this.agentVariables, ..._input }, componentData, this);
-            console$8.log(output);
+            console$7.log(output);
           } catch (error) {
-            console$8.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
+            console$7.error("Error on component process: ", { componentId, name: componentData.name, input: _input }, error);
             if (error?.message) output = { Response: void 0, _error: error.message, _debug: error.message };
             else output = { Response: void 0, _error: error.toString(), _debug: error.toString() };
           }
@@ -10008,7 +10726,7 @@ class Agent {
             /*value !== null && */
             value !== void 0
           ) {
-            let combinedInput = [...[nextInput[inputEndpoint.name]].flat(), ...[value].flat()].filter(
+            let combinedInput = _mergeInputs(nextInput[inputEndpoint.name], value).filter(
               (e) => e !== void 0
               /*&& e !== null*/
             );
@@ -10059,7 +10777,7 @@ class Agent {
     if (inputs) {
       for (let key in inputs) {
         let value = inputs[key];
-        _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== void 0);
+        _input[key] = _mergeInputs(rDataInput[key], value).filter((e) => e !== void 0);
         if (_input[key].length == 1) _input[key] = _input[key][0];
       }
     }
@@ -10113,6 +10831,15 @@ class Agent {
     }
   }
 }
+function _mergeInputs(existing, newValue) {
+  if (existing === void 0) {
+    return [newValue];
+  }
+  if (!Array.isArray(existing)) {
+    existing = [existing];
+  }
+  return [...existing, newValue];
+}
 
 class StorageConnector extends SecureConnector {
   user(candidate) {
@@ -10145,25 +10872,30 @@ class StorageConnector extends SecureConnector {
   }
 }
 
-var __defProp$l = Object.defineProperty;
-var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$6 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
+var __defProp$n = Object.defineProperty;
+var __getOwnPropDesc$7 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$n = (obj, key, value) => key in obj ? __defProp$n(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$7 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$7(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$l(target, key, result);
+  if (kind && result) __defProp$n(target, key, result);
   return result;
 };
-var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$7 = Logger("S3Storage");
+var __publicField$n = (obj, key, value) => __defNormalProp$n(obj, typeof key !== "symbol" ? key + "" : key, value);
+Object.defineProperty(global, "crypto", {
+  value: {
+    getRandomValues: (arr) => crypto.randomBytes(arr.length)
+  }
+});
+const console$6 = Logger("S3Storage");
 class S3Storage extends StorageConnector {
   constructor(config) {
     super();
-    __publicField$l(this, "name", "S3Storage");
-    __publicField$l(this, "client");
-    __publicField$l(this, "bucket");
+    __publicField$n(this, "name", "S3Storage");
+    __publicField$n(this, "client");
+    __publicField$n(this, "bucket");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.bucket = config.bucket;
     const clientConfig = {};
@@ -10188,7 +10920,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$7.error(`Error reading object from S3`, error.name, error.message);
+      console$6.error(`Error reading object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10197,7 +10929,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return s3Metadata;
     } catch (error) {
-      console$7.error(`Error getting access rights in S3`, error.name, error.message);
+      console$6.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10208,7 +10940,7 @@ class S3Storage extends StorageConnector {
       s3Metadata = { ...s3Metadata, ...metadata };
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$7.error(`Error setting access rights in S3`, error);
+      console$6.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -10229,7 +10961,7 @@ class S3Storage extends StorageConnector {
     try {
       const result = await this.client.send(command);
     } catch (error) {
-      console$7.error(`Error writing object to S3`, error.name, error.message);
+      console$6.error(`Error writing object to S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10241,7 +10973,7 @@ class S3Storage extends StorageConnector {
     try {
       await this.client.send(command);
     } catch (error) {
-      console$7.error(`Error deleting object from S3`, error.name, error.message);
+      console$6.error(`Error deleting object from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10257,7 +10989,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return false;
       }
-      console$7.error(`Error checking object existence in S3`, error.name, error.message);
+      console$6.error(`Error checking object existence in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10278,7 +11010,7 @@ class S3Storage extends StorageConnector {
       const s3Metadata = await this.getS3Metadata(resourceId);
       return ACL.from(s3Metadata?.["x-amz-meta-acl"]);
     } catch (error) {
-      console$7.error(`Error getting access rights in S3`, error.name, error.message);
+      console$6.error(`Error getting access rights in S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10289,7 +11021,7 @@ class S3Storage extends StorageConnector {
       s3Metadata["x-amz-meta-acl"] = ACL.from(acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
       await this.setS3Metadata(resourceId, s3Metadata);
     } catch (error) {
-      console$7.error(`Error setting access rights in S3`, error);
+      console$6.error(`Error setting access rights in S3`, error);
       throw error;
     }
   }
@@ -10360,7 +11092,7 @@ class S3Storage extends StorageConnector {
       if (error.name === "NotFound" || error.name === "NoSuchKey") {
         return void 0;
       }
-      console$7.error(`Error reading object metadata from S3`, error.name, error.message);
+      console$6.error(`Error reading object metadata from S3`, error.name, error.message);
       throw error;
     }
   }
@@ -10381,33 +11113,33 @@ class S3Storage extends StorageConnector {
       });
       await this.client.send(putObjectCommand);
     } catch (error) {
-      console$7.error(`Error setting object metadata in S3`, error.name, error.message);
+      console$6.error(`Error setting object metadata in S3`, error.name, error.message);
       throw error;
     }
   }
 }
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "read", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "getMetadata", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "setMetadata", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "write", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "delete", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "exists", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "getACL", 1);
-__decorateClass$6([
+__decorateClass$7([
   SecureConnector.AccessControl
 ], S3Storage.prototype, "setACL", 1);
 
@@ -10417,34 +11149,14 @@ class StorageService extends ConnectorServiceProvider {
   }
 }
 
-var TLLMMessageRole = /* @__PURE__ */ ((TLLMMessageRole2) => {
-  TLLMMessageRole2["User"] = "user";
-  TLLMMessageRole2["Assistant"] = "assistant";
-  TLLMMessageRole2["System"] = "system";
-  TLLMMessageRole2["Model"] = "model";
-  TLLMMessageRole2["Tool"] = "tool";
-  TLLMMessageRole2["Function"] = "function";
-  return TLLMMessageRole2;
-})(TLLMMessageRole || {});
-var TLLMProvider = /* @__PURE__ */ ((TLLMProvider2) => {
-  TLLMProvider2["OpenAI"] = "OpenAI";
-  TLLMProvider2["AnthropicAI"] = "AnthropicAI";
-  TLLMProvider2["GoogleAI"] = "GoogleAI";
-  TLLMProvider2["Groq"] = "Groq";
-  TLLMProvider2["TogetherAI"] = "TogetherAI";
-  TLLMProvider2["Bedrock"] = "Bedrock";
-  TLLMProvider2["VertexAI"] = "VertexAI";
-  return TLLMProvider2;
-})(TLLMProvider || {});
-
 Logger("LLMConnector");
 class LLMConnector extends Connector {
   user(candidate) {
     if (candidate.role !== "agent") throw new Error("Only agents can use LLM connector");
     return {
-      chatRequest: async (prompt, params) => {
+      chatRequest: async (params) => {
         const _params = await this.prepareParams(candidate, params);
-        return this.chatRequest(candidate.readRequest, prompt, _params);
+        return this.chatRequest(candidate.readRequest, _params);
       },
       visionRequest: async (prompt, params) => {
         const _params = await this.prepareParams(candidate, params);
@@ -10511,9 +11223,13 @@ class LLMConnector extends Connector {
   }) {
     throw new Error("This model does not support tools");
   }
+  getConsistentMessages(messages) {
+    return messages;
+  }
   // TODO [Forhad]: simplify this method
   async prepareParams(candidate, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
+    _params.fileSources = params?.fileSources;
     const model = _params.model;
     const accountConnector = ConnectorService.getAccountConnector();
     const vaultConnector = ConnectorService.getVaultConnector();
@@ -10526,12 +11242,13 @@ class LLMConnector extends Connector {
         apiKey: await vaultConnector.user(candidate).get(llmProvider).catch(() => "")
       };
       if (_params.maxTokens) {
-        _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params.apiKey);
+        _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
       }
       const baseUrl = LLMRegistry.getBaseURL(params.model);
       if (baseUrl) {
         _params.baseURL = baseUrl;
       }
+      _params.model = LLMRegistry.getModelId(model) || model;
     } else {
       const teamId = await accountConnector.getCandidateTeam(candidate);
       const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
@@ -10542,11 +11259,18 @@ class LLMConnector extends Connector {
         const keyIdName = modelInfo.settings?.keyIDName;
         const secretKeyName = modelInfo.settings?.secretKeyName;
         const sessionKeyName = modelInfo.settings?.sessionKeyName;
+        const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
+          vaultConnector.user(candidate).get(keyIdName).catch(() => ""),
+          vaultConnector.user(candidate).get(secretKeyName).catch(() => ""),
+          vaultConnector.user(candidate).get(sessionKeyName).catch(() => "")
+        ]);
         _params.credentials = {
-          keyId: await vaultConnector.user(candidate).get(keyIdName).catch(() => ""),
-          secretKey: await vaultConnector.user(candidate).get(secretKeyName).catch(() => ""),
-          sessionKey: await vaultConnector.user(candidate).get(sessionKeyName).catch(() => "")
+          accessKeyId,
+          secretAccessKey
         };
+        if (sessionToken) {
+          _params.credentials.sessionToken = sessionToken;
+        }
       } else if (llmProvider === TLLMProvider.VertexAI) {
         const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
         let jsonCredentials = await vaultConnector.user(candidate).get(jsonCredentialsName).catch(() => "");
@@ -10555,21 +11279,23 @@ class LLMConnector extends Connector {
       if (_params.maxTokens) {
         _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
       }
+      _params.model = customLLMRegistry.getModelId(model) || model;
     }
     return _params;
   }
 }
 
-var __defProp$k = Object.defineProperty;
-var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$m = Object.defineProperty;
+var __defNormalProp$m = (obj, key, value) => key in obj ? __defProp$m(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$m = (obj, key, value) => __defNormalProp$m(obj, typeof key !== "symbol" ? key + "" : key, value);
 class EchoConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$k(this, "name", "LLM:Echo");
+    __publicField$m(this, "name", "LLM:Echo");
   }
-  async chatRequest(acRequest, prompt, params) {
-    return { content: prompt, finishReason: "stop" };
+  async chatRequest(acRequest, params) {
+    const content = params?.messages?.[0]?.content;
+    return { content, finishReason: "stop" };
   }
   async visionRequest(acRequest, prompt, params) {
     return { content: prompt, finishReason: "stop" };
@@ -10756,34 +11482,63 @@ class LLMHelper {
     }
     return tiles * 170 + 85;
   }
+  /**
+   * Removes duplicate user messages from the beginning and end of the messages array.
+   *
+   * This method checks if there are two consecutive user messages at the start or end of the array
+   *
+   * @param {Array<{ role: string; content: string }>} messages - The array of message objects to process.
+   *
+   * @example
+   * const messages = [
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'user', content: 'Hello' },
+   *   { role: 'assistant', content: 'Hi there!' }
+   * ];
+   * LLMHelper.removeDuplicateUserMessages(messages);
+   * console.log(messages); // [{ role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi there!' }]
+   *
+   * @returns {TLLMMessageBlock[]} The modified array of message objects.
+   */
+  static removeDuplicateUserMessages(messages) {
+    const _messages = JSON.parse(JSON.stringify(messages));
+    if (_messages.length > 1 && _messages[0].role === TLLMMessageRole.User && _messages[1].role === TLLMMessageRole.User) {
+      _messages.shift();
+    }
+    if (_messages.length > 1 && _messages[_messages.length - 1].role === TLLMMessageRole.User && _messages[_messages.length - 2].role === TLLMMessageRole.User) {
+      _messages.pop();
+    }
+    return _messages;
+  }
 }
 
-var __defProp$j = Object.defineProperty;
-var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$6 = Logger("OpenAIConnector");
+var __defProp$l = Object.defineProperty;
+var __defNormalProp$l = (obj, key, value) => key in obj ? __defProp$l(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$l = (obj, key, value) => __defNormalProp$l(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$5 = Logger("OpenAIConnector");
 const VALID_IMAGE_MIME_TYPES$2 = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
-const MODELS_WITH_JSON_RESPONSE$1 = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"];
+const MODELS_WITH_JSON_RESPONSE = ["gpt-4o-2024-08-06", "gpt-4o-mini-2024-07-18", "gpt-4-turbo", "gpt-3.5-turbo"];
 class OpenAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$j(this, "name", "LLM:OpenAI");
-    __publicField$j(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$2);
+    __publicField$l(this, "name", "LLM:OpenAI");
+    __publicField$l(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES$2);
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
-    const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-    if (messages[0]?.role !== "system") {
-      messages.unshift({
-        role: TLLMMessageRole.System,
-        content: "All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations."
-      });
-      if (MODELS_WITH_JSON_RESPONSE$1.includes(_params.model)) {
-        _params.responseFormat = { type: "json_object" };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
+    const messages = _params?.messages || [];
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      if (messages?.[0]?.role === TLLMMessageRole.System) {
+        messages[0].content += JSON_RESPONSE_INSTRUCTION;
+      } else {
+        messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
       }
-    }
-    if (prompt && messages.length === 1) {
-      messages.push({ role: TLLMMessageRole.User, content: prompt });
+      if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
+        _params.responseFormat = { type: "json_object" };
+      } else {
+        _params.responseFormat = void 0;
+      }
     }
     const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
@@ -10801,8 +11556,10 @@ class OpenAIConnector extends LLMConnector {
     if (_params?.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
     if (_params?.frequencyPenalty !== void 0) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
     if (_params?.presencePenalty !== void 0) chatCompletionArgs.presence_penalty = _params.presencePenalty;
-    if (_params?.responseFormat !== void 0) chatCompletionArgs.response_format = _params.responseFormat;
     if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+    if (_params.responseFormat !== void 0) {
+      chatCompletionArgs.response_format = _params.responseFormat;
+    }
     try {
       const promptTokens = encodeChat(messages, "gpt-4")?.length;
       await LLMRegistry.validateTokensLimit({
@@ -10820,25 +11577,25 @@ class OpenAIConnector extends LLMConnector {
     }
   }
   async visionRequest(acRequest, prompt, params, agent) {
-    const _params = { ...params };
-    const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-    if (messages[0]?.role !== "system") {
-      messages.unshift({
-        role: "system",
-        content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}'
-      });
-      if (MODELS_WITH_JSON_RESPONSE$1.includes(_params.model)) {
+    const _params = JSON.parse(JSON.stringify(params));
+    const messages = _params?.messages || [];
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      if (messages?.[0]?.role === TLLMMessageRole.System) {
+        messages[0].content += JSON_RESPONSE_INSTRUCTION;
+      } else {
+        messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+      }
+      if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
         _params.responseFormat = { type: "json_object" };
       }
     }
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const fileSources = _params?.fileSources || [];
+    const fileSources = params?.fileSources || [];
     const validSources = this.getValidImageFileSources(fileSources);
     const imageData = await this.getImageData(validSources, agentId);
-    const promptData = [{ type: "text", text: prompt }, ...imageData];
-    if (prompt && messages.length === 1) {
-      messages.push({ role: "user", content: promptData });
-    }
+    const promptData = [{ type: "text", text: prompt || "" }, ...imageData];
+    messages.push({ role: "user", content: promptData });
     try {
       const apiKey = _params?.credentials?.apiKey;
       const openai = new OpenAI({
@@ -10881,32 +11638,35 @@ class OpenAIConnector extends LLMConnector {
         model,
         size,
         quality,
-        n,
-        response_format: responseFormat
+        n: n || 1,
+        response_format: responseFormat || "url"
       };
       if (style) {
         args.style = style;
       }
       const apiKey = params?.credentials?.apiKey;
+      if (!apiKey) {
+        throw new Error("OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.");
+      }
       const openai = new OpenAI({
-        apiKey: apiKey || process.env.OPENAI_API_KEY,
+        apiKey,
         baseURL: params?.baseURL
       });
       const response = await openai.images.generate(args);
       return response;
     } catch (error) {
-      console$6.warn("Error generating image(s) with DALL\xB7E: ", error);
+      console$5.warn("Error generating image(s) with DALL\xB7E: ", error);
       throw error;
     }
   }
   async toolRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const apiKey = _params?.credentials?.apiKey;
     const openai = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY,
       baseURL: _params.baseURL
     });
-    const messages = this.getConsistentMessages(_params.messages);
+    const messages = _params?.messages || [];
     let chatCompletionArgs = {
       model: _params.model,
       messages
@@ -10952,8 +11712,8 @@ class OpenAIConnector extends LLMConnector {
       if (!Array.isArray(messages) || !messages?.length) {
         throw new Error("Invalid messages argument for chat completion.");
       }
-      console$6.debug("model", model);
-      console$6.debug("messages", messages);
+      console$5.debug("model", model);
+      console$5.debug("messages", messages);
       let args = {
         model,
         messages,
@@ -11010,12 +11770,12 @@ class OpenAIConnector extends LLMConnector {
         data: { useTool, message, stream: _stream, toolsData }
       };
     } catch (error) {
-      console$6.warn("Error on toolUseLLMRequest: ", error);
+      console$5.warn("Error on toolUseLLMRequest: ", error);
       return { error };
     }
   }
   async streamRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const emitter = new EventEmitter$1();
     const usage_data = [];
     const apiKey = _params?.credentials?.apiKey;
@@ -11024,7 +11784,7 @@ class OpenAIConnector extends LLMConnector {
       // we provide default API key for OpenAI with limited quota
       baseURL: _params.baseURL
     });
-    console$6.debug("model", _params.model);
+    console$5.debug("model", _params.model);
     let chatCompletionArgs = {
       model: _params.model,
       messages: _params.messages,
@@ -11128,7 +11888,8 @@ class OpenAIConnector extends LLMConnector {
     return [...messageBlocks, ...transformedToolsData];
   }
   getConsistentMessages(messages) {
-    return messages.map((message) => {
+    const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+    return _messages.map((message) => {
       const _message = { ...message };
       let textContent = "";
       if (message?.parts) {
@@ -11173,20 +11934,22 @@ class OpenAIConnector extends LLMConnector {
   }
 }
 
-var __defProp$i = Object.defineProperty;
-var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$k = Object.defineProperty;
+var __defNormalProp$k = (obj, key, value) => key in obj ? __defProp$k(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$k = (obj, key, value) => __defNormalProp$k(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("GoogleAIConnector");
 const DEFAULT_MODEL = "gemini-1.5-pro";
-const MODELS_WITH_SYSTEM_MESSAGE = [
+const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
+  "gemini-1.5-pro-exp-0801",
+  "gemini-1.5-pro-latest",
   "gemini-1.5-pro-latest",
   "gemini-1.5-pro",
   "gemini-1.5-pro-001",
   "gemini-1.5-flash-latest",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-001"
+  "gemini-1.5-flash-001",
+  "gemini-1.5-flash"
 ];
-const MODELS_WITH_JSON_RESPONSE = MODELS_WITH_SYSTEM_MESSAGE;
+const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 const VALID_MIME_TYPES = [
   "video/mp4",
   "video/mpeg",
@@ -11230,57 +11993,55 @@ const VALID_IMAGE_MIME_TYPES$1 = ["image/png", "image/jpeg", "image/jpg", "image
 class GoogleAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$i(this, "name", "LLM:GoogleAI");
-    __publicField$i(this, "validMimeTypes", {
+    __publicField$k(this, "name", "LLM:GoogleAI");
+    __publicField$k(this, "validMimeTypes", {
       all: VALID_MIME_TYPES,
       image: VALID_IMAGE_MIME_TYPES$1
     });
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
+    let prompt = "";
     const model = _params?.model || DEFAULT_MODEL;
     const apiKey = _params?.credentials?.apiKey;
     let messages = _params?.messages || [];
-    let systemInstruction;
-    let systemMessage = {};
-    const hasSystemMessage = LLMHelper.hasSystemMessage(_params?.messages);
-    if (hasSystemMessage) {
-      const separateMessages = LLMHelper.separateSystemMessages(messages);
-      const systemMessageContent = separateMessages.systemMessage?.content;
-      systemInstruction = typeof systemMessageContent === "string" ? systemMessageContent : "";
-      messages = separateMessages.otherMessages;
+    let systemInstruction = "";
+    const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+    if ("content" in systemMessage) {
+      systemInstruction = systemMessage.content;
     }
-    if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-      systemInstruction = "content" in systemMessage ? systemMessage.content : "";
-    } else {
-      prompt = `${prompt}
-${"content" in systemMessage ? systemMessage.content : ""}`;
-    }
-    if (_params?.messages) {
-      const messages2 = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-      prompt = messages2.map((message) => message?.parts?.[0]?.text || "").join("\n");
-    }
-    const responseFormat = _params?.responseFormat || "json";
+    messages = otherMessages;
+    const responseFormat = _params?.responseFormat || "";
     if (responseFormat === "json") {
-      if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
-      else prompt += JSON_RESPONSE_INSTRUCTION;
+      systemInstruction += JSON_RESPONSE_INSTRUCTION;
+      if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+        _params.responseMimeType = "application/json";
+      }
+    }
+    if (messages?.length > 0) {
+      prompt += messages.map((message) => message?.parts?.[0]?.text || "").join("\n");
+    }
+    if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+      prompt = `${prompt}
+${systemInstruction}`;
     }
     if (!prompt) throw new Error("Prompt is required!");
     const modelParams = {
       model
     };
-    if (systemInstruction) modelParams.systemInstruction = systemInstruction;
     const generationConfig = {};
     if (_params.maxTokens !== void 0) generationConfig.maxOutputTokens = _params.maxTokens;
     if (_params.temperature !== void 0) generationConfig.temperature = _params.temperature;
     if (_params.topP !== void 0) generationConfig.topP = _params.topP;
     if (_params.topK !== void 0) generationConfig.topK = _params.topK;
     if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+    if (systemInstruction) modelParams.systemInstruction = systemInstruction;
+    if (_params.responseMimeType) generationConfig.responseMimeType = _params.responseMimeType;
     if (Object.keys(generationConfig).length > 0) {
       modelParams.generationConfig = generationConfig;
     }
     try {
-      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+      const genAI = new GoogleGenerativeAI(apiKey);
       const $model = genAI.getGenerativeModel(modelParams);
       const { totalTokens: promptTokens } = await $model.countTokens(prompt);
       await LLMRegistry.validateTokensLimit({
@@ -11299,11 +12060,12 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     }
   }
   async visionRequest(acRequest, prompt, params, agent) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const model = _params?.model || "gemini-pro-vision";
     const apiKey = _params?.credentials?.apiKey;
-    const fileSources = _params?.fileSources || [];
+    const fileSources = params?.fileSources || [];
     const agentId = agent instanceof Agent ? agent.id : agent;
+    let _prompt = prompt;
     const validFiles = this.getValidFileSources(fileSources, "image");
     const fileUploadingTasks = validFiles.map((fileSource) => async () => {
       try {
@@ -11319,12 +12081,19 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
         throw new Error(`There is an issue during upload file in Google AI Server!`);
       }
       const imageData = this.getFileData(uploadedFiles);
-      const responseFormat = _params?.responseFormat || "json";
-      if (responseFormat) {
-        if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
-        else prompt += JSON_RESPONSE_INSTRUCTION;
+      let systemInstruction = "";
+      const responseFormat = _params?.responseFormat || "";
+      if (responseFormat === "json") {
+        systemInstruction += JSON_RESPONSE_INSTRUCTION;
+        if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+          _params.responseMimeType = "application/json";
+        }
       }
-      const promptWithFiles = imageData.length === 1 ? [...imageData, { text: prompt }] : [prompt, ...imageData];
+      if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+        _prompt = `${_prompt}
+${systemInstruction}`;
+      }
+      const promptWithFiles = imageData.length === 1 ? [...imageData, { text: _prompt }] : [_prompt, ...imageData];
       const modelParams = {
         model
       };
@@ -11337,7 +12106,7 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       if (Object.keys(generationConfig).length > 0) {
         modelParams.generationConfig = generationConfig;
       }
-      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+      const genAI = new GoogleGenerativeAI(apiKey);
       const $model = genAI.getGenerativeModel(modelParams);
       const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
       await LLMRegistry.validateTokensLimit({
@@ -11356,11 +12125,12 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     }
   }
   async multimodalRequest(acRequest, prompt, params, agent) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const model = _params?.model || DEFAULT_MODEL;
     const apiKey = _params?.credentials?.apiKey;
-    const fileSources = _params?.fileSources || [];
+    const fileSources = params?.fileSources || [];
     const agentId = agent instanceof Agent ? agent.id : agent;
+    let _prompt = prompt;
     const validFiles = this.getValidFileSources(fileSources, "all");
     const hasVideo = validFiles.some((file) => file?.mimetype?.includes("video"));
     if (hasVideo && validFiles.length > 1) {
@@ -11379,12 +12149,19 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       throw new Error(`There is an issue during upload file in Google AI Server!`);
     }
     const fileData = this.getFileData(uploadedFiles);
-    const responseFormat = _params?.responseFormat || "json";
-    if (responseFormat) {
-      if (MODELS_WITH_JSON_RESPONSE.includes(model)) _params.responseMimeType = "application/json";
-      else prompt += JSON_RESPONSE_INSTRUCTION;
+    let systemInstruction = "";
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      systemInstruction += JSON_RESPONSE_INSTRUCTION;
+      if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+        _params.responseMimeType = "application/json";
+      }
     }
-    const promptWithFiles = fileData.length === 1 ? [...fileData, { text: prompt }] : [prompt, ...fileData];
+    if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+      _prompt = `${_prompt}
+${systemInstruction}`;
+    }
+    const promptWithFiles = fileData.length === 1 ? [...fileData, { text: _prompt }] : [_prompt, ...fileData];
     const modelParams = {
       model
     };
@@ -11398,7 +12175,7 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       modelParams.generationConfig = generationConfig;
     }
     try {
-      const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+      const genAI = new GoogleGenerativeAI(apiKey);
       const $model = genAI.getGenerativeModel(modelParams);
       const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
       await LLMRegistry.validateTokensLimit({
@@ -11417,11 +12194,11 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     }
   }
   async toolRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     try {
       let systemInstruction = "";
       let formattedMessages;
-      const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+      const messages = _params?.messages || [];
       const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
       if (hasSystemMessage) {
         const separateMessages = LLMHelper.separateSystemMessages(messages);
@@ -11431,7 +12208,6 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
       } else {
         formattedMessages = messages;
       }
-      formattedMessages = this.getConsistentMessages(formattedMessages);
       const apiKey = _params?.credentials?.apiKey;
       const generationConfig = {};
       if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
@@ -11486,12 +12262,12 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     throw new Error("streamToolRequest() is Deprecated!");
   }
   async streamRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const emitter = new EventEmitter$1();
     const apiKey = _params?.credentials?.apiKey;
     let systemInstruction = "";
     let formattedMessages;
-    const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params?.messages) : [];
+    const messages = _params?.messages || [];
     const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
     if (hasSystemMessage) {
       const separateMessages = LLMHelper.separateSystemMessages(messages);
@@ -11680,7 +12456,8 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
     }
   }
   getConsistentMessages(messages) {
-    return messages.map((message) => {
+    const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+    return _messages.map((message) => {
       const _message = { ...message };
       let textContent = "";
       switch (_message.role) {
@@ -11735,38 +12512,30 @@ ${"content" in systemMessage ? systemMessage.content : ""}`;
   }
 }
 
-var __defProp$h = Object.defineProperty;
-var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$5 = Logger("AnthropicAIConnector");
+var __defProp$j = Object.defineProperty;
+var __defNormalProp$j = (obj, key, value) => key in obj ? __defProp$j(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$j = (obj, key, value) => __defNormalProp$j(obj, typeof key !== "symbol" ? key + "" : key, value);
+const console$4 = Logger("AnthropicAIConnector");
 const VALID_IMAGE_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = "{";
-const TOOL_USE_DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
+const TOOL_USE_DEFAULT_MODEL = "claude-3-5-haiku-latest";
 const API_KEY_ERROR_MESSAGE = "Please provide an API key for AnthropicAI";
 class AnthropicAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$h(this, "name", "LLM:AnthropicAI");
-    __publicField$h(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
+    __publicField$j(this, "name", "LLM:AnthropicAI");
+    __publicField$j(this, "validImageMimeTypes", VALID_IMAGE_MIME_TYPES);
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
     let messages = _params?.messages || [];
-    if (prompt) {
-      messages.push({
-        role: TLLMMessageRole.User,
-        content: prompt
-      });
-    }
-    let systemPrompt;
-    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-    if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-      messages = otherMessages;
+    let systemPrompt = "";
+    const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+    if ("content" in systemMessage) {
       systemPrompt = systemMessage?.content;
     }
-    messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
-    const responseFormat = _params?.responseFormat || "json";
+    messages = otherMessages;
+    const responseFormat = _params?.responseFormat || "";
     if (responseFormat === "json") {
       systemPrompt += JSON_RESPONSE_INSTRUCTION;
       messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
@@ -11799,14 +12568,23 @@ class AnthropicAIConnector extends LLMConnector {
   }
   // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
   async visionRequest(acRequest, prompt, params, agent) {
-    const _params = { ...params };
-    const messages = Array.isArray(_params?.messages) ? this.getConsistentMessages(_params.messages) : [];
+    const _params = JSON.parse(JSON.stringify(params));
+    let messages = _params?.messages || [];
     const agentId = agent instanceof Agent ? agent.id : agent;
-    const fileSources = _params?.fileSources || [];
+    const fileSources = params?.fileSources || [];
     const validSources = this.getValidImageFileSources(fileSources);
     const imageData = await this.getImageData(validSources, agentId);
     const content = [{ type: "text", text: prompt }, ...imageData];
     messages.push({ role: TLLMMessageRole.User, content });
+    const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+    if ("content" in systemMessage) {
+      systemMessage?.content;
+    }
+    messages = otherMessages;
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+    }
     const apiKey = _params?.credentials?.apiKey;
     if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
     const anthropic = new Anthropic({ apiKey });
@@ -11833,7 +12611,7 @@ class AnthropicAIConnector extends LLMConnector {
     throw new Error("Multimodal request is not supported for OpenAI.");
   }
   async toolRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     try {
       const apiKey = _params?.credentials?.apiKey;
       if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
@@ -11851,7 +12629,6 @@ class AnthropicAIConnector extends LLMConnector {
         messageCreateArgs.system = systemMessage?.content || "";
         messages = otherMessages;
       }
-      messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
       messageCreateArgs.messages = messages;
       if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) {
         messageCreateArgs.tools = _params?.toolsConfig?.tools;
@@ -11915,7 +12692,7 @@ class AnthropicAIConnector extends LLMConnector {
         max_tokens: _params?.maxTokens || LLMRegistry.getMaxCompletionTokens(_params?.model, !!apiKey)
         // * max token is required
       };
-      console$5.debug("Using Model", _params?.model, "Max Tokens=", _params?.maxTokens);
+      console$4.debug("Using Model", _params?.model, "Max Tokens=", _params?.maxTokens);
       let messages = _params?.messages || [];
       const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
       if (hasSystemMessage) {
@@ -11932,19 +12709,33 @@ class AnthropicAIConnector extends LLMConnector {
         }
         messageCreateArgs.system.unshift({
           type: "text",
-          text: "If you need to use a tool, use it without telling the user what you are about to do. And do not thank the user after you get the response.The tool use should remain completely silent and the user should never be aware that tools are being used."
+          text: 'If you need to call a function, Do NOT inform the user that you are about to do so, and do not thank the user after you get the response. Just say something like "Give me a moment...", then when you get the response, Just continue answering the user without saying anything about the function you just called'
         });
+        if (_params?.cache) {
+          messageCreateArgs.system[messageCreateArgs.system.length - 1]["cache_control"] = { type: "ephemeral" };
+        }
         messages = otherMessages;
       }
-      messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
       messageCreateArgs.messages = messages;
       if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools.length > 0) {
-        messageCreateArgs.tools = _params?.toolsConfig?.tools;
+        messageCreateArgs.tools = JSON.parse(JSON.stringify(_params?.toolsConfig?.tools));
+        if (_params?.cache) {
+          messageCreateArgs.tools[messageCreateArgs.tools.length - 1]["cache_control"] = { type: "ephemeral" };
+        }
       }
-      const stream = anthropic.messages.stream(messageCreateArgs);
+      if (_params?.toolsConfig?.tool_choice) {
+        messageCreateArgs.tool_choice = _params?.toolsConfig?.tool_choice;
+      }
+      let stream;
+      if (_params?.cache) {
+        stream = anthropic.beta.promptCaching.messages.stream(messageCreateArgs, {
+          headers: { "anthropic-beta": "prompt-caching-2024-07-31" }
+        });
+      } else {
+        stream = anthropic.messages.stream(messageCreateArgs);
+      }
       stream.on("streamEvent", (event) => {
         if (event.message?.usage) {
-          console$5.log("usage", event.message?.usage);
         }
       });
       let toolsData = [];
@@ -11954,8 +12745,9 @@ class AnthropicAIConnector extends LLMConnector {
       stream.on("text", (text) => {
         emitter.emit("content", text);
       });
-      stream.on("finalMessage", (finalMessage) => {
-        const toolUseContentBlocks = finalMessage?.content?.filter((c) => c.type === "tool_use");
+      const finalMessage = _params?.cache ? "finalPromptCachingBetaMessage" : "finalMessage";
+      stream.on(finalMessage, (finalMessage2) => {
+        const toolUseContentBlocks = finalMessage2?.content?.filter((c) => c.type === "tool_use");
         if (toolUseContentBlocks?.length > 0) {
           toolUseContentBlocks.forEach((toolUseBlock, index) => {
             toolsData.push({
@@ -11965,13 +12757,23 @@ class AnthropicAIConnector extends LLMConnector {
               // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
               name: toolUseBlock?.name,
               arguments: toolUseBlock?.input,
-              role: finalMessage?.role
+              role: finalMessage2?.role
             });
           });
           emitter.emit("toolsData", toolsData);
         }
+        if (finalMessage2?.usage) {
+          const usage = finalMessage2.usage;
+          usage_data.push({
+            prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
+            completion_tokens: usage.output_tokens,
+            total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
+            prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
+            completion_tokens_details: { reasoning_tokens: 0 }
+          });
+        }
         setTimeout(() => {
-          emitter.emit("end", toolsData);
+          emitter.emit("end", toolsData, usage_data);
         }, 100);
       });
       return emitter;
@@ -12036,8 +12838,14 @@ class AnthropicAIConnector extends LLMConnector {
     }
     return messageBlocks;
   }
+  // TODO [Forhad]: This method is quite lengthy and complex. Consider breaking it down into smaller, more manageable functions for better readability and maintainability.
   getConsistentMessages(messages) {
-    let _messages = [...messages];
+    let _messages = JSON.parse(JSON.stringify(messages));
+    let systemMessage = null;
+    if (_messages[0]?.role === TLLMMessageRole.System) {
+      systemMessage = _messages.shift();
+    }
+    _messages = LLMHelper.removeDuplicateUserMessages(_messages);
     _messages = _messages.map((message) => {
       let content;
       if (message?.parts) {
@@ -12075,6 +12883,9 @@ class AnthropicAIConnector extends LLMConnector {
     if (_messages[0]?.role !== TLLMMessageRole.User) {
       _messages.unshift({ role: TLLMMessageRole.User, content: "continue" });
     }
+    if (systemMessage) {
+      _messages.unshift(systemMessage);
+    }
     return _messages;
   }
   getValidImageFileSources(fileSources) {
@@ -12111,35 +12922,29 @@ class AnthropicAIConnector extends LLMConnector {
   }
 }
 
-var __defProp$g = Object.defineProperty;
-var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$i = Object.defineProperty;
+var __defNormalProp$i = (obj, key, value) => key in obj ? __defProp$i(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$i = (obj, key, value) => __defNormalProp$i(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("GroqConnector");
 class GroqConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$g(this, "name", "LLM:Groq");
+    __publicField$i(this, "name", "LLM:Groq");
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
     let messages = _params?.messages || [];
-    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-    if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-      messages = [systemMessage, ...otherMessages];
-    } else {
-      messages.unshift({
-        role: "system",
-        content: JSON_RESPONSE_INSTRUCTION
-      });
-    }
-    if (prompt) {
-      messages.push({ role: TLLMMessageRole.User, content: prompt });
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      if (messages?.[0]?.role === "system") {
+        messages[0].content += JSON_RESPONSE_INSTRUCTION;
+      } else {
+        messages.unshift({ role: "system", content: JSON_RESPONSE_INSTRUCTION });
+      }
     }
     const apiKey = _params?.credentials?.apiKey;
     if (!apiKey) throw new Error("Please provide an API key for Groq");
     const groq = new Groq({ apiKey });
-    messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
     const chatCompletionArgs = {
       model: _params.model,
       messages
@@ -12164,11 +12969,11 @@ class GroqConnector extends LLMConnector {
     throw new Error("Multimodal request is not supported for OpenAI.");
   }
   async toolRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     try {
       const apiKey = _params?.credentials?.apiKey;
       const groq = new Groq({ apiKey });
-      const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
+      const messages = _params?.messages || [];
       let chatCompletionArgs = {
         model: _params.model,
         messages
@@ -12207,11 +13012,11 @@ class GroqConnector extends LLMConnector {
     throw new Error("streamToolRequest() is Deprecated!");
   }
   async streamRequest(acRequest, params) {
-    const _params = { ...params };
+    const _params = JSON.parse(JSON.stringify(params));
     const emitter = new EventEmitter$1();
     const apiKey = _params?.credentials?.apiKey;
     const groq = new Groq({ apiKey });
-    const messages = this.getConsistentMessages(_params.messages);
+    const messages = _params?.messages || [];
     let chatCompletionArgs = {
       model: _params.model,
       messages,
@@ -12281,7 +13086,8 @@ class GroqConnector extends LLMConnector {
     return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
   }
   getConsistentMessages(messages) {
-    return messages.map((message) => {
+    const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+    return _messages.map((message) => {
       const _message = { ...message };
       let textContent = "";
       if (message?.parts) {
@@ -12297,237 +13103,35 @@ class GroqConnector extends LLMConnector {
   }
 }
 
-var __defProp$f = Object.defineProperty;
-var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
-Logger("TogetherAIConnector");
-const TOGETHER_AI_API_URL = "https://api.together.xyz/v1";
-class TogetherAIConnector extends LLMConnector {
-  constructor() {
-    super(...arguments);
-    __publicField$f(this, "name", "LLM:TogetherAI");
-  }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
-    if (!_params.messages) _params.messages = [];
-    const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-    if (messages[0]?.role !== "system") {
-      messages.unshift({
-        role: "system",
-        content: "All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations."
-      });
-    }
-    if (prompt && messages.length === 1) {
-      messages.push({ role: "user", content: prompt });
-    }
-    const apiKey = _params?.credentials?.apiKey;
-    const openai = new OpenAI({
-      apiKey,
-      baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
-    });
-    const chatCompletionArgs = {
-      model: _params.model,
-      messages
-    };
-    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
-    if (_params?.temperature !== void 0) chatCompletionArgs.temperature = _params.temperature;
-    if (_params?.topP !== void 0) chatCompletionArgs.top_p = _params.topP;
-    if (_params?.topK !== void 0) chatCompletionArgs.top_k = _params.topK;
-    if (_params?.frequencyPenalty !== void 0) chatCompletionArgs.repetition_penalty = _params.frequencyPenalty;
-    if (_params?.responseFormat !== void 0) chatCompletionArgs.response_format = _params.responseFormat;
-    if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
-    try {
-      const promptTokens = encodeChat(messages, "gpt-4")?.length;
-      await LLMRegistry.validateTokensLimit({
-        model: _params?.model,
-        promptTokens,
-        completionTokens: _params?.maxTokens,
-        hasAPIKey: !!apiKey
-      });
-      const response = await openai.chat.completions.create(chatCompletionArgs);
-      const content = response?.choices?.[0]?.message.content;
-      const finishReason = response?.choices?.[0]?.finish_reason;
-      return { content, finishReason };
-    } catch (error) {
-      throw error;
-    }
-  }
-  async visionRequest(acRequest, prompt, params, agent) {
-    throw new Error("Vision requests are not supported by TogetherAI");
-  }
-  async multimodalRequest(acRequest, prompt, params, agent) {
-    throw new Error("Multimodal request is not supported for OpenAI.");
-  }
-  async imageGenRequest(acRequest, prompt, params, agent) {
-    throw new Error("Image generation request is not supported for TogetherAI.");
-  }
-  async toolRequest(acRequest, params) {
-    const _params = { ...params };
-    try {
-      const apiKey = _params?.credentials?.apiKey;
-      const openai = new OpenAI({
-        apiKey,
-        baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
-      });
-      const messages = Array.isArray(_params.messages) ? this.getConsistentMessages(_params.messages) : [];
-      let chatCompletionArgs = {
-        model: _params.model,
-        messages
-      };
-      if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
-      if (_params.toolsConfig?.tools) {
-        chatCompletionArgs.tools = _params.toolsConfig?.tools;
-      }
-      if (_params.toolsConfig?.tool_choice) {
-        chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
-      }
-      const result = await openai.chat.completions.create(chatCompletionArgs);
-      const message = result?.choices?.[0]?.message;
-      const finishReason = result?.choices?.[0]?.finish_reason;
-      let toolsData = [];
-      let useTool = false;
-      if (finishReason === "tool_calls") {
-        toolsData = message?.tool_calls?.map((tool, index) => ({
-          index,
-          id: tool?.id,
-          type: tool?.type,
-          name: tool?.function?.name,
-          arguments: tool?.function?.arguments,
-          role: "tool"
-        })) || [];
-        useTool = true;
-      }
-      return {
-        data: { useTool, message, content: message?.content ?? "", toolsData }
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-  async streamToolRequest(acRequest, { model = TOOL_USE_DEFAULT_MODEL$1, messages, toolsConfig: { tools, tool_choice }, apiKey = "" }) {
-    throw new Error("streamToolRequest() is Deprecated!");
-  }
-  async streamRequest(acRequest, params) {
-    const _params = { ...params };
-    const emitter = new EventEmitter$1();
-    const apiKey = _params?.credentials?.apiKey;
-    const openai = new OpenAI({
-      apiKey,
-      baseURL: config.env.TOGETHER_AI_API_URL || TOGETHER_AI_API_URL
-    });
-    const messages = this.getConsistentMessages(_params.messages);
-    let chatCompletionArgs = {
-      model: _params.model,
-      messages,
-      stream: true
-    };
-    if (_params?.maxTokens !== void 0) chatCompletionArgs.max_tokens = _params.maxTokens;
-    if (_params.toolsConfig?.tools) {
-      chatCompletionArgs.tools = _params.toolsConfig?.tools;
-    }
-    if (_params.toolsConfig?.tool_choice) {
-      chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
-    }
-    try {
-      const stream = await openai.chat.completions.create(chatCompletionArgs);
-      let toolsData = [];
-      (async () => {
-        for await (const part of stream) {
-          const delta = part.choices[0].delta;
-          emitter.emit("data", delta);
-          if (!delta?.tool_calls && delta?.content) {
-            emitter.emit("content", delta.content, delta.role);
-          }
-          if (delta?.tool_calls) {
-            const toolCall = delta?.tool_calls?.[0];
-            const index = toolCall?.index;
-            toolsData[index] = {
-              index,
-              role: "tool",
-              id: (toolsData?.[index]?.id || "") + (toolCall?.id || ""),
-              type: (toolsData?.[index]?.type || "") + (toolCall?.type || ""),
-              name: (toolsData?.[index]?.name || "") + (toolCall?.function?.name || ""),
-              arguments: (toolsData?.[index]?.arguments || "") + (toolCall?.function?.arguments || "")
-            };
-          }
-        }
-        if (toolsData?.length > 0) {
-          emitter.emit("toolsData", toolsData);
-        }
-        setTimeout(() => {
-          emitter.emit("end", toolsData);
-        }, 100);
-      })();
-      return emitter;
-    } catch (error) {
-      throw error;
-    }
-  }
-  formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
-    let tools = [];
-    if (type === "function") {
-      tools = toolDefinitions.map((tool) => {
-        const { name, description, properties, requiredFields } = tool;
-        return {
-          type: "function",
-          function: {
-            name,
-            description,
-            parameters: {
-              type: "object",
-              properties,
-              required: requiredFields
-            }
-          }
-        };
-      });
-    }
-    return tools?.length > 0 ? { tools, tool_choice: toolChoice || "auto" } : {};
-  }
-  getConsistentMessages(messages) {
-    return messages.map((message) => {
-      const _message = { ...message };
-      let textContent = "";
-      if (message?.parts) {
-        textContent = message.parts.map((textBlock) => textBlock?.text || "").join(" ");
-      } else if (Array.isArray(message?.content)) {
-        textContent = message.content.map((textBlock) => textBlock?.text || "").join(" ");
-      } else if (message?.content) {
-        textContent = message.content;
-      }
-      _message.content = textContent;
-      return _message;
-    });
-  }
-}
-
-var __defProp$e = Object.defineProperty;
-var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$h = Object.defineProperty;
+var __defNormalProp$h = (obj, key, value) => key in obj ? __defProp$h(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$h = (obj, key, value) => __defNormalProp$h(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("BedrockConnector");
 class BedrockConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$e(this, "name", "LLM:Bedrock");
+    __publicField$h(this, "name", "LLM:Bedrock");
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
     let messages = _params?.messages || [];
-    if (prompt) {
-      messages.push({ role: TLLMMessageRole.User, content: prompt });
-    }
     let systemPrompt;
-    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-    if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-      messages = otherMessages;
-      systemPrompt = [{ text: systemMessage?.content }];
-    } else {
+    const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+    if ("content" in systemMessage) {
+      systemPrompt = systemMessage.content;
+    }
+    messages = otherMessages;
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
       systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
     }
     const modelInfo = _params.modelInfo;
+    const supportsSystemPrompt = customModels[modelInfo?.settings?.foundationModel]?.supportsSystemPrompt;
+    if (!supportsSystemPrompt) {
+      messages[0].content?.push(systemPrompt[0]);
+      systemPrompt = void 0;
+    }
     const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-    messages = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
     const inferenceConfig = {};
     if (_params?.maxTokens !== void 0) inferenceConfig.maxTokens = _params.maxTokens;
     if (_params?.temperature !== void 0) inferenceConfig.temperature = _params.temperature;
@@ -12545,19 +13149,9 @@ class BedrockConnector extends LLMConnector {
     }
     const command = new ConverseCommand(converseCommandInput);
     try {
-      const keyId = _params?.credentials?.keyId;
-      const secretKey = _params?.credentials?.secretKey;
-      const sessionToken = _params?.credentials?.sessionKey;
-      const credentials = {
-        accessKeyId: keyId,
-        secretAccessKey: secretKey
-      };
-      if (sessionToken) {
-        credentials.sessionToken = sessionToken;
-      }
       const client = new BedrockRuntimeClient({
         region: modelInfo.settings.region,
-        credentials
+        credentials: _params?.credentials
       });
       const response = await client.send(command);
       const content = response.output?.message?.content?.[0]?.text;
@@ -12576,19 +13170,236 @@ class BedrockConnector extends LLMConnector {
     throw new Error("Multimodal request is not supported for Bedrock.");
   }
   async toolRequest(acRequest, params) {
-    throw new Error("Tool requests are not supported by Bedrock");
+    try {
+      const _params = JSON.parse(JSON.stringify(params));
+      const customModelInfo = _params.modelInfo;
+      const client = new BedrockRuntimeClient({
+        region: customModelInfo.settings.region,
+        credentials: _params?.credentials
+      });
+      let systemPrompt;
+      let messages = _params?.messages || [];
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+      if ("content" in systemMessage) {
+        systemPrompt = [{ text: systemMessage?.content }];
+      }
+      messages = otherMessages;
+      const converseCommandInput = {
+        modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
+        messages
+      };
+      if (systemPrompt) {
+        converseCommandInput.system = systemPrompt;
+      }
+      if (_params?.toolsConfig?.tools?.length > 0) {
+        converseCommandInput.toolConfig = {
+          tools: _params?.toolsConfig?.tools,
+          ..._params?.toolsConfig?.tool_choice && { toolChoice: _params?.toolsConfig?.tool_choice }
+        };
+      }
+      const command = new ConverseCommand(converseCommandInput);
+      const response = await client.send(command);
+      const message = response.output?.message;
+      const finishReason = response.stopReason;
+      let toolsInfo = [];
+      let useTool = false;
+      if (finishReason === "tool_use") {
+        const toolUseBlocks = message?.content?.filter((block) => block?.toolUse) || [];
+        toolsInfo = toolUseBlocks.map((block, index) => ({
+          index,
+          id: block.toolUse?.toolUseId,
+          type: "function",
+          // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.,
+          name: _deserializeToolName(block.toolUse?.name),
+          arguments: block.toolUse?.input,
+          role: "tool"
+        }));
+        useTool = true;
+      }
+      return {
+        data: {
+          useTool,
+          message,
+          content: message?.content || "",
+          toolsInfo
+        }
+      };
+    } catch (error) {
+      throw error?.error || error;
+    }
   }
   async imageGenRequest(acRequest, prompt, params, agent) {
     throw new Error("Image generation request is not supported for Bedrock.");
   }
   async streamRequest(acRequest, params) {
-    throw new Error("Streaming is not supported for Bedrock.");
+    const emitter = new EventEmitter$1();
+    try {
+      const _params = JSON.parse(JSON.stringify(params));
+      const customModelInfo = _params.modelInfo;
+      const client = new BedrockRuntimeClient({
+        region: customModelInfo.settings.region,
+        credentials: _params?.credentials
+      });
+      let systemPrompt;
+      let messages = _params?.messages || [];
+      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+      if ("content" in systemMessage) {
+        systemPrompt = [{ text: systemMessage?.content }];
+      }
+      messages = otherMessages;
+      const converseCommandInput = {
+        modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
+        messages
+      };
+      if (systemPrompt) {
+        converseCommandInput.system = systemPrompt;
+      }
+      if (_params?.toolsConfig?.tools?.length > 0) {
+        converseCommandInput.toolConfig = {
+          tools: _params?.toolsConfig?.tools,
+          ..._params?.toolsConfig?.tool_choice && { toolChoice: _params?.toolsConfig?.tool_choice }
+        };
+      }
+      const command = new ConverseStreamCommand(converseCommandInput);
+      const response = await client.send(command);
+      const stream = response.stream;
+      if (stream) {
+        (async () => {
+          let currentMessage = {
+            role: "",
+            content: "",
+            toolCalls: [],
+            currentToolCall: null,
+            currentToolInput: ""
+          };
+          for await (const chunk of stream) {
+            if (chunk.messageStart) {
+              currentMessage.role = chunk.messageStart.role || "";
+              emitter.emit("data", { role: currentMessage.role });
+            }
+            if (chunk.contentBlockDelta?.delta?.text) {
+              currentMessage.content += chunk.contentBlockDelta.delta.text;
+              emitter.emit("data", chunk.contentBlockDelta.delta.text);
+              emitter.emit("content", chunk.contentBlockDelta.delta.text, currentMessage.role);
+            }
+            if (chunk.contentBlockStart?.start?.toolUse) {
+              const toolUse = chunk.contentBlockStart.start.toolUse;
+              if (toolUse.toolUseId && toolUse.name) {
+                currentMessage.currentToolCall = {
+                  index: currentMessage.toolCalls.length,
+                  id: toolUse.toolUseId,
+                  type: "function",
+                  name: _deserializeToolName(toolUse.name),
+                  arguments: "",
+                  role: "tool"
+                };
+                currentMessage.currentToolInput = "";
+              }
+            }
+            if (chunk.contentBlockDelta?.delta?.toolUse?.input && currentMessage.currentToolCall) {
+              currentMessage.currentToolInput += chunk.contentBlockDelta.delta.toolUse.input;
+              currentMessage.currentToolCall.arguments = currentMessage.currentToolInput;
+            }
+            if (chunk.contentBlockStop && currentMessage.currentToolCall) {
+              if (typeof currentMessage.currentToolCall.arguments === "string" && isJSONString(currentMessage.currentToolCall.arguments)) {
+                currentMessage.currentToolCall.arguments = JSON.parse(currentMessage.currentToolCall.arguments);
+              }
+              currentMessage.toolCalls.push(currentMessage.currentToolCall);
+              emitter.emit("toolsData", currentMessage.toolCalls);
+              currentMessage.currentToolCall = null;
+              currentMessage.currentToolInput = "";
+            }
+            if (chunk.messageStop) {
+              emitter.emit("end", currentMessage.toolCalls);
+            }
+          }
+        })();
+      }
+      return emitter;
+    } catch (error) {
+      const typedError = error;
+      emitter.emit("error", typedError?.["error"] || typedError);
+      return emitter;
+    }
   }
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
-    throw new Error("Tool configuration is not supported for Bedrock.");
+    let tools = [];
+    if (type === "function") {
+      tools = toolDefinitions.map((tool) => {
+        const { name, description, properties, requiredFields } = tool;
+        return {
+          toolSpec: {
+            name: _serializeToolName(name),
+            description,
+            inputSchema: {
+              json: {
+                type: "object",
+                properties,
+                required: requiredFields
+              }
+            }
+          }
+        };
+      });
+    }
+    return tools?.length > 0 ? { tools, toolChoice: toolChoice || "auto" } : {};
+  }
+  transformToolMessageBlocks({
+    messageBlock,
+    toolsData
+  }) {
+    const messageBlocks = [];
+    if (messageBlock) {
+      const content = [];
+      if (typeof messageBlock.content === "string") {
+        content.push({ text: messageBlock.content });
+      } else if (Array.isArray(messageBlock.content)) {
+        content.push(...messageBlock.content);
+      }
+      if (messageBlock.tool_calls?.length) {
+        messageBlock.tool_calls.forEach((toolCall) => {
+          content.push({
+            toolUse: {
+              toolUseId: toolCall.id,
+              name: _serializeToolName(toolCall?.function?.name),
+              input: toolCall?.function?.arguments || {}
+            }
+          });
+        });
+      }
+      messageBlocks.push({
+        role: messageBlock?.role,
+        content
+      });
+    }
+    if (toolsData?.length) {
+      const toolResultsContent = toolsData.filter((tool) => tool.id && (tool.result || tool.error)).map((tool) => {
+        let content;
+        if (typeof tool?.result === "string") {
+          content = [{ text: tool.result }];
+        } else if (typeof tool?.result === "object") {
+          content = [{ json: tool.result }];
+        }
+        return {
+          toolResult: {
+            toolUseId: tool.id,
+            content,
+            ...tool.error && { status: "error" }
+          }
+        };
+      });
+      if (toolResultsContent.length > 0) {
+        messageBlocks.push({
+          role: TLLMMessageRole.User,
+          content: toolResultsContent
+        });
+      }
+    }
+    return messageBlocks;
   }
   getConsistentMessages(messages) {
-    return messages.map((message) => {
+    const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+    return _messages.map((message) => {
       let textBlock = [];
       if (message?.parts) {
         textBlock = message.parts;
@@ -12602,30 +13413,34 @@ class BedrockConnector extends LLMConnector {
     });
   }
 }
+function _serializeToolName(name) {
+  return name?.replace(/-/g, "__");
+}
+function _deserializeToolName(name) {
+  return name?.replace(/__/g, "-");
+}
 
-var __defProp$d = Object.defineProperty;
-var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
-const console$4 = Logger("VertexAIConnector");
+var __defProp$g = Object.defineProperty;
+var __defNormalProp$g = (obj, key, value) => key in obj ? __defProp$g(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$g = (obj, key, value) => __defNormalProp$g(obj, typeof key !== "symbol" ? key + "" : key, value);
+Logger("VertexAIConnector");
 class VertexAIConnector extends LLMConnector {
   constructor() {
     super(...arguments);
-    __publicField$d(this, "name", "LLM:VertexAI");
+    __publicField$g(this, "name", "LLM:VertexAI");
   }
-  async chatRequest(acRequest, prompt, params) {
-    const _params = { ...params };
+  async chatRequest(acRequest, params) {
+    const _params = JSON.parse(JSON.stringify(params));
     let messages = _params?.messages || [];
-    if (prompt) {
-      messages.push({ role: TLLMMessageRole.User, content: prompt });
-    }
     let systemInstruction;
-    const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-    if (hasSystemMessage) {
-      const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-      messages = otherMessages;
-      systemInstruction = { role: "system", parts: [{ text: systemMessage?.content }] };
-    } else {
-      systemInstruction = { role: "system", parts: [{ text: JSON_RESPONSE_INSTRUCTION }] };
+    const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+    if ("content" in systemMessage) {
+      systemInstruction = systemMessage.content;
+    }
+    messages = otherMessages;
+    const responseFormat = _params?.responseFormat || "";
+    if (responseFormat === "json") {
+      systemInstruction = JSON_RESPONSE_INSTRUCTION;
     }
     const modelInfo = _params.modelInfo;
     const generationConfig = {};
@@ -12654,8 +13469,7 @@ class VertexAIConnector extends LLMConnector {
         apiEndpoint: `${modelInfo?.settings?.region}-aiplatform.googleapis.com`
       });
       const generativeModel = client.getGenerativeModel(modelParams);
-      const contents = Array.isArray(messages) ? this.getConsistentMessages(messages) : [];
-      const result = await generativeModel.generateContent({ contents });
+      const result = await generativeModel.generateContent({ contents: messages });
       const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
       return { content, finishReason: "stop" };
     } catch (error) {
@@ -12683,25 +13497,9 @@ class VertexAIConnector extends LLMConnector {
   formatToolsConfig({ type = "function", toolDefinitions, toolChoice = "auto" }) {
     throw new Error("Tool configuration is not currently implemented for Vertex AI");
   }
-  async getVertexAIClient(modelInfo, teamId) {
-    try {
-      const jsonCredentials = await VaultHelper.getTeamKey(modelInfo.settings?.jsonCredentialsName, teamId);
-      const credentials = JSON.parse(jsonCredentials);
-      return new VertexAI({
-        project: modelInfo.settings.projectId,
-        location: modelInfo.settings.region,
-        googleAuthOptions: {
-          credentials
-        },
-        apiEndpoint: `${modelInfo.settings.region}-aiplatform.googleapis.com`
-      });
-    } catch (error) {
-      console$4.error("Error on initializing Vertex AI client.");
-      throw error;
-    }
-  }
   getConsistentMessages(messages) {
-    return messages.map((message) => {
+    const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+    return _messages.map((message) => {
       let textBlock = [];
       if (message?.parts) {
         textBlock = message.parts;
@@ -12724,7 +13522,7 @@ class LLMService extends ConnectorServiceProvider {
     ConnectorService.register(TConnectorService.LLM, "GoogleAI", GoogleAIConnector);
     ConnectorService.register(TConnectorService.LLM, "AnthropicAI", AnthropicAIConnector);
     ConnectorService.register(TConnectorService.LLM, "Groq", GroqConnector);
-    ConnectorService.register(TConnectorService.LLM, "TogetherAI", TogetherAIConnector);
+    ConnectorService.register(TConnectorService.LLM, "TogetherAI", OpenAIConnector);
     ConnectorService.register(TConnectorService.LLM, "Bedrock", BedrockConnector);
     ConnectorService.register(TConnectorService.LLM, "VertexAI", VertexAIConnector);
   }
@@ -12778,26 +13576,26 @@ class CacheConnector extends SecureConnector {
   }
 }
 
-var __defProp$c = Object.defineProperty;
-var __getOwnPropDesc$5 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$5 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$5(target, key) : target;
+var __defProp$f = Object.defineProperty;
+var __getOwnPropDesc$6 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$f = (obj, key, value) => key in obj ? __defProp$f(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$6 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$6(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$c(target, key, result);
+  if (kind && result) __defProp$f(target, key, result);
   return result;
 };
-var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$f = (obj, key, value) => __defNormalProp$f(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$3 = Logger("RedisCache");
 class RedisCache extends CacheConnector {
   constructor(settings) {
     super();
-    __publicField$c(this, "name", "RedisCache");
-    __publicField$c(this, "redis");
-    __publicField$c(this, "_prefix", "smyth:cache");
-    __publicField$c(this, "_mdPrefix", "smyth:metadata");
+    __publicField$f(this, "name", "RedisCache");
+    __publicField$f(this, "redis");
+    __publicField$f(this, "_prefix", "smyth:cache");
+    __publicField$f(this, "_mdPrefix", "smyth:metadata");
     const sentinels = parseSentinelHosts(settings.hosts);
     this.redis = new IORedis({
       sentinels,
@@ -12921,34 +13719,34 @@ class RedisCache extends CacheConnector {
     await this.redis.quit();
   }
 }
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "get", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "set", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "delete", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "exists", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "getMetadata", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "setMetadata", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "updateTTL", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "getTTL", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "getACL", 1);
-__decorateClass$5([
+__decorateClass$6([
   SecureConnector.AccessControl
 ], RedisCache.prototype, "setACL", 1);
 function parseSentinelHosts(hosts) {
@@ -12992,30 +13790,44 @@ class VaultConnector extends SecureConnector {
   }
 }
 
-var __defProp$b = Object.defineProperty;
-var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$4 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
+var __defProp$e = Object.defineProperty;
+var __getOwnPropDesc$5 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$e = (obj, key, value) => key in obj ? __defProp$e(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$5 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$5(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$b(target, key, result);
+  if (kind && result) __defProp$e(target, key, result);
   return result;
 };
-var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$e = (obj, key, value) => __defNormalProp$e(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("JSONFileVault");
 class JSONFileVault extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$b(this, "name", "JSONFileVault");
-    __publicField$b(this, "vaultData");
-    __publicField$b(this, "index");
+    __publicField$e(this, "name", "JSONFileVault");
+    __publicField$e(this, "vaultData");
+    __publicField$e(this, "index");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     if (fs.existsSync(config.file)) {
       try {
-        this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+        if (config.fileKey && fs.existsSync(config.fileKey)) {
+          try {
+            const privateKey = fs.readFileSync(config.fileKey, "utf8");
+            const encryptedVault = fs.readFileSync(config.file, "utf8").toString();
+            const decryptedBuffer = crypto.privateDecrypt({
+              key: privateKey,
+              padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+            }, Buffer.from(encryptedVault, "base64"));
+            this.vaultData = JSON.parse(decryptedBuffer.toString("utf8"));
+          } catch (error) {
+            throw new Error("Failed to decrypt vault");
+          }
+        } else {
+          this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+        }
       } catch (e) {
         this.vaultData = {};
       }
@@ -13048,10 +13860,10 @@ class JSONFileVault extends VaultConnector {
     return acl;
   }
 }
-__decorateClass$4([
+__decorateClass$5([
   SecureConnector.AccessControl
 ], JSONFileVault.prototype, "get", 1);
-__decorateClass$4([
+__decorateClass$5([
   SecureConnector.AccessControl
 ], JSONFileVault.prototype, "exists", 1);
 
@@ -13083,30 +13895,30 @@ async function getM2MToken(configs) {
   });
 }
 
-var __defProp$a = Object.defineProperty;
-var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$3 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
+var __defProp$d = Object.defineProperty;
+var __getOwnPropDesc$4 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$d = (obj, key, value) => key in obj ? __defProp$d(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$4 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$4(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$a(target, key, result);
+  if (kind && result) __defProp$d(target, key, result);
   return result;
 };
-var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$d = (obj, key, value) => __defNormalProp$d(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("SmythVault");
 class SmythVault extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$a(this, "name", "SmythVault");
-    __publicField$a(this, "oAuthAppId");
-    __publicField$a(this, "oAuthAppSecret");
-    __publicField$a(this, "oAuthBaseUrl");
-    __publicField$a(this, "oAuthResource");
-    __publicField$a(this, "oAuthScope");
-    __publicField$a(this, "vaultAPI");
+    __publicField$d(this, "name", "SmythVault");
+    __publicField$d(this, "oAuthAppId");
+    __publicField$d(this, "oAuthAppSecret");
+    __publicField$d(this, "oAuthBaseUrl");
+    __publicField$d(this, "oAuthResource");
+    __publicField$d(this, "oAuthScope");
+    __publicField$d(this, "vaultAPI");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.oAuthAppId = config.oAuthAppID;
     this.oAuthAppSecret = config.oAuthAppSecret;
@@ -13127,8 +13939,10 @@ class SmythVault extends VaultConnector {
       const vaultResponse2 = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
       key = vaultResponse2?.data?.secret?.value || null;
     }
-    if (!key && keyId === "anthropicai") {
-      const vaultResponse2 = await this.vaultAPI.get(`/vault/${teamId}/secrets/claude`, { headers: vaultAPIHeaders });
+    if (!key) {
+      const legacyGlobalVaultKey = keyId.toLowerCase();
+      const globalVaultKey = legacyGlobalVaultKey === "anthropicai" ? "claude" : legacyGlobalVaultKey;
+      const vaultResponse2 = await this.vaultAPI.get(`/vault/${teamId}/secrets/${globalVaultKey}`, { headers: vaultAPIHeaders });
       return vaultResponse2?.data?.secret?.value;
     }
     return key || null;
@@ -13159,32 +13973,32 @@ class SmythVault extends VaultConnector {
     };
   }
 }
-__decorateClass$3([
+__decorateClass$4([
   SecureConnector.AccessControl
 ], SmythVault.prototype, "get", 1);
-__decorateClass$3([
+__decorateClass$4([
   SecureConnector.AccessControl
 ], SmythVault.prototype, "exists", 1);
 
-var __defProp$9 = Object.defineProperty;
-var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
-var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __decorateClass$2 = (decorators, target, key, kind) => {
-  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
+var __defProp$c = Object.defineProperty;
+var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$c = (obj, key, value) => key in obj ? __defProp$c(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$3 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$3(target, key) : target;
   for (var i = decorators.length - 1, decorator; i >= 0; i--)
     if (decorator = decorators[i])
       result = (kind ? decorator(target, key, result) : decorator(result)) || result;
-  if (kind && result) __defProp$9(target, key, result);
+  if (kind && result) __defProp$c(target, key, result);
   return result;
 };
-var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __publicField$c = (obj, key, value) => __defNormalProp$c(obj, typeof key !== "symbol" ? key + "" : key, value);
 const console$2 = Logger("SecretsManager");
 class SecretsManager extends VaultConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$9(this, "name", "SecretsManager");
-    __publicField$9(this, "secretsManager");
+    __publicField$c(this, "name", "SecretsManager");
+    __publicField$c(this, "secretsManager");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.secretsManager = new SecretsManagerClient({
       region: config.region,
@@ -13217,10 +14031,10 @@ class SecretsManager extends VaultConnector {
     return acl;
   }
 }
-__decorateClass$2([
+__decorateClass$3([
   SecureConnector.AccessControl
 ], SecretsManager.prototype, "get", 1);
-__decorateClass$2([
+__decorateClass$3([
   SecureConnector.AccessControl
 ], SecretsManager.prototype, "exists", 1);
 
@@ -13245,21 +14059,21 @@ class AccountConnector extends Connector {
   }
 }
 
-var __defProp$8 = Object.defineProperty;
-var __defNormalProp$8 = (obj, key, value) => key in obj ? __defProp$8(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$8 = (obj, key, value) => __defNormalProp$8(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$b = Object.defineProperty;
+var __defNormalProp$b = (obj, key, value) => key in obj ? __defProp$b(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$b = (obj, key, value) => __defNormalProp$b(obj, typeof key !== "symbol" ? key + "" : key, value);
 Logger("SmythAccount");
 class SmythAccount extends AccountConnector {
   constructor(config) {
     super();
     this.config = config;
-    __publicField$8(this, "name", "SmythAccount");
-    __publicField$8(this, "oAuthAppId");
-    __publicField$8(this, "oAuthAppSecret");
-    __publicField$8(this, "oAuthBaseUrl");
-    __publicField$8(this, "oAuthResource");
-    __publicField$8(this, "oAuthScope");
-    __publicField$8(this, "smythAPI");
+    __publicField$b(this, "name", "SmythAccount");
+    __publicField$b(this, "oAuthAppId");
+    __publicField$b(this, "oAuthAppSecret");
+    __publicField$b(this, "oAuthBaseUrl");
+    __publicField$b(this, "oAuthResource");
+    __publicField$b(this, "oAuthScope");
+    __publicField$b(this, "smythAPI");
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
     this.oAuthAppId = config.oAuthAppID;
     this.oAuthAppSecret = config.oAuthAppSecret;
@@ -13363,13 +14177,13 @@ class SmythAccount extends AccountConnector {
   }
 }
 
-var __defProp$7 = Object.defineProperty;
-var __defNormalProp$7 = (obj, key, value) => key in obj ? __defProp$7(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$7 = (obj, key, value) => __defNormalProp$7(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$a = Object.defineProperty;
+var __defNormalProp$a = (obj, key, value) => key in obj ? __defProp$a(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$a = (obj, key, value) => __defNormalProp$a(obj, typeof key !== "symbol" ? key + "" : key, value);
 class DummyAccount extends AccountConnector {
   constructor() {
     super(...arguments);
-    __publicField$7(this, "name", "DummyAccount");
+    __publicField$a(this, "name", "DummyAccount");
   }
   isTeamMember(team, candidate) {
     return Promise.resolve(true);
@@ -13397,16 +14211,78 @@ class DummyAccount extends AccountConnector {
   }
 }
 
+var __defProp$9 = Object.defineProperty;
+var __defNormalProp$9 = (obj, key, value) => key in obj ? __defProp$9(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$9 = (obj, key, value) => __defNormalProp$9(obj, typeof key !== "symbol" ? key + "" : key, value);
+class AWSAccount extends AccountConnector {
+  constructor(config) {
+    super();
+    this.config = config;
+    __publicField$9(this, "name", "AWSAccount");
+    __publicField$9(this, "pool");
+    this.pool = mysql.createPool({
+      host: config.host,
+      database: config.database || "app",
+      user: config.user || "app",
+      password: config.password,
+      connectionLimit: 10
+    });
+  }
+  isTeamMember(team, candidate) {
+    return Promise.resolve(true);
+  }
+  getCandidateTeam(candidate) {
+    if (candidate.role === TAccessRole.Team) {
+      return Promise.resolve(candidate.id);
+    }
+    return Promise.resolve("default");
+  }
+  async getAllTeamSettings(acRequest, teamId) {
+    try {
+      const [rows] = await this.pool.execute("SELECT `key`, `value` FROM TeamSettings");
+      const settings = [];
+      if (Array.isArray(rows) && rows.length > 0) {
+        settings.push(...rows.map((row) => ({ key: row.key, value: row.value })));
+      }
+      return settings;
+    } catch (error) {
+      console.error("Error in getTeamSetting:", error);
+      return [];
+    }
+  }
+  async getTeamSetting(acRequest, teamId, settingKey) {
+    try {
+      const [rows] = await this.pool.execute("SELECT `value` FROM TeamSettings WHERE settingKey = ? LIMIT 1", [settingKey]);
+      if (Array.isArray(rows) && rows.length > 0 && "value" in rows[0]) return rows[0].value;
+      return "";
+    } catch (error) {
+      console.error("Error in getTeamSetting:", error);
+      return "";
+    }
+  }
+  // TODO: Implement this
+  getResourceACL(resourceId, candidate) {
+    throw new Error("getResourceACL Method not implemented.");
+  }
+  getAllUserSettings(acRequest, accountId) {
+    throw new Error("getAllUserSettings Method not implemented.");
+  }
+  getUserSetting(acRequest, accountId, settingKey) {
+    throw new Error("getUserSetting Method not implemented.");
+  }
+}
+
 class AccountService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.Account, "SmythAccount", SmythAccount);
+    ConnectorService.register(TConnectorService.Account, "AWSAccount", AWSAccount);
     ConnectorService.register(TConnectorService.Account, "DummyAccount", DummyAccount);
   }
 }
 
-var __defProp$6 = Object.defineProperty;
-var __defNormalProp$6 = (obj, key, value) => key in obj ? __defProp$6(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$6 = (obj, key, value) => __defNormalProp$6(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$8 = Object.defineProperty;
+var __defNormalProp$8 = (obj, key, value) => key in obj ? __defProp$8(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$8 = (obj, key, value) => __defNormalProp$8(obj, typeof key !== "symbol" ? key + "" : key, value);
 const openapiTemplate = JSON.stringify({
   openapi: "3.0.1",
   info: {
@@ -13448,7 +14324,7 @@ const openapiEndpointTemplate = JSON.stringify({
 class AgentDataConnector extends Connector {
   constructor() {
     super(...arguments);
-    __publicField$6(this, "name", "AgentDataConnector");
+    __publicField$8(this, "name", "AgentDataConnector");
   }
   /**
    * Loads openAPI JSON for the agent
@@ -13578,14 +14454,14 @@ function getOpenAPIParameterStyle(input_type) {
   }
 }
 
-var __defProp$5 = Object.defineProperty;
-var __defNormalProp$5 = (obj, key, value) => key in obj ? __defProp$5(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$5 = (obj, key, value) => __defNormalProp$5(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$7 = Object.defineProperty;
+var __defNormalProp$7 = (obj, key, value) => key in obj ? __defProp$7(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$7 = (obj, key, value) => __defNormalProp$7(obj, typeof key !== "symbol" ? key + "" : key, value);
 class CLIAgentDataConnector extends AgentDataConnector {
   constructor(settings) {
     super();
-    __publicField$5(this, "name", "CLIAgentDataConnector");
-    __publicField$5(this, "argv");
+    __publicField$7(this, "name", "CLIAgentDataConnector");
+    __publicField$7(this, "argv");
     this.argv = settings.args || process.argv;
   }
   async getAgentData(agentId, version) {
@@ -13619,17 +14495,17 @@ class CLIAgentDataConnector extends AgentDataConnector {
   }
 }
 
-var __defProp$4 = Object.defineProperty;
-var __defNormalProp$4 = (obj, key, value) => key in obj ? __defProp$4(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField$4 = (obj, key, value) => __defNormalProp$4(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __defProp$6 = Object.defineProperty;
+var __defNormalProp$6 = (obj, key, value) => key in obj ? __defProp$6(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$6 = (obj, key, value) => __defNormalProp$6(obj, typeof key !== "symbol" ? key + "" : key, value);
 class LocalAgentDataConnector extends AgentDataConnector {
   constructor(settings) {
     super();
-    __publicField$4(this, "name", "LocalAgentDataConnector");
-    __publicField$4(this, "devDir");
-    __publicField$4(this, "prodDir");
-    __publicField$4(this, "agentsData", { dev: {}, prod: {} });
-    __publicField$4(this, "agentSettings", { dev: {}, prod: {} });
+    __publicField$6(this, "name", "LocalAgentDataConnector");
+    __publicField$6(this, "devDir");
+    __publicField$6(this, "prodDir");
+    __publicField$6(this, "agentsData", { dev: {}, prod: {} });
+    __publicField$6(this, "agentSettings", { dev: {}, prod: {} });
     this.devDir = settings.devDir;
     this.prodDir = settings.prodDir;
   }
@@ -13714,17 +14590,480 @@ class LocalAgentDataConnector extends AgentDataConnector {
   }
 }
 
+var __defProp$5 = Object.defineProperty;
+var __defNormalProp$5 = (obj, key, value) => key in obj ? __defProp$5(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$5 = (obj, key, value) => __defNormalProp$5(obj, typeof key !== "symbol" ? key + "" : key, value);
+class SmythAgentDataConnector extends AgentDataConnector {
+  constructor(config) {
+    super();
+    this.config = config;
+    __publicField$5(this, "name", "SmythAgentData");
+    __publicField$5(this, "oAuthAppId");
+    __publicField$5(this, "oAuthAppSecret");
+    __publicField$5(this, "oAuthBaseUrl");
+    __publicField$5(this, "oAuthResource");
+    __publicField$5(this, "oAuthScope");
+    __publicField$5(this, "smythAPI");
+    __publicField$5(this, "agentStageDomain");
+    __publicField$5(this, "agentProdDomain");
+    if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
+    this.oAuthAppId = config.oAuthAppID;
+    this.oAuthAppSecret = config.oAuthAppSecret;
+    this.oAuthBaseUrl = config.oAuthBaseUrl;
+    this.oAuthResource = config.oAuthResource || "";
+    this.oAuthScope = config.oAuthScope || "";
+    this.smythAPI = axios.create({
+      baseURL: `${config.smythAPIBaseUrl}`
+    });
+    this.agentStageDomain = config.agentStageDomain;
+    this.agentProdDomain = config.agentProdDomain;
+  }
+  async getAgentData(agentId, version) {
+    try {
+      let agentObj;
+      const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}?include=team.subscription`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+      agentObj = response.data.agent;
+      const authData = agentObj.data.auth;
+      const tasksResponse = await this.smythAPI.get(`/v1/quota/team/${agentObj.teamId}/tasks/subscription`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+      agentObj.taskData = tasksResponse.data;
+      agentObj.data.debugSessionEnabled = agentObj?.data?.debugSessionEnabled && agentObj?.isLocked;
+      if (version) {
+        const deploymentsList = await this.smythAPI.get(`/v1/ai-agent/${agentId}/deployments`, {
+          headers: await this.getSmythRequestHeaders()
+        });
+        const deployment = version == "latest" ? deploymentsList?.data?.deployments[0] : deploymentsList?.data?.deployments?.find((deployment2) => deployment2.version === version);
+        if (deployment) {
+          const deployResponse = await this.smythAPI.get(`/v1/ai-agent/deployments/${deployment.id}`, {
+            headers: await this.getSmythRequestHeaders()
+          });
+          agentObj.data = deployResponse?.data?.deployment?.aiAgentData;
+          agentObj.data.debugSessionEnabled = false;
+          agentObj.data.agentVersion = deployment.version;
+          agentObj.version = deployment.version;
+        } else {
+          throw new Error(`Requested Deploy Version not found: ${version}`);
+        }
+      }
+      if (!agentObj?.data?.auth?.method || agentObj?.data?.auth?.method == "none") agentObj.data.auth = authData;
+      agentObj.data = this.migrateAgentData(agentObj.data);
+      return agentObj;
+    } catch (error) {
+      console.error(error.response?.data, error.message);
+      console.log(`Error getting agent data for agentId=${agentId}: ${error?.message}`);
+      throw new Error(`Error getting agent data for agentId=${agentId}: ${error?.message}`);
+    }
+  }
+  async getAgentIdByDomain(domain) {
+    let agentId;
+    const isStageWildcardDomain = domain.includes(this.agentStageDomain);
+    const isProdWildcardDomain = domain.includes(this.agentProdDomain);
+    if (isStageWildcardDomain || isProdWildcardDomain) {
+      agentId = domain.split(".")[0];
+      if (`${agentId}.${this.agentStageDomain}` !== domain && `${agentId}.${this.agentProdDomain}` !== domain) {
+        throw new Error(`Invalid agent domain: ${domain}`);
+      }
+      if (isStageWildcardDomain) return agentId;
+    }
+    const result = await this.smythAPI.get(`/v1/domains?verified=true`, { headers: await this.getSmythRequestHeaders() }).catch((error) => ({ error }));
+    if (result.error) {
+      throw new Error("Error getting domain info");
+    }
+    if (agentId) {
+      const hasDomain = result.data.domains.find((domainEntry) => domainEntry?.aiAgent?.id === agentId);
+      if (hasDomain) {
+        throw new Error("Wrong domain");
+      }
+    } else {
+      agentId = result.data.domains.find((domainEntry) => domainEntry.name === domain)?.aiAgent?.id;
+    }
+    return agentId;
+  }
+  async getAgentSettings(agentId, version) {
+    try {
+      const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+      const formattedSettings = response.data.settings.reduce((acc, setting) => ({ ...acc, [setting.key]: setting.value }), {});
+      return formattedSettings;
+    } catch (error) {
+      console.error(`Error getting agent settings for agentId=${agentId}: ${error?.message}`);
+      throw new Error(`Error getting agent settings for agentId=${agentId}: ${error?.message}`);
+    }
+  }
+  async isDeployed(agentId) {
+    try {
+      const deploymentsList = await this.smythAPI.get(`/v1/ai-agent/${agentId}/deployments`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+      return deploymentsList?.data?.deployments?.length > 0;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+  async getSmythRequestHeaders() {
+    return {
+      Authorization: `Bearer ${await getM2MToken({
+        baseUrl: this.oAuthBaseUrl,
+        oauthAppId: this.oAuthAppId,
+        oauthAppSecret: this.oAuthAppSecret,
+        resource: this.oAuthResource,
+        scope: this.oAuthScope
+      })}`
+    };
+  }
+  migrateAgentData(data) {
+    if (!data.version) {
+      console.log(`Agent [${data.name}] has an old schema. Migrating to latest version...`);
+      const newData = JSON.parse(JSON.stringify(data));
+      for (let component of newData.components) {
+        component.outputs = component.connectors;
+        component.inputs = component.receptors;
+        component.outputProps = component.connectorProps;
+        component.inputProps = component.receptorProps;
+        delete component.connectors;
+        delete component.receptors;
+        delete component.connectorProps;
+        delete component.receptorProps;
+      }
+      return newData;
+    }
+    if (data.version === "1.0.0") {
+      if (data.description && !data.behavior) {
+        data.behavior = data.description;
+      }
+    }
+    return data;
+  }
+}
+
 class AgentDataService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.AgentData, "AgentData", AgentDataConnector);
     ConnectorService.register(TConnectorService.AgentData, "CLI", CLIAgentDataConnector);
     ConnectorService.register(TConnectorService.AgentData, "Local", LocalAgentDataConnector);
+    ConnectorService.register(TConnectorService.AgentData, "Smyth", SmythAgentDataConnector);
   }
 }
+
+var __defProp$4 = Object.defineProperty;
+var __getOwnPropDesc$2 = Object.getOwnPropertyDescriptor;
+var __defNormalProp$4 = (obj, key, value) => key in obj ? __defProp$4(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __decorateClass$2 = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc$2(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp$4(target, key, result);
+  return result;
+};
+var __publicField$4 = (obj, key, value) => __defNormalProp$4(obj, typeof key !== "symbol" ? key + "" : key, value);
+Logger("Smyth Managed VectorDB");
+class SmythManagedVectorDB extends VectorDBConnector {
+  constructor(config) {
+    super();
+    this.config = config;
+    __publicField$4(this, "name", "SmythManagedVectorDB");
+    __publicField$4(this, "id", "smyth-managed");
+    __publicField$4(this, "oAuthAppId");
+    __publicField$4(this, "oAuthAppSecret");
+    __publicField$4(this, "oAuthBaseUrl");
+    __publicField$4(this, "oAuthResource");
+    __publicField$4(this, "oAuthScope");
+    __publicField$4(this, "smythAPI");
+    __publicField$4(this, "accountConnector");
+    __publicField$4(this, "redisCache");
+    __publicField$4(this, "openaiApiKey");
+    __publicField$4(this, "isCustomStorageInstance");
+    if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
+    this.oAuthAppId = config.oAuthAppID;
+    this.oAuthAppSecret = config.oAuthAppSecret;
+    this.oAuthBaseUrl = config.oAuthBaseUrl;
+    this.oAuthResource = config.oAuthResource || "";
+    this.oAuthScope = config.oAuthScope || "";
+    this.smythAPI = axios.create({
+      baseURL: `${config.smythAPIBaseUrl}`
+    });
+    this.accountConnector = ConnectorService.getAccountConnector();
+    this.redisCache = ConnectorService.getCacheConnector("Redis");
+    this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+    this.isCustomStorageInstance = config.isCustomStorageInstance || false;
+  }
+  async createDatasource(acRequest, namespace, datasource) {
+    try {
+      const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+      const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+      const res = await this.smythAPI.post(
+        "/v1/vectors/datasources/text",
+        {
+          id: datasource.id || crypto.randomUUID(),
+          name: datasource.label || "Indexer Datasource",
+          text: datasource.text,
+          namespaceId: preparedNs,
+          metadata: datasource.metadata ? JSON.stringify(datasource.metadata) : null,
+          teamId
+        },
+        { headers: await this.getSmythRequestHeaders() }
+      );
+      return {
+        id: res.data.dataSourceId,
+        vectorIds: []
+      };
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to create datasource with error: " + errorMessage);
+    }
+  }
+  async deleteDatasource(acRequest, namespace, datasourceId) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    VectorDBConnector.constructNsName(teamId, namespace);
+    try {
+      await this.smythAPI.delete(`/v1/vectors/datasources/${datasourceId}`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to delete datasource with error: " + errorMessage);
+    }
+  }
+  async listDatasources(acRequest, namespace) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    try {
+      const res = await this.smythAPI.get(`/v1/vectors/datasources?namespaceId=${preparedNs}`, {
+        headers: await this.getSmythRequestHeaders()
+      });
+      return res.data.datasources.map((d) => {
+        return {
+          id: d.id,
+          data: {
+            name: d.name,
+            namespaceId: d.namespaceId,
+            teamId,
+            embeddingIds: null,
+            text: null,
+            metadata: JSON.stringify({})
+          }
+        };
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to list datasources with error: " + errorMessage);
+    }
+  }
+  async getDatasource(acRequest, namespace, datasourceId) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    VectorDBConnector.constructNsName(teamId, namespace);
+    try {
+      const res = await this.smythAPI.get(`/v1/vectors/datasources/${datasourceId}`, {
+        headers: await this.getSmythRequestHeaders()
+      }).catch((e) => {
+        if (e.response?.status === 404) {
+          return void 0;
+        }
+        throw e;
+      });
+      const ds = res?.data?.dataSource;
+      return ds ? {
+        name: ds.name,
+        embeddingIds: null,
+        metadata: JSON.stringify({}),
+        namespaceId: ds.namespaceId,
+        teamId,
+        text: null
+      } : void 0;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to get datasource with error: " + errorMessage);
+    }
+  }
+  async createNamespace(acRequest, namespace, metadata) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    try {
+      const res = await this.smythAPI.post(
+        "/v1/vectors/namespaces",
+        {
+          name: namespace,
+          teamId,
+          useCustomVectorStorage: this.isCustomStorageInstance
+        },
+        { headers: await this.getSmythRequestHeaders() }
+      );
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to create namespace with error: " + errorMessage);
+    }
+    return new Promise((resolve) => resolve());
+  }
+  async namespaceExists(acRequest, namespace) {
+    const namespaceRecord = await this.getNamespace(acRequest, namespace);
+    return !!namespaceRecord;
+  }
+  async getNamespace(acRequest, namespace) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    try {
+      const res = await this.smythAPI.get(`/v1/vectors/namespaces/${preparedNs}`, {
+        headers: await this.getSmythRequestHeaders()
+      }).catch((e) => {
+        if (e.response.status === 404) {
+          return void 0;
+        }
+        throw e;
+      });
+      const namespaceRecord = res?.data?.namespace;
+      if (!namespaceRecord) return void 0;
+      return {
+        displayName: namespaceRecord.name,
+        teamId,
+        namespace: namespaceRecord.id,
+        metadata: {
+          indexName: namespaceRecord.indexName,
+          isOnCustomStorage: namespaceRecord.isOnCustomStorage
+        }
+      };
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to get namespace with error: " + errorMessage);
+    }
+  }
+  async listNamespaces(acRequest) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    try {
+      const response = await this.smythAPI.get(`/v1/vectors/namespaces?teamId=${teamId}`, { headers: await this.getSmythRequestHeaders() });
+      return response.data.namespaces.map((n) => {
+        return {
+          displayName: n.name,
+          namespace: n.id,
+          metadata: {
+            indexName: n.indexName,
+            isOnCustomStorage: n.isOnCustomStorage
+          },
+          teamId
+        };
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to list namespaces with error: " + errorMessage);
+    }
+  }
+  async deleteNamespace(acRequest, namespace) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    try {
+      const response = await this.smythAPI.delete(`/v1/vectors/namespaces/${preparedNs}`, { headers: await this.getSmythRequestHeaders() });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to delete namespace with error: " + errorMessage);
+    }
+  }
+  async search(acRequest, namespace, query, options = {}) {
+    const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+    if (typeof query !== "string") {
+      throw new Error("Smyth Managed VectorDB only supports string queries");
+    }
+    try {
+      const response = await this.smythAPI.get(
+        `/v1/vectors/namespaces/search?query=${query}&topK=${options?.topK}&namespaceId=${preparedNs}&raw=true`,
+        { headers: await this.getSmythRequestHeaders() }
+      );
+      return response.data.results.map((result) => {
+        let userMetadata = {};
+        try {
+          userMetadata = JSON.parse(jsonrepair(result.metadata?.metadata));
+        } catch (err) {
+          userMetadata = result.metadata?.metadata;
+        }
+        return {
+          id: null,
+          values: [],
+          metadata: {
+            text: result.pageContent,
+            user: userMetadata
+          }
+        };
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Unknown error";
+      throw new Error("Failed to search with error: " + errorMessage);
+    }
+  }
+  async insert(acRequest, namespace, sourceWrapper) {
+    throw new Error("Smyth Managed VectorDB does not support direct insertion by vector id(s)");
+  }
+  async delete(acRequest, namespace, id) {
+    throw new Error("Smyth Managed VectorDB does not support direct deletion by vector id(s)");
+  }
+  async getResourceACL(resourceId, candidate) {
+    const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
+    const preparedNs = VectorDBConnector.constructNsName(teamId, resourceId);
+    const nsRecord = await this.smythAPI.get(`/v1/vectors/namespaces/${preparedNs}`, { headers: await this.getSmythRequestHeaders() }).catch((e) => {
+      if (e.response?.status === 404) {
+        return null;
+      }
+      throw e;
+    });
+    const exists = !!nsRecord;
+    if (!exists) {
+      return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+    }
+    return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+  }
+  async getSmythRequestHeaders() {
+    return {
+      Authorization: `Bearer ${await getM2MToken({
+        baseUrl: this.oAuthBaseUrl,
+        oauthAppId: this.oAuthAppId,
+        oauthAppSecret: this.oAuthAppSecret,
+        resource: this.oAuthResource,
+        scope: this.oAuthScope
+      })}`
+    };
+  }
+}
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "createDatasource", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "deleteDatasource", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "listDatasources", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "getDatasource", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "createNamespace", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "namespaceExists", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "getNamespace", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "deleteNamespace", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "search", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "insert", 1);
+__decorateClass$2([
+  SecureConnector.AccessControl
+], SmythManagedVectorDB.prototype, "delete", 1);
 
 class VectorDBService extends ConnectorServiceProvider {
   register() {
     ConnectorService.register(TConnectorService.VectorDB, "Pinecone", PineconeVectorDB);
+    ConnectorService.register(TConnectorService.VectorDB, "SmythManaged", SmythManagedVectorDB);
   }
 }
 
@@ -14145,5 +15484,5 @@ function boot() {
 
 boot();
 
-export { Agent, AgentProcess, AgentRequest, AgentSettings, CLIAgentDataConnector, ConnectorService, Conversation, SmythRuntime, config };
+export { AccessCandidate, Agent, AgentProcess, AgentRequest, AgentSettings, CLIAgentDataConnector, ConnectorService, Conversation, SmythRuntime, StorageConnector, config };
 //# sourceMappingURL=index.dev.js.map
