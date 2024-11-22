@@ -367,6 +367,7 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
+    { provider: 'xAI', id: 'grok-beta' },
 ];
 
 for (const model of models) {
@@ -389,6 +390,7 @@ const modelsWithMultipleToolsResponse = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
     { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+    /* { provider: 'xAI', id: 'grok-beta' }, */ // xAI is not able to handle multiple tools use properly
 ];
 for (const model of modelsWithMultipleToolsResponse) {
     describe(`Multiple Tools Request Tests: ${model.provider} (${model.id})`, async () => {

@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
@@ -62,19 +62,24 @@ const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
 const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}". If the response is JSON, then include an additional key-value pair with key as "${LLM_OUTPUT_VALIDATOR}" and value as "${LLM_OUTPUT_VALIDATOR}"`;
 
 async function runTestCases(model: string) {
-    const config = {
-        data: {
-            model,
-            maxTokens: 100,
-            temperature: 0.5,
-            stopSequences: '<stop>',
-            topP: 0.9,
-            topK: 10,
-            frequencyPenalty: 0,
-            presencePenalty: 0,
-            responseFormat: 'json',
-        },
-    };
+    let config;
+
+    beforeEach(() => {
+        config = {
+            data: {
+                model,
+                maxTokens: 100,
+                temperature: 0.5,
+                stopSequences: '<stop>',
+                topP: 0.9,
+                topK: 10,
+                frequencyPenalty: 0,
+                presencePenalty: 0,
+                responseFormat: 'json',
+            },
+        };
+    });
+
     const llmInference: LLMInference = await LLMInference.getInstance(model);
 
     it(
@@ -130,9 +135,10 @@ async function runTestCases(model: string) {
             // * Note: WORD_INCLUSION_PROMPT does not work properly here
             const messages = JSON.parse(fs.readFileSync('./tests/data/dummy-input-messages.json', 'utf8'));
 
+            config.data.responseFormat = '';
             const result = await llmInference.promptRequest('', config, agent, { messages });
             expect(result).toBeTruthy();
-            expect(result).toBeTypeOf('object');
+            expect(result?.length).toBeGreaterThan(200);
         },
         TIMEOUT
     );
@@ -176,6 +182,7 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite' },
+    { provider: 'xAI', id: 'grok-beta' },
 ];
 
 for (const model of models) {
