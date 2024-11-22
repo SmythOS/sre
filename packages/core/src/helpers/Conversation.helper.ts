@@ -12,6 +12,7 @@ import EventEmitter from 'events';
 import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -56,6 +57,7 @@ export class Conversation extends EventEmitter {
     private _context: LLMContext;
     private _maxContextSize = 1024 * 16;
     private _maxOutputTokens = 1024;
+    private _teamId: string = undefined;
 
     public get context() {
         return this._context;
@@ -69,23 +71,23 @@ export class Conversation extends EventEmitter {
     public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
-            this.loadSpecFromSource(specSource).then((spec) => {
+            this.loadSpecFromSource(specSource).then(async (spec) => {
                 if (!spec) {
                     this._status = 'error';
                     this.emit('error', 'Invalid OpenAPI specification data format');
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
-                this.updateModel(this._model);
+                await this.updateModel(this._model);
                 this._status = 'ready';
             });
         });
     }
 
     public set model(model: string) {
-        this.ready.then(() => {
+        this.ready.then(async () => {
             this._status = '';
-            this.updateModel(model);
+            await this.updateModel(model);
             this._status = 'ready';
         });
     }
@@ -122,27 +124,29 @@ export class Conversation extends EventEmitter {
             this.toolChoice = _settings.toolChoice;
         }
 
-        if (_specSource) {
-            this.loadSpecFromSource(_specSource)
-                .then((spec) => {
-                    if (!spec) {
-                        this._status = 'error';
-                        this.emit('error', 'Unable to parse OpenAPI specifications');
-                        throw new Error('Invalid OpenAPI specification data format');
-                    }
-                    this._spec = spec;
+        (async () => {
+            if (_specSource) {
+                this.loadSpecFromSource(_specSource)
+                    .then(async (spec) => {
+                        if (!spec) {
+                            this._status = 'error';
+                            this.emit('error', 'Unable to parse OpenAPI specifications');
+                            throw new Error('Invalid OpenAPI specification data format');
+                        }
+                        this._spec = spec;
 
-                    this.updateModel(this._model);
-                    this._status = 'ready';
-                })
-                .catch((error) => {
-                    this._status = 'error';
-                    this.emit('error', error);
-                });
-        } else {
-            this.updateModel(this._model);
-            this._status = 'ready';
-        }
+                        await this.updateModel(this._model);
+                        this._status = 'ready';
+                    })
+                    .catch((error) => {
+                        this._status = 'error';
+                        this.emit('error', error);
+                    });
+            } else {
+                await this.updateModel(this._model);
+                this._status = 'ready';
+            }
+        })();
     }
 
     public get ready() {
@@ -191,7 +195,7 @@ export class Conversation extends EventEmitter {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -327,7 +331,7 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -615,7 +619,7 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: [toolDefinition],
@@ -641,7 +645,7 @@ export class Conversation extends EventEmitter {
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
-                const llmInference: LLMInference = await LLMInference.getInstance(this._model);
+                const llmInference: LLMInference = await LLMInference.getInstance(this._model, this._teamId);
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
@@ -689,18 +693,30 @@ export class Conversation extends EventEmitter {
      * @returns
      */
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
+        let agentId = '';
+        let spec = null;
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+
         if (typeof specSource === 'object') {
             //is this a valid OpenAPI spec?
-            if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+            if (OpenAPIParser.isValidOpenAPI(specSource)) {
+                spec = this.patchSpec(specSource);
+
+                const server = spec.servers?.[0]?.url;
+                const specUrl = new URL(server);
+
+                agentId = await agentDataConnector.getAgentIdByDomain(specUrl.hostname).catch(() => '');
+            }
             //is this a valid agent data?
-            if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
-            return null;
+            if (specSource?.behavior && specSource?.components && specSource?.connections) {
+                spec = await this.loadSpecFromAgent(specSource);
+            }
         }
 
         if (typeof specSource === 'string') {
             //is this an openAPI url?
             if (isUrl(specSource as string)) {
-                const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
+                spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
 
                 if (spec.info?.description) this.systemPrompt = spec.info.description;
 
@@ -719,17 +735,24 @@ export class Conversation extends EventEmitter {
                     this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
                 }
 
-                this._agentId = specUrl.hostname; //just set an agent ID in order to identify the agent in SRE //FIXME: maybe this requires a better solution
-                return this.patchSpec(spec);
-            }
-            //is this an agentId ?
-            const agentDataConnector = ConnectorService.getAgentDataConnector();
-            const agentId = specSource as string;
-            const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
-            if (!agentData) return null;
-            this._agentId = agentId;
+                agentId = await agentDataConnector.getAgentIdByDomain(specUrl.hostname).catch(() => '');
 
-            const spec = await this.loadSpecFromAgent(agentData);
+                spec = this.patchSpec(spec);
+            } else {
+                //is this an agentId ?
+                agentId = specSource as string;
+                const agentData = await agentDataConnector.getAgentData(agentId).catch(() => '');
+                if (!agentData) return null;
+
+                spec = await this.loadSpecFromAgent(agentData);
+            }
+
+            // Get the team ID from the account connector
+            this._agentId = agentId || this._agentId; // The Agent ID can be assigned within the loadSpecFromAgent() function.
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(this._agentId)).catch(() => '');
+            this._teamId = teamId;
+
             return spec;
         }
     }
@@ -745,6 +768,9 @@ export class Conversation extends EventEmitter {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
         const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true).catch((error) => null);
+
+        this._agentId = agentData?.data?.id;
+
         return this.patchSpec(spec);
     }
 
