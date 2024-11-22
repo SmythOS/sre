@@ -1125,4 +1125,24 @@ export const models = {
         completionTokens: 2048,
         keyOptions: { tokens: 128000, completionTokens: 16383 },
     },
+
+    // xAI models
+    grok: {
+        llm: 'xAI',
+        alias: 'grok-beta',
+        components: ['PromptGenerator', 'LLMAssistant'],
+        tags: ['new'],
+    },
+    'grok-beta': {
+        llm: 'xAI',
+        tokens: 1024,
+        completionTokens: 1024,
+        enabled: false,
+        keyOptions: {
+            tokens: 131072,
+            completionTokens: 4096, // assumed
+            enabled: true,
+        },
+        baseURL: 'https://api.x.ai/v1',
+    },
 };
