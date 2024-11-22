@@ -10,8 +10,8 @@ import Component from './Component.class';
 export default class AgentPlugin extends Component {
     protected configSchema = Joi.object({
         agentId: Joi.string().max(200).required(),
-        openAiModel: Joi.string().max(200).required(), // for backward compatibility
-        model: Joi.string().max(200).required(),
+        openAiModel: Joi.string().max(200).optional(), // for backward compatibility
+        model: Joi.string().max(200).optional(),
         descForModel: Joi.string().max(5000).allow('').label('Description for Model'),
         id: Joi.string().max(200),
         name: Joi.string().max(500),
