@@ -138,7 +138,7 @@ export class Conversation extends EventEmitter {
 
                         await this.updateModel(this._model);
 
-                        if (!this._agentId) this._agentId = _settings.agentId;
+                        if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
                         this._status = 'ready';
                     })
                     .catch((error) => {
