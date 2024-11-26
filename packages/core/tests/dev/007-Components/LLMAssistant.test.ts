@@ -171,7 +171,7 @@ const models = [
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
     { provider: 'Bedrock', id: 'SRE - Bedrock with AI21 Labs - Jamba-Instruct' },
-    { provider: 'Bedrock', id: 'SRE - Bedrock with Mistral AI - Mistral 7B Instruct' },
+    { provider: 'Bedrock', id: 'SRE - Bedrock does not support System Prompt' },
     { provider: 'VertexAI', id: 'SRE - Vertex AI with Gemini Flash' },
 ];
 

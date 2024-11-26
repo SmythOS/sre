@@ -792,6 +792,8 @@ export class Conversation extends EventEmitter {
             for (const key in pathData) {
                 const data = pathData[key];
 
+                if (!data?.operationId) continue;
+
                 const method = reqMethods.get(data?.operationId) || 'get';
 
                 let properties = {};

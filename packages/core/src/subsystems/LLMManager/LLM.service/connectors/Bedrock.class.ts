@@ -129,7 +129,7 @@ export class BedrockConnector extends LLMConnector {
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
             if ('content' in systemMessage) {
-                systemPrompt = [{ text: systemMessage?.content }];
+                systemPrompt = typeof systemMessage?.content === 'string' ? [{ text: systemMessage?.content }] : systemMessage?.content;
             }
 
             messages = otherMessages;
@@ -156,13 +156,13 @@ export class BedrockConnector extends LLMConnector {
             const message = response.output?.message;
             const finishReason = response.stopReason;
 
-            let toolsInfo: ToolData[] = [];
+            let toolsData: ToolData[] = [];
             let useTool = false;
 
             if (finishReason === 'tool_use') {
                 const toolUseBlocks = message?.content?.filter((block) => block?.toolUse) || [];
 
-                toolsInfo = toolUseBlocks.map((block, index) => ({
+                toolsData = toolUseBlocks.map((block, index) => ({
                     index,
                     id: block.toolUse?.toolUseId as string,
                     type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.,
@@ -177,8 +177,8 @@ export class BedrockConnector extends LLMConnector {
                 data: {
                     useTool,
                     message,
-                    content: message?.content || '',
-                    toolsInfo,
+                    content: message?.content?.[0]?.text || message?.content || '',
+                    toolsData,
                 },
             };
         } catch (error: any) {
@@ -210,7 +210,7 @@ export class BedrockConnector extends LLMConnector {
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
             if ('content' in systemMessage) {
-                systemPrompt = [{ text: systemMessage?.content }];
+                systemPrompt = typeof systemMessage?.content === 'string' ? [{ text: systemMessage?.content }] : systemMessage?.content;
             }
 
             messages = otherMessages;
@@ -292,13 +292,15 @@ export class BedrockConnector extends LLMConnector {
                             }
 
                             currentMessage.toolCalls.push(currentMessage.currentToolCall);
-                            emitter.emit('toolsData', currentMessage.toolCalls);
                             currentMessage.currentToolCall = null;
                             currentMessage.currentToolInput = '';
                         }
 
                         // Handle message completion
                         if (chunk.messageStop) {
+                            if (currentMessage.toolCalls.length > 0) {
+                                emitter.emit('toolsData', currentMessage.toolCalls);
+                            }
                             emitter.emit('end', currentMessage.toolCalls);
                         }
                     }

@@ -8,6 +8,8 @@ import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/typ
 import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 
+// TODO [Forhad]: apply proper typing
+
 export class LLMInference {
     private model: string;
     private llmConnector: LLMConnector;
@@ -123,7 +125,7 @@ export class LLMInference {
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = this.prepareParams(config) || {}; // TODO [Forhad]: apply proper typing
+        const params: any = this.prepareParams(config) || {};
 
         const promises = [];
         const _fileSources = [];
@@ -172,7 +174,7 @@ export class LLMInference {
             throw new Error('Input messages are required.');
         }
 
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
+        let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
         if (!_params.model) {
             _params.model = this.model;
@@ -180,6 +182,8 @@ export class LLMInference {
 
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
+            _params = this.prepareParams(_params) || {};
+
             return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
         } catch (error: any) {
             console.error('Error in toolRequest: ', error);
@@ -201,11 +205,13 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
+            let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
 
             if (!_params.model) {
                 _params.model = this.model;
             }
+
+            _params = this.prepareParams(_params) || {};
 
             return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
         } catch (error) {
