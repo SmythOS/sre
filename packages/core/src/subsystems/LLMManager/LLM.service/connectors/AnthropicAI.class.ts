@@ -421,7 +421,10 @@ export class AnthropicAIConnector extends LLMConnector {
             if (Array.isArray(messageBlock.content)) {
                 content.push(...messageBlock.content);
             } else {
-                content.push({ type: 'text', text: messageBlock.content });
+                if (messageBlock.content) {
+                    //Anthropic AI does not accept empty text blocks
+                    content.push({ type: 'text', text: messageBlock.content });
+                }
             }
             if (messageBlock.tool_calls) {
                 const calls = messageBlock.tool_calls.map((toolCall: any) => ({

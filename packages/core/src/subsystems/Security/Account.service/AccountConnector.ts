@@ -1,6 +1,6 @@
 import { Connector } from '@sre/Core/Connector.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { IAccessCandidate } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { AccessCandidate } from '../AccessControl/AccessCandidate.class';
 import { KeyValueObject } from '@sre/types/Common.types';
 import { ACL } from '../AccessControl/ACL.class';

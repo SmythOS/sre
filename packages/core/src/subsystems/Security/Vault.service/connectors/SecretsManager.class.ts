@@ -49,6 +49,12 @@ export class SecretsManager extends VaultConnector {
         return !!secret;
     }
 
+    @SecureConnector.AccessControl
+    protected async listKeys(acRequest: AccessRequest) {
+        console.warn('SecretsManager.listKeys is not implemented');
+        return [];
+    }
+
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(candidate);

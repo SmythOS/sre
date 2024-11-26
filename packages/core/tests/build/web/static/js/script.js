@@ -11,6 +11,23 @@ $(window).load(function () {
     // }, 100);
 });
 
+var md = new markdownit({
+    html: true, // Enable HTML tags in the source
+    linkify: true, // Autoconvert URL-like text to links
+    typographer: true, // Enable some language-neutral replacement + quotes beautification
+    highlight: function (str, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                // Using highlight.js to highlight code
+                return '<pre class="hljs"><code>' + hljs.highlight(str, { language: lang, ignoreIllegals: true }).value + '</code></pre>';
+            } catch (_) {}
+        }
+
+        // Use escape for non-specified language or unhighlighted
+        return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+    },
+});
+
 function smoothScrollToEnd(element) {
     const totalHeight = element.scrollHeight - element.clientHeight;
     const duration = 200; // Duration of the animation in milliseconds
@@ -118,7 +135,7 @@ function prepare() {
                         addUserMessage(message.content).addClass('new');
                     } else {
                         if (typeof message.content === 'string') {
-                            addBotMessage(message.content);
+                            addBotMessage(md.render(message.content));
                         } else {
                             if (Array.isArray(message.content)) {
                                 let html = '';
@@ -133,6 +150,7 @@ function prepare() {
                                         )}</span></div>`;
                                     }
                                 }
+                                html = md.render(html);
                                 if (html) {
                                     addBotMessage(html);
                                 }
@@ -266,8 +284,11 @@ function processChunk(chunk) {
     for (let part of parts) {
         if (part.content) {
             const html = part.content.replace(/(?:\r\n|\r|\n)/g, '<br>');
+            let text = currentChatbox.getAttribute('data-text') || '';
+            text += part.content;
+            currentChatbox.setAttribute('data-text', text);
 
-            currentChatbox.innerHTML += html;
+            currentChatbox.innerHTML = md.render(text);
         }
         if (part.tool) {
             console.log('Tool:', part.tool);

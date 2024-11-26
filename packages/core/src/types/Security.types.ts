@@ -9,6 +9,7 @@ export type OAuthConfig = {
 export type JSONFileVaultConfig = {
     file: string;
     fileKey?: string;
+    shared?: boolean;
 };
 
 export type SmythVaultConfig = {

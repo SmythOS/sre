@@ -1,6 +1,6 @@
 {
     "name": "smyth-runtime",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "description": "Smyth Runtime Environment",
     "main": "dist/index.dev.js",
     "types": "dist/types/index.d.ts",
@@ -113,6 +113,7 @@
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
         "express-async-handler": "^1.2.0",
+        "express-session": "^1.18.1",
         "file-type": "^19.0.0",
         "gpt-tokenizer": "^2.2.1",
         "groq-sdk": "^0.6.1",
