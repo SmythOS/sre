@@ -3523,6 +3523,7 @@ const customModels = {
    * AWS Bedrock Models
    **************************************************/
   /*
+<<<<<<< HEAD
     Context token information sourced from the AWS Bedrock Console:
     https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/overview
     
@@ -3552,23 +3553,42 @@ const customModels = {
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
     tags: ["new"]
   },
+=======
+     Context token information sourced from the AWS Bedrock Console:
+     https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/overview
+     
+     Completion token information sourced from the AWS Bedrock Text Playground:
+     https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/text-playground
+  
+     Supported model features information sourced from - https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference-supported-models-features.html
+     */
+  //#region AI21 Labs Models
+>>>>>>> main
   "ai21.jamba-instruct-v1:0": {
     llm: "Bedrock",
     label: "AI21 Labs - Jamba-Instruct",
     tokens: 256e3,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "ai21.j2-ultra-v1": {
     llm: "Bedrock",
     label: "AI21 Labs - Jurassic-2 Ultra",
     tokens: 8191,
     completionTokens: 8191,
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "ai21.j2-mid-v1": {
     llm: "Bedrock",
@@ -3586,18 +3606,26 @@ const customModels = {
     label: "Amazon - Titan Text Premier",
     tokens: 32e3,
     completionTokens: 3e3,
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "amazon.titan-text-express-v1": {
     llm: "Bedrock",
     label: "Amazon - Titan Text G1 - Express",
     tokens: 8192,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "amazon.titan-text-lite-v1": {
     llm: "Bedrock",
@@ -3623,8 +3651,11 @@ const customModels = {
     tokens: 2e5,
     completionTokens: 8192,
     supportsSystemPrompt: true,
+<<<<<<< HEAD
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+=======
+>>>>>>> main
     tags: ["v1:0", "new"]
   },
   "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {
@@ -3633,8 +3664,11 @@ const customModels = {
     tokens: 2e5,
     completionTokens: 8192,
     supportsSystemPrompt: true,
+<<<<<<< HEAD
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+=======
+>>>>>>> main
     tags: ["v2:0", "new"]
   },
   "anthropic.claude-3-5-sonnet-20240620-v1:0": {
@@ -3643,8 +3677,11 @@ const customModels = {
     tokens: 2e5,
     completionTokens: 8192,
     supportsSystemPrompt: true,
+<<<<<<< HEAD
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
+=======
+>>>>>>> main
     tags: ["v1:0"]
   },
   "anthropic.claude-3-sonnet-20240229-v1:0": {
@@ -3652,49 +3689,69 @@ const customModels = {
     label: "Anthropic - Claude 3 Sonnet",
     tokens: 2e5,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
     tags: ["v1:0"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "anthropic.claude-3-haiku-20240307-v1:0": {
     llm: "Bedrock",
     label: "Anthropic - Claude 3 Haiku",
     tokens: 2e5,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
     tags: ["v1:0"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "anthropic.claude-3-opus-20240229-v1:0": {
     llm: "Bedrock",
     label: "Anthropic - Claude 3 Opus",
     tokens: 2e5,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"],
     tags: ["v1:0"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "anthropic.claude-v2:1": {
     llm: "Bedrock",
     label: "Anthropic - Claude 2.1",
     tokens: 2e5,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator", "LLMAssistant"],
     tags: ["v2:1"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "anthropic.claude-v2": {
     llm: "Bedrock",
     label: "Anthropic - Claude 2.0",
     tokens: 1e5,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "anthropic.claude-instant-v1": {
     llm: "Bedrock",
@@ -3713,9 +3770,13 @@ const customModels = {
     tokens: 128e3,
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "cohere.command-r-v1:0": {
     llm: "Bedrock",
@@ -3723,9 +3784,13 @@ const customModels = {
     tokens: 128e3,
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: true,
     components: ["PromptGenerator", "LLMAssistant", "AgentPlugin", "Chatbot"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "cohere.command-text-v14": {
     llm: "Bedrock",
@@ -3734,9 +3799,13 @@ const customModels = {
     // Found 4k
     completionTokens: 4e3,
     // Found 4000 Max tokens in the Playground
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "cohere.command-light-text-v14": {
     llm: "Bedrock",
@@ -3755,6 +3824,7 @@ const customModels = {
   //#region Meta Models
   // 'Meta - Llama 2 Chat 13B' : { alias: 'meta.llama2-13b-chat-v1' } // Don't have access to the model
   // 'Meta - Llama 2 Chat 70B' : { alias: 'meta.llama2-70b-chat-v1' } // Don't have access to the model
+<<<<<<< HEAD
   "us.meta.llama3-2-1b-instruct-v1:0": {
     llm: "Bedrock",
     label: "Meta - Llama 3.2 1B Instruct",
@@ -3775,14 +3845,20 @@ const customModels = {
     components: ["PromptGenerator", "LLMAssistant"],
     tags: ["new"]
   },
+=======
+>>>>>>> main
   "meta.llama3-8b-instruct-v1:0": {
     llm: "Bedrock",
     label: "Meta - Llama 3 8B Instruct",
     tokens: 8192,
     completionTokens: 2048,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   "meta.llama3-70b-instruct-v1:0": {
     llm: "Bedrock",
@@ -3803,18 +3879,26 @@ const customModels = {
     label: "Mistral AI - Mistral 7B Instruct",
     tokens: 32e3,
     completionTokens: 8192,
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "mistral.mixtral-8x7b-instruct-v0:1": {
     llm: "Bedrock",
     label: "Mistral AI - Mixtral 8X7B Instruct",
     tokens: 32e3,
     completionTokens: 4096,
+<<<<<<< HEAD
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator"]
+=======
+    supportsSystemPrompt: false
+>>>>>>> main
   },
   "mistral.mistral-large-2402-v1:0": {
     llm: "Bedrock",
@@ -3831,9 +3915,13 @@ const customModels = {
     label: "Mistral AI - Mistral Small",
     tokens: 32e3,
     completionTokens: 8192,
+<<<<<<< HEAD
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    supportsSystemPrompt: true
+>>>>>>> main
   },
   //#endregion Mistral Models
   //#region Stability Models
@@ -3844,6 +3932,7 @@ const customModels = {
    * Vertex AI Models
    **************************************************/
   /*
+<<<<<<< HEAD
   Context token information sourced from :
   Vertex AI documentation - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
   Anthropic - https://docs.anthropic.com/en/docs/about-claude/models
@@ -3851,29 +3940,50 @@ const customModels = {
   Completion token information sourced from:
   Vertex AI Text Playground - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522
   */
+=======
+   Context token information sourced from :
+   Vertex AI documentation - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
+   Anthropic - https://docs.anthropic.com/en/docs/about-claude/models
+   
+   Completion token information sourced from:
+   Vertex AI Text Playground - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522
+   */
+>>>>>>> main
   "gemini-1.5-flash": {
     llm: "VertexAI",
     label: "Gemini 1.5 Flash",
     supportsSystemPrompt: true,
     tokens: 1048576,
+<<<<<<< HEAD
     completionTokens: 8192,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+>>>>>>> main
   },
   "gemini-1.5-pro": {
     llm: "VertexAI",
     label: "Gemini 1.5 Pro",
     supportsSystemPrompt: true,
     tokens: 2097152,
+<<<<<<< HEAD
     completionTokens: 8192,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+>>>>>>> main
   },
   "gemini-1.0-pro": {
     llm: "VertexAI",
     label: "Gemini 1.0 Pro",
     supportsSystemPrompt: true,
     tokens: 32760,
+<<<<<<< HEAD
     completionTokens: 8192,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+>>>>>>> main
   },
   "claude-3-5-haiku": {
     llm: "VertexAI",
@@ -3881,8 +3991,12 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 2e5,
     completionTokens: 8192,
+<<<<<<< HEAD
     tags: ["new"],
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    tags: ["new"]
+>>>>>>> main
   },
   "claude-3-5-sonnet-v2": {
     llm: "VertexAI",
@@ -3890,8 +4004,12 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 2e5,
     completionTokens: 8192,
+<<<<<<< HEAD
     tags: ["v2", "new"],
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    tags: ["v2", "new"]
+>>>>>>> main
   },
   "claude-3-5-sonnet": {
     llm: "VertexAI",
@@ -3899,32 +4017,48 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 2e5,
     completionTokens: 8192,
+<<<<<<< HEAD
     tags: ["v1"],
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    tags: ["v1"]
+>>>>>>> main
   },
   "claude-3-sonnet": {
     llm: "VertexAI",
     label: "Claude 3 Sonnet",
     supportsSystemPrompt: true,
     tokens: 2e5,
+<<<<<<< HEAD
     completionTokens: 4096,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+>>>>>>> main
   },
   "claude-3-opus": {
     llm: "VertexAI",
     label: "Claude 3 Opus",
     supportsSystemPrompt: true,
     tokens: 2e5,
+<<<<<<< HEAD
     completionTokens: 4096,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+>>>>>>> main
   },
   "claude-3-haiku": {
     llm: "VertexAI",
     label: "Claude 3 Haiku",
     supportsSystemPrompt: true,
     tokens: 2e5,
+<<<<<<< HEAD
     completionTokens: 4096,
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+>>>>>>> main
   },
   gemma2: {
     llm: "VertexAI",
@@ -3932,9 +4066,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192,
     // @Ref https://huggingface.co/blog/gemma2
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma2?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma2?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   gemma: {
     llm: "VertexAI",
@@ -3942,9 +4081,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192,
     // @Ref https://huggingface.co/blog/gemma2
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   codegemma: {
     llm: "VertexAI",
@@ -3952,9 +4096,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192,
     // @Ref - https://huggingface.co/google/gemma-7b-it/discussions/73
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/codegemma?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/codegemma?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   "llama3-405b-instruct-maas": {
     llm: "VertexAI",
@@ -3962,9 +4111,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // @Ref - https://docs.together.ai/docs/chat-models
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3-405b-instruct-maas?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3-405b-instruct-maas?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   llama3_1: {
     llm: "VertexAI",
@@ -3972,9 +4126,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // by querying with Gemini - https://gemini.google.com/
+<<<<<<< HEAD
     completionTokens: 4096,
     // by querying with Gemini - https://gemini.google.com/
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // by querying with Gemini - https://gemini.google.com/
+>>>>>>> main
   },
   "llama-guard": {
     llm: "VertexAI",
@@ -3982,9 +4141,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192,
     // @Ref - by querying with Gemini - https://gemini.google.com/
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama-guard?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama-guard?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   llama3: {
     llm: "VertexAI",
@@ -3992,9 +4156,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   llama2: {
     llm: "VertexAI",
@@ -4003,9 +4172,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   "mistral-large": {
     llm: "VertexAI",
@@ -4013,9 +4187,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 128e3,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-large?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 8192,
     // Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+    // Guessing from the context window (tokens)
+>>>>>>> main
   },
   "mistral-nemo": {
     llm: "VertexAI",
@@ -4023,9 +4202,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 128e3,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-nemo?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 8192,
     // Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+    // Guessing from the context window (tokens)
+>>>>>>> main
   },
   codestral: {
     llm: "VertexAI",
@@ -4033,9 +4217,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 32e3,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/codestral?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 4096,
     // Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // Guessing from the context window (tokens)
+>>>>>>> main
   },
   mixtral: {
     llm: "VertexAI",
@@ -4043,9 +4232,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 32e3,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 4096,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 4096
+    // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
+>>>>>>> main
   },
   "chat-bison": {
     llm: "VertexAI",
@@ -4053,9 +4247,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // @Ref - by querying with Gemini - https://gemini.google.com/
+<<<<<<< HEAD
     completionTokens: 2048,
     // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/chat?model=chat-bison@002&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 2048
+    // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/chat?model=chat-bison@002&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
+>>>>>>> main
   },
   "text-bison": {
     llm: "VertexAI",
@@ -4063,9 +4262,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 32768,
     // by querying with Gemini - https://gemini.google.com/
+<<<<<<< HEAD
     completionTokens: 2048,
     // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 2048
+    // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
+>>>>>>> main
   },
   phi3: {
     llm: "VertexAI",
@@ -4073,9 +4277,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 128e3,
     // @Ref - https://console.cloud.google.com/vertex-ai/publishers/microsoft/model-garden/phi3?authuser=1&project=opt-smythos-vertexia-432522
+<<<<<<< HEAD
     completionTokens: 8192,
     // Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+    // Guessing from the context window (tokens)
+>>>>>>> main
   },
   qwen2: {
     llm: "VertexAI",
@@ -4083,9 +4292,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 131072,
     // @Ref - https://huggingface.co/Qwen/Qwen2-72B-Instruct
+<<<<<<< HEAD
     completionTokens: 8192,
     // Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 8192
+    // Guessing from the context window (tokens)
+>>>>>>> main
   },
   mammut: {
     llm: "VertexAI",
@@ -4093,9 +4307,14 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // @Ref - by querying with Gemini - https://gemini.google.com/
+<<<<<<< HEAD
     completionTokens: 2048,
     // @Ref - by querying with Gemini - https://gemini.google.com/
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 2048
+    // @Ref - by querying with Gemini - https://gemini.google.com/
+>>>>>>> main
   },
   "lmsys-vicuna-7b": {
     llm: "VertexAI",
@@ -4103,359 +4322,539 @@ const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096,
     // @Ref - https://docs.together.ai/docs/chat-models
+<<<<<<< HEAD
     completionTokens: 2048,
     // @Ref - Guessing from the context window (tokens)
     components: ["PromptGenerator", "LLMAssistant"]
+=======
+    completionTokens: 2048
+    // @Ref - Guessing from the context window (tokens)
+>>>>>>> main
   },
   "bio-gpt": {
     llm: "VertexAI",
     label: "BioGPT",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "microsoft-biomedclip": {
     llm: "VertexAI",
     label: "BiomedCLIP",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   mistral: {
     llm: "VertexAI",
     label: "Mistral Self-host (7B & Nemo)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   nllb: {
     llm: "VertexAI",
     label: "NLLB",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "codellama-7b-hf": {
     llm: "VertexAI",
     label: "Code Llama",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "palmyra-med": {
     llm: "VertexAI",
     label: "Palmyra Med (Writer)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "llama-2-quantized": {
     llm: "VertexAI",
     label: "Llama 2 (Quantized)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "bert-base-uncased": {
     llm: "VertexAI",
     label: "BERT (PEFT)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "falcon-instruct-7b-peft": {
     llm: "VertexAI",
     label: "Falcon-instruct (PEFT)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   openllama: {
     llm: "VertexAI",
     label: "OpenLLaMA (PEFT)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "roberta-large": {
     llm: "VertexAI",
     label: "RoBERTa-large (PEFT)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "xlm-roberta-large": {
     llm: "VertexAI",
     label: "XLM-RoBERTa-large (PEFT)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "bart-large-cnn": {
     llm: "VertexAI",
     label: "Bart-large-cnn",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "dolly-v2": {
     llm: "VertexAI",
     label: "Dolly-v2",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   imagetext: {
     llm: "VertexAI",
     label: "Imagen for Captioning & VQA",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "codechat-bison": {
     llm: "VertexAI",
     label: "Codey for Code Chat",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "code-bison": {
     llm: "VertexAI",
     label: "Codey for Code Generation",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "code-gecko": {
     llm: "VertexAI",
     label: "Codey for Code Completion",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "text-unicorn": {
     llm: "VertexAI",
     label: "PaLM 2 Text Unicorn",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "textembedding-gecko": {
     llm: "VertexAI",
     label: "Embeddings for Text",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "t5-flan": {
     llm: "VertexAI",
     label: "T5-FLAN",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "t5-1.1": {
     llm: "VertexAI",
     label: "T5-1.1",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "blip2-opt-2.7-b": {
     llm: "VertexAI",
     label: "BLIP2",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "instruct-pix2pix": {
     llm: "VertexAI",
     label: "InstructPix2Pix",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "bert-base": {
     llm: "VertexAI",
     label: "BERT",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "mediapipe-mobile-bert-classifier": {
     llm: "VertexAI",
     label: "MobileBERT Classifier (MediaPipe)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "mediapipe-average-word-embedding-classifier": {
     llm: "VertexAI",
     label: "Average Word Embedding Classifier (MediaPipe)",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   pic2word: {
     llm: "VertexAI",
     label: "Pic2Word Composed Image Retrieval",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "text-translation": {
     llm: "VertexAI",
     label: "Text Translation",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "language-v1-moderate-text": {
     llm: "VertexAI",
     label: "Text Moderation",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "language-v1-analyze-syntax": {
     llm: "VertexAI",
     label: "Syntax analysis",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "language-v1-analyze-entity-sentiment": {
     llm: "VertexAI",
     label: "Entity sentiment analysis",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "language-v1-analyze-sentiment": {
     llm: "VertexAI",
     label: "Sentiment analysis",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "language-v1-classify-text-v1": {
     llm: "VertexAI",
     label: "Content classification",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   },
   "pt-test": {
     llm: "VertexAI",
     label: "Entity analysis",
     supportsSystemPrompt: false,
+<<<<<<< HEAD
     tokens: 4096,
     // Guessed value, no reference
     completionTokens: 4096,
     // Guessed value, no reference
     components: ["PromptGenerator"]
+=======
+    completionTokens: 4096
+    // Guessed value, no reference
+>>>>>>> main
   }
 };
 
@@ -5611,7 +6010,13 @@ const _SmythRuntime = class _SmythRuntime {
     const newConfig = {};
     for (let connectorType in config) {
       newConfig[connectorType] = [];
+<<<<<<< HEAD
       if (typeof config[connectorType] === "object") config[connectorType] = [config[connectorType]];
+=======
+      if (!Array.isArray(config[connectorType])) {
+        config[connectorType] = [config[connectorType]];
+      }
+>>>>>>> main
       let hasDefault = false;
       for (let connector of config[connectorType]) {
         if (!connector.Connector) {
@@ -7181,6 +7586,7 @@ class Conversation extends EventEmitter$1 {
         }
         this._spec = spec;
         this.updateModel(this._model);
+        if (!this._agentId) this._agentId = _settings.agentId;
         this._status = "ready";
       }).catch((error) => {
         this._status = "error";
@@ -11259,14 +11665,24 @@ class LLMConnector extends Connector {
         const keyIdName = modelInfo.settings?.keyIDName;
         const secretKeyName = modelInfo.settings?.secretKeyName;
         const sessionKeyName = modelInfo.settings?.sessionKeyName;
+<<<<<<< HEAD
         const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
+=======
+        const [keyId, secretKey, sessionKey] = await Promise.all([
+>>>>>>> main
           vaultConnector.user(candidate).get(keyIdName).catch(() => ""),
           vaultConnector.user(candidate).get(secretKeyName).catch(() => ""),
           vaultConnector.user(candidate).get(sessionKeyName).catch(() => "")
         ]);
         _params.credentials = {
+<<<<<<< HEAD
           accessKeyId,
           secretAccessKey
+=======
+          keyId,
+          secretKey,
+          sessionKey
+>>>>>>> main
         };
         if (sessionToken) {
           _params.credentials.sessionToken = sessionToken;
@@ -12809,7 +13225,9 @@ class AnthropicAIConnector extends LLMConnector {
       if (Array.isArray(messageBlock.content)) {
         content.push(...messageBlock.content);
       } else {
-        content.push({ type: "text", text: messageBlock.content });
+        if (messageBlock.content) {
+          content.push({ type: "text", text: messageBlock.content });
+        }
       }
       if (messageBlock.tool_calls) {
         const calls = messageBlock.tool_calls.map((toolCall) => ({
@@ -13785,7 +14203,8 @@ class VaultConnector extends SecureConnector {
   user(candidate) {
     return {
       get: async (keyId) => this.get(candidate.readRequest, keyId),
-      exists: async (keyId) => this.exists(candidate.readRequest, keyId)
+      exists: async (keyId) => this.exists(candidate.readRequest, keyId),
+      listKeys: async () => this.listKeys(candidate.readRequest)
     };
   }
 }
@@ -13810,17 +14229,32 @@ class JSONFileVault extends VaultConnector {
     __publicField$e(this, "name", "JSONFileVault");
     __publicField$e(this, "vaultData");
     __publicField$e(this, "index");
+<<<<<<< HEAD
+=======
+    __publicField$e(this, "sharedVault");
+>>>>>>> main
     if (!SmythRuntime.Instance) throw new Error("SRE not initialized");
+    this.sharedVault = config.shared || false;
     if (fs.existsSync(config.file)) {
       try {
         if (config.fileKey && fs.existsSync(config.fileKey)) {
           try {
             const privateKey = fs.readFileSync(config.fileKey, "utf8");
             const encryptedVault = fs.readFileSync(config.file, "utf8").toString();
+<<<<<<< HEAD
             const decryptedBuffer = crypto.privateDecrypt({
               key: privateKey,
               padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
             }, Buffer.from(encryptedVault, "base64"));
+=======
+            const decryptedBuffer = crypto.privateDecrypt(
+              {
+                key: privateKey,
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+              },
+              Buffer.from(encryptedVault, "base64")
+            );
+>>>>>>> main
             this.vaultData = JSON.parse(decryptedBuffer.toString("utf8"));
           } catch (error) {
             throw new Error("Failed to decrypt vault");
@@ -13844,19 +14278,25 @@ class JSONFileVault extends VaultConnector {
   async get(acRequest, keyId) {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-    return this.vaultData?.[teamId]?.[keyId];
+    return this.vaultData?.[teamId]?.[keyId] || this.vaultData?.["shared"]?.[keyId];
   }
   async exists(acRequest, keyId) {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
-    return !!this.vaultData?.[teamId]?.[keyId];
+    return !!(this.vaultData?.[teamId]?.[keyId] || this.vaultData?.["shared"]?.[keyId]);
+  }
+  async listKeys(acRequest) {
+    return Object.keys(this.vaultData);
   }
   async getResourceACL(resourceId, candidate) {
     const accountConnector = ConnectorService.getAccountConnector();
-    const teamId = await accountConnector.getCandidateTeam(candidate);
+    const teamId = this.sharedVault ? "shared" : await accountConnector.getCandidateTeam(candidate);
     const acl = new ACL();
     if (typeof this.vaultData?.[teamId]?.[resourceId] !== "string") return acl;
     acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner).addAccess(TAccessRole.Team, teamId, TAccessLevel.Read).addAccess(TAccessRole.Team, teamId, TAccessLevel.Write);
+    if (this.sharedVault && typeof this.vaultData?.["shared"]?.[resourceId] === "string") {
+      acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
+    }
     return acl;
   }
 }
@@ -13866,13 +14306,13 @@ __decorateClass$5([
 __decorateClass$5([
   SecureConnector.AccessControl
 ], JSONFileVault.prototype, "exists", 1);
+__decorateClass$5([
+  SecureConnector.AccessControl
+], JSONFileVault.prototype, "listKeys", 1);
 
 async function getM2MToken(configs) {
   return new Promise((resolve, reject) => {
-    const base64Credentials = Buffer.from(
-      `${configs.oauthAppId}:${configs.oauthAppSecret}`,
-      "utf8"
-    ).toString("base64");
+    const base64Credentials = Buffer.from(`${configs.oauthAppId}:${configs.oauthAppSecret}`, "utf8").toString("base64");
     const body = {
       grant_type: "client_credentials",
       resource: configs.resource,
@@ -13888,9 +14328,9 @@ async function getM2MToken(configs) {
       },
       data: qs.stringify(body)
     }).then((response) => {
-      resolve(response.data.access_token);
+      resolve(response?.data?.access_token);
     }).catch((error) => {
-      reject({ error: error.response.data });
+      reject({ error: error?.response?.data });
     });
   });
 }
@@ -13954,6 +14394,13 @@ class SmythVault extends VaultConnector {
     const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
     return vaultResponse?.data?.secret ? true : false;
   }
+  async listKeys(acRequest) {
+    const accountConnector = ConnectorService.getAccountConnector();
+    const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+    const vaultAPIHeaders = await this.getVaultRequestHeaders();
+    const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets`, { headers: vaultAPIHeaders });
+    return vaultResponse?.data;
+  }
   async getResourceACL(resourceId, candidate) {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(candidate);
@@ -13979,6 +14426,9 @@ __decorateClass$4([
 __decorateClass$4([
   SecureConnector.AccessControl
 ], SmythVault.prototype, "exists", 1);
+__decorateClass$4([
+  SecureConnector.AccessControl
+], SmythVault.prototype, "listKeys", 1);
 
 var __defProp$c = Object.defineProperty;
 var __getOwnPropDesc$3 = Object.getOwnPropertyDescriptor;
@@ -14023,6 +14473,10 @@ class SecretsManager extends VaultConnector {
     const secret = await this.get(acRequest, keyId);
     return !!secret;
   }
+  async listKeys(acRequest) {
+    console$2.warn("SecretsManager.listKeys is not implemented");
+    return [];
+  }
   async getResourceACL(resourceId, candidate) {
     const accountConnector = ConnectorService.getAccountConnector();
     const teamId = await accountConnector.getCandidateTeam(candidate);
@@ -14037,6 +14491,9 @@ __decorateClass$3([
 __decorateClass$3([
   SecureConnector.AccessControl
 ], SecretsManager.prototype, "exists", 1);
+__decorateClass$3([
+  SecureConnector.AccessControl
+], SecretsManager.prototype, "listKeys", 1);
 
 class VaultService extends ConnectorServiceProvider {
   register() {
@@ -14490,6 +14947,10 @@ class CLIAgentDataConnector extends AgentDataConnector {
     }
     return settings;
   }
+  async listTeamAgents(teamId, deployedOnly) {
+    console.warn(`listTeamAgents is not implemented for CLIAgentDataConnector`);
+    return [];
+  }
   async isDeployed(agentId) {
     return true;
   }
@@ -14584,6 +15045,10 @@ class LocalAgentDataConnector extends AgentDataConnector {
     } else {
       throw new Error(`Settings for agent with id ${agentId} not found`);
     }
+  }
+  async listTeamAgents(teamId, deployedOnly) {
+    console.warn(`listTeamAgents is not implemented for LocalAgentDataConnector`);
+    return [];
   }
   async isDeployed(agentId) {
     return !!this.agentsData.prod[agentId];
@@ -14694,6 +15159,25 @@ class SmythAgentDataConnector extends AgentDataConnector {
       throw new Error(`Error getting agent settings for agentId=${agentId}: ${error?.message}`);
     }
   }
+<<<<<<< HEAD
+=======
+  async listTeamAgents(teamId, deployedOnly, includeData) {
+    try {
+      const headers = await this.getSmythRequestHeaders();
+      const response = await this.smythAPI.get(
+        `/v1/ai-agent/teams/${teamId}/?deployedOnly=${deployedOnly ? "true" : "false"}&includeData=${includeData ? "true" : "false"}`,
+        {
+          headers
+        }
+      );
+      const agentsList = response?.data?.agents;
+      return agentsList;
+    } catch (error) {
+      console.error(`Error listing team agents for teamId=${teamId}: ${error?.message}`);
+      throw new Error(`Error listing team agents for teamId=${teamId}: ${error?.message}`);
+    }
+  }
+>>>>>>> main
   async isDeployed(agentId) {
     try {
       const deploymentsList = await this.smythAPI.get(`/v1/ai-agent/${agentId}/deployments`, {
@@ -15484,5 +15968,9 @@ function boot() {
 
 boot();
 
+<<<<<<< HEAD
 export { AccessCandidate, Agent, AgentProcess, AgentRequest, AgentSettings, CLIAgentDataConnector, ConnectorService, Conversation, SmythRuntime, StorageConnector, config };
+=======
+export { AccessCandidate, AccountConnector, Agent, AgentDataConnector, AgentProcess, AgentRequest, AgentSettings, CLIConnector, CacheConnector, ConnectorService, Conversation, LLMConnector, NKVConnector, SmythRuntime, StorageConnector, SystemEvents, VaultConnector, VectorDBConnector, config };
+>>>>>>> main
 //# sourceMappingURL=index.dev.js.map

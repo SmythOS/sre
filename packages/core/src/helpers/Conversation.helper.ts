@@ -105,6 +105,7 @@ export class Conversation extends EventEmitter {
             store?: ILLMContextStore;
             experimentalCache?: boolean;
             toolsStrategy?: (toolsConfig) => any;
+            agentId?: string;
         }
     ) {
         //TODO: handle loading previous session (messages)
@@ -136,6 +137,8 @@ export class Conversation extends EventEmitter {
                         this._spec = spec;
 
                         await this.updateModel(this._model);
+
+                        if (!this._agentId) this._agentId = _settings.agentId;
                         this._status = 'ready';
                     })
                     .catch((error) => {
@@ -575,7 +578,7 @@ export class Conversation extends EventEmitter {
                 //TODO : implement a timeout for the tool call
                 if (reqConfig.url.includes('localhost')) {
                     //if it's a local agent, invoke it directly
-                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID']).run(reqConfig as TAgentProcessParams);
+                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID'] || this._agentId).run(reqConfig as TAgentProcessParams);
                     return { data: response.data, error: null };
                 } else {
                     //if it's a remote agent, call the API via HTTP

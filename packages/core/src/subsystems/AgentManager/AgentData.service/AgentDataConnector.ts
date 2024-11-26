@@ -3,11 +3,13 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import config from '@sre/config';
 import { escapeString, TemplateString } from '@sre/helpers/TemplateString.helper';
+import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 
 export interface IAgentDataConnector {
     getAgentData(agentId: string, version?: string): Promise<any>;
     getAgentIdByDomain(domain: string): Promise<string>;
     getAgentSettings(agentId: string, version?: string): Promise<any>;
+    listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]>;
 }
 
 const openapiTemplate = JSON.stringify({
@@ -55,7 +57,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
     public abstract getAgentIdByDomain(domain: string): Promise<string>;
     public abstract getAgentSettings(agentId: string, version?: string): Promise<{ [key: string]: any }>;
     public abstract isDeployed(agentId: string): Promise<boolean>;
-
+    public abstract listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]>;
     /**
      * Loads openAPI JSON for the agent
      * @param source this represents either the agentId or the agent data
@@ -107,14 +109,20 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
             let method = (component.data.method || 'post').toLowerCase();
             let summary = aiOnly ? component.data.description || component.data.doc : component.data.doc || component.data.description;
 
-            const openAPIEntry = JSON.parse(
+            const openAPIEntry = JSONContent(
                 TemplateString(openapiEndpointTemplate)
                     .parse({
-                        summary,
+                        summary: summary.replace(/"/g, '\\"'),
                         operationId: component.data.endpoint,
                     })
                     .clean().result
-            );
+            ).tryParse();
+
+            if (typeof openAPIEntry !== 'object') {
+                console.warn('Error on openAPIEntry: ', openAPIEntry);
+                continue;
+            }
+
             if (!openAPIObj.paths[apiBasePath + '/' + component.data.endpoint]) openAPIObj.paths[apiBasePath + '/' + component.data.endpoint] = {};
             //const componentsSchemas = openAPIObj.components.schemas;
 

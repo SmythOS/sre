@@ -9,11 +9,7 @@ export async function getM2MToken(configs: {
     baseUrl: string;
 }): Promise<string> {
     return new Promise((resolve, reject) => {
-
-        const base64Credentials = Buffer.from(
-            `${configs.oauthAppId}:${configs.oauthAppSecret}`,
-            'utf8',
-        ).toString('base64');
+        const base64Credentials = Buffer.from(`${configs.oauthAppId}:${configs.oauthAppSecret}`, 'utf8').toString('base64');
 
         const body = {
             grant_type: 'client_credentials',
@@ -31,10 +27,10 @@ export async function getM2MToken(configs: {
             data: qs.stringify(body),
         })
             .then((response) => {
-                resolve(response.data.access_token);
+                resolve(response?.data?.access_token);
             })
             .catch((error) => {
-                reject({ error: error.response.data });
+                reject({ error: error?.response?.data });
             });
     });
 }

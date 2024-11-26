@@ -52,7 +52,9 @@ export default class SmythRuntime {
         const newConfig: SREConfig = {};
         for (let connectorType in config) {
             newConfig[connectorType] = [];
-            if (typeof config[connectorType] === 'object') config[connectorType] = [config[connectorType]];
+            if (!Array.isArray(config[connectorType])) {
+                config[connectorType] = [config[connectorType]];
+            }
 
             let hasDefault = false;
             for (let connector of config[connectorType]) {
