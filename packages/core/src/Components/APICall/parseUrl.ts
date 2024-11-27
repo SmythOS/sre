@@ -33,7 +33,7 @@ export async function parseUrl(input, config, agent: Agent) {
     const teamId = agent ? agent.teamId : null;
     const templateSettings = config?.template?.settings || {};
 
-    let url = config?.data?.url;
+    let url = config?.data?.url.replace(/\+/g, '%20'); // replace + with %20 from query params to make it a valid url
 
     // Decode URL parts
     url = decodeURIComponent(url);
