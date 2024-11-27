@@ -105,7 +105,7 @@ export class TemplateStringHelper {
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
         this._current = this._current.replace(regex, (match, token) => {
-            return data[token] || match;
+            return typeof data[token] === 'object' ? JSON.stringify(data[token]) : data[token] || match;
         });
 
         return this;
