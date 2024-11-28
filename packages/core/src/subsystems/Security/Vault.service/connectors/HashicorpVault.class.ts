@@ -26,6 +26,11 @@ export class HashicorpVault extends VaultConnector {
         return false;
     }
 
+    @SecureConnector.AccessControl
+    protected async listKeys(acRequest: AccessRequest) {
+        return [];
+    }
+
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         //FIXME : this is for dev, it always give full access, we must update the logic
         const accountConnector = ConnectorService.getAccountConnector();

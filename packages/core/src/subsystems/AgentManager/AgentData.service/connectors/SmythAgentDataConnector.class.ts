@@ -147,6 +147,25 @@ export class SmythAgentDataConnector extends AgentDataConnector {
         }
     }
 
+    public async listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]> {
+        try {
+            const headers = await this.getSmythRequestHeaders();
+            // If no matching deployment found or no deployments at all, return the current live settings
+            const response = await this.smythAPI.get(
+                `/v1/ai-agent/teams/${teamId}/?deployedOnly=${deployedOnly ? 'true' : 'false'}&includeData=${includeData ? 'true' : 'false'}`,
+                {
+                    headers,
+                }
+            );
+            const agentsList = response?.data?.agents;
+
+            return agentsList;
+        } catch (error) {
+            console.error(`Error listing team agents for teamId=${teamId}: ${error?.message}`);
+            throw new Error(`Error listing team agents for teamId=${teamId}: ${error?.message}`);
+        }
+    }
+
     public async isDeployed(agentId: string): Promise<boolean> {
         try {
             const deploymentsList = await this.smythAPI.get(`/v1/ai-agent/${agentId}/deployments`, {
