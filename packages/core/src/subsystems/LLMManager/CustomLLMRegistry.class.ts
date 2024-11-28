@@ -1,6 +1,7 @@
 import { ConnectorService } from '@sre/index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { customModels } from './custom-models';
+import { TVertexAIModel, TBedrockModel } from '@sre/types/LLM.types';
 
 export class CustomLLMRegistry {
     private models: Record<string, any> = {}; // TODO [Forhad]: apply proper typing
@@ -16,13 +17,13 @@ export class CustomLLMRegistry {
     }
 
     public getProvider(model: string): string {
-        const modelId = this.getModelId(model);
-        return this.models?.[modelId]?.llm;
+        const entryId = this.getModelEntryId(model);
+        return this.models?.[entryId]?.llm;
     }
 
-    public getModelInfo(model: string): Record<string, any> {
-        const modelId = this.getModelId(model);
-        const modelInfo = this.models?.[modelId] || {};
+    public getModelInfo(model: string): TBedrockModel | TVertexAIModel {
+        const entryId = this.getModelEntryId(model);
+        const modelInfo = this.models?.[entryId] || {};
 
         return modelInfo;
     }
@@ -49,12 +50,18 @@ export class CustomLLMRegistry {
         this.models = { ...this.models, ...savedCustomModels };
     }
 
-    public getModelId(model: string): string {
+    public getModelEntryId(model: string): string {
         for (const [id, modelInfo] of Object.entries(this.models)) {
             if (modelInfo.name === model) return id;
         }
 
         return model;
+    }
+
+    public getModelId(model: string): string {
+        const modelInfo = this.getModelInfo(model);
+
+        return modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
     }
 
     private async getCustomModels(teamId: string): Promise<Record<string, any>> {

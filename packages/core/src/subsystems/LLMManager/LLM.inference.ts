@@ -9,6 +9,7 @@ import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 
 // TODO [Forhad]: apply proper typing
+// TODO [Forhad]: Need to merge all the methods with LLMConnector
 
 export class LLMInference {
     private model: string;
@@ -55,7 +56,6 @@ export class LLMInference {
         let params: any = Object.assign(config.data, { ...customParams, messages });
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        params = this.prepareParams(params) || {};
 
         if (!this.llmConnector) {
             throw new Error(`Model ${params.model} not supported`);
@@ -84,7 +84,6 @@ export class LLMInference {
 
     public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = this.prepareParams(config) || {};
 
         const promises = [];
         const _fileSources = [];
@@ -96,6 +95,8 @@ export class LLMInference {
         }
 
         await Promise.all(promises);
+
+        const params = config.data;
 
         params.fileSources = _fileSources;
 
@@ -125,7 +126,6 @@ export class LLMInference {
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
     public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const params: any = this.prepareParams(config) || {};
 
         const promises = [];
         const _fileSources = [];
@@ -137,6 +137,8 @@ export class LLMInference {
         }
 
         await Promise.all(promises);
+
+        const params = config.data;
 
         params.fileSources = _fileSources;
 
@@ -182,7 +184,6 @@ export class LLMInference {
 
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
-            _params = this.prepareParams(_params) || {};
 
             return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
         } catch (error: any) {
@@ -211,8 +212,6 @@ export class LLMInference {
                 _params.model = this.model;
             }
 
-            _params = this.prepareParams(_params) || {};
-
             return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
         } catch (error) {
             console.error('Error in streamRequest:', error);
@@ -238,39 +237,5 @@ export class LLMInference {
 
             return messages; // if something goes wrong then we return the original messages
         }
-    }
-
-    private prepareParams(params: any) {
-        const clonedConfigData = JSON.parse(JSON.stringify(params || {})); // We need to keep the params unchanged to avoid any side effects, especially when run components with loop
-
-        const preparedParams: {
-            model?: string;
-        } = {};
-
-        for (const [key, value] of Object.entries(clonedConfigData)) {
-            let _value: any = value; // TODO [Forhad]: apply proper typing
-
-            // When we have stopSequences, we need to split it into an array
-            if (key === 'stopSequences') {
-                _value = _value ? _value?.split(',') : null;
-            }
-
-            // When we have a string that is a number, we need to convert it to a number
-            if (typeof _value === 'string' && !isNaN(Number(_value))) {
-                _value = +_value;
-            }
-
-            if (key === 'messages') {
-                _value = this.getConsistentMessages(_value);
-            }
-
-            preparedParams[key] = _value;
-        }
-
-        if (!preparedParams?.model) {
-            preparedParams.model = this.model;
-        }
-
-        return preparedParams;
     }
 }
