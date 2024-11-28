@@ -94,6 +94,15 @@ export class Conversation extends EventEmitter {
     public get model() {
         return this._model;
     }
+
+    private async setTeamId(agentId: string) {
+        if (agentId) {
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId)).catch(() => '');
+            this._teamId = teamId;
+        }
+    }
+
     constructor(
         private _model: string,
         private _specSource?: string | Record<string, any>,
@@ -136,9 +145,13 @@ export class Conversation extends EventEmitter {
                         }
                         this._spec = spec;
 
+                        if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
+
+                        // teamId is required inside updateModel
+                        await this.setTeamId(this._agentId);
+
                         await this.updateModel(this._model);
 
-                        if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
                         this._status = 'ready';
                     })
                     .catch((error) => {
@@ -696,30 +709,18 @@ export class Conversation extends EventEmitter {
      * @returns
      */
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
-        let agentId = '';
-        let spec = null;
-        const agentDataConnector = ConnectorService.getAgentDataConnector();
-
         if (typeof specSource === 'object') {
             //is this a valid OpenAPI spec?
-            if (OpenAPIParser.isValidOpenAPI(specSource)) {
-                spec = this.patchSpec(specSource);
-
-                const server = spec.servers?.[0]?.url;
-                const specUrl = new URL(server);
-
-                agentId = await agentDataConnector.getAgentIdByDomain(specUrl.hostname).catch(() => '');
-            }
+            if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
             //is this a valid agent data?
-            if (specSource?.behavior && specSource?.components && specSource?.connections) {
-                spec = await this.loadSpecFromAgent(specSource);
-            }
+            if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
+            return null;
         }
 
         if (typeof specSource === 'string') {
             //is this an openAPI url?
             if (isUrl(specSource as string)) {
-                spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
+                const spec = await OpenAPIParser.getJsonFromUrl(specSource as string);
 
                 if (spec.info?.description) this.systemPrompt = spec.info.description;
 
@@ -738,24 +739,17 @@ export class Conversation extends EventEmitter {
                     this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
                 }
 
-                agentId = await agentDataConnector.getAgentIdByDomain(specUrl.hostname).catch(() => '');
-
-                spec = this.patchSpec(spec);
-            } else {
-                //is this an agentId ?
-                agentId = specSource as string;
-                const agentData = await agentDataConnector.getAgentData(agentId).catch(() => '');
-                if (!agentData) return null;
-
-                spec = await this.loadSpecFromAgent(agentData);
+                //this._agentId = specUrl.hostname; //just set an agent ID in order to identify the agent in SRE //FIXME: maybe this requires a better solution
+                return this.patchSpec(spec);
             }
+            //is this an agentId ?
+            const agentDataConnector = ConnectorService.getAgentDataConnector();
+            const agentId = specSource as string;
+            const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
+            if (!agentData) return null;
+            this._agentId = agentId;
 
-            // Get the team ID from the account connector
-            this._agentId = agentId || this._agentId; // The Agent ID can be assigned within the loadSpecFromAgent() function.
-            const accountConnector = ConnectorService.getAccountConnector();
-            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(this._agentId)).catch(() => '');
-            this._teamId = teamId;
-
+            const spec = await this.loadSpecFromAgent(agentData);
             return spec;
         }
     }
@@ -771,9 +765,6 @@ export class Conversation extends EventEmitter {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
         const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true).catch((error) => null);
-
-        this._agentId = agentData?.data?.id;
-
         return this.patchSpec(spec);
     }
 

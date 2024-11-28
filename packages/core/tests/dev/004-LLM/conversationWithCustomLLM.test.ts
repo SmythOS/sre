@@ -54,16 +54,17 @@ const TIMEOUT = 30000;
 const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
 const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
+const AGENT_ID = 'clv0s83pw078qa80uv5zjy3cc';
+
 function runTestCases(model: string) {
     it(
         'runs a conversation with tool use',
         async () => {
-            const specUrl = 'https://clv0s83pw078qa80uv5zjy3cc.agent.stage.smyth.ai/api-docs/openapi.json';
             const system =
                 `You are a helpful assistant that can use available endpoints to give proper responses based on the user's request.` +
                 WORD_INCLUSION_PROMPT;
 
-            const conv = new Conversation(model, specUrl, { systemPrompt: system });
+            const conv = new Conversation(model, AGENT_ID, { systemPrompt: system });
 
             const prompt = 'What can you help me with?';
 
@@ -78,11 +79,10 @@ function runTestCases(model: string) {
     it(
         'runs a conversation with tool use in stream mode',
         async () => {
-            const specUrl = 'https://clv0s83pw078qa80uv5zjy3cc.agent.stage.smyth.ai/api-docs/openapi.json';
             const system =
                 `You are a helpful assistant that can use available endpoints to give proper responses based on the user's request.` +
                 WORD_INCLUSION_PROMPT;
-            const conv = new Conversation(model, specUrl, { systemPrompt: system });
+            const conv = new Conversation(model, AGENT_ID, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -113,11 +113,10 @@ function runTestCases(model: string) {
     it(
         'handles multiple tool calls in a single conversation',
         async () => {
-            const specUrl = 'https://clv0s83pw078qa80uv5zjy3cc.agent.stage.smyth.ai/api-docs/openapi.json';
             const system =
                 `You are a helpful assistant that can use available endpoints to give proper responses based on the user's request.` +
                 WORD_INCLUSION_PROMPT;
-            const conv = new Conversation(model, specUrl, { systemPrompt: system });
+            const conv = new Conversation(model, AGENT_ID, { systemPrompt: system });
 
             let streamResult = '';
 
@@ -146,8 +145,7 @@ function runTestCases(model: string) {
     );
 
     it('handles follow-up questions correctly', async () => {
-        const specUrl = 'https://clv0s83pw078qa80uv5zjy3cc.agent.stage.smyth.ai/api-docs/openapi.json';
-        const conv = new Conversation(model, specUrl);
+        const conv = new Conversation(model, AGENT_ID);
 
         const prompt = 'Publish post with title "Impact of AI in Software development?' + WORD_INCLUSION_PROMPT;
 
@@ -159,7 +157,7 @@ function runTestCases(model: string) {
         expect(followUpResult).toBeTruthy();
         expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
     });
-    TIMEOUT * 5
+    TIMEOUT * 5;
 }
 
 const models = [{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use' }];
