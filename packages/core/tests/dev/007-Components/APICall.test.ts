@@ -1133,6 +1133,63 @@ describe('APICall Component - Body', () => {
         expect(response.json).toEqual({ name, age });
     });
 
+    it('resolve input template variable in body with URL Encoded content type', async () => {
+        const url = 'https://httpbin.org/post';
+        const config = {
+            data: {
+                method: 'POST',
+                url,
+                headers: '',
+                contentType: 'application/x-www-form-urlencoded',
+                body: `{\n  \"To\": \"{{to}}\",\n  \"From\": \"{{from}}\",\n  \"Body\": \"{{body}}\"\n}`,
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'to',
+                    type: 'Number',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+                {
+                    name: 'from',
+                    type: 'Any',
+                    color: '#F35063',
+                    optional: false,
+                    index: 1,
+                    default: false,
+                },
+                {
+                    name: 'body',
+                    type: 'Any',
+                    color: '#F35063',
+                    optional: false,
+                    index: 2,
+                    default: false,
+                },
+            ],
+        };
+
+        const to = '123456789';
+        const from = '987654321';
+        const body = 'Hello, how are you?';
+        const input = {
+            to,
+            from,
+            body,
+        };
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.form.To).toEqual(to);
+        expect(response.form.From).toEqual(from);
+        expect(response.form.Body).toEqual(body);
+
+        expect(response.url).toEqual(url);
+    });
+
     it('resolve component template variable in body', async () => {
         const userData = { name: 'John Doe', age: 30 };
         const config = {
