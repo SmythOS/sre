@@ -137,6 +137,12 @@ export class BinaryInput {
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
         }
 
+        if (data instanceof Blob) {
+            this._source = Buffer.from(await data.arrayBuffer());
+            this.size = data.size;
+            this.mimetype = data.type;
+        }
+
         this._ready = true;
     }
 
