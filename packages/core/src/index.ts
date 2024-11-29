@@ -43,4 +43,5 @@ export {
     NKVConnector,
     CLIConnector,
     VaultConnector,
+    CLIAgentDataConnector
 };
