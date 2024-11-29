@@ -147,8 +147,9 @@ export default class HuggingFace extends Component {
                             // const file = new SmythFile(value);
                             // const blob = await file.toBlob(); // Converts to Blob for file inputs
                             // inputs[name] = blob;
-                            const binaryFile = BinaryInput.from(value);
-                            const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
+                            const binaryFile = BinaryInput.from(value, undefined, undefined, AccessCandidate.agent(agentId));
+                            // const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
+                            const buffer = await binaryFile.getBuffer();
                             const blob = new Blob([buffer]);
                             inputs[name] = blob;
                         } catch (error: any) {
