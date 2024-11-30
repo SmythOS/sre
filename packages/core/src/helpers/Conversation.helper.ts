@@ -78,6 +78,10 @@ export class Conversation extends EventEmitter {
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
+
+                // teamId is required to load custom LLMs, we must assign it before updateModel()
+                await this.assignTeamIdFromAgentId(this._agentId);
+
                 await this.updateModel(this._model);
                 this._status = 'ready';
             });
@@ -93,14 +97,6 @@ export class Conversation extends EventEmitter {
     }
     public get model() {
         return this._model;
-    }
-
-    private async setTeamId(agentId: string) {
-        if (agentId) {
-            const accountConnector = ConnectorService.getAccountConnector();
-            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId)).catch(() => '');
-            this._teamId = teamId;
-        }
     }
 
     constructor(
@@ -147,8 +143,8 @@ export class Conversation extends EventEmitter {
 
                         if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
 
-                        // teamId is required inside updateModel
-                        await this.setTeamId(this._agentId);
+                        // teamId is required to load custom LLMs, we must assign it before updateModel()
+                        await this.assignTeamIdFromAgentId(this._agentId);
 
                         await this.updateModel(this._model);
 
@@ -829,5 +825,13 @@ export class Conversation extends EventEmitter {
         }
 
         return declarations;
+    }
+
+    private async assignTeamIdFromAgentId(agentId: string) {
+        if (agentId) {
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId)).catch(() => '');
+            this._teamId = teamId;
+        }
     }
 }
