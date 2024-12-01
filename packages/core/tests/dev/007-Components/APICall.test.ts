@@ -1350,6 +1350,88 @@ describe('APICall Component - Body', () => {
         expect(response.json.string).toEqual('');
         expect(response.json.boolean).toEqual(false);
     });
+
+    it('should handle request body with only template variable that hold object', async () => {
+        const input = {
+            obj: {
+                name: 'test1',
+                email: 'test1@example.com',
+                age: 30,
+            },
+        };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{{obj}}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'obj',
+                    type: 'Object',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.json).toEqual(input.obj);
+    });
+
+    it('should resolve template variables containing objects', async () => {
+        const input = {
+            obj: {
+                name: 'test1',
+                email: 'test1@example.com',
+                age: 30,
+            },
+            nestedObj: {
+                name: 'test2',
+                email: 'test1@example.com',
+                age: 40,
+            },
+        };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{\n    "obj": {{obj}},\n    "nestedObj": {{nestedObj}}\n}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'obj',
+                    type: 'Object',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+                {
+                    name: 'nestedObj',
+                    type: 'Object',
+                    color: '#F35063',
+                    optional: false,
+                    index: 1,
+                    default: false,
+                },
+            ],
+        };
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.json.obj).toEqual(input.obj);
+        expect(response.json.nestedObj).toEqual(input.nestedObj);
+    });
 });
 
 describe('APICall Component - OAuth', () => {
