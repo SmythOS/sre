@@ -1290,6 +1290,66 @@ describe('APICall Component - Body', () => {
             key: DUMMY_KEY,
         });
     });
+
+    it(`should handle falsy values (0, '', false) correctly in request body`, async () => {
+        const input = {
+            num: '0',
+            int: '0.11',
+            str: '',
+            bool: 'false',
+        };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                contentType: 'application/json',
+                body: '{\n    "number": {{num}},\n    "integer": {{int}},\n    "string": "{{str}}",\n    "boolean": {{bool}}\n}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'num',
+                    type: 'Number',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+                {
+                    name: 'int',
+                    type: 'Integer',
+                    color: '#F35063',
+                    optional: false,
+                    index: 1,
+                    default: false,
+                },
+                {
+                    name: 'str',
+                    type: 'String',
+                    color: '#F35063',
+                    optional: false,
+                    index: 2,
+                    default: false,
+                },
+                {
+                    name: 'bool',
+                    type: 'Boolean',
+                    color: '#F35063',
+                    optional: false,
+                    index: 3,
+                    default: false,
+                },
+            ],
+        };
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.json.integer).toEqual(0);
+        expect(response.json.number).toEqual(0);
+        expect(response.json.string).toEqual('');
+        expect(response.json.boolean).toEqual(false);
+    });
 });
 
 describe('APICall Component - OAuth', () => {
