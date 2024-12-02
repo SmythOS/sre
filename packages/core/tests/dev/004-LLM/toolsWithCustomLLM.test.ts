@@ -1,26 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
 
 /*
- * This file contains tests for the `toolRequest` and `streamRequest` functions.
+ * This file contains tests for the `toolRequest` and `streamRequest` functions with Custom LLM.
  * These tests ensure that the responses include the correct tool information
  * and handle various scenarios, such as using multiple tools, handling errors,
  * and streaming responses.
  */
-
-// Mock Agent class
-vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => {
-        return Object.create(Agent.prototype, {
-            id: { value: 1 },
-        });
-    });
-    return { default: MockedAgent };
-});
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -33,20 +22,20 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     AgentData: {
-        Connector: 'Local',
+        Connector: 'Smyth',
         Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
+            agentStageDomain: process.env.AGENT_DOMAIN || '',
+            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
     Account: {
-        Connector: 'DummyAccount',
+        Connector: 'SmythAccount',
         Settings: {
             oAuthAppID: process.env.LOGTO_M2M_APP_ID,
             oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
@@ -56,15 +45,26 @@ const sre = SmythRuntime.Instance.init({
             smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
+    Vault: {
+        Connector: 'SmythVault',
+        Settings: {
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
+        },
+    },
 });
 
-// @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
-let agent = new Agent();
+let agentId = 'clv0s83pw078qa80uv5zjy3cc';
+const teamId = 'cloilcrl9001v9tkguilsu8dx';
 
 const TIMEOUT = 30000;
 
 async function runToolTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
     it(
         'should execute a simple tool request',
@@ -91,7 +91,7 @@ async function runToolTestCases(model: string) {
                 toolsConfig,
             };
 
-            const result = await llmInference.toolRequest(params, agent);
+            const result = await llmInference.toolRequest(params, agentId);
             expect(result).toBeTruthy();
             expect(result.data).toBeTruthy();
             expect(result.data.useTool).toBe(true);
@@ -125,7 +125,7 @@ async function runToolTestCases(model: string) {
                 },
             };
 
-            const result = await llmInference.toolRequest(params, agent);
+            const result = await llmInference.toolRequest(params, agentId);
             expect(result).toBeTruthy();
             expect(result.data).toBeTruthy();
             expect(result.data.useTool).toBe(false);
@@ -146,7 +146,7 @@ async function runToolTestCases(model: string) {
                 },
             };
 
-            const result = await llmInference.toolRequest(params, agent);
+            const result = await llmInference.toolRequest(params, agentId);
             expect(result).toBeTruthy();
             expect(result.data).toBeTruthy();
             expect(result.data.useTool).toBe(false);
@@ -162,14 +162,14 @@ async function runToolTestCases(model: string) {
                 messages: [], // Empty messages array should cause an error
             };
 
-            expect(llmInference.toolRequest(params, agent)).rejects.toThrow();
+            expect(llmInference.toolRequest(params, agentId)).rejects.toThrow();
         },
         TIMEOUT
     );
 }
 
 async function runStreamRequestTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
     it(
         'should stream a simple request',
@@ -178,7 +178,7 @@ async function runStreamRequestTestCases(model: string) {
                 messages: [{ role: 'user', content: 'Tell me a short story.' }],
             };
 
-            const stream = await llmInference.streamRequest(params, agent);
+            const stream = await llmInference.streamRequest(params, agentId);
             expect(stream).toBeInstanceOf(EventEmitter);
 
             let content = '';
@@ -223,7 +223,7 @@ async function runStreamRequestTestCases(model: string) {
                 toolsConfig,
             };
 
-            const stream = await llmInference.streamRequest(params, agent);
+            const stream = await llmInference.streamRequest(params, agentId);
             expect(stream).toBeInstanceOf(EventEmitter);
 
             let toolsData;
@@ -250,7 +250,7 @@ async function runStreamRequestTestCases(model: string) {
                 messages: [], // Empty messages array should cause an error
             };
 
-            const stream = await llmInference.streamRequest(params, agent);
+            const stream = await llmInference.streamRequest(params, agentId);
             expect(stream).toBeInstanceOf(EventEmitter);
 
             let error;
@@ -271,7 +271,7 @@ async function runStreamRequestTestCases(model: string) {
 }
 
 async function runMultipleToolRequestTestCases(model: string, provider?: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
     let toolDefinitions;
     let toolsConfig;
     let params;
@@ -317,7 +317,7 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
     it(
         'should return multiple tools info with toolRequest()',
         async () => {
-            const result = await llmInference.toolRequest(params, agent);
+            const result = await llmInference.toolRequest(params, agentId);
             expect(result).toBeTruthy();
             expect(result.data).toBeTruthy();
             expect(result.data.useTool).toBe(true);
@@ -337,7 +337,7 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
                 await delay(10000);
             }
 
-            const stream = await llmInference.streamRequest(params, agent);
+            const stream = await llmInference.streamRequest(params, agentId);
             expect(stream).toBeInstanceOf(EventEmitter);
 
             let toolsData: any[] = [];
@@ -361,14 +361,7 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
     );
 }
 
-const models = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
-    { provider: 'Groq', id: 'gemma2-9b-it' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
-    { provider: 'xAI', id: 'grok-beta' },
-];
+const models = [{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use' }];
 
 for (const model of models) {
     describe(`Tool Request Tests: ${model.provider} (${model.id})`, async () => {
@@ -380,18 +373,7 @@ for (const model of models) {
     });
 }
 
-/*
- * Google AI and Groq do not return multiple tool data in a single response.
- * Therefore, the expectation "(result.data.toolsData.length).toBe(2)" does not apply to them.
- * They may provide additional tool data in subsequent requests.
- * Tests for the sequence of tool responses are available in conversation.test.ts.
- */
-const modelsWithMultipleToolsResponse = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-5-haiku-latest' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
-    /* { provider: 'xAI', id: 'grok-beta' }, */ // xAI is not able to handle multiple tools use properly
-];
+const modelsWithMultipleToolsResponse = [{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use' }];
 for (const model of modelsWithMultipleToolsResponse) {
     describe(`Multiple Tools Request Tests: ${model.provider} (${model.id})`, async () => {
         await runMultipleToolRequestTestCases(model.id, model.provider);

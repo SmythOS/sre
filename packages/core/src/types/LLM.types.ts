@@ -68,6 +68,7 @@ export type ToolData = {
     role: 'user' | 'tool' | 'assistant';
     result?: string; // result string from the used tool
     function?: any;
+    error?: string; // for Bedrock
 };
 
 export interface AnthropicToolDefinition {

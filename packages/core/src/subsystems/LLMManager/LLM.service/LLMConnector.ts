@@ -11,6 +11,8 @@ import { Readable } from 'stream';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { TBedrockModel, TVertexAIModel } from '@sre/types/LLM.types';
 
 const console = Logger('LLMConnector');
 
@@ -84,8 +86,14 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
 
+    private vaultConnector: VaultConnector;
+
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
+
+        this.vaultConnector = ConnectorService.getVaultConnector();
+
+        if (!this.vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
 
         return {
             chatRequest: async (params: any) => {
@@ -185,29 +193,23 @@ export abstract class LLMConnector extends Connector {
         return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
-    // TODO [Forhad]: simplify this method
-    private async prepareParams(candidate: AccessCandidate, params: any) {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-        _params.fileSources = params?.fileSources; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+    public async prepareParams(candidate: AccessCandidate, params: any) {
+        const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
+
+        // Format the parameters to ensure proper type of values
+        const _params = this.formatParamValues(clonedParams);
+
+        // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        _params.fileSources = params?.fileSources;
 
         const model = _params.model;
-        const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
-        const vaultConnector = ConnectorService.getVaultConnector();
-
-        if (!accountConnector) throw new Error('Account Connector unavailable, cannot proceed');
-        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
 
         const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
         if (isStandardLLM) {
             const llmProvider = LLMRegistry.getProvider(model);
 
-            _params.credentials = {
-                apiKey: await vaultConnector
-                    .user(candidate)
-                    .get(llmProvider)
-                    .catch(() => ''),
-            };
+            _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
             if (_params.maxTokens) {
                 _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
@@ -221,7 +223,8 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            const teamId = await accountConnector.getCandidateTeam(candidate);
+            const teamId = await this.getTeamId(candidate);
+
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
 
             const modelInfo = customLLMRegistry.getModelInfo(model);
@@ -231,39 +234,9 @@ export abstract class LLMConnector extends Connector {
             const llmProvider = customLLMRegistry.getProvider(model);
 
             if (llmProvider === TLLMProvider.Bedrock) {
-                const keyIdName = modelInfo.settings?.keyIDName;
-                const secretKeyName = modelInfo.settings?.secretKeyName;
-                const sessionKeyName = modelInfo.settings?.sessionKeyName;
-
-                const [keyId, secretKey, sessionKey] = await Promise.all([
-                    vaultConnector
-                        .user(candidate)
-                        .get(keyIdName)
-                        .catch(() => ''),
-                    vaultConnector
-                        .user(candidate)
-                        .get(secretKeyName)
-                        .catch(() => ''),
-                    vaultConnector
-                        .user(candidate)
-                        .get(sessionKeyName)
-                        .catch(() => ''),
-                ]);
-
-                _params.credentials = {
-                    keyId,
-                    secretKey,
-                    sessionKey,
-                };
+                _params.credentials = await this.getBedrockCredentials(candidate, modelInfo as TBedrockModel);
             } else if (llmProvider === TLLMProvider.VertexAI) {
-                const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
-
-                let jsonCredentials = await vaultConnector
-                    .user(candidate)
-                    .get(jsonCredentialsName)
-                    .catch(() => '');
-
-                _params.credentials = JSON.parse(jsonCredentials);
+                _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TVertexAIModel);
             }
 
             if (_params.maxTokens) {
@@ -274,5 +247,143 @@ export abstract class LLMConnector extends Connector {
         }
 
         return _params;
+    }
+
+    // TODO [Forhad]: apply proper typing for _value and return value
+    private formatParamValues(params: Record<string, string | number | TLLMMessageBlock[]>): any {
+        let _params = {};
+
+        for (const [key, value] of Object.entries(params)) {
+            let _value: any = value;
+
+            // When we have stopSequences, we need to split it into an array
+            if (key === 'stopSequences') {
+                _value = _value ? _value?.split(',') : null;
+            }
+
+            // When we have a string that is a number, we need to convert it to a number
+            if (typeof _value === 'string' && !isNaN(Number(_value))) {
+                _value = +_value;
+            }
+
+            if (key === 'messages') {
+                _value = this.getConsistentMessages(_value);
+            }
+
+            _params[key] = _value;
+        }
+
+        return _params;
+    }
+
+    /**
+     * Retrieves API key credentials for standard LLM providers from the vault
+     * @param candidate - The access candidate requesting the credentials
+     * @param provider - The LLM provider name (e.g., 'openai', 'anthropic')
+     * @returns Promise resolving to an object containing the provider's API key
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @remarks Returns an empty string as API key if vault access fails
+     * @private
+     */
+    private async getStandardLLMCredentials(candidate: AccessCandidate, provider: string): Promise<{ apiKey: string }> {
+        const apiKey = await this.vaultConnector
+            .user(candidate)
+            .get(provider)
+            .catch(() => '');
+
+        return { apiKey };
+    }
+
+    /**
+     * Retrieves AWS Bedrock credentials from the vault for authentication
+     * @param candidate - The access candidate requesting the credentials
+     * @param modelInfo - The Bedrock model information containing credential key names in settings
+     * @returns Promise resolving to AWS credentials object
+     * @returns {Promise<Object>} credentials
+     * @returns {string} credentials.accessKeyId - AWS access key ID
+     * @returns {string} credentials.secretAccessKey - AWS secret access key
+     * @returns {string} [credentials.sessionToken] - Optional AWS session token
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @private
+     */
+    private async getBedrockCredentials(
+        candidate: AccessCandidate,
+        modelInfo: TBedrockModel
+    ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string }> {
+        const keyIdName = modelInfo.settings?.keyIDName;
+        const secretKeyName = modelInfo.settings?.secretKeyName;
+        const sessionKeyName = modelInfo.settings?.sessionKeyName;
+
+        const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
+            this.vaultConnector
+                .user(candidate)
+                .get(keyIdName)
+                .catch(() => ''),
+            this.vaultConnector
+                .user(candidate)
+                .get(secretKeyName)
+                .catch(() => ''),
+            this.vaultConnector
+                .user(candidate)
+                .get(sessionKeyName)
+                .catch(() => ''),
+        ]);
+
+        let credentials: {
+            accessKeyId: string;
+            secretAccessKey: string;
+            sessionToken?: string;
+        } = {
+            accessKeyId,
+            secretAccessKey,
+        };
+
+        if (sessionToken) {
+            credentials.sessionToken = sessionToken;
+        }
+
+        return credentials;
+    }
+
+    /**
+     * Retrieves the credentials required for VertexAI authentication from the vault
+     * @param candidate - The access candidate requesting the credentials
+     * @param modelInfo - The VertexAI model information containing settings
+     * @returns Promise resolving to the parsed JSON credentials for VertexAI
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @throws {Error} If JSON parsing fails or credentials are malformed
+     * @remarks Returns empty credentials if vault access fails
+     * @private
+     */
+    private async getVertexAICredentials(candidate: AccessCandidate, modelInfo: TVertexAIModel): Promise<Record<string, string>> {
+        const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
+
+        let jsonCredentials = await this.vaultConnector
+            .user(candidate)
+            .get(jsonCredentialsName)
+            .catch(() => '');
+
+        const credentials = JSON.parse(jsonCredentials);
+
+        return credentials;
+    }
+
+    /**
+     * Retrieves the team ID associated with the given access candidate
+     * @param candidate - The access candidate whose team ID needs to be retrieved
+     * @returns Promise<string> - The unique identifier of the team associated with the candidate
+     * @throws {Error} If the Account Connector service is unavailable or cannot be accessed
+     * @throws {Error} If the candidate's team cannot be retrieved
+     * @private
+     * @remarks This method is used internally to determine the team context for custom LLM operations
+     */
+    private async getTeamId(candidate: AccessCandidate): Promise<string> {
+        const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
+
+        if (!accountConnector) throw new Error('Account Connector unavailable, cannot proceed');
+
+        const teamId = await accountConnector.getCandidateTeam(candidate);
+
+        return teamId;
     }
 }
