@@ -6,8 +6,10 @@ import { TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from './JsonContent.helper';
+import { Logger } from './Log.helper';
 
 export const inputErrMsg = (type, name) => `Invalid ${type} value for Input: ${name}`;
+const logger = Logger('TypeChecker.helper');
 
 const InferenceStrategies = {
     any: inferAnyType,
@@ -54,7 +56,10 @@ export async function performTypeInference(
             const type = (config as any)?.type?.toLowerCase() || 'any';
 
             if (!InferenceStrategies[type]) {
-                throw new Error(`Invalid type: ${type} for Input: ${key}`);
+                //* For backward compatibility, we don't throw an error if the type is not supported. instead, we return the value as it is.
+                // throw new Error(`Invalid type: ${type} for Input: ${key}`);
+                logger.warn(`Unsupported type: ${type} for Input: ${key} for agent: ${agent?.id} input: ${key}`);
+                continue;
             }
 
             _inputs[key] = await InferenceStrategies[type](value, key, agent);

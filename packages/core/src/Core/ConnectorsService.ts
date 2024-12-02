@@ -15,6 +15,7 @@ import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
+import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 const console = Logger('ConnectorService');
 
 const Connectors = {};
@@ -167,6 +168,10 @@ export class ConnectorService {
 
     static getCLIConnector(name?: string): CLIConnector {
         return ConnectorService.getInstance<CLIConnector>(TConnectorService.CLI, name);
+    }
+
+    static getLogConnector(name?: string): LogConnector {
+        return ConnectorService.getInstance<LogConnector>(TConnectorService.Log, name);
     }
 
     //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...

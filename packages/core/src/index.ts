@@ -21,6 +21,7 @@ import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import SystemEvents from './Core/SystemEvents';
+import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 boot();
 
 export {
@@ -43,5 +44,6 @@ export {
     NKVConnector,
     CLIConnector,
     VaultConnector,
-    CLIAgentDataConnector
+    LogConnector,
+    CLIAgentDataConnector,
 };

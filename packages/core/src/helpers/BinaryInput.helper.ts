@@ -58,9 +58,12 @@ export class BinaryInput {
             this.mimetype = data.mimetype;
             this.size = data.size;
             this.url = data.url;
-            this._ready = true;
             if (candidate) {
-                this._source = await SmythFS.Instance.read(this.url, candidate);
+                this._source = await SmythFS.Instance.read(this.url, candidate).finally(() => {
+                    this._ready = true;
+                });
+            } else {
+                this._ready = true;
             }
             return;
         }
@@ -135,6 +138,12 @@ export class BinaryInput {
             this.mimetype = fileType.mime;
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
+        }
+
+        if (data instanceof Blob) {
+            this._source = Buffer.from(await data.arrayBuffer());
+            this.size = data.size;
+            this.mimetype = data.type;
         }
 
         this._ready = true;
