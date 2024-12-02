@@ -1540,7 +1540,7 @@ describe('APICall Component - Proxy', () => {
             const config = {
                 data: {
                     method: 'GET',
-                    url: 'http://httpbin.org/get',
+                    url: 'https://httpbin.org/get',
                     headers: '',
                     contentType: 'none',
                     body: '',

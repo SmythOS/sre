@@ -31,6 +31,7 @@ export async function parseProxy(input, config, agent: Agent): Promise<AxiosProx
     const urlObj = new URL(proxy);
 
     const proxyConfig: AxiosProxyConfig = {
+        protocol: urlObj.protocol.replace(':', ''), // As urlObj.protocol is like 'http:'
         host: urlObj.hostname,
         port: parseInt(urlObj.port),
         auth: urlObj.username
