@@ -105,14 +105,16 @@ export class TemplateStringHelper {
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
         this._current = this._current.replace(regex, (match, token) => {
-            return data[token] || match;
+            const val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
+
+            return typeof val === 'object' ? JSON.stringify(val) : val;
         });
 
         return this;
     }
 
     /**
-     * Parses a template string by replacing the placeholders with the values from the provided data object and keep the raw value instead of returning a string like .parse does
+     * Parses a template string by replacing placeholders with values from the provided data object, keeping the original raw values intact. This is particularly important for BinaryInput instances, as they include buffer data.
      * unmatched placeholders will be left as is
      */
     // Note: right now this method only match the first occurrence of the regex

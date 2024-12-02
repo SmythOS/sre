@@ -32,14 +32,15 @@ export async function parseArrayBufferResponse(response: AxiosResponse, agent: A
     }
     const data = response.data;
     const contentType = response.headers['content-type'];
-    const cleanContentType = contentType.split(';')[0];
+    const cleanContentType = contentType?.split(';')[0];
 
     // Try to find an exact match first,
     let handlerType = Object.keys(mimeTypeCategories).find((type) => mimeTypeCategories[type].includes(cleanContentType));
 
     // If no exact match, try to find a match for the first part of the handlerTypes, some handlers are generic like text/ in that case we check if the handler is a substring of the contentType
     if (!handlerType) {
-        handlerType = Object.keys(mimeTypeCategories).find((type) => mimeTypeCategories[type].some((prefix) => cleanContentType.startsWith(prefix)));
+        handlerType =
+            Object.keys(mimeTypeCategories).find((type) => mimeTypeCategories[type].some((prefix) => cleanContentType?.startsWith(prefix)));
     }
 
     const handler = contentHandlers[handlerType];
