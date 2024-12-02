@@ -1432,6 +1432,37 @@ describe('APICall Component - Body', () => {
         expect(response.json.obj).toEqual(input.obj);
         expect(response.json.nestedObj).toEqual(input.nestedObj);
     });
+
+    it('should resolve template variables containing array', async () => {
+        const input = {
+            arr: ['Item1', 'Item2', 'Item3', 'Item4', 'Item5'],
+        };
+        const config = {
+            data: {
+                method: 'POST',
+                contentType: 'application/json',
+                oauthService: 'None',
+                url: 'https://httpbin.org/post',
+                headers: '',
+                body: '{\n  "arr": {{arr}}\n}',
+            },
+            inputs: [
+                {
+                    name: 'arr',
+                    type: 'Array',
+                    color: '#F35063',
+                    optional: false,
+                    defaultVal: '{{array}}',
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.json.arr).toEqual(input.arr);
+    });
 });
 
 describe('APICall Component - OAuth', () => {
