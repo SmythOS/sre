@@ -4,7 +4,7 @@ import { IAccessCandidate } from '@sre/types/ACL.types';
 import axios from 'axios';
 import * as FileType from 'file-type';
 import mime from 'mime';
-import { getSizeFromBinary, isUrl, uid } from '../utils';
+import { getSizeFromBinary, isUrl, uid, getBase64FileInfo } from '../utils';
 export class BinaryInput {
     private size: number;
     private url: string;
@@ -97,11 +97,11 @@ export class BinaryInput {
         }
 
         // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isDataUrl(data));
-        const base64FileInfo = await this.getBase64FileInfo(data);
+        const base64FileInfo = await getBase64FileInfo(data);
         if (base64FileInfo) {
             this.mimetype = base64FileInfo.mimetype;
             this.size = base64FileInfo.size;
-            this._source = base64FileInfo.data;
+            this._source = Buffer.from(base64FileInfo.data, 'base64');
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
 
@@ -159,6 +159,7 @@ export class BinaryInput {
             return { contentType: '', contentLength: 0 };
         }
     }
+    // ! DEPRECATED: This will be removed. We now use extractBase64DataAndMimeType(), which is more robust.
     private async getBase64FileInfo(data: string) {
         //first check if it's a base64 url format
         const validUrlFormatRegex = /data:[^;]+;base64,[A-Za-z0-9+\/]*(={0,2})?$/gm;

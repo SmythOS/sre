@@ -45,4 +45,5 @@ export {
     CLIConnector,
     VaultConnector,
     LogConnector,
+    CLIAgentDataConnector,
 };

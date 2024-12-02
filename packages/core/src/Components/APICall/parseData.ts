@@ -57,14 +57,22 @@ async function handleJson(body: any, input: any, config, agent: Agent) {
 }
 
 async function handleUrlEncoded(body: any, input: any, config, agent: Agent) {
-    if (typeof body === 'object') {
+    const data = TemplateString(body)
+        .parse(config.data._templateVars) //parse Template variables first (if any)
+        .parse(input) //parse inputs
+        .clean().result; //clean up the remaining unparsed values
+
+    const jsonData: any = JSONContent(data).tryParse();
+
+    if (typeof jsonData === 'object') {
         const params = new URLSearchParams();
-        for (const key in body) {
-            params.append(key, String(body[key]));
+        for (const key in jsonData) {
+            params.append(key, String(jsonData[key]));
         }
-        return params.toString();
+        return { data: params.toString() };
     }
-    return { data: body };
+
+    return { data: jsonData };
 }
 
 async function handleMultipartFormData(body: any, input: any, config, agent: Agent) {

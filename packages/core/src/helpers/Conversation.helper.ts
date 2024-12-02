@@ -12,6 +12,7 @@ import EventEmitter from 'events';
 import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -56,6 +57,7 @@ export class Conversation extends EventEmitter {
     private _context: LLMContext;
     private _maxContextSize = 1024 * 16;
     private _maxOutputTokens = 1024;
+    private _teamId: string = undefined;
 
     public get context() {
         return this._context;
@@ -69,29 +71,34 @@ export class Conversation extends EventEmitter {
     public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
-            this.loadSpecFromSource(specSource).then((spec) => {
+            this.loadSpecFromSource(specSource).then(async (spec) => {
                 if (!spec) {
                     this._status = 'error';
                     this.emit('error', 'Invalid OpenAPI specification data format');
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
-                this.updateModel(this._model);
+
+                // teamId is required to load custom LLMs, we must assign it before updateModel()
+                await this.assignTeamIdFromAgentId(this._agentId);
+
+                await this.updateModel(this._model);
                 this._status = 'ready';
             });
         });
     }
 
     public set model(model: string) {
-        this.ready.then(() => {
+        this.ready.then(async () => {
             this._status = '';
-            this.updateModel(model);
+            await this.updateModel(model);
             this._status = 'ready';
         });
     }
     public get model() {
         return this._model;
     }
+
     constructor(
         private _model: string,
         private _specSource?: string | Record<string, any>,
@@ -123,29 +130,35 @@ export class Conversation extends EventEmitter {
             this.toolChoice = _settings.toolChoice;
         }
 
-        if (_specSource) {
-            this.loadSpecFromSource(_specSource)
-                .then((spec) => {
-                    if (!spec) {
+        (async () => {
+            if (_specSource) {
+                this.loadSpecFromSource(_specSource)
+                    .then(async (spec) => {
+                        if (!spec) {
+                            this._status = 'error';
+                            this.emit('error', 'Unable to parse OpenAPI specifications');
+                            throw new Error('Invalid OpenAPI specification data format');
+                        }
+                        this._spec = spec;
+
+                        if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
+
+                        // teamId is required to load custom LLMs, we must assign it before updateModel()
+                        await this.assignTeamIdFromAgentId(this._agentId);
+
+                        await this.updateModel(this._model);
+
+                        this._status = 'ready';
+                    })
+                    .catch((error) => {
                         this._status = 'error';
-                        this.emit('error', 'Unable to parse OpenAPI specifications');
-                        throw new Error('Invalid OpenAPI specification data format');
-                    }
-                    this._spec = spec;
-
-                    this.updateModel(this._model);
-
-                    if (!this._agentId) this._agentId = _settings.agentId;
-                    this._status = 'ready';
-                })
-                .catch((error) => {
-                    this._status = 'error';
-                    this.emit('error', error);
-                });
-        } else {
-            this.updateModel(this._model);
-            this._status = 'ready';
-        }
+                        this.emit('error', error);
+                    });
+            } else {
+                await this.updateModel(this._model);
+                this._status = 'ready';
+            }
+        })();
     }
 
     public get ready() {
@@ -194,7 +207,7 @@ export class Conversation extends EventEmitter {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -330,7 +343,7 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -618,7 +631,7 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: [toolDefinition],
@@ -644,7 +657,7 @@ export class Conversation extends EventEmitter {
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
-                const llmInference: LLMInference = await LLMInference.getInstance(this._model);
+                const llmInference: LLMInference = await LLMInference.getInstance(this._model, this._teamId);
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
@@ -769,6 +782,8 @@ export class Conversation extends EventEmitter {
             for (const key in pathData) {
                 const data = pathData[key];
 
+                if (!data?.operationId) continue;
+
                 const method = reqMethods.get(data?.operationId) || 'get';
 
                 let properties = {};
@@ -810,5 +825,13 @@ export class Conversation extends EventEmitter {
         }
 
         return declarations;
+    }
+
+    private async assignTeamIdFromAgentId(agentId: string) {
+        if (agentId) {
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId)).catch(() => '');
+            this._teamId = teamId;
+        }
     }
 }

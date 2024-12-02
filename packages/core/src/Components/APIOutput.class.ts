@@ -5,6 +5,7 @@ import Joi from 'joi';
 export default class APIOutput extends Component {
     protected configSchema = Joi.object({
         format: Joi.string().valid('full', 'minimal', 'raw').required().label('Output Format'),
+        contentType: Joi.string().valid('application/json', 'text/plain', 'text/html', 'application/xml').required().label('Content Type'),
     });
     public hasPostProcess = true;
     constructor() {
@@ -33,10 +34,13 @@ export default class APIOutput extends Component {
         return { Output, _error, _debug: logger.output };
     }
     async postProcess(output, config, agent: Agent): Promise<any> {
+        let contentType = config.data.contentType || 'application/json';
+
         for (let agentVar in agent.agentVariables) {
             delete output?.result?.Output?.[agentVar]; //clean up agent variables from output
         }
-        if (config?.data?.format == 'minimal') {
+
+        if (config?.data?.format == 'minimal' || contentType !== 'application/json') {
             if (output?.result?.Output) {
                 return output?.result?.Output;
             }
@@ -48,6 +52,7 @@ export default class APIOutput extends Component {
             delete output.id;
             delete output.name;
         }
+
         return output;
     }
 }
