@@ -13,6 +13,9 @@ import { TestAccountConnector } from '../../utils/TestConnectors';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
 
+const imagePath = path.resolve(__dirname, '../../data/avatar.png');
+const imageBlob = await util.promisify(fs.readFile)(imagePath);
+
 // Specific getter for HuggingFace API key
 const getApiKeyVaultKeyName = (): string => {
     // const apiKey = process.env.__TEST__HUGGINGFACE_API_KEY;
@@ -89,16 +92,18 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
 
 vi.mock('@huggingface/inference', async () => {
     const originalHfInference = (await vi.importActual<typeof import('@huggingface/inference')>('@huggingface/inference')).HfInference;
+
     return {
         HfInference: vi.fn().mockImplementation((apiKey) => {
             const hfInference = new originalHfInference(apiKey);
             return {
                 // dummy blob of a png image
-                textToImage: vi.fn().mockResolvedValue(new Blob()),
+                textToImage: vi.fn().mockResolvedValue(new Blob([imageBlob], { type: 'image/png' })),
                 zeroShotClassification: hfInference.zeroShotClassification.bind(hfInference),
                 zeroShotImageClassification: hfInference.zeroShotImageClassification.bind(hfInference),
                 textClassification: hfInference.textClassification.bind(hfInference),
                 textGeneration: hfInference.textGeneration.bind(hfInference),
+                objectDetection: hfInference.objectDetection.bind(hfInference),
                 accessToken: apiKey,
                 custom: true,
             };
@@ -275,7 +280,72 @@ describe('HuggingFace Component', () => {
         expect(output._error).toBeUndefined();
     }, 90_000);
 
-    // afterEach(() => {
-    //     vi.unmock('@huggingface/inference');
-    // });
+    it('should corectly pass a binary HuggingFace ouptut to another binary HuggingFace input', async () => {
+        // @ts-ignore
+        const agent = new Agent();
+        const hfComp = new HuggingFace();
+
+        const output1 = await hfComp.process(
+            {
+                Text: 'anime artwork, anime style',
+            },
+            {
+                data: {
+                    accessToken: getApiKeyVaultKeyName(),
+                    desc: '',
+                    disableCache: false,
+                    displayName: 'aipicasso/emi',
+                    logoUrl: '',
+                    modelName: 'aipicasso/emi',
+                    modelTask: 'text-to-image',
+                    name: 'aipicasso/emi',
+                    parameters: JSON.stringify({}),
+                },
+            },
+            agent
+        );
+
+        const response1 = output1.Output;
+
+        expect(output1._error).toBeUndefined();
+        expect(response1).toBeDefined();
+
+        const previewUrl = response1?.url;
+        expect(previewUrl).toBeDefined();
+        // expect(previewUrl, 'The output should be a valid URL to an image file').toMatch(/^https:\/\/.*\.(jpg|jpeg|png|gif)$/);
+
+        // should match: smythfs://<teamId>.team/<candidateId>/_temp/<filename>
+        expect(previewUrl, 'The output should be a valid SmythFS URI that points to the image file').toMatch(/^smythfs:\/\/.*\.team\/.*\/_temp\/.*$/);
+
+        expect(response1).toBeDefined();
+        expect(output1._error).toBeUndefined();
+
+        const output2 = await hfComp.process(
+            {
+                Image: response1,
+            },
+            {
+                data: {
+                    accessToken: getApiKeyVaultKeyName(),
+                    disableCache: false,
+                    parameters: JSON.stringify({}),
+                    modelName: 'facebook/detr-resnet-50',
+                    modelTask: 'object-detection',
+                    inputConfig: '{"Image":"URL | base64 | file | SmythFileObject"}',
+                    name: 'facebook/detr-resnet-50',
+                    displayName: 'detr-resnet-50',
+                    desc: 'An object detection model developed by Facebook using a ResNet-50 backbone network architecture.',
+                    logoUrl:
+                        'https://aeiljuispo.cloudimg.io/v7/https://cdn-uploads.huggingface.co/production/uploads/1592839207516-noauth.png?w=200&h=200&f=face',
+                },
+            },
+            agent
+        );
+
+        const response2 = output2.Output;
+
+        console.log(output2._error);
+        expect(output2._error).toBeUndefined();
+        expect(response2).toBeDefined();
+    }, 90_000);
 });

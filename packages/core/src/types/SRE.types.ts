@@ -9,6 +9,7 @@ import { AccountService } from '@sre/Security/Account.service';
 import { VaultService } from '@sre/Security/Vault.service';
 import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
+import { LogService } from '@sre/IO/Log.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -22,6 +23,7 @@ export type TServiceRegistry = {
     NKV?: NKVService;
     Router?: RouterService;
     ManagedVault?: ManagedVaultService;
+    Log?: LogService;
 };
 
 export enum TConnectorService {
@@ -36,6 +38,7 @@ export enum TConnectorService {
     NKV = 'NKV',
     Router = 'Router',
     ManagedVault = 'ManagedVault',
+    Log = 'Log',
 }
 
 export type SREConnectorConfig = {

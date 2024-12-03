@@ -147,7 +147,8 @@ export default class HuggingFace extends Component {
                             // const file = new SmythFile(value);
                             // const blob = await file.toBlob(); // Converts to Blob for file inputs
                             // inputs[name] = blob;
-                            const binaryFile = BinaryInput.from(value);
+                            const binaryFile = BinaryInput.from(value, undefined, undefined, AccessCandidate.agent(agentId));
+                            // const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
                             const buffer = await binaryFile.getBuffer();
                             const blob = new Blob([buffer]);
                             inputs[name] = blob;
@@ -240,6 +241,8 @@ export default class HuggingFace extends Component {
                     //     baseUrl: agent?.baseUrl,
                     // });
                     // output = fileObj;
+                    // convert blob to base64
+
                     const obj = await BinaryInput.from(result).getJsonData(AccessCandidate.agent(agent.id));
                     output = obj;
                 } else if (Array.isArray(result)) {
