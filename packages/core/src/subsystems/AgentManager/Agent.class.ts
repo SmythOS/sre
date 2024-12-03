@@ -57,6 +57,7 @@ export default class Agent {
         this.teamId = this.data.teamId;
         this.connections = this.data.connections;
         this.debugSessionEnabled = this.data.debugSessionEnabled;
+        this.usingTestDomain = this.data.usingTestDomain;
 
         this.agentVariables = this.data.variables || {};
 

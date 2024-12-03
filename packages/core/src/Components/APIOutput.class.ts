@@ -4,8 +4,8 @@ import Joi from 'joi';
 
 export default class APIOutput extends Component {
     protected configSchema = Joi.object({
-        format: Joi.string().valid('full', 'minimal', 'raw').label('Output Format').optional().allow(''),
-        contentType: Joi.string().valid('application/json', 'text/plain', 'text/html', 'application/xml').required().label('Content Type'),
+        format: Joi.string().valid('full', 'minimal', 'raw').label('Output Format').required(),
+        contentType: Joi.string().valid('application/json', 'text/plain', 'text/html', 'application/xml').optional().allow('').label('Content Type'),
     });
     public hasPostProcess = true;
     constructor() {
