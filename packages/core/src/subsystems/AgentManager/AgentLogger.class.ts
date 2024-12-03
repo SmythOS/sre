@@ -278,6 +278,9 @@ export default class AgentLogger {
         // }
         const logConnector = ConnectorService.getLogConnector();
 
-        await logConnector.user(AccessCandidate.agent(agent.id)).logTask(tasks, agent.usingTestDomain);
+        if (!agent.usingTestDomain) {
+            // only report if on a non test domain
+            await logConnector.user(AccessCandidate.agent(agent.id)).logTask(tasks, agent.usingTestDomain);
+        }
     }
 }
