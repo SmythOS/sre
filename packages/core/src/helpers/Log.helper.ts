@@ -212,7 +212,11 @@ function formatLogMessage(...args) {
         .map((arg) => {
             // If the argument is an object (and not null), serialize it to JSON
             if (typeof arg === 'object' && arg !== null && !(arg instanceof Error)) {
-                return JSON.stringify(arg, null, 2); // set the space to 2 for better readability
+                try {
+                    return JSON.stringify(arg, null, 2); // set the space to 2 for better readability
+                } catch (error) {
+                    return String(arg);
+                }
             }
             // Otherwise, just convert it to a string in case it's not
             return String(arg);
