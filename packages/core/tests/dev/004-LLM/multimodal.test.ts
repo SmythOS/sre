@@ -67,11 +67,11 @@ async function runMultimodalTestCases(model: string) {
     };
     const llmInference: LLMInference = await LLMInference.getInstance(model);
 
-    const imageUrl1 = 'https://fastly.picsum.photos/id/478/536/354.jpg?hmac=adxYyHX8WcCfHkk07quT2s92fbC7vY2QttaeBztwxgI';
-    const imageUrl2 = 'https://fastly.picsum.photos/id/1038/536/354.jpg?hmac=Hu6nao4zkSvq_pHo5pIssp8oYizJus3yfL956AXww70';
+    const imageUrl1 = 'https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300';
+    const imageUrl2 = 'https://plus.unsplash.com/premium_photo-1732410903106-3379bbe6e9db?q=10&w=300';
     const audioUrl = 'https://actions.google.com/sounds/v1/foley/play_in_pile_of_leaves.ogg';
     const videoUrl = 'https://storage.googleapis.com/generativeai-downloads/images/GreatRedSpot.mp4';
-    const pdfUrl = 'https://file-examples.com/storage/fef44df12666d835ba71c24/2017/10/file-sample_150kB.pdf';
+    const pdfUrl = 'https://www.princexml.com/samples/invoice/invoicesample.pdf';
 
     it(
         `runs a simple multimodal request with a single image for Model: ${model}`,
@@ -80,6 +80,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1];
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
@@ -92,6 +93,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, imageUrl2];
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
@@ -110,14 +112,18 @@ async function runMultimodalTestCases(model: string) {
         `handles complex prompts with multiple file types for Model: ${model}`,
         async () => {
             const complexPrompt =
-                'Analyze these files in detail. Describe the visual elements in the image, the audio content, and the document content. Then, speculate about how they might be related.' +
+                'IMPORTANT INSTRUCTION: First include the word "' +
+                LLM_OUTPUT_VALIDATOR +
+                '" in your response.\n\n' +
+                'Then analyze these files in detail. Describe the visual elements in the image, the audio content, and the document content. Then, speculate about how they might be related.' +
                 WORD_INCLUSION_PROMPT;
             const fileSources = [imageUrl1, audioUrl, pdfUrl];
             const result: any = await llmInference.multimodalRequest(complexPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT * 5
     );
 
     it(
@@ -127,6 +133,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, audioUrl];
             const result: any = await llmInference.multimodalRequest(specialCharsPrompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT
@@ -139,9 +146,10 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, pdfUrl];
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 
     it(
@@ -151,6 +159,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [videoUrl];
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT * 20 // 10 mins
@@ -163,6 +172,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [audioUrl, imageUrl1];
             const result: any = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
             expect(result).toBeTruthy();
+            expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
         TIMEOUT

@@ -61,6 +61,10 @@ export class LLMInference {
             throw new Error(`Model ${params.model} not supported`);
         }
 
+        if (!params.model) {
+            params.model = this.model;
+        }
+
         try {
             let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
 
@@ -99,6 +103,10 @@ export class LLMInference {
         const params = config.data;
 
         params.fileSources = _fileSources;
+
+        if (!params.model) {
+            params.model = this.model;
+        }
 
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);
@@ -141,6 +149,10 @@ export class LLMInference {
         const params = config.data;
 
         params.fileSources = _fileSources;
+
+        if (!params.model) {
+            params.model = this.model;
+        }
 
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);
@@ -195,7 +207,7 @@ export class LLMInference {
 
     public async streamToolRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-
+        
         return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
 

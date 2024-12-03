@@ -44,7 +44,7 @@ const TIMEOUT = 30000;
 // TODO [Forhad]: Need to write more test cases
 
 function runTestCases(endpoint: string) {
-    const imageUrl1 = 'https://fastly.picsum.photos/id/478/536/354.jpg?hmac=adxYyHX8WcCfHkk07quT2s92fbC7vY2QttaeBztwxgI';
+    const imageUrl1 = 'https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300';
 
     it(
         'should analyze a single image',
@@ -63,6 +63,7 @@ function runTestCases(endpoint: string) {
 
             const output = res?.data?.result?.Reply;
             expect(output).toBeTruthy();
+            expect(output.length).toBeGreaterThan(20);
         },
         TIMEOUT
     );
