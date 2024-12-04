@@ -32,6 +32,8 @@ export default class VisionLLM extends Component {
                     _debug: logger.output,
                 };
             }
+            logger.debug(` Model : ${model}`);
+
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
