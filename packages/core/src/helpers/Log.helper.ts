@@ -121,24 +121,6 @@ function redactLogMessage(logMessage: string) {
 
     return logMessage;
 }
-// function redactLogMessage(logMessage: string, beforeChars: number = 15, afterChars: number = 30): string {
-//     const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
-//     const obfuscatedString = ' [!!!REDACTED!!!] ';
-
-//     // Iterate through the sensitive words list and replace sensitive data in the log message
-//     for (const sensitiveWord of sensitiveWords) {
-//         // Escape special regex characters in the sensitive word
-//         const escapedWord = sensitiveWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-//         // Create a regular expression to match characters before and after the sensitive word
-//         const regex = new RegExp(`(.{0,${beforeChars}})(${escapedWord})(.{0,${afterChars}})`, 'gmi');
-
-//         // Replace the entire match with the obfuscated string
-//         logMessage = logMessage.replace(regex, obfuscatedString);
-//     }
-
-//     return logMessage;
-// }
 
 function createBaseLogger(memoryStore?: any[]) {
     const logger = winston.createLogger({
