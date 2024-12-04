@@ -17,8 +17,7 @@ export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-        let messages = _params?.messages || [];
+        let messages = params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
@@ -30,20 +29,20 @@ export class VertexAIConnector extends LLMConnector {
 
         messages = otherMessages;
 
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             systemInstruction = JSON_RESPONSE_INSTRUCTION;
         }
         //#endregion Separate system message and add JSON response instruction if needed
 
-        const modelInfo = _params.modelInfo as TVertexAIModel;
+        const modelInfo = params.modelInfo as TVertexAIModel;
 
         const generationConfig: GenerationConfig = {};
-        if (_params?.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
-        if (_params?.temperature !== undefined) generationConfig.temperature = _params.temperature;
-        if (_params?.topP !== undefined) generationConfig.topP = _params.topP;
-        if (_params?.topK !== undefined) generationConfig.topK = _params.topK;
-        if (_params?.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+        if (params?.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params?.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params?.topP !== undefined) generationConfig.topP = params.topP;
+        if (params?.topK !== undefined) generationConfig.topK = params.topK;
+        if (params?.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
 
         const modelParams: ModelParams = {
             model: modelInfo?.settings?.customModel || modelInfo?.settings?.foundationModel,
@@ -62,7 +61,7 @@ export class VertexAIConnector extends LLMConnector {
                 project: modelInfo.settings.projectId,
                 location: modelInfo?.settings?.region,
                 googleAuthOptions: {
-                    credentials: _params.credentials as any, // TODO [Forhad]: apply proper typing
+                    credentials: params.credentials as any, // TODO [Forhad]: apply proper typing
                 },
                 apiEndpoint: `${modelInfo?.settings?.region}-aiplatform.googleapis.com`,
             });

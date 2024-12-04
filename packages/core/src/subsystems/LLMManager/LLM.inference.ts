@@ -188,16 +188,12 @@ export class LLMInference {
             throw new Error('Input messages are required.');
         }
 
-        let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
-
-        if (!_params.model) {
-            _params.model = this.model;
-        }
+        const model = params.model || this.model;
 
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
 
-            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
+            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest({ ...params, model });
         } catch (error: any) {
             console.error('Error in toolRequest: ', error);
 
@@ -207,7 +203,7 @@ export class LLMInference {
 
     public async streamToolRequest(params: any, agent: string | Agent) {
         const agentId = agent instanceof Agent ? agent.id : agent;
-        
+
         return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
 
@@ -218,13 +214,9 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
+            const model = params.model || this.model;
 
-            if (!_params.model) {
-                _params.model = this.model;
-            }
-
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
+            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
         } catch (error) {
             console.error('Error in streamRequest:', error);
 

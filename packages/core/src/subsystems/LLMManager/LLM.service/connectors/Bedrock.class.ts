@@ -28,14 +28,13 @@ type InferenceConfig = {
     topP?: number;
 };
 
-// TODO: Need to adjust some type definitions
+// TODO [Forhad]: Need to adjust some type definitions
 
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-        let messages = _params?.messages || [];
+        let messages = params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt;
@@ -47,12 +46,12 @@ export class BedrockConnector extends LLMConnector {
 
         messages = otherMessages;
 
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
         }
 
-        const modelInfo = _params.modelInfo;
+        const modelInfo = params.modelInfo;
         const supportsSystemPrompt = customModels[modelInfo?.settings?.foundationModel]?.supportsSystemPrompt;
 
         if (!supportsSystemPrompt) {
@@ -65,10 +64,10 @@ export class BedrockConnector extends LLMConnector {
         const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
 
         const inferenceConfig: InferenceConfig = {};
-        if (_params?.maxTokens !== undefined) inferenceConfig.maxTokens = _params.maxTokens;
-        if (_params?.temperature !== undefined) inferenceConfig.temperature = _params.temperature;
-        if (_params?.topP !== undefined) inferenceConfig.topP = _params.topP;
-        if (_params?.stopSequences?.length) inferenceConfig.stopSequences = _params.stopSequences;
+        if (params?.maxTokens !== undefined) inferenceConfig.maxTokens = params.maxTokens;
+        if (params?.temperature !== undefined) inferenceConfig.temperature = params.temperature;
+        if (params?.topP !== undefined) inferenceConfig.topP = params.topP;
+        if (params?.stopSequences?.length) inferenceConfig.stopSequences = params.stopSequences;
 
         const converseCommandInput: any = {
             modelId,
@@ -87,8 +86,8 @@ export class BedrockConnector extends LLMConnector {
 
         try {
             const client = new BedrockRuntimeClient({
-                region: modelInfo.settings.region,
-                credentials: _params?.credentials,
+                region: modelInfo.settings.region as string,
+                credentials: params?.credentials as any,
             });
 
             const response = await client.send(command);
@@ -114,17 +113,15 @@ export class BedrockConnector extends LLMConnector {
 
     protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
         try {
-            const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-            const customModelInfo = _params.modelInfo;
+            const customModelInfo = params.modelInfo;
 
             const client = new BedrockRuntimeClient({
                 region: customModelInfo.settings.region,
-                credentials: _params?.credentials,
+                credentials: params?.credentials,
             });
 
             let systemPrompt;
-            let messages = _params?.messages || [];
+            let messages = params?.messages || [];
 
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
@@ -143,10 +140,10 @@ export class BedrockConnector extends LLMConnector {
                 converseCommandInput.system = systemPrompt;
             }
 
-            if (_params?.toolsConfig?.tools?.length > 0) {
+            if (params?.toolsConfig?.tools?.length > 0) {
                 converseCommandInput.toolConfig = {
-                    tools: _params?.toolsConfig?.tools,
-                    ...(_params?.toolsConfig?.tool_choice && { toolChoice: _params?.toolsConfig?.tool_choice }),
+                    tools: params?.toolsConfig?.tools,
+                    ...(params?.toolsConfig?.tool_choice && { toolChoice: params?.toolsConfig?.tool_choice }),
                 };
             }
 
@@ -194,17 +191,15 @@ export class BedrockConnector extends LLMConnector {
         const emitter = new EventEmitter();
 
         try {
-            const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-            const customModelInfo = _params.modelInfo;
+            const customModelInfo = params.modelInfo;
 
             const client = new BedrockRuntimeClient({
                 region: customModelInfo.settings.region,
-                credentials: _params?.credentials,
+                credentials: params?.credentials,
             });
 
             let systemPrompt;
-            let messages = _params?.messages || [];
+            let messages = params?.messages || [];
 
             // Handle system message separation
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
@@ -224,10 +219,10 @@ export class BedrockConnector extends LLMConnector {
                 converseCommandInput.system = systemPrompt;
             }
 
-            if (_params?.toolsConfig?.tools?.length > 0) {
+            if (params?.toolsConfig?.tools?.length > 0) {
                 converseCommandInput.toolConfig = {
-                    tools: _params?.toolsConfig?.tools,
-                    ...(_params?.toolsConfig?.tool_choice && { toolChoice: _params?.toolsConfig?.tool_choice }),
+                    tools: params?.toolsConfig?.tools,
+                    ...(params?.toolsConfig?.tool_choice && { toolChoice: params?.toolsConfig?.tool_choice }),
                 };
             }
 

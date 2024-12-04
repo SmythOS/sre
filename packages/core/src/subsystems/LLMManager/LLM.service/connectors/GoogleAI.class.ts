@@ -97,14 +97,13 @@ export class GoogleAIConnector extends LLMConnector {
     };
 
     protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         let prompt = '';
 
-        const model = _params?.model || DEFAULT_MODEL;
+        const model = params?.model || DEFAULT_MODEL;
 
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
-        let messages = _params?.messages || [];
+        let messages = params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction = '';
@@ -116,13 +115,14 @@ export class GoogleAIConnector extends LLMConnector {
 
         messages = otherMessages;
 
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
+        let responseMimeType = '';
 
         if (responseFormat === 'json') {
             systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
             if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
-                _params.responseMimeType = 'application/json';
+                responseMimeType = 'application/json';
             }
         }
 
@@ -140,7 +140,7 @@ export class GoogleAIConnector extends LLMConnector {
         if (!prompt) throw new Error('Prompt is required!');
 
         // TODO: implement claude specific token counting to validate token limit
-        // this.validateTokenLimit(_params);
+        // this.validateTokenLimit(params);
 
         const modelParams: ModelParams = {
             model,
@@ -148,14 +148,14 @@ export class GoogleAIConnector extends LLMConnector {
 
         const generationConfig: GenerationConfig = {};
 
-        if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
-        if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
-        if (_params.topP !== undefined) generationConfig.topP = _params.topP;
-        if (_params.topK !== undefined) generationConfig.topK = _params.topK;
-        if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+        if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params.topP !== undefined) generationConfig.topP = params.topP;
+        if (params.topK !== undefined) generationConfig.topK = params.topK;
+        if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
 
         if (systemInstruction) modelParams.systemInstruction = systemInstruction;
-        if (_params.responseMimeType) generationConfig.responseMimeType = _params.responseMimeType;
+        if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
 
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
@@ -187,9 +187,8 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-        const model = _params?.model || 'gemini-pro-vision';
-        const apiKey = _params?.credentials?.apiKey;
+        const model = params?.model || 'gemini-pro-vision';
+        const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const agentId = agent instanceof Agent ? agent.id : agent;
         let _prompt = prompt;
@@ -218,13 +217,14 @@ export class GoogleAIConnector extends LLMConnector {
             //#region Separate system message and add JSON response instruction if needed
             let systemInstruction = '';
 
-            const responseFormat = _params?.responseFormat || '';
+            const responseFormat = params?.responseFormat || '';
+            let responseMimeType = '';
 
             if (responseFormat === 'json') {
                 systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
                 if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
-                    _params.responseMimeType = 'application/json';
+                    responseMimeType = 'application/json';
                 }
             }
 
@@ -243,11 +243,12 @@ export class GoogleAIConnector extends LLMConnector {
 
             const generationConfig: GenerationConfig = {};
 
-            if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
-            if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
-            if (_params.topP !== undefined) generationConfig.topP = _params.topP;
-            if (_params.topK !== undefined) generationConfig.topK = _params.topK;
-            if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+            if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+            if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+            if (params.topP !== undefined) generationConfig.topP = params.topP;
+            if (params.topK !== undefined) generationConfig.topK = params.topK;
+            if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+            if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
 
             if (Object.keys(generationConfig).length > 0) {
                 modelParams.generationConfig = generationConfig;
@@ -263,7 +264,7 @@ export class GoogleAIConnector extends LLMConnector {
             await LLMRegistry.validateTokensLimit({
                 model,
                 promptTokens,
-                completionTokens: _params?.maxTokens,
+                completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -279,9 +280,8 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-        const model = _params?.model || DEFAULT_MODEL;
-        const apiKey = _params?.credentials?.apiKey;
+        const model = params?.model || DEFAULT_MODEL;
+        const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const agentId = agent instanceof Agent ? agent.id : agent;
         let _prompt = prompt;
@@ -318,13 +318,14 @@ export class GoogleAIConnector extends LLMConnector {
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction = '';
 
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
+        let responseMimeType = '';
 
         if (responseFormat === 'json') {
             systemInstruction += JSON_RESPONSE_INSTRUCTION;
 
             if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
-                _params.responseMimeType = 'application/json';
+                responseMimeType = 'application/json';
             }
         }
 
@@ -343,11 +344,12 @@ export class GoogleAIConnector extends LLMConnector {
 
         const generationConfig: GenerationConfig = {};
 
-        if (_params.maxTokens !== undefined) generationConfig.maxOutputTokens = _params.maxTokens;
-        if (_params.temperature !== undefined) generationConfig.temperature = _params.temperature;
-        if (_params.topP !== undefined) generationConfig.topP = _params.topP;
-        if (_params.topK !== undefined) generationConfig.topK = _params.topK;
-        if (_params.stopSequences?.length) generationConfig.stopSequences = _params.stopSequences;
+        if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params.topP !== undefined) generationConfig.topP = params.topP;
+        if (params.topK !== undefined) generationConfig.topK = params.topK;
+        if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+        if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
 
         if (Object.keys(generationConfig).length > 0) {
             modelParams.generationConfig = generationConfig;
@@ -364,7 +366,7 @@ export class GoogleAIConnector extends LLMConnector {
             await LLMRegistry.validateTokensLimit({
                 model,
                 promptTokens,
-                completionTokens: _params?.maxTokens,
+                completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -381,13 +383,11 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
         try {
             let systemInstruction = '';
             let formattedMessages;
 
-            const messages = _params?.messages || [];
+            const messages = params?.messages || [];
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
 
@@ -400,14 +400,14 @@ export class GoogleAIConnector extends LLMConnector {
                 formattedMessages = messages;
             }
 
-            const apiKey = _params?.credentials?.apiKey;
+            const apiKey = params?.credentials?.apiKey;
 
             const generationConfig: GenerationConfig = {};
 
-            if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+            if (params?.maxTokens) generationConfig.maxOutputTokens = params.maxTokens;
 
             const modelParams: ModelParams = {
-                model: _params.model,
+                model: params.model,
             };
 
             if (Object.keys(generationConfig).length > 0) {
@@ -425,10 +425,10 @@ export class GoogleAIConnector extends LLMConnector {
                 toolsPrompt.systemInstruction = systemInstruction;
             }
 
-            if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
-            if (_params?.toolsConfig?.tool_choice)
+            if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools;
+            if (params?.toolsConfig?.tool_choice)
                 toolsPrompt.toolConfig = {
-                    functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+                    functionCallingConfig: { mode: params?.toolsConfig?.tool_choice || 'auto' },
                 };
 
             const result = await $model.generateContent(toolsPrompt);
@@ -473,14 +473,12 @@ export class GoogleAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
         const emitter = new EventEmitter();
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
         let systemInstruction = '';
         let formattedMessages;
-        const messages = _params?.messages || [];
+        const messages = params?.messages || [];
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -494,10 +492,10 @@ export class GoogleAIConnector extends LLMConnector {
 
         const generationConfig: GenerationConfig = {};
 
-        if (_params?.maxTokens) generationConfig.maxOutputTokens = _params.maxTokens;
+        if (params?.maxTokens) generationConfig.maxOutputTokens = params.maxTokens;
 
         const modelParams: ModelParams = {
-            model: _params.model,
+            model: params.model,
         };
 
         if (Object.keys(generationConfig).length > 0) {
@@ -515,10 +513,10 @@ export class GoogleAIConnector extends LLMConnector {
             toolsPrompt.systemInstruction = systemInstruction;
         }
 
-        if (_params?.toolsConfig?.tools) toolsPrompt.tools = _params?.toolsConfig?.tools;
-        if (_params?.toolsConfig?.tool_choice)
+        if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools;
+        if (params?.toolsConfig?.tool_choice)
             toolsPrompt.toolConfig = {
-                functionCallingConfig: { mode: _params?.toolsConfig?.tool_choice || 'auto' },
+                functionCallingConfig: { mode: params?.toolsConfig?.tool_choice || 'auto' },
             };
 
         try {

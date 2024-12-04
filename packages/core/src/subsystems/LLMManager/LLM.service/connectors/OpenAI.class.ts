@@ -27,12 +27,10 @@ export class OpenAIConnector extends LLMConnector {
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-        const messages = _params?.messages || [];
+        const messages = params?.messages || [];
 
         //#region Handle JSON response format
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             // We assume that the system message is first item in messages array
             if (messages?.[0]?.role === TLLMMessageRole.System) {
@@ -41,37 +39,37 @@ export class OpenAIConnector extends LLMConnector {
                 messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
             }
 
-            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
-                _params.responseFormat = { type: 'json_object' };
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
             } else {
-                _params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
         //#endregion Handle JSON response format
 
         // Check if the team has their own API key, then use it
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
             apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
-            baseURL: _params.baseURL,
+            baseURL: params.baseURL,
         });
 
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-            model: _params.model,
+            model: params.model,
             messages,
         };
 
-        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
-        if (_params?.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
-        if (_params?.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
-        if (_params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
-        if (_params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = _params.presencePenalty;
-        if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
-        if (_params.responseFormat) {
-            chatCompletionArgs.response_format = _params.responseFormat;
+        if (params.responseFormat) {
+            chatCompletionArgs.response_format = params.responseFormat;
         }
 
         try {
@@ -79,9 +77,9 @@ export class OpenAIConnector extends LLMConnector {
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
             await LLMRegistry.validateTokensLimit({
-                model: _params?.model,
+                model: params?.model,
                 promptTokens,
-                completionTokens: _params?.maxTokens,
+                completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -97,12 +95,10 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-        const messages = _params?.messages || [];
+        const messages = params?.messages || [];
 
         //#region Handle JSON response format
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             // We assume that the system message is first item in messages array
             if (messages?.[0]?.role === TLLMMessageRole.System) {
@@ -111,8 +107,8 @@ export class OpenAIConnector extends LLMConnector {
                 messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
             }
 
-            if (MODELS_WITH_JSON_RESPONSE.includes(_params.model)) {
-                _params.responseFormat = { type: 'json_object' };
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
             }
         }
         //#endregion Handle JSON response format
@@ -130,33 +126,33 @@ export class OpenAIConnector extends LLMConnector {
 
         try {
             // Check if the team has their own API key, then use it
-            const apiKey = _params?.credentials?.apiKey;
+            const apiKey = params?.credentials?.apiKey;
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
-                baseURL: _params.baseURL,
+                baseURL: params.baseURL,
             });
 
             const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-                model: _params.model,
+                model: params.model,
                 messages,
             };
 
-            if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
-            if (_params?.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
-            if (_params?.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
-            if (_params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = _params.frequencyPenalty;
-            if (_params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = _params.presencePenalty;
-            if (_params?.responseFormat !== undefined) chatCompletionArgs.response_format = _params.responseFormat;
-            if (_params?.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+            if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
 
             await LLMRegistry.validateTokensLimit({
-                model: _params?.model,
+                model: params?.model,
                 promptTokens,
-                completionTokens: _params?.maxTokens,
+                completionTokens: params?.maxTokens,
                 hasAPIKey: !!apiKey,
             });
 
@@ -213,30 +209,28 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
             apiKey: apiKey || process.env.OPENAI_API_KEY,
-            baseURL: _params.baseURL,
+            baseURL: params.baseURL,
         });
 
-        const messages = _params?.messages || [];
+        const messages = params?.messages || [];
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-            model: _params.model,
+            model: params.model,
             messages: messages,
         };
 
-        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
 
-        if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
-            chatCompletionArgs.tools = _params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
         }
 
-        if (_params?.toolsConfig?.tool_choice) {
-            chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+        if (params?.toolsConfig?.tool_choice) {
+            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
         }
 
         try {
@@ -369,35 +363,33 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
         const emitter = new EventEmitter();
         const usage_data = [];
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
             apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
-            baseURL: _params.baseURL,
+            baseURL: params.baseURL,
         });
 
         //TODO: check token limits for non api key users
-        console.debug('model', _params.model);
-        //console.debug('messages', _params.messages);
+        console.debug('model', params.model);
+        //console.debug('messages', params.messages);
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model: _params.model,
-            messages: _params.messages,
+            model: params.model,
+            messages: params.messages,
 
             stream_options: { include_usage: true }, //add usage statis //TODO: @Forhad check this
             stream: true,
         };
 
-        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
 
-        if (_params?.toolsConfig?.tools && _params?.toolsConfig?.tools?.length > 0) {
-            chatCompletionArgs.tools = _params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
         }
-        if (_params?.toolsConfig?.tool_choice) {
-            chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+        if (params?.toolsConfig?.tool_choice) {
+            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
         }
 
         try {
