@@ -52,7 +52,7 @@ export class AWSAccount extends AccountConnector {
 
     public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
         try {
-            const [rows] = await this.pool.execute("SELECT `value` FROM TeamSettings WHERE settingKey = ? LIMIT 1", [settingKey]);
+            const [rows] = await this.pool.execute("SELECT `value` FROM TeamSettings WHERE `key` = ? LIMIT 1", [settingKey]);
             if (Array.isArray(rows) && rows.length > 0 && 'value' in rows[0]) return rows[0].value;
             return '';
         } catch (error) {

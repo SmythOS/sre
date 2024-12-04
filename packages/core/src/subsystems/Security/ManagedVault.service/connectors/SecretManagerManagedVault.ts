@@ -6,16 +6,22 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { SecretsManagerConfig } from '@sre/types/Security.types';
-import { VaultConnector } from '../VaultConnector';
-import { SecretsManagerClient, GetSecretValueCommand, ListSecretsCommand } from '@aws-sdk/client-secrets-manager';
+import { OAuthConfig, SecretsManagerConfig, SmythConfigs } from '@sre/types/Security.types';
 
-const console = Logger('SecretsManager');
-export class SecretsManager extends VaultConnector {
-    public name: string = 'SecretsManager';
+import { getM2MToken } from '@sre/utils/oauth.utils';
+import axios, { AxiosInstance } from 'axios';
+import { ManagedVaultConnector } from '../ManagedVaultConnector';
+import { CreateSecretCommand, DeleteSecretCommand, ListSecretsCommand, PutSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+import { GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { randomUUID } from 'crypto';
+
+const console = Logger('SecretManagerManagedVault');
+export class SecretManagerManagedVault extends ManagedVaultConnector {
+    public name: string = 'SecretManagerManagedVault';
+    public scope: string = 'smyth-managed-vault';
     private secretsManager: SecretsManagerClient;
 
-    constructor(private config: SecretsManagerConfig) {
+    constructor(private config: SecretsManagerConfig & { vaultName: string }) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
@@ -32,25 +38,32 @@ export class SecretsManager extends VaultConnector {
 
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, secretName: string) {
-        try {
-            const secret = await this.getSecretByName(secretName);
-            return secret?.SecretString;
-        } catch (error) {
-            console.error(error);
-            throw error;
+        const secret = await this.getSecretByName(secretName);
+        return secret?.SecretString;
+    }
+
+    @SecureConnector.AccessControl
+    protected async set(acRequest: AccessRequest, secretName: string, value: string) {
+        const secret = await this.getSecretByName(secretName);
+        if (secret) {
+            await this.secretsManager.send(new PutSecretValueCommand({ SecretId: secret.ARN, SecretString: value }));
+        } else {
+            await this.secretsManager.send(new CreateSecretCommand({ Name: `smyth/${randomUUID()}`, SecretString: JSON.stringify({ [secretName]: value }), Tags: [{ Key: this.scope, Value: 'true' }] }));
         }
     }
 
     @SecureConnector.AccessControl
-    protected async exists(acRequest: AccessRequest, keyId: string) {
-        const secret = await this.get(acRequest, keyId);
-        return !!secret;
+    protected async delete(acRequest: AccessRequest, secretName: string) {
+        const secret = await this.getSecretByName(secretName);
+        if (secret) {
+            await this.secretsManager.send(new DeleteSecretCommand({ SecretId: secret.ARN }));
+        }
     }
 
     @SecureConnector.AccessControl
-    protected async listKeys(acRequest: AccessRequest) {
-        console.warn('SecretsManager.listKeys is not implemented');
-        return [];
+    protected async exists(acRequest: AccessRequest, secretName: string) {
+        const secret = await this.get(acRequest, secretName);
+        return !!secret;
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
@@ -66,12 +79,13 @@ export class SecretsManager extends VaultConnector {
         return acl;
     }
 
+
     private async getSecretByName(secretName: string) {
         try {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken }));
+                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: [this.scope] }] }));
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
                         if (secret.Name) {
