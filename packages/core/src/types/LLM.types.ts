@@ -33,6 +33,8 @@ export type TLLMParams = {
     quality?: 'standard' | 'hd'; // for image generation
     n?: number; // for image generation
     style?: 'vivid' | 'natural'; // for image generation
+
+    cache?: boolean;
 };
 
 export type TLLMModelEntry = {

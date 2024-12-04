@@ -23,12 +23,16 @@ export class LLMInference {
         if (isStandardLLM) {
             const llmProvider = LLMRegistry.getProvider(model);
 
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
-        } else {
+            if (llmProvider) {
+                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            }
+        } else if (teamId) {
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
             const llmProvider = customLLMRegistry.getProvider(model);
 
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            if (llmProvider) {
+                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            }
         }
 
         llmInference.model = model;
@@ -59,6 +63,10 @@ export class LLMInference {
 
         if (!this.llmConnector) {
             throw new Error(`Model ${params.model} not supported`);
+        }
+
+        if (!params.model) {
+            params.model = this.model;
         }
 
         try {
@@ -99,6 +107,10 @@ export class LLMInference {
         const params = config.data;
 
         params.fileSources = _fileSources;
+
+        if (!params.model) {
+            params.model = this.model;
+        }
 
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);
@@ -142,6 +154,10 @@ export class LLMInference {
 
         params.fileSources = _fileSources;
 
+        if (!params.model) {
+            params.model = this.model;
+        }
+
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);
             let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
@@ -176,16 +192,12 @@ export class LLMInference {
             throw new Error('Input messages are required.');
         }
 
-        let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
-
-        if (!_params.model) {
-            _params.model = this.model;
-        }
+        const model = params.model || this.model;
 
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
 
-            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest(_params);
+            return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest({ ...params, model });
         } catch (error: any) {
             console.error('Error in toolRequest: ', error);
 
@@ -206,13 +218,9 @@ export class LLMInference {
                 throw new Error('Input messages are required.');
             }
 
-            let _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params object
+            const model = params.model || this.model;
 
-            if (!_params.model) {
-                _params.model = this.model;
-            }
-
-            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest(_params);
+            return await this.llmConnector.user(AccessCandidate.agent(agentId)).streamRequest({ ...params, model });
         } catch (error) {
             console.error('Error in streamRequest:', error);
 

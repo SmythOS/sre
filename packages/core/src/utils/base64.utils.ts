@@ -67,12 +67,6 @@ export async function extractBase64DataAndMimeType(data: string): Promise<{ data
 }
 
 export async function getBase64FileInfo(data: string): Promise<{ data: string; mimetype: string; size: number } | null> {
-    //first check if it's a base64 url format
-    const validUrlFormatRegex = /data:[^;]+;base64,[A-Za-z0-9+\/]*(={0,2})?$/gm;
-    if (!validUrlFormatRegex.test(data)) {
-        return null;
-    }
-
     if (isBase64FileUrl(data)) {
         const regex = /^data:([^;]+);base64,(.*)$/;
         const match = data.match(regex);

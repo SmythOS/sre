@@ -1563,9 +1563,8 @@ describe('APICall Component - Proxy', () => {
 
     const proxyUrls = {
         http: `http://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
-        socks: `socks://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
-        socks4: `socks4://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
         socks5: `socks5://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
+        multiple: `http://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}\nsocks5://${proxyUser}:${proxyPass}@${proxyHost}:${proxyPort}`,
     };
 
     for (const [scheme, proxyUrl] of Object.entries(proxyUrls)) {

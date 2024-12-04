@@ -1,8 +1,10 @@
+import { AxiosProxyConfig } from 'axios';
+import { SocksProxyAgent } from 'socks-proxy-agent';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { AxiosProxyConfig } from 'axios';
 
-export async function parseProxy(input, config, agent: Agent): Promise<AxiosProxyConfig | false> {
+export async function parseProxy(input, config, agent: Agent): Promise<AxiosProxyConfig | SocksProxyAgent | false> {
     const teamId = agent ? agent.teamId : null;
     const templateSettings = config?.template?.settings || {};
 
@@ -27,20 +29,40 @@ export async function parseProxy(input, config, agent: Agent): Promise<AxiosProx
     //parse input variables and clean up the remaining unparsed values
     proxy = TemplateString(proxy).parse(input).clean().result;
 
-    //URL will take care of encoding the url properly
-    const urlObj = new URL(proxy);
+    const proxyList = proxy.split(/\n|\\n/).filter((p) => p) || [];
 
-    const proxyConfig: AxiosProxyConfig = {
-        protocol: urlObj.protocol.replace(':', ''), // As urlObj.protocol is like 'http:'
-        host: urlObj.hostname,
-        port: parseInt(urlObj.port),
-        auth: urlObj.username
-            ? {
-                  username: urlObj.username,
-                  password: urlObj.password,
-              }
-            : undefined,
-    };
+    const randomIdx = Math.floor(Math.random() * proxyList?.length);
+    const proxyUrl = proxyList[randomIdx]?.trim();
+
+    //URL will take care of encoding the url properly
+    const urlObj = new URL(proxyUrl);
+    const protocol = urlObj.protocol.replace(':', ''); // As urlObj.protocol is like 'http:'
+
+    let proxyConfig: AxiosProxyConfig | SocksProxyAgent;
+
+    if (urlObj.protocol.startsWith('socks')) {
+        let proxyUrlString = `${protocol}://${urlObj.hostname}:${urlObj.port}`;
+
+        if ((protocol === 'socks4' || protocol === 'socks4a') && urlObj.username) {
+            proxyUrlString = `${protocol}://${urlObj.username}@${urlObj.hostname}:${urlObj.port}`;
+        } else if (protocol === 'socks5' && urlObj.username) {
+            proxyUrlString = `${protocol}://${urlObj.username}:${urlObj.password}@${urlObj.hostname}:${urlObj.port}`;
+        }
+
+        proxyConfig = new SocksProxyAgent(proxyUrlString);
+    } else {
+        proxyConfig = {
+            protocol,
+            host: urlObj.hostname,
+            port: parseInt(urlObj.port),
+            auth: urlObj.username
+                ? {
+                      username: urlObj.username,
+                      password: urlObj.password,
+                  }
+                : undefined,
+        };
+    }
 
     return proxyConfig;
 }

@@ -11,6 +11,7 @@ import { parseData } from './parseData';
 import { parseProxy } from './parseProxy';
 import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
 import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHeaders } from './OAuth.helper';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
@@ -70,7 +71,16 @@ export default class APICall extends Component {
 
             reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
 
-            reqConfig.proxy = await parseProxy(input, config, agent);
+            const proxyConfig = await parseProxy(input, config, agent);
+
+            if (proxyConfig) {
+                if (proxyConfig instanceof SocksProxyAgent) {
+                    const isSecureEndpoint = reqConfig.url?.startsWith('https://');
+                    reqConfig[isSecureEndpoint ? 'httpsAgent' : 'httpAgent'] = proxyConfig;
+                } else {
+                    reqConfig.proxy = proxyConfig;
+                }
+            }
 
             let Response: any = {};
             let Headers: any = {};

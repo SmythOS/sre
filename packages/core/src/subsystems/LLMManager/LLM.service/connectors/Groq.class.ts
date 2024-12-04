@@ -37,12 +37,10 @@ export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
-        let messages = _params?.messages || [];
+        let messages = params?.messages || [];
 
         //#region Handle JSON response format
-        const responseFormat = _params?.responseFormat || '';
+        const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             if (messages?.[0]?.role === 'system') {
                 messages[0].content += JSON_RESPONSE_INSTRUCTION;
@@ -52,13 +50,13 @@ export class GroqConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
         if (!apiKey) throw new Error('Please provide an API key for Groq');
 
         const groq = new Groq({ apiKey });
 
         // TODO: implement groq specific token counting
-        // this.validateTokensLimit(_params);
+        // this.validateTokensLimit(params);
 
         const chatCompletionArgs: {
             model: string;
@@ -68,14 +66,14 @@ export class GroqConnector extends LLMConnector {
             top_p?: number;
             stop?: string[];
         } = {
-            model: _params.model,
+            model: params.model,
             messages,
         };
 
-        if (_params.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
-        if (_params.temperature !== undefined) chatCompletionArgs.temperature = _params.temperature;
-        if (_params.topP !== undefined) chatCompletionArgs.top_p = _params.topP;
-        if (_params.stopSequences?.length) chatCompletionArgs.stop = _params.stopSequences;
+        if (params.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
         try {
             const response: any = await groq.chat.completions.create(chatCompletionArgs);
@@ -97,24 +95,22 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
-
         try {
-            const apiKey = _params?.credentials?.apiKey;
+            const apiKey = params?.credentials?.apiKey;
 
             const groq = new Groq({ apiKey });
 
-            const messages = _params?.messages || [];
+            const messages = params?.messages || [];
 
             let chatCompletionArgs: ChatCompletionCreateParams = {
-                model: _params.model,
+                model: params.model,
                 messages,
             };
 
-            if (_params.maxTokens) chatCompletionArgs.max_tokens = _params.maxTokens;
+            if (params.maxTokens) chatCompletionArgs.max_tokens = params.maxTokens;
 
-            if (_params?.toolsConfig?.tools) chatCompletionArgs.tools = _params?.toolsConfig?.tools;
-            if (_params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params?.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
+            if (params?.toolsConfig?.tools) chatCompletionArgs.tools = params?.toolsConfig?.tools;
+            if (params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
 
             const result = await groq.chat.completions.create(chatCompletionArgs as any); // TODO [Forhad]: apply proper typing
             const message = result?.choices?.[0]?.message;
@@ -156,13 +152,12 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
-        const _params = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
         const emitter = new EventEmitter();
-        const apiKey = _params?.credentials?.apiKey;
+        const apiKey = params?.credentials?.apiKey;
 
         const groq = new Groq({ apiKey });
 
-        const messages = _params?.messages || [];
+        const messages = params?.messages || [];
 
         let chatCompletionArgs: {
             model: string;
@@ -172,15 +167,15 @@ export class GroqConnector extends LLMConnector {
             tool_choice?: any; // TODO [Forhad]: apply proper typing
             stream?: boolean;
         } = {
-            model: _params.model,
+            model: params.model,
             messages,
             stream: true,
         };
 
-        if (_params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = _params.maxTokens;
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
 
-        if (_params.toolsConfig?.tools) chatCompletionArgs.tools = _params.toolsConfig?.tools;
-        if (_params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = _params.toolsConfig?.tool_choice;
+        if (params.toolsConfig?.tools) chatCompletionArgs.tools = params.toolsConfig?.tools;
+        if (params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = params.toolsConfig?.tool_choice;
 
         try {
             const stream = await groq.chat.completions.create(chatCompletionArgs);

@@ -22,7 +22,8 @@ export default class VisionLLM extends Component {
         const logger = this.createComponentLogger(agent, config.name);
         try {
             logger.debug(`=== Vision LLM Log ===`);
-            const model: string = config.data.model || 'gpt-4o-mini';
+            const model: string = config.data?.model;
+
             const llmInference: LLMInference = await LLMInference.getInstance(model);
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
