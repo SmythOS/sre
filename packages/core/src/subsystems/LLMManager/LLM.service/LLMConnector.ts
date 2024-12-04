@@ -133,7 +133,7 @@ export abstract class LLMConnector extends Connector {
             },
         };
     }
-    
+
     public enhancePrompt(prompt: string, config: any) {
         if (!prompt) return prompt;
         let newPrompt = prompt;
@@ -194,13 +194,14 @@ export abstract class LLMConnector extends Connector {
     }
 
     public async prepareParams(candidate: AccessCandidate, params: any) {
+        // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const fileSources = params?.fileSources;
+        delete params?.fileSources; // need to remove fileSources to avoid any issues during JSON.stringify() especially when we have large files
+
         const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
         const _params = this.formatParamValues(clonedParams);
-
-        // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        _params.fileSources = params?.fileSources;
 
         const model = _params.model;
 
@@ -245,6 +246,9 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = customLLMRegistry.getModelId(model) || model;
         }
+
+        // Attach the fileSources again after formatting the parameters
+        _params.fileSources = fileSources;
 
         return _params;
     }

@@ -162,7 +162,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 20 // 10 mins
+        TIMEOUT * 30 // 15 mins, it takes long time to process video file
     );
 
     it(

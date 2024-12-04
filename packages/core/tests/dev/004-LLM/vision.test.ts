@@ -172,7 +172,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT * 2
     );
 }
 
