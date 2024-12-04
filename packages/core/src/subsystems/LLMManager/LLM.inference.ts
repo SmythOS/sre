@@ -23,12 +23,16 @@ export class LLMInference {
         if (isStandardLLM) {
             const llmProvider = LLMRegistry.getProvider(model);
 
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
-        } else {
+            if (llmProvider) {
+                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            }
+        } else if (teamId) {
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
             const llmProvider = customLLMRegistry.getProvider(model);
 
-            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            if (llmProvider) {
+                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+            }
         }
 
         llmInference.model = model;
