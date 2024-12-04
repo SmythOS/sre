@@ -5,9 +5,6 @@ import Agent from '@sre/AgentManager/Agent.class';
 import AgentPlugin from '@sre/Components/AgentPlugin.class';
 
 const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
     Storage: {
         Connector: 'S3',
         Settings: {
@@ -17,60 +14,17 @@ const sre = SmythRuntime.Instance.init({
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: process.env.REDIS_SENTINEL_HOSTS,
-            name: process.env.REDIS_MASTER_NAME || '',
-            password: process.env.REDIS_PASSWORD || '',
-        },
-    },
     AgentData: {
-        Connector: 'Smyth',
+        Connector: 'Local',
         Settings: {
-            agentStageDomain: process.env.AGENT_DOMAIN || '',
-            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-        },
-    },
-    Account: {
-        Connector: 'SmythAccount',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            devDir: './tests/data/AgentData',
+            prodDir: './tests/data/AgentData',
         },
     },
     Vault: {
-        Connector: 'SmythVault',
+        Connector: 'JSONFileVault',
         Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
-        },
-    },
-    ManagedVault: {
-        Connector: 'SmythManagedVault',
-        Id: 'oauth',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-            vaultName: 'oauth',
+            file: './tests/data/vault.json',
         },
     },
 });
@@ -78,7 +32,7 @@ const sre = SmythRuntime.Instance.init({
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'cm49rothq1z2cjr2hhfbnht6b',
+        id: 'clp1tnwli001h9tq56c9m6i7j',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
         teamId: 'cloilcrl9001v9tkguilsu8dx',
     }));
@@ -95,9 +49,9 @@ const agentPlugin = new AgentPlugin();
 describe('AgentPlugin Component - process function', () => {
     it('test process function of AgentPlugin', async () => {
         const input = {
-            Prompt: 'hello',
+            Prompt: 'Hello',
         };
-        const subAgentId = 'cm49rotqt1z1nvxncze7d9us6';
+        const subAgentId = 'clp1tl4tx00129tq5owb0kfxh';
         const config = {
             id: '1',
             name: 'AgentPlugin',
