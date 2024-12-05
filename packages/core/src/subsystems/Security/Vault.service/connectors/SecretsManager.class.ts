@@ -71,7 +71,7 @@ export class SecretsManager extends VaultConnector {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken }));
+                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] }));
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
                         if (secret.Name) {
