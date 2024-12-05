@@ -101,6 +101,7 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
                 contentType: value.mimetype,
             });
         } else if (value && typeof value === 'object' && value?.url) {
+            // Retro compatibility with old binary data structure {url: '...', mimetype: '...', url: 'http(s)://...'}
             const binaryInput = await BinaryInput.from(value.url, '', value?.mimetype);
             const buffer = await binaryInput.getBuffer();
 
@@ -129,15 +130,15 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
 
 async function handleBinary(body: any, input: any, config, agent: Agent) {
     const value: any = TemplateString(body).parseRaw(input).result;
-
-    if (value && typeof value === 'object' && value?.url) {
+    if (value && value instanceof BinaryInput) {
+        const buffer = await value.getBuffer();
+        return { data: buffer, headers: { 'Content-Type': value.mimetype } };
+    } else if (value && typeof value === 'object' && value?.url) {
+        // Retro compatibility with old binary data structure {url: '...', mimetype: '...', url: 'http(s)://...'}
         const binaryInput = await BinaryInput.from(value.url, '', value?.mimetype);
         const buffer = await binaryInput.getBuffer();
 
         return { data: buffer, headers: { 'Content-Type': binaryInput.mimetype } };
-    } else if (value && value instanceof BinaryInput) {
-        const buffer = await value.getBuffer();
-        return { data: buffer, headers: { 'Content-Type': value.mimetype } };
     }
 
     return { data: Buffer.from([]), headers: {} };
