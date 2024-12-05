@@ -86,7 +86,21 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
 
         value = TemplateString(value).parseRaw(input).result;
 
-        if (value && typeof value === 'object' && value?.url) {
+        // * Note: It's important to check if the value is an instance of BinaryInput first.
+        // Otherwise, condition like (value && typeof value === 'object' && value?.url)
+        // might be true and lead to incorrect results.
+        if (value instanceof BinaryInput) {
+            const buffer = await value.getBuffer();
+            const bufferStream = new Readable();
+            bufferStream.push(buffer || null);
+            bufferStream.push(null);
+
+            const filename = (await value.getName()) || key;
+            formData.append(key, bufferStream, {
+                filename,
+                contentType: value.mimetype,
+            });
+        } else if (value && typeof value === 'object' && value?.url) {
             const binaryInput = await BinaryInput.from(value.url, '', value?.mimetype);
             const buffer = await binaryInput.getBuffer();
 
@@ -95,16 +109,10 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
             bufferStream.push(null);
 
             const filename = (await binaryInput.getName()) || key;
-
-            formData.append(key, bufferStream, { filename });
-        } else if (value instanceof BinaryInput) {
-            const buffer = await value.getBuffer();
-            const bufferStream = new Readable();
-            bufferStream.push(buffer || null);
-            bufferStream.push(null);
-
-            const filename = (await value.getName()) || key;
-            formData.append(key, bufferStream, { filename });
+            formData.append(key, bufferStream, {
+                filename,
+                contentType: binaryInput.mimetype,
+            });
         } else {
             value = TemplateString(value)
                 .parse(config.data._templateVars) //parse Template variables first (if any)

@@ -2,7 +2,7 @@ import { isRawBase64, isDataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isBinaryData, isBuffer, isPlainObject, isSmythFileObject, isUrl, uid } from '../utils';
 import Agent from '@sre/AgentManager/Agent.class';
-import { TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from './JsonContent.helper';
@@ -151,9 +151,40 @@ async function inferObjectType(value: any, key?: string, agent?: Agent) {
     }
 }
 
+/**
+ * Extracts the agent ID from a SmythFS URL
+ * @param url - The SmythFS URL (e.g., smythfs://team.id/agent.id/_temp/filename.ext)
+ * @returns The agent ID or null if the URL is invalid
+ */
+function extractSmythFsAgentId(url: string): string | null {
+    if (!url?.startsWith('smythfs://')) return null;
+
+    try {
+        // Split by '/' and get the agent ID (third segment)
+        const segments = url.split('/');
+        if (segments.length < 4) return null;
+
+        return segments[3];
+    } catch {
+        return null;
+    }
+}
+
 async function inferBinaryType(value: any, key?: string, agent?: Agent) {
     if (value && typeof value === 'object' && value?.url) {
-        const binaryInput = await BinaryInput.from(value.url, uid() + '-' + key, value?.mimetype);
+        let candidate: IAccessCandidate;
+        let data;
+
+        if (value?.url.startsWith('smythfs://')) {
+            const agentId = extractSmythFsAgentId(value?.url);
+            candidate = AccessCandidate.agent(agentId);
+
+            data = value;
+        } else {
+            data = value?.url;
+        }
+
+        const binaryInput = await BinaryInput.from(data, uid() + '-' + key, value?.mimetype, candidate);
         await binaryInput.ready();
         return binaryInput;
     }
