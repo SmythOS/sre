@@ -112,8 +112,8 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
             const openAPIEntry = JSONContent(
                 TemplateString(openapiEndpointTemplate)
                     .parse({
-                        summary: summary.replace(/"/g, '\\"'),
-                        operationId: component.data.endpoint,
+                        summary: summary?.replace(/"/g, '\\"'),
+                        operationId: component?.data?.endpoint,
                     })
                     .clean().result
             ).tryParse();

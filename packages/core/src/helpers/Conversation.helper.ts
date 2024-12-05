@@ -209,6 +209,10 @@ export class Conversation extends EventEmitter {
         /* ==================== STEP ENTRY ==================== */
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
+        if (!this._context) {
+            throw new Error('Conversation context is not initialized');
+        }
+
         if (message) this._context.addUserMessage(message, message_id);
 
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
@@ -830,8 +834,8 @@ export class Conversation extends EventEmitter {
     private async assignTeamIdFromAgentId(agentId: string) {
         if (agentId) {
             const accountConnector = ConnectorService.getAccountConnector();
-            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId)).catch(() => '');
-            this._teamId = teamId;
+            const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId))?.catch(() => '');
+            this._teamId = teamId || '';
         }
     }
 }

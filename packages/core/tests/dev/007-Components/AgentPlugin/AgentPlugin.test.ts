@@ -1,19 +1,19 @@
+import fs from 'fs';
+import { describe, expect, it, vi } from 'vitest';
+
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
 import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
-import fs from 'fs';
-
-import { describe, expect, it } from 'vitest';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
         Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+            bucket: process.env.AWS_S3_BUCKET_NAME || '',
+            region: process.env.AWS_S3_REGION || '',
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
     AgentData: {
@@ -47,12 +47,13 @@ describe('AgentPlugin Component', () => {
 
             let res = await agentProcess.run({
                 method: 'GET',
-                path: '/api/test-agent-plugin'
+                path: '/api/test-agent-plugin',
             });
 
             const output = res?.data?.result?.Response;
 
             expect(output).toBeDefined();
+            expect(output?.length).toBeGreaterThan(20);
             expect(output).toBeTypeOf('string');
         } catch (e) {
             error = e;
@@ -82,6 +83,7 @@ describe('AgentPlugin Component', () => {
             const output = res?.data?.result?.Response;
 
             expect(output).toBeDefined();
+            expect(output?.length).toBeGreaterThan(20);
             expect(output).toBeTypeOf('string');
         } catch (e) {
             error = e;
