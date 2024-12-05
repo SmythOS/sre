@@ -943,6 +943,44 @@ describe('APICall Component - Body', () => {
         expect(response.files.image).toMatch(/^data:image\/png;base64,/);
     });
 
+    it('handle multipart/form-data with smythfs:// URI', async () => {
+        const input = {
+            image: {
+                mimetype: 'image/jpeg',
+                size: 13179,
+                url: 'smythfs://cloilcrl9001v9tkguilsu8dx.team/cm42ug6dg17rpvxncq2xmd9uo/_temp/M4B1LWF6DSR.jpeg',
+                name: 'M4B1LWF6DSR.jpeg',
+            },
+        };
+        const config = {
+            data: {
+                method: 'POST',
+                url: 'https://httpbin.org/post',
+                contentType: 'multipart/form-data',
+                body: '{"image": "{{image}}"}',
+                oauthService: 'None',
+            },
+            inputs: [
+                {
+                    name: 'image',
+                    type: 'Binary',
+                    color: '#F35063',
+                    optional: false,
+                    index: 0,
+                    default: false,
+                },
+            ],
+        };
+
+        const output = await apiCall.process(input, config, agent);
+        const response = output.Response;
+
+        expect(response.headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/);
+        expect(response).toHaveProperty('files');
+        expect(response.files).toHaveProperty('image');
+        expect(response.files.image).toMatch(/^data:image\/jpeg;base64,/);
+    });
+
     it('handle binary content type with base64 input', async () => {
         const config = {
             data: {

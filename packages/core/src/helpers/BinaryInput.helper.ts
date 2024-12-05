@@ -50,8 +50,9 @@ export class BinaryInput {
 
     private async load(data, name: string, mimetype?: string, candidate?: IAccessCandidate) {
         //assume the mimetype from the provided name
-        const ext: any = name.split('.').pop();
-        this.mimetype = mimetype || mime.getType(ext) || 'application/octet-stream';
+        const ext: any = name.split('.')?.length > 1 ? name.split('.').pop() : '';
+        // Need to set mimetype empty string if no extension is found, setting default mimetype to 'application/octet-stream' lead wrong direction when try to get the mimetype from base64 or buffer data (as it's not accurate all the time)
+        this.mimetype = mimetype || mime.getType(ext) || '';
         this.url = ``;
 
         if (typeof data === 'object' && data.url && data.mimetype && data.size) {
@@ -99,7 +100,11 @@ export class BinaryInput {
         // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isDataUrl(data));
         const base64FileInfo = await getBase64FileInfo(data);
         if (base64FileInfo) {
-            this.mimetype = base64FileInfo.mimetype;
+            // If the MIME type is already set, it's safe to use it,
+            // as determining the MIME type from the base64 string is not always accurate, specially when it's not a base64 URL
+            if (!this.mimetype) {
+                this.mimetype = base64FileInfo.mimetype;
+            }
             this.size = base64FileInfo.size;
             this._source = Buffer.from(base64FileInfo.data, 'base64');
             const ext = mime.getExtension(this.mimetype);
@@ -134,8 +139,12 @@ export class BinaryInput {
         if (Buffer.isBuffer(data)) {
             this._source = data;
             this.size = getSizeFromBinary(data);
-            const fileType = await FileType.fileTypeFromBuffer(data);
-            this.mimetype = fileType.mime;
+            // If the MIME type is already set, it's safe to use it,
+            // as determining the MIME type from the buffer is not always accurate.
+            if (!this.mimetype) {
+                const fileType = await FileType.fileTypeFromBuffer(data);
+                this.mimetype = fileType.mime;
+            }
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
         }
