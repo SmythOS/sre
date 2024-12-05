@@ -14,6 +14,9 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import path from 'path';
+import config from '@sre/config';
+import fs from 'fs/promises';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -44,7 +47,12 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
 
     const sessionData = await cacheConnector.user(AccessCandidate.agent(agentId))?.get(conv_uid);
 
-    const messages = sessionData ? JSONContent(sessionData).tryParse() : [];
+    let messages = sessionData ? JSONContent(sessionData).tryParse() : [];
+    if (messages?.length == 0) {
+        // if no messages found, try to search for a legacy session
+        const migrationResult = await migrateLegacySession(agentId, userId, conversationId);
+        messages = migrationResult?.messages || [];
+    }
     //const messages = sessions[agentId][conv_uid].messages;
 
     const filteredMessages: any[] = [];
@@ -69,6 +77,51 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
     if (messages[0]?.role == 'system') filteredMessages.unshift(messages[0]);
 
     return filteredMessages;
+}
+
+async function migrateLegacySession(agentId, userId, conversationId) {
+    let migrated = false;
+    if (!config.env.DATA_PATH) {
+        console.warn('LLMAssistant : No data path found, skipping legacy session migration');
+        return { migrated, messages: [] };
+    }
+    const cacheConnector = getCacheConnector();
+    const legacy_conv_uid = `u${userId}c${conversationId}`;
+    const legacySessionPath = path.join(config.env.DATA_PATH!, 'LLMAssistant', agentId, `${legacy_conv_uid}.json`);
+
+    //check if the session file exists
+    const fileExists = await fs
+        .access(legacySessionPath)
+        .then(() => true)
+        .catch(() => false);
+    if (!fileExists) return { migrated, messages: [] };
+
+    const sessionData = await fs.readFile(legacySessionPath, 'utf8');
+    let jsonData = JSONContent(sessionData).tryParse();
+
+    if (typeof jsonData == 'object' && jsonData?.migrated) {
+        console.warn(`LLMAssistant : Legacy session for agent ${agentId}, user ${userId}, conversation ${conversationId} already migrated.`);
+        return { migrated, messages: [] };
+    }
+
+    console.warn(`LLMAssistant : Session file found for agent ${agentId}, user ${userId}, conversation ${conversationId}. Migrating to cache...`);
+
+    const messages = typeof jsonData == 'object' ? jsonData?.messages : [];
+    const cache_conv_uid = `${agentId}:conv-u${userId}-c${conversationId}`;
+    await cacheConnector
+        .user(AccessCandidate.agent(agentId))
+        .set(cache_conv_uid, JSON.stringify(messages), null, null, null)
+        .catch((error) => {
+            console.error(
+                `LLMAssistant : Error migrating legacy session to cache for agent ${agentId}, user ${userId}, conversation ${conversationId}. Error=${error}`
+            );
+        });
+    migrated = true;
+
+    // add an entry in the legacy session file to indicate it has been migrated
+    await fs.writeFile(legacySessionPath, JSON.stringify({ ...jsonData, migrated: true }), 'utf8');
+
+    return { migrated, messages };
 }
 
 //TODO : update this implementation to use ConversationManager
