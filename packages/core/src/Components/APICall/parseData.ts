@@ -130,6 +130,10 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
 
 async function handleBinary(body: any, input: any, config, agent: Agent) {
     const value: any = TemplateString(body).parseRaw(input).result;
+
+    // * Note: It's important to check if the value is an instance of BinaryInput first.
+    // Otherwise, condition like (value && typeof value === 'object' && value?.url)
+    // might be true and lead to incorrect results.
     if (value && value instanceof BinaryInput) {
         const buffer = await value.getBuffer();
         return { data: buffer, headers: { 'Content-Type': value.mimetype } };
