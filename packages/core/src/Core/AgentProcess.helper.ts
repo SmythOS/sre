@@ -39,7 +39,10 @@ export class AgentProcess {
             //We are loading from an agentId
             if (agentId) {
                 const agentDataConnector = ConnectorService.getAgentDataConnector();
-                data = await agentDataConnector.getAgentData(agentId, 'latest');
+
+                const versionName = (await agentDataConnector.isDeployed(agentId)) ? 'latest' : '';
+
+                data = await agentDataConnector.getAgentData(agentId, versionName);
             }
 
             //we are loading an agent from provided data

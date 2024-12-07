@@ -764,7 +764,9 @@ export class Conversation extends EventEmitter {
         if (this.assistantName) {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
-        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', 'latest', true).catch((error) => null);
+        const versionName = (await agentDataConnector.isDeployed(this._agentId || agentData.data.id)) ? 'latest' : '';
+
+        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', versionName, true).catch((error) => null);
         return this.patchSpec(spec);
     }
 

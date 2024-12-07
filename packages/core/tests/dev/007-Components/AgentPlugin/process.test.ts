@@ -21,6 +21,19 @@ const sre = SmythRuntime.Instance.init({
             prodDir: './tests/data/AgentData',
         },
     },
+    /* AgentData: {
+        Connector: 'Smyth',
+        Settings: {
+            agentStageDomain: process.env.AGENT_DOMAIN || '',
+            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+        },
+    }, */
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {
@@ -46,10 +59,12 @@ const agentPlugin = new AgentPlugin();
 // * NOTE: When try to test the process function and the AgentPlugin component class in a same file we have some conflicts.
 // * So, we have to test the process function in a separate file.
 
+// TODO [Forhad]: With this test case the agent endpoint is not called properly. Need to check and fix it. Check response/error of useTool() function in Conversation.helper.ts file.
+
 describe('AgentPlugin Component - process function', () => {
     it('test process function of AgentPlugin', async () => {
         const input = {
-            Prompt: 'Hello',
+            Prompt: 'call /ask endpoint',
         };
         const subAgentId = 'clp1tl4tx00129tq5owb0kfxh';
         const config = {
