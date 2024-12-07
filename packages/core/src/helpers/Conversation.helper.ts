@@ -595,9 +595,10 @@ export class Conversation extends EventEmitter {
                 //TODO : implement a timeout for the tool call
                 if (reqConfig.url.includes('localhost')) {
                     //if it's a local agent, invoke it directly
-                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID'] || this._agentId, this._agentVersion).run(
-                        reqConfig as TAgentProcessParams
-                    );
+                    const response = await AgentProcess.load(
+                        reqConfig.headers['X-AGENT-ID'] || this._agentId,
+                        reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
+                    ).run(reqConfig as TAgentProcessParams);
                     return { data: response.data, error: null };
                 } else {
                     //if it's a remote agent, call the API via HTTP
