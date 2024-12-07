@@ -58,6 +58,7 @@ export class Conversation extends EventEmitter {
     private _maxContextSize = 1024 * 16;
     private _maxOutputTokens = 1024;
     private _teamId: string = undefined;
+    private _agentVersion: string = undefined;
 
     public get context() {
         return this._context;
@@ -111,6 +112,7 @@ export class Conversation extends EventEmitter {
             experimentalCache?: boolean;
             toolsStrategy?: (toolsConfig) => any;
             agentId?: string;
+            agentVersion?: string;
         }
     ) {
         //TODO: handle loading previous session (messages)
@@ -129,6 +131,8 @@ export class Conversation extends EventEmitter {
         if (_settings?.toolChoice) {
             this.toolChoice = _settings.toolChoice;
         }
+
+        this._agentVersion = _settings?.agentVersion;
 
         (async () => {
             if (_specSource) {
@@ -591,7 +595,9 @@ export class Conversation extends EventEmitter {
                 //TODO : implement a timeout for the tool call
                 if (reqConfig.url.includes('localhost')) {
                     //if it's a local agent, invoke it directly
-                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID'] || this._agentId).run(reqConfig as TAgentProcessParams);
+                    const response = await AgentProcess.load(reqConfig.headers['X-AGENT-ID'] || this._agentId, this._agentVersion).run(
+                        reqConfig as TAgentProcessParams
+                    );
                     return { data: response.data, error: null };
                 } else {
                     //if it's a remote agent, call the API via HTTP
@@ -764,9 +770,12 @@ export class Conversation extends EventEmitter {
         if (this.assistantName) {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
-        const versionName = (await agentDataConnector.isDeployed(this._agentId || agentData.data.id)) ? 'latest' : '';
 
-        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', versionName, true).catch((error) => null);
+        const agentId = this._agentId ?? agentData.data.id;
+        const isDeployed = await agentDataConnector.isDeployed(agentId);
+        this._agentVersion = this._agentVersion ?? (isDeployed ? 'latest' : '');
+
+        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', this._agentVersion, true).catch((error) => null);
         return this.patchSpec(spec);
     }
 
