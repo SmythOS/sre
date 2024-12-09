@@ -15,10 +15,10 @@ export class AgentProcess {
 
     private _loadPromise: Promise<any>;
 
-    private constructor(private agentData: any) {
-        this.initAgent(agentData);
+    private constructor(private agentData: any, private agentVersion?: string) {
+        this.initAgent(agentData, agentVersion);
     }
-    private async initAgent(agentData: any) {
+    private async initAgent(agentData: any, agentVersion?: string) {
         let data;
         let agentId;
 
@@ -39,7 +39,8 @@ export class AgentProcess {
             //We are loading from an agentId
             if (agentId) {
                 const agentDataConnector = ConnectorService.getAgentDataConnector();
-                data = await agentDataConnector.getAgentData(agentId, 'latest');
+
+                data = await agentDataConnector.getAgentData(agentId, agentVersion);
             }
 
             //we are loading an agent from provided data
@@ -80,8 +81,8 @@ export class AgentProcess {
         }));
     }
 
-    public static load(agentData: any) {
-        const agentProcess = new AgentProcess(agentData);
+    public static load(agentData: any, agentVersion?: string) {
+        const agentProcess = new AgentProcess(agentData, agentVersion);
         return agentProcess;
     }
 

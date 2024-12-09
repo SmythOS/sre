@@ -162,7 +162,7 @@ export class BedrockConnector extends LLMConnector {
                 toolsData = toolUseBlocks.map((block, index) => ({
                     index,
                     id: block.toolUse?.toolUseId as string,
-                    type: 'function', // We call API only when the tool type is 'function' in src/services/LLMHelper/ToolExecutor.class.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.,
+                    type: 'function', // We call API only when the tool type is 'function' in src/helpers/Conversation.helper.ts`. Even though Claude returns the type as 'tool_use', it should be interpreted as 'function'.,
                     name: _deserializeToolName(block.toolUse?.name as string),
                     arguments: block.toolUse?.input as Record<string, any>,
                     role: 'tool',
