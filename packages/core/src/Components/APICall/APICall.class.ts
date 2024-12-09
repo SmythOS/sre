@@ -6,7 +6,7 @@ import Component from '../Component.class';
 import { REQUEST_CONTENT_TYPES } from '@sre/constants';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { parseHeaders } from './parseHeaders';
-import { parseUrl } from './parseUrl';
+import { parseUrl, parseSmythFsUrl, destroyPublicUrls } from './parseUrl';
 import { parseData } from './parseData';
 import { parseProxy } from './parseProxy';
 import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
@@ -55,6 +55,8 @@ export default class APICall extends Component {
 
         const logger = this.createComponentLogger(agent, config.name);
 
+        let publicUrls: string[] = [];
+
         try {
             logger.debug(`=== API Call Log ===`);
 
@@ -64,6 +66,9 @@ export default class APICall extends Component {
             reqConfig.method = method;
 
             reqConfig.url = await parseUrl(input, config, agent);
+
+            // We generate public URLs for any resources specified with the smythfs protocol in the request URL.
+            ({ url: reqConfig.url, publicUrls } = await parseSmythFsUrl(reqConfig.url, agent));
 
             const { data, headers } = await parseData(input, config, agent);
 
@@ -116,6 +121,10 @@ export default class APICall extends Component {
             return { Response, Headers, _error, _debug: logger.output };
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
+        } finally {
+            if (publicUrls.length > 0) {
+                await destroyPublicUrls(publicUrls);
+            }
         }
     }
 }
