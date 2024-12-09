@@ -81,10 +81,7 @@ export default class ZapierAction extends Component {
                 // _input[key] = (value as SmythFileObject)?.url;
                 const pubUrl = await SmythFS.Instance.genTempUrl((value as any)?.url, AccessCandidate.agent(agent.id));
                 _pubUrlsCreated.push(pubUrl);
-                _input[key] = {
-                    ...(value as any),
-                    url: pubUrl,
-                };
+                _input[key] = pubUrl;
             } else {
                 _input[key] = value;
             }
