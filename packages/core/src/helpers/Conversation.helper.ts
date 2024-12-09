@@ -752,9 +752,14 @@ export class Conversation extends EventEmitter {
             //is this an agentId ?
             const agentDataConnector = ConnectorService.getAgentDataConnector();
             const agentId = specSource as string;
-            const agentData = await agentDataConnector.getAgentData(agentId).catch((error) => null);
-            if (!agentData) return null;
             this._agentId = agentId;
+
+            const isDeployed = await agentDataConnector.isDeployed(agentId);
+            const agentVersion = this._agentVersion ?? (isDeployed ? 'latest' : '');
+            this._agentVersion = agentVersion;
+
+            const agentData = await agentDataConnector.getAgentData(agentId, agentVersion).catch((error) => null);
+            if (!agentData) return null;
 
             const spec = await this.loadSpecFromAgent(agentData);
             return spec;
@@ -771,10 +776,6 @@ export class Conversation extends EventEmitter {
         if (this.assistantName) {
             this.systemPrompt = `Assistant Name : ${this.assistantName}\n\n${this.systemPrompt}`;
         }
-
-        const agentId = this._agentId ?? agentData.data.id;
-        const isDeployed = await agentDataConnector.isDeployed(agentId);
-        this._agentVersion = this._agentVersion ?? (isDeployed ? 'latest' : '');
 
         const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', this._agentVersion, true).catch((error) => null);
         return this.patchSpec(spec);

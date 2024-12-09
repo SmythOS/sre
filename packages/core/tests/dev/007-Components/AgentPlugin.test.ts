@@ -17,11 +17,24 @@ const sre = SmythRuntime.Instance.init({
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
-    AgentData: {
+    /* AgentData: {
         Connector: 'Local',
         Settings: {
             devDir: './tests/data/AgentData',
             prodDir: './tests/data/AgentData',
+        },
+    }, */
+    AgentData: {
+        Connector: 'Smyth',
+        Settings: {
+            agentStageDomain: process.env.AGENT_DOMAIN || '',
+            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
     Vault: {
