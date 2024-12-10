@@ -1,9 +1,13 @@
 import axios from 'axios';
+import express from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import { config, SmythRuntime } from '@sre/index';
 import APICall from '@sre/Components/APICall/APICall.class';
+
+const app = express();
+const BASE_URL = `http://agents-server.smyth.stage`;
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -66,6 +70,13 @@ const sre = SmythRuntime.Instance.init({
             oAuthScope: '',
             smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
             vaultName: 'oauth',
+        },
+    },
+    Router: {
+        Connector: 'ExpressRouter',
+        Settings: {
+            router: app,
+            baseUrl: BASE_URL,
         },
     },
 });
@@ -737,6 +748,26 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.user).toEqual(user);
         expect(response.args.key).toEqual(DUMMY_KEY);
         expect(response.args.secret).toEqual(DUMMY_KEY);
+    });
+
+    it('resolve smythfs:// URI in public URL', async () => {
+        const url = 'https://httpbin.org/get?image=smythfs://cloilcrl9001v9tkguilsu8dx.team/cm0lqbi8p04raeg4dwdxwpoix/_temp/M4I8A5XIDKJ.jpeg';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+                headers: '',
+            },
+        };
+
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
+
+        const regex = new RegExp(`${BASE_URL}`);
+        expect(response.args.image).toMatch(regex);
     });
 });
 

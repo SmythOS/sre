@@ -231,11 +231,17 @@ export class SmythFS {
             cacheVal = JSONContentHelper.create(cacheVal).tryParse();
             const content = await this.read(cacheVal.uri, AccessCandidate.clone(cacheVal.accessCandidate));
 
+            const contentBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'binary');
+
+            const contentType = cacheVal.contentType || 'application/octet-stream';
+
             res.writeHead(200, {
-                'Content-Type': cacheVal.contentType,
+                'Content-Type': contentType,
                 'Content-Disposition': 'inline',
+                'Content-Length': contentBuffer.length,
             });
-            res.end(content);
+
+            res.end(contentBuffer);
         } catch (error) {
             console.error('Error serving temp content:', error);
             res.writeHead(500, { 'Content-Type': 'text/plain' });

@@ -1,5 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
 function decodeUriParts(url: string): string {
     try {
@@ -59,4 +61,31 @@ export async function parseUrl(input, config, agent: Agent) {
 
     //urlObj.href will return the encoded url
     return urlObj.href;
+}
+
+export async function parseSmythFsUrl(url: string, agent: Agent) {
+    const urlObj = new URL(url);
+    const searchParams = urlObj.searchParams;
+    const publicUrls: string[] = [];
+
+    for (const [key, value] of searchParams.entries()) {
+        if (value.startsWith('smythfs://')) {
+            const pubUrl = await SmythFS.Instance.genTempUrl(value, AccessCandidate.agent(agent.id));
+            publicUrls.push(pubUrl);
+            searchParams.set(key, pubUrl);
+        }
+    }
+
+    return { url: urlObj.href, publicUrls };
+}
+
+export async function destroyPublicUrls(publicUrls: string[]): Promise<boolean> {
+    try {
+        await Promise.all(publicUrls.map((url) => SmythFS.Instance.destroyTempUrl(url)));
+        console.log('Successfully cleaned up all temp urls for API Call Component');
+    } catch (error) {
+        console.error('Failed to clean up temp urls for API Call Component:', error);
+    }
+
+    return true;
 }
