@@ -754,11 +754,12 @@ export class Conversation extends EventEmitter {
             const agentId = specSource as string;
             this._agentId = agentId;
 
-            const isDeployed = await agentDataConnector.isDeployed(agentId);
-            const agentVersion = this._agentVersion ?? (isDeployed ? 'latest' : '');
-            this._agentVersion = agentVersion;
+            if (this._agentVersion === undefined) {
+                const isDeployed = await agentDataConnector.isDeployed(agentId);
+                this._agentVersion = isDeployed ? 'latest' : '';
+            }
 
-            const agentData = await agentDataConnector.getAgentData(agentId, agentVersion).catch((error) => null);
+            const agentData = await agentDataConnector.getAgentData(agentId, this._agentVersion).catch((error) => null);
             if (!agentData) return null;
 
             const spec = await this.loadSpecFromAgent(agentData);
