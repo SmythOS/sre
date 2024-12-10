@@ -7,8 +7,7 @@ import { config, SmythRuntime } from '@sre/index';
 import APICall from '@sre/Components/APICall/APICall.class';
 
 const app = express();
-const PORT = 8084;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = `http://agents-server.smyth.stage`;
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -77,7 +76,7 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'ExpressRouter',
         Settings: {
             router: app,
-            baseUrl: `http://localhost:8084`,
+            baseUrl: BASE_URL,
         },
     },
 });
@@ -752,8 +751,7 @@ describe('APICall Component - URL Formats', () => {
     });
 
     it('resolve smythfs:// URI in public URL', async () => {
-        const url =
-            'https://image-api.photoroom.com/v2/edit?shadow.mode=ai.soft&background.color=FFFFFF&padding=0.1&imageUrl=smythfs://cloilcrl9001v9tkguilsu8dx.team/cm0lqbi8p04raeg4dwdxwpoix/_temp/M4H8FVMDIA';
+        const url = 'https://httpbin.org/get?image=smythfs://cloilcrl9001v9tkguilsu8dx.team/cm0lqbi8p04raeg4dwdxwpoix/_temp/M4I8A5XIDKJ.jpeg';
         const config = {
             data: {
                 method: 'GET',
@@ -761,13 +759,15 @@ describe('APICall Component - URL Formats', () => {
                 contentType: 'none',
                 oauthService: 'None',
                 body: '',
+                headers: '',
             },
         };
 
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
 
-        expect(response.url).toEqual(url);
+        const regex = new RegExp(`${BASE_URL}`);
+        expect(response.args.image).toMatch(regex);
     });
 });
 
