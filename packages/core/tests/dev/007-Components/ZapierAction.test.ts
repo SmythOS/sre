@@ -49,6 +49,10 @@ const sre = SmythRuntime.Instance.init({
         },
     },
 
+    Account: {
+        Connector: 'DummyAccount',
+    },
+
     Cache: {
         Connector: 'Redis',
         Settings: {
@@ -82,6 +86,8 @@ const sre = SmythRuntime.Instance.init({
 
 const server = http.createServer(app);
 
+const ZAPIER_DEFAULT_ACTION_ID = 'bef9dc04-e6f9-482a-9c45-513375182818';
+
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
@@ -104,6 +110,8 @@ describe('ZapierAction Component', () => {
             .catch((e) => {
                 throw new Error('Failed to get Zapier API Key from vault. Please add ZAPIER_API_KEY to your vault.');
             });
+
+        console.log('apiKey', apiKey);
 
         if (!apiKey) {
             throw new Error('Zapier testing API Key is not set. Please set the key in vault.json to run this test.');
@@ -135,12 +143,12 @@ describe('ZapierAction Component', () => {
             },
             {
                 data: {
-                    actionId: '4d1de4b5-fde8-4cc4-8f2c-3b90ddc78e37',
+                    actionId: ZAPIER_DEFAULT_ACTION_ID,
                     actionName: 'ANY NAME',
                     // apiKey: '{{KEY(Zapier (3))}}',
                     apiKey: apiKeyVaultKeyName(),
                     logoUrl: 'https://app.smythos.dev/img/zapier.png',
-                    params: '{"instructions":"str"}',
+                    params: '{"instructions":"run 1+1"}',
                 },
             },
             agent
@@ -172,7 +180,7 @@ describe('ZapierAction Component', () => {
             },
             {
                 data: {
-                    actionId: '4d1de4b5-fde8-4cc4-8f2c-3b90ddc78e37',
+                    actionId: ZAPIER_DEFAULT_ACTION_ID,
                     actionName: 'ANY NAME',
                     // apiKey: '{{KEY(Zapier (3))}}',
                     apiKey: apiKeyVaultKeyName(),
@@ -185,14 +193,15 @@ describe('ZapierAction Component', () => {
 
         //get the first argument of the first call to axios.post
         const firstCallArguments = spy.mock.calls[0];
-        const body = (firstCallArguments[1] as any)?.img as Awaited<ReturnType<typeof BinaryInput.prototype.getJsonData>>;
-        expect(body?.url).toBeDefined();
-        expect(body?.url.startsWith(`${BASE_URL}/_temp/`)).toBe(true);
+        // const url = (firstCallArguments[1] as any)?.img as Awaited<ReturnType<typeof BinaryInput.prototype.getJsonData>>;
+        const url = (firstCallArguments[1] as any)?.img as string;
+        expect(url).toBeDefined();
+        expect(url.startsWith(`${BASE_URL}/_temp/`)).toBe(true);
 
         // expect the pub url access to be deleted after the the agent finishes processing
         // wait for 5 seconds because the temp url deletion run in the background
         await delay(5000);
-        const responseErr = await axios.get(body.url).catch((e) => e);
+        const responseErr = await axios.get(url).catch((e) => e);
         expect(responseErr?.response?.status || responseErr?.status, 'temp url should not be accessible after agent processing finished').toBe(404);
     });
 });
