@@ -30,6 +30,7 @@ import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
+import ServerlessCode from './ServerlessCode.class';
 
 const components = {
     Component: new Component(),
@@ -66,6 +67,7 @@ const components = {
     ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
+    ServerlessCode: new ServerlessCode(),
 };
 
 export default components;

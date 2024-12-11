@@ -10,11 +10,11 @@ import express from 'express';
 import * as fs from 'fs';
 import 'source-map-support/register.js';
 import { SmythRuntime, AgentProcess } from '../../src/index';
-
+const version = 'v1.2.1';
 //============== CLI Args ==============//
 const argv = minimist(process.argv.slice(2));
 if (argv['v']) {
-    console.log('v1.0.4 SM');
+    console.log(version);
     process.exit();
 }
 if (!argv['port']) throw Error('You must provide --port argument');
@@ -36,7 +36,6 @@ if (argv['vault']) {
         },
     };
 }
-
 //============== Runtime Configuration ==============//
 SmythRuntime.Instance.init({
     CLI: {
@@ -58,8 +57,22 @@ SmythRuntime.Instance.init({
     Account: {
         Connector: 'AWSAccount',
         Settings: {
-            host: process.env.AWS_RDS_DB_HOST,
-            password: process.env.AWS_RDS_DB_PASSWORD,
+            host: process.env.DB_HOST,
+            password: process.env.DB_PASSWORD,
+        },
+    },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: process.env.REDIS_HOSTS,
+            name: process.env.REDIS_MASTER_NAME,
+            password: process.env.REDIS_PASSWORD,
+        },
+    },
+    ManagedVault: {
+        Connector: 'SecretManagerManagedVault',
+        Settings: {
+            region: process.env.AWS_REGION,
         },
     },
 });
@@ -84,7 +97,7 @@ app.use(
     })
 );
 app.get('/_healthcheck', (_, res) => res.send('healthy'));
-app.get('/version', (_, res) => res.json({ version: 'v1.0.3' }));
+app.get('/version', (_, res) => res.json({ version }));
 
 const handleRequest = async (req: express.Request, res: express.Response) => {
     try {

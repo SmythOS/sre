@@ -22,12 +22,13 @@ export class RedisCache extends CacheConnector {
 
     constructor(settings: RedisConfig) {
         super();
-        const sentinels = parseSentinelHosts(settings.hosts);
+        const sentinels = parseSentinelHosts(settings.hosts || process.env.REDIS_HOSTS);
+        let host = sentinels.length === 1 ? sentinels[0].host : null;
+        let port = sentinels.length === 1 ? sentinels[0].port : null;
 
         this.redis = new IORedis({
-            sentinels,
-            name: settings.name,
-            password: settings.password,
+            ...(host ? { host, port } : { sentinels, name: settings.name || process.env.REDIS_MASTER_NAME, }),
+            password: settings.password || process.env.REDIS_PASSWORD
         });
 
         this.redis.on('error', (error) => {
@@ -116,7 +117,7 @@ export class RedisCache extends CacheConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
-        const _metadata: any = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => {});
+        const _metadata: any = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => { });
         const exists = _metadata !== undefined && _metadata !== null; //null or undefined metadata means the resource does not exist
         const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
 
