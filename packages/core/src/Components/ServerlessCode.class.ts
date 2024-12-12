@@ -29,8 +29,8 @@ export default class ServerlessCode extends Component {
             logger.debug(`=== Serverless Code Log ===`);
             let Output: any = {};
             let _error = undefined;
-            const awsAccessKeyId = await VaultHelper.getAgentKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent.teamId);
-            const awsSecretAccessKey = await VaultHelper.getAgentKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent.teamId);
+            const awsAccessKeyId = await VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId);
+            const awsSecretAccessKey = await VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId);
             const awsRegion = config.data.region;
             const awsCredentials = {
                 ...(awsAccessKeyId && { accessKeyId: awsAccessKeyId }),
