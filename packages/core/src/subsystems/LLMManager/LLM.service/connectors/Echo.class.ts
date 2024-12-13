@@ -36,7 +36,11 @@ export class EchoConnector extends LLMConnector {
 
     public postProcess(response: any) {
         try {
-            return JSONContent(response).tryFullParse();
+            const result = JSONContent(response).tryFullParse();
+            if (result.error) {
+                return response;
+            }
+            return result;
         } catch (error) {
             return response;
         }
