@@ -172,7 +172,7 @@ export class TemplateStringHelper {
             if (_processor instanceof Promise) {
                 _processor.then((result) => {
                     if (result === undefined) {
-                        return match[0];
+                        return match?.[0];
                     }
                     tokens[token] = result;
                 });
