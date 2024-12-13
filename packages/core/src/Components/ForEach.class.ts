@@ -1,6 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 export default class ForEach extends Component {
     protected configSchema = null;
@@ -18,7 +19,17 @@ export default class ForEach extends Component {
         const logger = this.createComponentLogger(agent, config.name);
         try {
             const inputObject = input.Input;
-            let inputArray = Array.isArray(inputObject) ? inputObject : [inputObject];
+            let inputArray;
+
+            //Try to parse multiple arrays formats since forEach always expects and array
+            if (Array.isArray(inputObject)) inputArray = inputObject;
+            else {
+                if (typeof inputObject === 'string') {
+                    inputArray = inputObject.trim().startsWith('[') ? JSONContent(inputObject).tryParse() : inputObject.split(',');
+                } else {
+                    inputArray = [inputObject];
+                }
+            }
 
             if (!Array.isArray(inputArray) && typeof inputArray === 'object')
                 //if json object, use the values
