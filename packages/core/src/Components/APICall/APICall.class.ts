@@ -72,7 +72,10 @@ export default class APICall extends Component {
 
             const { data, headers } = await parseData(input, config, agent);
 
-            reqConfig.data = data;
+            // If the data is null, the request may fail. We encountered an issue where a request failed due to null data being provided.
+            if (data) {
+                reqConfig.data = data;
+            }
 
             reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
 
