@@ -171,14 +171,15 @@ function extractSmythFsAgentId(url: string): string | null {
 }
 
 async function inferBinaryType(value: any, key?: string, agent?: Agent) {
+    let candidate: IAccessCandidate;
+
+    const agentId = extractSmythFsAgentId(value?.url);
+    candidate = AccessCandidate.agent(agentId);
+
     if (value && typeof value === 'object' && value?.url) {
-        let candidate: IAccessCandidate;
         let data;
 
         if (value?.url.startsWith('smythfs://')) {
-            const agentId = extractSmythFsAgentId(value?.url);
-            candidate = AccessCandidate.agent(agentId);
-
             data = value;
         } else {
             data = value?.url;
@@ -189,7 +190,7 @@ async function inferBinaryType(value: any, key?: string, agent?: Agent) {
         return binaryInput;
     }
 
-    const binaryInput = BinaryInput.from(value, uid() + '-' + key);
+    const binaryInput = BinaryInput.from(value, uid() + '-' + key, '', candidate);
     await binaryInput.ready();
     return binaryInput;
 }

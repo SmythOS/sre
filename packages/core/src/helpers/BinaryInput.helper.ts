@@ -69,6 +69,19 @@ export class BinaryInput {
             return;
         }
 
+        if (typeof data === 'string' && data.startsWith('smythfs://')) {
+            this.url = data;
+            if (candidate) {
+                this._source = await SmythFS.Instance.read(this.url, candidate);
+                this.mimetype = await SmythFS.Instance.getMimeType(this._source);
+                this.size = this._source.byteLength;
+                this._ready = true;
+            } else {
+                this._ready = true;
+            }
+            return;
+        }
+
         if (isUrl(data)) {
             const info: any = await this.getUrlInfo(data);
             this.mimetype = info.contentType;

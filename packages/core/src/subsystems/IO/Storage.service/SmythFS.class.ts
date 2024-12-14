@@ -136,7 +136,7 @@ export class SmythFS {
         }
         await this.storage.user(_candidate).write(resourceId, data, acl, metadata);
     }
-    private async getMimeType(data: any) {
+    public async getMimeType(data: any) {
         let size = 0;
         if (data instanceof Blob) return data.type;
         if (isBuffer(data)) {
