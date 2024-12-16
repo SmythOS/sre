@@ -171,26 +171,42 @@ function extractSmythFsAgentId(url: string): string | null {
 }
 
 async function inferBinaryType(value: any, key?: string, agent?: Agent) {
-    let candidate: IAccessCandidate;
-
-    const agentId = extractSmythFsAgentId(value?.url);
-    candidate = AccessCandidate.agent(agentId);
-
-    if (value && typeof value === 'object' && value?.url) {
-        let data;
-
-        if (value?.url.startsWith('smythfs://')) {
-            data = value;
-        } else {
-            data = value?.url;
-        }
-
-        const binaryInput = await BinaryInput.from(data, uid() + '-' + key, value?.mimetype, candidate);
-        await binaryInput.ready();
-        return binaryInput;
+    // If the value is already a BinaryInput, just return it
+    if (value instanceof BinaryInput) {
+        return value;
     }
 
-    const binaryInput = BinaryInput.from(value, uid() + '-' + key, '', candidate);
+    let candidate: IAccessCandidate | undefined;
+    let agentId: string = '';
+    let data: unknown;
+    let mimetype: string = '';
+
+    if (value && typeof value === 'object' && value?.url && value?.mimetype) {
+        const url = value?.url;
+        mimetype = value?.mimetype;
+
+        if (url?.startsWith('smythfs://')) {
+            // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
+            data = value;
+
+            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+            agentId = extractSmythFsAgentId(url);
+        } else {
+            data = url;
+        }
+    } else {
+        if (typeof value === 'string' && value.startsWith('smythfs://')) {
+            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+            agentId = extractSmythFsAgentId(value);
+        }
+        data = value;
+    }
+
+    if (agentId) {
+        candidate = AccessCandidate.agent(agentId);
+    }
+
+    const binaryInput = BinaryInput.from(data, `${uid()}-${key}`, mimetype, candidate);
     await binaryInput.ready();
     return binaryInput;
 }
