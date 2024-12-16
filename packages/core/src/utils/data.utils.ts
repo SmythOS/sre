@@ -1,7 +1,7 @@
 import { Readable } from 'stream';
 import { isRawBase64 } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
-import * as FileType from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -122,7 +122,7 @@ export async function getMimeType(data: any): Promise<string> {
     if (data instanceof Blob) return data.type;
     if (isBuffer(data)) {
         try {
-            const fileType = await FileType.fileTypeFromBuffer(data);
+            const fileType = await fileTypeFromBuffer(data);
             return fileType.mime;
         } catch {
             return '';
