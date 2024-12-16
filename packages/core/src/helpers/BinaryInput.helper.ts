@@ -4,7 +4,7 @@ import { IAccessCandidate } from '@sre/types/ACL.types';
 import axios from 'axios';
 import * as FileType from 'file-type';
 import mime from 'mime';
-import { getSizeFromBinary, isUrl, uid, getBase64FileInfo } from '../utils';
+import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
 export class BinaryInput {
     private size: number;
     private url: string;
@@ -73,7 +73,7 @@ export class BinaryInput {
             this.url = data;
             if (candidate) {
                 this._source = await SmythFS.Instance.read(this.url, candidate);
-                this.mimetype = await SmythFS.Instance.getMimeType(this._source);
+                this.mimetype = await getMimeType(this._source);
                 this.size = this._source.byteLength;
                 this._ready = true;
             } else {

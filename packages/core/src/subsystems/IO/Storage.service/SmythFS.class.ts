@@ -3,8 +3,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
-import { isBuffer } from '@sre/utils';
-import * as FileType from 'file-type';
+import { getMimeType } from '@sre/utils';
 import mime from 'mime';
 import { Readable } from 'stream';
 import { StorageConnector } from './StorageConnector';
@@ -126,7 +125,7 @@ export class SmythFS {
 
         if (!metadata) metadata = {};
         if (!metadata?.ContentType) {
-            metadata.ContentType = await this.getMimeType(data);
+            metadata.ContentType = await getMimeType(data);
             if (!metadata.ContentType) {
                 const ext: any = uri.split('.').pop();
                 if (ext) {
@@ -135,22 +134,6 @@ export class SmythFS {
             }
         }
         await this.storage.user(_candidate).write(resourceId, data, acl, metadata);
-    }
-    public async getMimeType(data: any) {
-        let size = 0;
-        if (data instanceof Blob) return data.type;
-        if (isBuffer(data)) {
-            try {
-                const fileType = await FileType.fileTypeFromBuffer(data);
-                return fileType.mime;
-            } catch {
-                return '';
-            }
-        }
-
-        if (typeof data === 'string') {
-            return 'text/plain';
-        }
     }
 
     public async delete(uri: string, candidate: IAccessCandidate) {
