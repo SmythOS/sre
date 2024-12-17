@@ -234,8 +234,8 @@ export function escapeString(str?: string) {
 
 // This is used escape JSON values characters like double quotes '"' to parse it properly
 export function escapeJsonField(str?: string) {
-    if (!str) return str;
-    return str.replace(/"/g, '\\"');
+    if (typeof str !== 'string') return str;
+    return str.replace(/\\"/g, '"').replace(/"/g, '\\"');
 }
 
 export function TemplateString(templateString: string) {
