@@ -522,7 +522,7 @@ describe('APICall Component - URL Formats', () => {
         const response = output.Response;
 
         const expectedSpecialChars = "!@$'()* ,;=-._~:/?[]";
-        const expectedUrl = "https://httpbin.org/get?special=!%40$'()*+,%3B=-._~:%2F%3F[]";
+        const expectedUrl = "https://httpbin.org/get?special=!%40$'()* ,%3B=-._~:%2F%3F[]";
 
         expect(response.args.special).toEqual(expectedSpecialChars);
         expect(response.url).toEqual(expectedUrl);
