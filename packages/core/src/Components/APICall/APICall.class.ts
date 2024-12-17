@@ -102,9 +102,10 @@ export default class APICall extends Component {
                     reqConfig.headers = reqConfig.headers.concat({ ...oauthHeaders });
                 }
 
-                logger.debug('Making API call', reqConfig);
                 // in order to handle binary data automatically, we need to set responseType to 'arraybuffer' for all requests, then parse the response data based on content-type
                 reqConfig.responseType = 'arraybuffer';
+
+                logger.debug('Making API call', reqConfig);
 
                 const response = await axios.request(reqConfig);
 
