@@ -246,6 +246,9 @@ export default class Agent {
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
 
+        //filter out handled errors
+        result = result.filter((r) => !(r?.result?._error && r?.result?._error_handled));
+
         for (let i = 0; i < result.length; i++) {
             const _result = result[i];
             if (!_result) continue;
@@ -669,6 +672,7 @@ export default class Agent {
             const targetComponent: Component = componentInstance[targetComponentData.name];
             const connections = targetComponents[targetId];
 
+            let _isErrorHandler = false;
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
@@ -683,6 +687,9 @@ export default class Agent {
 
                     const defaultOutputs = componentData.outputs.find((c) => c.default);
                     let value: any = undefined;
+
+                    if (outputEndpoint.name == '_error') _isErrorHandler = true;
+
                     if (outputEndpoint.default) value = output[outputEndpoint.name] /* || null*/;
                     else {
                         if (defaultOutputs /* && output[defaultOutputs.name]?.[outputEndpoint.name]*/) {
@@ -718,6 +725,10 @@ export default class Agent {
                 const input = this.prepareComponentInput(targetId, nextInput);
 
                 const targetComponent = this.components[targetId];
+
+                if (_isErrorHandler && targetComponent) {
+                    output._error_handled = true;
+                }
 
                 const missingInputs = this.getComponentMissingInputs(targetId, input);
                 const status = missingInputs.length > 0 ? 'waiting' : undefined;
