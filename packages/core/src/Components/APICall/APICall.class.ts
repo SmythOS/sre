@@ -3,8 +3,6 @@ import Joi from 'joi';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from '../Component.class';
-import { REQUEST_CONTENT_TYPES } from '@sre/constants';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { parseHeaders } from './parseHeaders';
 import { parseUrl, parseSmythFsUrl, destroyPublicUrls } from './parseUrl';
 import { parseData } from './parseData';
@@ -12,6 +10,7 @@ import { parseProxy } from './parseProxy';
 import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
 import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHeaders } from './OAuth.helper';
 import { SocksProxyAgent } from 'socks-proxy-agent';
+import { isBuffer } from '@sre/utils';
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
@@ -73,8 +72,11 @@ export default class APICall extends Component {
             const { data, headers } = await parseData(input, config, agent);
 
             // If the data is null, the request may fail. We encountered an issue where a request failed due to null data being provided.
+            let dataForDebug;
             if (data) {
                 reqConfig.data = data;
+
+                dataForDebug = getDebugData(data);
             }
 
             reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
@@ -105,7 +107,7 @@ export default class APICall extends Component {
                 // in order to handle binary data automatically, we need to set responseType to 'arraybuffer' for all requests, then parse the response data based on content-type
                 reqConfig.responseType = 'arraybuffer';
 
-                logger.debug('Making API call', reqConfig);
+                logger.debug('Making API call', { ...reqConfig, data: dataForDebug });
 
                 const response = await axios.request(reqConfig);
 
@@ -131,4 +133,20 @@ export default class APICall extends Component {
             }
         }
     }
+}
+
+// Mask data like Buffer, FormData, etc. in debug output
+// TODO [Forhad]: Need to apply same thing for Base64, etc.
+function getDebugData(data: any) {
+    let dataForDebug;
+
+    if (isBuffer(data)) {
+        dataForDebug = `[Buffer size=${data.length}]`;
+    } else if (data.constructor.name === 'FormData') {
+        dataForDebug = `[FormData]`;
+    } else {
+        dataForDebug = data;
+    }
+
+    return dataForDebug;
 }

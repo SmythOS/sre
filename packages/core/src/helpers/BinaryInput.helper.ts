@@ -174,7 +174,8 @@ export class BinaryInput {
 
     private async getUrlInfo(url) {
         try {
-            const response = await axios.head(url);
+            // Before we had axios.head(), head method does not work for all URLs
+            const response = await axios.get(url);
             const contentType = response.headers['content-type'];
             const contentLength = response.headers['content-length'];
             return { contentType, contentLength };
