@@ -107,7 +107,7 @@ export class TemplateStringHelper {
         this._current = this._current.replace(regex, (match, token) => {
             const val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
 
-            return typeof val === 'object' ? JSON.stringify(val) : val;
+            return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
         });
 
         return this;
@@ -230,6 +230,12 @@ export class TemplateStringHelper {
 export function escapeString(str?: string) {
     if (!str) return str;
     return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+}
+
+// This is used escape JSON values characters like double quotes '"' to parse it properly
+export function escapeJsonField(str?: string) {
+    if (!str) return str;
+    return str.replace(/"/g, '\\"');
 }
 
 export function TemplateString(templateString: string) {
