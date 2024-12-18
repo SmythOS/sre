@@ -2,7 +2,6 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import axios from 'axios';
-import * as FileType from 'file-type';
 import mime from 'mime';
 import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
 export class BinaryInput {
@@ -72,10 +71,13 @@ export class BinaryInput {
         if (typeof data === 'string' && data.startsWith('smythfs://')) {
             this.url = data;
             if (candidate) {
-                this._source = await SmythFS.Instance.read(this.url, candidate);
-                this.mimetype = await getMimeType(this._source);
-                this.size = this._source.byteLength;
-                this._ready = true;
+                try {
+                    this._source = await SmythFS.Instance.read(this.url, candidate);
+                    this.mimetype = await getMimeType(this._source);
+                    this.size = this._source.byteLength;
+                } finally {
+                    this._ready = true;
+                }
             } else {
                 this._ready = true;
             }
@@ -155,8 +157,7 @@ export class BinaryInput {
             // If the MIME type is already set, it's safe to use it,
             // as determining the MIME type from the buffer is not always accurate.
             if (!this.mimetype) {
-                const fileType = await FileType.fileTypeFromBuffer(data);
-                this.mimetype = fileType.mime;
+                this.mimetype = await getMimeType(data);
             }
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
@@ -173,7 +174,8 @@ export class BinaryInput {
 
     private async getUrlInfo(url) {
         try {
-            const response = await axios.head(url);
+            // Before we had axios.head(), head method does not work for all URLs
+            const response = await axios.get(url);
             const contentType = response.headers['content-type'];
             const contentLength = response.headers['content-length'];
             return { contentType, contentLength };
@@ -192,9 +194,9 @@ export class BinaryInput {
         const base64Data = data.split(',')[1];
         const buffer = Buffer.from(base64Data, 'base64');
         const size = buffer.byteLength;
-        const filetype = await FileType.fileTypeFromBuffer(buffer);
+        const mimetype = await getMimeType(buffer);
 
-        return { size, data: buffer, mimetype: filetype?.mime || '' };
+        return { size, data: buffer, mimetype };
     }
     public static from(data, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
         if (data instanceof BinaryInput) return data;

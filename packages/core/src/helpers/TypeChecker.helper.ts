@@ -181,34 +181,40 @@ async function inferBinaryType(value: any, key?: string, agent?: Agent) {
     let data: unknown;
     let mimetype: string = '';
 
-    if (value && typeof value === 'object' && value?.url && value?.mimetype) {
-        const url = value?.url;
-        mimetype = value?.mimetype;
+    try {
+        if (value && typeof value === 'object' && value?.url && value?.mimetype) {
+            const url = value?.url;
+            mimetype = value?.mimetype;
 
-        if (url?.startsWith('smythfs://')) {
-            // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
-            data = value;
+            if (url?.startsWith('smythfs://')) {
+                // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
+                data = value;
 
-            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
-            agentId = extractSmythFsAgentId(url);
+                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+                agentId = extractSmythFsAgentId(url);
+            } else {
+                data = url;
+            }
         } else {
-            data = url;
+            if (typeof value === 'string' && value.startsWith('smythfs://')) {
+                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+                agentId = extractSmythFsAgentId(value);
+            }
+            data = value;
         }
-    } else {
-        if (typeof value === 'string' && value.startsWith('smythfs://')) {
-            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
-            agentId = extractSmythFsAgentId(value);
+
+        if (agentId) {
+            candidate = AccessCandidate.agent(agentId);
         }
-        data = value;
-    }
 
-    if (agentId) {
-        candidate = AccessCandidate.agent(agentId);
-    }
+        const binaryInput = BinaryInput.from(data, `${uid()}-${key}`, mimetype, candidate);
+        await binaryInput.ready();
+        return binaryInput;
+    } catch (error: any) {
+        console.warn('Error in binary type handler', error);
 
-    const binaryInput = BinaryInput.from(data, `${uid()}-${key}`, mimetype, candidate);
-    await binaryInput.ready();
-    return binaryInput;
+        return null;
+    }
 }
 
 async function inferDateType(value: any, key?: string, agent?: Agent) {
