@@ -29,6 +29,7 @@ export default class ForkedAgent {
     ) {
         const data: any = fork(this.parent.data, componentId);
         data.variables = JSON.parse(JSON.stringify(this.parent?.data?.variables || {})); //copy parent Agent variables to forked agent
+        data.teamId = this.parent.teamId;
         //TODO : we need to create a default APIEndpoint bound to the root component if root component is not an APIEndpoint
         const content = { name: this.parent.name, data, teamId: this.parent.teamId, debugSessionEnabled: false, version: this.parent.version };
 
