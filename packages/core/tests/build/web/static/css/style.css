@@ -146,7 +146,7 @@ Messages
     margin: 8px 0;
     font-size: 14px;
     line-height: 1.4;
-    margin-left: 35px;
+    margin-left: 50px;
     position: relative;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
@@ -167,8 +167,8 @@ Messages
 .messages .message .avatar {
     position: absolute;
     z-index: 1;
-    bottom: -15px;
-    left: -35px;
+    bottom: -25px;
+    left: -41px;
     border-radius: 30px;
     width: 30px;
     height: 30px;

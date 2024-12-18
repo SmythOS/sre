@@ -7,7 +7,10 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-distributions
+
+distributions/cli_bak
+distributions/agent-builder-js
+*.code-workspace
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -135,3 +138,4 @@ dist
 
 tests/data/vault.json
 .DS_Store
+tests/dev/000-experimental

@@ -1,6 +1,7 @@
 import { Readable } from 'stream';
 import { isRawBase64 } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
+import { fileTypeFromBuffer } from 'file-type';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -116,3 +117,19 @@ export const isBase64Object = (data: Record<string, any>): boolean => {
 
     return typeof data === 'object' && data !== null && data?.base64 && isRawBase64(data.base64) && 'size' in data && 'mimetype' in data;
 };
+
+export async function getMimeType(data: any): Promise<string> {
+    if (data instanceof Blob) return data.type;
+    if (isBuffer(data)) {
+        try {
+            const fileType = await fileTypeFromBuffer(data);
+            return fileType.mime;
+        } catch {
+            return '';
+        }
+    }
+
+    if (typeof data === 'string') {
+        return 'text/plain';
+    }
+}

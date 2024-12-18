@@ -1,6 +1,6 @@
 // import Component from './Component.class';
 import Joi from 'joi';
-// import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+// import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { validateInteger } from '../utils';
 import { jsonrepair } from 'jsonrepair';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
@@ -9,10 +9,12 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
+import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 // import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-class LLMHelper {
-    static load(model: string) {
+// Note: LLMHelper renamed to LLMInference
+class LLMInference {
+    static async getInstance(model: string) {
         throw new Error('Method not implemented.');
     }
 }
@@ -22,9 +24,9 @@ export default class DataSourceLookup extends Component {
         topK: Joi.string()
             .custom(validateInteger({ min: 0 }), 'custom range validation')
             .label('Result Count'),
-        model: Joi.string().valid('gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo-16k').required(),
-        prompt: Joi.string().max(30000).allow('').label('Prompt'),
-        postprocess: Joi.boolean().strict().required(),
+        model: Joi.string().valid('gpt-4o-mini', 'gpt-4', 'gpt-3.5-turbo', 'gpt-4', 'gpt-3.5-turbo-16k').optional(),
+        prompt: Joi.string().max(30000).allow('').label('Prompt').optional(),
+        postprocess: Joi.boolean().strict().optional(),
         includeMetadata: Joi.boolean().strict().optional(),
         namespace: Joi.string().allow('').max(80).messages({
             // Need to reserve 30 characters for the prefixed unique id
@@ -40,6 +42,7 @@ export default class DataSourceLookup extends Component {
         const componentId = config.id;
         const component = agent.components[componentId];
         const teamId = agent.teamId;
+        let debugOutput = agent.agentRuntime?.debug ? '== Data Source Lookup Log ==\n' : null;
 
         const outputs = {};
         for (let con of config.outputs) {
@@ -47,22 +50,34 @@ export default class DataSourceLookup extends Component {
             outputs[con.name] = '';
         }
 
-        const namespace = config.data.namespace;
-        const model = config.data.model;
-        const prompt = config.data.prompt?.trim?.() || '';
-        const postprocess = config.data.postprocess;
-        const includeMetadata = config.data.includeMetadata || false;
+        const namespace = config.data.namespace.split('_').slice(1).join('_') || config.data.namespace;
+        const model = config.data?.model || 'gpt-4o-mini';
+        const prompt = config.data?.prompt?.trim?.() || '';
+        const postprocess = config.data?.postprocess || false;
+        const includeMetadata = config.data?.includeMetadata || false;
 
         const _input = typeof input.Query === 'string' ? input.Query : JSON.stringify(input.Query);
 
-        const topK = Math.max(config.data.topK, 50);
+        const topK = Math.max(config.data?.topK || 50, 50);
 
-        const vectorDB = ConnectorService.getVectorDBConnector();
+        let vectorDBHelper = VectorsHelper.load();
+
+        const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+        let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+
+        let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
+        if (!existingNs) {
+            await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespace);
+            debugOutput += `[Created namespace] \n${namespace}\n\n`;
+        } else if (!existingNs.metadata.isOnCustomStorage) {
+            // If the namespace exists but is not on custom storage, switch to the default connector.
+            vectorDbConnector = ConnectorService.getVectorDBConnector();
+        }
 
         let results: string[] | { content: string; metadata: any }[];
         let _error;
         try {
-            const response = await vectorDB.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
+            const response = await vectorDbConnector.user(AccessCandidate.team(teamId)).search(namespace, _input, { topK, includeMetadata: true });
             results = response.slice(0, config.data.topK).map((result) => ({
                 content: result.metadata?.text,
                 metadata: result.metadata,
@@ -79,6 +94,7 @@ export default class DataSourceLookup extends Component {
             } else {
                 results = results.map((result) => result.content);
             }
+            debugOutput += `[Results] \nLoaded ${results.length} results from namespace: ${namespace}\n\n`;
         } catch (error) {
             _error = error.toString();
         }
@@ -90,9 +106,8 @@ export default class DataSourceLookup extends Component {
             const promises: any = [];
             for (let result of results) {
                 const _prompt = TemplateString(prompt.replace(/{{result}}/g, JSON.stringify(result))).parse(input).result;
-                // promises.push(LLMHelper.componentLLMRequest(_prompt, model, {}, agent).catch((error) => result));
-                const llmHelper = LLMHelper.load(model);
-                // const req = llmHelper.promptRequest(_prompt, config, agent).catch((error) => ({ error: error }));
+                const llmInference = await LLMInference.getInstance(model);
+                // const req = llmInference.promptRequest(_prompt, config, agent).catch((error) => ({ error: error }));
                 // promises.push(req);
             }
             results = await Promise.all(promises);
@@ -105,10 +120,11 @@ export default class DataSourceLookup extends Component {
         }
 
         const totalLength = JSON.stringify(results).length;
+        debugOutput += `[Total Length] \n${totalLength}\n\n`;
         return {
             Results: results,
             _error,
-            _debug: `totalLength = ${totalLength}`,
+            _debug: debugOutput,
             //_debug: `Query: ${_input}. \nTotal Length = ${totalLength} \nResults: ${JSON.stringify(results)}`,
         };
     }

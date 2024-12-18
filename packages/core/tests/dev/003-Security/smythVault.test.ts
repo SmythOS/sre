@@ -17,6 +17,9 @@ const SREInstance = SmythRuntime.Instance.init({
           vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+    Account: {
+        Connector: 'SmythAccount',
+    }
 });
 
 describe('Vault Tests', () => {
@@ -32,6 +35,13 @@ describe('Vault Tests', () => {
         expect(value).toEqual('test_value');
     });
 
+    it('Read vault key by name', async () => {
+        const vault: VaultConnector = ConnectorService.getVaultConnector();
+
+        const value = await vault.user(AccessCandidate.team('test')).get('test_key');
+        expect(value).toEqual('test_value');
+    });
+
     it('Do not allow reading key from different team', async () => {
         const vault: VaultConnector = ConnectorService.getVaultConnector();
 
@@ -39,9 +49,9 @@ describe('Vault Tests', () => {
         const value = await vault
             .user(AccessCandidate.team('Team2'))
             .get('test')
-            .catch((e) => undefined);
+            .catch((e) => null);
 
-        expect(value).toBeUndefined();
+        expect(value).toBeNull();
     });
 
     it('Parse a template string containing vault keys', async () => {

@@ -17,6 +17,9 @@ const SREInstance = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    Account: {
+        Connector: 'DummyAccount',
+    },
 });
 
 describe('Vault Tests', () => {
@@ -53,7 +56,7 @@ describe('Vault Tests', () => {
         //prettier-ignore
         const result = await TemplateString(tpl)
             .parse({ MyVAR: 'Hello' })            
-            .parseTeamKeys(teamId)
+            .parseTeamKeysAsync(teamId)
             .asyncResult; //since parseTeamKeys is async, we use asyncResult with await to wait for the result
 
         expect(result).toEqual('using a vault key : THIS_IS_A_FAKE_DIFFBOT_API_KEY and a simple template variable : Hello');

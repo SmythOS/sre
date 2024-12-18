@@ -10,11 +10,11 @@ import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import DataSourceCleaner from '@sre/Components/DataSourceCleaner.class';
-import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TestAccountConnector } from '../../utils/TestConnectors';
 
-class CustomAccountConnector extends AccountConnector {
+class CustomAccountConnector extends TestAccountConnector {
     public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
         if (candidate.id === 'agent-123456') {
             return Promise.resolve('9');
@@ -61,6 +61,13 @@ const SREInstance = SmythRuntime.Instance.init({
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
         },
     },
+
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
 });
 
 ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
@@ -82,8 +89,9 @@ describe('DataSourceCleaner Component', () => {
 
             // index some data using the connector
             const namespace = faker.lorem.word();
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            await vectorDB.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
+            const vectorDBHelper = VectorsHelper.load();
+            const vectorDbConnector = ConnectorService.getVectorDBConnector();
+            await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).createNamespace(namespace);
 
             const sourceText = ['What is the capital of France?', 'Paris'];
 
@@ -111,11 +119,9 @@ describe('DataSourceCleaner Component', () => {
 
             expect(id).toBeDefined();
 
-            const dsBeforeDel = await VectorsHelper.load().getDatasource(
-                agent.teamId,
-                namespace,
-                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
-            );
+            const dsBeforeDel = await vectorDbConnector
+                .user(AccessCandidate.team(agent.teamId))
+                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsBeforeDel).toBeDefined();
 
@@ -136,17 +142,15 @@ describe('DataSourceCleaner Component', () => {
             // expect that the datasource file does not exist now
             // const existsAfterDelete = await SmythFS.Instance.exists(dsUrl, AccessCandidate.team(agent.teamId));
 
-            const dsAfterDel = await VectorsHelper.load().getDatasource(
-                agent.teamId,
-                namespace,
-                DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace)
-            );
+            const dsAfterDel = await vectorDbConnector
+                .user(AccessCandidate.team(agent.teamId))
+                .getDatasource(namespace, DataSourceIndexer.genDsId(dynamic_id, agent.teamId, namespace));
 
             expect(dsAfterDel).toBeUndefined();
 
             // expect that all the embeddings are deleted. we can do that by doing a similar search on the data we indexed
 
-            const vectors = await vectorDB.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
+            const vectors = await vectorDbConnector.user(AccessCandidate.team(agent.teamId)).search(namespace, 'Paris');
 
             expect(vectors).toBeDefined();
             expect(vectors.length).toBe(0);

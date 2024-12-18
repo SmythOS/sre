@@ -31,6 +31,10 @@ const devConfig = {
             treeShaking: false,
         }),
 
+        // typescript({
+        //     tsconfig: 'tsconfig.json',
+        //     clean: true,
+        // }),
         filenameReplacePlugin(),
         sourcemaps(),
         copy({

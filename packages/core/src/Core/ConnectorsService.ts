@@ -13,6 +13,9 @@ import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDat
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
+import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
+import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
+import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 const console = Logger('ConnectorService');
 
 const Connectors = {};
@@ -74,7 +77,7 @@ export class ConnectorService {
      * @param isDefault
      * @returns
      */
-    static init(connectorType: TConnectorService, connectorName: string, settings: any = {}, isDefault = false) {
+    static init(connectorType: TConnectorService, connectorName: string, connectorId?: string, settings: any = {}, isDefault = false) {
         if (ConnectorInstances[connectorType]?.[connectorName]) {
             throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
         }
@@ -88,7 +91,8 @@ export class ConnectorService {
 
             connector.start();
             if (!ConnectorInstances[connectorType]) ConnectorInstances[connectorType] = {};
-            ConnectorInstances[connectorType][connectorName] = connector;
+            const id = connectorId || connectorName;
+            ConnectorInstances[connectorType][id] = connector;
 
             if (!ConnectorInstances[connectorType].default && isDefault) {
                 ConnectorInstances[connectorType].default = connector;
@@ -113,6 +117,8 @@ export class ConnectorService {
                 return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]] as T;
             }
             console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+            //print stack trace
+            console.debug(new Error().stack);
             return DummyConnector as T;
         }
         return instance;
@@ -148,6 +154,10 @@ export class ConnectorService {
         return ConnectorService.getInstance<VaultConnector>(TConnectorService.Vault, name);
     }
 
+    static getManagedVaultConnector(name?: string): ManagedVaultConnector {
+        return ConnectorService.getInstance<ManagedVaultConnector>(TConnectorService.ManagedVault, name);
+    }
+
     static getAccountConnector(name?: string): AccountConnector {
         return ConnectorService.getInstance<AccountConnector>(TConnectorService.Account, name);
     }
@@ -160,11 +170,19 @@ export class ConnectorService {
         return ConnectorService.getInstance<CLIConnector>(TConnectorService.CLI, name);
     }
 
+    static getLogConnector(name?: string): LogConnector {
+        return ConnectorService.getInstance<LogConnector>(TConnectorService.Log, name);
+    }
+
     //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...
 
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorInstances[connectorType]?.[connectorName];
         return instance && instance !== DummyConnector;
+    }
+
+    static getRouterConnector(name?: string): RouterConnector {
+        return ConnectorService.getInstance<RouterConnector>(TConnectorService.Router, name);
     }
 }
 

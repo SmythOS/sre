@@ -1,4 +1,4 @@
-import { xxh3 } from '@node-rs/xxhash';
+import xxhash from 'xxhashjs';
 import { describe, expect, it } from 'vitest';
 
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
@@ -14,6 +14,13 @@ import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { TestAccountConnector } from '../../utils/TestConnectors';
+
+function xxh3(source) {
+    const h64 = xxhash.h64(); // Use xxhashjs's h64 function
+    return h64.update(source.toString()).digest().toString(16);
+}
+
 const SREInstance = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -32,11 +39,11 @@ const testAdditionalACLMetadata = {
     entries: {
         [TAccessRole.Team]: {
             //hash 'team1'
-            [xxh3.xxh64('team1').toString(16)]: [TAccessLevel.Read, TAccessLevel.Write],
+            [xxh3('team1')]: [TAccessLevel.Read, TAccessLevel.Write],
         },
         [TAccessRole.Agent]: {
             //hash 'team1'
-            [xxh3.xxh64('agent1').toString(16)]: [TAccessLevel.Owner],
+            [xxh3('agent1')]: [TAccessLevel.Owner],
         },
     },
 };
@@ -61,6 +68,14 @@ const testOriginalMetadata = {
 describe('S3 Storage Tests', () => {
     it('Create S3Storage', async () => {
         const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
+        const newClient = s3Storage.instance({
+            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            region: config.env.AWS_S3_REGION || '',
+            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
+            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        });
+        newClient.name = 'test';
+
         expect(s3Storage).toBeInstanceOf(S3Storage);
     });
 
@@ -68,7 +83,7 @@ describe('S3 Storage Tests', () => {
         //Expected to not work, will only work if we associate the candidate "agent-123456" with the team "9"
         //here we create a custom connector just to test this case
 
-        class CustomAccountConnector extends AccountConnector {
+        class CustomAccountConnector extends TestAccountConnector {
             public getCandidateTeam(candidate: IAccessCandidate): Promise<string | undefined> {
                 if (candidate.id === 'agent-123456') {
                     return Promise.resolve('9');
@@ -79,7 +94,7 @@ describe('S3 Storage Tests', () => {
         ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', CustomAccountConnector);
 
         //initialize the custom account connector and force it to be default AccountConnector
-        ConnectorService.init(TConnectorService.Account, 'MyCustomAccountConnector', {}, true);
+        ConnectorService.init(TConnectorService.Account, 'MyCustomAccountConnector', null, {}, true);
 
         const s3Storage: StorageConnector = ConnectorService.getStorageConnector();
         const legacyFile = 'teams/9/logs/closz0vak00009tsctm7e8xzs/2024-05-12/LLW3FLB08WIE';

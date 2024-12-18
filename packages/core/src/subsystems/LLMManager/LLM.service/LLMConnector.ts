@@ -2,33 +2,41 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import models from '@sre/LLMManager/models';
-import paramMappings from '@sre/LLMManager/paramMappings';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { IAccessCandidate } from '@sre/types/ACL.types';
-import { LLMParams, LLMMessageBlock, LLMToolResultMessageBlock, ToolData } from '@sre/types/LLM.types';
-import { isDataUrl, isUrl } from '@sre/utils';
-import axios from 'axios';
-import { encode } from 'gpt-tokenizer';
-import imageSize from 'image-size';
+import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData, TLLMProvider } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { TBedrockModel, TVertexAIModel } from '@sre/types/LLM.types';
+
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
-    chatRequest(prompt, params: any): Promise<any>;
+    chatRequest(params: any): Promise<any>;
     visionRequest(prompt, params: any): Promise<any>;
+    multimodalRequest(prompt, params: any): Promise<any>;
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
     streamRequest(params: any): Promise<EventEmitter>;
+    imageGenRequest(prompt, params: any): Promise<any>;
 }
 
 export type LLMChatResponse = {
     content: string;
     finishReason: string;
+};
+
+export type ImagesResponse = {
+    created: number;
+    data: Array<{
+        b64_json?: string;
+        url?: string;
+    }>;
 };
 
 export class LLMStream extends Readable {
@@ -70,192 +78,72 @@ export class LLMStream extends Readable {
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, prompt, params: any): Promise<LLMChatResponse>;
+    protected abstract chatRequest(acRequest: AccessRequest, params: any): Promise<LLMChatResponse>;
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
+
+    private vaultConnector: VaultConnector;
 
     public user(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
-        const vaultConnector = ConnectorService.getVaultConnector();
-        if (!vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+
+        this.vaultConnector = ConnectorService.getVaultConnector();
+
+        if (!this.vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+
         return {
-            chatRequest: async (prompt, params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.chatRequest(candidate.readRequest, prompt, params);
+            chatRequest: async (params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.chatRequest(candidate.readRequest, _params);
             },
             visionRequest: async (prompt, params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.visionRequest(candidate.readRequest, prompt, params, candidate.id);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
+            },
+            multimodalRequest: async (prompt, params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
+            },
+            imageGenRequest: async (prompt, params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.imageGenRequest(candidate.readRequest, prompt, _params);
             },
             toolRequest: async (params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.toolRequest(candidate.readRequest, params);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.toolRequest(candidate.readRequest, _params);
             },
             streamToolRequest: async (params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.streamToolRequest(candidate.readRequest, params);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.streamToolRequest(candidate.readRequest, _params);
             },
             streamRequest: async (params: any) => {
-                const llm = models[params.model]?.llm;
-                if (!llm) throw new Error(`Model ${params.model} not supported`);
-                params.apiKey = await vaultConnector
-                    .user(candidate)
-                    .get(llm)
-                    .catch((e) => ''); //if vault access is denied we just return empty key
-                return this.streamRequest(candidate.readRequest, params);
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.streamRequest(candidate.readRequest, _params);
             },
         };
-    }
-
-    private getAllowedCompletionTokens(model: string, hasTeamAPIKey: boolean = false) {
-        const alias = models[model]?.alias || model;
-
-        // Only allow full token limit if the API key is provided by the team
-        const maxTokens = hasTeamAPIKey
-            ? models[alias]?.keyOptions?.completionTokens || models[alias]?.keyOptions?.tokens
-            : models[alias]?.completionTokens || models[alias]?.tokens;
-
-        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
-    }
-
-    private async getSafeMaxTokens(givenMaxTokens: number, model: string, hasApiKey: boolean): Promise<number> {
-        let allowedTokens = this.getAllowedCompletionTokens(model, hasApiKey);
-
-        // If the specified max tokens exceed the allowed limit, use the maximum allowed tokens instead.
-        let maxTokens = givenMaxTokens > allowedTokens ? allowedTokens : givenMaxTokens;
-
-        return +maxTokens;
-    }
-
-    protected async countVisionPromptTokens(prompt: any) {
-        let tokens = 0;
-
-        const textObj = prompt?.filter((item) => item.type === 'text');
-
-        /**
-         * encodeChat does not support object like {type: 'text', text: 'some text'}
-         * so count tokens of the text separately
-         * TODO: try to improve this later
-         */
-        const textTokens = encode(textObj?.[0]?.text).length;
-
-        const images = prompt?.filter((item) => item.type === 'image_url');
-        let imageTokens = 0;
-
-        for (const image of images) {
-            const image_url = image?.image_url?.url;
-            const { width, height } = await _getImageDimensions(image_url);
-
-            const tokens = _countImageTokens(width, height);
-
-            imageTokens += tokens;
-        }
-
-        tokens = textTokens + imageTokens;
-
-        return tokens;
-    }
-
-    public resolveModelName(model: string) {
-        return models[model]?.alias || model;
-    }
-    private getAllowedContextTokens(model: string, hasTeamAPIKey: boolean = false) {
-        const alias = this.resolveModelName(model);
-
-        // Only allow full token limit if the API key is provided by the team
-        const maxTokens = hasTeamAPIKey ? models[alias]?.keyOptions?.tokens : models[alias]?.tokens;
-
-        return +(maxTokens ?? DEFAULT_MAX_TOKENS_FOR_LLM);
-    }
-
-    // ! DEPRECATED: will be removed in favor of validateTokensLimit
-    public checkTokensLimit({
-        model,
-        promptTokens,
-        completionTokens,
-        hasTeamAPIKey = false,
-    }: {
-        model: string;
-        promptTokens: number;
-        completionTokens: number;
-        hasTeamAPIKey?: boolean;
-    }): { isExceeded: boolean; error: string } {
-        const allowedContextTokens = this.getAllowedContextTokens(model, hasTeamAPIKey);
-        const totalTokens = promptTokens + completionTokens;
-
-        if (totalTokens > allowedContextTokens) {
-            return {
-                isExceeded: true,
-                error: hasTeamAPIKey
-                    ? `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`
-                    : `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`,
-            };
-        }
-
-        return { isExceeded: false, error: '' };
-    }
-
-    /**
-     * Validates if the total tokens (prompt input token + maximum output token) exceed the allowed context tokens for a given model.
-     *
-     * @param {Object} params - The function parameters.
-     * @param {string} params.model - The model identifier.
-     * @param {number} params.promptTokens - The number of tokens in the input prompt.
-     * @param {number} params.completionTokens - The number of tokens in the output completion.
-     * @param {boolean} [params.hasTeamAPIKey=false] - Indicates if the user has a team API key.
-     * @throws {Error} - Throws an error if the total tokens exceed the allowed context tokens.
-     */
-    public validateTokensLimit({
-        model,
-        promptTokens,
-        completionTokens,
-        hasTeamAPIKey = false,
-    }: {
-        model: string;
-        promptTokens: number;
-        completionTokens: number;
-        hasTeamAPIKey?: boolean;
-    }): void {
-        const allowedContextTokens = this.getAllowedContextTokens(model, hasTeamAPIKey);
-        const totalTokens = promptTokens + completionTokens;
-
-        const teamAPIKeyExceededMessage = `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`;
-        const noAPIKeyExceededMessage = `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`;
-
-        if (totalTokens > allowedContextTokens) {
-            throw new Error(hasTeamAPIKey ? teamAPIKeyExceededMessage : noAPIKeyExceededMessage);
-        }
     }
 
     public enhancePrompt(prompt: string, config: any) {
         if (!prompt) return prompt;
         let newPrompt = prompt;
         const outputs = {};
-        for (let con of config.outputs) {
-            if (con.default) continue;
-            outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+
+        if (config?.outputs) {
+            for (let con of config.outputs) {
+                if (con.default) continue;
+                outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+            }
         }
 
         const excludedKeys = ['_debug', '_error'];
@@ -263,7 +151,7 @@ export abstract class LLMConnector extends Connector {
 
         if (outputKeys.length > 0) {
             const outputFormat = {};
-            outputKeys.forEach((key) => (outputFormat[key] = '<value>'));
+            outputKeys.forEach((key) => (outputFormat[key] = config.name === 'Classifier' ? '<Boolean|String>' : '<value>'));
 
             newPrompt +=
                 '\n##\nExpected output format = ' +
@@ -275,87 +163,7 @@ export abstract class LLMConnector extends Connector {
 
         return newPrompt;
     }
-    public async extractLLMComponentParams(config: any) {
-        const params: LLMParams = {};
-        const model: string = config.data.model;
-        // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
 
-        const apiKey = '';
-        //TODO: implement apiKey extraction from team vault
-        //const apiKey = await getLLMApiKey(model, agent?.teamId);
-        //if (apiKey) params.apiKey = apiKey;
-
-        /*** Prepare parameters from config data ***/
-
-        // * We need to keep the config.data unchanged to avoid any side effects, especially when run components with loop
-        const clonedConfigData = JSON.parse(JSON.stringify(config.data || {}));
-        const configParams = {};
-
-        for (const [key, value] of Object.entries(clonedConfigData)) {
-            let _value: string | number | string[] | null = value as string;
-
-            // When we have stopSequences, we need to split it into an array
-            if (key === 'stopSequences') {
-                _value = _value ? _value?.split(',') : null;
-            }
-
-            // When we have a string that is a number, we need to convert it to a number
-            if (typeof _value === 'string' && !isNaN(Number(_value))) {
-                _value = +_value;
-            }
-
-            // Always provide safe max tokens based on the model and apiKey
-            if (key === 'maxTokens') {
-                let maxTokens = Number(_value);
-
-                if (!maxTokens) {
-                    throw new Error('Max output token not provided');
-                }
-
-                maxTokens = await this.getSafeMaxTokens(maxTokens, model, !!apiKey);
-                _value = maxTokens;
-            }
-
-            configParams[key] = _value;
-        }
-
-        /*** Prepare LLM specific parameters ***/
-
-        const alias = models[model]?.alias || model;
-        const llm = models[alias]?.llm;
-
-        for (const [configKey, paramKey] of Object.entries(paramMappings[llm])) {
-            // we need to allow 0 as truthy
-            if (configParams?.[configKey] !== undefined || configParams?.[configKey] !== null || configParams?.[configKey] !== '') {
-                const value = configParams[configKey];
-
-                params[paramKey as string] = value;
-            }
-        }
-
-        return params;
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = {};
-        const model: string = config.data.model;
-        // Retrieve the API key and include it in the parameters here, as it is required for the max tokens check.
-
-        const apiKey = '';
-        //TODO: implement apiKey extraction from team vault
-        //const apiKey = await getLLMApiKey(model, agent?.teamId);
-        //if (apiKey) params.apiKey = apiKey;
-
-        const maxTokens = (await this.getSafeMaxTokens(+config.data.maxTokens, model, !!apiKey)) || 300;
-
-        const alias = models[model]?.alias || model;
-        const llm = models[alias]?.llm;
-
-        // as max output token prop name differs based on LLM provider, we need to get the actual prop from paramMappings
-        params[paramMappings[llm]?.maxTokens] = maxTokens;
-
-        return params;
-    }
     public postProcess(response: string) {
         try {
             return JSONContent(response).tryParse();
@@ -371,84 +179,215 @@ export abstract class LLMConnector extends Connector {
         throw new Error('This model does not support tools');
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
+    }): TLLMToolResultMessageBlock[] {
         throw new Error('This model does not support tools');
     }
 
-    public hasSystemMessage(messages: any) {
-        if (!Array.isArray(messages)) return false;
-
-        return messages?.some((message) => message.role === 'system');
+    public getConsistentMessages(messages: TLLMMessageBlock[]) {
+        return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
-    public separateSystemMessages(messages: LLMMessageBlock[]): {
-        systemMessage: LLMMessageBlock | {};
-        otherMessages: LLMMessageBlock[];
-    } {
-        const systemMessage = messages.find((message) => message.role === 'system') || {};
-        const otherMessages = messages.filter((message) => message.role !== 'system');
+    public async prepareParams(candidate: AccessCandidate, params: any) {
+        // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const fileSources = params?.fileSources;
+        delete params?.fileSources; // need to remove fileSources to avoid any issues during JSON.stringify() especially when we have large files
 
-        return { systemMessage, otherMessages };
-    }
-}
+        const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
-// Function to calculate tokens from image
-function _countImageTokens(width: number, height: number, detailMode: string = 'auto') {
-    if (detailMode === 'low') return 85;
+        // Format the parameters to ensure proper type of values
+        const _params = this.formatParamValues(clonedParams);
 
-    const maxDimension = Math.max(width, height);
-    const minDimension = Math.min(width, height);
-    let scaledMinDimension = minDimension;
+        const model = _params.model;
 
-    if (maxDimension > 2048) {
-        scaledMinDimension = (2048 / maxDimension) * minDimension;
-    }
+        const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
-    scaledMinDimension = Math.floor((768 / 1024) * scaledMinDimension);
+        if (isStandardLLM) {
+            const llmProvider = LLMRegistry.getProvider(model);
 
-    let tileSize = 512;
-    let tiles = Math.ceil(scaledMinDimension / tileSize);
-    if (minDimension !== scaledMinDimension) {
-        tiles *= Math.ceil((scaledMinDimension * (maxDimension / minDimension)) / tileSize);
-    }
+            _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
-    return tiles * 170 + 85;
-}
+            if (_params.maxTokens) {
+                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+            }
 
-async function _getImageDimensions(url: string): Promise<{ width: number; height: number }> {
-    try {
-        let buffer: Buffer;
+            const baseUrl = LLMRegistry.getBaseURL(params.model);
 
-        if (isDataUrl(url)) {
-            const base64Data = url.replace(/^data:image\/\w+;base64,/, '');
+            if (baseUrl) {
+                _params.baseURL = baseUrl;
+            }
 
-            // Create a buffer from the base64-encoded string
-            buffer = Buffer.from(base64Data, 'base64');
-        } else if (isUrl(url)) {
-            const response = await axios.get(url, { responseType: 'arraybuffer' });
-
-            // Convert the response to a buffer
-            buffer = Buffer.from(response.data);
+            _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            throw new Error('Please provide a valid image url!');
+            const teamId = await this.getTeamId(candidate);
+
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+
+            const modelInfo = customLLMRegistry.getModelInfo(model);
+
+            _params.modelInfo = modelInfo;
+
+            const llmProvider = customLLMRegistry.getProvider(model);
+
+            if (llmProvider === TLLMProvider.Bedrock) {
+                _params.credentials = await this.getBedrockCredentials(candidate, modelInfo as TBedrockModel);
+            } else if (llmProvider === TLLMProvider.VertexAI) {
+                _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TVertexAIModel);
+            }
+
+            if (_params.maxTokens) {
+                _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+            }
+
+            _params.model = customLLMRegistry.getModelId(model) || model;
         }
 
-        // Use the imageSize module to get the dimensions
-        const dimensions = imageSize(buffer);
+        // Attach the fileSources again after formatting the parameters
+        _params.fileSources = fileSources;
 
-        return {
-            width: dimensions?.width || 0,
-            height: dimensions?.height || 0,
+        return _params;
+    }
+
+    // TODO [Forhad]: apply proper typing for _value and return value
+    private formatParamValues(params: Record<string, string | number | TLLMMessageBlock[]>): any {
+        let _params = {};
+
+        for (const [key, value] of Object.entries(params)) {
+            let _value: any = value;
+
+            // When we have stopSequences, we need to split it into an array
+            if (key === 'stopSequences') {
+                _value = _value ? _value?.split(',') : null;
+            }
+
+            // When we have a string that is a number, we need to convert it to a number
+            if (typeof _value === 'string' && !isNaN(Number(_value))) {
+                _value = +_value;
+            }
+
+            if (key === 'messages') {
+                _value = this.getConsistentMessages(_value);
+            }
+
+            _params[key] = _value;
+        }
+
+        return _params;
+    }
+
+    /**
+     * Retrieves API key credentials for standard LLM providers from the vault
+     * @param candidate - The access candidate requesting the credentials
+     * @param provider - The LLM provider name (e.g., 'openai', 'anthropic')
+     * @returns Promise resolving to an object containing the provider's API key
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @remarks Returns an empty string as API key if vault access fails
+     * @private
+     */
+    private async getStandardLLMCredentials(candidate: AccessCandidate, provider: string): Promise<{ apiKey: string }> {
+        const apiKey = await this.vaultConnector
+            .user(candidate)
+            .get(provider)
+            .catch(() => '');
+
+        return { apiKey };
+    }
+
+    /**
+     * Retrieves AWS Bedrock credentials from the vault for authentication
+     * @param candidate - The access candidate requesting the credentials
+     * @param modelInfo - The Bedrock model information containing credential key names in settings
+     * @returns Promise resolving to AWS credentials object
+     * @returns {Promise<Object>} credentials
+     * @returns {string} credentials.accessKeyId - AWS access key ID
+     * @returns {string} credentials.secretAccessKey - AWS secret access key
+     * @returns {string} [credentials.sessionToken] - Optional AWS session token
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @private
+     */
+    private async getBedrockCredentials(
+        candidate: AccessCandidate,
+        modelInfo: TBedrockModel
+    ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string }> {
+        const keyIdName = modelInfo.settings?.keyIDName;
+        const secretKeyName = modelInfo.settings?.secretKeyName;
+        const sessionKeyName = modelInfo.settings?.sessionKeyName;
+
+        const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
+            this.vaultConnector
+                .user(candidate)
+                .get(keyIdName)
+                .catch(() => ''),
+            this.vaultConnector
+                .user(candidate)
+                .get(secretKeyName)
+                .catch(() => ''),
+            this.vaultConnector
+                .user(candidate)
+                .get(sessionKeyName)
+                .catch(() => ''),
+        ]);
+
+        let credentials: {
+            accessKeyId: string;
+            secretAccessKey: string;
+            sessionToken?: string;
+        } = {
+            accessKeyId,
+            secretAccessKey,
         };
-    } catch (error) {
-        console.error('Error getting image dimensions', error);
 
-        throw new Error('Please provide a valid image url!');
+        if (sessionToken) {
+            credentials.sessionToken = sessionToken;
+        }
+
+        return credentials;
+    }
+
+    /**
+     * Retrieves the credentials required for VertexAI authentication from the vault
+     * @param candidate - The access candidate requesting the credentials
+     * @param modelInfo - The VertexAI model information containing settings
+     * @returns Promise resolving to the parsed JSON credentials for VertexAI
+     * @throws {Error} If vault connector is unavailable (handled in parent method)
+     * @throws {Error} If JSON parsing fails or credentials are malformed
+     * @remarks Returns empty credentials if vault access fails
+     * @private
+     */
+    private async getVertexAICredentials(candidate: AccessCandidate, modelInfo: TVertexAIModel): Promise<Record<string, string>> {
+        const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
+
+        let jsonCredentials = await this.vaultConnector
+            .user(candidate)
+            .get(jsonCredentialsName)
+            .catch(() => '');
+
+        const credentials = JSON.parse(jsonCredentials);
+
+        return credentials;
+    }
+
+    /**
+     * Retrieves the team ID associated with the given access candidate
+     * @param candidate - The access candidate whose team ID needs to be retrieved
+     * @returns Promise<string> - The unique identifier of the team associated with the candidate
+     * @throws {Error} If the Account Connector service is unavailable or cannot be accessed
+     * @throws {Error} If the candidate's team cannot be retrieved
+     * @private
+     * @remarks This method is used internally to determine the team context for custom LLM operations
+     */
+    private async getTeamId(candidate: AccessCandidate): Promise<string> {
+        const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
+
+        if (!accountConnector) throw new Error('Account Connector unavailable, cannot proceed');
+
+        const teamId = await accountConnector.getCandidateTeam(candidate);
+
+        return teamId;
     }
 }

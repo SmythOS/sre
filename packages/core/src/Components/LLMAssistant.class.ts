@@ -2,14 +2,21 @@ import Joi from 'joi';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { encode } from 'gpt-tokenizer';
 import Component from './Component.class';
-import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { TLLMMessageRole } from '@sre/types/LLM.types';
+import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import path from 'path';
+import config from '@sre/config';
+import fs from 'fs/promises';
 
 //const sessions = {};
 let cacheConnector: CacheConnector;
@@ -38,9 +45,14 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
     //if (!sessions[agentId]) return [];
     //if (!sessions[agentId][conv_uid]) return [];
 
-    const sessionData = await cacheConnector.user(AccessCandidate.agent(agentId)).get(conv_uid);
+    const sessionData = await cacheConnector.user(AccessCandidate.agent(agentId))?.get(conv_uid);
 
-    const messages = sessionData ? JSONContent(sessionData).tryParse() : [];
+    let messages = sessionData ? JSONContent(sessionData).tryParse() : [];
+    if (messages?.length == 0) {
+        // if no messages found, try to search for a legacy session
+        const migrationResult = await migrateLegacySession(agentId, userId, conversationId);
+        messages = migrationResult?.messages || [];
+    }
     //const messages = sessions[agentId][conv_uid].messages;
 
     const filteredMessages: any[] = [];
@@ -67,6 +79,51 @@ async function readMessagesFromSession(agentId, userId, conversationId, maxToken
     return filteredMessages;
 }
 
+async function migrateLegacySession(agentId, userId, conversationId) {
+    let migrated = false;
+    if (!config.env.DATA_PATH) {
+        console.warn('LLMAssistant : No data path found, skipping legacy session migration');
+        return { migrated, messages: [] };
+    }
+    const cacheConnector = getCacheConnector();
+    const legacy_conv_uid = `u${userId}c${conversationId}`;
+    const legacySessionPath = path.join(config.env.DATA_PATH!, 'LLMAssistant', agentId, `${legacy_conv_uid}.json`);
+
+    //check if the session file exists
+    const fileExists = await fs
+        .access(legacySessionPath)
+        .then(() => true)
+        .catch(() => false);
+    if (!fileExists) return { migrated, messages: [] };
+
+    const sessionData = await fs.readFile(legacySessionPath, 'utf8');
+    let jsonData = JSONContent(sessionData).tryParse();
+
+    if (typeof jsonData == 'object' && jsonData?.migrated) {
+        console.warn(`LLMAssistant : Legacy session for agent ${agentId}, user ${userId}, conversation ${conversationId} already migrated.`);
+        return { migrated, messages: [] };
+    }
+
+    console.warn(`LLMAssistant : Session file found for agent ${agentId}, user ${userId}, conversation ${conversationId}. Migrating to cache...`);
+
+    const messages = typeof jsonData == 'object' ? jsonData?.messages : [];
+    const cache_conv_uid = `${agentId}:conv-u${userId}-c${conversationId}`;
+    await cacheConnector
+        .user(AccessCandidate.agent(agentId))
+        .set(cache_conv_uid, JSON.stringify(messages), null, null, null)
+        .catch((error) => {
+            console.error(
+                `LLMAssistant : Error migrating legacy session to cache for agent ${agentId}, user ${userId}, conversation ${conversationId}. Error=${error}`
+            );
+        });
+    migrated = true;
+
+    // add an entry in the legacy session file to indicate it has been migrated
+    await fs.writeFile(legacySessionPath, JSON.stringify({ ...jsonData, migrated: true }), 'utf8');
+
+    return { migrated, messages };
+}
+
 //TODO : update this implementation to use ConversationManager
 //        This will allow better context management and support for tool calls
 export default class LLMAssistant extends Component {
@@ -86,9 +143,11 @@ export default class LLMAssistant extends Component {
 
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            let teamId = agent?.teamId;
+
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -104,20 +163,33 @@ export default class LLMAssistant extends Component {
             let behavior = TemplateString(config.data.behavior).parse(input).result;
             logger.debug(`[Parsed Behavior] \n${behavior}\n\n`);
 
-            const modelInfo = llmHelper.modelInfo;
-            const maxTokens = modelInfo?.tokens ?? 2048;
+            //#region get max tokens
+            let maxTokens = 2048;
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+            if (isStandardLLM) {
+                const provider = LLMRegistry.getProvider(model);
+                const apiKey = await VaultHelper.getAgentKey(provider, agent?.id);
+                maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
+            } else {
+                const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+                maxTokens = await customLLMRegistry.getMaxCompletionTokens(model);
+            }
+            //#endregion get max tokens
 
             const messages: any[] = await readMessagesFromSession(agent.id, userId, conversationId, Math.round(maxTokens / 2));
 
-            if (messages[0]?.role != 'system') messages.unshift({ role: 'system', content: behavior });
-            messages.push({ role: 'user', content: userInput });
-            //saveMessagesToSession(agent.id, userId, conversationId, messages);
+            messages.push({ role: TLLMMessageRole.User, content: userInput });
+
+            if (messages[0]?.role != TLLMMessageRole.System) {
+                messages.unshift({ role: TLLMMessageRole.System, content: behavior });
+            }
 
             const customParams = {
                 messages,
             };
 
-            const response: any = await llmHelper.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
+            const response: any = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
 
             // in case we have the response but it's empty string, undefined or null
             if (!response) {

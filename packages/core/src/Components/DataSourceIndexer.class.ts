@@ -42,13 +42,17 @@ export default class DataSourceIndexer extends Component {
                 outputs[con.name] = con?.description ? `<${con?.description}>` : '';
             }
 
-            const namespaceId = _config.namespace;
+            const namespaceId = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
 
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+            const vectorDBHelper = VectorsHelper.load();
+            const vectorDbConnector = (await vectorDBHelper.getTeamConnector(teamId)) || ConnectorService.getVectorDBConnector();
+            const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
+
             if (!nsExists) {
-                throw new Error(`Namespace ${namespaceId} does not exist`);
+                // throw new Error(`Namespace ${namespaceId} does not exist`);
+                const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+                debugOutput += `[Created namespace] \n${newNs}\n\n`;
             }
 
             const inputSchema = this.validateInput(input);
@@ -150,8 +154,17 @@ export default class DataSourceIndexer extends Component {
     }
 
     private async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
-        const id = await VectorsHelper.load().createDatasource(text, namespaceId, {
-            teamId,
+        let vectorDBHelper = VectorsHelper.load();
+        let vectorDbConnector = ConnectorService.getVectorDBConnector();
+        const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
+        if (isOnCustomStorage) {
+            const customTeamConnector = await vectorDBHelper.getTeamConnector(teamId);
+            if (customTeamConnector) {
+                vectorDbConnector = customTeamConnector;
+            }
+        }
+        const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
+            text,
             metadata,
             id: sourceId,
             label: name,

@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -13,13 +13,15 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
 
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
-import { IAccessCandidate } from '@sre/types/ACL.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GoogleAIConnector');
 
@@ -28,17 +30,19 @@ type FileObject = {
     mimetype: string;
 };
 
-const DEFAULT_MODEL = 'gemini-pro';
+const DEFAULT_MODEL = 'gemini-1.5-pro';
 
-const MODELS_WITH_SYSTEM_MESSAGE = [
+const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
+    'gemini-1.5-pro-exp-0801',
+    'gemini-1.5-pro-latest',
     'gemini-1.5-pro-latest',
     'gemini-1.5-pro',
     'gemini-1.5-pro-001',
     'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
     'gemini-1.5-flash-001',
+    'gemini-1.5-flash',
 ];
-const MODELS_WITH_JSON_RESPONSE = MODELS_WITH_SYSTEM_MESSAGE;
+const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
@@ -63,113 +67,112 @@ const VALID_MIME_TYPES = [
     'audio/aac',
     'audio/ogg',
     'audio/flac',
+    'application/pdf',
+    'application/x-javascript',
+    'application/x-typescript',
+    'application/x-python-code',
+    'application/json',
+    'application/rtf',
     'text/plain',
     'text/html',
     'text/css',
     'text/javascript',
-    'application/x-javascript',
     'text/x-typescript',
-    'application/x-typescript',
     'text/csv',
     'text/markdown',
     'text/x-python',
-    'application/x-python-code',
-    'application/json',
     'text/xml',
-    'application/rtf',
     'text/rtf',
 ];
 
 // Supported image MIME types for Google AI's Gemini models
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
-export type GetGenerativeModelArgs = {
-    model: string;
-    generationConfig: {
-        stopSequences: string[];
-        candidateCount: number;
-        maxOutputTokens: number;
-        temperature: number;
-        topP: number;
-        topK: number;
-    };
-    systemInstruction?: string;
-};
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
-    private validMimeTypes = VALID_MIME_TYPES;
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validMimeTypes = {
+        all: VALID_MIME_TYPES,
+        image: VALID_IMAGE_MIME_TYPES,
+    };
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+        let prompt = '';
+
+        const model = params?.model || DEFAULT_MODEL;
+
+        const apiKey = params?.credentials?.apiKey;
+
+        let messages = params?.messages || [];
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemInstruction = '';
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+
+        if ('content' in systemMessage) {
+            systemInstruction = systemMessage.content as string;
+        }
+
+        messages = otherMessages;
+
+        const responseFormat = params?.responseFormat || '';
+        let responseMimeType = '';
+
+        if (responseFormat === 'json') {
+            systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
+            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                responseMimeType = 'application/json';
+            }
+        }
+
+        if (messages?.length > 0) {
+            // Concatenate messages with prompt and remove messages from params as it's not supported
+            prompt += messages.map((message) => message?.parts?.[0]?.text || '').join('\n');
+        }
+
+        // if the the model does not support system instruction, we will add it to the prompt
+        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+            prompt = `${prompt}\n${systemInstruction}`;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        if (!prompt) throw new Error('Prompt is required!');
+
+        // TODO: implement claude specific token counting to validate token limit
+        // this.validateTokenLimit(params);
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        const generationConfig: GenerationConfig = {};
+
+        if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params.topP !== undefined) generationConfig.topP = params.topP;
+        if (params.topK !== undefined) generationConfig.topK = params.topK;
+        if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+
+        if (systemInstruction) modelParams.systemInstruction = systemInstruction;
+        if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
         try {
-            const model = params?.model || DEFAULT_MODEL;
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
 
-            const apiKey = params?.apiKey;
-
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-
-            let messages = params?.messages || [];
-
-            let systemInstruction;
-            let systemMessage: LLMMessageBlock | {} = {};
-
-            if (this.hasSystemMessage(params?.messages)) {
-                const separateMessages = this.separateSystemMessages(messages);
-                systemMessage = separateMessages.systemMessage;
-                messages = separateMessages.otherMessages;
-            }
-
-            if (MODELS_WITH_SYSTEM_MESSAGE.includes(model)) {
-                systemInstruction = (systemMessage as LLMMessageBlock)?.content || '';
-            } else {
-                prompt = `${prompt}\n${(systemMessage as LLMMessageBlock)?.content || ''}`;
-            }
-
-            if (params?.messages) {
-                // Concatenate messages with prompt and remove messages from params as it's not supported
-                prompt = params.messages.map((message) => message?.content || '').join('\n');
-            }
-
-            // Need to return JSON for LLM Prompt component
-            const responseFormat = params?.responseFormat || 'json';
-            if (responseFormat === 'json') {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
-            }
-
-            if (!prompt) throw new Error('Prompt is required!');
-
-            const args: GetGenerativeModelArgs = {
-                model,
-                generationConfig: params,
-            };
-
-            if (systemInstruction) args.systemInstruction = systemInstruction;
-
-            const generationConfig = {
-                stopSequences: params.stopSequences,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                topK: params.topK,
-            };
-
-            const $model = genAI.getGenerativeModel({
-                model,
-                systemInstruction,
-                generationConfig,
-            });
-
-            // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
-            this.validateTokensLimit({
+            await LLMRegistry.validateTokensLimit({
                 model,
                 promptTokens,
-                completionTokens: params?.maxOutputTokens,
-                hasTeamAPIKey: !!apiKey,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
             });
 
             const result = await $model.generateContent(prompt);
@@ -179,81 +182,90 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI componentLLMRequest', error);
-
             throw error;
         }
     }
 
     protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
+        const model = params?.model || 'gemini-pro-vision';
+        const apiKey = params?.credentials?.apiKey;
+        const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        let _prompt = prompt;
+
+        const validFiles = this.getValidFileSources(fileSources, 'image');
+
+        const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+            try {
+                const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
+
+                return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+            } catch {
+                return null;
+            }
+        });
         try {
-            const model = params?.model || 'gemini-pro-vision';
-
-            const apiKey = params?.apiKey;
-
-            const fileSources = params?.fileSources || [];
-
-            const agentId = agent instanceof Agent ? agent.id : agent;
-            const agentCandidate = AccessCandidate.agent(agentId);
-
-            const validFiles = await this.processValidFiles(fileSources, agentCandidate);
-
-            const fileUploadingTasks = validFiles.map((file) => async () => {
-                try {
-                    const uploadedFile = await this.uploadFile({ file, apiKey });
-
-                    return { url: uploadedFile.url, mimetype: file.mimetype };
-                } catch {
-                    return null;
-                }
-            });
-
             const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
 
             // We throw error when there are no valid uploaded files,
-            if (uploadedFiles?.length === 0) {
-                throw new Error(
-                    `Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`
-                );
+            if (!uploadedFiles || uploadedFiles?.length === 0) {
+                throw new Error(`There is an issue during upload file in Google AI Server!`);
             }
 
-            const fileDataObjectsArray = uploadedFiles.map((file: FileObject) => ({
-                fileData: {
-                    mimeType: file.mimetype,
-                    fileUri: file.url,
-                },
-            }));
+            const imageData = this.getFileData(uploadedFiles);
+
+            //#region Separate system message and add JSON response instruction if needed
+            let systemInstruction = '';
+
+            const responseFormat = params?.responseFormat || '';
+            let responseMimeType = '';
+
+            if (responseFormat === 'json') {
+                systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
+                if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                    responseMimeType = 'application/json';
+                }
+            }
+
+            // if the the model does not support system instruction, we will add it to the prompt
+            if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+                _prompt = `${_prompt}\n${systemInstruction}`;
+            }
+            //#endregion Separate system message and add JSON response instruction if needed
 
             // Adjust input structure handling for multiple image files to accommodate variations.
-            const promptWithFiles =
-                fileDataObjectsArray.length === 1 ? [...fileDataObjectsArray, { text: prompt }] : [prompt, ...fileDataObjectsArray];
+            const promptWithFiles = imageData.length === 1 ? [...imageData, { text: _prompt }] : [_prompt, ...imageData];
 
-            const generationConfig = {
-                stopSequences: params.stopSequences,
-                maxOutputTokens: params.maxOutputTokens,
-                temperature: params.temperature,
-                topP: params.topP,
-                topK: params.topK,
+            const modelParams: ModelParams = {
+                model,
             };
 
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-            const $model = genAI.getGenerativeModel({ model, generationConfig });
+            const generationConfig: GenerationConfig = {};
 
-            const responseFormat = params?.responseFormat || 'json';
-            if (responseFormat) {
-                if (MODELS_WITH_JSON_RESPONSE.includes(model)) params.responseMimeType = 'application/json';
-                else prompt += JSON_RESPONSE_INSTRUCTION;
+            if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+            if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+            if (params.topP !== undefined) generationConfig.topP = params.topP;
+            if (params.topK !== undefined) generationConfig.topK = params.topK;
+            if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+            if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
+
+            if (Object.keys(generationConfig).length > 0) {
+                modelParams.generationConfig = generationConfig;
             }
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
 
             // Check token limit
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            this.validateTokensLimit({
+            await LLMRegistry.validateTokensLimit({
                 model,
                 promptTokens,
-                completionTokens: params?.maxOutputTokens,
-                hasTeamAPIKey: !!apiKey,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
             });
 
             const result = await $model.generateContent(promptWithFiles);
@@ -263,40 +275,163 @@ export class GoogleAIConnector extends LLMConnector {
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in googleAI visionLLMRequest', error);
-
             throw error;
         }
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
-        try {
-            const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+        const model = params?.model || DEFAULT_MODEL;
+        const apiKey = params?.credentials?.apiKey;
+        const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        let _prompt = prompt;
 
+        // If user provide mix of valid and invalid files, we will only process the valid files
+        const validFiles = this.getValidFileSources(fileSources, 'all');
+
+        const hasVideo = validFiles.some((file) => file?.mimetype?.includes('video'));
+
+        // GoogleAI only supports one video file at a time
+        if (hasVideo && validFiles.length > 1) {
+            throw new Error('Only one video file is supported at a time.');
+        }
+
+        const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+            try {
+                const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
+
+                return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+            } catch {
+                return null;
+            }
+        });
+
+        const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
+
+        // We throw error when there are no valid uploaded files,
+        if (uploadedFiles && uploadedFiles?.length === 0) {
+            throw new Error(`There is an issue during upload file in Google AI Server!`);
+        }
+
+        const fileData = this.getFileData(uploadedFiles);
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemInstruction = '';
+
+        const responseFormat = params?.responseFormat || '';
+        let responseMimeType = '';
+
+        if (responseFormat === 'json') {
+            systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
+            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                responseMimeType = 'application/json';
+            }
+        }
+
+        // if the the model does not support system instruction, we will add it to the prompt
+        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+            _prompt = `${_prompt}\n${systemInstruction}`;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        // Adjust input structure handling for multiple image files to accommodate variations.
+        const promptWithFiles = fileData.length === 1 ? [...fileData, { text: _prompt }] : [_prompt, ...fileData];
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        const generationConfig: GenerationConfig = {};
+
+        if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params.topP !== undefined) generationConfig.topP = params.topP;
+        if (params.topK !== undefined) generationConfig.topK = params.topK;
+        if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+        if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            // Check token limit
+            const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
+
+            // * the function will throw an error if the token limit is exceeded
+            await LLMRegistry.validateTokensLimit({
+                model,
+                promptTokens,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
+            });
+
+            const result = await $model.generateContent(promptWithFiles);
+
+            const response = await result?.response;
+            const content = response?.text();
+            const finishReason = response.candidates[0].finishReason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+        try {
             let systemInstruction = '';
             let formattedMessages;
 
-            if (this.hasSystemMessage(messages)) {
-                const separateMessages = this.separateSystemMessages(messages);
-                systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-                formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+            const messages = params?.messages || [];
+
+            const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
+
+            if (hasSystemMessage) {
+                const separateMessages = LLMHelper.separateSystemMessages(messages);
+                const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+                systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+                formattedMessages = separateMessages.otherMessages;
             } else {
-                formattedMessages = this.formatInputMessages(messages);
+                formattedMessages = messages;
             }
 
-            const $model = genAI.getGenerativeModel({ model });
+            const apiKey = params?.credentials?.apiKey;
 
-            const result = await $model.generateContent({
+            const generationConfig: GenerationConfig = {};
+
+            if (params?.maxTokens) generationConfig.maxOutputTokens = params.maxTokens;
+
+            const modelParams: ModelParams = {
+                model: params.model,
+            };
+
+            if (Object.keys(generationConfig).length > 0) {
+                modelParams.generationConfig = generationConfig;
+            }
+
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            const toolsPrompt: GenerateContentRequest = {
                 contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            };
+
+            if (systemInstruction) {
+                toolsPrompt.systemInstruction = systemInstruction;
+            }
+
+            if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools;
+            if (params?.toolsConfig?.tool_choice)
+                toolsPrompt.toolConfig = {
+                    functionCallingConfig: { mode: params?.toolsConfig?.tool_choice || 'auto' },
+                };
+
+            const result = await $model.generateContent(toolsPrompt);
 
             const response = await result.response;
             const content = response.text();
@@ -312,7 +447,7 @@ export class GoogleAIConnector extends LLMConnector {
                     type: 'function',
                     name: toolCall.functionCall.name,
                     arguments: JSON.stringify(toolCall.functionCall.args),
-                    role: 'assistant',
+                    role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
             }
@@ -321,11 +456,15 @@ export class GoogleAIConnector extends LLMConnector {
                 data: { useTool, message: { content }, content, toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for GoogleAI.');
+    }
+
+    // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -333,34 +472,55 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
         const emitter = new EventEmitter();
-        const genAI = new GoogleGenerativeAI(apiKey || process.env.GOOGLEAI_API_KEY);
-        const $model = genAI.getGenerativeModel({ model });
+        const apiKey = params?.credentials?.apiKey;
 
         let systemInstruction = '';
         let formattedMessages;
+        const messages = params?.messages || [];
 
-        if (this.hasSystemMessage(messages)) {
-            const separateMessages = this.separateSystemMessages(messages);
-            systemInstruction = (separateMessages.systemMessage as LLMMessageBlock)?.content || '';
-            formattedMessages = this.formatInputMessages(separateMessages.otherMessages);
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
+        if (hasSystemMessage) {
+            const separateMessages = LLMHelper.separateSystemMessages(messages);
+            const systemMessageContent = (separateMessages.systemMessage as TLLMMessageBlock)?.content;
+            systemInstruction = typeof systemMessageContent === 'string' ? systemMessageContent : '';
+            formattedMessages = separateMessages.otherMessages;
         } else {
-            formattedMessages = this.formatInputMessages(messages);
+            formattedMessages = messages;
         }
 
+        const generationConfig: GenerationConfig = {};
+
+        if (params?.maxTokens) generationConfig.maxOutputTokens = params.maxTokens;
+
+        const modelParams: ModelParams = {
+            model: params.model,
+        };
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const $model = genAI.getGenerativeModel(modelParams);
+
+        const toolsPrompt: GenerateContentRequest = {
+            contents: formattedMessages,
+        };
+
+        if (systemInstruction) {
+            toolsPrompt.systemInstruction = systemInstruction;
+        }
+
+        if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools;
+        if (params?.toolsConfig?.tool_choice)
+            toolsPrompt.toolConfig = {
+                functionCallingConfig: { mode: params?.toolsConfig?.tool_choice || 'auto' },
+            };
+
         try {
-            const result = await $model.generateContentStream({
-                contents: formattedMessages,
-                tools,
-                systemInstruction,
-                toolConfig: {
-                    functionCallingConfig: { mode: tool_choice || 'auto' },
-                },
-            });
+            const result = await $model.generateContentStream(toolsPrompt);
 
             let toolsData: ToolData[] = [];
 
@@ -379,7 +539,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 type: 'function',
                                 name: toolCall.functionCall.name,
                                 arguments: JSON.stringify(toolCall.functionCall.args),
-                                role: 'assistant',
+                                role: TLLMMessageRole.Assistant,
                             }));
                             emitter.emit('toolsData', toolsData);
                         }
@@ -393,15 +553,8 @@ export class GoogleAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
-
-        return params;
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
@@ -437,6 +590,63 @@ export class GoogleAIConnector extends LLMConnector {
         };
     }
 
+    public transformToolMessageBlocks({
+        messageBlock,
+        toolsData,
+    }: {
+        messageBlock: TLLMMessageBlock;
+        toolsData: ToolData[];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
+
+        if (messageBlock) {
+            const content = [];
+            if (typeof messageBlock.content === 'string') {
+                content.push({ text: messageBlock.content });
+            } else if (Array.isArray(messageBlock.content)) {
+                content.push(...messageBlock.content);
+            }
+
+            if (messageBlock.parts) {
+                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
+                if (functionCalls.length > 0) {
+                    content.push(
+                        ...functionCalls.map((call) => ({
+                            functionCall: {
+                                name: call.functionCall.name,
+                                args: JSON.parse(call.functionCall.args),
+                            },
+                        }))
+                    );
+                }
+            }
+
+            messageBlocks.push({
+                role: messageBlock.role,
+                parts: content,
+            });
+        }
+
+        const transformedToolsData = toolsData.map(
+            (toolData): TLLMToolResultMessageBlock => ({
+                role: TLLMMessageRole.Function,
+                parts: [
+                    {
+                        functionResponse: {
+                            name: toolData.name,
+                            response: {
+                                name: toolData.name,
+                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
+                            },
+                        },
+                    },
+                ],
+            })
+        );
+
+        return [...messageBlocks, ...transformedToolsData];
+    }
+
     // Add this helper method to sanitize function names
     private sanitizeFunctionName(name: string): string {
         // Check if name is undefined or null
@@ -463,81 +673,35 @@ export class GoogleAIConnector extends LLMConnector {
         return sanitized;
     }
 
-    private async processValidFiles(fileSources: string[] | Record<string, any>[], candidate: IAccessCandidate): Promise<FileObject[]> {
-        const fileProcessingTasks = fileSources.map((fileSource) => async (): Promise<FileObject> => {
-            if (!fileSource) return null;
-
-            if (typeof fileSource === 'object' && fileSource.url && fileSource.mimetype) {
-                return await this.processObjectFileSource(fileSource);
-            }
-
-            if (isValidString(fileSource as string)) {
-                return await this.processStringFileSource(fileSource as string, candidate);
-            }
-
-            return null;
-        });
-
-        const validFiles = await processWithConcurrencyLimit(fileProcessingTasks);
-
-        return validFiles as FileObject[];
-    }
-
-    private processObjectFileSource(fileSource: Record<string, string>) {
-        const { mimetype, url } = fileSource as Record<string, any>;
-
-        if (!this.validImageMimeTypes.includes(mimetype)) return null;
-
-        return { url, mimetype };
-    }
-
-    private async processStringFileSource(fileSource: string, candidate: IAccessCandidate): Promise<FileObject | null> {
-        if (isUrl(fileSource)) {
-            const mimetype = await getMimeTypeFromUrl(fileSource);
-            return this.validImageMimeTypes.includes(mimetype) ? { url: fileSource, mimetype } : null;
-        }
-
-        if (isDataUrl(fileSource) || isRawBase64(fileSource)) {
-            const { mimetype } = await parseBase64(fileSource);
-
-            if (!this.validImageMimeTypes.includes(mimetype)) return null;
-
-            const binaryInput = new BinaryInput(fileSource);
-
-            const fileData = await binaryInput.getJsonData(candidate);
-
-            return { url: fileData.url, mimetype };
-        }
-
-        return null;
-    }
-
-    private async uploadFile({ file, apiKey }: { file: FileObject; apiKey: string }): Promise<{ url: string }> {
+    private async uploadFile({
+        fileSource,
+        apiKey,
+        agentId,
+    }: {
+        fileSource: BinaryInput;
+        apiKey: string;
+        agentId: string;
+    }): Promise<{ url: string }> {
         try {
-            if (!apiKey || !file?.url || !file?.mimetype) {
+            if (!apiKey || !fileSource?.mimetype) {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
-            // Download the file from source URL to a temp directory
+            // Create a temporary directory
             const tempDir = os.tmpdir();
-            const fileName = path.basename(new URL(file.url).pathname);
+            const fileName = uid();
             const tempFilePath = path.join(tempDir, fileName);
 
-            const response = await axios.get(file.url, { responseType: 'stream' });
+            const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
 
-            const writer = fs.createWriteStream(tempFilePath);
-            response.data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
-                writer.on('finish', resolve);
-                writer.on('error', reject);
-            });
+            // Write buffer data to temp file
+            await fs.promises.writeFile(tempFilePath, bufferData);
 
             // Upload the file to the Google File Manager
             const fileManager = new GoogleAIFileManager(apiKey);
 
             const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
+                mimeType: fileSource.mimetype,
                 displayName: fileName,
             });
 
@@ -558,31 +722,94 @@ export class GoogleAIConnector extends LLMConnector {
             }
 
             // Clean up temp file
-            fs.unlink(tempFilePath, (err) => {
-                if (err) console.error('Error deleting temp file: ', err);
-            });
+            await fs.promises.unlink(tempFilePath);
 
             return {
                 url: uploadResponse.file.uri || '',
             };
         } catch (error) {
-            throw new Error(`Error uploading file for Google AI ${error.message}`);
+            throw new Error(`Error uploading file for Google AI: ${error.message}`);
         }
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): any[] {
-        return messages.map((message) => {
-            let role = message.role;
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
-            // With 'assistant' we have error: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse: [400 Bad Request] Please use a valid role: user, model.
-            if (message.role === 'assistant') {
-                role = 'model';
+        return _messages.map((message) => {
+            const _message = { ...message };
+            let textContent = '';
+
+            // Map roles to valid Google AI roles
+            switch (_message.role) {
+                case TLLMMessageRole.Assistant:
+                case TLLMMessageRole.System:
+                    _message.role = TLLMMessageRole.Model;
+                    break;
+                case TLLMMessageRole.User:
+                    // User role is already valid
+                    break;
+                default:
+                    _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
-            return {
-                role,
-                parts: [{ text: message.content }],
-            };
+            if (_message?.parts) {
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(_message?.content)) {
+                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (_message?.content) {
+                textContent = _message.content as string;
+            }
+
+            _message.parts = [{ text: textContent }];
+
+            delete _message.content; // Remove content to avoid error
+
+            return _message;
         });
+    }
+
+    private getValidFileSources(fileSources: BinaryInput[], type: 'image' | 'all') {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validMimeTypes[type].includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validMimeTypes[type].join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private getFileData(
+        fileSources: {
+            url: string;
+            mimetype: string;
+        }[]
+    ): {
+        fileData: {
+            mimeType: string;
+            fileUri: string;
+        };
+    }[] {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                imageData.push({
+                    fileData: {
+                        mimeType: fileSource.mimetype,
+                        fileUri: fileSource.url,
+                    },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

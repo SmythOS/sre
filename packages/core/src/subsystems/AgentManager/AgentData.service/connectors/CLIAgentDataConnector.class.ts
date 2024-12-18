@@ -46,6 +46,10 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         }
         return settings;
     }
+    public async listTeamAgents(teamId: string, deployedOnly?: boolean): Promise<any[]> {
+        console.warn(`listTeamAgents is not implemented for CLIAgentDataConnector`);
+        return [];
+    }
     public async isDeployed(agentId: string): Promise<boolean> {
         return true;
     }

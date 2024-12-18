@@ -1,168 +1,240 @@
+import EventEmitter from 'events';
+import OpenAI from 'openai';
+import { encodeChat } from 'gpt-tokenizer';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, ToolData, LLMMessageBlock, LLMToolResultMessageBlock } from '@sre/types/LLM.types';
-import { encodeChat } from 'gpt-tokenizer';
-import OpenAI from 'openai';
-import { LLMChatResponse, LLMConnector, LLMStream } from '../LLMConnector';
-import EventEmitter from 'events';
-import { delay } from '@sre/utils/date-time.utils';
-import { Readable } from 'stream';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig } from '@sre/types/LLM.types';
+
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('OpenAIConnector');
+
+const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        // if (!model) model = 'gpt-3.5-turbo';
+    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-        //if (!params.model) params.model = 'gpt-4-turbo';
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        const messages = params?.messages || [];
 
-        // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages) params.messages = [];
+        //#region Handle JSON response format
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
 
-        //FIXME: We probably need to separate the json system from default chatRequest
-        if (params.messages[0]?.role !== 'system') {
-            params.messages.unshift({
-                role: 'system',
-                content: 'All responses should be in valid json format. The returned json should not be formatted with any newlines or indentations.',
-            });
-
-            if (params.model.startsWith('gpt-4-turbo') || params.model.startsWith('gpt-3.5-turbo')) {
-                params.response_format = { type: 'json_object' };
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
+            } else {
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
-
-        if (prompt && params.messages.length === 1) {
-            params.messages.push({ role: 'user', content: prompt });
-        }
-        delete params.prompt;
+        //#endregion Handle JSON response format
 
         // Check if the team has their own API key, then use it
-        const apiKey = params?.apiKey;
-        delete params.apiKey; // Remove apiKey from params
+        const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
-            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
+            baseURL: params.baseURL,
         });
 
-        // Check token limit
-        const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
-
-        const tokensLimit = this.checkTokensLimit({
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
             model: params.model,
-            promptTokens,
-            completionTokens: params?.max_tokens,
-            hasTeamAPIKey: !!apiKey,
-        });
+            messages,
+        };
 
-        if (tokensLimit.isExceeded) throw new Error(tokensLimit.error);
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
-        const response: any = await openai.chat.completions.create(params as OpenAI.ChatCompletionCreateParamsNonStreaming);
-
-        const content = response?.choices?.[0]?.message.content;
-
-        return { content, finishReason: response?.choices?.[0]?.finish_reason };
-    }
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
-        //if (!params.model) params.model = 'gpt-4-vision-preview';
-
-        // Open to take system message with params, if no system message found then force to get JSON response in default
-        if (!params.messages || params.messages?.length === 0) params.messages = [];
-        if (params.messages?.role !== 'system') {
-            params.messages.unshift({
-                role: 'system',
-                content:
-                    'All responses should be in valid json format. The returned json should not be formatted with any newlines, indentations. For example: {"<guess key from response>":"<response>"}',
-            });
+        if (params.responseFormat) {
+            chatCompletionArgs.response_format = params.responseFormat;
         }
 
-        const sources: BinaryInput[] = params?.sources || [];
-        delete params?.sources; // Remove images from params
+        try {
+            // Validate token limit
+            const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
-        //const imageData = await prepareImageData(sources, 'OpenAI', agent);
+            await LLMRegistry.validateTokensLimit({
+                model: params?.model,
+                promptTokens,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
+            });
+
+            const response = await openai.chat.completions.create(chatCompletionArgs);
+
+            const content = response?.choices?.[0]?.message.content;
+            const finishReason = response?.choices?.[0]?.finish_reason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
+        const messages = params?.messages || [];
+
+        //#region Handle JSON response format
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
+            }
+        }
+        //#endregion Handle JSON response format
 
         const agentId = agent instanceof Agent ? agent.id : agent;
-        const imageData = [];
-        for (let source of sources) {
-            const bufferData = await source.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const url = `data:${source.mimetype};base64,${base64Data}`;
-            imageData.push({
-                type: 'image_url',
-                image_url: {
-                    url,
-                },
-            });
-        }
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
 
         // Add user message
-        const promptData = [{ type: 'text', text: prompt }, ...imageData];
-        params.messages.push({ role: 'user', content: promptData });
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
+
+        messages.push({ role: 'user', content: promptData });
 
         try {
             // Check if the team has their own API key, then use it
-            const apiKey = params?.apiKey;
-            delete params.apiKey; // Remove apiKey from params
+            const apiKey = params?.credentials?.apiKey;
 
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: params.baseURL,
             });
 
-            // Check token limit
-            const promptTokens = await this.countVisionPromptTokens(promptData);
-
-            const tokenLimit = this.checkTokensLimit({
+            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
                 model: params.model,
+                messages,
+            };
+
+            if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
+            // Validate token limit
+            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+
+            await LLMRegistry.validateTokensLimit({
+                model: params?.model,
                 promptTokens,
-                completionTokens: params?.max_tokens,
-                hasTeamAPIKey: !!apiKey,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
             });
 
-            if (tokenLimit.isExceeded) throw new Error(tokenLimit.error);
-
-            const response: any = await openai.chat.completions.create({ ...params });
+            const response: any = await openai.chat.completions.create(chatCompletionArgs);
 
             const content = response?.choices?.[0]?.message.content;
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
-            console.log('Error in visionLLMRequest: ', error);
+            throw error;
+        }
+    }
+
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+        // throw new Error('Image generation request is not supported for OpenAI.');
+        try {
+            const { model, size, quality, n, responseFormat, style } = params;
+            const args: GenerateImageConfig & { prompt: string } = {
+                prompt,
+                model,
+                size,
+                quality,
+                n: n || 1,
+                response_format: responseFormat || 'url',
+            };
+
+            if (style) {
+                args.style = style;
+            }
+
+            const apiKey = params?.credentials?.apiKey;
+
+            if (!apiKey) {
+                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
+            }
+
+            const openai = new OpenAI({
+                apiKey: apiKey,
+                baseURL: params?.baseURL,
+            });
+
+            const response = await openai.images.generate(args);
+
+            return response;
+        } catch (error: any) {
+            console.warn('Error generating image(s) with DALL·E: ', error);
 
             throw error;
         }
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
+        const apiKey = params?.credentials?.apiKey;
+
+        const openai = new OpenAI({
+            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            baseURL: params.baseURL,
+        });
+
+        const messages = params?.messages || [];
+
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+            model: params.model,
+            messages: messages,
+        };
+
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+        }
+
+        if (params?.toolsConfig?.tool_choice) {
+            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+        }
+
         try {
-            // We provide
-            const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
-            });
-
-            // sanity check
-            if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
-
-            let args: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-                model,
-                messages,
-                max_tokens,
-            };
-
-            if (tools && tools.length > 0) args.tools = tools;
-            if (tool_choice) args.tool_choice = tool_choice;
-
-            const result = await openai.chat.completions.create(args);
+            const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -187,28 +259,29 @@ export class OpenAIConnector extends LLMConnector {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
+    // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' }
     ): Promise<any> {
         try {
             // We provide
             const openai = new OpenAI({
                 apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: baseURL,
             });
 
             // sanity check
             if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
+                throw new Error('Invalid messages argument for chat completion.');
             }
 
-            console.log('model', model);
-            console.log('messages', messages);
+            console.debug('model', model);
+            console.debug('messages', messages);
             let args: OpenAI.ChatCompletionCreateParamsStreaming = {
                 model,
                 messages,
@@ -284,134 +357,88 @@ export class OpenAIConnector extends LLMConnector {
                 data: { useTool, message, stream: _stream, toolsData },
             };
         } catch (error: any) {
-            console.log('Error on toolUseLLMRequest: ', error);
+            console.warn('Error on toolUseLLMRequest: ', error);
             return { error };
         }
     }
 
-    // protected async stremRequest(
-    //     acRequest: AccessRequest,
-    //     { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    // ): Promise<Readable> {
-    //     const stream = new LLMStream();
-
-    //     const openai = new OpenAI({
-    //         apiKey: apiKey || process.env.OPENAI_API_KEY,
-    //     });
-
-    //     console.log('model', model);
-    //     console.log('messages', messages);
-
-    //     let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-    //         model,
-    //         messages,
-    //         stream: true,
-    //     };
-
-    //     if (tools && tools.length > 0) args.tools = tools;
-    //     if (tool_choice) args.tool_choice = tool_choice;
-
-    //     const openaiStream: any = await openai.chat.completions.create(args);
-
-    //     let toolsData: any = [];
-    //     stream.enqueueData({ start: true });
-    //     (async () => {
-    //         for await (const part of openaiStream) {
-    //             const delta = part.choices[0].delta;
-    //             //stream.enqueueData(delta);
-
-    //             if (!delta?.tool_calls && delta?.content) {
-    //                 stream.enqueueData({ content: delta.content, role: delta.role });
-    //             }
-
-    //             if (delta?.tool_calls) {
-    //                 const toolCall = delta.tool_calls[0];
-    //                 const index = toolCall.index;
-
-    //                 toolsData[index] = {
-    //                     index,
-    //                     role: 'tool',
-    //                     id: (toolsData[index]?.id || '') + (toolCall?.id || ''),
-    //                     type: (toolsData[index]?.type || '') + (toolCall?.type || ''),
-    //                     name: (toolsData[index]?.name || '') + (toolCall?.function?.name || ''),
-    //                     arguments: (toolsData[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-    //                 };
-    //             }
-    //         }
-
-    //         stream.enqueueData({ toolsData });
-    //         //stream.endStream();
-    //     })();
-
-    //     return stream;
-    // }
-
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, max_tokens, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
+        const usage_data = [];
+        const apiKey = params?.credentials?.apiKey;
+
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
+            baseURL: params.baseURL,
         });
 
         //TODO: check token limits for non api key users
-        console.log('model', model);
-        console.log('messages', messages);
-        let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model,
-            messages,
-            max_tokens,
+        console.debug('model', params.model);
+        //console.debug('messages', params.messages);
+        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
+            model: params.model,
+            messages: params.messages,
+
+            stream_options: { include_usage: true }, //add usage statis //TODO: @Forhad check this
             stream: true,
         };
 
-        if (tools && tools.length > 0) args.tools = tools;
-        if (tool_choice) args.tool_choice = tool_choice;
-        const stream: any = await openai.chat.completions.create(args);
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
 
-        // Process stream asynchronously while as we need to return emitter immediately
-        (async () => {
-            let delta: Record<string, any> = {};
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+        }
+        if (params?.toolsConfig?.tool_choice) {
+            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+        }
 
-            let toolsData: any = [];
+        try {
+            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
-            for await (const part of stream) {
-                delta = part.choices[0].delta;
-                emitter.emit('data', delta);
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                let delta: Record<string, any> = {};
 
-                if (!delta?.tool_calls && delta?.content) {
-                    emitter.emit('content', delta?.content, delta?.role);
+                let toolsData: any = [];
+
+                for await (const part of stream) {
+                    delta = part.choices[0]?.delta;
+                    const usage = part.usage;
+                    if (usage) {
+                        usage_data.push(usage);
+                    }
+                    emitter.emit('data', delta);
+
+                    if (!delta?.tool_calls && delta?.content) {
+                        emitter.emit('content', delta?.content, delta?.role);
+                    }
+                    //_stream = toolCallsStream;
+                    if (delta?.tool_calls) {
+                        const toolCall = delta?.tool_calls?.[0];
+                        const index = toolCall?.index;
+
+                        toolsData[index] = {
+                            index,
+                            role: 'tool',
+                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        };
+                    }
                 }
-                //_stream = toolCallsStream;
-                if (delta?.tool_calls) {
-                    const toolCall = delta?.tool_calls?.[0];
-                    const index = toolCall?.index;
-
-                    toolsData[index] = {
-                        index,
-                        role: 'tool',
-                        id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
-                        type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
-                        name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                        arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-                    };
+                if (toolsData?.length > 0) {
+                    emitter.emit('toolsData', toolsData);
                 }
-            }
-            if (toolsData?.length > 0) {
-                emitter.emit('toolsData', toolsData);
-            }
 
-            setTimeout(() => {
-                emitter.emit('end', toolsData);
-            }, 100);
-        })();
-        return emitter;
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
-
-        return params;
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, usage_data);
+                }, 100);
+            })();
+            return emitter;
+        } catch (error: any) {
+            throw error;
+        }
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -439,30 +466,102 @@ export class OpenAIConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice || 'auto' } : {};
     }
 
-    public prepareInputMessageBlocks({
+    public transformToolMessageBlocks({
         messageBlock,
         toolsData,
     }: {
-        messageBlock: LLMMessageBlock;
+        messageBlock: TLLMMessageBlock;
         toolsData: ToolData[];
-    }): LLMToolResultMessageBlock[] {
-        const messageBlocks: LLMToolResultMessageBlock[] = [];
+    }): TLLMToolResultMessageBlock[] {
+        const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
         if (messageBlock) {
             const transformedMessageBlock = {
                 ...messageBlock,
                 content: typeof messageBlock.content === 'object' ? JSON.stringify(messageBlock.content) : messageBlock.content,
             };
+            if (transformedMessageBlock.tool_calls) {
+                for (let toolCall of transformedMessageBlock.tool_calls) {
+                    toolCall.function.arguments =
+                        typeof toolCall.function.arguments === 'object' ? JSON.stringify(toolCall.function.arguments) : toolCall.function.arguments;
+                }
+            }
             messageBlocks.push(transformedMessageBlock);
         }
 
         const transformedToolsData = toolsData.map((toolData) => ({
             tool_call_id: toolData.id,
-            role: toolData.role,
+            role: TLLMMessageRole.Tool, // toolData.role as TLLMMessageRole, //should always be 'tool' for OpenAI
             name: toolData.name,
             content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result), // Ensure content is a string
         }));
 
         return [...messageBlocks, ...transformedToolsData];
+    }
+
+    public getConsistentMessages(messages) {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
+            const _message = { ...message };
+            let textContent = '';
+
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
+                textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (message?.content) {
+                textContent = message.content;
+            }
+
+            _message.content = textContent;
+
+            return _message;
+        });
+    }
+
+    private getValidImageFileSources(fileSources: BinaryInput[]) {
+        const validSources = [];
+
+        for (let fileSource of fileSources) {
+            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private async getImageData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            image_url: { url: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const url = `data:${fileSource.mimetype};base64,${base64Data}`;
+
+                imageData.push({
+                    type: 'image_url',
+                    image_url: { url },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

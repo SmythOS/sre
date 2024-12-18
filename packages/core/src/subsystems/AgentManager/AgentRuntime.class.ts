@@ -378,6 +378,13 @@ export default class AgentRuntime {
             );
 
             let errorResults = dbgResults.flat().filter((e) => e.id && (e.error || e.result?._error));
+
+            //also filter out erroneous components that are children of a loop
+            //otherwise, errors inside a loop will be reported as session results and can lead to wrong results or generated noise in the final agent output
+            errorResults = errorResults.filter((e) => {
+                return !ctxData?.components?.[e.id]?.ctx?.runtimeData?._ChildLoopData;
+            });
+
             if (ctxData.sessionResult && sessionResults.length == 0 && runtime.sessionClosed) {
                 //no result ? check if we have errors
                 sessionResults = errorResults;

@@ -1,15 +1,11 @@
 import Joi from 'joi';
 
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-
-import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import Component from './Component.class';
-
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 export default class VisionLLM extends Component {
     protected configSchema = Joi.object({
-        prompt: Joi.string().required().label('Prompt'),
+        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         model: Joi.string().max(200).required(),
     });
@@ -26,35 +22,25 @@ export default class VisionLLM extends Component {
         const logger = this.createComponentLogger(agent, config.name);
         try {
             logger.debug(`=== Vision LLM Log ===`);
-            const model: string = config.data.model || 'gpt-4-vision-preview';
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const model: string = config.data?.model;
+
+            const llmInference: LLMInference = await LLMInference.getInstance(model);
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
                 };
             }
+            logger.debug(` Model : ${model}`);
+
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
-            //prompt = llmConnector.enhancePrompt(prompt, config);
+            const fileSources = Array.isArray(input.Images) ? input.Images : [input.Images];
 
-            //logger.debug(` Enhanced prompt \n`, prompt, '\n');
-
-            const sources = [];
-            const images = Array.isArray(input.Images) ? input.Images : [input.Images];
-            const promises = [];
-            for (let image of images) {
-                const binaryInput = BinaryInput.from(image);
-                sources.push(binaryInput);
-                promises.push(binaryInput.upload(AccessCandidate.agent(agent.id)));
-            }
-
-            await Promise.all(promises);
-
-            const response = await llmHelper.visionRequest(prompt, sources, config, agent);
+            const response = await llmInference.visionRequest(prompt, fileSources, config, agent);
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null
             if (!response) {

@@ -7,22 +7,43 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { JSONFileVaultConfig } from '@sre/types/Security.types';
-import fs from 'fs';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
+import crypto from 'crypto';
+import fs from 'fs';
 
 const console = Logger('JSONFileVault');
 export class JSONFileVault extends VaultConnector {
     public name: string = 'JSONFileVault';
     private vaultData: any;
     private index: any;
+    private sharedVault: boolean;
 
     constructor(private config: JSONFileVaultConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
+        this.sharedVault = config.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
+
         if (fs.existsSync(config.file)) {
             try {
-                this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+                if (config.fileKey && fs.existsSync(config.fileKey)) {
+                    try {
+                        const privateKey = fs.readFileSync(config.fileKey, 'utf8');
+                        const encryptedVault = fs.readFileSync(config.file, 'utf8').toString();
+                        const decryptedBuffer = crypto.privateDecrypt(
+                            {
+                                key: privateKey,
+                                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+                            },
+                            Buffer.from(encryptedVault, 'base64')
+                        );
+                        this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
+                    } catch (error) {
+                        throw new Error('Failed to decrypt vault');
+                    }
+                } else {
+                    this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+                }
             } catch (e) {
                 this.vaultData = {};
             }
@@ -38,49 +59,41 @@ export class JSONFileVault extends VaultConnector {
         }
     }
 
-    user(candidate: AccessCandidate): IVaultRequest {
-        return {
-            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
-            set: async (keyId: string, value: string) => this.set(candidate.writeRequest, keyId, value),
-            delete: async (keyId: string) => this.delete(candidate.writeRequest, keyId),
-            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
-        };
-    }
-
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
 
-        return this.vaultData?.[teamId]?.[keyId];
-    }
-
-    @SecureConnector.AccessControl
-    protected async set(acRequest: AccessRequest, keyId: string, value: string) {
-        throw new Error('JSONFileVault.set not allowed');
-    }
-
-    @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, keyId: string) {
-        throw new Error('JSONFileVault.delete not allowed');
+        return this.vaultData?.[teamId]?.[keyId] || this.vaultData?.['shared']?.[keyId];
     }
 
     @SecureConnector.AccessControl
     protected async exists(acRequest: AccessRequest, keyId: string) {
-        return false;
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+        return !!(this.vaultData?.[teamId]?.[keyId] || this.vaultData?.['shared']?.[keyId]);
+    }
+
+    @SecureConnector.AccessControl
+    protected async listKeys(acRequest: AccessRequest) {
+        return Object.keys(this.vaultData);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const accountConnector = ConnectorService.getAccountConnector();
-        const teamId = await accountConnector.getCandidateTeam(candidate);
+        const teamId = this.sharedVault ? 'shared' : await accountConnector.getCandidateTeam(candidate);
 
         const acl = new ACL();
 
-        if (!this.vaultData?.[teamId]?.[resourceId]) return acl;
+        if (typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') return acl;
 
         acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner)
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Read)
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Write);
+
+        if (this.sharedVault && typeof this.vaultData?.['shared']?.[resourceId] === 'string') {
+            acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
+        }
 
         return acl;
     }

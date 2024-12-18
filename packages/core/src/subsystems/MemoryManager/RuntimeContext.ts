@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import config from '@sre/config';
 import { delay, uid } from '@sre/utils';
@@ -11,6 +12,7 @@ const console = Logger('RuntimeContext');
 type TRuntimeData = {
     input?: { [key: string]: any };
     _LoopData?: any;
+    _ChildLoopData?: any;
 };
 type TComponentContext = {
     active: boolean;
@@ -35,7 +37,8 @@ export class RuntimeContext extends EventEmitter {
     constructor(private runtime: AgentRuntime) {
         super();
         const agent = runtime.agent;
-        const dbgFolder = path.join(<string>config.env.DATA_PATH, `/debug/${agent.id}/`);
+        const dbgFolder = path.join(<string>config.env.DATA_PATH || path.join(os.tmpdir(), '.smyth') , `/debug/${agent.id}/`);
+        
         if (!fs.existsSync(dbgFolder)) {
             fs.mkdirSync(dbgFolder, { recursive: true });
         }

@@ -1,7 +1,11 @@
-import Agent from '@sre/AgentManager/Agent.class';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Joi from 'joi';
+import Agent from '@sre/AgentManager/Agent.class';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
@@ -9,7 +13,7 @@ import Component from './Component.class';
 export default class PromptGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
-        prompt: Joi.string().required().label('Prompt'),
+        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
         temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
@@ -30,12 +34,13 @@ export default class PromptGenerator extends Component {
 
         try {
             logger.debug(`=== LLM Prompt Log ===`);
+            let teamId = agent?.teamId;
 
             const model: string = config.data.model || 'echo';
-            const llmHelper: LLMHelper = LLMHelper.load(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
             // if the llm is undefined, then it means we removed the model from our system
-            if (!llmHelper.connector) {
+            if (!llmInference.connector) {
                 return {
                     _error: `The model '${model}' is not available. Please try a different one.`,
                     _debug: logger.output,
@@ -48,9 +53,11 @@ export default class PromptGenerator extends Component {
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
+            // default to json response format
+            config.data.responseFormat = config.data?.responseFormat || 'json';
+
             // request to LLM
-            //const response: any = await componentLLMRequest(prompt, model, config).catch((error) => ({ error: error }));
-            const response: any = await llmHelper.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+            const response: any = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null
@@ -61,7 +68,7 @@ export default class PromptGenerator extends Component {
             if (response?.error) {
                 logger.error(` LLM Error=${JSON.stringify(response.error)}`);
 
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Reply: response?.data, _error: response?.error + ' ' + (response?.details || ''), _debug: logger.output };
             }
 
             const result = { Reply: response };

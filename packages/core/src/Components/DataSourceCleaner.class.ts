@@ -43,11 +43,19 @@ export default class DataSourceCleaner extends Component {
                 throw new Error(`Input validation error: ${inputSchema.error}\n EXITING...`);
             }
 
-            const namespaceId = configSchema.value.namespaceId;
-            const vectorDB = ConnectorService.getVectorDBConnector();
-            const nsExists = vectorDB.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
-            if (!nsExists) {
-                throw new Error(`Namespace ${namespaceId} does not exist`);
+            const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
+            let vectorDBHelper = VectorsHelper.load();
+
+            const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+            let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+
+            let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
+            if (!existingnamespace) {
+                await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
+                debugOutput += `[Created namespace] \n${namespaceId}\n\n`;
+            } else if (!existingnamespace.metadata.isOnCustomStorage) {
+                // If the namespace exists but is not on custom storage, switch to the default connector.
+                vectorDbConnector = ConnectorService.getVectorDBConnector();
             }
 
             const providedId = TemplateString(config.data.id).parse(input).result;
@@ -59,7 +67,7 @@ export default class DataSourceCleaner extends Component {
 
             const dsId = DataSourceIndexer.genDsId(providedId, teamId, namespaceId);
 
-            await VectorsHelper.load().deleteDatasource(teamId, namespaceId, dsId);
+            await vectorDbConnector.user(AccessCandidate.team(teamId)).deleteDatasource(namespaceId, dsId);
 
             debugOutput += `Deleted data source with id: ${providedId}\n`;
 

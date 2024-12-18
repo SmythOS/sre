@@ -11,10 +11,16 @@ winston.addColors({
     debug: 'blue',
 });
 
-let logLevel = parseCLIArgs('debug')?.debug || config.env.LOG_LEVEL || 'info';
-if (!['none', 'error', 'warn', 'info', 'debug'].includes(logLevel)) {
-    logLevel = 'none';
-}
+const logLevelMap = {
+    min: 'info',
+    full: 'debug',
+};
+
+let logLevel = () => {
+    let val = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
+    if (logLevelMap[val]) val = logLevelMap[val];
+    return !['none', 'error', 'warn', 'info', 'debug'].includes(val) ? 'none' : val;
+};
 
 // Retrieve the DEBUG environment variable and split it into an array of namespaces
 const namespaces = (config.env.LOG_FILTER || '').split(',');
@@ -94,14 +100,40 @@ const colorizedFormat = winston.format.printf((info) => {
 
 const MAX_LOG_MESSAGE_LENGTH = 500;
 
+function redactLogMessage(logMessage: string) {
+    if (config.env.NODE_ENV !== 'PROD') return logMessage; //only redact logs in PROD
+    if (logMessage.length > 500) {
+        return logMessage;
+    }
+
+    const sensitiveWords = ['password', 'eyJ', 'token', 'email', 'secret', 'key', 'apikey', 'api_key', 'auth', 'credential'];
+    const obfuscatedString = ' [!! SmythOS::REDACTED_DATA !!] ';
+
+    // Iterate through the sensitive words list and replace sensitive data in the log message
+
+    for (const sensitiveWord of sensitiveWords) {
+        // Create a regular expression to find the sensitive word followed by any character (non-greedy) until a space, newline, or separator is found.
+        const regex = new RegExp(`(${sensitiveWord})((?:[^\\n]{0,29}(?=\\n))|(?:[^\\n]{30}\\S*))`, 'gmi');
+
+        // Replace sensitive data with the obfuscated string
+        logMessage = logMessage.replace(regex, `$1${obfuscatedString}`);
+    }
+
+    return logMessage;
+}
+
 function createBaseLogger(memoryStore?: any[]) {
     const logger = winston.createLogger({
         //level: 'info', // log level
 
         format: winston.format.combine(
             winston.format((info) => {
-                if (config.env.LOG_LEVEL == 'none') return false; // skip logging if log level is none
+                if (config.env.LOG_LEVEL == 'none' || logLevel() == 'none' || logLevel() == '') return false; // skip logging if log level is none
 
+                // Apply redaction to the log message
+                //info.message = redactSecrets(info.message, sensitiveOptions);
+
+                info.message = redactLogMessage(info.message);
                 return info;
             })(),
             winston.format.timestamp(),
@@ -119,14 +151,14 @@ function createBaseLogger(memoryStore?: any[]) {
                 format: winston.format.combine(
                     winston.format.printf((info) => {
                         let message = info.message;
-                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
                     })
                 ),
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
             new winston.transports.Console({
-                level: logLevel,
+                level: logLevel(),
                 format: winston.format.combine(
                     namespaceFilter,
                     winston.format.printf((info) => {
@@ -134,7 +166,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         const ns = winston.format.colorize().colorize(info.level, `${info.level}${module}`);
 
                         let message = info.message;
-                        //message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
+                        message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
                     })
@@ -162,7 +194,11 @@ function formatLogMessage(...args) {
         .map((arg) => {
             // If the argument is an object (and not null), serialize it to JSON
             if (typeof arg === 'object' && arg !== null && !(arg instanceof Error)) {
-                return JSON.stringify(arg, null, 2); // set the space to 2 for better readability
+                try {
+                    return JSON.stringify(arg, null, 2); // set the space to 2 for better readability
+                } catch (error) {
+                    return String(arg);
+                }
             }
             // Otherwise, just convert it to a string in case it's not
             return String(arg);

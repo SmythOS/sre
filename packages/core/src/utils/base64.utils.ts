@@ -46,6 +46,7 @@ export const getMimetypeFromBase64Data = async (data: string) => {
     }
 };
 
+// ! DEPRECATED: This will be removed. We now use getBase64FileInfo(), which is more robust.
 export async function extractBase64DataAndMimeType(data: string): Promise<{ data: string; mimetype: string }> {
     if (typeof data !== 'string' || data?.length > MAX_FILE_SIZE) {
         return { data: '', mimetype: '' };
@@ -63,6 +64,31 @@ export async function extractBase64DataAndMimeType(data: string): Promise<{ data
     }
 
     return { data: '', mimetype: '' };
+}
+
+export async function getBase64FileInfo(data: string): Promise<{ data: string; mimetype: string; size: number } | null> {
+    if (isBase64FileUrl(data)) {
+        const regex = /^data:([^;]+);base64,(.*)$/;
+        const match = data.match(regex);
+        if (!match) return { data: '', mimetype: '', size: 0 };
+        const [, mimetype, base64Data] = match;
+
+        const cleanData = _cleanUpBase64Data(base64Data);
+        const buffer = Buffer.from(cleanData, 'base64');
+
+        return { data: cleanData, mimetype, size: buffer.byteLength };
+    } else if (isBase64(data)) {
+        const cleanData = _cleanUpBase64Data(data);
+        const buffer = Buffer.from(cleanData, 'base64');
+
+        return {
+            data: cleanData,
+            mimetype: await getMimetypeFromBase64Data(cleanData),
+            size: buffer.byteLength,
+        };
+    }
+
+    return null;
 }
 
 //=== Legacy code below ===

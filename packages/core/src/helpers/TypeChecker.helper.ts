@@ -2,12 +2,14 @@ import { isRawBase64, isDataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isBinaryData, isBuffer, isPlainObject, isSmythFileObject, isUrl, uid } from '../utils';
 import Agent from '@sre/AgentManager/Agent.class';
-import { TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from './JsonContent.helper';
+import { Logger } from './Log.helper';
 
 export const inputErrMsg = (type, name) => `Invalid ${type} value for Input: ${name}`;
+const logger = Logger('TypeChecker.helper');
 
 const InferenceStrategies = {
     any: inferAnyType,
@@ -21,6 +23,13 @@ const InferenceStrategies = {
     date: inferDateType,
 };
 
+/**
+ * Performs type inference on the inputs based on the input config
+ * @param inputs - The inputs to perform type inference on
+ * @param inputConfig - The input config to perform type inference on
+ * @param agent - The agent to perform type inference on
+ * @returns The inputs with the inferred types
+ */
 export async function performTypeInference(
     inputs: Record<string, any>,
     inputConfig: Record<string, any>[],
@@ -47,7 +56,10 @@ export async function performTypeInference(
             const type = (config as any)?.type?.toLowerCase() || 'any';
 
             if (!InferenceStrategies[type]) {
-                throw new Error(`Invalid type: ${type} for Input: ${key}`);
+                //* For backward compatibility, we don't throw an error if the type is not supported. instead, we return the value as it is.
+                // throw new Error(`Invalid type: ${type} for Input: ${key}`);
+                logger.warn(`Unsupported type: ${type} for Input: ${key} for agent: ${agent?.id} input: ${key}`);
+                continue;
             }
 
             _inputs[key] = await InferenceStrategies[type](value, key, agent);
@@ -139,12 +151,70 @@ async function inferObjectType(value: any, key?: string, agent?: Agent) {
     }
 }
 
+/**
+ * Extracts the agent ID from a SmythFS URL
+ * @param url - The SmythFS URL (e.g., smythfs://team.id/agent.id/_temp/filename.ext)
+ * @returns The agent ID or null if the URL is invalid
+ */
+function extractSmythFsAgentId(url: string): string | null {
+    if (!url?.startsWith('smythfs://')) return null;
+
+    try {
+        // Split by '/' and get the agent ID (third segment)
+        const segments = url.split('/');
+        if (segments.length < 4) return null;
+
+        return segments[3];
+    } catch {
+        return null;
+    }
+}
+
 async function inferBinaryType(value: any, key?: string, agent?: Agent) {
-    const binaryInput = BinaryInput.from(value, uid() + '-' + key);
-    //const data = value;
-    //const file = data instanceof SmythFile ? data : new SmythFile(data);
-    //return file;
-    return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+    // If the value is already a BinaryInput, just return it
+    if (value instanceof BinaryInput) {
+        return value;
+    }
+
+    let candidate: IAccessCandidate | undefined;
+    let agentId: string = '';
+    let data: unknown;
+    let mimetype: string = '';
+
+    try {
+        if (value && typeof value === 'object' && value?.url && value?.mimetype) {
+            const url = value?.url;
+            mimetype = value?.mimetype;
+
+            if (url?.startsWith('smythfs://')) {
+                // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
+                data = value;
+
+                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+                agentId = extractSmythFsAgentId(url);
+            } else {
+                data = url;
+            }
+        } else {
+            if (typeof value === 'string' && value.startsWith('smythfs://')) {
+                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+                agentId = extractSmythFsAgentId(value);
+            }
+            data = value;
+        }
+
+        if (agentId) {
+            candidate = AccessCandidate.agent(agentId);
+        }
+
+        const binaryInput = BinaryInput.from(data, `${uid()}-${key}`, mimetype, candidate);
+        await binaryInput.ready();
+        return binaryInput;
+    } catch (error: any) {
+        console.warn('Error in binary type handler', error);
+
+        return null;
+    }
 }
 
 async function inferDateType(value: any, key?: string, agent?: Agent) {

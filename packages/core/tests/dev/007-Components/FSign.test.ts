@@ -99,7 +99,7 @@ describe('FSign Component', () => {
                 return {
                     parse: () => {
                         return {
-                            parseTeamKeys: () => {
+                            parseTeamKeysAsync: () => {
                                 return {
                                     asyncResult: vaultSigningKey,
                                 };

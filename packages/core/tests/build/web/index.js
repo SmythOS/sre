@@ -8,9 +8,16 @@ dotenv.config();
 //(session);
 
 //==============
+const app = express();
+const port = /*process.env.PORT || */ 5555;
+const BASE_URL = `http://localhost:${port}`;
+
 const sre = SmythRuntime.Instance.init({
     CLI: {
         Connector: 'CLI',
+    },
+    Account: {
+        Connector: 'DummyAccount',
     },
     Storage: {
         Connector: 'S3',
@@ -30,24 +37,30 @@ const sre = SmythRuntime.Instance.init({
     AgentData: {
         Connector: 'CLI',
     },
+    Cache: {
+        Connector: 'Redis',
+        Settings: {
+            hosts: process.env.REDIS_SENTINEL_HOSTS,
+            name: process.env.REDIS_MASTER_NAME || '',
+            password: process.env.REDIS_PASSWORD || '',
+        },
+    },
 });
 
 const conversations = {};
 
 const cliConnector = ConnectorService.getCLIConnector();
 //const specUrl = cliConnector.params?.agent || 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
-const model = cliConnector.params?.model || 'gpt-4o';
+const model = cliConnector.params?.model || 'claude-3.5-sonnet';
 
-console.log("Model ===> ", model);
+console.log('Model ===> ', model);
 
-const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 4096);
-const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 4096);
+const maxContextSize = parseInt(cliConnector.params?.maxContextSize || 128 * 1024);
+const maxOutputTokens = parseInt(cliConnector.params?.maxOutputTokens || 8 * 1024);
 //const conv = new Conversation(model, specUrl, { maxContextSize, maxOutputTokens });
 
 //implement a simple expressjs app that serves static files from ./static folder
 
-const app = express();
-const port = process.env.PORT || 5555;
 // Session configuration
 const sessionConfig = {
     secret: 'session secret goes here 123 456', // Replace with your own secret key
@@ -209,10 +222,6 @@ function promptConversation(conv, message, contentCallback) {
 
         conv.on('end', (content) => {
             console.log('Ended ==============');
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
-            conv.removeAllListeners();
             conv.removeAllListeners();
         });
 

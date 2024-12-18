@@ -70,7 +70,7 @@ export default class HuggingFace extends Component {
 
         const teamId = agent?.teamId;
         // const accessToken = await parseKey(config?.data?.accessToken, teamId);
-        const accessToken = (await TemplateStringHelper.create(config?.data?.accessToken).parseTeamKeys(teamId).asyncResult) as string;
+        const accessToken = (await TemplateStringHelper.create(config?.data?.accessToken).parseTeamKeysAsync(teamId).asyncResult) as string;
 
         if (!accessToken) {
             return { _error: 'Please provide a valid Hugging Face Access Token', _debug: logger.output };
@@ -147,7 +147,8 @@ export default class HuggingFace extends Component {
                             // const file = new SmythFile(value);
                             // const blob = await file.toBlob(); // Converts to Blob for file inputs
                             // inputs[name] = blob;
-                            const binaryFile = new BinaryInput(value);
+                            const binaryFile = BinaryInput.from(value, undefined, undefined, AccessCandidate.agent(agentId));
+                            // const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
                             const buffer = await binaryFile.getBuffer();
                             const blob = new Blob([buffer]);
                             inputs[name] = blob;
@@ -240,6 +241,8 @@ export default class HuggingFace extends Component {
                     //     baseUrl: agent?.baseUrl,
                     // });
                     // output = fileObj;
+                    // convert blob to base64
+
                     const obj = await BinaryInput.from(result).getJsonData(AccessCandidate.agent(agent.id));
                     output = obj;
                 } else if (Array.isArray(result)) {
@@ -248,7 +251,7 @@ export default class HuggingFace extends Component {
                         result.map(async (item) => {
                             if (item.blob instanceof Blob || (typeof item.blob === 'string' && isBase64(item.blob))) {
                                 let binaryInput: BinaryInput;
-                                //FIXME - handle file upload
+
                                 if (item.blob instanceof Blob) {
                                     // file = new SmythFile(item.blob);
 

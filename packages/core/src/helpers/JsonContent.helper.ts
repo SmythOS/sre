@@ -16,7 +16,7 @@ export class JSONContentHelper {
     }
 
     /**
-     * This function tries to extract and parse a JSON object from a string. If it fails, it returns the original string.
+     * This a permissive json parsing function : It tries to extract and parse a JSON object from a string. If it fails, it returns the original string.
      * if the string is not a JSON representation, but contains a JSON object, it will extract and parse it.
      * @returns
      */
@@ -31,7 +31,8 @@ export class JSONContentHelper {
             return JSON.parse(str);
         } catch (e) {
             try {
-                return JSON.parse(jsonrepair(str));
+                const repairedJson = jsonrepair(str);
+                return JSON.parse(repairedJson);
             } catch (e: any) {
                 //console.warn('Error on parseJson: ', e.toString());
                 //console.warn('   Tried to parse: ', str);
@@ -40,9 +41,29 @@ export class JSONContentHelper {
         }
     }
 
+    // Same as tryParse but it does not extract JSON from string
+    public tryFullParse() {
+        const str = this._current;
+        if (!str) return str;
+
+        if ((isDigits(str) && !isSafeNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
+
+        try {
+            return JSON.parse(str);
+        } catch (e) {
+            try {
+                return JSON.parse(jsonrepair(str));
+            } catch (e: any) {
+                console.warn('Error on parseJson: ', e.toString());
+                console.warn('   Tried to parse: ', str);
+                return { result: str, error: e.toString() };
+            }
+        }
+    }
+
     private extractJsonFromString(str) {
         try {
-            const regex = /(\{.*\})/s;
+            const regex = /(\{.*\})/s; // LLMs in smythOS are expected to generate json between curly brackets only
 
             const match = str.match(regex);
 

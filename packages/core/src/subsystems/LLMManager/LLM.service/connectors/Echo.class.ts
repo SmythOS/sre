@@ -1,19 +1,26 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
+    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+        const content = params?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
+        return { content, finishReason: 'stop' } as LLMChatResponse;
     }
     protected async visionRequest(acRequest: AccessRequest, prompt, params) {
         return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params) {
+        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
+    }
     protected async toolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
+    }
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for Echo.');
     }
     protected async streamToolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
@@ -29,7 +36,11 @@ export class EchoConnector extends LLMConnector {
 
     public postProcess(response: any) {
         try {
-            return JSONContent(response).tryParse();
+            const result = JSONContent(response).tryFullParse();
+            if (result?.error) {
+                return response;
+            }
+            return result;
         } catch (error) {
             return response;
         }

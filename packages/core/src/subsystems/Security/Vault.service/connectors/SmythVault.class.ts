@@ -6,7 +6,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { SmythVaultConfig } from '@sre/types/Security.types';
+import { OAuthConfig, SmythVaultConfig } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 import { getM2MToken } from '@sre/utils/oauth.utils';
 import axios, { AxiosInstance } from 'axios';
@@ -21,8 +21,7 @@ export class SmythVault extends VaultConnector {
     private oAuthScope?: string;
     private vaultAPI: AxiosInstance;
 
-
-    constructor(private config: SmythVaultConfig) {
+    constructor(private config: SmythVaultConfig & OAuthConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
@@ -34,16 +33,6 @@ export class SmythVault extends VaultConnector {
         this.vaultAPI = axios.create({
             baseURL: `${config.vaultAPIBaseUrl}/v1/api`,
         });
-
-    }
-
-    user(candidate: AccessCandidate): IVaultRequest {
-        return {
-            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
-            set: async (keyId: string, value: string) => this.set(candidate.writeRequest, keyId, value),
-            delete: async (keyId: string) => this.delete(candidate.writeRequest, keyId),
-            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
-        };
     }
 
     @SecureConnector.AccessControl
@@ -52,17 +41,24 @@ export class SmythVault extends VaultConnector {
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
         const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
-        return vaultResponse?.data?.secret?.value;
-    }
+        let key = vaultResponse?.data?.secret?.value || null;
 
-    @SecureConnector.AccessControl
-    protected async set(acRequest: AccessRequest, keyId: string, value: string) {
-        throw new Error('SmythVault.set not allowed');
-    }
+        if (!key) {
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });
 
-    @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, keyId: string) {
-        throw new Error('SmythVault.delete not allowed');
+            key = vaultResponse?.data?.secret?.value || null;
+        }
+
+        if (!key) {
+            // * Note: Adjustment for legacy global vault keys, we can remove it after migrating all keys in Hashicorp Vault with proper key ID such as 'googleai' -> 'GoogleAI'
+            const legacyGlobalVaultKey = keyId.toLowerCase();
+            const globalVaultKey = legacyGlobalVaultKey === 'anthropicai' ? 'claude' : legacyGlobalVaultKey; // Ensure backward compatibility: In SaaS the key was stored under 'claude';
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${globalVaultKey}`, { headers: vaultAPIHeaders });
+
+            return vaultResponse?.data?.secret?.value;
+        }
+
+        return key || null;
     }
 
     @SecureConnector.AccessControl
@@ -72,6 +68,28 @@ export class SmythVault extends VaultConnector {
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
         const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
         return vaultResponse?.data?.secret ? true : false;
+    }
+
+    @SecureConnector.AccessControl
+    protected async listKeys(acRequest: AccessRequest) {
+        //const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = acRequest.candidate.id;
+        const vaultAPIHeaders = await this.getVaultRequestHeaders();
+        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets`, { headers: vaultAPIHeaders });
+        if (vaultResponse?.data?.secrets) {
+            vaultResponse?.data?.secrets?.forEach((secret: any) => {
+                if (secret?.metadata?.scope) {
+                    try {
+                        secret.metadata.scope = JSON.parse(secret.metadata.scope);
+                    } catch (error) {
+                        secret.metadata.scope = [];
+                        console.error('Error:', error);
+                    }
+                }
+            });
+        }
+
+        return vaultResponse?.data?.secrets || [];
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
@@ -95,7 +113,7 @@ export class SmythVault extends VaultConnector {
                 oauthAppSecret: this.oAuthAppSecret,
                 resource: this.oAuthResource,
                 scope: this.oAuthScope,
-            })}`
+            })}`,
         };
     }
 }

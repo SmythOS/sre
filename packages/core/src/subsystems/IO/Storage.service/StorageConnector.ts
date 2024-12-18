@@ -18,7 +18,7 @@ export interface IStorageRequest {
 
 export abstract class StorageConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
-    public abstract user(candidate: IAccessCandidate): IStorageRequest;
+
     protected abstract read(acRequest: AccessRequest, resourceId: string): Promise<StorageData>;
     protected abstract write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void>;
     protected abstract delete(acRequest: AccessRequest, resourceId: string): Promise<void>;
@@ -29,4 +29,33 @@ export abstract class StorageConnector extends SecureConnector {
 
     protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
     protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
+
+    public user(candidate: AccessCandidate): IStorageRequest {
+        return {
+            write: async (resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata) => {
+                return await this.write(candidate.writeRequest, resourceId, value, acl, metadata);
+            },
+            read: async (resourceId: string) => {
+                return await this.read(candidate.readRequest, resourceId);
+            },
+            delete: async (resourceId: string) => {
+                await this.delete(candidate.readRequest, resourceId);
+            },
+            exists: async (resourceId: string) => {
+                return await this.exists(candidate.readRequest, resourceId);
+            },
+            getMetadata: async (resourceId: string) => {
+                return await this.getMetadata(candidate.readRequest, resourceId);
+            },
+            setMetadata: async (resourceId: string, metadata: StorageMetadata) => {
+                await this.setMetadata(candidate.writeRequest, resourceId, metadata);
+            },
+            getACL: async (resourceId: string) => {
+                return await this.getACL(candidate.readRequest, resourceId);
+            },
+            setACL: async (resourceId: string, acl: IACL) => {
+                return await this.setACL(candidate.writeRequest, resourceId, acl);
+            },
+        } as IStorageRequest;
+    }
 }

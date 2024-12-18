@@ -7,6 +7,14 @@ export const Match = {
     //matches all placeholders
     doubleCurly: /{{(.*?)}}/g,
     singleCurly: /{(.*?)}/g,
+    doubleCurlyForSingleMatch: /{{(.*?)}}/,
+
+    //matches component template variables
+    //example of matching strings
+    // {{VAULTINPUT:Input label:[APIKEY]}}
+    // {{VARINPUT:Variable label:{ "key":"value" }}}
+    templateVariables: /{{([A-Z]+):([\w\s]+):[\[{](.*?)[\]}]}}/gm,
+
     //matches only the placeholders that have a specific prefix
     prefix(prefix: string) {
         return new RegExp(`{{${prefix}(.*?)}}`, 'g');
@@ -30,7 +38,27 @@ export const Match = {
 export const TPLProcessor = {
     vaultTeam(teamId: string): (token) => Promise<string> {
         //the token here represents the vault key name
-        return async (token) => await VaultHelper.getTeamKey(token, teamId);
+        return async (token) => {
+            try {
+                return await VaultHelper.getTeamKey(token, teamId);
+            } catch (error) {
+                return token;
+            }
+        };
+    },
+    componentTemplateVar(templateSettings: Record<string, any>): (token, matches) => Promise<string> {
+        return async (token, matches) => {
+            try {
+                const label = matches[2]; //template variables are identified by their label inside the component config
+                if (!label) return token;
+
+                const entry: any = Object.values(templateSettings).find((o: any) => o.label == label);
+                if (!entry) return token;
+                return `{{${entry.id}}}`;
+            } catch (error) {
+                return token;
+            }
+        };
     },
 };
 
@@ -40,6 +68,8 @@ export const TPLProcessor = {
  * Template strings are strings that can contain placeholders, which are expressions that get evaluated to produce a resulting string.
  * The placeholders are defined by double curly braces `{{` and `}}`.
  */
+
+//FIXME: async parsing breaks the chainability of the TemplateStringHelper
 export class TemplateStringHelper {
     private _current: string;
 
@@ -48,12 +78,12 @@ export class TemplateStringHelper {
     //if any processor is async, the .result getter will throw an error and you should use .asyncResult instead
     private _promiseQueue: Promise<any>[] = [];
 
-    public get result() {
+    public get result(): string {
         if (this._promiseQueue.length <= 0) return this._current;
         throw new Error('This template object has async results, you should use .asyncResult with await instead of .result');
     }
 
-    public get asyncResult() {
+    public get asyncResult(): Promise<string> {
         return new Promise(async (resolve, reject) => {
             await Promise.all(this._promiseQueue);
             resolve(this._current);
@@ -73,10 +103,31 @@ export class TemplateStringHelper {
      * unmatched placeholders will be left as is
      */
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
-        if (typeof this._current !== 'string') return this;
+        if (typeof this._current !== 'string' || typeof data !== 'object') return this;
         this._current = this._current.replace(regex, (match, token) => {
-            return data[token] || match;
+            const val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
+
+            return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
         });
+
+        return this;
+    }
+
+    /**
+     * Parses a template string by replacing placeholders with values from the provided data object, keeping the original raw values intact. This is particularly important for BinaryInput instances, as they include buffer data.
+     * unmatched placeholders will be left as is
+     */
+    // Note: right now this method only match the first occurrence of the regex
+    public parseRaw(data: Record<string, string>, regex: TemplateStringMatch = Match.doubleCurlyForSingleMatch) {
+        if (typeof this._current !== 'string' || typeof data !== 'object') return this;
+
+        const match = this._current.match(regex);
+        const key = match ? match[1] : '';
+
+        if (key) {
+            const value = data?.[key];
+            this._current = value;
+        }
 
         return this;
     }
@@ -86,8 +137,17 @@ export class TemplateStringHelper {
      * @param teamId
      * @returns
      */
-    public parseTeamKeys(teamId: string) {
+    public parseTeamKeysAsync(teamId: string) {
         return this.process(TPLProcessor.vaultTeam(teamId), Match.fn('KEY'));
+    }
+
+    /**
+     * This is a shortcut function that parses component template variables and replace them with their corresponding values
+     * @param templateSettings the component template settings to be used for parsing
+     * @returns
+     */
+    public parseComponentTemplateVarsAsync(templateSettings: Record<string, any>) {
+        return this.process(TPLProcessor.componentTemplateVar(templateSettings), Match.templateVariables);
     }
 
     /**
@@ -95,7 +155,7 @@ export class TemplateStringHelper {
      * The processor function receives the token as an argument and should return the value to replace the token with
      * If the processor function returns undefined, the token will be left as is
      */
-    public process(processor: (token) => Promise<string> | string, regex: TemplateStringMatch = Match.default) {
+    public process(processor: (token, matches?) => Promise<string> | string, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string') return this;
         //first build a json object with all matching tokens
         let tokens = {};
@@ -106,13 +166,13 @@ export class TemplateStringHelper {
             const token = match[1];
             tokens[token] = match[0];
 
-            const _processor = processor(token);
+            const _processor = processor(token, match);
 
             //if an async processor is used, the TemplateStringHelper switches to async mode
             if (_processor instanceof Promise) {
                 _processor.then((result) => {
                     if (result === undefined) {
-                        return match[0];
+                        return match?.[0];
                     }
                     tokens[token] = result;
                 });
@@ -170,6 +230,12 @@ export class TemplateStringHelper {
 export function escapeString(str?: string) {
     if (!str) return str;
     return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+}
+
+// This is used escape JSON values characters like double quotes '"' to parse it properly
+export function escapeJsonField(str?: string) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/\\"/g, '"').replace(/"/g, '\\"');
 }
 
 export function TemplateString(templateString: string) {

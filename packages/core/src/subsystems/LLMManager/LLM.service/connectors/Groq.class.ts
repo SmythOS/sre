@@ -5,75 +5,114 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMParams, LLMMessageBlock, ToolData } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GroqConnector');
+
+type ChatCompletionCreateParams = {
+    model: string;
+    messages: any;
+    max_tokens?: number;
+    temperature?: number;
+    stop?: string[];
+    top_p?: number;
+    tools?: any;
+    tool_choice?: string;
+    stream?: boolean;
+};
+
+type ToolRequestParams = {
+    model: string;
+    messages: TLLMMessageBlock[];
+    toolsConfig: { tools: ToolData[]; tool_choice: string };
+    credentials: { apiKey: string };
+};
+
+// TODO [Forhad]: Apply proper types at for function params and return value
 
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
-    protected async chatRequest(acRequest: AccessRequest, prompt, params): Promise<LLMChatResponse> {
-        try {
-            params.messages = params?.messages || [];
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+        let messages = params?.messages || [];
 
-            if (this.hasSystemMessage(params.messages)) {
-                const { systemMessage, otherMessages } = this.separateSystemMessages(params.messages);
-                params.messages = [systemMessage, ...otherMessages];
+        //#region Handle JSON response format
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            if (messages?.[0]?.role === 'system') {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
             } else {
-                params.messages.unshift({
-                    role: 'system',
-                    content: JSON_RESPONSE_INSTRUCTION,
-                });
+                messages.unshift({ role: 'system', content: JSON_RESPONSE_INSTRUCTION });
             }
+        }
+        //#endregion Handle JSON response format
 
-            if (prompt) {
-                params.messages.push({ role: 'user', content: prompt });
-            }
+        const apiKey = params?.credentials?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Groq');
 
-            const apiKey = params?.apiKey;
-            if (!apiKey) throw new Error('Please provide an API key for Groq');
+        const groq = new Groq({ apiKey });
 
-            const groq = new Groq({ apiKey });
+        // TODO: implement groq specific token counting
+        // this.validateTokensLimit(params);
 
-            // TODO: implement groq specific token counting
-            // this.validateTokensLimit(params);
+        const chatCompletionArgs: {
+            model: string;
+            messages: any; // TODO [Forhad]: apply proper typing
+            max_tokens?: number;
+            temperature?: number;
+            top_p?: number;
+            stop?: string[];
+        } = {
+            model: params.model,
+            messages,
+        };
 
-            const response: any = await groq.chat.completions.create(params);
+        if (params.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
+        try {
+            const response: any = await groq.chat.completions.create(chatCompletionArgs);
             const content = response.choices[0]?.message?.content;
             const finishReason = response.choices[0]?.finish_reason;
 
             return { content, finishReason };
         } catch (error) {
-            console.error('Error in groq chatRequest', error);
             throw error;
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Groq');
     }
 
-    protected async toolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<any> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+        throw new Error('Multimodal request is not supported for OpenAI.');
+    }
+
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
         try {
-            const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+            const apiKey = params?.credentials?.apiKey;
 
-            if (!Array.isArray(messages) || !messages?.length) {
-                return { error: new Error('Invalid messages argument for chat completion.') };
-            }
+            const groq = new Groq({ apiKey });
 
-            let args = {
-                model,
+            const messages = params?.messages || [];
+
+            let chatCompletionArgs: ChatCompletionCreateParams = {
+                model: params.model,
                 messages,
-                tools,
-                tool_choice,
             };
 
-            const result = await groq.chat.completions.create(args);
+            if (params.maxTokens) chatCompletionArgs.max_tokens = params.maxTokens;
+
+            if (params?.toolsConfig?.tools) chatCompletionArgs.tools = params?.toolsConfig?.tools;
+            if (params?.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as any; // TODO [Forhad]: apply proper typing
+
+            const result = await groq.chat.completions.create(chatCompletionArgs as any); // TODO [Forhad]: apply proper typing
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
 
@@ -87,7 +126,7 @@ export class GroqConnector extends LLMConnector {
                     type: tool.type,
                     name: tool.function.name,
                     arguments: tool.function.arguments,
-                    role: 'assistant',
+                    role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
             }
@@ -96,11 +135,15 @@ export class GroqConnector extends LLMConnector {
                 data: { useTool, message, content: message?.content ?? '', toolsData },
             };
         } catch (error: any) {
-            console.error('Error on toolUseLLMRequest: ', error);
-            return { error };
+            throw error;
         }
     }
 
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+        throw new Error('Image generation request is not supported for Groq.');
+    }
+
+    // ! DEPRECATED METHOD
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
@@ -108,23 +151,34 @@ export class GroqConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
-    ): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
-        const groq = new Groq({ apiKey: apiKey || process.env.GROQ_API_KEY });
+        const apiKey = params?.credentials?.apiKey;
 
-        let args = {
-            model,
+        const groq = new Groq({ apiKey });
+
+        const messages = params?.messages || [];
+
+        let chatCompletionArgs: {
+            model: string;
+            messages: any; // TODO [Forhad]: apply proper typing
+            max_tokens?: number;
+            tools?: any; // TODO [Forhad]: apply proper typing
+            tool_choice?: any; // TODO [Forhad]: apply proper typing
+            stream?: boolean;
+        } = {
+            model: params.model,
             messages,
-            tools,
-            tool_choice,
             stream: true,
         };
 
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+
+        if (params.toolsConfig?.tools) chatCompletionArgs.tools = params.toolsConfig?.tools;
+        if (params.toolsConfig?.tool_choice) chatCompletionArgs.tool_choice = params.toolsConfig?.tool_choice;
+
         try {
-            const stream = await groq.chat.completions.create(args);
+            const stream = await groq.chat.completions.create(chatCompletionArgs);
 
             let toolsData: ToolData[] = [];
 
@@ -166,15 +220,8 @@ export class GroqConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
-            emitter.emit('error', error);
-            return emitter;
+            throw error;
         }
-    }
-
-    public async extractVisionLLMParams(config: any) {
-        const params: LLMParams = await super.extractVisionLLMParams(config);
-
-        return params;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -202,20 +249,24 @@ export class GroqConnector extends LLMConnector {
         return tools?.length > 0 ? { tools, tool_choice: toolChoice } : {};
     }
 
-    private formatInputMessages(messages: LLMMessageBlock[]): LLMMessageBlock[] {
-        return messages.map((message) => {
+    public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
+        const _messages = LLMHelper.removeDuplicateUserMessages(messages);
+
+        return _messages.map((message) => {
+            const _message = { ...message };
             let textContent = '';
 
-            if (Array.isArray(message.content)) {
+            if (message?.parts) {
+                textContent = message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+            } else if (Array.isArray(message?.content)) {
                 textContent = message.content.map((textBlock) => textBlock?.text || '').join(' ');
-            } else if (typeof message.content === 'string') {
-                textContent = message.content;
+            } else if (message?.content) {
+                textContent = message.content as string;
             }
 
-            return {
-                role: message.role,
-                content: textContent,
-            };
+            _message.content = textContent;
+
+            return _message;
         });
     }
 }

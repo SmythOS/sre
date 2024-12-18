@@ -1,3 +1,4 @@
+// ! DEPRECATED: will be removed this file
 export default {
     Echo: {
         maxTokens: 'max_tokens',
@@ -51,5 +52,18 @@ export default {
         temperature: 'temperature',
         stopSequences: 'stop',
         topP: 'top_p',
+    },
+    Bedrock: {
+        maxTokens: 'maxTokens',
+        temperature: 'temperature',
+        stopSequences: 'stopSequences',
+        topP: 'topP',
+    },
+    VertexAI: {
+        maxTokens: 'maxOutputTokens',
+        temperature: 'temperature',
+        stopSequences: 'stopSequences',
+        topP: 'topP',
+        topK: 'topK',
     },
 };

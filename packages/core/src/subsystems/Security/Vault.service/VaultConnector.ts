@@ -6,16 +6,21 @@ import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
 
 export interface IVaultRequest {
     get(keyId: string): Promise<string>;
-    set(keyId: string, value: string): Promise<void>;
-    delete(keyId: string): Promise<void>;
     exists(keyId: string): Promise<boolean>;
+    listKeys(): Promise<string[]>;
 }
 
 export abstract class VaultConnector extends SecureConnector {
+    user(candidate: AccessCandidate): IVaultRequest {
+        return {
+            get: async (keyId: string) => this.get(candidate.readRequest, keyId),
+            exists: async (keyId: string) => this.exists(candidate.readRequest, keyId),
+            listKeys: async () => this.listKeys(candidate.readRequest),
+        };
+    }
+
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
-    public abstract user(candidate: AccessCandidate): IVaultRequest;
     protected abstract get(acRequest: AccessRequest, keyId: string): Promise<string>;
-    protected abstract set(acRequest: AccessRequest, keyId: string, value: string): Promise<void>;
-    protected abstract delete(acRequest: AccessRequest, keyId: string): Promise<void>;
     protected abstract exists(acRequest: AccessRequest, keyId: string): Promise<boolean>;
+    protected abstract listKeys(acRequest: AccessRequest): Promise<string[]>;
 }

@@ -82,9 +82,16 @@ export abstract class SecureConnector extends Connector {
             // Extract the method arguments
             const [acRequest, resourceId] = args;
 
-            // Inject the access control logic
-            const accessTicket = await this.getAccessTicket(resourceId, acRequest);
-            if (accessTicket.access !== TAccessResult.Granted) throw new ACLAccessDeniedError('Access Denied');
+            if (resourceId !== undefined) {
+                //: getAccessTicket requires a resourceId
+                //FIXME: implement different access control for resources listing and methods that do not require a resourceId
+                // Inject the access control logic
+                const accessTicket = await this.getAccessTicket(resourceId, acRequest);
+                if (accessTicket.access !== TAccessResult.Granted) {
+                    console.error(`Access denied for ${acRequest.candidate.id} on ${resourceId}`);
+                    throw new ACLAccessDeniedError('Access Denied');
+                }
+            }
 
             // Call the original method with the original arguments
             return originalMethod.apply(this, args);

@@ -2,9 +2,8 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import axios from 'axios';
-import * as FileType from 'file-type';
 import mime from 'mime';
-import { getSizeFromBinary, isUrl, uid } from '../utils';
+import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
 export class BinaryInput {
     private size: number;
     private url: string;
@@ -13,12 +12,17 @@ export class BinaryInput {
     private _source: Buffer;
     private _uploading: boolean = false;
 
-    constructor(data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>, private _name?: string, public mimetype?: string) {
+    constructor(
+        data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>,
+        private _name?: string,
+        public mimetype?: string,
+        private candidate?: IAccessCandidate
+    ) {
         if (!_name) _name = uid();
         this._name = _name;
         //this._source = data;
 
-        this.load(data, _name, mimetype);
+        this.load(data, _name, mimetype, candidate);
     }
 
     public async ready() {
@@ -43,17 +47,40 @@ export class BinaryInput {
         return this._readyPromise;
     }
 
-    private async load(data, name: string, mimetype?: string) {
+    private async load(data, name: string, mimetype?: string, candidate?: IAccessCandidate) {
         //assume the mimetype from the provided name
-        const ext: any = name.split('.').pop();
-        this.mimetype = mimetype || mime.getType(ext) || 'application/octet-stream';
+        const ext: any = name.split('.')?.length > 1 ? name.split('.').pop() : '';
+        // Need to set mimetype empty string if no extension is found, setting default mimetype to 'application/octet-stream' lead wrong direction when try to get the mimetype from base64 or buffer data (as it's not accurate all the time)
+        this.mimetype = mimetype || mime.getType(ext) || '';
         this.url = ``;
 
         if (typeof data === 'object' && data.url && data.mimetype && data.size) {
             this.mimetype = data.mimetype;
             this.size = data.size;
             this.url = data.url;
-            this._ready = true;
+            if (candidate) {
+                this._source = await SmythFS.Instance.read(this.url, candidate).finally(() => {
+                    this._ready = true;
+                });
+            } else {
+                this._ready = true;
+            }
+            return;
+        }
+
+        if (typeof data === 'string' && data.startsWith('smythfs://')) {
+            this.url = data;
+            if (candidate) {
+                try {
+                    this._source = await SmythFS.Instance.read(this.url, candidate);
+                    this.mimetype = await getMimeType(this._source);
+                    this.size = this._source.byteLength;
+                } finally {
+                    this._ready = true;
+                }
+            } else {
+                this._ready = true;
+            }
             return;
         }
 
@@ -86,11 +113,15 @@ export class BinaryInput {
         }
 
         // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isDataUrl(data));
-        const base64FileInfo = await this.getBase64FileInfo(data);
+        const base64FileInfo = await getBase64FileInfo(data);
         if (base64FileInfo) {
-            this.mimetype = base64FileInfo.mimetype;
+            // If the MIME type is already set, it's safe to use it,
+            // as determining the MIME type from the base64 string is not always accurate, specially when it's not a base64 URL
+            if (!this.mimetype) {
+                this.mimetype = base64FileInfo.mimetype;
+            }
             this.size = base64FileInfo.size;
-            this._source = base64FileInfo.data;
+            this._source = Buffer.from(base64FileInfo.data, 'base64');
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
 
@@ -123,10 +154,19 @@ export class BinaryInput {
         if (Buffer.isBuffer(data)) {
             this._source = data;
             this.size = getSizeFromBinary(data);
-            const fileType = await FileType.fileTypeFromBuffer(data);
-            this.mimetype = fileType.mime;
+            // If the MIME type is already set, it's safe to use it,
+            // as determining the MIME type from the buffer is not always accurate.
+            if (!this.mimetype) {
+                this.mimetype = await getMimeType(data);
+            }
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
+        }
+
+        if (data instanceof Blob) {
+            this._source = Buffer.from(await data.arrayBuffer());
+            this.size = data.size;
+            this.mimetype = data.type;
         }
 
         this._ready = true;
@@ -134,7 +174,8 @@ export class BinaryInput {
 
     private async getUrlInfo(url) {
         try {
-            const response = await axios.head(url);
+            // Before we had axios.head(), head method does not work for all URLs
+            const response = await axios.get(url);
             const contentType = response.headers['content-type'];
             const contentLength = response.headers['content-length'];
             return { contentType, contentLength };
@@ -142,6 +183,7 @@ export class BinaryInput {
             return { contentType: '', contentLength: 0 };
         }
     }
+    // ! DEPRECATED: This will be removed. We now use extractBase64DataAndMimeType(), which is more robust.
     private async getBase64FileInfo(data: string) {
         //first check if it's a base64 url format
         const validUrlFormatRegex = /data:[^;]+;base64,[A-Za-z0-9+\/]*(={0,2})?$/gm;
@@ -152,13 +194,13 @@ export class BinaryInput {
         const base64Data = data.split(',')[1];
         const buffer = Buffer.from(base64Data, 'base64');
         const size = buffer.byteLength;
-        const filetype = await FileType.fileTypeFromBuffer(buffer);
+        const mimetype = await getMimeType(buffer);
 
-        return { size, data: buffer, mimetype: filetype?.mime || '' };
+        return { size, data: buffer, mimetype };
     }
-    public static from(data, name?: string, mimetype?: string) {
+    public static from(data, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
         if (data instanceof BinaryInput) return data;
-        return new BinaryInput(data, name, mimetype);
+        return new BinaryInput(data, name, mimetype, candidate);
     }
 
     public async upload(candidate: IAccessCandidate) {
@@ -172,6 +214,8 @@ export class BinaryInput {
                 const teamId = await accountConnector.getCandidateTeam(candidate);
 
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
+                //TODO : set a TTL for temporary files
+                //we probably need a write with TTL method in SmythFS
                 await SmythFS.Instance.write(this.url, this._source, candidate);
                 this._uploading = false;
             }
@@ -187,6 +231,7 @@ export class BinaryInput {
             mimetype: this.mimetype,
             size: this.size,
             url: this.url,
+            name: this._name,
         };
     }
 
@@ -197,6 +242,11 @@ export class BinaryInput {
         }
         const data = await SmythFS.Instance.read(this.url, candidate);
         return data;
+    }
+
+    public async getName() {
+        await this.ready();
+        return this._name;
     }
 
     public async getBuffer() {

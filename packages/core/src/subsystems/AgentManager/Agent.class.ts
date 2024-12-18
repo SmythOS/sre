@@ -49,16 +49,17 @@ export default class Agent {
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
-        this.name = json.name;
         this.data = json.data;
         //this.agentVariables = json.data.variables || {};
 
+        this.name = this.data.name;
         this.version = this.data.agentVersion || ''; //when version is not set we load the latest dev version
-        this.teamId = json.teamId;
+        this.teamId = this.data.teamId;
         this.connections = this.data.connections;
         this.debugSessionEnabled = this.data.debugSessionEnabled;
+        this.usingTestDomain = this.data.usingTestDomain;
 
-        this.agentVariables = json.data.variables || {};
+        this.agentVariables = this.data.variables || {};
 
         //parse vault agent variables
         // if (typeof json.data.variables === 'object') {
@@ -147,7 +148,7 @@ export default class Agent {
                 const value = this.agentVariables[key];
                 if (value.startsWith('{{') && value.endsWith('}}')) {
                     //this.agentVariables[key] = (await parseKey(value, this.teamId)) || '';
-                    this.agentVariables[key] = await TemplateString(value).parseTeamKeys(this.teamId).asyncResult;
+                    this.agentVariables[key] = await TemplateString(value).parseTeamKeysAsync(this.teamId).asyncResult;
                 }
             }
         }
@@ -244,6 +245,9 @@ export default class Agent {
     public async postProcess(result) {
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
+
+        //filter out handled errors
+        result = result.filter((r) => !(r?.result?._error && r?.result?._error_handled));
 
         for (let i = 0; i < result.length; i++) {
             const _result = result[i];
@@ -487,7 +491,11 @@ export default class Agent {
         if (output.error || output._error) {
             //TODO : check if we need to keep loop data while clearing runtime data here
             //in fact, output._error might be connected to a next component, in which case we need to keep the loop data
-            this.agentRuntime.resetComponent(componentId);
+            if (!runtimeData?._ChildLoopData?._in_progress) {
+                //don't reset if we are inside a loop, otherwise ._error branches will break the loop
+
+                this.agentRuntime.resetComponent(componentId);
+            }
 
             if (logId) {
                 //update log
@@ -664,6 +672,7 @@ export default class Agent {
             const targetComponent: Component = componentInstance[targetComponentData.name];
             const connections = targetComponents[targetId];
 
+            let _isErrorHandler = false;
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
@@ -678,6 +687,9 @@ export default class Agent {
 
                     const defaultOutputs = componentData.outputs.find((c) => c.default);
                     let value: any = undefined;
+
+                    if (outputEndpoint.name == '_error') _isErrorHandler = true;
+
                     if (outputEndpoint.default) value = output[outputEndpoint.name] /* || null*/;
                     else {
                         if (defaultOutputs /* && output[defaultOutputs.name]?.[outputEndpoint.name]*/) {
@@ -699,9 +711,11 @@ export default class Agent {
 
                     //Fix suggested by Sentinel Agent
                     if (/*value !== null && */ value !== undefined) {
-                        let combinedInput = [...[nextInput[inputEndpoint.name]].flat(), ...[value].flat()].filter(
-                            (e) => e !== undefined /*&& e !== null*/
-                        );
+                        // let combinedInput = [...[nextInput[inputEndpoint.name]].flat(), ...[value].flat()].filter(
+                        //     (e) => e !== undefined /*&& e !== null*/,
+                        // ); // ! Deprecated
+
+                        let combinedInput = _mergeInputs(nextInput[inputEndpoint.name], value).filter((e) => e !== undefined /*&& e !== null*/);
 
                         nextInput[inputEndpoint.name] = combinedInput.length === 1 ? combinedInput[0] : combinedInput;
                     }
@@ -711,6 +725,10 @@ export default class Agent {
                 const input = this.prepareComponentInput(targetId, nextInput);
 
                 const targetComponent = this.components[targetId];
+
+                if (_isErrorHandler && targetComponent) {
+                    output._error_handled = true;
+                }
 
                 const missingInputs = this.getComponentMissingInputs(targetId, input);
                 const status = missingInputs.length > 0 ? 'waiting' : undefined;
@@ -778,7 +796,8 @@ export default class Agent {
             for (let key in inputs) {
                 let value = inputs[key];
                 // Concatenate the existing value with the new input, without using Set to preserve duplicates
-                _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== undefined);
+                // _input[key] = [rDataInput[key], value].flat(Infinity).filter((e) => e !== undefined); // ! Deprecated
+                _input[key] = _mergeInputs(rDataInput[key], value).filter((e) => e !== undefined);
 
                 // Simplify the array to a single value if there is only one element after flattening
                 if (_input[key].length == 1) _input[key] = _input[key][0];
@@ -845,4 +864,16 @@ export default class Agent {
 
         //this.recursiveTagAsyncComponents(AsyncComponent, agent);
     }
+}
+
+function _mergeInputs(existing, newValue) {
+    if (existing === undefined) {
+        return [newValue];
+    }
+
+    if (!Array.isArray(existing)) {
+        existing = [existing];
+    }
+
+    return [...existing, newValue];
 }
