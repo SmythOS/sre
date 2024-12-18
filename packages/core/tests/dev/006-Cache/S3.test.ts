@@ -52,7 +52,7 @@ const testOriginalACLMetadata = {
 
 const agentCandidate = AccessCandidate.team('team1');
 const testOriginalMetadata = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'text/plain',
     'test': 'test',
 };
 
