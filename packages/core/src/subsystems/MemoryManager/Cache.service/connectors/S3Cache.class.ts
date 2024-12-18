@@ -1,16 +1,11 @@
 import { Logger } from '@sre/helpers/Log.helper';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
-import IORedis from 'ioredis';
 import { CacheConnector } from '../CacheConnector';
 
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { RedisConfig } from '@sre/types/Redis.types';
-
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { S3CacheConfig } from '@sre/types/S3Cache.types';
 import { GetBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommand, S3Client, ListBucketsCommand, GetObjectCommand, PutObjectCommand, PutObjectCommandInput, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand, GetObjectTaggingCommand, PutObjectTaggingCommand } from '@aws-sdk/client-s3';
 import { generateExpiryMetadata, generateLifecycleRules, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
@@ -20,10 +15,10 @@ const console = Logger('S3Cache');
 
 export class S3Cache extends CacheConnector {
     public name: string = 'S3Cache';
-    private redis: IORedis;
     private s3Client: S3Client;
     private bucketName: string;
     private isInitialized: boolean = false;
+    private cachePrefix: string = '_smyth_cache';
 
     constructor(settings: S3CacheConfig) {
         super();
@@ -51,7 +46,7 @@ export class S3Cache extends CacheConnector {
         try {
             const params = {
                 Bucket: this.bucketName,
-                Key: `${candidateId}/${key}`
+                Key: `${this.cachePrefix}/${candidateId}/${key}`
             };
 
             const s3HeadCommand = new HeadObjectCommand(params);
@@ -79,7 +74,7 @@ export class S3Cache extends CacheConnector {
 
         } catch (error) {
             console.error(`Error reading object ${key}:`, error);
-            return null;
+            throw null;
         }
     }
 
@@ -89,10 +84,10 @@ export class S3Cache extends CacheConnector {
         const candidateId = accessCandidate.id;
 
         const newMetadata: CacheMetadata = metadata || {};
-        newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
+        newMetadata.acl = JSON.stringify(ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL);
         const s3PutCommandConfig: PutObjectCommandInput = {
             Bucket: this.bucketName,
-            Key: `${candidateId}/${key}`,
+            Key: `${this.cachePrefix}/${candidateId}/${key}`,
             Body: data,
             Metadata: newMetadata,
         }
@@ -109,9 +104,14 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async delete(acRequest: AccessRequest, key: string): Promise<void> {
-        const candidateId = acRequest.candidate.id;
-        const deleteCommand = new DeleteObjectCommand({ Bucket: this.bucketName, Key: `${candidateId}/${key}` });
-        await this.s3Client.send(deleteCommand);
+        try {
+            const candidateId = acRequest.candidate.id;
+            const deleteCommand = new DeleteObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidateId}/${key}` });
+            await this.s3Client.send(deleteCommand);
+        } catch (error) {
+            console.log(`Error deleting object ${key}:`, error);
+            return;
+        }
     }
 
     @SecureConnector.AccessControl
@@ -120,7 +120,7 @@ export class S3Cache extends CacheConnector {
         try {
             const params = {
                 Bucket: this.bucketName,
-                Key: `${candidateId}/${key}`
+                Key: `${this.cachePrefix}/${candidateId}/${key}`
             };
             const s3HeadCommand = new HeadObjectCommand(params);
             const headData = await this.s3Client.send(s3HeadCommand);
@@ -153,7 +153,7 @@ export class S3Cache extends CacheConnector {
         const candidateId = acRequest.candidate.id;
 
         try {
-            const s3Metadata = await this.getS3Metadata(`${candidateId}/${key}`);
+            const s3Metadata = await this.getS3Metadata(`${this.cachePrefix}/${candidateId}/${key}`);
             return s3Metadata as CacheMetadata;
         } catch (error) {
             console.error(`Error getting access rights in S3`, error.name, error.message);
@@ -164,13 +164,13 @@ export class S3Cache extends CacheConnector {
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
         const candidateId = acRequest.candidate.id;
-    
+
         try {
-            let s3Metadata = await this.getS3Metadata(`${candidateId}/${key}`);
+            let s3Metadata = await this.getS3Metadata(`${this.cachePrefix}/${candidateId}/${key}`);
             if (!s3Metadata) s3Metadata = {};
             //s3Metadata['x-amz-meta-data'] = metadata;
             s3Metadata = { ...s3Metadata, ...metadata };
-            await this.setS3Metadata(`${candidateId}/${key}`, s3Metadata);
+            await this.setS3Metadata(`${this.cachePrefix}/${candidateId}/${key}`, s3Metadata);
         } catch (error) {
             console.error(`Error setting access rights in S3`, error);
             throw error;
@@ -186,7 +186,7 @@ export class S3Cache extends CacheConnector {
             const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
             const s3PutObjectTaggingCommand = new PutObjectTaggingCommand({
                 Bucket: this.bucketName,
-                Key: `${candidateId}/${key}`,
+                Key: `${this.cachePrefix}/${candidateId}/${key}`,
                 Tagging: { TagSet: [{ Key: expiryMetadata.Key, Value: expiryMetadata.Value }] },
             });
             await this.s3Client.send(s3PutObjectTaggingCommand);
@@ -197,7 +197,7 @@ export class S3Cache extends CacheConnector {
     @SecureConnector.AccessControl
     public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
         const candidateId = acRequest.candidate.id;
-        const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${candidateId}/${key}` });
+        const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidateId}/${key}` });
         const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
         const expirationHeader = s3HeadObjectResponse?.Expiration;
         if (expirationHeader) {
@@ -213,16 +213,24 @@ export class S3Cache extends CacheConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
-        const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${candidate.id}/${resourceId}` });
-        const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
+        try {
+            const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidate.id}/${resourceId}` });
+            const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
 
-        const metadata = s3HeadObjectResponse.Metadata;
+            const metadata = s3HeadObjectResponse.Metadata;
 
-        if (!metadata.acl) {
-            //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
-            return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+            if (!metadata.acl) {
+                //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
+                return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+            }
+            return ACL.from(JSON.parse(metadata?.acl as string) as IACL);
+        } catch (error) {
+            if (error.name === 'NotFound') {
+                //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
+                return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+            }
+            throw error;
         }
-        return ACL.from(metadata?.acl as IACL);
     }
 
     @SecureConnector.AccessControl
@@ -231,7 +239,6 @@ export class S3Cache extends CacheConnector {
             const metadata = await this.getMetadata(acRequest, key);
             return (metadata?.acl as IACL) || {};
         } catch (error) {
-            console.error(`Error getting access rights in S3`, error.name, error.message);
             throw error;
         }
     }
@@ -291,7 +298,7 @@ export class S3Cache extends CacheConnector {
             });
 
             await this.client.send(copyObjectCommand);
-         
+
         } catch (error) {
             console.error(`Error setting object metadata in S3`, error.name, error.message);
             throw error;
@@ -308,8 +315,8 @@ export class S3Cache extends CacheConnector {
         try {
             // Check existing lifecycle configuration
             const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: this.bucketName });
-            const lifecycleConfig = await this.s3Client.send(getLifecycleCommand);
-            console.log('Lifecycle configuration already exists:', JSON.stringify(lifecycleConfig, null, 2));
+            await this.s3Client.send(getLifecycleCommand);
+            console.log('Lifecycle configuration already exists');
         } catch (error) {
             if (error.code === 'NoSuchLifecycleConfiguration') {
                 console.log('No lifecycle configuration found. Creating new configuration...');
