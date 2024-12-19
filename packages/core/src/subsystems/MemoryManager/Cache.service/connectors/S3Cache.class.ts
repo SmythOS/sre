@@ -8,7 +8,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { S3CacheConfig } from '@sre/types/S3Cache.types';
 import { GetBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommand, S3Client, ListBucketsCommand, GetObjectCommand, PutObjectCommand, PutObjectCommandInput, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand, GetObjectTaggingCommand, PutObjectTaggingCommand } from '@aws-sdk/client-s3';
-import { generateExpiryMetadata, generateLifecycleRules, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
+import { generateExpiryMetadata, generateLifecycleRules, getNonExistingRules, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
 
 
 const console = Logger('S3Cache');
@@ -315,8 +315,21 @@ export class S3Cache extends CacheConnector {
         try {
             // Check existing lifecycle configuration
             const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: this.bucketName });
-            await this.s3Client.send(getLifecycleCommand);
-            console.log('Lifecycle configuration already exists');
+            const existingLifecycle = await this.s3Client.send(getLifecycleCommand);
+            const existingRules = existingLifecycle.Rules;
+            const newRules = generateLifecycleRules();
+            const nonExistingNewRules = getNonExistingRules(existingRules, newRules);
+            if (nonExistingNewRules.length > 0) {
+                const params = {
+                    Bucket: bucketName,
+                    LifecycleConfiguration: { Rules: [...existingRules, ...nonExistingNewRules] },
+                };
+                const putLifecycleCommand = new PutBucketLifecycleConfigurationCommand(params);
+                // Put the new lifecycle configuration
+                await this.s3Client.send(putLifecycleCommand);
+            } else {
+                console.log('Lifecycle configuration already exists');
+            }
         } catch (error) {
             if (error.code === 'NoSuchLifecycleConfiguration') {
                 console.log('No lifecycle configuration found. Creating new configuration...');

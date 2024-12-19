@@ -74,6 +74,10 @@ export function generateExpiryMetadata(expiryDays) {
     };
 }
 
+export function getNonExistingRules(existingRules: any[], newRules: any[]) {
+    return newRules.filter(rule => !existingRules.some(existingRule => existingRule.ID === rule.ID));
+}
+
 export function ttlToExpiryDays(ttl: number) { // seconds
     return Math.ceil(ttl / (60 * 60 * 24));
 }
