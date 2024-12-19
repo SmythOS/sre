@@ -2,9 +2,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 import Component from './Component.class';
 
@@ -47,7 +45,9 @@ export default class PromptGenerator extends Component {
                 };
             }
 
-            logger.debug(` Model : ${model}`);
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 

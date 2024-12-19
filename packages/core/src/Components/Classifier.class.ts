@@ -5,6 +5,7 @@ import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 export default class Classifier extends Component {
     protected configSchema = Joi.object({
@@ -50,7 +51,9 @@ export default class Classifier extends Component {
         }
 
         const model: string = config.data.model;
-        logger.log(` Selected model : ${model}`);
+        const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+        logger.log(` Selected model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
         let prompt = '';
         const excludedKeys = ['_debug', '_error'];

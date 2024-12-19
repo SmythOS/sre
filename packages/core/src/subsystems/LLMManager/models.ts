@@ -57,25 +57,49 @@ export const models = {
         keyOptions: { tokens: 128000, completionTokens: 8192 },
     },
 
-    // GPT-4-turbo
-    'gpt-4-turbo-latest': {
+    // o1 models
+    o1: {
         llm: 'OpenAI',
-        alias: 'gpt-4-turbo-2024-04-09',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
-        tags: ['legacy'],
+        alias: 'o1-2024-12-17',
+        components: ['PromptGenerator'],
     },
-    'gpt-4-turbo': {
-        llm: 'OpenAI',
-        alias: 'gpt-4-turbo-2024-04-09',
-        components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
-        tags: ['legacy'],
-    },
-    'gpt-4-turbo-2024-04-09': {
+    'o1-2024-12-17': {
         llm: 'OpenAI',
         tokens: 1024,
         completionTokens: 1024,
         enabled: true,
-        keyOptions: { tokens: 128000, completionTokens: 4096 },
+        keyOptions: { tokens: 200_000, completionTokens: 100_000 },
+    },
+    'o1-mini': {
+        llm: 'OpenAI',
+        alias: 'o1-mini-2024-09-12',
+        components: ['PromptGenerator'],
+    },
+    'o1-mini-2024-09-12': {
+        llm: 'OpenAI',
+        tokens: 1024,
+        completionTokens: 1024,
+        enabled: true,
+        keyOptions: { tokens: 128_000, completionTokens: 65_536 },
+    },
+    'gpt-o1-preview': {
+        llm: 'OpenAI',
+        alias: 'o1-preview-2024-09-12',
+        components: ['PromptGenerator'],
+        tags: ['new'],
+    },
+    'o1-preview-2024-09-12': {
+        llm: 'OpenAI',
+        tokens: 1024,
+        completionTokens: 1024,
+        enabled: true,
+        keyOptions: { tokens: 128_000, completionTokens: 32_768 },
+    },
+    'gpt-o1-mini': {
+        llm: 'OpenAI',
+        alias: 'o1-mini-2024-09-12',
+        components: ['PromptGenerator'],
+        tags: ['new'],
     },
 
     // GPT-4
@@ -161,13 +185,22 @@ export const models = {
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
-    'claude-3.5-sonnet': {
-        llm: 'AnthropicAI',
-        alias: 'claude-3-5-sonnet-latest',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
-    },
+
     'claude-3-5-sonnet-latest': {
         llm: 'AnthropicAI',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: false,
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    },
+    'claude-3.5-sonnet': {
+        llm: 'AnthropicAI',
+        alias: 'claude-3-5-sonnet-20240620',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    },
+    'claude-3-5-sonnet-20240620': {
+        llm: 'Claude',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
