@@ -58,18 +58,18 @@ export const models = {
     },
 
     // o1 models
-    /* o1: {
-        llm: 'OpenAI',
-        alias: 'o1-2024-12-17',
-        components: ['PromptGenerator'],
-    },
-    'o1-2024-12-17': {
-        llm: 'OpenAI',
-        tokens: 1024,
-        completionTokens: 1024,
-        enabled: true,
-        keyOptions: { tokens: 200_000, completionTokens: 100_000 },
-    }, */
+    // o1: {
+    //     llm: 'OpenAI',
+    //     alias: 'o1-2024-12-17',
+    //     components: ['PromptGenerator'],
+    // },
+    // 'o1-2024-12-17': {
+    //     llm: 'OpenAI',
+    //     tokens: 1024,
+    //     completionTokens: 1024,
+    //     enabled: true,
+    //     keyOptions: { tokens: 200_000, completionTokens: 100_000 },
+    // },
     'o1-mini': {
         llm: 'OpenAI',
         alias: 'o1-mini-2024-09-12',
@@ -82,7 +82,7 @@ export const models = {
         enabled: true,
         keyOptions: { tokens: 128_000, completionTokens: 65_536 },
     },
-    'gpt-o1-preview': {
+    'o1-preview': {
         llm: 'OpenAI',
         alias: 'o1-preview-2024-09-12',
         components: ['PromptGenerator'],
@@ -94,12 +94,6 @@ export const models = {
         completionTokens: 1024,
         enabled: true,
         keyOptions: { tokens: 128_000, completionTokens: 32_768 },
-    },
-    'gpt-o1-mini': {
-        llm: 'OpenAI',
-        alias: 'o1-mini-2024-09-12',
-        components: ['PromptGenerator'],
-        tags: ['new'],
     },
 
     // GPT-4
