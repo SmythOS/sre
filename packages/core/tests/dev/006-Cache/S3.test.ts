@@ -42,7 +42,7 @@ const testAdditionalACLMetadata = {
 };
 
 const testOriginalACLMetadata = {
-    hashAlgorithm: 'none',
+    hashAlgorithm: 'xxh3',
     entries: {
         [TAccessRole.Team]: {
             teamMeta: [TAccessLevel.Read, TAccessLevel.Write],
@@ -114,8 +114,6 @@ describe('S3Cache Tests', () => {
 
     it('Are Metadata ACL valid', async () => {
         const accessRights = await s3Cache.user(agentCandidate).getACL(s3Key);
-        console.log('accessRights', JSON.stringify(accessRights?.entries?.team, null, 2));
-        console.log('testAdditionalACLMetadata', JSON.stringify(testAdditionalACLMetadata.entries.team, null, 2));
         expect(JSON.stringify(accessRights?.entries?.team)).toEqual(JSON.stringify(testAdditionalACLMetadata.entries.team));
     });
 

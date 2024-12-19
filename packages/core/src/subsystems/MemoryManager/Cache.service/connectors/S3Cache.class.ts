@@ -84,12 +84,14 @@ export class S3Cache extends CacheConnector {
         const candidateId = accessCandidate.id;
 
         const newMetadata: CacheMetadata = metadata || {};
-        newMetadata.acl = JSON.stringify(ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL);
+        newMetadata['acl'] = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
+        const serializedMetadata = this.serializeS3Metadata(newMetadata);
+
         const s3PutCommandConfig: PutObjectCommandInput = {
             Bucket: this.bucketName,
             Key: `${this.cachePrefix}/${candidateId}/${key}`,
             Body: data,
-            Metadata: newMetadata,
+            Metadata: serializedMetadata,
         }
         if (ttl) {
             const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
@@ -218,12 +220,11 @@ export class S3Cache extends CacheConnector {
             const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
 
             const metadata = s3HeadObjectResponse.Metadata;
-
             if (!metadata.acl) {
                 //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
                 return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
             }
-            return ACL.from(JSON.parse(metadata?.acl as string) as IACL);
+            return ACL.from(metadata?.acl as string);
         } catch (error) {
             if (error.name === 'NotFound') {
                 //the resource does not exist yet, we grant write access to the candidate in order to allow the resource creation
@@ -352,16 +353,12 @@ export class S3Cache extends CacheConnector {
 
     private serializeS3Metadata(s3Metadata: Record<string, any>): Record<string, string> {
         let amzMetadata = {};
-        if (s3Metadata['x-amz-meta-acl']) {
-            //const acl: TACL = s3Metadata['x-amz-meta-acl'];
-            if (s3Metadata['x-amz-meta-acl']) {
-                amzMetadata['x-amz-meta-acl'] =
-                    typeof s3Metadata['x-amz-meta-acl'] == 'string'
-                        ? s3Metadata['x-amz-meta-acl']
-                        : ACL.from(s3Metadata['x-amz-meta-acl']).serializedACL;
-            }
-
-            delete s3Metadata['x-amz-meta-acl'];
+        if (s3Metadata['acl']) {
+            amzMetadata['acl'] =
+                typeof s3Metadata['acl'] == 'string'
+                    ? s3Metadata['acl']
+                    : ACL.from(s3Metadata['acl']).serializedACL;
+            delete s3Metadata['acl'];
         }
 
         for (let key in s3Metadata) {
@@ -376,7 +373,7 @@ export class S3Cache extends CacheConnector {
         let metadata: Record<string, any> = {};
 
         for (let key in amzMetadata) {
-            if (key === 'x-amz-meta-acl') {
+            if (key === 'acl') {
                 metadata[key] = ACL.from(amzMetadata[key]).ACL;
                 continue;
             }
