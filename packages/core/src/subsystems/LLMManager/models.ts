@@ -58,7 +58,7 @@ export const models = {
     },
 
     // o1 models
-    o1: {
+    /* o1: {
         llm: 'OpenAI',
         alias: 'o1-2024-12-17',
         components: ['PromptGenerator'],
@@ -69,7 +69,7 @@ export const models = {
         completionTokens: 1024,
         enabled: true,
         keyOptions: { tokens: 200_000, completionTokens: 100_000 },
-    },
+    }, */
     'o1-mini': {
         llm: 'OpenAI',
         alias: 'o1-mini-2024-09-12',
