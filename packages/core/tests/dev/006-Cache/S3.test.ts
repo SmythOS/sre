@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
 import { S3Cache } from '@sre/MemoryManager/Cache.service/connectors/S3Cache.class';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
 
 function xxh3(source) {
     const h64 = xxhash.h64(); // Use xxhashjs's h64 function
@@ -114,7 +115,7 @@ describe('S3Cache Tests', () => {
 
     it('Are Metadata ACL valid', async () => {
         const accessRights = await s3Cache.user(agentCandidate).getACL(s3Key);
-        expect(JSON.stringify(accessRights?.entries?.team)).toEqual(JSON.stringify(testAdditionalACLMetadata.entries.team));
+        expect(JSON.stringify(accessRights?.entries?.team)).toEqual(JSON.stringify(ACL.from(testAdditionalACLMetadata).addAccess(agentCandidate.role, agentCandidate.id, TAccessLevel.Owner).ACL.entries.team));
     });
 
     it('Check Access Rights => Grant', async () => {

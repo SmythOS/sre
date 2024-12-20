@@ -289,12 +289,13 @@ export class S3Cache extends CacheConnector {
                 Key: resourceId,
             });
             const objectTagging = await this.client.send(getObjectTaggingCommand);
-
+            const serializedMetadata = this.serializeS3Metadata(metadata);
             const copyObjectCommand = new CopyObjectCommand({
                 Bucket: this.bucketName,
                 CopySource: `${this.bucketName}/${resourceId}`,
                 Key: resourceId,
-                Metadata: this.serializeS3Metadata(metadata),
+                Metadata: serializedMetadata,
+                MetadataDirective: 'REPLACE',
                 Tagging: objectTagging.TagSet.map(tag => `${tag.Key}=${tag.Value}`).join('&'),
             });
 
