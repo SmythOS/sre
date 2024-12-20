@@ -208,9 +208,9 @@ export class TemplateStringHelper {
      * Removes all placeholders from the template string, leaving only the plain text
      * This is useful when you want to clean up a template string that has placeholders that were not parsed
      */
-    public clean(regex: TemplateStringMatch = Match.default) {
+    public clean(regex: TemplateStringMatch = Match.default, replaceWith: string = '') {
         if (typeof this._current !== 'string') return this;
-        this._current = this._current.replace(regex, '');
+        this._current = this._current.replace(regex, replaceWith);
         return this;
     }
 
