@@ -163,8 +163,15 @@ export const models = {
     },
     'claude-3.5-sonnet': {
         llm: 'AnthropicAI',
-        alias: 'claude-3-5-sonnet-latest',
+        alias: 'claude-3-5-sonnet-20240620',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
+    },
+    'claude-3-5-sonnet-20240620': {
+        llm: 'AnthropicAI',
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: false,
+        keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     },
     'claude-3-5-sonnet-latest': {
         llm: 'AnthropicAI',
