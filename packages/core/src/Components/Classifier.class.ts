@@ -92,10 +92,11 @@ ${JSON.stringify(categories, null, 2)}`;
         try {
             let response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
-            if (response.error) {
-                logger.error(` LLM Error=`, response.error);
+            if (response?.error) {
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { _error: response.error.toString(), _debug: logger.output };
+                return { _error: error, _debug: logger.output };
             }
 
             // let parsed = parseJson(response);

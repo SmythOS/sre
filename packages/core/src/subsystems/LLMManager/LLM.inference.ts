@@ -241,9 +241,9 @@ export class LLMInference {
         try {
             return this.llmConnector.getConsistentMessages(messages);
         } catch (error) {
-            console.error('Error in getConsistentMessages: ', error);
+            console.warn('Something went wrong in getConsistentMessages: ', error);
 
-            return messages; // if something goes wrong then we return the original messages
+            return messages; // if something went wrong then we return the original messages
         }
     }
 }

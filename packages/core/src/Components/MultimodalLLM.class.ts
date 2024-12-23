@@ -74,8 +74,9 @@ export default class MultimodalLLM extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
+                return { Reply: response?.data, _error: error, _debug: logger.output };
             }
 
             const result = { Reply: response };
@@ -83,9 +84,10 @@ export default class MultimodalLLM extends Component {
 
             return result;
         } catch (error: any) {
-            logger.error(`Error processing File(s)!\n${JSON.stringify(error)}`);
+            const _error = `${error?.error || ''} ${error?.details || ''}`.trim() || error?.message || 'Something went wrong!';
+            logger.error(`Error processing File(s)!`, _error);
             return {
-                _error: `${error?.error || ''} ${error?.details || ''}`.trim() || error?.message || 'Something went wrong!',
+                _error,
                 _debug: logger.output,
             };
         }
