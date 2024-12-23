@@ -1,31 +1,43 @@
 import Joi from 'joi';
-import Component from './Component.class';
+import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-export default class MultimodalLLM extends Component {
+
+import Component from './Component.class';
+
+export default class GenAILLM extends Component {
     protected configSchema = Joi.object({
-        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
-        maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         model: Joi.string().max(200).required(),
+        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
+        temperature: Joi.number().min(0).max(5).label('Temperature'),
+        maxTokens: Joi.number().min(1).label('Maximum Tokens'),
+        stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
+        topP: Joi.number().min(0).max(1).label('Top P'),
+        topK: Joi.number().min(0).max(500).label('Top K'),
+        frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
+        presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
+        processingType: Joi.string().valid('Text', 'Image', 'Audio', 'Video', 'Document').default('Text'),
     });
 
     constructor() {
         super();
     }
 
-    init() {}
+    init() { }
 
-    async process(input, config, agent) {
+    async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
         const logger = this.createComponentLogger(agent, config.name);
 
-        logger.debug(`=== Multimodal LLM Log ===`);
-
         try {
+            logger.debug(`=== GenAI LLM Log ===`);
             const model: string = config.data.model || 'gpt-4o-mini';
-            const llmInference: LLMInference = await LLMInference.getInstance(model, agent.teamId);
+            const processingType: string = config.data.processingType || 'Text';
+            const teamId = agent?.teamId;
+
+            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
             if (!llmInference.connector) {
                 return {
@@ -35,13 +47,13 @@ export default class MultimodalLLM extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
-
             logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
+            logger.debug(` Processing Type : ${processingType}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
-
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
+            // Setup output format if needed
             const outputs = {};
             for (let con of config.outputs) {
                 if (con.default) continue;
@@ -63,9 +75,24 @@ export default class MultimodalLLM extends Component {
                 logger.debug(`[Component enhanced prompt]\n${prompt}\n\n`);
             }
 
-            const fileSources = Array.isArray(input.Input) ? input.Input : [input.Input];
-
-            const response = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
+            // Choose the appropriate request type based on processingType
+            let response;
+            switch (processingType) {
+                case 'Text':
+                    config.data.responseFormat = config.data?.responseFormat || 'json';
+                    response = await llmInference.promptRequest(prompt, config, agent);
+                    break;
+                case 'Image':
+                    const imageFiles = Array.isArray(input.Input) ? input.Input : [input.Input];
+                    response = await llmInference.visionRequest(prompt, imageFiles, config, agent);
+                    break;
+                case 'Audio':
+                case 'Video':
+                case 'Document':
+                    const files = Array.isArray(input.Input) ? input.Input : [input.Input];
+                    response = await llmInference.multimodalRequest(prompt, files, config, agent);
+                    break;
+            }
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
 
@@ -75,7 +102,7 @@ export default class MultimodalLLM extends Component {
 
             if (response?.error) {
                 logger.error(` LLM Error=${JSON.stringify(response.error)}`);
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Reply: response?.data, _error: response?.error + ' ' + (response?.details || ''), _debug: logger.output };
             }
 
             const result = { Reply: response };
@@ -83,7 +110,7 @@ export default class MultimodalLLM extends Component {
 
             return result;
         } catch (error: any) {
-            logger.error(`Error processing File(s)!\n${JSON.stringify(error)}`);
+            logger.error(`Error processing input!\n${JSON.stringify(error)}`);
             return {
                 _error: `${error?.error || ''} ${error?.details || ''}`.trim() || error?.message || 'Something went wrong!',
                 _debug: logger.output,

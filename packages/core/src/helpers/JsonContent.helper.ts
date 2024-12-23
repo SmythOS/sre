@@ -31,7 +31,8 @@ export class JSONContentHelper {
             return JSON.parse(str);
         } catch (e) {
             try {
-                return JSON.parse(jsonrepair(str));
+                const repairedJson = jsonrepair(str);
+                return JSON.parse(repairedJson);
             } catch (e: any) {
                 //console.warn('Error on parseJson: ', e.toString());
                 //console.warn('   Tried to parse: ', str);
