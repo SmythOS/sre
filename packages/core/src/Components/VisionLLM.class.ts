@@ -51,9 +51,10 @@ export default class VisionLLM extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Reply: response?.data, _error: error, _debug: logger.output };
             }
 
             const result = { Reply: response };
