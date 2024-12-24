@@ -5,6 +5,7 @@ import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 export default class Classifier extends Component {
     protected configSchema = Joi.object({
@@ -50,7 +51,9 @@ export default class Classifier extends Component {
         }
 
         const model: string = config.data.model;
-        logger.log(` Selected model : ${model}`);
+        const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+        logger.log(` Selected model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
         let prompt = '';
         const excludedKeys = ['_debug', '_error'];
@@ -89,10 +92,11 @@ ${JSON.stringify(categories, null, 2)}`;
         try {
             let response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
-            if (response.error) {
-                logger.error(` LLM Error=`, response.error);
+            if (response?.error) {
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { _error: response.error.toString(), _debug: logger.output };
+                return { _error: error, _debug: logger.output };
             }
 
             // let parsed = parseJson(response);

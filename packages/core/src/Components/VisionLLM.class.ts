@@ -3,6 +3,7 @@ import Joi from 'joi';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Component from './Component.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 export default class VisionLLM extends Component {
     protected configSchema = Joi.object({
         prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
@@ -32,7 +33,9 @@ export default class VisionLLM extends Component {
                     _debug: logger.output,
                 };
             }
-            logger.debug(` Model : ${model}`);
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
@@ -48,9 +51,10 @@ export default class VisionLLM extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Reply: response?.data, _error: error, _debug: logger.output };
             }
 
             const result = { Reply: response };

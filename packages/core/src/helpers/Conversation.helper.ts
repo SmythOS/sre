@@ -56,7 +56,7 @@ export class Conversation extends EventEmitter {
     private _llmContextStore: ILLMContextStore;
     private _context: LLMContext;
     private _maxContextSize = 1024 * 16;
-    private _maxOutputTokens = 1024;
+    private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
 
@@ -383,6 +383,7 @@ export class Conversation extends EventEmitter {
 
         eventEmitter.on('content', (content) => {
             _content += content;
+            console.log('content', content);
             this.emit('content', content);
         });
 

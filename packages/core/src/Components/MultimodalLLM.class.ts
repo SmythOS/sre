@@ -2,7 +2,7 @@ import Joi from 'joi';
 import Component from './Component.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 export default class MultimodalLLM extends Component {
     protected configSchema = Joi.object({
         prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
@@ -34,7 +34,9 @@ export default class MultimodalLLM extends Component {
                 };
             }
 
-            logger.debug(` Model : ${model}`);
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
@@ -72,8 +74,9 @@ export default class MultimodalLLM extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
-                return { Reply: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
+                return { Reply: response?.data, _error: error, _debug: logger.output };
             }
 
             const result = { Reply: response };
@@ -81,9 +84,10 @@ export default class MultimodalLLM extends Component {
 
             return result;
         } catch (error: any) {
-            logger.error(`Error processing File(s)!\n${JSON.stringify(error)}`);
+            const _error = `${error?.error || ''} ${error?.details || ''}`.trim() || error?.message || 'Something went wrong!';
+            logger.error(`Error processing File(s)!`, _error);
             return {
-                _error: `${error?.error || ''} ${error?.details || ''}`.trim() || error?.message || 'Something went wrong!',
+                _error,
                 _debug: logger.output,
             };
         }

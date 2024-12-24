@@ -50,7 +50,10 @@ export default class Code extends Component {
             //FIXME : don't trust code_vars from user input ==> generate it
 
             // let code_vars = parseTemplate(config.data.code_vars || '', codeInputs, { escapeString: false, processUnmatched: false });
-            let code_vars = TemplateStringHelper.create(config.data.code_vars || '').parse(codeInputs).result;
+            let code_vars = TemplateStringHelper.create(config.data.code_vars || '')
+                .parse(codeInputs)
+                .clean(undefined, 'undefined').result;
+
             //TODO: the current template parser doesn't support the processUnmatched or unmached options !!!!
             // code_vars = parseTemplate(code_vars || '', codeInputs, { escapeString: false, unmached: 'undefined' });
             let code_body = config.data.code_body;
@@ -65,8 +68,8 @@ export default class Code extends Component {
             const result: any = await axios.post(url, { code }).catch((error) => ({ error }));
 
             if (result.error) {
-                _error = result.error?.response?.data || result.error?.message || result.error.toString();
-                logger.error(` Error running code \n${_error}\n`);
+                _error = result.error?.response?.data || result.error?.message || result.error.toString() || 'Unknown error';
+                logger.error(` Error running code \n${JSON.stringify(result.error, null, 2)}\n`);
                 Output = undefined; //prevents running next component if the code execution failed
             } else {
                 logger.debug(` Code result \n${JSON.stringify(result.data, null, 2)}\n`);

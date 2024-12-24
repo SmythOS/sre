@@ -154,7 +154,9 @@ export default class LLMAssistant extends Component {
                 };
             }
 
-            logger.debug(` Model : ${model}`);
+            const isStandardLLM = LLMRegistry.isStandardLLM(model);
+
+            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
 
             const userInput = input.UserInput;
             const userId = input.UserId;
@@ -165,7 +167,6 @@ export default class LLMAssistant extends Component {
 
             //#region get max tokens
             let maxTokens = 2048;
-            const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
             if (isStandardLLM) {
                 const provider = LLMRegistry.getProvider(model);
@@ -197,9 +198,10 @@ export default class LLMAssistant extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { Response: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Response: response?.data, _error: error, _debug: logger.output };
             }
 
             messages.push({ role: 'assistant', content: response });
