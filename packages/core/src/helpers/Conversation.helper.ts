@@ -383,7 +383,7 @@ export class Conversation extends EventEmitter {
 
         eventEmitter.on('content', (content) => {
             _content += content;
-            console.log('content', content);
+            //console.log('content', content);
             this.emit('content', content);
         });
 
@@ -768,6 +768,13 @@ export class Conversation extends EventEmitter {
         }
     }
     private async loadSpecFromAgent(agentData: Record<string, any>) {
+        //handle the case where agentData object contains the agent schema directly
+        //agents retrieved from the database have a wrapping object with agent name and version number
+        //local agent might include the agent data directly
+        if (agentData?.components) {
+            agentData = { name: agentData?.name, data: agentData, version: '1.0.0' };
+        }
+
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;
 
