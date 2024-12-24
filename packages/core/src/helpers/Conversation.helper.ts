@@ -214,7 +214,9 @@ export class Conversation extends EventEmitter {
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (!this._context) {
-            throw new Error('Conversation context is not initialized');
+            console.error('Conversation context is not initialized!');
+
+            throw new Error('Unable to process your request. Please try again or contact support if the issue persists.');
         }
 
         if (message) this._context.addUserMessage(message, message_id);
