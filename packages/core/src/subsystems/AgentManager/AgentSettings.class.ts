@@ -18,7 +18,7 @@ export default class AgentSettings {
     async init(agentId) {
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         this._settings = (await agentDataConnector.getAgentSettings(agentId).catch((e) => {})) || {};
-        this.embodiments = new EmbodimentSettings(this._settings.embodiments);
+        this.embodiments = new EmbodimentSettings(agentId);
         this._ready = true;
     }
 
@@ -39,7 +39,7 @@ export default class AgentSettings {
         });
     }
     public get(key: string) {
-        return this._settings?.find((s) => s.key === key)?.value;
+        return this._settings?.[key] || '';
     }
     public set(key: string, value: any) {
         this._settings[key] = value;

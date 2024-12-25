@@ -18,8 +18,11 @@ export default class AgentRequest {
         this.params = JSON.parse(JSON.stringify(req.params || {}));
 
         if (req.url) {
-            const parsedUrl = new URL(req.url || '');
-            this.path = parsedUrl.pathname;
+            // new URL() throws error when req.url represents a relative path
+            try {
+                const parsedUrl = new URL(req.url || '');
+                this.path = parsedUrl.pathname;
+            } catch {}
         }
         if (req.path) this.path = req.path;
 

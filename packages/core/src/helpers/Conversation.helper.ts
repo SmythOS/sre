@@ -334,9 +334,18 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
-    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
+    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
         if (this.stop) return;
         await this.ready;
+
+        // Add an abort handler
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                const error = new Error('Request aborted by user!');
+                error.name = 'AbortError';
+                throw error;
+            });
+        }
 
         //let promises = [];
         let _content = '';
@@ -367,6 +376,7 @@ export class Conversation extends EventEmitter {
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                     cache: this._settings?.experimentalCache,
+                    abortSignal,
                 },
                 this._agentId
             )
@@ -431,7 +441,8 @@ export class Conversation extends EventEmitter {
                         }
 
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
-                        this.emit('beforeToolCall', { tool, args });
+                        // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
+                        this.emit('beforeToolCall', { tool, args }, llmMessage);
 
                         const toolArgs = {
                             type: tool?.type,
@@ -442,7 +453,7 @@ export class Conversation extends EventEmitter {
                             headers: toolHeaders,
                         };
 
-                        let { data: functionResponse, error } = await this.useTool(toolArgs);
+                        let { data: functionResponse, error } = await this.useTool(toolArgs, abortSignal);
 
                         if (error) {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
@@ -558,7 +569,10 @@ export class Conversation extends EventEmitter {
         return url.toString();
     }
 
-    private async useTool(params: ToolParams): Promise<{
+    private async useTool(
+        params: ToolParams,
+        abortSignal?: AbortSignal
+    ): Promise<{
         data: any;
         error;
     }> {
@@ -583,6 +597,7 @@ export class Conversation extends EventEmitter {
                     headers: {
                         ...headers,
                     },
+                    signal: abortSignal,
                 };
 
                 if (method !== 'get') {

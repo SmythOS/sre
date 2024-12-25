@@ -4,8 +4,6 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { ILLMContextStore } from '@sre/types/LLM.types';
 
-// TODO [Forhad]: we can move methods to MessageProcessor
-
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
     private _systemPrompt: string = '';
