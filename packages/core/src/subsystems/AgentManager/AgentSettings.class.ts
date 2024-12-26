@@ -16,9 +16,11 @@ export default class AgentSettings {
     }
 
     async init(agentId) {
+        // Set embodiments before _settings allow us to use it immediately; otherwise, we need to wait both AgentSettings instance and EmbodimentSettings instance to be ready
+        this.embodiments = new EmbodimentSettings(agentId);
+
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         this._settings = (await agentDataConnector.getAgentSettings(agentId).catch((e) => {})) || {};
-        this.embodiments = new EmbodimentSettings(agentId);
         this._ready = true;
     }
 

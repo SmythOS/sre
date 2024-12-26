@@ -611,7 +611,7 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost')) {
+                if (reqConfig.url.includes('localhost') || reqConfig.url.includes('localagent')) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(
                         reqConfig.headers['X-AGENT-ID'] || this._agentId,
