@@ -19,6 +19,7 @@ export default class PromptGenerator extends Component {
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
+        responseFormat: Joi.string().valid('json', 'text').optional().label('Response Format'),
     });
     constructor() {
         super();
