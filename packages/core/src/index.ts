@@ -28,6 +28,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { default as AgentLogger } from '@sre/AgentManager/AgentLogger.class';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { ILLMContextStore } from '@sre/types/LLM.types';
 
 boot();
 
@@ -59,4 +60,7 @@ export {
     AgentLogger,
     LLMRegistry,
     CustomLLMRegistry,
+
+    // Interfaces
+    ILLMContextStore,
 };
