@@ -132,6 +132,10 @@ export class Conversation extends EventEmitter {
             this.toolChoice = _settings.toolChoice;
         }
 
+        if (_settings?.store) {
+            this._llmContextStore = _settings.store;
+        }
+
         this._agentVersion = _settings?.agentVersion;
 
         (async () => {
@@ -736,7 +740,11 @@ export class Conversation extends EventEmitter {
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
         if (typeof specSource === 'object') {
             //is this a valid OpenAPI spec?
-            if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+            if (OpenAPIParser.isValidOpenAPI(specSource)) {
+                this.systemPrompt = specSource?.info?.description || '';
+
+                return this.patchSpec(specSource);
+            }
             //is this a valid agent data?
             if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
             return null;
