@@ -39,6 +39,7 @@ export default class Agent {
     public async = false;
     public jobID = '';
     public planInfo: any = {};
+    public callback: (data: any) => void;
 
     public agentRequest: AgentRequest;
     constructor(
@@ -136,6 +137,9 @@ export default class Agent {
         } else {
             this.agentRuntime = AgentRuntime.dummy;
         }
+    }
+    public setCallback(callback: (data: any) => void) {
+        this.callback = callback;
     }
 
     public kill() {

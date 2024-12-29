@@ -20,6 +20,7 @@ export default class PromptGenerator extends Component {
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
         responseFormat: Joi.string().valid('json', 'text').optional().label('Response Format'),
+        passthrough: Joi.boolean().optional().label('Pass Through'),
     });
     constructor() {
         super();
@@ -35,6 +36,7 @@ export default class PromptGenerator extends Component {
             logger.debug(`=== LLM Prompt Log ===`);
             let teamId = agent?.teamId;
 
+            const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data.model || 'echo';
             const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
@@ -58,7 +60,41 @@ export default class PromptGenerator extends Component {
             config.data.responseFormat = config.data?.responseFormat || 'json';
 
             // request to LLM
-            const response: any = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+            let response: any;
+            if (passThrough) {
+                const contentPromise = new Promise(async (resolve, reject) => {
+
+                    let _content = '';
+                    const eventEmitter: any = await llmInference
+                    .streamRequest(
+                        {
+                            model: model,
+                            messages: [{role: 'user', content: prompt}],
+                        },
+                        agent.id
+                    )
+                    .catch((error) => {
+                        console.error('Error on streamRequest: ', error);
+                    });
+                    eventEmitter.on('content', (content) => {
+                        if (typeof agent.callback === 'function') {
+                            
+                            agent.callback(content);
+                        }
+                        _content += content;
+                        
+                    });
+                    eventEmitter.on('end', () => {
+                        console.log('end');
+                        resolve(_content);
+                    });
+                });
+                response = await contentPromise;
+
+            }
+            else {
+
+             response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             logger.debug(` Enhanced prompt \n`, prompt, '\n');
             // in case we have the response but it's empty string, undefined or null
@@ -70,8 +106,8 @@ export default class PromptGenerator extends Component {
                 logger.error(` LLM Error=${JSON.stringify(response.error)}`);
 
                 return { Reply: response?.data, _error: response?.error + ' ' + (response?.details || ''), _debug: logger.output };
+                }
             }
-
             const result = { Reply: response };
 
             result['_debug'] = logger.output;
@@ -80,5 +116,11 @@ export default class PromptGenerator extends Component {
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }
+    }
+
+    public async streamPrompt(prompt: string, config: any, agent: Agent) {
+        const model: string = config.data.model || 'echo';
+        const llmInference: LLMInference = await LLMInference.getInstance(model, agent?.teamId);
+        return llmInference.streamRequest(prompt, agent);
     }
 }
