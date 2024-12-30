@@ -61,6 +61,6 @@ export {
     LLMRegistry,
     CustomLLMRegistry,
 
-    // Interfaces
-    ILLMContextStore,
+    // Interfaces: we must use the type-only export syntax when re-exporting interfaces
+    type ILLMContextStore,
 };
