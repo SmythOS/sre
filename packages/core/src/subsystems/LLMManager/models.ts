@@ -194,7 +194,7 @@ export const models = {
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot'],
     },
     'claude-3-5-sonnet-20240620': {
-        llm: 'Claude',
+        llm: 'AnthropicAI',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
