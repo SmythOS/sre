@@ -133,7 +133,9 @@ export class LLMContext {
                     //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
 
                     message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
-                    message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
+
+                    // We need to find out another way to report this
+                    // message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
 
                     tokens -= encoded.length;
                     tokens += encodeChat([message], 'gpt-4').length;
