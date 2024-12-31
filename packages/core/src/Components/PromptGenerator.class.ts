@@ -63,26 +63,23 @@ export default class PromptGenerator extends Component {
             let response: any;
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
-
                     let _content = '';
                     const eventEmitter: any = await llmInference
-                    .streamRequest(
-                        {
-                            model: model,
-                            messages: [{role: 'user', content: prompt}],
-                        },
-                        agent.id
-                    )
-                    .catch((error) => {
-                        console.error('Error on streamRequest: ', error);
-                    });
+                        .streamRequest(
+                            {
+                                model: model,
+                                messages: [{ role: 'user', content: prompt }],
+                            },
+                            agent.id
+                        )
+                        .catch((error) => {
+                            console.error('Error on streamRequest: ', error);
+                        });
                     eventEmitter.on('content', (content) => {
                         if (typeof agent.callback === 'function') {
-                            
                             agent.callback(content);
                         }
                         _content += content;
-                        
                     });
                     eventEmitter.on('end', () => {
                         console.log('end');
@@ -90,29 +87,30 @@ export default class PromptGenerator extends Component {
                     });
                 });
                 response = await contentPromise;
+            } else {
+                response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
-            }
-            else {
-
-             response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
-
-            logger.debug(` Enhanced prompt \n`, prompt, '\n');
-            // in case we have the response but it's empty string, undefined or null
-            if (!response) {
-                return { _error: ' LLM Error = Empty Response!', _debug: logger.output };
-            }
-
-            if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
-
-                return { Reply: response?.data, _error: response?.error + ' ' + (response?.details || ''), _debug: logger.output };
+                logger.debug(` Enhanced prompt \n`, prompt, '\n');
+                // in case we have the response but it's empty string, undefined or null
+                if (!response) {
+                    return { _error: ' LLM Error = Empty Response!', _debug: logger.output };
                 }
+
+                if (response?.error) {
+                    const error = response?.error + ' ' + (response?.details || '');
+                    logger.error(` LLM Error=`, error);
+
+                    return { Reply: response?.data, _error: error, _debug: logger.output };
+                }
+
+                logger.debug(' Response \n', response);
+
+                const result = { Reply: response };
+
+                result['_debug'] = logger.output;
+
+                return result;
             }
-            const result = { Reply: response };
-
-            result['_debug'] = logger.output;
-
-            return result;
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }

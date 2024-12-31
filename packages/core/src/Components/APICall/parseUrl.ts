@@ -84,7 +84,7 @@ export async function destroyPublicUrls(publicUrls: string[]): Promise<boolean> 
         await Promise.all(publicUrls.map((url) => SmythFS.Instance.destroyTempUrl(url)));
         console.log('Successfully cleaned up all temp urls for API Call Component');
     } catch (error) {
-        console.error('Failed to clean up temp urls for API Call Component:', error);
+        console.warn('Failed to clean up temp urls for API Call Component:', error);
     }
 
     return true;

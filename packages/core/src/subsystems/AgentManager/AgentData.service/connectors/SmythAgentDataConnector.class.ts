@@ -147,6 +147,20 @@ export class SmythAgentDataConnector extends AgentDataConnector {
         }
     }
 
+    public async getAgentEmbodiments(agentId: string, version?: string): Promise<any> {
+        try {
+            // If no matching deployment found or no deployments at all, return the current live settings
+            const response = await this.smythAPI.get(`/v1/embodiments?aiAgentId=${agentId}`, {
+                headers: await this.getSmythRequestHeaders(),
+            });
+
+            return response?.data?.embodiments || [];
+        } catch (error) {
+            console.error(`Error getting agent embodiments for agentId=${agentId}: ${error?.message}`);
+            throw new Error(`Error getting agent embodiments for agentId=${agentId}: ${error?.message}`);
+        }
+    }
+
     public async listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]> {
         try {
             const headers = await this.getSmythRequestHeaders();

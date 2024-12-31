@@ -58,7 +58,7 @@ export class Conversation extends EventEmitter {
     private _context: LLMContext;
 
     private _maxContextSize = 1024 * 16;
-    private _maxOutputTokens = 1024;
+    private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
 
@@ -133,6 +133,10 @@ export class Conversation extends EventEmitter {
         }
         if (_settings?.toolChoice) {
             this.toolChoice = _settings.toolChoice;
+        }
+
+        if (_settings?.store) {
+            this._llmContextStore = _settings.store;
         }
 
         this._agentVersion = _settings?.agentVersion;
@@ -218,7 +222,9 @@ export class Conversation extends EventEmitter {
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (!this._context) {
-            throw new Error('Conversation context is not initialized');
+            console.error('Conversation context is not initialized!');
+
+            throw new Error('Unable to process your request. Please try again or contact support if the issue persists.');
         }
 
         if (message) this._context.addUserMessage(message, message_id);
@@ -336,9 +342,18 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
-    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
+    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
         if (this.stop) return;
         await this.ready;
+
+        // Add an abort handler
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                const error = new Error('Request aborted by user!');
+                error.name = 'AbortError';
+                throw error;
+            });
+        }
 
         //let promises = [];
         let _content = '';
@@ -369,6 +384,7 @@ export class Conversation extends EventEmitter {
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                     cache: this._settings?.experimentalCache,
+                    abortSignal,
                 },
                 this._agentId
             )
@@ -387,6 +403,7 @@ export class Conversation extends EventEmitter {
 
         eventEmitter.on('content', (content) => {
             _content += content;
+            console.log('content', content);
             this.emit('content', content);
         });
 
@@ -443,7 +460,8 @@ export class Conversation extends EventEmitter {
                         }
 
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
-                        this.emit('beforeToolCall', { tool, args });
+                        // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
+                        this.emit('beforeToolCall', { tool, args }, llmMessage);
 
                         const toolArgs = {
                             type: tool?.type,
@@ -455,7 +473,7 @@ export class Conversation extends EventEmitter {
                             agentCallback: _agentCallback,
                         };
 
-                        let { data: functionResponse, error } = await this.useTool(toolArgs);
+                        let { data: functionResponse, error } = await this.useTool(toolArgs, abortSignal);
 
                         if (error) {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
@@ -578,7 +596,10 @@ export class Conversation extends EventEmitter {
         return url.toString();
     }
 
-    private async useTool(params: ToolParams): Promise<{
+    private async useTool(
+        params: ToolParams,
+        abortSignal?: AbortSignal
+    ): Promise<{
         data: any;
         error;
     }> {
@@ -603,6 +624,7 @@ export class Conversation extends EventEmitter {
                     headers: {
                         ...headers,
                     },
+                    signal: abortSignal,
                 };
 
                 if (method !== 'get') {
@@ -616,7 +638,7 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost')) {
+                if (reqConfig.url.includes('localhost') || reqConfig.url.includes('localagent')) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(
                         reqConfig.headers['X-AGENT-ID'] || this._agentId,
@@ -741,7 +763,11 @@ export class Conversation extends EventEmitter {
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
         if (typeof specSource === 'object') {
             //is this a valid OpenAPI spec?
-            if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+            if (OpenAPIParser.isValidOpenAPI(specSource)) {
+                this.systemPrompt = specSource?.info?.description || '';
+
+                return this.patchSpec(specSource);
+            }
             //is this a valid agent data?
             if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
             return null;

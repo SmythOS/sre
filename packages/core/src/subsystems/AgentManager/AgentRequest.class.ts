@@ -17,11 +17,17 @@ export default class AgentRequest {
         this.query = JSON.parse(JSON.stringify(req.query || {}));
         this.params = JSON.parse(JSON.stringify(req.params || {}));
 
-        if (req.url) {
-            const parsedUrl = new URL(req.url || '');
-            this.path = parsedUrl.pathname;
+        if (req?.url) {
+            try {
+                this.path = new URL(req.url).pathname;
+            } catch {
+                // Ignore invalid or relative paths
+            }
         }
-        if (req.path) this.path = req.path;
+
+        if (req?.path) {
+            this.path = req.path;
+        }
 
         this.method = req.method;
 

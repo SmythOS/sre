@@ -198,9 +198,10 @@ export default class LLMAssistant extends Component {
             }
 
             if (response?.error) {
-                logger.error(` LLM Error=${JSON.stringify(response.error)}`);
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                return { Response: response?.data, _error: response?.error + ' ' + response?.details, _debug: logger.output };
+                return { Response: response?.data, _error: error, _debug: logger.output };
             }
 
             messages.push({ role: 'assistant', content: response });

@@ -116,6 +116,10 @@ export class LocalAgentDataConnector extends AgentDataConnector {
         }
     }
 
+    public async getAgentEmbodiments(agentId: string): Promise<any> {
+        return [];
+    }
+
     public async listTeamAgents(teamId: string, deployedOnly?: boolean): Promise<any[]> {
         console.warn(`listTeamAgents is not implemented for LocalAgentDataConnector`);
         return [];

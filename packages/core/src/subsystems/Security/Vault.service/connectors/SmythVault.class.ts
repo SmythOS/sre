@@ -40,8 +40,14 @@ export class SmythVault extends VaultConnector {
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
         const vaultAPIHeaders = await this.getVaultRequestHeaders();
-        const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
-        let key = vaultResponse?.data?.secret?.value || null;
+
+        let key = '';
+        try {
+            const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/${keyId}`, { headers: vaultAPIHeaders });
+            key = vaultResponse?.data?.secret?.value || null;
+        } catch (error) {
+            console.warn(`Warn: Failed to get key "${keyId}" from SmythVault, trying to get it from the legacy vault`);
+        }
 
         if (!key) {
             const vaultResponse = await this.vaultAPI.get(`/vault/${teamId}/secrets/name/${keyId}`, { headers: vaultAPIHeaders });

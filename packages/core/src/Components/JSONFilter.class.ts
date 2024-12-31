@@ -27,7 +27,7 @@ export default class JSONFilter extends Component {
             logger.debug(`Output filtered`);
         } catch (error: any) {
             _error = error;
-            logger.error(` JSONFilter Error \n ${error.toString()}`);
+            logger.error(` JSONFilter Error`, error);
         }
         return { Output, _error, _debug: logger.output };
     }
