@@ -6,7 +6,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 export default class VisionLLM extends Component {
     protected configSchema = Joi.object({
-        prompt: Joi.string().required().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
+        prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         model: Joi.string().max(200).required(),
     });

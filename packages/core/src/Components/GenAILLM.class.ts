@@ -3,12 +3,13 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
 
-export default class PromptGenerator extends Component {
+export default class GenAILLM extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
@@ -49,10 +50,26 @@ export default class PromptGenerator extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
+            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(teamId);
 
-            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
+            logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
+
+            let fileSources: any[] = [];
+            let isMultimodalRequest = false;
+            const files = input?.Files;
+
+            console.log('Files ====> ', files);
+
+            if (files) {
+                if (!llmRegistry.getModelFeatures(model)?.includes('file-to-text')) {
+                    return { _error: 'Model does not support File', _debug: logger.output };
+                }
+
+                fileSources = Array.isArray(files) ? files : [files];
+                isMultimodalRequest = true;
+            }
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
@@ -88,7 +105,11 @@ export default class PromptGenerator extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+                if (isMultimodalRequest) {
+                    response = await llmInference.visionRequest(prompt, fileSources, config, agent);
+                } else {
+                    response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+                }
 
                 logger.debug(` Enhanced prompt \n`, prompt, '\n');
                 // in case we have the response but it's empty string, undefined or null
@@ -100,12 +121,12 @@ export default class PromptGenerator extends Component {
                     const error = response?.error + ' ' + (response?.details || '');
                     logger.error(` LLM Error=`, error);
 
-                    return { Reply: response?.data, _error: error, _debug: logger.output };
+                    return { Output: response?.data, _error: error, _debug: logger.output };
                 }
 
-                logger.debug(' Response \n', response);
+                logger.debug(' Output \n', response);
 
-                const result = { Reply: response };
+                const result = { Output: response };
 
                 result['_debug'] = logger.output;
 

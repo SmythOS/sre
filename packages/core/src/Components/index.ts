@@ -31,6 +31,7 @@ import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
 import ServerlessCode from './ServerlessCode.class';
+import GenAILLM from './GenAILLM.class';
 
 const components = {
     Component: new Component(),
@@ -68,6 +69,7 @@ const components = {
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
     ServerlessCode: new ServerlessCode(),
+    GenAILLM: new GenAILLM(),
 };
 
 export default components;

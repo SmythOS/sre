@@ -28,7 +28,8 @@ export const models = {
     'gpt-4o-mini': {
         llm: 'OpenAI',
         alias: 'gpt-4o-mini-2024-07-18',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
+        features: ['text-to-text', 'file-to-text'],
     },
     'gpt-4o-mini-2024-07-18': {
         llm: 'OpenAI',
@@ -40,7 +41,8 @@ export const models = {
     'gpt-4o': {
         llm: 'OpenAI',
         alias: 'gpt-4o-2024-08-06',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
+        features: ['text-to-text', 'file-to-text'],
     },
     'gpt-4o-2024-08-06': {
         llm: 'OpenAI',
@@ -61,7 +63,8 @@ export const models = {
     o1: {
         llm: 'OpenAI',
         alias: 'o1-2024-12-17',
-        components: ['PromptGenerator'],
+        components: ['PromptGenerator', 'GenAILLM'],
+        features: ['text-to-text'],
     },
     'o1-2024-12-17': {
         llm: 'OpenAI',
