@@ -459,7 +459,7 @@ export class AnthropicAIConnector extends LLMConnector {
     public getConsistentMessages(messages) {
         let _messages = JSON.parse(JSON.stringify(messages));
 
-        // Extract the system message from the beginning as we have logic that checks 'user' for the first message
+        // Extract the system message from the start, as our logic expects 'user' to be the first message for checks and fixes. We will add it back later.
         let systemMessage = null;
         if (_messages[0]?.role === TLLMMessageRole.System) {
             systemMessage = _messages.shift();
@@ -518,8 +518,9 @@ export class AnthropicAIConnector extends LLMConnector {
             _messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
         }
 
-        // Add the system message back to the beginning
-        if (systemMessage) {
+        // Add the system message back to the start, as we extracted it earlier
+        // Empty content is not allowed in AnthropicAI
+        if (systemMessage && systemMessage.content) {
             _messages.unshift(systemMessage);
         }
 
