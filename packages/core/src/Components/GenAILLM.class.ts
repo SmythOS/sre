@@ -124,9 +124,9 @@ export default class GenAILLM extends Component {
                     return { Output: response?.data, _error: error, _debug: logger.output };
                 }
 
-                logger.debug(' Output \n', response);
+                logger.debug(' Reply \n', response);
 
-                const result = { Output: response };
+                const result = { Reply: response };
 
                 result['_debug'] = logger.output;
 
