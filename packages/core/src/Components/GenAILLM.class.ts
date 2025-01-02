@@ -60,10 +60,8 @@ export default class GenAILLM extends Component {
             let isMultimodalRequest = false;
             const files = input?.Files;
 
-            console.log('Files ====> ', files);
-
             if (files) {
-                if (!llmRegistry.getModelFeatures(model)?.includes('file-to-text')) {
+                if (!llmRegistry.getModelFeatures(model)?.includes('image')) {
                     return { _error: 'Model does not support File', _debug: logger.output };
                 }
 
@@ -72,6 +70,8 @@ export default class GenAILLM extends Component {
             }
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
+
+            logger.debug(' Files\n', fileSources);
 
             // default to json response format
             config.data.responseFormat = config.data?.responseFormat || 'json';
@@ -105,7 +105,7 @@ export default class GenAILLM extends Component {
                 });
                 response = await contentPromise;
             } else {
-                if (isMultimodalRequest) {
+                if (isMultimodalRequest && fileSources.length > 0) {
                     response = await llmInference.visionRequest(prompt, fileSources, config, agent);
                 } else {
                     response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
