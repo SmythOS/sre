@@ -12,7 +12,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import SystemEvents from '@sre/Core/SystemEvents';
-import { RouterConnector } from '../Router.service/RouterConnector';
+
 export type TSmythFSURI = {
     hash: string;
     team: string;
@@ -267,7 +267,8 @@ export class SmythFS {
             // 3600 // 1 hour
         );
 
-        const extention = resourceMetadata?.ContentType?.split('/')[1];
+        const contentType = resourceMetadata?.ContentType;
+        const ext = contentType ? mime.getExtension(contentType) : undefined;
 
         // get the agent domain
         const agentDataConnector = ConnectorService.getAgentDataConnector();
@@ -276,7 +277,7 @@ export class SmythFS {
             ? `https://${agentDataConnector.getAgentConfig(agentId).agentStageDomain}`
             : baseUrl;
 
-        return `${domain}/storage/${uid}${extention ? `.${extention}` : ''}`;
+        return `${domain}/storage/${uid}${ext ? `.${ext}` : ''}`;
     }
     public async destroyResourceUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {}
     public async serveResource(req: any, res: any) {
