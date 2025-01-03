@@ -413,9 +413,24 @@ export class BedrockConnector extends LLMConnector {
             let textBlock = [];
 
             if (message?.parts) {
-                textBlock = message.parts;
+                // empty text causes error in Bedrock, so we add a placeholder
+                textBlock = message.parts.map((part) => {
+                    if ('text' in part) {
+                        return { ...part, text: part.text || '...' };
+                    }
+
+                    return { ...part };
+                });
             } else if (message?.content) {
-                textBlock = Array.isArray(message.content) ? message.content : [{ text: message.content as string }];
+                textBlock = Array.isArray(message.content)
+                    ? message.content.map((part) => {
+                          if ('text' in part) {
+                              return { ...part, text: part.text || '...' };
+                          }
+
+                          return { ...part };
+                      })
+                    : [{ text: (message?.content as string) || '...' }]; // empty text causes error in Bedrock, so we add a placeholder
             }
 
             return {
