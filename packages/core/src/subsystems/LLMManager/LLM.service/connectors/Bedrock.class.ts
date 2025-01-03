@@ -18,6 +18,7 @@ import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 const console = Logger('BedrockConnector');
 
@@ -356,11 +357,12 @@ export class BedrockConnector extends LLMConnector {
 
             if (messageBlock.tool_calls?.length) {
                 messageBlock.tool_calls.forEach((toolCall: Record<string, any>) => {
+                    const args = toolCall?.function?.arguments;
                     content.push({
                         toolUse: {
                             toolUseId: toolCall.id,
                             name: _serializeToolName(toolCall?.function?.name),
-                            input: toolCall?.function?.arguments || {},
+                            input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
                         },
                     });
                 });

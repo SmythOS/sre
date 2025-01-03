@@ -429,7 +429,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         type: 'tool_use',
                         id: toolCall.id,
                         name: toolCall?.function?.name,
-                        input: typeof args === 'string' ? JSONContent(args).tryParse() : args,
+                        input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
                     };
                 });
 
