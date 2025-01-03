@@ -23,6 +23,7 @@ SystemEvents.on('SRE:Booted', () => {
     const router = ConnectorService.getRouterConnector();
     if (router && router?.get instanceof Function) {
         router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+        router.get('/storage/:file_id', SmythFS.Instance.serveResource.bind(SmythFS.Instance));
     }
 });
 
@@ -160,6 +161,7 @@ export class SmythFS {
         return await this.storage.user(_candidate).exists(resourceId);
     }
 
+    //#region Temp URL (mainly used for returning agent output to user for temporary access)
     public async genTempUrl(uri: string, candidate: IAccessCandidate, ttlSeconds: number = 3600) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
@@ -231,4 +233,81 @@ export class SmythFS {
             res.end('Internal Server Error');
         }
     }
+    //#endregion
+
+    //#region Resource Serving
+    public async genResourceUrl(uri: string, candidate: IAccessCandidate) {
+        const smythURI = this.URIParser(uri);
+        if (!smythURI) throw new Error('Invalid Resource URI');
+
+        const exists = await this.exists(uri, candidate);
+        if (!exists) throw new Error('Resource does not exist');
+
+        const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
+        if (_candidate.role !== TAccessRole.Agent) {
+            throw new Error('Only agents can generate resource urls');
+        }
+        const agentId = _candidate.id;
+
+        const resourceId = `teams/${smythURI.team}${smythURI.path}`;
+        const resourceMetadata = await this.storage.user(_candidate).getMetadata(resourceId);
+
+        const uid = crypto.randomUUID(); // maybe instead of a random uuid, u can use the resource
+        const tempUserCandidate = AccessCandidate.user(`system:${uid}`);
+
+        await this.cache.user(tempUserCandidate).set(
+            `storage_url:${uid}`,
+            JSON.stringify({
+                accessCandidate: _candidate,
+                uri,
+                contentType: resourceMetadata?.ContentType,
+            }),
+            undefined,
+            undefined
+            // 3600 // 1 hour
+        );
+
+        const extention = resourceMetadata?.ContentType?.split('/')[1];
+
+        // get the agent domain
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+        const baseUrl = ConnectorService.getRouterConnector().baseUrl;
+        const domain = agentDataConnector.getAgentConfig(agentId)?.agentStageDomain
+            ? `https://${agentDataConnector.getAgentConfig(agentId).agentStageDomain}`
+            : baseUrl;
+
+        return `${domain}/storage/${uid}${extention ? `.${extention}` : ''}`;
+    }
+    public async destroyResourceUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {}
+    public async serveResource(req: any, res: any) {
+        try {
+            const { file_id } = req.params;
+            const [uid, extention] = file_id.split('.');
+            let cacheVal = await this.cache.user(AccessCandidate.user(`system:${uid}`)).get(`storage_url:${uid}`);
+            if (!cacheVal) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Invalid Resource URL');
+                return;
+            }
+            cacheVal = JSONContentHelper.create(cacheVal).tryParse();
+            const content = await this.read(cacheVal.uri, AccessCandidate.clone(cacheVal.accessCandidate));
+
+            const contentBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'binary');
+
+            const contentType = cacheVal.contentType || 'application/octet-stream';
+
+            res.writeHead(200, {
+                'Content-Type': contentType,
+                'Content-Disposition': 'inline',
+                'Content-Length': contentBuffer.length,
+            });
+
+            res.end(contentBuffer);
+        } catch (error) {
+            console.error('Error serving storage resource content:', error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Internal Server Error');
+        }
+    }
+    //#endregion
 }

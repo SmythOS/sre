@@ -24,6 +24,10 @@ export class LocalAgentDataConnector extends AgentDataConnector {
         this.prodDir = settings.prodDir;
     }
 
+    public getAgentConfig(agentId: string): Partial<LocalAgentDataSettings> {
+        return {};
+    }
+
     private indexDir(dir: string) {
         const agents = fs.readdirSync(dir);
 

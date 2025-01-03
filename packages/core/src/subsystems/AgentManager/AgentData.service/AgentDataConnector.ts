@@ -10,6 +10,7 @@ export interface IAgentDataConnector {
     getAgentIdByDomain(domain: string): Promise<string>;
     getAgentSettings(agentId: string, version?: string): Promise<any>;
     listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]>;
+    getAgentConfig(agentId: string): { [key: string]: any };
 }
 
 const openapiTemplate = JSON.stringify({
@@ -59,6 +60,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
     public abstract getAgentEmbodiments(agentId: string): Promise<any>;
     public abstract isDeployed(agentId: string): Promise<boolean>;
     public abstract listTeamAgents(teamId: string, deployedOnly?: boolean, includeData?: boolean): Promise<any[]>;
+    public abstract getAgentConfig(agentId: string): { [key: string]: any };
     /**
      * Loads openAPI JSON for the agent
      * @param source this represents either the agentId or the agent data

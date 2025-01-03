@@ -31,6 +31,13 @@ export class SmythAgentDataConnector extends AgentDataConnector {
         this.agentProdDomain = config.agentProdDomain;
     }
 
+    public getAgentConfig(agentId: string): Partial<typeof this.config> {
+        return {
+            agentProdDomain: `${agentId}.${this.agentProdDomain}`,
+            agentStageDomain: `${agentId}.${this.agentStageDomain}`,
+        };
+    }
+
     public async getAgentData(agentId: string, version?: string): Promise<any> {
         try {
             let agentObj;
