@@ -111,8 +111,8 @@ export const models = {
     },
     'gpt-4-turbo-2024-04-09': {
         llm: 'OpenAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: true,
         keyOptions: { tokens: 128000, completionTokens: 4096 },
     },
@@ -127,8 +127,8 @@ export const models = {
     },
     'gpt-4': {
         llm: 'OpenAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: true,
         keyOptions: { tokens: 8192, completionTokens: 8192 },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'AgentPlugin', 'Chatbot', 'GPTPlugin'],
@@ -136,8 +136,8 @@ export const models = {
     },
     'gpt-4-0613': {
         llm: 'OpenAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: true,
         hidden: true,
         keyOptions: { tokens: 8192, completionTokens: 8192 },
@@ -260,8 +260,8 @@ export const models = {
     },
     'claude-2.1': {
         llm: 'AnthropicAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
@@ -269,8 +269,8 @@ export const models = {
     },
     'claude-instant-1.2': {
         llm: 'AnthropicAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 100000, completionTokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
@@ -470,8 +470,8 @@ export const models = {
     },
     'llama3-8b-8192': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
@@ -483,8 +483,8 @@ export const models = {
     },
     'llama3-70b-8192': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
@@ -496,8 +496,8 @@ export const models = {
     },
     'llama2-70b-4096': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
     },
@@ -508,8 +508,8 @@ export const models = {
     },
     'mixtral-8x7b-32768': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, completionTokens: 32768, enabled: true },
     },
@@ -520,8 +520,8 @@ export const models = {
     },
     'gemma-7b-it': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
@@ -532,8 +532,8 @@ export const models = {
     },
     'gemma2-9b-it': {
         llm: 'Groq',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
@@ -541,7 +541,7 @@ export const models = {
     /* Together AI */
     'zero-one-ai/Yi-34B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has "```json...```" with JSON response)
@@ -549,7 +549,7 @@ export const models = {
     },
     'Austism/chronos-hermes-13b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -623,14 +623,14 @@ export const models = {
     'togethercomputer/CodeLlama-13b-Instruct': {
         // ! DEPRECATED: will be removed (replace with codellama/CodeLlama-13b-Instruct-hf)
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-13b-Instruct-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -639,14 +639,14 @@ export const models = {
     'togethercomputer/CodeLlama-34b-Instruct': {
         // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-34b-Instruct-hf)
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-34b-Instruct-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -654,7 +654,7 @@ export const models = {
     },
     'codellama/CodeLlama-70b-Instruct-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -664,14 +664,14 @@ export const models = {
     'togethercomputer/CodeLlama-7b-Instruct': {
         // ! DEPRECATED: will be removed (replaced with codellama/CodeLlama-7b-Instruct-hf)
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         baseURL: 'https://api.together.xyz/v1',
     },
     'codellama/CodeLlama-7b-Instruct-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 16384, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -679,7 +679,7 @@ export const models = {
     },
     'meta-llama/Llama-2-70b-chat-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -687,7 +687,7 @@ export const models = {
     },
     'meta-llama/Llama-2-13b-chat-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
@@ -695,7 +695,7 @@ export const models = {
     },
     'meta-llama/Llama-2-7b-chat-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
@@ -703,7 +703,7 @@ export const models = {
     },
     'meta-llama/Llama-3-8b-chat-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -712,7 +712,7 @@ export const models = {
     },
     'meta-llama/Llama-3-70b-chat-hf': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -721,7 +721,7 @@ export const models = {
     },
     'togethercomputer/falcon-7b-instruct': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -730,7 +730,7 @@ export const models = {
     // mistralai
     'mistralai/Mistral-7B-Instruct-v0.1': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -738,7 +738,7 @@ export const models = {
     },
     'mistralai/Mistral-7B-Instruct-v0.2': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -746,7 +746,7 @@ export const models = {
     },
     'mistralai/Mistral-7B-Instruct-v0.3': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
@@ -755,7 +755,7 @@ export const models = {
     },
     'mistralai/Mixtral-8x7B-Instruct-v0.1': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
@@ -763,7 +763,7 @@ export const models = {
     },
     'mistralai/Mixtral-8x22B-Instruct-v0.1': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 65536, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -773,7 +773,7 @@ export const models = {
 
     'Gryphe/MythoMax-L2-13b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -784,14 +784,14 @@ export const models = {
     'NousResearch/Nous-Hermes-Llama2-70b': {
         // ! DEPRECATED: will be removed (404 - not found)
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         baseURL: 'https://api.together.xyz/v1',
     },
     'NousResearch/Nous-Capybara-7B-V1p9': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -799,7 +799,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-2-Mistral-7B-DPO': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -808,7 +808,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -817,7 +817,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -826,7 +826,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-2-Yi-34B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -835,7 +835,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-llama-2-7b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -843,7 +843,7 @@ export const models = {
     },
     'NousResearch/Nous-Hermes-Llama2-13b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -853,7 +853,7 @@ export const models = {
     // OpenChat
     'openchat/openchat-3.5-1210': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -863,7 +863,7 @@ export const models = {
     // Teknium
     'teknium/OpenHermes-2-Mistral-7B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -871,7 +871,7 @@ export const models = {
     },
     'teknium/OpenHermes-2p5-Mistral-7B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -880,7 +880,7 @@ export const models = {
 
     'garage-bAInd/Platypus2-70B-instruct': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -898,7 +898,7 @@ export const models = {
     },
     'upstage/SOLAR-10.7B-Instruct-v1.0': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -906,7 +906,7 @@ export const models = {
     },
     'togethercomputer/StripedHyena-Nous-7B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -914,7 +914,7 @@ export const models = {
     },
     'lmsys/vicuna-7b-v1.5': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -922,7 +922,7 @@ export const models = {
     },
     'lmsys/vicuna-13b-v1.5': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -932,7 +932,7 @@ export const models = {
     // Allen AI
     'allenai/OLMo-7B-Twin-2T': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -941,7 +941,7 @@ export const models = {
     },
     'allenai/OLMo-7B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -952,7 +952,7 @@ export const models = {
     // Qwen
     'Qwen/Qwen1.5-0.5B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
@@ -961,7 +961,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-1.8B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -970,7 +970,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-4B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -979,7 +979,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-7B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -988,7 +988,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-14B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -997,7 +997,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-32B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1006,7 +1006,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-72B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1015,7 +1015,7 @@ export const models = {
     },
     'Qwen/Qwen1.5-110B-Chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1026,7 +1026,7 @@ export const models = {
     // DeepSeek
     'deepseek-ai/deepseek-coder-33b-instruct': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 16384, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1035,7 +1035,7 @@ export const models = {
     },
     'deepseek-ai/deepseek-llm-67b-chat': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1046,7 +1046,7 @@ export const models = {
     // Google
     'google/gemma-2b-it': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1055,7 +1055,7 @@ export const models = {
     },
     'google/gemma-7b-it': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1064,7 +1064,7 @@ export const models = {
     },
     'google/gemma-2-9b-it': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1073,7 +1073,7 @@ export const models = {
     },
     'google/gemma-2-27b-it': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1084,7 +1084,7 @@ export const models = {
     // Undi95
     'Undi95/Toppy-M-7B': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1095,7 +1095,7 @@ export const models = {
     // Others
     'cognitivecomputations/dolphin-2.5-mixtral-8x7b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1104,7 +1104,7 @@ export const models = {
     },
     'databricks/dbrx-instruct': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1113,7 +1113,7 @@ export const models = {
     },
     'Open-Orca/Mistral-7B-OpenOrca': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 8192, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1121,7 +1121,7 @@ export const models = {
     },
     'snorkelai/Snorkel-Mistral-PairRM-DPO': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 32768, enabled: true },
         components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has some other text)
@@ -1130,7 +1130,7 @@ export const models = {
     },
     'Snowflake/snowflake-arctic-instruct': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1139,7 +1139,7 @@ export const models = {
     },
     'togethercomputer/alpaca-7b': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 2048, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1147,7 +1147,7 @@ export const models = {
     },
     'WizardLM/WizardLM-13B-V1.2': {
         llm: 'TogetherAI',
-        tokens: 1024,
+        tokens: 2048,
         enabled: false,
         keyOptions: { tokens: 4096, enabled: true },
         components: ['PromptGenerator', 'LLMAssistant'],
@@ -1183,8 +1183,8 @@ export const models = {
     },
     'grok-beta': {
         llm: 'xAI',
-        tokens: 1024,
-        completionTokens: 1024,
+        tokens: 2048,
+        completionTokens: 2048,
         enabled: false,
         keyOptions: {
             tokens: 131072,
