@@ -44,14 +44,14 @@ export class LLMRegistry {
 
         if (hasAPIKey) {
             const keyOptions = LLMRegistry.getModelKeyOptions(modelId);
-            return { ...modelInfo, ...keyOptions };
+            return { ...modelInfo, ...keyOptions, modelId };
         }
 
-        return modelInfo;
+        return { ...modelInfo, modelId };
     }
 
     public static modelExists(model: string): boolean {
-        if (model.toLowerCase() === 'echo') return true;
+        if (model?.toLowerCase() === 'echo') return true;
         const modelId = this.getModelId(model);
         return !!models?.[modelId];
     }

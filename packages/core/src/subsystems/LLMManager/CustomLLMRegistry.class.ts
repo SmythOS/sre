@@ -25,7 +25,7 @@ export class CustomLLMRegistry {
         const entryId = this.getModelEntryId(model);
         const modelInfo = this.models?.[entryId] || {};
 
-        return modelInfo;
+        return {...modelInfo, modelId: model};
     }
 
     public getMaxContextTokens(model: string): number {

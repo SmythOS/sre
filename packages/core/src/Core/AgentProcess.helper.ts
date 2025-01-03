@@ -86,12 +86,22 @@ export class AgentProcess {
         return agentProcess;
     }
 
-    public async run(reqConfig: TAgentProcessParams | Array<string> | AgentRequest) {
+    /**
+     * Run the agent process
+     * @param reqConfig - The request configuration
+     * @param callback - The callback function is used if we want to send status data, meta information, or stream response progressively.
+     * Note: even if the response is streamed through the callback, the response is still returned as a single object in the response.data field.
+     * @returns The result of the agent process
+     */
+    public async run(reqConfig: TAgentProcessParams | Array<string> | AgentRequest, callback?: (data: any) => void) {
         await this.ready();
         if (!this.agent) throw new Error('Failed to load agent');
         let request: AgentRequest = this.parseReqConfig(reqConfig);
 
         this.agent.setRequest(request);
+        if (typeof callback === 'function') {
+            this.agent.setCallback(callback);
+        }
 
         const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
         if (!pathMatches || !pathMatches[2]) {

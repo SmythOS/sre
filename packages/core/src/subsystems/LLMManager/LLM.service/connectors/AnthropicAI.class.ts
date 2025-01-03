@@ -10,6 +10,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
@@ -422,12 +423,15 @@ export class AnthropicAIConnector extends LLMConnector {
                 }
             }
             if (messageBlock.tool_calls) {
-                const calls = messageBlock.tool_calls.map((toolCall: any) => ({
-                    type: 'tool_use',
-                    id: toolCall.id,
-                    name: toolCall?.function?.name,
-                    input: toolCall?.function?.arguments,
-                }));
+                const calls = messageBlock.tool_calls.map((toolCall: any) => {
+                    const args = toolCall?.function?.arguments;
+                    return {
+                        type: 'tool_use',
+                        id: toolCall.id,
+                        name: toolCall?.function?.name,
+                        input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
+                    };
+                });
 
                 content.push(...calls);
             }
@@ -459,7 +463,7 @@ export class AnthropicAIConnector extends LLMConnector {
     public getConsistentMessages(messages) {
         let _messages = JSON.parse(JSON.stringify(messages));
 
-        // Extract the system message from the beginning as we have logic that checks 'user' for the first message
+        // Extract the system message from the start, as our logic expects 'user' to be the first message for checks and fixes. We will add it back later.
         let systemMessage = null;
         if (_messages[0]?.role === TLLMMessageRole.System) {
             systemMessage = _messages.shift();
@@ -518,8 +522,9 @@ export class AnthropicAIConnector extends LLMConnector {
             _messages.unshift({ role: TLLMMessageRole.User, content: 'continue' }); //add an empty user message to keep the consistency
         }
 
-        // Add the system message back to the beginning
-        if (systemMessage) {
+        // Add the system message back to the start, as we extracted it earlier
+        // Empty content is not allowed in AnthropicAI
+        if (systemMessage && systemMessage.content) {
             _messages.unshift(systemMessage);
         }
 
