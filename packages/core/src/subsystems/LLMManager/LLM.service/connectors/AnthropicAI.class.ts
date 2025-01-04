@@ -147,7 +147,62 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for OpenAI.');
+        let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
+
+        const content = [{ type: 'text', text: prompt }, ...imageData];
+        messages.push({ role: TLLMMessageRole.User, content });
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        }
+        messages = otherMessages;
+
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        const apiKey = params?.credentials?.apiKey;
+
+        // We do not provide default API key for claude, so user/team must provide their own API key
+        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+
+        const anthropic = new Anthropic({ apiKey });
+
+        // TODO (Forhad): implement claude specific token counting properly
+        // this.validateTokenLimit(params);
+
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: params.model,
+            messages,
+            max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+        };
+
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
+        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
+
+        try {
+            const response = await anthropic.messages.create(messageCreateArgs);
+            let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
+            const finishReason = response?.stop_reason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {

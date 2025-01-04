@@ -144,8 +144,9 @@ export class LLMInference {
         const promises = [];
         const _fileSources = [];
 
-        for (let image of fileSources) {
-            const binaryInput = BinaryInput.from(image);
+        // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
+        for (let file of fileSources) {
+            const binaryInput = BinaryInput.from(file);
             _fileSources.push(binaryInput);
             promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
         }

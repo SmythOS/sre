@@ -106,7 +106,7 @@ export default class GenAILLM extends Component {
                 response = await contentPromise;
             } else {
                 if (isMultimodalRequest && fileSources.length > 0) {
-                    response = await llmInference.visionRequest(prompt, fileSources, config, agent);
+                    response = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
                 } else {
                     response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
                 }

@@ -186,7 +186,75 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for OpenAI.');
+        const messages = params?.messages || [];
+
+        //#region Handle JSON response format
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
+            }
+        }
+        //#endregion Handle JSON response format
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
+
+        // Add user message
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
+
+        messages.push({ role: 'user', content: promptData });
+
+        try {
+            // Check if the team has their own API key, then use it
+            const apiKey = params?.credentials?.apiKey;
+
+            const openai = new OpenAI({
+                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                baseURL: params.baseURL,
+            });
+
+            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+                model: params.model,
+                messages,
+            };
+
+            if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
+            // Validate token limit
+            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+
+            await LLMRegistry.validateTokensLimit({
+                model: params?.model,
+                promptTokens,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
+            });
+
+            const response: any = await openai.chat.completions.create(chatCompletionArgs);
+
+            const content = response?.choices?.[0]?.message.content;
+
+            return { content, finishReason: response?.choices?.[0]?.finish_reason };
+        } catch (error) {
+            throw error;
+        }
     }
 
     protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
