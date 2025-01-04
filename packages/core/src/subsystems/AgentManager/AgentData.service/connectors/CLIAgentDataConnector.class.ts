@@ -12,6 +12,11 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         super();
         this.argv = settings.args || process.argv;
     }
+
+    public getAgentConfig(agentId: string): Partial<TArgs> {
+        return {};
+    }
+
     public async getAgentData(agentId: string, version?: string) {
         const cliConnector: CLIConnector = ConnectorService.getCLIConnector();
 

@@ -10,6 +10,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
@@ -422,12 +423,15 @@ export class AnthropicAIConnector extends LLMConnector {
                 }
             }
             if (messageBlock.tool_calls) {
-                const calls = messageBlock.tool_calls.map((toolCall: any) => ({
-                    type: 'tool_use',
-                    id: toolCall.id,
-                    name: toolCall?.function?.name,
-                    input: toolCall?.function?.arguments,
-                }));
+                const calls = messageBlock.tool_calls.map((toolCall: any) => {
+                    const args = toolCall?.function?.arguments;
+                    return {
+                        type: 'tool_use',
+                        id: toolCall.id,
+                        name: toolCall?.function?.name,
+                        input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
+                    };
+                });
 
                 content.push(...calls);
             }

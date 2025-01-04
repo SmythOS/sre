@@ -102,6 +102,8 @@ export class LLMContext {
                 internal_message = [this._messages[i] as ChatMessage];
             }
 
+            let messageTruncated = false;
+
             for (let message of internal_message) {
                 //skip system messages because we will add our own
 
@@ -139,10 +141,15 @@ export class LLMContext {
 
                     tokens -= encoded.length;
                     tokens += encodeChat([message], 'gpt-4').length;
+
+                    messageTruncated = true;
                     //break;
                 }
                 messages.unshift(message);
             }
+
+            // If the message is truncated, it indicates we've reached the maximum context window. At this point, we need to stop and provide only the messages collected so far.
+            if (messageTruncated) break;
         }
         //add system message as first message in the context window
         messages.unshift(systemMessage);
