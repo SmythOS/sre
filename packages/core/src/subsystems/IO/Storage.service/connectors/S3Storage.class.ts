@@ -13,7 +13,7 @@ Object.defineProperty(global, 'crypto', {
 });
 //#endregion
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, PutObjectTaggingCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
@@ -28,6 +28,7 @@ import SmythRuntime from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
+import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
 
 const console = Logger('S3Storage');
 
@@ -35,6 +36,7 @@ export class S3Storage extends StorageConnector {
     public name = 'S3Storage';
     private client: S3Client;
     private bucket: string;
+    private isInitialized: boolean = false;
 
     constructor(config: S3Config & { bucket: string }) {
         super();
@@ -50,6 +52,12 @@ export class S3Storage extends StorageConnector {
         }
 
         this.client = new S3Client(clientConfig);
+        this.initialize()
+    }
+
+    private async initialize() {
+        await checkAndInstallLifecycleRules(this.bucket, this.client);
+        this.isInitialized = true;
     }
 
     /**
@@ -63,11 +71,31 @@ export class S3Storage extends StorageConnector {
     public async read(acRequest: AccessRequest, resourceId: string) {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
-
-        const command = new GetObjectCommand({
+        const params = {
             Bucket: this.bucket,
             Key: resourceId,
-        });
+        };
+
+        const s3HeadCommand = new HeadObjectCommand(params);
+        const s3HeadData = await this.client.send(s3HeadCommand);
+
+        const expirationHeader = s3HeadData?.Expiration;
+        if (expirationHeader) {
+            const expirationDateMatch = expirationHeader.match(/expiry-date="([^"]+)"/);
+            if (expirationDateMatch) {
+                const expirationDate = new Date(expirationDateMatch[1]);
+                const currentDate = new Date();
+
+                if (currentDate > expirationDate) {
+                    const s3DeleteCommand = new DeleteObjectCommand(params);
+                    await this.client.send(s3DeleteCommand);
+
+                    return undefined;
+                }
+            }
+        }
+
+        const command = new GetObjectCommand(params);
 
         try {
             const response = await this.client.send(command);
@@ -124,7 +152,7 @@ export class S3Storage extends StorageConnector {
     async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
-
+        if (!this.isInitialized) await this.initialize();
         const accessCandidate = acRequest.candidate;
 
         let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
@@ -241,6 +269,17 @@ export class S3Storage extends StorageConnector {
             console.error(`Error setting access rights in S3`, error);
             throw error;
         }
+    }
+
+    @SecureConnector.AccessControl
+    async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
+        const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
+        const s3PutObjectTaggingCommand = new PutObjectTaggingCommand({
+            Bucket: this.bucket,
+            Key: resourceId,
+            Tagging: { TagSet: [{ Key: expiryMetadata.Key, Value: expiryMetadata.Value }] },
+        });
+        await this.client.send(s3PutObjectTaggingCommand);
     }
 
     private migrateMetadata(metadata: Record<string, string>): Record<string, any> {
