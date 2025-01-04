@@ -9,8 +9,6 @@ import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 import _ from 'lodash';
 
-
-
 // TODO [Forhad]: apply proper typing
 // TODO [Forhad]: Need to merge all the methods with LLMConnector
 
