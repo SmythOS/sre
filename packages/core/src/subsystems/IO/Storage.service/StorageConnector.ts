@@ -14,6 +14,7 @@ export interface IStorageRequest {
     setMetadata(resourceId: string, metadata: StorageMetadata): Promise<void>;
     getACL(resourceId: string): Promise<ACL | undefined>;
     setACL(resourceId: string, acl: IACL): Promise<void>;
+    expire(resourceId: string, ttl: number): Promise<void>;
 }
 
 export abstract class StorageConnector extends SecureConnector {
@@ -29,6 +30,7 @@ export abstract class StorageConnector extends SecureConnector {
 
     protected abstract getACL(acRequest: AccessRequest, resourceId: string): Promise<ACL | undefined>;
     protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
+    protected abstract expire(acRequest: AccessRequest, resourceId: string, ttl: number): Promise<void>;
 
     public user(candidate: AccessCandidate): IStorageRequest {
         return {
@@ -56,6 +58,9 @@ export abstract class StorageConnector extends SecureConnector {
             setACL: async (resourceId: string, acl: IACL) => {
                 return await this.setACL(candidate.writeRequest, resourceId, acl);
             },
+            expire: async (resourceId: string, ttl: number) => {
+                return await this.expire(candidate.writeRequest, resourceId, ttl);
+            }
         } as IStorageRequest;
     }
 }

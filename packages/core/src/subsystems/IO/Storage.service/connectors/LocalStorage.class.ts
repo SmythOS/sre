@@ -219,6 +219,11 @@ export class LocalStorage extends StorageConnector {
         }
     }
 
+    @SecureConnector.AccessControl
+    async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
+        throw new Error('Not implemented');
+    }
+
 
     private createDirectories(basePath: string, resourceId: string) {
         const folders = resourceId.split('/').slice(0, -1);
