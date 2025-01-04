@@ -1,4 +1,5 @@
 import { Logger } from '@sre/helpers/Log.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 const console = Logger('EmbodimentSettings');
 
 export default class EmbodimentSettings {
@@ -9,8 +10,9 @@ export default class EmbodimentSettings {
         this.init(agentId);
     }
 
-    async init(data) {
-        this._embodiments = data;
+    async init(agentId) {
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+        this._embodiments = await agentDataConnector.getAgentEmbodiments(agentId);
         this._ready = true;
     }
     public ready(maxWait = 10000) {

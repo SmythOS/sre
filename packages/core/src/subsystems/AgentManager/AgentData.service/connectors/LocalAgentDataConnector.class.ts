@@ -24,6 +24,10 @@ export class LocalAgentDataConnector extends AgentDataConnector {
         this.prodDir = settings.prodDir;
     }
 
+    public getAgentConfig(agentId: string): Partial<LocalAgentDataSettings> {
+        return {};
+    }
+
     private indexDir(dir: string) {
         const agents = fs.readdirSync(dir);
 
@@ -114,6 +118,10 @@ export class LocalAgentDataConnector extends AgentDataConnector {
         } else {
             throw new Error(`Settings for agent with id ${agentId} not found`);
         }
+    }
+
+    public async getAgentEmbodiments(agentId: string): Promise<any> {
+        return [];
     }
 
     public async listTeamAgents(teamId: string, deployedOnly?: boolean): Promise<any[]> {

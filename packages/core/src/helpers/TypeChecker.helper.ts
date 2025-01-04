@@ -19,8 +19,12 @@ const InferenceStrategies = {
     boolean: inferBooleanType,
     array: inferArrayType,
     object: inferObjectType,
-    binary: inferBinaryType,
     date: inferDateType,
+    binary: inferBinaryType,
+    text: inferStringType,
+    image: inferBinaryType,
+    audio: inferBinaryType,
+    video: inferBinaryType,
 };
 
 /**

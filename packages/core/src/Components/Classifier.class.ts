@@ -120,7 +120,7 @@ ${JSON.stringify(categories, null, 2)}`;
                 delete parsed.error;
             }
 
-            logger.log(' Classifier result', parsed);
+            logger.log(' Classifier result\n', parsed);
 
             parsed['_debug'] = logger.output;
 

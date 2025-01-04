@@ -31,6 +31,13 @@ export class SmythAgentDataConnector extends AgentDataConnector {
         this.agentProdDomain = config.agentProdDomain;
     }
 
+    public getAgentConfig(agentId: string): Partial<typeof this.config> {
+        return {
+            agentProdDomain: `${agentId}.${this.agentProdDomain}`,
+            agentStageDomain: `${agentId}.${this.agentStageDomain}`,
+        };
+    }
+
     public async getAgentData(agentId: string, version?: string): Promise<any> {
         try {
             let agentObj;
@@ -144,6 +151,20 @@ export class SmythAgentDataConnector extends AgentDataConnector {
         } catch (error) {
             console.error(`Error getting agent settings for agentId=${agentId}: ${error?.message}`);
             throw new Error(`Error getting agent settings for agentId=${agentId}: ${error?.message}`);
+        }
+    }
+
+    public async getAgentEmbodiments(agentId: string, version?: string): Promise<any> {
+        try {
+            // If no matching deployment found or no deployments at all, return the current live settings
+            const response = await this.smythAPI.get(`/v1/embodiments?aiAgentId=${agentId}`, {
+                headers: await this.getSmythRequestHeaders(),
+            });
+
+            return response?.data?.embodiments || [];
+        } catch (error) {
+            console.error(`Error getting agent embodiments for agentId=${agentId}: ${error?.message}`);
+            throw new Error(`Error getting agent embodiments for agentId=${agentId}: ${error?.message}`);
         }
     }
 

@@ -47,6 +47,7 @@ export default class APIEndpoint extends Component {
         summary: Joi.string().max(1000).allow(''),
         doc: Joi.string().max(1000).allow(''),
         ai_exposed: Joi.boolean().default(true),
+        advancedModeEnabled: Joi.boolean().optional(),
     });
     constructor() {
         super();

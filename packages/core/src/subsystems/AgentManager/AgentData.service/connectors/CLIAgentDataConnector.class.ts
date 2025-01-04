@@ -12,6 +12,11 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         super();
         this.argv = settings.args || process.argv;
     }
+
+    public getAgentConfig(agentId: string): Partial<TArgs> {
+        return {};
+    }
+
     public async getAgentData(agentId: string, version?: string) {
         const cliConnector: CLIConnector = ConnectorService.getCLIConnector();
 
@@ -46,6 +51,11 @@ export class CLIAgentDataConnector extends AgentDataConnector {
         }
         return settings;
     }
+
+    public async getAgentEmbodiments(agentId: string): Promise<any> {
+        return [];
+    }
+
     public async listTeamAgents(teamId: string, deployedOnly?: boolean): Promise<any[]> {
         console.warn(`listTeamAgents is not implemented for CLIAgentDataConnector`);
         return [];

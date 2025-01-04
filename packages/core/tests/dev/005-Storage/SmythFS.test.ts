@@ -4,14 +4,13 @@ import express from 'express';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, SmythRuntime } from '@sre/index';
 import http, { Server } from 'http';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import axios from 'axios';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
-import { RotateSecretCommand } from '@aws-sdk/client-secrets-manager';
 
 const PORT = 8083;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -30,6 +29,19 @@ const SREInstance = SmythRuntime.Instance.init({
             region: config.env.AWS_S3_REGION || '',
             accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
+        },
+    },
+    AgentData: {
+        Connector: 'Smyth',
+        Settings: {
+            agentStageDomain: process.env.AGENT_DOMAIN || '',
+            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
     Cache: {
@@ -246,6 +258,122 @@ describe('Smyth FileSystem Tests', () => {
 
             const responseErr = await axios.get(tempUrl).catch((e) => e);
             expect(responseErr?.response?.status).toBe(404);
+        } catch (e) {
+            error = e;
+        }
+
+        console.log('error', error);
+        expect(error).toBeUndefined();
+    });
+
+    it.each([
+        { contentType: 'text/plain', content: 'Hello World!' },
+        { contentType: 'image/png', content: 'avatar.png' },
+    ])('Generate resource url to serve $contentType content', async ({ contentType, content }) => {
+        const smythFS = SmythFS.Instance;
+        let error;
+        try {
+            const candidate: IAccessCandidate = {
+                role: TAccessRole.Agent,
+                id: 'agent-123456',
+            };
+
+            const uri = `smythfs://default.team/myTestAgent/resourceFile`;
+
+            // Write the file
+            let _preparedContent;
+            if (contentType === 'text/plain') {
+                _preparedContent = content;
+            } else if (contentType === 'image/png') {
+                const image = await fs.promises.readFile(path.join(__dirname, `../../data/${content}`));
+                _preparedContent = image;
+            }
+
+            await smythFS.write(uri, _preparedContent, candidate, { ContentType: contentType });
+
+            const resourceUrl = await smythFS.genResourceUrl(uri, candidate);
+            const agentDomain = `https://${ConnectorService.getAgentDataConnector().getAgentConfig(candidate.id).agentStageDomain}`;
+
+            expect(resourceUrl).toBeDefined();
+            console.log('agent domain', agentDomain);
+            expect(resourceUrl.startsWith(agentDomain)).toBeTruthy();
+            expect(resourceUrl.endsWith(contentType.split('/')[1])).toBeTruthy();
+
+            // Test serving the resource
+            const testUrl = resourceUrl.replace(agentDomain, BASE_URL);
+            // for testing, we will use the the BaseUrl to fetch the resource
+            const response = await axios.get(testUrl, {
+                responseType: 'arraybuffer',
+            });
+
+            expect(response.status).toBe(200);
+            expect(response.headers['content-type']).toBe(contentType);
+            expect(Buffer.from(response.data).equals(Buffer.from(_preparedContent))).toBeTruthy();
+        } catch (e) {
+            error = e;
+        }
+
+        expect(error).toBeUndefined();
+    });
+
+    it('Should not allow non-agent users to generate resource urls', async () => {
+        const smythFS = SmythFS.Instance;
+        let error;
+        try {
+            const candidate: IAccessCandidate = AccessCandidate.team('team-123456');
+            const uri = `smythfs://${candidate.id}.team/myTestAgent/resourceFile`;
+
+            await smythFS.write(uri, 'Hello World!', candidate);
+            await smythFS.genResourceUrl(uri, candidate);
+        } catch (e) {
+            error = e;
+        }
+
+        expect(error?.message).toBe('Only agents can generate resource urls');
+    });
+
+    // it('Delete content after the resource url is destroyed', async () => {
+    //     const smythFS = SmythFS.Instance;
+    //     let error;
+    //     try {
+    //         const candidate: IAccessCandidate = {
+    //             role: TAccessRole.Agent,
+    //             id: 'agent-123456',
+    //         };
+    //         const uri = `smythfs://default.team/myTestAgent/resourceToDelete`;
+
+    //         // Write the file
+    //         await smythFS.write(uri, 'Hello World!', candidate);
+
+    //         // Generate resource url
+    //         const resourceUrl = await smythFS.genResourceUrl(uri, candidate);
+
+    //         // Delete the resource
+    //         await smythFS.destroyResourceUrl(resourceUrl, { delResource: true });
+
+    //         // Try to reach the destroyed content
+    //         const responseErr = await axios.get(resourceUrl).catch((e) => e);
+    //         expect(responseErr?.response?.status).toBe(404);
+
+    //         // Check if the file still exists
+    //         const exists = await smythFS.exists(uri, candidate);
+    //         expect(exists).toBeFalsy();
+    //     } catch (e) {
+    //         error = e;
+    //     }
+
+    //     expect(error).toBeUndefined();
+    // });
+
+    it('Should handle invalid resource urls gracefully', async () => {
+        const smythFS = SmythFS.Instance;
+        let error;
+        try {
+            // Try to access an invalid resource URL
+            const invalidUrl = `${BASE_URL}/storage/invalid-uuid`;
+            const responseErr = await axios.get(invalidUrl).catch((e) => e);
+            expect(responseErr?.response?.status).toBe(404);
+            expect(responseErr?.response?.data).toBe('Invalid Resource URL');
         } catch (e) {
             error = e;
         }

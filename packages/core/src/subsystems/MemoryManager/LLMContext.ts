@@ -4,8 +4,6 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { ILLMContextStore } from '@sre/types/LLM.types';
 
-// TODO [Forhad]: we can move methods to MessageProcessor
-
 //content, name, role, tool_call_id, tool_calls, function_call
 export class LLMContext {
     private _systemPrompt: string = '';
@@ -104,6 +102,8 @@ export class LLMContext {
                 internal_message = [this._messages[i] as ChatMessage];
             }
 
+            let messageTruncated = false;
+
             for (let message of internal_message) {
                 //skip system messages because we will add our own
 
@@ -135,14 +135,21 @@ export class LLMContext {
                     //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
 
                     message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
-                    message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
+
+                    // We need to find out another way to report this
+                    // message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
 
                     tokens -= encoded.length;
                     tokens += encodeChat([message], 'gpt-4').length;
+
+                    messageTruncated = true;
                     //break;
                 }
                 messages.unshift(message);
             }
+
+            // If the message is truncated, it indicates we've reached the maximum context window. At this point, we need to stop and provide only the messages collected so far.
+            if (messageTruncated) break;
         }
         //add system message as first message in the context window
         messages.unshift(systemMessage);

@@ -28,6 +28,7 @@ type ToolParams = {
     method: string;
     baseUrl: string;
     headers?: Record<string, string>;
+    agentCallback?: (data: any) => void;
 };
 
 //TODO: handle authentication
@@ -55,6 +56,7 @@ export class Conversation extends EventEmitter {
 
     private _llmContextStore: ILLMContextStore;
     private _context: LLMContext;
+
     private _maxContextSize = 1024 * 16;
     private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
@@ -69,7 +71,7 @@ export class Conversation extends EventEmitter {
     private _customToolsDeclarations: FunctionDeclaration[] = [];
     private _customToolsHandlers: Record<string, (args: Record<string, any>) => Promise<any>> = {};
     public stop = false;
-    public set spec(specSource) {
+    public set spec(specSource) {      
         this.ready.then(() => {
             this._status = '';
             this.loadSpecFromSource(specSource).then(async (spec) => {
@@ -79,6 +81,7 @@ export class Conversation extends EventEmitter {
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
+
 
                 // teamId is required to load custom LLMs, we must assign it before updateModel()
                 await this.assignTeamIdFromAgentId(this._agentId);
@@ -132,7 +135,12 @@ export class Conversation extends EventEmitter {
             this.toolChoice = _settings.toolChoice;
         }
 
+        if (_settings?.store) {
+            this._llmContextStore = _settings.store;
+        }
+
         this._agentVersion = _settings?.agentVersion;
+
 
         (async () => {
             if (_specSource) {
@@ -214,7 +222,9 @@ export class Conversation extends EventEmitter {
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
 
         if (!this._context) {
-            throw new Error('Conversation context is not initialized');
+            console.error('Conversation context is not initialized!');
+
+            throw new Error('Unable to process your request. Please try again or contact support if the issue persists.');
         }
 
         if (message) this._context.addUserMessage(message, message_id);
@@ -332,9 +342,18 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
-    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4) {
+    public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
         if (this.stop) return;
         await this.ready;
+
+        // Add an abort handler
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                const error = new Error('Request aborted by user!');
+                error.name = 'AbortError';
+                throw error;
+            });
+        }
 
         //let promises = [];
         let _content = '';
@@ -365,6 +384,7 @@ export class Conversation extends EventEmitter {
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                     cache: this._settings?.experimentalCache,
+                    abortSignal,
                 },
                 this._agentId
             )
@@ -417,6 +437,17 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
+
+                let passThroughContent = '';
+                //initialize the agent callback logic
+                const _agentCallback = (data) => {
+                    if (typeof data !== 'string') return;
+                    passThroughContent += data;
+                    //this is currently used to handle agent callbacks when running local agents
+                    this.emit('agentCallback', data);
+                };  
+
+
                 const toolProcessingTasks = toolsData.map(
                     (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
                         const endpoint = endpoints?.get(tool?.name) || tool?.name;
@@ -429,7 +460,8 @@ export class Conversation extends EventEmitter {
                         }
 
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
-                        this.emit('beforeToolCall', { tool, args });
+                        // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
+                        this.emit('beforeToolCall', { tool, args }, llmMessage);
 
                         const toolArgs = {
                             type: tool?.type,
@@ -438,9 +470,10 @@ export class Conversation extends EventEmitter {
                             args,
                             baseUrl,
                             headers: toolHeaders,
+                            agentCallback: _agentCallback,
                         };
 
-                        let { data: functionResponse, error } = await this.useTool(toolArgs);
+                        let { data: functionResponse, error } = await this.useTool(toolArgs, abortSignal);
 
                         if (error) {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
@@ -472,10 +505,17 @@ export class Conversation extends EventEmitter {
                 //     toolsData: processedToolsData,
                 // });
 
+                if (!passThroughContent) {
+
                 this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
                 this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                }
+                else {
 
+                    //if passThroughContent is not empty, it means that the current agent streamed content through components
+                    resolve(passThroughContent);
+                }
                 //const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
                 //console.log('Result after tool call: ', result);
             });
@@ -556,11 +596,14 @@ export class Conversation extends EventEmitter {
         return url.toString();
     }
 
-    private async useTool(params: ToolParams): Promise<{
+    private async useTool(
+        params: ToolParams,
+        abortSignal?: AbortSignal
+    ): Promise<{
         data: any;
         error;
     }> {
-        const { type, endpoint, args, method, baseUrl, headers = {} } = params;
+        const { type, endpoint, args, method, baseUrl, headers = {}, agentCallback } = params;
 
         if (type === 'function') {
             const toolHandler = this._customToolsHandlers[endpoint];
@@ -581,6 +624,7 @@ export class Conversation extends EventEmitter {
                     headers: {
                         ...headers,
                     },
+                    signal: abortSignal,
                 };
 
                 if (method !== 'get') {
@@ -594,12 +638,12 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost')) {
+                if (reqConfig.url.includes('localhost') || reqConfig.url.includes('localagent')) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(
                         reqConfig.headers['X-AGENT-ID'] || this._agentId,
                         reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
-                    ).run(reqConfig as TAgentProcessParams);
+                    ).run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
                     //if it's a remote agent, call the API via HTTP
@@ -719,7 +763,11 @@ export class Conversation extends EventEmitter {
     private async loadSpecFromSource(specSource: string | Record<string, any>) {
         if (typeof specSource === 'object') {
             //is this a valid OpenAPI spec?
-            if (OpenAPIParser.isValidOpenAPI(specSource)) return this.patchSpec(specSource);
+            if (OpenAPIParser.isValidOpenAPI(specSource)) {
+                this.systemPrompt = specSource?.info?.description || '';
+
+                return this.patchSpec(specSource);
+            }
             //is this a valid agent data?
             if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
             return null;

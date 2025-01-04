@@ -1,3 +1,9 @@
+import { PutBucketLifecycleConfigurationCommand } from "@aws-sdk/client-s3";
+
+import { GetBucketLifecycleConfigurationCommand } from "@aws-sdk/client-s3";
+
+import { S3Client } from "@aws-sdk/client-s3";
+
 export function generateLifecycleRules() {
     const rules = [];
 
@@ -9,7 +15,7 @@ export function generateLifecycleRules() {
                 // Prefix: '',
                 Tag: {
                     Key: 'Expiry',
-                   Value: 'ExpireAfter' + i + 'Days'
+                    Value: 'ExpireAfter' + i + 'Days'
                 }
             },
             Status: 'Enabled',
@@ -25,7 +31,7 @@ export function generateLifecycleRules() {
                 // Prefix: '',
                 Tag: {
                     Key: 'Expiry',
-                   Value: 'ExpireAfter' + i + 'Days'
+                    Value: 'ExpireAfter' + i + 'Days'
                 }
             },
             Status: 'Enabled',
@@ -80,4 +86,43 @@ export function getNonExistingRules(existingRules: any[], newRules: any[]) {
 
 export function ttlToExpiryDays(ttl: number) { // seconds
     return Math.ceil(ttl / (60 * 60 * 24));
+}
+
+export async function checkAndInstallLifecycleRules(bucketName: string, s3Client: S3Client) {
+    try {
+        // Check existing lifecycle configuration
+        const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: bucketName });
+        const existingLifecycle = await s3Client.send(getLifecycleCommand);
+        const existingRules = existingLifecycle.Rules;
+        const newRules = generateLifecycleRules();
+        const nonExistingNewRules = getNonExistingRules(existingRules, newRules);
+        if (nonExistingNewRules.length > 0) {
+            const params = {
+                Bucket: bucketName,
+                LifecycleConfiguration: { Rules: [...existingRules, ...nonExistingNewRules] },
+            };
+            const putLifecycleCommand = new PutBucketLifecycleConfigurationCommand(params);
+            // Put the new lifecycle configuration
+            await s3Client.send(putLifecycleCommand);
+        } else {
+            console.log('Lifecycle configuration already exists');
+        }
+    } catch (error) {
+        if (error.code === 'NoSuchLifecycleConfiguration') {
+            console.log('No lifecycle configuration found. Creating new configuration...');
+
+            const lifecycleRules = generateLifecycleRules();
+
+            const params = {
+                Bucket: bucketName,
+                LifecycleConfiguration: { Rules: lifecycleRules }
+            };
+            const putLifecycleCommand = new PutBucketLifecycleConfigurationCommand(params);
+            // Put the new lifecycle configuration
+            await s3Client.send(putLifecycleCommand);
+            console.log('Lifecycle configuration created successfully.');
+        } else {
+            console.error('Error checking lifecycle configuration:', error);
+        }
+    }
 }

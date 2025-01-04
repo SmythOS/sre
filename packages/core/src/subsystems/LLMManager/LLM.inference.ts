@@ -7,6 +7,9 @@ import { EventEmitter } from 'events';
 import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
 import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
+import _ from 'lodash';
+
+
 
 // TODO [Forhad]: apply proper typing
 // TODO [Forhad]: Need to merge all the methods with LLMConnector
@@ -45,6 +48,7 @@ export class LLMInference {
     }
 
     public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
+        const clonedConfig = _.cloneDeep(config);
         const messages = customParams?.messages || [];
 
         if (prompt) {
@@ -57,7 +61,7 @@ export class LLMInference {
         }
 
         // override params with customParams
-        let params: any = Object.assign(config.data, { ...customParams, messages });
+        let params: any = Object.assign(clonedConfig.data, { ...customParams, messages });
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 

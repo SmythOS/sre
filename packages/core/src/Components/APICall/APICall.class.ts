@@ -112,10 +112,13 @@ export default class APICall extends Component {
                 const response = await axios.request(reqConfig);
 
                 const parsedRes = await parseArrayBufferResponse(response, agent);
-                logger.debug('API call response', parsedRes);
+
                 // log response headers
-                logger.debug('API call response headers', response.headers);
+                logger.debug('API call Response Headers', response.headers);
                 Response = parsedRes;
+
+                logger.debug('API call Response\n', Response);
+
                 Headers = Object.fromEntries(Object.entries(response.headers));
             } catch (error) {
                 logger.debug(`Error making API call: ${error.message}`);
