@@ -362,7 +362,7 @@ export class BedrockConnector extends LLMConnector {
                         toolUse: {
                             toolUseId: toolCall.id,
                             name: _serializeToolName(toolCall?.function?.name),
-                            input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
+                            input: typeof args === 'string' ? JSONContent(args || '{}').tryParse() : args || {},
                         },
                     });
                 });
