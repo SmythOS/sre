@@ -33,7 +33,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
     tags: ['new'],
   },
   'ai21.jamba-1-5-large-v1:0': {
@@ -43,7 +43,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'Chatbot'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
     tags: ['new'],
   },
   'ai21.jamba-instruct-v1:0': {
