@@ -178,7 +178,7 @@ async function runTestCases(model: string) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini-2024-07-18' },
-    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
+    { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite' },

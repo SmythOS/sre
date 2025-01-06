@@ -166,7 +166,7 @@ function testProcessFunction(model) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
+    { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },

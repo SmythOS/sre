@@ -15,17 +15,17 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 
-const console = Logger('AnthropicAIConnector');
+const console = Logger('AnthropicConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
-const API_KEY_ERROR_MESSAGE = 'Please provide an API key for AnthropicAI';
+const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
 
 // TODO [Forhad]: implement proper typing
 
-export class AnthropicAIConnector extends LLMConnector {
-    public name = 'LLM:AnthropicAI';
+export class AnthropicConnector extends LLMConnector {
+    public name = 'LLM:Anthropic';
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
@@ -224,7 +224,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
             if (hasSystemMessage) {
-                // in AnthropicAI we need to provide system message separately
+                // in Anthropic we need to provide system message separately
                 const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
@@ -288,7 +288,7 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
-        throw new Error('Image generation request is not supported for AnthropicAI.');
+        throw new Error('Image generation request is not supported for Anthropic.');
     }
 
     // ! DEPRECATED METHOD
@@ -578,7 +578,7 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         // Add the system message back to the start, as we extracted it earlier
-        // Empty content is not allowed in AnthropicAI
+        // Empty content is not allowed in Anthropic
         if (systemMessage && systemMessage.content) {
             _messages.unshift(systemMessage);
         }

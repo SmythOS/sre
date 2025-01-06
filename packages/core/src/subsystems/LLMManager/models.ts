@@ -221,7 +221,7 @@ export const models = {
 
   // Anthropic AI
   'claude-3.5-haiku': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     alias: 'claude-3-5-haiku-latest',
     components: [
       'PromptGenerator',
@@ -235,14 +235,14 @@ export const models = {
     tags: ['new'],
   },
   'claude-3-5-haiku-latest': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
   },
   'claude-3-5-sonnet-latest': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
@@ -259,7 +259,7 @@ export const models = {
     features: ['text', 'image'],
   },
   'claude-3.5-sonnet': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     alias: 'claude-3-5-sonnet-20240620',
     components: [
       'PromptGenerator',
@@ -273,14 +273,14 @@ export const models = {
     features: ['text', 'image'],
   },
   'claude-3-5-sonnet-20240620': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
   },
   'claude-3-opus': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     alias: 'claude-3-opus-20240229',
     components: [
       'PromptGenerator',
@@ -294,14 +294,14 @@ export const models = {
     features: ['text', 'image'],
   },
   'claude-3-opus-20240229': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
   },
   'claude-3-sonnet': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     alias: 'claude-3-sonnet-20240229',
     components: [
       'PromptGenerator',
@@ -314,14 +314,14 @@ export const models = {
     tags: ['legacy'],
   },
   'claude-3-sonnet-20240229': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
   },
   'claude-3-haiku': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     alias: 'claude-3-haiku-20240307',
     components: [
       'PromptGenerator',
@@ -334,14 +334,14 @@ export const models = {
     tags: ['legacy'],
   },
   'claude-3-haiku-20240307': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
   },
   'claude-2.1': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
@@ -350,7 +350,7 @@ export const models = {
     tags: ['legacy'],
   },
   'claude-instant-1.2': {
-    llm: 'AnthropicAI',
+    llm: 'Anthropic',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,

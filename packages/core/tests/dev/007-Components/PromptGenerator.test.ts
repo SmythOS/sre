@@ -122,7 +122,7 @@ function runTestCasesWithAgent(endpoint: string) {
 
 const llmProviderEndpoints = [
     { provider: 'OpenAI', endpoint: '/api/test-openai-model' },
-    { provider: 'AnthropicAI', endpoint: '/api/test-anthropicai-model' },
+    { provider: 'Anthropic', endpoint: '/api/test-anthropic-model' },
     { provider: 'GoogleAI', endpoint: '/api/test-googleai-model' },
     { provider: 'Groq', endpoint: '/api/test-groq-model' },
     { provider: 'TogetherAI', endpoint: '/api/test-togetherai-model' },

@@ -178,7 +178,7 @@ async function runVisionTestCases(model: string) {
 
 const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'AnthropicAI', id: 'claude-3-haiku-20240307' },
+    { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
 ];
 
