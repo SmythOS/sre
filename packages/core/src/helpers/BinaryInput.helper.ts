@@ -112,7 +112,7 @@ export class BinaryInput {
             return;
         }
 
-        // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isDataUrl(data));
+        // console.log('>>>>>>>>>>>>>>>>>>> is base64 file ?', isBase64DataUrl(data));
         const base64FileInfo = await getBase64FileInfo(data);
         if (base64FileInfo) {
             // If the MIME type is already set, it's safe to use it,
@@ -183,21 +183,7 @@ export class BinaryInput {
             return { contentType: '', contentLength: 0 };
         }
     }
-    // ! DEPRECATED: This will be removed. We now use extractBase64DataAndMimeType(), which is more robust.
-    private async getBase64FileInfo(data: string) {
-        //first check if it's a base64 url format
-        const validUrlFormatRegex = /data:[^;]+;base64,[A-Za-z0-9+\/]*(={0,2})?$/gm;
-        if (!validUrlFormatRegex.test(data)) {
-            return null;
-        }
 
-        const base64Data = data.split(',')[1];
-        const buffer = Buffer.from(base64Data, 'base64');
-        const size = buffer.byteLength;
-        const mimetype = await getMimeType(buffer);
-
-        return { size, data: buffer, mimetype };
-    }
     public static from(data, name?: string, mimetype?: string, candidate?: IAccessCandidate) {
         if (data instanceof BinaryInput) return data;
         return new BinaryInput(data, name, mimetype, candidate);

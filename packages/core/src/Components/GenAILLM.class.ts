@@ -4,7 +4,8 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
-
+import { SUPPORTED_FILE_TYPES_MAP } from '@sre/constants';
+import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
@@ -56,22 +57,49 @@ export default class GenAILLM extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
+            const files = input?.Files;
             let fileSources: any[] = [];
             let isMultimodalRequest = false;
-            const files = input?.Files;
+            const provider = llmRegistry.getProvider(model);
+            const isEcho = provider === 'Echo';
 
-            if (files) {
-                if (!llmRegistry.getModelFeatures(model)?.includes('image')) {
-                    return { _error: 'Model does not support File', _debug: logger.output };
+            // Ignore files for Echo model
+            if (files && !isEcho) {
+                fileSources = Array.isArray(files) ? files : [files];
+
+                const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP[provider];
+                const features = llmRegistry.getModelFeatures(model);
+                const fileTypes = new Set(); // Set to avoid duplicates
+
+                const validFiles = await Promise.all(
+                    fileSources.map(async (file) => {
+                        const mimeType = await getMimeType(file);
+                        const [requestFeature = ''] =
+                            Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
+
+                        fileTypes.add(mimeType);
+
+                        return features?.includes(requestFeature) ? file : null;
+                    })
+                );
+
+                fileSources = validFiles.filter(Boolean);
+
+                if (fileSources.length === 0) {
+                    return {
+                        _error: `Model does not support ${Array.from(fileTypes).join(', ')}`,
+                        _debug: logger.output,
+                    };
                 }
 
-                fileSources = Array.isArray(files) ? files : [files];
                 isMultimodalRequest = true;
             }
 
             logger.debug(` Parsed prompt\n`, prompt, '\n');
 
-            logger.debug(' Files\n', fileSources);
+            if (!isEcho) {
+                logger.debug(' Files\n', fileSources);
+            }
 
             // default to json response format
             config.data.responseFormat = config.data?.responseFormat || 'json';

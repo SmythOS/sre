@@ -61,3 +61,38 @@ Respond ONLY with a valid, parsable JSON object. Follow these strict guidelines:
 Example of a valid response:
 {"result": "This is a valid JSON response without any extra text."}
 `;
+
+export const SUPPORTED_FILE_TYPES_MAP = {
+    OpenAI: {
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+    },
+    TogetherAI: {
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'], // Same as OpenAI
+    },
+    Anthropic: {
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+    },
+    GoogleAI: {
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/heic', 'image/heif'],
+        video: ['video/mp4', 'video/mpeg', 'video/mov', 'video/avi', 'video/x-flv', 'video/mpg', 'video/webm', 'video/wmv', 'video/3gpp'],
+        audio: ['audio/wav', 'audio/mp3', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'],
+        document: [
+            'application/pdf',
+            'application/x-javascript',
+            'application/x-typescript',
+            'application/x-python-code',
+            'application/json',
+            'application/rtf',
+            'text/plain',
+            'text/html',
+            'text/css',
+            'text/javascript',
+            'text/x-typescript',
+            'text/csv',
+            'text/markdown',
+            'text/x-python',
+            'text/xml',
+            'text/rtf',
+        ],
+    },
+};
