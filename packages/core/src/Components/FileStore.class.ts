@@ -49,7 +49,6 @@ export default class FileStore extends Component {
                 const smythFSUrl = `smythfs://${agent.teamId}.team/components_data/${fileName}`
                 const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.teamId));
                 Output = {
-                    ID: fileName,
                     Url: url
                 };
 
