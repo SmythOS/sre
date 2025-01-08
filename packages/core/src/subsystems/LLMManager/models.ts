@@ -219,7 +219,7 @@ export const models = {
     tags: ['legacy'],
   },
 
-  // Anthropic AI
+  // Anthropic
   'claude-3.5-haiku': {
     llm: 'Anthropic',
     alias: 'claude-3-5-haiku-latest',

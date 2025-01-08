@@ -262,7 +262,7 @@ export class AnthropicConnector extends LLMConnector {
                     toolsData.push({
                         index,
                         id: toolUseBlock?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
                         role: result?.role,
@@ -322,7 +322,7 @@ export class AnthropicConnector extends LLMConnector {
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
             if (hasSystemMessage) {
-                // in Anthropic AI we need to provide system message separately
+                // in Anthropic we need to provide system message separately
                 const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string | Array<TextBlockParam>) || '';
@@ -396,7 +396,7 @@ export class AnthropicConnector extends LLMConnector {
                         toolsData.push({
                             index,
                             id: toolUseBlock?.id,
-                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
                             name: toolUseBlock?.name,
                             arguments: toolUseBlock?.input,
                             role: finalMessage?.role,
@@ -515,7 +515,7 @@ export class AnthropicConnector extends LLMConnector {
                         toolsData.push({
                             index,
                             id: toolUseBlock?.id,
-                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
                             name: toolUseBlock?.name,
                             arguments: toolUseBlock?.input,
                             role: finalMessage?.role,
@@ -592,7 +592,7 @@ export class AnthropicConnector extends LLMConnector {
                 content.push(...messageBlock.content);
             } else {
                 if (messageBlock.content) {
-                    //Anthropic AI does not accept empty text blocks
+                    //Anthropic does not accept empty text blocks
                     content.push({ type: 'text', text: messageBlock.content });
                 }
             }
