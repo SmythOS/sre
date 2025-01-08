@@ -102,15 +102,15 @@ export default class PromptGenerator extends Component {
 
                     return { Reply: response?.data, _error: error, _debug: logger.output };
                 }
-
-                logger.debug(' Response \n', response);
-
-                const result = { Reply: response };
-
-                result['_debug'] = logger.output;
-
-                return result;
             }
+
+            logger.debug(' Response \n', response);
+
+            const result = { Reply: response };
+
+            result['_debug'] = logger.output;
+
+            return result;
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }

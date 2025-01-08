@@ -255,26 +255,11 @@ export class LLMInference {
 
         params.fileSources = _fileSources;
 
-        if (!params.model) {
-            params.model = this.model;
-        }
-
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, params);
+            const model = params.model || this.model;
 
-            const result = this.llmConnector.postProcess(response?.content);
-
-            if (result.error) {
-                if (response.finishReason !== 'stop') {
-                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
-                }
-
-                // If the model stopped due to other reasons, throw the error
-                throw new Error(result.error);
-            }
-
-            return result;
+            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
         } catch (error: any) {
             console.error('Error in multimodalRequest: ', error);
 

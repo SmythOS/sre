@@ -29,7 +29,7 @@ export class EchoConnector extends LLMConnector {
         throw new Error('Echo model does not support streaming');
     }
     protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
-        throw new Error('Echo model does not support streaming');
+        throw new Error('Echo model does not support passthrough with File(s)');
     }
 
     public enhancePrompt(prompt: string, config: any) {

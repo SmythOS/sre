@@ -68,7 +68,7 @@ export default class GenAILLM extends Component {
             if (files && !isEcho) {
                 fileSources = Array.isArray(files) ? files : [files];
 
-                const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP[provider];
+                const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP?.[provider] || {};
                 const features = llmRegistry.getModelFeatures(model);
                 const fileTypes = new Set(); // Set to avoid duplicates
 
@@ -88,7 +88,7 @@ export default class GenAILLM extends Component {
 
                 if (fileSources.length === 0) {
                     return {
-                        _error: `Model does not support ${Array.from(fileTypes).join(', ')}`,
+                        _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
                         _debug: logger.output,
                     };
                 }
@@ -112,25 +112,26 @@ export default class GenAILLM extends Component {
                     let _content = '';
                     let eventEmitter;
 
-                    if(isMultimodalRequest && fileSources.length > 0) {
-                        eventEmitter = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
-                    }else {
-                        eventEmitter = await llmInference
-                        .streamRequest(
-                            {
-                                model: model,
-                                messages: [{ role: 'user', content: prompt }],
-                            },
-                            agent.id
-                        )
-                        .catch((error) => {
-                            console.error('Error on streamRequest: ', error);
+                    if (isMultimodalRequest && fileSources.length > 0) {
+                        eventEmitter = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent).catch((error) => {
+                            console.error('Error on multimodalStreamRequest: ', error);
                             reject(error);
                         });
+                    } else {
+                        eventEmitter = await llmInference
+                            .streamRequest(
+                                {
+                                    model: model,
+                                    messages: [{ role: 'user', content: prompt }],
+                                },
+                                agent.id
+                            )
+                            .catch((error) => {
+                                console.error('Error on streamRequest: ', error);
+                                reject(error);
+                            });
                     }
 
-                    
-                        
                     eventEmitter.on('content', (content) => {
                         if (typeof agent.callback === 'function') {
                             agent.callback(content);
@@ -162,15 +163,15 @@ export default class GenAILLM extends Component {
 
                     return { Output: response?.data, _error: error, _debug: logger.output };
                 }
-
-                logger.debug(' Reply \n', response);
-
-                const result = { Reply: response };
-
-                result['_debug'] = logger.output;
-
-                return result;
             }
+
+            logger.debug(' Reply \n', response);
+
+            const result = { Reply: response };
+
+            result['_debug'] = logger.output;
+
+            return result;
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }

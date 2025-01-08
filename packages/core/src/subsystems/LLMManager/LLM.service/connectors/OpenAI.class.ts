@@ -571,6 +571,9 @@ export class OpenAIConnector extends LLMConnector {
         const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
             model: params.model,
             messages,
+
+            stream_options: { include_usage: true },
+            stream: true,
         };
 
         if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;

@@ -136,7 +136,7 @@ export abstract class LLMConnector extends Connector {
             multimodalStreamRequest: async (prompt, params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
+                return this.multimodalStreamRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
         };
     }

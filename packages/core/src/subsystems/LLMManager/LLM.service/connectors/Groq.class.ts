@@ -225,7 +225,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
-        throw new Error('Groq model does not support multimodal streaming');
+        throw new Error('Groq model does not support passthrough with File(s)');
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
