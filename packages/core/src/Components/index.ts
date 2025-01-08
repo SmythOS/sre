@@ -32,6 +32,7 @@ import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
 import ServerlessCode from './ServerlessCode.class';
 import GenAILLM from './GenAILLM.class';
+import FileStore from './FileStore.class';
 
 const components = {
     Component: new Component(),
@@ -70,6 +71,7 @@ const components = {
     MultimodalLLM: new MultimodalLLM(),
     ServerlessCode: new ServerlessCode(),
     GenAILLM: new GenAILLM(),
+    FileStore: new FileStore(),
 };
 
 export default components;

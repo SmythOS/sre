@@ -403,7 +403,7 @@ export class Conversation extends EventEmitter {
 
         eventEmitter.on('content', (content) => {
             _content += content;
-            console.log('content', content);
+            //console.log('content', content);
             this.emit('content', content);
         });
 
@@ -822,7 +822,6 @@ export class Conversation extends EventEmitter {
         if (agentData?.components) {
             agentData = { name: agentData?.name, data: agentData, version: '1.0.0' };
         }
-
 
         const agentDataConnector = ConnectorService.getAgentDataConnector();
         this.systemPrompt = agentData?.data?.behavior || this.systemPrompt;

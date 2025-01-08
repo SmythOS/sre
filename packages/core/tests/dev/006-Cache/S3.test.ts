@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 import config from '@sre/config';
 import { ConnectorService, SmythRuntime } from '@sre/index';
+import { S3Cache } from '@sre/MemoryManager/Cache.service/connectors/S3Cache.class';
+import { ACL } from '@sre/Security/AccessControl/ACL.class';
 
 function xxh3(source) {
     const h64 = xxhash.h64(); // Use xxhashjs's h64 function
@@ -14,21 +16,13 @@ function xxh3(source) {
 }
 
 const sre = SmythRuntime.Instance.init({
-    Storage: {
+    Cache: {
         Connector: 'S3',
         Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
+            bucketName: config.env.AWS_S3_BUCKET_NAME || '',
             region: config.env.AWS_S3_REGION || '',
             accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
             secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
         },
     },
 });
@@ -36,7 +30,8 @@ const sre = SmythRuntime.Instance.init({
 //import SRE, { AgentRequest } from '../../dist';
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-const testFile = 'unit-tests/redis.txt';
+const s3Key = 'i-am-a-test-key';
+const s3KeyWithMeta = 'i-am-a-test-key-with-meta';
 const testAdditionalACLMetadata = {
     hashAlgorithm: 'xxh3',
     entries: {
@@ -47,9 +42,8 @@ const testAdditionalACLMetadata = {
     },
 };
 
-const testFileWithMeta = 'unit-tests/test-meta.txt';
 const testOriginalACLMetadata = {
-    hashAlgorithm: 'none',
+    hashAlgorithm: 'xxh3',
     entries: {
         [TAccessRole.Team]: {
             teamMeta: [TAccessLevel.Read, TAccessLevel.Write],
@@ -57,24 +51,24 @@ const testOriginalACLMetadata = {
     },
 };
 
-const agentCandidate = AccessCandidate.agent('agent-123456');
+const agentCandidate = AccessCandidate.team('team1');
 const testOriginalMetadata = {
     'Content-Type': 'text/plain',
-    'x-amz-meta-test': 'test',
+    'test': 'test',
 };
 
-let redisCache: CacheConnector = ConnectorService.getCacheConnector();
-describe('RedisCache Tests', () => {
-    it('Create Redis', async () => {
-        expect(redisCache).toBeInstanceOf(RedisCache);
+let s3Cache: CacheConnector = ConnectorService.getCacheConnector();
+describe('S3Cache Tests', () => {
+    it('Create S3Cache', async () => {
+        expect(s3Cache).toBeInstanceOf(S3Cache);
     });
 
     it('Reset Test Data', async () => {
         let error;
         try {
             await Promise.all([
-                redisCache.user(agentCandidate).delete(testFile),
-                redisCache.user(AccessCandidate.team('teamMeta')).delete(testFileWithMeta),
+                s3Cache.user(agentCandidate).delete(s3Key),
+                s3Cache.user(AccessCandidate.team('team1')).delete(s3KeyWithMeta),
             ]);
         } catch (e) {
             console.error(e);
@@ -86,12 +80,12 @@ describe('RedisCache Tests', () => {
         let error;
 
         try {
-            const res1 = await redisCache.user(agentCandidate).set(testFile, 'Hello World!');
+            const res1 = await s3Cache.user(agentCandidate).set(s3Key, 'Hello World!');
             expect(res1).toBeTruthy();
 
-            const res2 = await redisCache
+            const res2 = await s3Cache
                 .user(agentCandidate)
-                .set(testFileWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
+                .set(s3KeyWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
             expect(res2).toBeTruthy();
         } catch (e) {
             console.error(e);
@@ -102,33 +96,32 @@ describe('RedisCache Tests', () => {
     });
 
     it('Does cache exist ?', async () => {
-        let found = await redisCache.user(agentCandidate).exists(testFile);
+        let found = await s3Cache.user(agentCandidate).exists(s3Key);
         expect(found).toBeTruthy();
 
-        found = await redisCache.user(agentCandidate).exists(testFileWithMeta);
+        found = await s3Cache.user(agentCandidate).exists(s3KeyWithMeta);
         expect(found).toBeTruthy();
     });
 
     it('Does metadata exist ?', async () => {
-        let metadata = await redisCache.user(agentCandidate).getMetadata(testFileWithMeta);
-        expect(metadata?.acl?.entries?.team).toEqual(testOriginalACLMetadata.entries.team);
+        let metadata = await s3Cache.user(agentCandidate).getMetadata(s3KeyWithMeta);
+        expect(JSON.stringify(metadata?.acl?.entries?.team.teamMeta)).toEqual(JSON.stringify(testOriginalACLMetadata.entries.team.teamMeta));
     });
 
     it('Set ACL Metadata', async () => {
         //we set the metadata for the file created in the previous test
-        await redisCache.user(agentCandidate).setACL(testFile, testAdditionalACLMetadata);
+        await s3Cache.user(agentCandidate).setACL(s3Key, testAdditionalACLMetadata);
     });
 
     it('Are Metadata ACL valid', async () => {
-        const accessRights = await redisCache.user(agentCandidate).getACL(testFile);
-
-        expect(accessRights?.entries?.team).toEqual(testAdditionalACLMetadata.entries.team);
+        const accessRights = await s3Cache.user(agentCandidate).getACL(s3Key);
+        expect(JSON.stringify(accessRights?.entries?.team)).toEqual(JSON.stringify(ACL.from(testAdditionalACLMetadata).addAccess(agentCandidate.role, agentCandidate.id, TAccessLevel.Owner).ACL.entries.team));
     });
 
     it('Check Access Rights => Grant', async () => {
         try {
             const team1 = AccessCandidate.team('team1');
-            const accessCheck = await redisCache.user(team1).get(testFile);
+            const accessCheck = await s3Cache.user(team1).get(s3Key);
 
             expect(accessCheck).toBeDefined();
         } catch (e) {
@@ -139,50 +132,25 @@ describe('RedisCache Tests', () => {
     it('Check Access Rights => Refuse', async () => {
         try {
             const teamNoAccess = AccessCandidate.team('team2');
-            const accessCheck = await redisCache
+            const accessCheck = await s3Cache
                 .user(teamNoAccess)
-                .get(testFile)
+                .get(s3Key)
                 .catch((error) => ({
                     error,
                 }));
             expect(accessCheck?.error).toBeDefined();
 
-            // const wrongRole = await redisCache.hasAccess(
-            //     //request Write access to testFile for agent "team1" (teamid used as agentId which is wrong)
-            //     AccessCandidate.agent('team1').writeRequest.resource(testFile)
-            //     //
-            // );
-            // expect(wrongRole).toBeFalsy();
-
-            // const wrongTeam = await redisCache.hasAccess(
-            //     //request Write access to testFile for team "team2" (wrong team)
-            //     AccessCandidate.team('team2').writeRequest.resource(testFile)
-            //     //
-            // );
-            // expect(wrongTeam).toBeFalsy();
-
-            // const wrongResource = await redisCache.hasAccess(
-            //     //request Write access to testFileWithMeta for team "team1" (file exists but does not belong to the team1)
-            //     AccessCandidate.team('team1').writeRequest.resource(testFileWithMeta)
-            // );
-            // expect(wrongResource).toBeFalsy();
-
-            // const nonExistingResource = await redisCache.hasAccess(
-            //     //request Write access to non existing resource
-            //     AccessCandidate.team('team1').writeRequest.resource('does-not-exist')
-            // );
-            // expect(nonExistingResource).toBeFalsy();
         } catch (e) {
             expect(e).toBeUndefined();
         }
     });
 
     it('Read keys ', async () => {
-        const data = await redisCache.user(agentCandidate).get(testFile);
+        const data = await s3Cache.user(agentCandidate).get(s3Key);
         const strData = data?.toString();
         expect(strData).toEqual('Hello World!');
 
-        const dataWithMeta = await redisCache.user(agentCandidate).get(testFileWithMeta);
+        const dataWithMeta = await s3Cache.user(agentCandidate).get(s3KeyWithMeta);
         const strDataWithMeta = dataWithMeta?.toString();
         expect(strDataWithMeta).toEqual('I have metadata');
     });
@@ -191,7 +159,7 @@ describe('RedisCache Tests', () => {
         let error;
 
         try {
-            await redisCache.user(agentCandidate).delete(testFile);
+            await s3Cache.user(agentCandidate).delete(s3Key);
             //redisCache.delete(testFileWithMeta);
         } catch (e) {
             console.error(e);
@@ -202,28 +170,29 @@ describe('RedisCache Tests', () => {
     });
 
     it('The key should be deleted', async () => {
-        const found = await redisCache.user(agentCandidate).exists(testFile);
+        const found = await s3Cache.user(agentCandidate).exists(s3Key);
         expect(found).toBeFalsy();
     });
 
     it('Set and verify Cache TTL', async () => {
-        await redisCache.user(agentCandidate).updateTTL(testFileWithMeta, 5);
-        await delay(3000);
-        const ttl = await redisCache.user(agentCandidate).getTTL(testFileWithMeta);
-        expect(ttl).toBeLessThanOrEqual(5);
+        await s3Cache.user(agentCandidate).updateTTL(s3KeyWithMeta, 432000);
+        await delay(1000);
+        const ttl = await s3Cache.user(agentCandidate).getTTL(s3KeyWithMeta);
+        expect(ttl).toBeLessThanOrEqual(432000);
     }, 10000);
+
     it('Cache not expired yet', async () => {
-        const exists = await redisCache.user(agentCandidate).exists(testFileWithMeta);
+        const exists = await s3Cache.user(agentCandidate).exists(s3KeyWithMeta);
         expect(exists).toBeTruthy();
     });
 
     it('Cache expired', async () => {
         await delay(3000); //wait for expiration
-        const exists = await redisCache.user(agentCandidate).exists(testFileWithMeta);
+        const exists = await s3Cache.user(agentCandidate).exists(s3KeyWithMeta);
         expect(exists).toBeFalsy();
     });
     it('Metadata removed after cache expiration', async () => {
-        const metadata = await redisCache.user(agentCandidate).getMetadata(testFileWithMeta);
+        const metadata = await s3Cache.user(agentCandidate).getMetadata(s3KeyWithMeta);
         expect(metadata).toEqual({});
     });
 });
