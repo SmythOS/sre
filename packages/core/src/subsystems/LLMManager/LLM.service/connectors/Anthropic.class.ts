@@ -428,6 +428,10 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        throw new Error('Anthropic model does not support multimodal streaming');
+    }
+
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         let tools: {
             name: string;

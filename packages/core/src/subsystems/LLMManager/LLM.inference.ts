@@ -236,6 +236,52 @@ export class LLMInference {
         }
     }
 
+    public async multimodalStreamRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const promises = [];
+        const _fileSources = [];
+
+        // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
+        for (let file of fileSources) {
+            const binaryInput = BinaryInput.from(file);
+            _fileSources.push(binaryInput);
+            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
+        }
+
+        await Promise.all(promises);
+
+        const params = config.data;
+
+        params.fileSources = _fileSources;
+
+        if (!params.model) {
+            params.model = this.model;
+        }
+
+        try {
+            prompt = this.llmConnector.enhancePrompt(prompt, config);
+            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, params);
+
+            const result = this.llmConnector.postProcess(response?.content);
+
+            if (result.error) {
+                if (response.finishReason !== 'stop') {
+                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                }
+
+                // If the model stopped due to other reasons, throw the error
+                throw new Error(result.error);
+            }
+
+            return result;
+        } catch (error: any) {
+            console.error('Error in multimodalRequest: ', error);
+
+            throw error;
+        }
+    }
+
     public getConsistentMessages(messages: TLLMMessageBlock[]) {
         if (!messages?.length) {
             throw new Error('Input messages are required.');

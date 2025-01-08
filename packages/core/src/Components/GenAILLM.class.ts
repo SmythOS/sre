@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
@@ -22,7 +23,7 @@ export default class GenAILLM extends Component {
         frequencyPenalty: Joi.number().min(0).max(2).label('Frequency Penalty'),
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
         responseFormat: Joi.string().valid('json', 'text').optional().label('Response Format'),
-        passthrough: Joi.boolean().optional().label('Pass Through'),
+        passthrough: Joi.boolean().optional().label('Passthrough'),
     });
     constructor() {
         super();
@@ -109,7 +110,12 @@ export default class GenAILLM extends Component {
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
-                    const eventEmitter: any = await llmInference
+                    let eventEmitter;
+
+                    if(isMultimodalRequest && fileSources.length > 0) {
+                        eventEmitter = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
+                    }else {
+                        eventEmitter = await llmInference
                         .streamRequest(
                             {
                                 model: model,
@@ -119,7 +125,12 @@ export default class GenAILLM extends Component {
                         )
                         .catch((error) => {
                             console.error('Error on streamRequest: ', error);
+                            reject(error);
                         });
+                    }
+
+                    
+                        
                     eventEmitter.on('content', (content) => {
                         if (typeof agent.callback === 'function') {
                             agent.callback(content);

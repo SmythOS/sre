@@ -311,6 +311,10 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        throw new Error('Bedrock model does not support multimodal streaming');
+    }
+
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         let tools: any[] = [];
 

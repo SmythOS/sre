@@ -104,6 +104,10 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Tool configuration is not currently implemented for Vertex AI');
     }
 
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        throw new Error('VertexAI model does not support multimodal streaming');
+    }
+
     public getConsistentMessages(messages) {
         const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 

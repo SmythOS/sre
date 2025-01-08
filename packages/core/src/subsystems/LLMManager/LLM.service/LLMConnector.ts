@@ -23,6 +23,7 @@ export interface ILLMConnectorRequest {
     toolRequest(params: any): Promise<any>;
     streamToolRequest(params: any): Promise<any>;
     streamRequest(params: any): Promise<EventEmitter>;
+    multimodalStreamRequest(prompt, params: any): Promise<any>;
     imageGenRequest(prompt, params: any): Promise<any>;
 }
 
@@ -84,6 +85,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
 
     private vaultConnector: VaultConnector;
@@ -130,6 +132,11 @@ export abstract class LLMConnector extends Connector {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
                 return this.streamRequest(candidate.readRequest, _params);
+            },
+            multimodalStreamRequest: async (prompt, params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
         };
     }

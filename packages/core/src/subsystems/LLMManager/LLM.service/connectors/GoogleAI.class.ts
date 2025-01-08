@@ -557,6 +557,10 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        throw new Error('GoogleAI model does not support multimodal streaming');
+    }
+
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
         const tools = toolDefinitions.map((tool) => {
             const { name, description, properties, requiredFields } = tool;

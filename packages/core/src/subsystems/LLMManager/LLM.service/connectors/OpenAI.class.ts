@@ -528,6 +528,119 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<EventEmitter> {
+        const messages = params?.messages || [];
+        const emitter = new EventEmitter();
+        const usage_data = [];
+
+        //#region Handle JSON response format
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
+                params.responseFormat = { type: 'json_object' };
+            }
+        }
+        //#endregion Handle JSON response format
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
+
+        // Add user message
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
+
+        messages.push({ role: 'user', content: promptData });
+
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        const openai = new OpenAI({
+            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            baseURL: params.baseURL,
+        });
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: params.model,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
+        // Validate token limit
+        const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+
+        await LLMRegistry.validateTokensLimit({
+            model: params?.model,
+            promptTokens,
+            completionTokens: params?.maxTokens,
+            hasAPIKey: !!apiKey,
+        });
+
+        try {
+            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
+
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                let delta: Record<string, any> = {};
+
+                let toolsData: any = [];
+
+                for await (const part of stream) {
+                    delta = part.choices[0]?.delta;
+                    const usage = part.usage;
+                    if (usage) {
+                        usage_data.push(usage);
+                    }
+                    emitter.emit('data', delta);
+
+                    if (!delta?.tool_calls && delta?.content) {
+                        emitter.emit('content', delta?.content, delta?.role);
+                    }
+                    //_stream = toolCallsStream;
+                    if (delta?.tool_calls) {
+                        const toolCall = delta?.tool_calls?.[0];
+                        const index = toolCall?.index;
+
+                        toolsData[index] = {
+                            index,
+                            role: 'tool',
+                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
+                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
+                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
+                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
+                        };
+                    }
+                }
+                if (toolsData?.length > 0) {
+                    emitter.emit('toolsData', toolsData);
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, usage_data);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         let tools: OpenAI.ChatCompletionTool[] = [];
 
