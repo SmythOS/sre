@@ -9,6 +9,7 @@ export default class VisionLLM extends Component {
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
         model: Joi.string().max(200).required(),
+        passthrough: Joi.boolean().optional().label('Passthrough'),
     });
 
     constructor() {
@@ -23,6 +24,8 @@ export default class VisionLLM extends Component {
         const logger = this.createComponentLogger(agent, config.name);
         try {
             logger.debug(`=== Vision LLM Log ===`);
+
+            const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data?.model;
 
             const llmInference: LLMInference = await LLMInference.getInstance(model);
@@ -39,12 +42,34 @@ export default class VisionLLM extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
-            logger.debug(` Parsed prompt\n`, prompt, '\n');
+            logger.debug(` Prompt\n`, prompt, '\n');
 
             const fileSources = Array.isArray(input.Images) ? input.Images : [input.Images];
 
-            const response = await llmInference.visionRequest(prompt, fileSources, config, agent);
-            logger.debug(` Enhanced prompt \n`, prompt, '\n');
+            let response: any;
+            if (passThrough) {
+                const contentPromise = new Promise(async (resolve, reject) => {
+                    let _content = '';
+                    const eventEmitter: any = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent).catch((error) => {
+                        console.error('Error on multimodalStreamRequest: ', error);
+                        reject(error);
+                    });
+                    eventEmitter.on('content', (content) => {
+                        if (typeof agent.callback === 'function') {
+                            agent.callback(content);
+                        }
+                        _content += content;
+                    });
+                    eventEmitter.on('end', () => {
+                        console.log('end');
+                        resolve(_content);
+                    });
+                });
+                response = await contentPromise;
+            } else {
+                response = await llmInference.visionRequest(prompt, fileSources, config, agent);
+            }
+
             // in case we have the response but it's empty string, undefined or null
             if (!response) {
                 return { _error: ' LLM Error = Empty Response!', _debug: logger.output };

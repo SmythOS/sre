@@ -96,7 +96,7 @@ export default class GenAILLM extends Component {
                 isMultimodalRequest = true;
             }
 
-            logger.debug(` Parsed prompt\n`, prompt, '\n');
+            logger.debug(` Prompt\n`, prompt, '\n');
 
             if (!isEcho) {
                 logger.debug(' Files\n', fileSources);
@@ -150,19 +150,18 @@ export default class GenAILLM extends Component {
                 } else {
                     response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
                 }
+            }
 
-                logger.debug(` Enhanced prompt \n`, prompt, '\n');
-                // in case we have the response but it's empty string, undefined or null
-                if (!response) {
-                    return { _error: ' LLM Error = Empty Response!', _debug: logger.output };
-                }
+            // in case we have the response but it's empty string, undefined or null
+            if (!response) {
+                return { _error: ' LLM Error = Empty Response!', _debug: logger.output };
+            }
 
-                if (response?.error) {
-                    const error = response?.error + ' ' + (response?.details || '');
-                    logger.error(` LLM Error=`, error);
+            if (response?.error) {
+                const error = response?.error + ' ' + (response?.details || '');
+                logger.error(` LLM Error=`, error);
 
-                    return { Output: response?.data, _error: error, _debug: logger.output };
-                }
+                return { Output: response?.data, _error: error, _debug: logger.output };
             }
 
             logger.debug(' Reply \n', response);
