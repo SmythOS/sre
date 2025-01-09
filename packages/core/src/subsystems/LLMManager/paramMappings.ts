@@ -33,7 +33,7 @@ export default {
         topK: 'top_k',
         frequencyPenalty: 'repetition_penalty',
     },
-    AnthropicAI: {
+    Anthropic: {
         maxTokens: 'max_tokens',
         temperature: 'temperature',
         stopSequences: 'stop_sequences',

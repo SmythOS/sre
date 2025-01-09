@@ -1,5 +1,7 @@
 import { Readable } from 'stream';
-import { isRawBase64 } from './base64.utils';
+import axios from 'axios';
+
+import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64 } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
 
@@ -115,21 +117,49 @@ export const isBufferObject = (data: Record<string, any>): boolean => {
 export const isBase64Object = (data: Record<string, any>): boolean => {
     if (!data) return false;
 
-    return typeof data === 'object' && data !== null && data?.base64 && isRawBase64(data.base64) && 'size' in data && 'mimetype' in data;
+    return typeof data === 'object' && data !== null && data?.base64 && isBase64(data.base64) && 'size' in data && 'mimetype' in data;
 };
 
 export async function getMimeType(data: any): Promise<string> {
-    if (data instanceof Blob) return data.type;
-    if (isBuffer(data)) {
-        try {
-            const fileType = await fileTypeFromBuffer(data);
-            return fileType.mime;
-        } catch {
-            return '';
-        }
-    }
+    const mimeTypeGetters = {
+        blob: () => data.type,
+        buffer: async () => {
+            try {
+                const fileType = await fileTypeFromBuffer(data);
+                return fileType?.mime ?? '';
+            } catch {
+                console.warn('Failed to get mime type from buffer');
+                return '';
+            }
+        },
+        url: async () => {
+            try {
+                const response = await axios.get(data); // head() method does not work for all URLs
+                const contentType = response.headers['content-type'];
+                return contentType;
+            } catch {
+                console.warn('Failed to get mime type from URL');
+                return '';
+            }
+        },
+        smythFile: () => data.mimetype,
+        base64DataUrl: () => identifyMimeTypeFromBase64DataUrl(data),
+        base64: () => identifyMimetypeFromBase64(data),
+        string: () => 'text/plain',
+    };
 
-    if (typeof data === 'string') {
-        return 'text/plain';
-    }
+    const typeChecks = {
+        blob: data instanceof Blob,
+        buffer: isBuffer(data),
+        url: isUrl(data),
+        smythFile: isSmythFileObject(data),
+        base64DataUrl: isBase64FileUrl(data),
+        base64: isBase64(data),
+        string: typeof data === 'string',
+    };
+
+    const [matchedType = ''] = Object.entries(typeChecks).find(([, value]) => value) || [];
+    if (!matchedType) return '';
+
+    return await mimeTypeGetters?.[matchedType]?.();
 }

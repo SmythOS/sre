@@ -15,17 +15,17 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 
-const console = Logger('AnthropicAIConnector');
+const console = Logger('AnthropicConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
-const API_KEY_ERROR_MESSAGE = 'Please provide an API key for AnthropicAI';
+const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
 
 // TODO [Forhad]: implement proper typing
 
-export class AnthropicAIConnector extends LLMConnector {
-    public name = 'LLM:AnthropicAI';
+export class AnthropicConnector extends LLMConnector {
+    public name = 'LLM:Anthropic';
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
@@ -147,7 +147,62 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for OpenAI.');
+        let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
+
+        const content = [{ type: 'text', text: prompt }, ...imageData];
+        messages.push({ role: TLLMMessageRole.User, content });
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        }
+        messages = otherMessages;
+
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        const apiKey = params?.credentials?.apiKey;
+
+        // We do not provide default API key for claude, so user/team must provide their own API key
+        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+
+        const anthropic = new Anthropic({ apiKey });
+
+        // TODO (Forhad): implement claude specific token counting properly
+        // this.validateTokenLimit(params);
+
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: params.model,
+            messages,
+            max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+        };
+
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
+        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
+
+        try {
+            const response = await anthropic.messages.create(messageCreateArgs);
+            let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
+            const finishReason = response?.stop_reason;
+
+            return { content, finishReason };
+        } catch (error) {
+            throw error;
+        }
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
@@ -169,7 +224,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
             if (hasSystemMessage) {
-                // in AnthropicAI we need to provide system message separately
+                // in Anthropic we need to provide system message separately
                 const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
@@ -207,7 +262,7 @@ export class AnthropicAIConnector extends LLMConnector {
                     toolsData.push({
                         index,
                         id: toolUseBlock?.id,
-                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                        type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
                         name: toolUseBlock?.name,
                         arguments: toolUseBlock?.input,
                         role: result?.role,
@@ -233,7 +288,7 @@ export class AnthropicAIConnector extends LLMConnector {
     }
 
     protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
-        throw new Error('Image generation request is not supported for AnthropicAI.');
+        throw new Error('Image generation request is not supported for Anthropic.');
     }
 
     // ! DEPRECATED METHOD
@@ -267,7 +322,7 @@ export class AnthropicAIConnector extends LLMConnector {
 
             const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
             if (hasSystemMessage) {
-                // in Anthropic AI we need to provide system message separately
+                // in Anthropic we need to provide system message separately
                 const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
                 messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string | Array<TextBlockParam>) || '';
@@ -341,7 +396,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         toolsData.push({
                             index,
                             id: toolUseBlock?.id,
-                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic AI returns the type as 'tool_use', it should be interpreted as 'function'.
+                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
                             name: toolUseBlock?.name,
                             arguments: toolUseBlock?.input,
                             role: finalMessage?.role,
@@ -369,6 +424,125 @@ export class AnthropicAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            throw error;
+        }
+    }
+
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const usage_data = [];
+        let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validSources = this.getValidImageFileSources(fileSources);
+        const imageData = await this.getImageData(validSources, agentId);
+
+        const content = [{ type: 'text', text: prompt }, ...imageData];
+        messages.push({ role: TLLMMessageRole.User, content });
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemPrompt;
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        }
+        messages = otherMessages;
+
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        const apiKey = params?.credentials?.apiKey;
+
+        // We do not provide default API key for claude, so user/team must provide their own API key
+        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+
+        const anthropic = new Anthropic({ apiKey });
+
+        // TODO (Forhad): implement claude specific token counting properly
+        // this.validateTokenLimit(params);
+
+        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: params.model,
+            messages,
+            max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+        };
+
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
+        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
+
+        try {
+            let stream;
+            if (params?.cache) {
+                stream = anthropic.beta.promptCaching.messages.stream(messageCreateArgs, {
+                    headers: { 'anthropic-beta': 'prompt-caching-2024-07-31' },
+                });
+            } else {
+                stream = anthropic.messages.stream(messageCreateArgs);
+            }
+
+            stream.on('streamEvent', (event: any) => {
+                if (event.message?.usage) {
+                    //console.log('usage', event.message?.usage);
+                }
+            });
+
+            let toolsData: ToolData[] = [];
+
+            stream.on('error', (error) => {
+                //console.log('error', error);
+
+                emitter.emit('error', error);
+            });
+            stream.on('text', (text: string) => {
+                emitter.emit('content', text);
+            });
+
+            const finalMessage = params?.cache ? 'finalPromptCachingBetaMessage' : 'finalMessage';
+            stream.on(finalMessage, (finalMessage) => {
+                //console.log('finalMessage', finalMessage);
+                const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
+
+                if (toolUseContentBlocks?.length > 0) {
+                    toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                        toolsData.push({
+                            index,
+                            id: toolUseBlock?.id,
+                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
+                            name: toolUseBlock?.name,
+                            arguments: toolUseBlock?.input,
+                            role: finalMessage?.role,
+                        });
+                    });
+
+                    emitter.emit('toolsData', toolsData);
+                }
+
+                if (finalMessage?.usage) {
+                    const usage = finalMessage.usage;
+                    usage_data.push({
+                        prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
+                        completion_tokens: usage.output_tokens,
+                        total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
+                        prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
+                        completion_tokens_details: { reasoning_tokens: 0 },
+                    });
+                }
+                //only emit end event after processing the final message
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, usage_data);
+                }, 100);
+            });
+
+            return emitter;
+        } catch (error) {
             throw error;
         }
     }
@@ -418,7 +592,7 @@ export class AnthropicAIConnector extends LLMConnector {
                 content.push(...messageBlock.content);
             } else {
                 if (messageBlock.content) {
-                    //Anthropic AI does not accept empty text blocks
+                    //Anthropic does not accept empty text blocks
                     content.push({ type: 'text', text: messageBlock.content });
                 }
             }
@@ -429,7 +603,7 @@ export class AnthropicAIConnector extends LLMConnector {
                         type: 'tool_use',
                         id: toolCall.id,
                         name: toolCall?.function?.name,
-                        input: typeof args === 'string' ? JSONContent(args).tryParse() : args || {},
+                        input: typeof args === 'string' ? JSONContent(args || '{}').tryParse() : args || {},
                     };
                 });
 
@@ -523,7 +697,7 @@ export class AnthropicAIConnector extends LLMConnector {
         }
 
         // Add the system message back to the start, as we extracted it earlier
-        // Empty content is not allowed in AnthropicAI
+        // Empty content is not allowed in Anthropic
         if (systemMessage && systemMessage.content) {
             _messages.unshift(systemMessage);
         }

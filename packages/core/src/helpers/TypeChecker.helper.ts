@@ -1,4 +1,4 @@
-import { isRawBase64, isDataUrl } from '@sre/utils/base64.utils';
+import { isBase64, isBase64DataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isBinaryData, isBuffer, isPlainObject, isSmythFileObject, isUrl, uid } from '../utils';
 import Agent from '@sre/AgentManager/Agent.class';
@@ -78,7 +78,7 @@ export async function performTypeInference(
 async function inferStringType(value: any, key?: string, agent?: Agent) {
     if (value === null || value === undefined || value === 'null' || value === 'undefined') {
         return '';
-    } else if (isRawBase64(value) || isDataUrl(value)) {
+    } else if (isBase64(value) || isBase64DataUrl(value)) {
         // If the value is a base64 string then return the value as it is
         return value;
     } /*else if (isSmythFileObject(value) || isBuffer(value) || isBinaryData(value)) {

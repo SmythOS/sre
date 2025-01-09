@@ -8,7 +8,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().valid('dall-e-2', 'dall-e-3').required(),
-        prompt: Joi.string().optional().max(4000000).label('Prompt'), // 1M tokens is around 4M characters
+        prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').required(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').required(),
         quality: Joi.string().valid('standard', 'hd').required(),

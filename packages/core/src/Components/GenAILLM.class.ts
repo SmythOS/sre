@@ -1,14 +1,17 @@
+import { EventEmitter } from 'events';
 import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { SUPPORTED_FILE_TYPES_MAP } from '@sre/constants';
+import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
 
-export default class PromptGenerator extends Component {
+export default class GenAILLM extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
@@ -49,12 +52,55 @@ export default class PromptGenerator extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
+            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(teamId);
 
-            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
+            logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
+            const files = input?.Files;
+            let fileSources: any[] = [];
+            let isMultimodalRequest = false;
+            const provider = llmRegistry.getProvider(model);
+            const isEcho = provider === 'Echo';
+
+            // Ignore files for Echo model
+            if (files && !isEcho) {
+                fileSources = Array.isArray(files) ? files : [files];
+
+                const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP?.[provider] || {};
+                const features = llmRegistry.getModelFeatures(model);
+                const fileTypes = new Set(); // Set to avoid duplicates
+
+                const validFiles = await Promise.all(
+                    fileSources.map(async (file) => {
+                        const mimeType = await getMimeType(file);
+                        const [requestFeature = ''] =
+                            Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
+
+                        fileTypes.add(mimeType);
+
+                        return features?.includes(requestFeature) ? file : null;
+                    })
+                );
+
+                fileSources = validFiles.filter(Boolean);
+
+                if (fileSources.length === 0) {
+                    return {
+                        _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
+                        _debug: logger.output,
+                    };
+                }
+
+                isMultimodalRequest = true;
+            }
+
             logger.debug(` Prompt\n`, prompt, '\n');
+
+            if (!isEcho) {
+                logger.debug(' Files\n', fileSources);
+            }
 
             // default to json response format
             config.data.responseFormat = config.data?.responseFormat || 'json';
@@ -64,18 +110,28 @@ export default class PromptGenerator extends Component {
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
-                    const eventEmitter: any = await llmInference
-                        .streamRequest(
-                            {
-                                model: model,
-                                messages: [{ role: 'user', content: prompt }],
-                            },
-                            agent.id
-                        )
-                        .catch((error) => {
-                            console.error('Error on streamRequest: ', error);
+                    let eventEmitter;
+
+                    if (isMultimodalRequest && fileSources.length > 0) {
+                        eventEmitter = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent).catch((error) => {
+                            console.error('Error on multimodalStreamRequest: ', error);
                             reject(error);
                         });
+                    } else {
+                        eventEmitter = await llmInference
+                            .streamRequest(
+                                {
+                                    model: model,
+                                    messages: [{ role: 'user', content: prompt }],
+                                },
+                                agent.id
+                            )
+                            .catch((error) => {
+                                console.error('Error on streamRequest: ', error);
+                                reject(error);
+                            });
+                    }
+
                     eventEmitter.on('content', (content) => {
                         if (typeof agent.callback === 'function') {
                             agent.callback(content);
@@ -89,7 +145,11 @@ export default class PromptGenerator extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+                if (isMultimodalRequest && fileSources.length > 0) {
+                    response = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
+                } else {
+                    response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+                }
             }
 
             // in case we have the response but it's empty string, undefined or null
@@ -101,10 +161,10 @@ export default class PromptGenerator extends Component {
                 const error = response?.error + ' ' + (response?.details || '');
                 logger.error(` LLM Error=`, error);
 
-                return { Reply: response?.data, _error: error, _debug: logger.output };
+                return { Output: response?.data, _error: error, _debug: logger.output };
             }
 
-            logger.debug(' Response \n', response);
+            logger.debug(' Reply \n', response);
 
             const result = { Reply: response };
 

@@ -130,6 +130,7 @@ export default class LLMAssistant extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         behavior: Joi.string().max(30000).allow('').label('Behavior'),
+        passthrough: Joi.boolean().optional().label('Passthrough'),
     });
     constructor() {
         super();
@@ -141,6 +142,7 @@ export default class LLMAssistant extends Component {
         try {
             logger.debug('== LLM Assistant Log ==\n');
 
+            const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data.model || 'echo';
             const ttl = config.data.ttl || undefined;
             let teamId = agent?.teamId;
@@ -190,7 +192,37 @@ export default class LLMAssistant extends Component {
                 messages,
             };
 
-            const response: any = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
+            let response: any;
+            if (passThrough) {
+                const contentPromise = new Promise(async (resolve, reject) => {
+                    let _content = '';
+                    const eventEmitter: any = await llmInference
+                        .streamRequest(
+                            {
+                                model: model,
+                                messages,
+                            },
+                            agent.id
+                        )
+                        .catch((error) => {
+                            console.error('Error on streamRequest: ', error);
+                            reject(error);
+                        });
+                    eventEmitter.on('content', (content) => {
+                        if (typeof agent.callback === 'function') {
+                            agent.callback(content);
+                        }
+                        _content += content;
+                    });
+                    eventEmitter.on('end', () => {
+                        console.log('end');
+                        resolve(_content);
+                    });
+                });
+                response = await contentPromise;
+            } else {
+                response = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
+            }
 
             // in case we have the response but it's empty string, undefined or null
             if (!response) {

@@ -9,8 +9,6 @@ import { LLMRegistry } from './LLMRegistry.class';
 import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 import _ from 'lodash';
 
-
-
 // TODO [Forhad]: apply proper typing
 // TODO [Forhad]: Need to merge all the methods with LLMConnector
 
@@ -146,8 +144,9 @@ export class LLMInference {
         const promises = [];
         const _fileSources = [];
 
-        for (let image of fileSources) {
-            const binaryInput = BinaryInput.from(image);
+        // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
+        for (let file of fileSources) {
+            const binaryInput = BinaryInput.from(file);
             _fileSources.push(binaryInput);
             promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
         }
@@ -234,6 +233,37 @@ export class LLMInference {
                 dummyEmitter.emit('end');
             });
             return dummyEmitter;
+        }
+    }
+
+    public async multimodalStreamRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const promises = [];
+        const _fileSources = [];
+
+        // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
+        for (let file of fileSources) {
+            const binaryInput = BinaryInput.from(file);
+            _fileSources.push(binaryInput);
+            promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
+        }
+
+        await Promise.all(promises);
+
+        const params = config.data;
+
+        params.fileSources = _fileSources;
+
+        try {
+            prompt = this.llmConnector.enhancePrompt(prompt, config);
+            const model = params.model || this.model;
+
+            return await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalStreamRequest(prompt, { ...params, model });
+        } catch (error: any) {
+            console.error('Error in multimodalRequest: ', error);
+
+            throw error;
         }
     }
 

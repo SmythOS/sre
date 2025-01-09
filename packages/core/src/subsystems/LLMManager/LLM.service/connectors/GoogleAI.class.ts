@@ -15,7 +15,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { uid } from '@sre/utils';
 
-import { processWithConcurrencyLimit, isDataUrl, isUrl, getMimeTypeFromUrl, isRawBase64, parseBase64, isValidString } from '@sre/utils';
+import { processWithConcurrencyLimit } from '@sre/utils';
 
 import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
@@ -553,6 +553,135 @@ export class GoogleAIConnector extends LLMConnector {
 
             return emitter;
         } catch (error: any) {
+            throw error;
+        }
+    }
+
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+        const emitter = new EventEmitter();
+        const model = params?.model || DEFAULT_MODEL;
+        const apiKey = params?.credentials?.apiKey;
+        const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        let _prompt = prompt;
+
+        // If user provide mix of valid and invalid files, we will only process the valid files
+        const validFiles = this.getValidFileSources(fileSources, 'all');
+
+        const hasVideo = validFiles.some((file) => file?.mimetype?.includes('video'));
+
+        // GoogleAI only supports one video file at a time
+        if (hasVideo && validFiles.length > 1) {
+            throw new Error('Only one video file is supported at a time.');
+        }
+
+        const fileUploadingTasks = validFiles.map((fileSource) => async () => {
+            try {
+                const uploadedFile = await this.uploadFile({ fileSource, apiKey, agentId });
+
+                return { url: uploadedFile.url, mimetype: fileSource.mimetype };
+            } catch {
+                return null;
+            }
+        });
+
+        const uploadedFiles = await processWithConcurrencyLimit(fileUploadingTasks);
+
+        // We throw error when there are no valid uploaded files,
+        if (uploadedFiles && uploadedFiles?.length === 0) {
+            throw new Error(`There is an issue during upload file in Google AI Server!`);
+        }
+
+        const fileData = this.getFileData(uploadedFiles);
+
+        //#region Separate system message and add JSON response instruction if needed
+        let systemInstruction = '';
+
+        const responseFormat = params?.responseFormat || '';
+        let responseMimeType = '';
+
+        if (responseFormat === 'json') {
+            systemInstruction += JSON_RESPONSE_INSTRUCTION;
+
+            if (MODELS_SUPPORT_JSON_RESPONSE.includes(model)) {
+                responseMimeType = 'application/json';
+            }
+        }
+
+        // if the the model does not support system instruction, we will add it to the prompt
+        if (!MODELS_SUPPORT_SYSTEM_INSTRUCTION.includes(model)) {
+            _prompt = `${_prompt}\n${systemInstruction}`;
+        }
+        //#endregion Separate system message and add JSON response instruction if needed
+
+        // Adjust input structure handling for multiple image files to accommodate variations.
+        const promptWithFiles = fileData.length === 1 ? [...fileData, { text: _prompt }] : [_prompt, ...fileData];
+
+        const modelParams: ModelParams = {
+            model,
+        };
+
+        const generationConfig: GenerationConfig = {};
+
+        if (params.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
+        if (params.temperature !== undefined) generationConfig.temperature = params.temperature;
+        if (params.topP !== undefined) generationConfig.topP = params.topP;
+        if (params.topK !== undefined) generationConfig.topK = params.topK;
+        if (params.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
+        if (responseMimeType) generationConfig.responseMimeType = responseMimeType;
+
+        if (Object.keys(generationConfig).length > 0) {
+            modelParams.generationConfig = generationConfig;
+        }
+
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const $model = genAI.getGenerativeModel(modelParams);
+
+            // Check token limit
+            const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
+
+            // * the function will throw an error if the token limit is exceeded
+            await LLMRegistry.validateTokensLimit({
+                model,
+                promptTokens,
+                completionTokens: params?.maxTokens,
+                hasAPIKey: !!apiKey,
+            });
+
+            const result = await $model.generateContentStream(promptWithFiles);
+
+            let toolsData: ToolData[] = [];
+
+            // Process stream asynchronously while as we need to return emitter immediately
+            (async () => {
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    emitter.emit('content', chunkText);
+
+                    if (chunk.candidates[0]?.content?.parts) {
+                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
+                        if (toolCalls.length > 0) {
+                            toolsData = toolCalls.map((toolCall, index) => ({
+                                index,
+                                id: `tool-${index}`,
+                                type: 'function',
+                                name: toolCall.functionCall.name,
+                                arguments: JSON.stringify(toolCall.functionCall.args),
+                                role: TLLMMessageRole.Assistant,
+                            }));
+                            emitter.emit('toolsData', toolsData);
+                        }
+                    }
+                }
+
+                setTimeout(() => {
+                    emitter.emit('end', toolsData);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error) {
             throw error;
         }
     }
