@@ -23,6 +23,10 @@ export class LLMRegistry {
         return models?.[model]?.alias || model;
     }
 
+    public static getModelFeatures(model: string): string[] {
+        return models?.[model]?.features || [];
+    }
+
     public static getBaseURL(model: string): string {
         const modelId = this.getModelId(model);
         return models?.[modelId]?.baseURL || undefined;

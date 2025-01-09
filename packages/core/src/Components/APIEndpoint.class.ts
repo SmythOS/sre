@@ -112,7 +112,7 @@ export default class APIEndpoint extends Component {
 
             let inputValue = input[inputName];
 
-            // We provide a default value for the OpenAPI Schema, which can detected by AnthropicAI. So we need to check if the default value is an Agent Variable. This is necessary for interactions with the Chatbot.
+            // We provide a default value for the OpenAPI Schema, which can detected by Anthropic. So we need to check if the default value is an Agent Variable. This is necessary for interactions with the Chatbot.
 
             if (bodyInputNames.includes(inputName) && isEmpty(body[inputName])) {
                 body[inputName] = inputValue;

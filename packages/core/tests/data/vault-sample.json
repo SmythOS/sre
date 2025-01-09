@@ -4,7 +4,7 @@
         "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY",
         "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
         "OpenAI": "OPEN_AI_API_KEY",
-        "AnthropicAI": "ANTHROPIC_API_KEY",
+        "Anthropic": "ANTHROPIC_API_KEY",
         "GoogleAI": "GOOGLE_AI_API_KEY",
         "Groq": "GROQ_API_KEY",
         "TogetherAI": "TOGETHER_AI_API_KEY",

@@ -28,6 +28,9 @@ export class EchoConnector extends LLMConnector {
     protected async streamRequest(acRequest: AccessRequest, params: any): Promise<Readable> {
         throw new Error('Echo model does not support streaming');
     }
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        throw new Error('Echo model does not support passthrough with File(s)');
+    }
 
     public enhancePrompt(prompt: string, config: any) {
         //Echo model does not require enhancements, because we are just echoing the prompt as is.

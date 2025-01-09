@@ -46,26 +46,6 @@ export const getMimetypeFromBase64Data = async (data: string) => {
     }
 };
 
-// ! DEPRECATED: This will be removed. We now use getBase64FileInfo(), which is more robust.
-export async function extractBase64DataAndMimeType(data: string): Promise<{ data: string; mimetype: string }> {
-    if (typeof data !== 'string' || data?.length > MAX_FILE_SIZE) {
-        return { data: '', mimetype: '' };
-    }
-
-    if (isBase64FileUrl(data)) {
-        const regex = /^data:([^;]+);base64,(.*)$/;
-        const match = data.match(regex);
-        if (!match) return { data: '', mimetype: '' };
-        const [, mimetype, base64Data] = match;
-
-        return { data: _cleanUpBase64Data(base64Data), mimetype };
-    } else if (isBase64(data)) {
-        return { data: _cleanUpBase64Data(data), mimetype: await getMimetypeFromBase64Data(data) };
-    }
-
-    return { data: '', mimetype: '' };
-}
-
 export async function getBase64FileInfo(data: string): Promise<{ data: string; mimetype: string; size: number } | null> {
     if (isBase64FileUrl(data)) {
         const regex = /^data:([^;]+);base64,(.*)$/;
@@ -111,11 +91,11 @@ function cleanBase64(str: string): string {
  * @param {string} input - The input string.
  * @returns {boolean} True if the input is a data URL, false otherwise.
  */
-export function isDataUrl(input: string): boolean {
+export function isBase64DataUrl(input: string): boolean {
     // Data URL pattern: data:[<mediatype>][;base64],<data>
-    const dataUrlPattern = /^data:([\w+\-\.]+\/[\w+\-\.]+);base64,(.*)$/;
+    const pattern = /^data:([\w+\-\.]+\/[\w+\-\.]+);base64,(.*)$/;
 
-    return dataUrlPattern.test(input);
+    return pattern.test(input);
 }
 
 /**
@@ -124,7 +104,7 @@ export function isDataUrl(input: string): boolean {
  * @param {string} str - The string to check.
  * @returns {boolean} True if the string is a valid Base64-encoded string, false otherwise.
  */
-export function isRawBase64(str: string): boolean {
+export function isBase64(str: string): boolean {
     if (!isValidString(str)) return false;
 
     const cleanedBase64Data = cleanBase64(str);
@@ -143,38 +123,15 @@ export function isRawBase64(str: string): boolean {
 }
 
 /**
- * Parses a Base64-encoded string or data URL and extracts the MIME type and cleaned data.
- *
- * @param {string} input - The Base64-encoded string or data URL.
- * @returns {Promise<{ mimetype: string; data: string }>} An object containing the MIME type and the cleaned Base64 data.
- * @throws {Error} If the input is invalid.
- */
-export async function parseBase64(input: string): Promise<{ mimetype: string; data: string }> {
-    try {
-        if (isDataUrl(input)) {
-            return parseDataUrl(input);
-        }
-
-        if (!isRawBase64(input)) {
-            throw new Error('Invalid base64 data!');
-        }
-
-        return await parseRawBase64(input);
-    } catch (error) {
-        throw new Error(`Error parsing base64 data: ${error.message}`);
-    }
-}
-
-/**
  * Parses a Base64-encoded data URL and extracts the MIME type and cleaned data.
  *
  * @param {string} input - The Base64-encoded data URL.
  * @returns {{ mimetype: string; data: string }} An object containing the MIME type and the cleaned Base64 data.
  * @throws {Error} If the input is invalid.
  */
-function parseDataUrl(input: string): { mimetype: string; data: string } {
-    const dataUrlPattern = /^data:([\w+\-\.]+\/[\w+\-\.]+);base64,(.*)$/;
-    const matches = input.match(dataUrlPattern);
+function parseBase64DataUrl(input: string): { mimetype: string; data: string } {
+    const pattern = /^data:([\w+\-\.]+\/[\w+\-\.]+);base64,(.*)$/;
+    const matches = input.match(pattern);
 
     if (!matches) {
         throw new Error('Invalid data URL!');
@@ -182,7 +139,7 @@ function parseDataUrl(input: string): { mimetype: string; data: string } {
 
     const [, mimetype, data] = matches;
 
-    if (!isRawBase64(data)) {
+    if (!isBase64(data)) {
         throw new Error('Invalid base64 data!');
     }
 
@@ -190,30 +147,30 @@ function parseDataUrl(input: string): { mimetype: string; data: string } {
 }
 
 /**
- * Parses a raw Base64-encoded string and extracts the MIME type and cleaned data.
+ * Parses a Base64-encoded string and extracts the MIME type and cleaned data.
  *
- * @param {string} input - The raw Base64-encoded string.
+ * @param {string} input - The Base64-encoded string.
  * @returns {Promise<{ mimetype: string; data: string }>} An object containing the MIME type and the cleaned Base64 data.
  */
-async function parseRawBase64(input: string): Promise<{ mimetype: string; data: string }> {
+export async function parseBase64(input: string): Promise<{ mimetype: string; data: string }> {
     const cleanedData = cleanBase64(input);
-    const mimetype = await identifyMimetypeFromRawBase64(cleanedData);
+    const mimetype = await identifyMimetypeFromBase64(cleanedData);
 
     return { mimetype, data: cleanedData };
 }
 
 /**
- * Identifies the MIME type from a raw Base64-encoded string.
+ * Identifies the MIME type from a Base64-encoded string.
  *
  * This function cleans the input Base64 string, converts it to a buffer, and then identifies the MIME type
  * using the `fileTypeFromBuffer` function.
  *
- * @param {string} data - The raw Base64-encoded string from which to identify the MIME type.
+ * @param {string} data - The Base64-encoded string from which to identify the MIME type.
  * @returns {Promise<string>} A promise that resolves to the MIME type of the data, or an empty string if the MIME type cannot be determined.
  *
  * @throws {Error} If an error occurs during the process, it logs the error and returns an empty string.
  */
-export async function identifyMimetypeFromRawBase64(data: string): Promise<string> {
+export async function identifyMimetypeFromBase64(data: string): Promise<string> {
     try {
         const cleanedData = cleanBase64(data);
 
@@ -229,19 +186,19 @@ export async function identifyMimetypeFromRawBase64(data: string): Promise<strin
 }
 
 /**
- * Identifies the MIME type from a raw Base64-encoded string.
+ * Identifies the MIME type from a Base64-encoded string.
  *
  * This function cleans the input Base64 string, converts it to a buffer, and then identifies the MIME type
  * using the `fileTypeFromBuffer` function.
  *
- * @param {string} data - The raw Base64-encoded string from which to identify the MIME type.
+ * @param {string} data - The Base64-encoded string from which to identify the MIME type.
  * @returns {Promise<string>} A promise that resolves to the MIME type of the data, or an empty string if the MIME type cannot be determined.
  *
  * @throws {Error} If an error occurs during the process, it logs the error and returns an empty string.
  */
-export async function identifyMimeTypeFromBase64(input: string): Promise<string> {
+export async function identifyMimeTypeFromBase64DataUrl(input: string): Promise<string> {
     try {
-        const { data } = await parseBase64(input);
+        const { data } = await parseBase64DataUrl(input);
 
         const buffer = Buffer.from(data, 'base64');
 
@@ -278,12 +235,12 @@ export function getSizeOfBase64(str: string): number {
 }
 
 /**
- * Generates a Base64 Data URL from a raw Base64-encoded string.
+ * Generates a Base64 Data URL from a Base64-encoded string.
  *
  * This function validates the input Base64 string, removes any newline characters,
  * and constructs a Data URL with the specified MIME type.
  *
- * @param {string} data - The raw Base64-encoded string to be converted into a Data URL.
+ * @param {string} data - The Base64-encoded string to be converted into a Data URL.
  * @param {string} [mimetype='application/octet-stream'] - The MIME type of the data. Defaults to 'application/octet-stream'.
  * @returns {string} The generated Base64 Data URL.
  *
@@ -315,21 +272,4 @@ const _cleanUpBase64Data = (str: string): string => {
 
     // Remove all whitespace characters and literal \n and \s sequences
     return str.replace(/\s|\\n|\\s/g, '');
-};
-
-export const isBase64 = (str: string): boolean => {
-    if (!str || !(typeof str === 'string')) return false;
-
-    str = _cleanUpBase64Data(str);
-
-    try {
-        // * sometimes word like 'male' and hash like md5, sha1, sha256, sha512 are detected as base64
-        if (str?.length < 128) return false;
-
-        const buffer = Buffer.from(str, 'base64');
-
-        return buffer.toString('base64') === str;
-    } catch {
-        return false;
-    }
 };

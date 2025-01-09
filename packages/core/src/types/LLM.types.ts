@@ -169,7 +169,7 @@ export type TLLMInputMessage = {
 
 export enum TLLMProvider {
     OpenAI = 'OpenAI',
-    AnthropicAI = 'AnthropicAI',
+    Anthropic = 'Anthropic',
     GoogleAI = 'GoogleAI',
     Groq = 'Groq',
     TogetherAI = 'TogetherAI',

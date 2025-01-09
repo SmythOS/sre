@@ -25,7 +25,7 @@ export class CustomLLMRegistry {
         const entryId = this.getModelEntryId(model);
         const modelInfo = this.models?.[entryId] || {};
 
-        return {...modelInfo, modelId: model};
+        return { ...modelInfo, modelId: model };
     }
 
     public getMaxContextTokens(model: string): number {
@@ -62,6 +62,11 @@ export class CustomLLMRegistry {
         const modelInfo = this.getModelInfo(model);
 
         return modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
+    }
+
+    public getModelFeatures(model: string): string[] {
+        const modelInfo = this.getModelInfo(model);
+        return modelInfo?.features || [];
     }
 
     private async getCustomModels(teamId: string): Promise<Record<string, any>> {
