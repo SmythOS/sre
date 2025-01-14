@@ -7,13 +7,14 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource } from '@sre/types/LLM.types';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('AnthropicConnector');
 
@@ -62,6 +63,7 @@ export class AnthropicConnector extends LLMConnector {
             model: params.model,
             messages: messages as Anthropic.MessageParam[],
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+
         };
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
@@ -75,10 +77,21 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
 
             if (responseFormat === 'json') {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
+
+            SystemEvents.emit("USAGE:LLM", {
+                input_tokens: usage?.input_tokens,
+                output_tokens: usage?.output_tokens,
+                input_tokens_cache_write: 0,
+                input_tokens_cache_read: 0,
+                llm_provider: 'Anthropic',
+                model: params.model,
+                keySource: APIKeySource.Smyth
+            })
 
             return { content, finishReason };
         } catch (error) {
@@ -139,6 +152,18 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
+
+
+            SystemEvents.emit("USAGE:LLM", {
+                input_tokens: usage?.input_tokens,
+                output_tokens: usage?.output_tokens,
+                input_tokens_cache_write: 0,
+                input_tokens_cache_read: 0,
+                llm_provider: 'Anthropic',
+                model: params.model,
+                keySource: APIKeySource.Smyth
+            })
 
             return { content, finishReason };
         } catch (error) {
@@ -198,6 +223,17 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
+
+            SystemEvents.emit("USAGE:LLM", {
+                input_tokens: usage?.input_tokens,
+                output_tokens: usage?.output_tokens,
+                input_tokens_cache_write: 0,
+                input_tokens_cache_read: 0,
+                llm_provider: 'Anthropic',
+                model: params.model,
+                keySource: APIKeySource.Smyth
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -273,6 +309,18 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             const content = (result?.content?.[0] as Anthropic.TextBlock)?.text;
+
+
+            const usage = result?.usage;
+            SystemEvents.emit("USAGE:LLM", {
+                input_tokens: usage?.input_tokens,
+                output_tokens: usage?.output_tokens,
+                input_tokens_cache_write: 0,
+                input_tokens_cache_read: 0,
+                llm_provider: 'Anthropic',
+                model: params.model,
+                keySource: APIKeySource.Smyth,
+            });
 
             return {
                 data: {
