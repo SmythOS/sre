@@ -184,11 +184,16 @@ async function inferBinaryType(value: any, key?: string, agent?: Agent) {
     let agentId: string = '';
     let data: unknown;
     let mimetype: string = '';
+    let fileName = `${uid()}-${key}`;
 
     try {
         if (value && typeof value === 'object' && value?.url && value?.mimetype) {
             const url = value?.url;
             mimetype = value?.mimetype;
+
+            if (value?.name) {
+                fileName = value?.name;
+            }
 
             if (url?.startsWith('smythfs://')) {
                 // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
@@ -211,7 +216,7 @@ async function inferBinaryType(value: any, key?: string, agent?: Agent) {
             candidate = AccessCandidate.agent(agentId);
         }
 
-        const binaryInput = BinaryInput.from(data, `${uid()}-${key}`, mimetype, candidate);
+        const binaryInput = BinaryInput.from(data, fileName, mimetype, candidate);
         await binaryInput.ready();
         return binaryInput;
     } catch (error: any) {
