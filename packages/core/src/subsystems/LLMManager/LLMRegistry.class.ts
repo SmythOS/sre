@@ -20,7 +20,11 @@ export class LLMRegistry {
     }
 
     public static getModelId(model: string): string {
-        return models?.[model]?.alias || model;
+        const modelId = models?.[model]?.modelId || model;
+        const alias = models?.[modelId]?.alias;
+        const aliasModelId = models?.[alias]?.modelId || alias;
+
+        return aliasModelId || modelId;
     }
 
     public static getModelFeatures(model: string): string[] {
