@@ -58,6 +58,10 @@ export class BinaryInput {
             this.mimetype = data.mimetype;
             this.size = data.size;
             this.url = data.url;
+
+            const ext = mime.getExtension(this.mimetype);
+            if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
+
             if (candidate) {
                 this._source = await SmythFS.Instance.read(this.url, candidate).finally(() => {
                     this._ready = true;
@@ -75,6 +79,9 @@ export class BinaryInput {
                     this._source = await SmythFS.Instance.read(this.url, candidate);
                     this.mimetype = await getMimeType(this._source);
                     this.size = this._source.byteLength;
+
+                    const ext = mime.getExtension(this.mimetype);
+                    if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
                 } finally {
                     this._ready = true;
                 }
@@ -122,6 +129,7 @@ export class BinaryInput {
             }
             this.size = base64FileInfo.size;
             this._source = Buffer.from(base64FileInfo.data, 'base64');
+
             const ext = mime.getExtension(this.mimetype);
             if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
 
