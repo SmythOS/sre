@@ -415,6 +415,19 @@ export class AnthropicConnector extends LLMConnector {
                         prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
+
+                    /*
+                        const smyth_usage = {
+                            input_tokens: 0,
+                            input_tokens_cache_write: 0,
+                            input_tokens_cache_read: 0,
+                            output_tokens: 0,
+                            llm_provider: 'anthropic',                            
+                            model: params?.model,
+                        }
+
+                        //SystemEvents.emit('LLM:Usage', smyth_usage);
+                    */
                 }
                 //only emit end event after processing the final message
                 setTimeout(() => {
