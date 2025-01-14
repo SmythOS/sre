@@ -11,7 +11,7 @@ import axios from 'axios';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
-
+import mime from 'mime';
 const PORT = 8083;
 const BASE_URL = `http://localhost:${PORT}`;
 
@@ -278,7 +278,8 @@ describe('Smyth FileSystem Tests', () => {
                 id: 'agent-123456',
             };
 
-            const uri = `smythfs://default.team/myTestAgent/resourceFile`;
+            // const uri = `smythfs://default.team/myTestAgent/resourceFile`;
+            const uri = `smythfs://default.team/components_data/resourceFile`;
 
             // Write the file
             let _preparedContent;
@@ -297,7 +298,7 @@ describe('Smyth FileSystem Tests', () => {
             expect(resourceUrl).toBeDefined();
             console.log('agent domain', agentDomain);
             expect(resourceUrl.startsWith(agentDomain)).toBeTruthy();
-            expect(resourceUrl.endsWith(contentType.split('/')[1])).toBeTruthy();
+            expect(resourceUrl.endsWith(mime.getExtension(contentType))).toBeTruthy();
 
             // Test serving the resource
             const testUrl = resourceUrl.replace(agentDomain, BASE_URL);
