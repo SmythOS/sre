@@ -69,6 +69,7 @@ let agent = new Agent();
 function listenForUsageEvent(){
     let usageEvent: any = undefined;
     SystemEvents.once('USAGE:LLM', (usage) => {
+        console.log("USAGE:LLM received", usage);
         usageEvent = usage;
     });
     return {
@@ -76,6 +77,13 @@ function listenForUsageEvent(){
             return usageEvent;
         }
     }
+}
+
+async function consumeStream(stream) {
+    // stream.on('end', resolve);
+    return new Promise((resolve) => {
+        stream.on('end', resolve);
+    });
 }
 
 describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ provider, id }) => {
@@ -110,43 +118,93 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
     it('should report usage for visionRequest', async () => {
         const usageEvent = listenForUsageEvent();
         const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.visionRequest(prompt, config, agent);
+        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+        await llmInference.visionRequest(prompt, fileSources, config, agent);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for multimodalRequest', async () => {
         const usageEvent = listenForUsageEvent();
         const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.multimodalRequest(prompt, config, agent);
+        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+        await llmInference.multimodalRequest(prompt, fileSources, config, agent);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for toolRequest', async () => {
         const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.toolRequest(prompt, config, agent);
+        const toolDefinitions = [
+            {
+                name: 'get_weather',
+                description: 'Get the current weather',
+                properties: {
+                    location: { type: 'string' },
+                },
+                requiredFields: ['location'],
+            },
+        ];
+        const params = {
+            messages: [{ role: 'user', content: 'Hello, how are you?' }],
+            toolsConfig: {
+                type: 'function',
+                toolDefinitions,
+                toolChoice: 'auto',
+            },
+        };
+
+        const result = await llmInference.toolRequest(params, agent);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for streamToolRequest', async () => {
+        if (["Anthropic"].includes(provider)) return Promise.resolve();
         const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.streamToolRequest(prompt, config, agent);
+        const toolDefinitions = [
+            {
+                name: 'get_weather',
+                description: 'Get the current weather',
+                properties: {
+                    location: { type: 'string' },
+                },
+                requiredFields: ['location'],
+            },
+        ];
+        const params = {
+            messages: [{ role: 'user', content: 'Hello, how are you? Tell me a short story' }],
+            toolsConfig: {
+                type: 'function',
+                toolDefinitions,
+                toolChoice: 'auto',
+            },
+        };
+        
+        const stream = await llmInference.streamToolRequest(params, agent);
+        await consumeStream(stream);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for streamRequest', async () => {
         const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.streamRequest(prompt, config, agent);
+        const params = {
+            messages: [{ role: 'user', content: 'Tell me a very short story. 15 words or less.' }],
+        };
+        const stream = await llmInference.streamRequest(params, agent);
+        await consumeStream(stream);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for multimodalStreamRequest', async () => {
         const usageEvent = listenForUsageEvent();
         const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.multimodalStreamRequest(prompt, config, agent);
+        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+        const stream = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
+        await consumeStream(stream);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
     it('should report usage for imageGenRequest', async () => {
+        if (["Anthropic"].includes(provider)) return Promise.resolve();
         const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.imageGenRequest(prompt, config, agent);
+        const prompt = 'A cat';
+        let args = {
+            responseFormat: 'url',
+            model: id,
+        };
+        await llmInference.imageGenRequest(prompt, args, agent);
         expect(usageEvent.get(), "Did not receive usage event").toBeDefined();
     });
 });

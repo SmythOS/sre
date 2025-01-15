@@ -464,19 +464,20 @@ export class AnthropicConnector extends LLMConnector {
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
 
-                    /*
-                        const smyth_usage = {
-                            input_tokens: 0,
-                            input_tokens_cache_write: 0,
-                            input_tokens_cache_read: 0,
-                            output_tokens: 0,
-                            llm_provider: 'anthropic',                            
-                            model: params?.model,
-                        }
-
-                        //SystemEvents.emit('LLM:Usage', smyth_usage);
-                    */
+                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
+                    SystemEvents.emit('USAGE:LLM', {
+                        input_tokens: usage.input_tokens - usage.cache_read_input_tokens,
+                        output_tokens: usage.output_tokens - usage.cache_creation_input_tokens ,
+                        input_tokens_cache_write: usage.cache_creation_input_tokens,
+                        input_tokens_cache_read: usage.cache_read_input_tokens,
+                        llm_provider: 'Anthropic',
+                        model: params?.model,
+                        keySource: APIKeySource.Smyth,
+                    });
                 }
+
+                
+
                 //only emit end event after processing the final message
                 setTimeout(() => {
                     emitter.emit('end', toolsData, usage_data);
@@ -594,6 +595,17 @@ export class AnthropicConnector extends LLMConnector {
                         total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
                         prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
                         completion_tokens_details: { reasoning_tokens: 0 },
+                    });
+                    
+                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
+                    SystemEvents.emit("USAGE:LLM", {
+                        input_tokens: usage.input_tokens - usage.cache_read_input_tokens,
+                        output_tokens: usage.output_tokens - usage.cache_creation_input_tokens ,
+                        input_tokens_cache_write: usage.cache_creation_input_tokens,
+                        input_tokens_cache_read: usage.cache_read_input_tokens,
+                        llm_provider: 'Anthropic',
+                        model: params.model,
+                        keySource: APIKeySource.Smyth,
                     });
                 }
                 //only emit end event after processing the final message
