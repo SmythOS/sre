@@ -17,11 +17,12 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit } from '@sre/utils';
 
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('GoogleAIConnector');
 
@@ -940,5 +941,17 @@ export class GoogleAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: 0,
+            output_tokens: 0,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: 0,
+            llm_provider: "GoogleAI",
+            model: metadata.model,
+            keySource: metadata.keySource,
+        });
     }
 }

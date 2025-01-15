@@ -3,6 +3,8 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { APIKeySource } from '@sre/types/LLM.types';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
@@ -71,4 +73,6 @@ export class EchoConnector extends LLMConnector {
             return response;
         }
     }
+
+    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {}
 }

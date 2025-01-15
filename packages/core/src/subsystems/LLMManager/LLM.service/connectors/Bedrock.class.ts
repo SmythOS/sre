@@ -12,13 +12,14 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('BedrockConnector');
 
@@ -443,6 +444,18 @@ export class BedrockConnector extends LLMConnector {
                 role: message.role,
                 content: textBlock,
             };
+        });
+    }
+
+    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: 0,
+            output_tokens: 0,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: 0,
+            llm_provider: "Bedrock",
+            model: metadata.model,
+            keySource: metadata.keySource,
         });
     }
 }

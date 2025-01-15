@@ -107,17 +107,10 @@ export class OpenAIConnector extends LLMConnector {
 
             const content = response?.choices?.[0]?.message.content;
             const finishReason = response?.choices?.[0]?.finish_reason;
-            const usage = response?.usage;
+            const usage = response?.usage as any;
 
-            SystemEvents.emit('USAGE:LLM', {
-                input_tokens: usage?.prompt_tokens,
-                output_tokens: usage?.completion_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'OpenAI',
-                model: params.model,
-                keySource: APIKeySource.Smyth,
-            });
+            
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -192,16 +185,7 @@ export class OpenAIConnector extends LLMConnector {
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
 
-            SystemEvents.emit('USAGE:LLM', {
-                input_tokens: usage?.prompt_tokens,
-                output_tokens: usage?.completion_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'OpenAI',
-                model: params.model,
-                keySource: APIKeySource.Smyth,
-            });
-
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -275,16 +259,8 @@ export class OpenAIConnector extends LLMConnector {
 
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
-            SystemEvents.emit('USAGE:LLM', {
-                input_tokens: usage?.prompt_tokens,
-                output_tokens: usage?.completion_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'OpenAI',
-                model: params.model,
-                keySource: APIKeySource.Smyth,
-            });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -378,16 +354,8 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const usage = result?.usage;
-
-            SystemEvents.emit('USAGE:LLM', {
-                input_tokens: usage?.prompt_tokens,
-                output_tokens: usage?.completion_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'OpenAI',
-                model: params.model,
-                keySource: APIKeySource.Smyth,
-            });
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            
 
             return {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
@@ -483,15 +451,8 @@ export class OpenAIConnector extends LLMConnector {
 
             usage_data.forEach((usage) => {
                 // probably we can acc them and send them as one event
-                SystemEvents.emit('USAGE:LLM', {
-                    input_tokens: usage?.prompt_tokens,
-                    output_tokens: usage?.completion_tokens,
-                    input_tokens_cache_write: 0,
-                    input_tokens_cache_read: 0,
-                    llm_provider: 'OpenAI',
-                    model,
-                    keySource: APIKeySource.Smyth,
-                });
+                //TODO: [AHMED] REVIST THE FORMULA USED HERE
+                this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
             });
 
             message.tool_calls = toolsData.map((tool) => {
@@ -547,7 +508,7 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         try {
-            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
+            const stream = await openai.chat.completions.create(chatCompletionArgs);
 
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
@@ -558,6 +519,7 @@ export class OpenAIConnector extends LLMConnector {
                 for await (const part of stream) {
                     delta = part.choices[0]?.delta;
                     const usage = part.usage;
+                    
                     if (usage) {
                         usage_data.push(usage);
                     }
@@ -587,15 +549,7 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    SystemEvents.emit('USAGE:LLM', {
-                        input_tokens: usage?.prompt_tokens,
-                        output_tokens: usage?.completion_tokens,
-                        input_tokens_cache_write: 0,
-                        input_tokens_cache_read: 0,
-                        llm_provider: 'OpenAI',
-                        model: params.model,
-                        keySource: APIKeySource.Smyth,
-                    });
+                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
                 });
 
                 setTimeout(() => {
@@ -715,15 +669,8 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    SystemEvents.emit('USAGE:LLM', {
-                        input_tokens: usage?.prompt_tokens,
-                        output_tokens: usage?.completion_tokens,
-                        input_tokens_cache_write: 0,
-                        input_tokens_cache_read: 0,
-                        llm_provider: 'OpenAI',
-                        model: params.model,
-                        keySource: APIKeySource.Smyth,
-                    });
+                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
+                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
                 });
 
                 setTimeout(() => {
@@ -859,5 +806,18 @@ export class OpenAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+
+    protected reportUsage(usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
+            output_tokens: usage?.completion_tokens,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            llm_provider: 'OpenAI',
+            model: metadata.model,
+            keySource: metadata.keySource,
+        });
     }
 }

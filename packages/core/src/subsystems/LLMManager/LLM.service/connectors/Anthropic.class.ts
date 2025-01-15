@@ -83,15 +83,7 @@ export class AnthropicConnector extends LLMConnector {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
-            SystemEvents.emit("USAGE:LLM", {
-                input_tokens: usage?.input_tokens,
-                output_tokens: usage?.output_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'Anthropic',
-                model: params.model,
-                keySource: APIKeySource.Smyth
-            })
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -155,15 +147,8 @@ export class AnthropicConnector extends LLMConnector {
             const usage = response?.usage;
 
 
-            SystemEvents.emit("USAGE:LLM", {
-                input_tokens: usage?.input_tokens,
-                output_tokens: usage?.output_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'Anthropic',
-                model: params.model,
-                keySource: APIKeySource.Smyth
-            })
+            
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -225,15 +210,7 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
-            SystemEvents.emit("USAGE:LLM", {
-                input_tokens: usage?.input_tokens,
-                output_tokens: usage?.output_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'Anthropic',
-                model: params.model,
-                keySource: APIKeySource.Smyth
-            });
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -312,15 +289,8 @@ export class AnthropicConnector extends LLMConnector {
 
 
             const usage = result?.usage;
-            SystemEvents.emit("USAGE:LLM", {
-                input_tokens: usage?.input_tokens,
-                output_tokens: usage?.output_tokens,
-                input_tokens_cache_write: 0,
-                input_tokens_cache_read: 0,
-                llm_provider: 'Anthropic',
-                model: params.model,
-                keySource: APIKeySource.Smyth,
-            });
+           
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
 
             return {
                 data: {
@@ -464,16 +434,9 @@ export class AnthropicConnector extends LLMConnector {
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
 
-                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
-                    SystemEvents.emit('USAGE:LLM', {
-                        input_tokens: usage.input_tokens - usage.cache_read_input_tokens,
-                        output_tokens: usage.output_tokens - usage.cache_creation_input_tokens ,
-                        input_tokens_cache_write: usage.cache_creation_input_tokens,
-                        input_tokens_cache_read: usage.cache_read_input_tokens,
-                        llm_provider: 'Anthropic',
-                        model: params?.model,
-                        keySource: APIKeySource.Smyth,
-                    });
+                    
+                    
+                    this.reportUsage(usage, { model: params?.model, keySource: APIKeySource.Smyth });
                 }
 
                 
@@ -597,16 +560,9 @@ export class AnthropicConnector extends LLMConnector {
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
                     
-                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
-                    SystemEvents.emit("USAGE:LLM", {
-                        input_tokens: usage.input_tokens - usage.cache_read_input_tokens,
-                        output_tokens: usage.output_tokens - usage.cache_creation_input_tokens ,
-                        input_tokens_cache_write: usage.cache_creation_input_tokens,
-                        input_tokens_cache_read: usage.cache_read_input_tokens,
-                        llm_provider: 'Anthropic',
-                        model: params.model,
-                        keySource: APIKeySource.Smyth,
-                    });
+                    
+                    
+                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
                 }
                 //only emit end event after processing the final message
                 setTimeout(() => {
@@ -824,5 +780,17 @@ export class AnthropicConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    protected reportUsage(usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number, cache_read_input_tokens?: number }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+            input_tokens_cache_write: usage.cache_creation_input_tokens,
+            input_tokens_cache_read: usage.cache_read_input_tokens,
+            llm_provider: 'Anthropic',
+            model: metadata.model,
+            keySource: metadata.keySource,
+        });
     }
 }

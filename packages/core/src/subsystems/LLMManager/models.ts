@@ -1311,5 +1311,8 @@ export const models = {
     //#endregion [legacy models] ==============================================================
 } as const;
 
-export type LLMProvider = (typeof models)[keyof typeof models]['llm'];
-export type LLMModel = keyof typeof models;
+export type LLMProvider = (typeof models)[keyof typeof models]['llm'] | 'VertexAI' | 'Bedrock';
+export type LLMModel = keyof typeof models ;
+export type LLMModelInfo = (typeof models)[LLMModel];
+
+
