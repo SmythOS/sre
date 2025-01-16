@@ -5,6 +5,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
 import { SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -17,6 +18,41 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         });
     });
     return { default: MockedAgent };
+});
+
+// import {DummyAccount} from "@sre/Security/Account.service/connectors/DummyAccount.class"
+
+vi.mock('@sre/Security/Account.service/connectors/DummyAccount.class', async () => {
+    let DummyAccount = (await import('@sre/Security/Account.service/connectors/DummyAccount.class')).DummyAccount;
+    class MockedDummyAccount extends DummyAccount {
+        public getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
+            if (settingKey === 'custom-llm') {
+                return Promise.resolve(JSON.stringify({
+                    "m5zlsw6gduo": {
+                        "id": "m5zlsw6gduo",
+                        "name": "NEW_LLM",
+                        "provider": "Bedrock",
+                        "features": [
+                            "text-completion"
+                        ],
+                        "tags": [
+                            "Bedrock"
+                        ],
+                        "settings": {
+                            "foundationModel": "ai21.jamba-instruct-v1:0",
+                            "customModel": "",
+                            "region": "us-east-1",
+                            "keyIDName": "BEDROCK_TESINTG_AWS_KEY_ID",
+                            "secretKeyName": "BEDROCK_TESINTG_AWS_SECRET_KEY",
+                            "sessionKeyName": ""
+                        }
+                    }
+                }));
+            }
+            return super.getTeamSetting(acRequest, teamId, settingKey);
+        }
+    }
+    return { DummyAccount: MockedDummyAccount };
 });
 
 const sre = SmythRuntime.Instance.init({
@@ -59,9 +95,11 @@ const models = [
     { provider: 'OpenAI', id: 'gpt-4o-mini', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest", 'imageGenRequest'] },
     { provider: 'Anthropic', id: 'claude-3.5-sonnet', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest"] },
     { provider: 'Groq', id: 'gemma2-9b-it', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest']},
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest', 'streamRequest'] },
+    { provider: 'GoogleAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest"] },
+    { provider: 'Bedrock', id: 'm5zlsw6gduo', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest'] },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite', supportedMethods:[] },
-    { provider: 'xAI', id: 'grok-beta', supportedMethods: [] },
+    //* disabled for now since we have no valid access to VertexAI
+    // { provider: 'VertexAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest'] }, 
 ];
 
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
@@ -107,11 +145,21 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
                 cache: true,
             },
         };
+
+
+        // make sure to info the user to put the needed vault keys in vault.json before running
+        // "keyIDName": "BEDROCK_TESINTG_AWS_KEY_ID",
+        // "secretKeyName": "BEDROCK_TESINTG_AWS_SECRET_KEY",
+        console.warn("|----------------------------------------------------------|");
+        console.warn("| Make sure to put the following keys in vault.json to make sure all tests pass |");
+        console.warn("| BEDROCK_TESINTG_AWS_KEY_ID                                               |");
+        console.warn("| BEDROCK_TESINTG_AWS_SECRET_KEY                                           |");
+        console.warn("|----------------------------------------------------------|");
     });
 
     
 
-    const llmInference: LLMInference = await LLMInference.getInstance(id);
+    const llmInference: LLMInference = await LLMInference.getInstance(id, "default");
 
     const  isSupported = (method:string) => supportedMethods.includes(method);
 
@@ -187,8 +235,8 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         const msgs = [];
         // 30*2 messages with same q&a to test prompt caching (for eg. OpenAI starts caching when tokens >= 1024)
         for (let i = 0; i < 30; i++) {
-            msgs.push({ role: 'assistant', content: 'Quantum physics is the study of the behavior of matter and energy at the smallest scales, where it behaves differently than it does at larger scales.' });
             msgs.push({ role: 'user', content: ' Explain quantum physics in simple terms.' });
+            msgs.push({ role: 'assistant', content: 'Quantum physics is the study of the behavior of matter and energy at the smallest scales, where it behaves differently than it does at larger scales.' });
         }
         const params: Partial<TLLMParams> = {
             messages: [...msgs, { role: 'user', content: ' Explain quantum physics in simple terms.' }],
@@ -197,7 +245,13 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         };
         const stream = await llmInference.streamRequest(params, agent);
         await consumeStream(stream);
-        const eventValue = usageEvent.get();
+        let eventValue = usageEvent.get();
+        // if the event was not emitted even after the stream ended,
+        // wait for additional 500ms in case the usage is reported after the content stream ends
+        if (!eventValue) {
+            await delay(500);
+            eventValue = usageEvent.get();
+        }
         expect(eventValue, "Did not receive usage event").toBeDefined();
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);

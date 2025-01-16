@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import fs from 'fs';
 
 import axios from 'axios';
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest } from '@google/generative-ai';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -180,6 +180,8 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
+            const usage = response?.usageMetadata;
+            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -273,6 +275,8 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
+            const usage = response?.usageMetadata;
+            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -376,6 +380,8 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
+            const usage = response?.usageMetadata;
+            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -436,6 +442,9 @@ export class GoogleAIConnector extends LLMConnector {
 
             const response = await result.response;
             const content = response.text();
+            const usage = response?.usageMetadata;
+            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+
             const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
 
             let toolsData: ToolData[] = [];
@@ -524,6 +533,7 @@ export class GoogleAIConnector extends LLMConnector {
             const result = await $model.generateContentStream(toolsPrompt);
 
             let toolsData: ToolData[] = [];
+            let usage: UsageMetadata;
 
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
@@ -545,6 +555,21 @@ export class GoogleAIConnector extends LLMConnector {
                             emitter.emit('toolsData', toolsData);
                         }
                     }
+
+                    // the same usage is sent on each emit. IMPORTANT: google does not send usage for each chunk but
+                    // rather just sends the same usage for the entire request.
+                    // notice that the output tokens are only sent in the last chunk usage metadata.
+                    // so we will just update a var to hold the latest usage and report it when the stream ends.
+                    // e.g emit1: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
+                    // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
+                    // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
+                    if (chunk?.usageMetadata) {
+                        usage = chunk.usageMetadata;
+                    }
+                }
+                
+                if (usage) {
+                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
                 }
 
                 setTimeout(() => {
@@ -653,7 +678,7 @@ export class GoogleAIConnector extends LLMConnector {
             const result = await $model.generateContentStream(promptWithFiles);
 
             let toolsData: ToolData[] = [];
-
+            let usage: UsageMetadata;
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
                 for await (const chunk of result.stream) {
@@ -674,6 +699,21 @@ export class GoogleAIConnector extends LLMConnector {
                             emitter.emit('toolsData', toolsData);
                         }
                     }
+
+                    // the same usage is sent on each emit. IMPORTANT: google does not send usage for each chunk but
+                    // rather just sends the same usage for the entire request.
+                    // notice that the output tokens are only sent in the last chunk usage metadata.
+                    // so we will just update a var to hold the latest usage and report it when the stream ends.
+                    // e.g emit1: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
+                    // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
+                    // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
+                    if (chunk?.usageMetadata) {
+                        usage = chunk.usageMetadata;
+                    }
+                }
+
+                if (usage) {
+                    this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
                 }
 
                 setTimeout(() => {
@@ -943,12 +983,12 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(usage: UsageMetadata, metadata: { model: string, keySource: APIKeySource }) {
         SystemEvents.emit('USAGE:LLM', {
-            input_tokens: 0,
-            output_tokens: 0,
+            input_tokens: usage.promptTokenCount,
+            output_tokens: usage.candidatesTokenCount,
+            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            input_tokens_cache_read: 0,
             llm_provider: "GoogleAI",
             model: metadata.model,
             keySource: metadata.keySource,

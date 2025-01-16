@@ -1,4 +1,4 @@
-import { VertexAI, type ModelParams, type GenerationConfig, type Content } from '@google-cloud/vertexai';
+import { VertexAI, type ModelParams, type GenerationConfig, type Content, UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -13,6 +13,9 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/index';
 
 const console = Logger('VertexAIConnector');
+
+//TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
+// we had no access to VertexAI so we assumed it is working (potential bug)
 
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
@@ -70,6 +73,8 @@ export class VertexAIConnector extends LLMConnector {
 
             const result = await generativeModel.generateContent({ contents: messages });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const usage = result?.response?.usageMetadata;
+            this.reportUsage(usage, { model: modelParams.model, keySource: APIKeySource.Smyth });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -128,12 +133,12 @@ export class VertexAIConnector extends LLMConnector {
         });
     }
 
-    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(usage: UsageMetadata & { cachedContentTokenCount?: number }, metadata: { model: string, keySource: APIKeySource }) {
         SystemEvents.emit('USAGE:LLM', {
-            input_tokens: 0,
-            output_tokens: 0,
+            input_tokens: usage.promptTokenCount || 0,
+            output_tokens: usage.candidatesTokenCount || 0,
+            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            input_tokens_cache_read: 0,
             llm_provider: "VertexAI",
             model: metadata.model,
             keySource: metadata.keySource,
