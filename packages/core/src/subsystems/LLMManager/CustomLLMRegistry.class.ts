@@ -18,7 +18,7 @@ export class CustomLLMRegistry {
 
     public getProvider(model: string): string {
         const entryId = this.getModelEntryId(model);
-        return this.models?.[entryId]?.llm;
+        return this.models?.[entryId]?.provider || this.models?.[entryId]?.llm;
     }
 
     public getModelInfo(model: string): TBedrockModel | TVertexAIModel {
@@ -26,22 +26,6 @@ export class CustomLLMRegistry {
         const modelInfo = this.models?.[entryId] || {};
 
         return { ...modelInfo, modelId: model };
-    }
-
-    public getMaxContextTokens(model: string): number {
-        const modelInfo = this.getModelInfo(model);
-        return modelInfo?.tokens;
-    }
-
-    public async getMaxCompletionTokens(model: string) {
-        const modelInfo = this.getModelInfo(model);
-
-        return modelInfo?.completionTokens || modelInfo?.tokens;
-    }
-
-    public adjustMaxCompletionTokens(model: string, maxTokens: number): number {
-        const modelInfo = this.getModelInfo(model);
-        return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
     }
 
     private async loadCustomModels(teamId?: string) {
@@ -69,6 +53,27 @@ export class CustomLLMRegistry {
         return modelInfo?.features || [];
     }
 
+    public modelEnabled(model: string): boolean {
+        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
+        return true;
+    }
+
+    public getMaxContextTokens(model: string): number {
+        const modelInfo = this.getModelInfo(model);
+        return modelInfo?.tokens;
+    }
+
+    public async getMaxCompletionTokens(model: string) {
+        const modelInfo = this.getModelInfo(model);
+
+        return modelInfo?.completionTokens || modelInfo?.tokens;
+    }
+
+    public adjustMaxCompletionTokens(model: string, maxTokens: number): number {
+        const modelInfo = this.getModelInfo(model);
+        return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
+    }
+
     private async getCustomModels(teamId: string): Promise<Record<string, any>> {
         const models = {};
         const settingsKey = 'custom-llm';
@@ -81,24 +86,27 @@ export class CustomLLMRegistry {
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
                 const foundationModel = entry.settings.foundationModel;
+                const customModel = entry.settings.customModel;
                 const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
                 const customModelData = customModels[foundationModel] || {};
 
                 models[entryId] = {
+                    label: entry.name,
+                    modelId: customModel || foundationModel,
+                    provider: entry.provider,
+                    features: entry.features,
+                    tags: Array.isArray(entry?.tags) ? ['Enterprise', ...entry?.tags] : ['Enterprise'],
+                    tokens: customModelData?.tokens ?? 100000,
+                    completionTokens: customModelData?.completionTokens ?? 4096,
+                    enabled: true,
+
                     id: entryId,
                     name: entry.name,
                     alias: foundationModel,
                     llm: entry.provider,
-                    enabled: true,
-                    tags: entry.tags,
-
                     components: customModelData?.components ?? [],
-                    tokens: customModelData?.tokens ?? 100000,
-                    completionTokens: customModelData?.completionTokens ?? 4096,
-
+                    isCustomLLM: true,
                     supportsSystemPrompt,
-                    provider: entry.provider,
-                    features: entry.features,
                     settings: entry.settings,
                 };
             }
