@@ -638,7 +638,10 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost') || reqConfig.url.includes('localagent')) {
+                if (reqConfig.url.includes('localhost') 
+
+                    // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
+                ) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(
                         reqConfig.headers['X-AGENT-ID'] || this._agentId,
