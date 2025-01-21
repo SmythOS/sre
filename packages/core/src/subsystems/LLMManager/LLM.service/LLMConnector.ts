@@ -40,6 +40,15 @@ export type ImagesResponse = {
     }>;
 };
 
+const SMYTHOS_API_KEYS = {
+    openai: process.env.OPENAI_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    googleai: process.env.GOOGLE_AI_API_KEY,
+    togetherai: process.env.TOGETHER_AI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    xai: process.env.XAI_API_KEY,
+};
+
 export class LLMStream extends Readable {
     private dataQueue: any[];
     private toolsData: any[];
@@ -217,7 +226,18 @@ export abstract class LLMConnector extends Connector {
         if (isStandardLLM) {
             const llmProvider = LLMRegistry.getProvider(model);
 
-            _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
+            if (LLMRegistry.isSmythOSModel(model)) {
+                _params.credentials = SMYTHOS_API_KEYS?.[llmProvider] || '';
+            } else {
+                _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
+
+                // we provide the api key for OpenAI models to support existing components
+                if (!_params.credentials?.apiKey && llmProvider === 'OpenAI') {
+                    _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                } else {
+                    _params.credentials.isUserKey = true;
+                }
+            }
 
             if (_params.maxTokens) {
                 _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);

@@ -65,7 +65,7 @@ export class OpenAIConnector extends LLMConnector {
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
-            apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
+            apiKey: apiKey,
             baseURL: params.baseURL,
         });
 
@@ -148,7 +148,7 @@ export class OpenAIConnector extends LLMConnector {
             const apiKey = params?.credentials?.apiKey;
 
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                apiKey: apiKey,
                 baseURL: params.baseURL,
             });
 
@@ -220,7 +220,7 @@ export class OpenAIConnector extends LLMConnector {
             const apiKey = params?.credentials?.apiKey;
 
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                apiKey: apiKey,
                 baseURL: params.baseURL,
             });
 
@@ -299,7 +299,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            apiKey: apiKey,
             baseURL: params.baseURL,
         });
 
@@ -358,7 +358,7 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // We provide
             const openai = new OpenAI({
-                apiKey: apiKey || process.env.OPENAI_API_KEY,
+                apiKey: apiKey,
                 baseURL: baseURL,
             });
 
@@ -455,7 +455,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.OPENAI_API_KEY, // we provide default API key for OpenAI with limited quota
+            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
             baseURL: params.baseURL,
         });
 
@@ -564,7 +564,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
-            apiKey: apiKey || process.env.OPENAI_API_KEY,
+            apiKey: apiKey,
             baseURL: params.baseURL,
         });
 
