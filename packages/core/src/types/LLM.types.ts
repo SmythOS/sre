@@ -132,6 +132,7 @@ export type GenerateImageConfig = {
 
 type TCustomModel = {
     name: string;
+    label: string;
     provider: 'Bedrock';
     components: string[];
     tags: string[];
