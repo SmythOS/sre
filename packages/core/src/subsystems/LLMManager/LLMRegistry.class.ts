@@ -19,6 +19,10 @@ export class LLMRegistry {
         return this.modelExists(model);
     }
 
+    public static isSmythOSModel(model: string): boolean {
+        return model?.startsWith('smythos/');
+    }
+
     public static getModelId(model: string): string {
         const modelId = models?.[model]?.modelId || model;
         const alias = models?.[modelId]?.alias;
@@ -43,7 +47,7 @@ export class LLMRegistry {
 
     public static getProvider(model: string): string {
         const modelId = this.getModelId(model);
-        return models?.[modelId]?.llm;
+        return models?.[modelId]?.provider || models?.[modelId]?.llm;
     }
 
     public static getModelInfo(model: string, hasAPIKey: boolean = false): Record<string, any> {
@@ -62,6 +66,11 @@ export class LLMRegistry {
         if (model?.toLowerCase() === 'echo') return true;
         const modelId = this.getModelId(model);
         return !!models?.[modelId];
+    }
+
+    public static modelEnabled(model: string): boolean {
+        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
+        return true;
     }
 
     //#region tokens related methods
