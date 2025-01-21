@@ -13,6 +13,7 @@ export const models = {
     label: 'GPT 4o mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -24,6 +25,7 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -35,6 +37,7 @@ export const models = {
     label: 'GPT o1',
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -46,6 +49,7 @@ export const models = {
     label: 'GPT o1 mini',
     modelId: 'o1-mini-2024-09-12',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -60,6 +64,7 @@ export const models = {
     label: 'Claude 3.5 Sonnet',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -71,6 +76,7 @@ export const models = {
     label: 'Claude 3.5 Haiku',
     modelId: 'claude-3-5-haiku-latest',
     provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -85,6 +91,7 @@ export const models = {
     label: 'Gemini 2.0 Flash Experimental',
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 1_048_576,
@@ -96,6 +103,7 @@ export const models = {
     label: 'Gemini 1.5 Pro',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 2_097_152,
@@ -110,6 +118,7 @@ export const models = {
     label: 'Google - Gemma 2 9B',
     modelId: 'gemma2-9b-it',
     provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 8_192,
@@ -122,6 +131,7 @@ export const models = {
     label: 'Meta - Llama 3.3 70B',
     modelId: 'llama-3.3-70b-versatile',
     provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -140,6 +150,7 @@ export const models = {
     label: 'GPT 4o mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['Personal'],
     tokens: 0,
@@ -152,6 +163,7 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['Personal'],
     tokens: 0,
@@ -164,6 +176,7 @@ export const models = {
     label: 'GPT o1',
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
@@ -176,6 +189,7 @@ export const models = {
     label: 'GPT o1 mini',
     modelId: 'o1-mini-2024-09-12',
     provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
@@ -191,6 +205,7 @@ export const models = {
     label: 'Claude 3.5 Sonnet',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['Personal'],
     tokens: 0,
@@ -203,6 +218,7 @@ export const models = {
     label: 'Claude 3.5 Haiku',
     modelId: 'claude-3-5-haiku-latest',
     provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
@@ -218,6 +234,7 @@ export const models = {
     label: 'Gemini 2.0 Flash Experimental',
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['Personal'],
     tokens: 0,
@@ -230,6 +247,7 @@ export const models = {
     label: 'Gemini 1.5 Pro',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
@@ -245,6 +263,7 @@ export const models = {
     label: 'Google - Gemma 2 9B',
     modelId: 'gemma2-9b-it',
     provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
@@ -258,6 +277,7 @@ export const models = {
     label: 'Meta - Llama 3.3 70B',
     modelId: 'llama-3.3-70b-versatile',
     provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['Personal'],
     tokens: 0,
