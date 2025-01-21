@@ -230,6 +230,13 @@ export abstract class LLMConnector extends Connector {
                 _params.credentials = SMYTHOS_API_KEYS?.[llmProvider] || '';
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
+
+                // we provide the api key for OpenAI models to support existing components
+                if (!_params.credentials?.apiKey && llmProvider === 'OpenAI') {
+                    _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                } else {
+                    _params.credentials.isUserKey = true;
+                }
             }
 
             if (_params.maxTokens) {
