@@ -58,23 +58,20 @@ export default class GenAILLM extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
-            const files = input?.Files;
-            let fileSources: any[] = [];
+            let fileSources: any[] = parseFiles(input, config);
             let isMultimodalRequest = false;
             const provider = llmRegistry.getProvider(model);
             const isEcho = provider === 'Echo';
 
             // Ignore files for Echo model
-            if (files && !isEcho) {
-                fileSources = Array.isArray(files) ? files : [files];
-
+            if (fileSources?.length > 0 && !isEcho) {
                 const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP?.[provider] || {};
                 const features = llmRegistry.getModelFeatures(model);
                 const fileTypes = new Set(); // Set to avoid duplicates
 
                 const validFiles = await Promise.all(
                     fileSources.map(async (file) => {
-                        const mimeType = await getMimeType(file);
+                        const mimeType = file?.mimetype || (await getMimeType(file));
                         const [requestFeature = ''] =
                             Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
 
@@ -181,4 +178,23 @@ export default class GenAILLM extends Component {
         const llmInference: LLMInference = await LLMInference.getInstance(model, agent?.teamId);
         return llmInference.streamRequest(prompt, agent);
     }
+}
+
+function parseFiles(input: any, config: any) {
+    const mediaTypes = ['Image', 'Audio', 'Video', 'Binary'];
+
+    // Parse Files array/object
+    const inputFiles = Array.isArray(input?.Attachment)
+        ? input.Attachment.map((file) => TemplateString(file).parseRaw(input).result)
+        : input?.Attachment
+        ? [TemplateString(input.Attachment).parseRaw(input).result]
+        : [];
+
+    // Parse media inputs from config
+    const mediaFiles =
+        config.inputs
+            ?.filter((_input) => mediaTypes.includes(_input.type))
+            ?.map((_input) => TemplateString(input[_input.name]).parseRaw(input).result) || [];
+
+    return [...inputFiles, ...mediaFiles];
 }
