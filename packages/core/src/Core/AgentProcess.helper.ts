@@ -93,14 +93,28 @@ export class AgentProcess {
      * Note: even if the response is streamed through the callback, the response is still returned as a single object in the response.data field.
      * @returns The result of the agent process
      */
-    public async run(reqConfig: TAgentProcessParams | Array<string> | AgentRequest, callback?: (data: any) => void) {
+    public async run(
+        reqConfig: TAgentProcessParams | Array<string> | AgentRequest,
+        callback?: (data: any) => void
+    ): Promise<{
+        status?: number;
+        data: any;
+        passThroughContent?: string;
+    }> {
         await this.ready();
         if (!this.agent) throw new Error('Failed to load agent');
         let request: AgentRequest = this.parseReqConfig(reqConfig);
 
         this.agent.setRequest(request);
+
+        let passThroughContent = '';
         if (typeof callback === 'function') {
             this.agent.setCallback(callback);
+        } else {
+            //passThroughContent is used as a workaround to collect passthrough data and pass it to remote agent debugger
+            this.agent.setCallback((data) => {
+                passThroughContent += data;
+            });
         }
 
         const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
@@ -111,7 +125,7 @@ export class AgentProcess {
         const input = request.method == 'GET' ? request.query : request.body;
         const result: any = await this.agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
-        return { data: result };
+        return { data: result, passThroughContent: passThroughContent || undefined };
     }
 
     public reset() {

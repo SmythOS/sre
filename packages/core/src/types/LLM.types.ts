@@ -71,6 +71,7 @@ export type ToolData = {
     result?: string; // result string from the used tool
     function?: any;
     error?: string; // for Bedrock
+    passThroughContent?: string; //smythOS specific
 };
 
 export interface AnthropicToolDefinition {

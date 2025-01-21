@@ -13,6 +13,7 @@ import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { delay } from '@sre/utils/date-time.utils';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -71,7 +72,7 @@ export class Conversation extends EventEmitter {
     private _customToolsDeclarations: FunctionDeclaration[] = [];
     private _customToolsHandlers: Record<string, (args: Record<string, any>) => Promise<any>> = {};
     public stop = false;
-    public set spec(specSource) {      
+    public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
             this.loadSpecFromSource(specSource).then(async (spec) => {
@@ -81,7 +82,6 @@ export class Conversation extends EventEmitter {
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
-
 
                 // teamId is required to load custom LLMs, we must assign it before updateModel()
                 await this.assignTeamIdFromAgentId(this._agentId);
@@ -140,7 +140,6 @@ export class Conversation extends EventEmitter {
         }
 
         this._agentVersion = _settings?.agentVersion;
-
 
         (async () => {
             if (_specSource) {
@@ -362,6 +361,7 @@ export class Conversation extends EventEmitter {
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
         const message_id = 'msg_' + uid();
+        const isDebugSession = toolHeaders['X-DEBUG'];
 
         /* ==================== STEP ENTRY ==================== */
         // console.debug('Request to LLM with the given model, messages and functions properties.', {
@@ -437,7 +437,6 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-
                 let passThroughContent = '';
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
@@ -445,8 +444,7 @@ export class Conversation extends EventEmitter {
                     passThroughContent += data;
                     //this is currently used to handle agent callbacks when running local agents
                     this.emit('agentCallback', data);
-                };  
-
+                };
 
                 const toolProcessingTasks = toolsData.map(
                     (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
@@ -479,6 +477,11 @@ export class Conversation extends EventEmitter {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
                         }
 
+                        const passThroughContent = functionResponse?.passThroughContent;
+                        if (passThroughContent) {
+                            delete functionResponse.passThroughContent;
+                        }
+
                         functionResponse =
                             typeof functionResponse === 'object' && typeof functionResponse !== null
                                 ? JSON.stringify(functionResponse)
@@ -487,31 +490,35 @@ export class Conversation extends EventEmitter {
                         //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse);
 
-                        return { ...tool, result: functionResponse };
+                        return { ...tool, result: functionResponse, passThroughContent };
                     }
                 );
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
-                //     messageBlock: llmMessage,
-                //     toolsData: processedToolsData,
-                // });
+                if (isDebugSession) {
+                    //in debug mode concurrentToolCalls is always set to 1, so we have only one tool response;
+                    const _passThroughContent = processedToolsData[0]?.passThroughContent;
+                    if (_passThroughContent) {
+                        delete processedToolsData[0]?.passThroughContent; //clean it from the tool call results
+                    }
 
-                // this._context.push(...messagesWithToolResult);
-                // this._context.push({
-                //     //store raw tool call data, we'll convert it when reading the context window
-                //     messageBlock: llmMessage,
-                //     toolsData: processedToolsData,
-                // });
+                    passThroughContent = _passThroughContent;
+                }
 
                 if (!passThroughContent) {
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
-                this._context.addToolMessage(llmMessage, processedToolsData, message_id);
-
-                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
-                }
-                else {
+                    this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                } else {
+                    if (isDebugSession) {
+                        //workaround : when debug mode is enabled we do not support true passthrough, we need to simulate it here
+                        const tokens = passThroughContent.split(' ');
+                        for (const token of tokens) {
+                            this.emit('agentCallback', token + ' ');
+                            await delay(100);
+                        }
+                    }
 
                     //if passThroughContent is not empty, it means that the current agent streamed content through components
                     resolve(passThroughContent);
@@ -638,7 +645,10 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost') 
+                if (
+                    /*reqConfig.url.includes('localhost') || */
+                    reqConfig.headers['X-AGENT-ID'] &&
+                    reqConfig.headers['X-AGENT-VERSION'] !== undefined //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {
