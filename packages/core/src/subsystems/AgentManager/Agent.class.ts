@@ -11,6 +11,7 @@ import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import AgentSSE from './AgentSSE.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
@@ -32,6 +33,7 @@ export default class Agent {
     public debugSessionEnabled = false;
     public circularLimit = 100; //TODO : make it configurable from agent settings
     public version = '';
+
     //public baseUrl = '';
     public agentVariables: any = {};
     private _kill = false;
@@ -42,6 +44,7 @@ export default class Agent {
     public callback: (data: any) => void;
 
     public agentRequest: AgentRequest;
+    public agentSSE: AgentSSE;
     constructor(
         public id,
         agentData,
@@ -118,6 +121,9 @@ export default class Agent {
         //this.settings = new AgentSettings(this.id);
     }
 
+    public setSSE(res: any) {
+        this.agentSSE = new AgentSSE(this, res);
+    }
     public setRequest(agentRequest: AgentRequest | any) {
         if (this.agentRequest) return;
         this.agentRequest = agentRequest;

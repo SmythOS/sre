@@ -72,6 +72,7 @@ export type ToolData = {
     result?: string; // result string from the used tool
     function?: any;
     error?: string; // for Bedrock
+    passThroughContent?: string; //smythOS specific
 };
 
 export interface AnthropicToolDefinition {
@@ -132,6 +133,7 @@ export type GenerateImageConfig = {
 
 type TCustomModel = {
     name: string;
+    label: string;
     provider: 'Bedrock';
     components: string[];
     tags: string[];
