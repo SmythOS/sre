@@ -647,8 +647,8 @@ export class Conversation extends EventEmitter {
                 //TODO : implement a timeout for the tool call
                 if (
                     /*reqConfig.url.includes('localhost') || */
-                    reqConfig.headers['X-AGENT-ID'] &&
-                    reqConfig.headers['X-AGENT-VERSION'] !== undefined //empty string is accepted
+                    reqConfig.headers['X-AGENT-ID']
+                    //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {

@@ -118,11 +118,12 @@ export default class Agent {
             this.setRequest(agentRequest);
         }
 
+        this.agentSSE = new AgentSSE(this);
         //this.settings = new AgentSettings(this.id);
     }
 
     public setSSE(res: any) {
-        this.agentSSE = new AgentSSE(this, res);
+        this.agentSSE.updateRes(res);
     }
     public setRequest(agentRequest: AgentRequest | any) {
         if (this.agentRequest) return;
