@@ -187,7 +187,15 @@ function parseFiles(input: any, config: any) {
     const inputFiles =
         config.inputs
             ?.filter((_input) => mediaTypes.includes(_input.type))
-            ?.map((_input) => TemplateString(input[_input.name]).parseRaw(input).result) || [];
+            ?.flatMap((_input) => {
+                const value = input[_input.name];
+
+                if (Array.isArray(value)) {
+                    return value.map((item) => TemplateString(item).parseRaw(input).result);
+                } else {
+                    return TemplateString(value).parseRaw(input).result;
+                }
+            }) || [];
 
     return inputFiles;
 }
