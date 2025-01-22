@@ -83,7 +83,7 @@ export class AnthropicConnector extends LLMConnector {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -148,7 +148,7 @@ export class AnthropicConnector extends LLMConnector {
 
 
             
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -210,7 +210,7 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -290,7 +290,7 @@ export class AnthropicConnector extends LLMConnector {
 
             const usage = result?.usage;
            
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return {
                 data: {
@@ -436,7 +436,7 @@ export class AnthropicConnector extends LLMConnector {
 
                     
                     
-                    this.reportUsage(usage, { model: params?.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params?.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
 
                 
@@ -562,7 +562,7 @@ export class AnthropicConnector extends LLMConnector {
                     
                     
                     
-                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
                 //only emit end event after processing the final message
                 setTimeout(() => {

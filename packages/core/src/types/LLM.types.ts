@@ -14,6 +14,7 @@ export type TLLMParams = {
               keyId?: string; // for Bedrock
               secretKey?: string; // for Bedrock
               sessionKey?: string; // for Bedrock
+              isUserKey?: boolean; // for Bedrock
           };
 
     messages?: any[]; // TODO [Forhad]: apply proper typing

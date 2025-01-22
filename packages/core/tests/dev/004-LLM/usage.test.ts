@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SmythRuntime, SystemEvents } from '@sre/index';
+import { AccessCandidate, ConnectorService, SmythRuntime, SystemEvents } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import Agent from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
-import { SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
+import { APIKeySource, SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 
@@ -97,7 +97,6 @@ const models = [
     { provider: 'Groq', id: 'gemma2-9b-it', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest']},
     { provider: 'GoogleAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest"] },
     { provider: 'Bedrock', id: 'm5zlsw6gduo', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest'] },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite', supportedMethods:[] },
     //* disabled for now since we have no valid access to VertexAI
     // { provider: 'VertexAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest'] }, 
 ];
@@ -160,8 +159,15 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
     
 
     const llmInference: LLMInference = await LLMInference.getInstance(id, "default");
-
     const  isSupported = (method:string) => supportedMethods.includes(method);
+    const vaultConnector = ConnectorService.getVaultConnector();
+    const apiKey = await vaultConnector
+        .user(AccessCandidate.agent(agent.id))
+        .get(provider)
+        .catch(() => '');
+        
+    let expectedKeySource = apiKey ? APIKeySource.User : APIKeySource.Smyth;
+
 
     isSupported("chatRequest") && it('should report usage for chatRequest', async () => {
         
@@ -174,6 +180,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
     isSupported("visionRequest") && it('should report usage for visionRequest', async () => {
        
@@ -186,6 +193,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
     isSupported("multimodalRequest") && it('should report usage for multimodalRequest', async () => {
        
@@ -198,6 +206,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
     isSupported("toolRequest") && it('should report usage for toolRequest', async () => {
         
@@ -227,6 +236,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
    
     isSupported("streamRequest") && it('should report usage for streamRequest', async () => {
@@ -256,6 +266,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
     isSupported("multimodalStreamRequest") && it('should report usage for multimodalStreamRequest', async () => {
      
@@ -269,6 +280,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
     isSupported("imageGenRequest") && it('should report usage for imageGenRequest', async () => {
        
@@ -284,5 +296,9 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
         expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
         expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
+        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
     });
+
+
+   
 });

@@ -74,7 +74,7 @@ export class VertexAIConnector extends LLMConnector {
             const result = await generativeModel.generateContent({ contents: messages });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
             const usage = result?.response?.usageMetadata;
-            this.reportUsage(usage, { model: modelParams.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: modelParams.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason: 'stop' };
         } catch (error) {

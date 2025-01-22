@@ -181,7 +181,7 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -276,7 +276,7 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -381,7 +381,7 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -443,7 +443,7 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result.response;
             const content = response.text();
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
 
@@ -569,7 +569,7 @@ export class GoogleAIConnector extends LLMConnector {
                 }
                 
                 if (usage) {
-                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
 
                 setTimeout(() => {
@@ -713,7 +713,7 @@ export class GoogleAIConnector extends LLMConnector {
                 }
 
                 if (usage) {
-                    this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
 
                 setTimeout(() => {

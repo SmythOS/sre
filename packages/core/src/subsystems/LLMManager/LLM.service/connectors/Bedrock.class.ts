@@ -97,7 +97,7 @@ export class BedrockConnector extends LLMConnector {
             const content = response.output?.message?.content?.[0]?.text;
             const usage = response.usage;
 
-            this.reportUsage(usage as any, { model: modelId, keySource: APIKeySource.User });
+            this.reportUsage(usage as any, { model: modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -157,7 +157,7 @@ export class BedrockConnector extends LLMConnector {
             const response = await client.send(command);
 
             const usage = response.usage;
-            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: APIKeySource.User });
+            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             const message = response.output?.message;
             const finishReason = response.stopReason;
@@ -318,7 +318,7 @@ export class BedrockConnector extends LLMConnector {
 
                         if (chunk?.metadata?.usage) {
                             const usage = chunk.metadata.usage;
-                            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: APIKeySource.User });
+                            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                         }
 
                         

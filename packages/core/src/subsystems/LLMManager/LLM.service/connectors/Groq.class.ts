@@ -82,7 +82,7 @@ export class GroqConnector extends LLMConnector {
             const finishReason = response.choices[0]?.finish_reason;
             const usage = response.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -120,7 +120,7 @@ export class GroqConnector extends LLMConnector {
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
             const usage = result.usage;
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -230,7 +230,7 @@ export class GroqConnector extends LLMConnector {
                 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 });
 
                 setTimeout(() => {

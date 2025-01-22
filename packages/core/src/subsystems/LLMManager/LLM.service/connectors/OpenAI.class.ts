@@ -110,7 +110,7 @@ export class OpenAIConnector extends LLMConnector {
             const usage = response?.usage as any;
 
             
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -185,7 +185,7 @@ export class OpenAIConnector extends LLMConnector {
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -259,7 +259,7 @@ export class OpenAIConnector extends LLMConnector {
 
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
@@ -354,7 +354,7 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const usage = result?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
             
 
             return {
@@ -449,11 +449,11 @@ export class OpenAIConnector extends LLMConnector {
                 useTool = true;
             }
 
-            usage_data.forEach((usage) => {
-                // probably we can acc them and send them as one event
-                //TODO: [AHMED] REVIST THE FORMULA USED HERE
-                this.reportUsage(usage, { model, keySource: APIKeySource.Smyth });
-            });
+            // usage_data.forEach((usage) => {
+            //     // probably we can acc them and send them as one event
+            //     
+            //     this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            // });
 
             message.tool_calls = toolsData.map((tool) => {
                 return {
@@ -549,7 +549,7 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 });
 
                 setTimeout(() => {
@@ -669,8 +669,7 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    //TODO: [AHMED] REVIST THE FORMULA USED HERE
-                    this.reportUsage(usage, { model: params.model, keySource: APIKeySource.Smyth });
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 });
 
                 setTimeout(() => {
