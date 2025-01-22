@@ -2,16 +2,21 @@ import Agent from './Agent.class';
 
 //this class handles Agent Server Sent Events
 export class AgentSSE {
-    constructor(private agent: Agent, private res?: any) {}
+    constructor(private agent: Agent, public res?: any) {}
 
     public updateRes(res: any) {
         this.res = res;
     }
 
-    public send(_type: string, data: any) {
-        if (!this.res || !_type || !data) return;
+    public async send(_type: string, _data: any) {
+        if (!this.res || !_type || !_data) return;
         this.res.write(`event: ${_type}\n`);
-        this.res.write(`data: ${typeof data === 'string' ? data : JSON.stringify(data)}\n\n`);
+        const data = typeof _data === 'string' ? _data : JSON.stringify(_data);
+        this.res.write(`data: ${data}\n\n`);
+    }
+
+    public async close() {
+        if (this.res) this.res.end();
     }
 }
 

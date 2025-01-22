@@ -14,6 +14,7 @@ import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { delay } from '@sre/utils/date-time.utils';
+import { EventSource } from 'eventsource';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -477,11 +478,6 @@ export class Conversation extends EventEmitter {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
                         }
 
-                        const passThroughContent = functionResponse?.passThroughContent;
-                        if (passThroughContent) {
-                            delete functionResponse.passThroughContent;
-                        }
-
                         functionResponse =
                             typeof functionResponse === 'object' && typeof functionResponse !== null
                                 ? JSON.stringify(functionResponse)
@@ -490,35 +486,18 @@ export class Conversation extends EventEmitter {
                         //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse);
 
-                        return { ...tool, result: functionResponse, passThroughContent };
+                        return { ...tool, result: functionResponse };
                     }
                 );
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
-
-                if (isDebugSession) {
-                    //in debug mode concurrentToolCalls is always set to 1, so we have only one tool response;
-                    const _passThroughContent = processedToolsData[0]?.passThroughContent;
-                    if (_passThroughContent) {
-                        delete processedToolsData[0]?.passThroughContent; //clean it from the tool call results
-                    }
-
-                    passThroughContent = _passThroughContent;
-                }
 
                 if (!passThroughContent) {
                     this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
                     this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
                 } else {
-                    if (isDebugSession) {
-                        //workaround : when debug mode is enabled we do not support true passthrough, we need to simulate it here
-                        const tokens = passThroughContent.split(' ');
-                        for (const token of tokens) {
-                            this.emit('agentCallback', token + ' ');
-                            await delay(100);
-                        }
-                    }
+                    //TODO : add passthrough content to the context window ??
 
                     //if passThroughContent is not empty, it means that the current agent streamed content through components
                     resolve(passThroughContent);
@@ -647,7 +626,8 @@ export class Conversation extends EventEmitter {
                 //TODO : implement a timeout for the tool call
                 if (
                     /*reqConfig.url.includes('localhost') || */
-                    reqConfig.headers['X-AGENT-ID']
+                    reqConfig.headers['X-AGENT-ID'] &&
+                    !reqConfig.headers['X-DEBUG']
                     //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
@@ -659,9 +639,40 @@ export class Conversation extends EventEmitter {
                     ).run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
+                    let eventSource;
+                    if (reqConfig.headers['X-DEBUG'] && reqConfig.headers['X-AGENT-ID']) {
+                        const monitUrl = reqConfig.url.split('/api')[0] + '/agent/' + reqConfig.headers['X-AGENT-ID'] + '/monitor';
+                        const eventSource = new EventSource(monitUrl);
+                        let monitorId = '';
+
+                        eventSource.addEventListener('init', (event) => {
+                            monitorId = event.data;
+                            console.log('monitorId', monitorId);
+                            reqConfig.headers['X-MONITOR-ID'] = monitorId;
+                        });
+                        eventSource.addEventListener('llm/passthrough', (event: any) => {
+                            if (params.agentCallback) params.agentCallback(event.data);
+                        });
+
+                        await new Promise((resolve) => {
+                            let maxTime = 5 * 1000; //5 seconds
+                            let itv = setInterval(() => {
+                                if (monitorId || maxTime <= 0) {
+                                    clearInterval(itv);
+                                    resolve(true);
+                                }
+                                maxTime -= 100;
+                            }, 100);
+                        });
+                    }
+
                     //if it's a remote agent, call the API via HTTP
                     const response = await axios.request(reqConfig);
 
+                    if (eventSource) {
+                        eventSource.close();
+                        console.log('eventSource closed');
+                    }
                     return { data: response.data, error: null };
                 }
             } catch (error: any) {

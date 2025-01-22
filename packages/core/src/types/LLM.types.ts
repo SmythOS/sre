@@ -73,7 +73,6 @@ export type ToolData = {
     result?: string; // result string from the used tool
     function?: any;
     error?: string; // for Bedrock
-    passThroughContent?: string; //smythOS specific
 };
 
 export interface AnthropicToolDefinition {
@@ -180,8 +179,6 @@ export enum TLLMProvider {
     Bedrock = 'Bedrock',
     VertexAI = 'VertexAI',
 }
-
-
 
 export interface ILLMContextStore {
     save(messages: any[]): Promise<void>;

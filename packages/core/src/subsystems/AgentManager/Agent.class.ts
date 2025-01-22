@@ -44,7 +44,7 @@ export default class Agent {
     public callback: (data: any) => void;
 
     public agentRequest: AgentRequest;
-    public agentSSE: AgentSSE;
+    public sse: AgentSSE;
     constructor(
         public id,
         agentData,
@@ -118,12 +118,16 @@ export default class Agent {
             this.setRequest(agentRequest);
         }
 
-        this.agentSSE = new AgentSSE(this);
+        this.sse = new AgentSSE(this);
         //this.settings = new AgentSettings(this.id);
     }
 
-    public setSSE(res: any) {
-        this.agentSSE.updateRes(res);
+    public setSSE(sseSource: Response | AgentSSE) {
+        if (sseSource instanceof AgentSSE) {
+            this.sse = sseSource;
+        } else {
+            this.sse.updateRes(sseSource);
+        }
     }
     public setRequest(agentRequest: AgentRequest | any) {
         if (this.agentRequest) return;
@@ -171,6 +175,18 @@ export default class Agent {
         let dbgSession: any = null;
         let sessionClosed = false;
 
+        const eventId = 'e-' + uid();
+        const startTime = Date.now();
+
+        this.sse.send('agent', {
+            eventId,
+            action: 'callStart',
+            endpointPath,
+            id: this.id,
+            name: this.name,
+            startTime,
+            input,
+        });
         //this.agentRuntime.checkRuntimeContext();
         //insert log
         const logId = AgentLogger.log(this, null, {
@@ -192,6 +208,7 @@ export default class Agent {
         if (this.agentRuntime.debug) {
             if (!endpoint && this.agentRequest.path != '/api/') {
                 if (logId) AgentLogger.log(this, logId, { error: `Endpoint ${method} ${endpointPath} Not Found` });
+
                 throw new Error(`Endpoint ${method} ${endpointPath} Not Found`);
             }
             let dbgResult: any;
@@ -213,6 +230,20 @@ export default class Agent {
 
         if (!endpoint) {
             if (logId) AgentLogger.log(this, logId, { error: `Endpoint ${method} ${endpointPath} Not Found` });
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            this.sse.send('agent', {
+                eventId,
+                action: 'callStop',
+                endpointPath,
+                id: this.id,
+                name: this.name,
+                startTime,
+                endTime,
+                duration,
+                input,
+                error: `Endpoint ${method} ${endpointPath} Not Found`,
+            });
             throw new Error(`Endpoint ${method} ${endpointPath} Not Found`);
         }
 
@@ -229,6 +260,20 @@ export default class Agent {
         } while (!step?.finalResult && !this._kill);
 
         if (this._kill) {
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            this.sse.send('agent', {
+                eventId,
+                action: 'callStop',
+                endpointPath,
+                id: this.id,
+                name: this.name,
+                startTime,
+                endTime,
+                duration,
+                input,
+                error: 'Agent killed',
+            });
             console.warn(`Agent ${this.id} was killed`);
             return { error: 'Agent killed' };
         }
@@ -238,12 +283,43 @@ export default class Agent {
         if (this.agentRuntime.circularLimitReached) {
             const circularLimitData = this.agentRuntime.circularLimitReached;
             result = { error: `Circular Calls Limit Reached on ${circularLimitData}. Current circular limit is ${this.circularLimit}` };
+
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            this.sse.send('agent', {
+                eventId,
+                action: 'callStop',
+                endpointPath,
+                id: this.id,
+                name: this.name,
+                startTime,
+                endTime,
+                duration,
+                input,
+                error: result.error,
+            });
+
             throw new Error(`Circular Calls Limit Reached on ${circularLimitData}. Current circular limit is ${this.circularLimit}`);
         }
 
         if (logId) AgentLogger.log(this, logId, { outputTimestamp: '' + Date.now(), result });
 
         this.updateTasksCount(); //Important, don't use await here, we need the call to be non blocking
+
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        this.sse.send('agent', {
+            eventId,
+            action: 'callStop',
+            endpointPath,
+            id: this.id,
+            name: this.name,
+            startTime,
+            endTime,
+            duration,
+            input,
+            result,
+        });
 
         //FIXME: does debug call ever reach this point ?
         return this.agentRuntime.debug ? { state: result, dbgSession, sessionClosed } : result;
@@ -401,22 +477,84 @@ export default class Agent {
     }
 
     async callComponent(sourceId, componentId, input?) {
+        const startTime = Date.now();
         const agentRuntime = this.agentRuntime;
         const componentData = this.components[componentId];
         const component: Component = componentInstance[componentData.name];
 
+        const eventId = 'e-' + uid();
+
+        this.sse.send('component', {
+            eventId,
+            action: 'callStart',
+            sourceId,
+            id: componentId,
+            name: componentData.displayName,
+            title: componentData.title,
+            startTime,
+            input,
+        });
+
         if (this._kill) {
             console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`);
-            return { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
+
+            const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
+
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            this.sse.send('component', {
+                eventId,
+                action: 'callStop',
+                sourceId,
+                id: componentId,
+                name: componentData.displayName,
+                title: componentData.title,
+                startTime,
+                endTime,
+                duration,
+                output,
+            });
+
+            return output;
         }
 
         if (!component) {
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+
+            this.sse.send('component', {
+                eventId,
+                action: 'callStop',
+                sourceId,
+                id: componentId,
+                name: componentData.displayName,
+                title: componentData.title,
+                startTime,
+                endTime,
+                duration,
+                output: { error: 'Component not found' },
+            });
             throw new Error(`Component ${componentData.name} not found`);
         }
 
         this.agentRuntime.incTag(componentId);
         this.agentRuntime.checkCircularLimit();
         if (this.agentRuntime.circularLimitReached) {
+            const endTime = Date.now();
+            const duration = endTime - startTime;
+            this.sse.send('component', {
+                eventId,
+                action: 'callStop',
+                sourceId,
+                id: componentId,
+                name: componentData.displayName,
+                title: componentData.title,
+                startTime,
+                endTime,
+                duration,
+                output: { error: 'Circular Calls Reached' },
+            });
+
             return { error: `Circular Calls Reached` };
         }
 
@@ -512,7 +650,22 @@ export default class Agent {
                 //update log
                 AgentLogger.log(this, logId, { error: output.error || output._error });
             }
-            if (output.error)
+            if (output.error) {
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                this.sse.send('component', {
+                    eventId,
+                    action: 'callStop',
+                    sourceId,
+                    id: componentId,
+                    name: componentData.displayName,
+                    title: componentData.title,
+                    startTime,
+                    endTime,
+                    duration,
+                    output: { error: output.error || output._error },
+                });
+
                 return [
                     {
                         id: componentData.id,
@@ -522,6 +675,7 @@ export default class Agent {
                         _debug: output.error || output._error,
                     },
                 ];
+            }
         }
 
         let results: any = [];
@@ -606,6 +760,22 @@ export default class Agent {
         }
 
         //return this.agentRuntime.debug ? [results, { id: componentData.id, name: componentData.name, result: output }] : results;
+
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        this.sse.send('component', {
+            eventId,
+            action: 'callStop',
+            sourceId,
+            id: componentId,
+            name: componentData.displayName,
+            title: componentData.title,
+            startTime,
+            endTime,
+            duration,
+            output,
+        });
+
         return [results, { id: componentData.id, name: componentData.displayName, result: output }];
     }
     JSONExpression(obj, propertyString) {

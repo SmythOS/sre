@@ -99,7 +99,6 @@ export class AgentProcess {
     ): Promise<{
         status?: number;
         data: any;
-        passThroughContent?: string;
     }> {
         await this.ready();
         if (!this.agent) throw new Error('Failed to load agent');
@@ -107,14 +106,8 @@ export class AgentProcess {
 
         this.agent.setRequest(request);
 
-        let passThroughContent = '';
         if (typeof callback === 'function') {
             this.agent.setCallback(callback);
-        } else {
-            //passThroughContent is used as a workaround to collect passthrough data and pass it to remote agent debugger
-            this.agent.setCallback((data) => {
-                passThroughContent += data;
-            });
         }
 
         const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
@@ -125,7 +118,7 @@ export class AgentProcess {
         const input = request.method == 'GET' ? request.query : request.body;
         const result: any = await this.agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
-        return { data: result, passThroughContent: passThroughContent || undefined };
+        return { data: result };
     }
 
     public reset() {
