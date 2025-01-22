@@ -599,7 +599,7 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+    tags: ['deprecated'],
   },
   'claude-3-sonnet-20240229': {
     llm: 'Anthropic',
