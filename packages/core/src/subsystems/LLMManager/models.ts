@@ -19,7 +19,7 @@ export const models = {
     tokens: 128_000,
     completionTokens: 16_383,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/gpt-4o': {
     label: 'GPT 4o',
@@ -31,7 +31,7 @@ export const models = {
     tokens: 128_000,
     completionTokens: 16_384,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/o1': {
     label: 'GPT o1',
@@ -43,7 +43,7 @@ export const models = {
     tokens: 200_000,
     completionTokens: 100_000,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/o1-mini': {
     label: 'GPT o1 mini',
@@ -55,7 +55,7 @@ export const models = {
     tokens: 128_000,
     completionTokens: 65_536,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion OpenAI
 
@@ -70,7 +70,7 @@ export const models = {
     tokens: 200_000,
     completionTokens: 8_192,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/claude-3.5-haiku': {
     label: 'Claude 3.5 Haiku',
@@ -82,7 +82,7 @@ export const models = {
     tokens: 200_000,
     completionTokens: 8_192,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion Anthropic
 
@@ -97,7 +97,7 @@ export const models = {
     tokens: 1_048_576,
     completionTokens: 8_192,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/gemini-1.5-pro': {
     label: 'Gemini 1.5 Pro',
@@ -109,7 +109,7 @@ export const models = {
     tokens: 2_097_152,
     completionTokens: 8_192,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion Google AI
 
@@ -124,7 +124,7 @@ export const models = {
     tokens: 8_192,
     completionTokens: 8_192,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
 
   'smythos/llama-3.3-70b': {
@@ -137,7 +137,7 @@ export const models = {
     tokens: 128_000,
     completionTokens: 32_768,
     enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion Groq
 
@@ -156,7 +156,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
   },
   'user/gpt-4o': {
@@ -169,7 +169,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
   },
   'user/o1': {
@@ -182,7 +182,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   'user/o1-mini': {
@@ -195,7 +195,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
   },
   // #endregion OpenAI
@@ -211,7 +211,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
   },
   'user/claude-3.5-haiku': {
@@ -224,7 +224,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
   },
   // #endregion Anthropic
@@ -240,7 +240,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
   },
   'user/gemini-1.5-pro': {
@@ -253,7 +253,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 2_097_152, completionTokens: 8_192, enabled: true },
   },
   // #endregion Google AI
@@ -269,7 +269,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 8_192, completionTokens: 8_192, enabled: true },
   },
 
@@ -283,7 +283,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 && !isDev,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
     keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
   },
   // #endregion Groq
@@ -599,7 +599,7 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+    tags: ['deprecated'],
   },
   'claude-3-sonnet-20240229': {
     llm: 'Anthropic',

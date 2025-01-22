@@ -183,18 +183,19 @@ export default class GenAILLM extends Component {
 function parseFiles(input: any, config: any) {
     const mediaTypes = ['Image', 'Audio', 'Video', 'Binary'];
 
-    // Parse Files array/object
-    const inputFiles = Array.isArray(input?.Attachment)
-        ? input.Attachment.map((file) => TemplateString(file).parseRaw(input).result)
-        : input?.Attachment
-        ? [TemplateString(input.Attachment).parseRaw(input).result]
-        : [];
-
     // Parse media inputs from config
-    const mediaFiles =
+    const inputFiles =
         config.inputs
             ?.filter((_input) => mediaTypes.includes(_input.type))
-            ?.map((_input) => TemplateString(input[_input.name]).parseRaw(input).result) || [];
+            ?.flatMap((_input) => {
+                const value = input[_input.name];
 
-    return [...inputFiles, ...mediaFiles];
+                if (Array.isArray(value)) {
+                    return value.map((item) => TemplateString(item).parseRaw(input).result);
+                } else {
+                    return TemplateString(value).parseRaw(input).result;
+                }
+            }) || [];
+
+    return inputFiles;
 }
