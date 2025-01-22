@@ -5,6 +5,7 @@ import {
     ConverseStreamCommandInput,
     ConverseStreamCommand,
     ConverseStreamCommandOutput,
+    TokenUsage,
 } from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
@@ -12,13 +13,14 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('BedrockConnector');
 
@@ -93,6 +95,9 @@ export class BedrockConnector extends LLMConnector {
 
             const response = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
+            const usage = response.usage;
+
+            this.reportUsage(usage as any, { model: modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -150,6 +155,9 @@ export class BedrockConnector extends LLMConnector {
 
             const command = new ConverseCommand(converseCommandInput);
             const response = await client.send(command);
+
+            const usage = response.usage;
+            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             const message = response.output?.message;
             const finishReason = response.stopReason;
@@ -231,6 +239,8 @@ export class BedrockConnector extends LLMConnector {
             const response: ConverseStreamCommandOutput = await client.send(command);
             const stream = response.stream;
 
+            
+
             if (stream) {
                 (async () => {
                     let currentMessage = {
@@ -242,6 +252,9 @@ export class BedrockConnector extends LLMConnector {
                     };
 
                     for await (const chunk of stream) {
+                        
+                        
+
                         // Handle message start
                         if (chunk.messageStart) {
                             currentMessage.role = chunk.messageStart.role || '';
@@ -292,6 +305,8 @@ export class BedrockConnector extends LLMConnector {
                             currentMessage.currentToolInput = '';
                         }
 
+                       
+
                         // Handle message completion
                         if (chunk.messageStop) {
                             if (currentMessage.toolCalls.length > 0) {
@@ -299,6 +314,14 @@ export class BedrockConnector extends LLMConnector {
                             }
                             emitter.emit('end', currentMessage.toolCalls);
                         }
+
+
+                        if (chunk?.metadata?.usage) {
+                            const usage = chunk.metadata.usage;
+                            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                        }
+
+                        
                     }
                 })();
             }
@@ -443,6 +466,18 @@ export class BedrockConnector extends LLMConnector {
                 role: message.role,
                 content: textBlock,
             };
+        });
+    }
+
+    protected reportUsage(usage: TokenUsage & { cacheReadInputTokenCount: number, cacheWriteInputTokenCount: number }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage.inputTokens,
+            output_tokens: usage.outputTokens,
+            input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
+            input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
+            llm_provider: "Bedrock",
+            model: metadata.model,
+            keySource: metadata.keySource,
         });
     }
 }
