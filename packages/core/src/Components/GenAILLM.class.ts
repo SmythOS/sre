@@ -8,6 +8,7 @@ import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { SUPPORTED_FILE_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
+import { formatDataForDebug } from '@sre/utils/data.utils';
 
 //TODO : better handling of context window exceeding max length
 
@@ -96,7 +97,7 @@ export default class GenAILLM extends Component {
             logger.debug(` Prompt\n`, prompt, '\n');
 
             if (!isEcho) {
-                logger.debug(' Files\n', fileSources);
+                logger.debug(' Files\n', await Promise.all(fileSources.map((file) => formatDataForDebug(file))));
             }
 
             // default to json response format
