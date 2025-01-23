@@ -33,7 +33,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'GenAILLM'],
     tags: ['new'],
   },
   'ai21.jamba-1-5-large-v1:0': {
@@ -43,7 +43,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin'],
+    components: ['PromptGenerator', 'LLMAssistant', 'AgentPlugin', 'GenAILLM'],
     tags: ['new'],
   },
   'ai21.jamba-instruct-v1:0': {
@@ -53,7 +53,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'ai21.j2-ultra-v1': {
     llm: 'Bedrock',
@@ -62,7 +62,7 @@ export const customModels = {
     completionTokens: 8191,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'ai21.j2-mid-v1': {
     llm: 'Bedrock',
@@ -71,7 +71,7 @@ export const customModels = {
     completionTokens: 8191,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   //#endregion AI21 Labs Models
 
@@ -83,7 +83,7 @@ export const customModels = {
     completionTokens: 3000,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'amazon.titan-text-express-v1': {
     llm: 'Bedrock',
@@ -92,7 +92,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'amazon.titan-text-lite-v1': {
     llm: 'Bedrock',
@@ -101,7 +101,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   // 'Amazon - Titan Embeddings G1 - Text': { alias: 'amazon.titan-embed-text-v1' }, // Converse API doesn't support
   // 'Amazon - Titan Embedding Text v2': { alias: 'amazon.titan-embed-text-v2:0' }, // Converse API doesn't support
@@ -181,7 +181,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
     tags: ['v2:1'],
   },
   'anthropic.claude-v2': {
@@ -191,7 +191,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'anthropic.claude-instant-v1': {
     llm: 'Bedrock',
@@ -200,7 +200,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   //#endregion Anthropic Models
 
@@ -230,7 +230,7 @@ export const customModels = {
     completionTokens: 4000, // Found 4000 Max tokens in the Playground
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'cohere.command-light-text-v14': {
     llm: 'Bedrock',
@@ -239,7 +239,7 @@ export const customModels = {
     completionTokens: 4000, // Found 4000 Max tokens in the Playground
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   // 'Cohere - Embed English': { alias: 'cohere.embed-english-v3' }, // Converse API doesn't support
   // 'Cohere - Embed Multilingual': { alias: 'cohere.embed-multilingual-v3' }, // Converse API doesn't support
@@ -256,7 +256,7 @@ export const customModels = {
     completionTokens: 2048,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
     tags: ['new'],
   },
   'us.meta.llama3-2-3b-instruct-v1:0': {
@@ -266,7 +266,7 @@ export const customModels = {
     completionTokens: 2048,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
     tags: ['new'],
   },
   'meta.llama3-8b-instruct-v1:0': {
@@ -276,7 +276,7 @@ export const customModels = {
     completionTokens: 2048,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'meta.llama3-70b-instruct-v1:0': {
     llm: 'Bedrock',
@@ -285,7 +285,7 @@ export const customModels = {
     completionTokens: 2048,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   // 'Meta - Llama 3.1 8B Instruct': { alias: 'meta.llama3-1-8b-instruct-v1:0' }, // The provided model identifier is invalid.
   // 'Meta - Llama 3.1 70B Instruct': { alias: 'meta.llama3-1-70b-instruct-v1:0' }, // The provided model identifier is invalid.
@@ -301,7 +301,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'mistral.mixtral-8x7b-instruct-v0:1': {
     llm: 'Bedrock',
@@ -310,7 +310,7 @@ export const customModels = {
     completionTokens: 4096,
     supportsSystemPrompt: false,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'mistral.mistral-large-2402-v1:0': {
     llm: 'Bedrock',
@@ -319,7 +319,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   // 'Mistral AI - Mistral Large 2 (24.07)' : { alias: 'mistral.mistral-large-2407-v1:0' } // The provided model identifier is invalid.
   'mistral.mistral-small-2402-v1:0': {
@@ -329,7 +329,7 @@ export const customModels = {
     completionTokens: 8192,
     supportsSystemPrompt: true,
     supportsStreamingToolUse: false,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   //#endregion Mistral Models
 
@@ -357,7 +357,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 1048576,
     completionTokens: 8192,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'gemini-1.5-pro': {
     llm: 'VertexAI',
@@ -365,7 +365,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 2097152,
     completionTokens: 8192,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'gemini-1.0-pro': {
     llm: 'VertexAI',
@@ -373,7 +373,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 32760,
     completionTokens: 8192,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-5-haiku': {
     llm: 'VertexAI',
@@ -382,7 +382,7 @@ export const customModels = {
     tokens: 200000,
     completionTokens: 8192,
     tags: ['new'],
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-5-sonnet-v2': {
     llm: 'VertexAI',
@@ -391,7 +391,7 @@ export const customModels = {
     tokens: 200000,
     completionTokens: 8192,
     tags: ['v2', 'new'],
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-5-sonnet': {
     llm: 'VertexAI',
@@ -400,7 +400,7 @@ export const customModels = {
     tokens: 200000,
     completionTokens: 8192,
     tags: ['v1'],
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-sonnet': {
     llm: 'VertexAI',
@@ -408,7 +408,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 200000,
     completionTokens: 4096,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-opus': {
     llm: 'VertexAI',
@@ -416,7 +416,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 200000,
     completionTokens: 4096,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'claude-3-haiku': {
     llm: 'VertexAI',
@@ -424,7 +424,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 200000,
     completionTokens: 4096,
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   gemma2: {
     llm: 'VertexAI',
@@ -432,7 +432,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192, // @Ref https://huggingface.co/blog/gemma2
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma2?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   gemma: {
     llm: 'VertexAI',
@@ -440,7 +440,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192, // @Ref https://huggingface.co/blog/gemma2
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/gemma?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   codegemma: {
     llm: 'VertexAI',
@@ -448,7 +448,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192, // @Ref - https://huggingface.co/google/gemma-7b-it/discussions/73
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/codegemma?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'llama3-405b-instruct-maas': {
     llm: 'VertexAI',
@@ -456,7 +456,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // @Ref - https://docs.together.ai/docs/chat-models
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3-405b-instruct-maas?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   llama3_1: {
     llm: 'VertexAI',
@@ -464,7 +464,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // by querying with Gemini - https://gemini.google.com/
     completionTokens: 4096, // by querying with Gemini - https://gemini.google.com/
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'llama-guard': {
     llm: 'VertexAI',
@@ -472,7 +472,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192, // @Ref - by querying with Gemini - https://gemini.google.com/
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama-guard?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   llama3: {
     llm: 'VertexAI',
@@ -480,7 +480,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 8192, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama3?_ga=2.79473366.358158393.1724662649-247251619.1697981116&authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   llama2: {
     llm: 'VertexAI',
@@ -489,7 +489,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/meta/model-garden/llama2?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'mistral-large': {
     llm: 'VertexAI',
@@ -497,7 +497,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 128000, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-large?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 8192, // Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'mistral-nemo': {
     llm: 'VertexAI',
@@ -505,7 +505,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 128000, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/mistral-nemo?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 8192, // Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   codestral: {
     llm: 'VertexAI',
@@ -513,7 +513,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 32000, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistralai/model-garden/codestral?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 4096, // Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   mixtral: {
     llm: 'VertexAI',
@@ -521,7 +521,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 32000, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 4096, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/mistral-ai/model-garden/mixtral?authuser=1&project=opt-smythos-vertexia-432522
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'chat-bison': {
     llm: 'VertexAI',
@@ -529,7 +529,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // @Ref - by querying with Gemini - https://gemini.google.com/
     completionTokens: 2048, // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/chat?model=chat-bison@002&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'text-bison': {
     llm: 'VertexAI',
@@ -537,7 +537,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 32768, // by querying with Gemini - https://gemini.google.com/
     completionTokens: 2048, // @Ref - https://console.cloud.google.com/vertex-ai/generative/language/create/text?model=text-bison@001&authuser=1&project=opt-smythos-vertexia-432522 [Playground]
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   phi3: {
     llm: 'VertexAI',
@@ -545,7 +545,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 128000, // @Ref - https://console.cloud.google.com/vertex-ai/publishers/microsoft/model-garden/phi3?authuser=1&project=opt-smythos-vertexia-432522
     completionTokens: 8192, // Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   qwen2: {
     llm: 'VertexAI',
@@ -553,7 +553,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 131072, // @Ref - https://huggingface.co/Qwen/Qwen2-72B-Instruct
     completionTokens: 8192, // Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   mammut: {
     llm: 'VertexAI',
@@ -561,7 +561,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // @Ref - by querying with Gemini - https://gemini.google.com/
     completionTokens: 2048, // @Ref - by querying with Gemini - https://gemini.google.com/
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'lmsys-vicuna-7b': {
     llm: 'VertexAI',
@@ -569,7 +569,7 @@ export const customModels = {
     supportsSystemPrompt: true,
     tokens: 4096, // @Ref - https://docs.together.ai/docs/chat-models
     completionTokens: 2048, // @Ref - Guessing from the context window (tokens)
-    components: ['PromptGenerator', 'LLMAssistant'],
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
   },
   'bio-gpt': {
     llm: 'VertexAI',
@@ -577,7 +577,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'microsoft-biomedclip': {
     llm: 'VertexAI',
@@ -585,7 +585,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   mistral: {
     llm: 'VertexAI',
@@ -593,7 +593,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   nllb: {
     llm: 'VertexAI',
@@ -601,7 +601,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'codellama-7b-hf': {
     llm: 'VertexAI',
@@ -609,7 +609,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'palmyra-med': {
     llm: 'VertexAI',
@@ -617,7 +617,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'llama-2-quantized': {
     llm: 'VertexAI',
@@ -625,7 +625,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'bert-base-uncased': {
     llm: 'VertexAI',
@@ -633,7 +633,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'falcon-instruct-7b-peft': {
     llm: 'VertexAI',
@@ -641,7 +641,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   openllama: {
     llm: 'VertexAI',
@@ -649,7 +649,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'roberta-large': {
     llm: 'VertexAI',
@@ -657,7 +657,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'xlm-roberta-large': {
     llm: 'VertexAI',
@@ -665,7 +665,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'bart-large-cnn': {
     llm: 'VertexAI',
@@ -673,7 +673,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'dolly-v2': {
     llm: 'VertexAI',
@@ -681,7 +681,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   imagetext: {
     llm: 'VertexAI',
@@ -689,7 +689,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'codechat-bison': {
     llm: 'VertexAI',
@@ -697,7 +697,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'code-bison': {
     llm: 'VertexAI',
@@ -705,7 +705,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'code-gecko': {
     llm: 'VertexAI',
@@ -713,7 +713,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'text-unicorn': {
     llm: 'VertexAI',
@@ -721,7 +721,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'textembedding-gecko': {
     llm: 'VertexAI',
@@ -729,7 +729,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   't5-flan': {
     llm: 'VertexAI',
@@ -737,7 +737,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   't5-1.1': {
     llm: 'VertexAI',
@@ -745,7 +745,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'blip2-opt-2.7-b': {
     llm: 'VertexAI',
@@ -753,7 +753,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'instruct-pix2pix': {
     llm: 'VertexAI',
@@ -761,7 +761,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'bert-base': {
     llm: 'VertexAI',
@@ -769,7 +769,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'mediapipe-mobile-bert-classifier': {
     llm: 'VertexAI',
@@ -777,7 +777,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'mediapipe-average-word-embedding-classifier': {
     llm: 'VertexAI',
@@ -785,7 +785,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   pic2word: {
     llm: 'VertexAI',
@@ -793,7 +793,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'text-translation': {
     llm: 'VertexAI',
@@ -801,7 +801,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'language-v1-moderate-text': {
     llm: 'VertexAI',
@@ -809,7 +809,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'language-v1-analyze-syntax': {
     llm: 'VertexAI',
@@ -817,7 +817,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'language-v1-analyze-entity-sentiment': {
     llm: 'VertexAI',
@@ -825,7 +825,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'language-v1-analyze-sentiment': {
     llm: 'VertexAI',
@@ -833,7 +833,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'language-v1-classify-text-v1': {
     llm: 'VertexAI',
@@ -841,7 +841,7 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
   'pt-test': {
     llm: 'VertexAI',
@@ -849,6 +849,6 @@ export const customModels = {
     supportsSystemPrompt: false,
     tokens: 4096, // Guessed value, no reference
     completionTokens: 4096, // Guessed value, no reference
-    components: ['PromptGenerator'],
+    components: ['PromptGenerator', 'GenAILLM'],
   },
 };
