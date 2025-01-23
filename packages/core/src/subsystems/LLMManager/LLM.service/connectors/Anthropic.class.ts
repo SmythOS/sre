@@ -43,7 +43,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
-            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
 
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
@@ -63,7 +63,6 @@ export class AnthropicConnector extends LLMConnector {
             model: params.model,
             messages: messages as Anthropic.MessageParam[],
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
-
         };
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
@@ -114,7 +113,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
-            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
         //#endregion Separate system message and add JSON response instruction if needed
@@ -135,6 +134,8 @@ export class AnthropicConnector extends LLMConnector {
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
         };
 
+        if (systemPrompt) messageCreateArgs.system = systemPrompt;
+
         if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
         if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
@@ -146,8 +147,10 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
+            if (responseFormat === 'json') {
+                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
+            }
 
-            
             this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
@@ -178,7 +181,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
-            systemPrompt += JSON_RESPONSE_INSTRUCTION;
+            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
         //#endregion Separate system message and add JSON response instruction if needed
@@ -199,6 +202,8 @@ export class AnthropicConnector extends LLMConnector {
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
         };
 
+        if (systemPrompt) messageCreateArgs.system = systemPrompt;
+
         if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
         if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
@@ -209,6 +214,10 @@ export class AnthropicConnector extends LLMConnector {
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
+
+            if (responseFormat === 'json') {
+                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
+            }
 
             this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
@@ -287,9 +296,8 @@ export class AnthropicConnector extends LLMConnector {
 
             const content = (result?.content?.[0] as Anthropic.TextBlock)?.text;
 
-
             const usage = result?.usage;
-           
+
             this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return {
@@ -434,12 +442,11 @@ export class AnthropicConnector extends LLMConnector {
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
 
-                    
-                    
-                    this.reportUsage(usage, { model: params?.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params?.model,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    });
                 }
-
-                
 
                 //only emit end event after processing the final message
                 setTimeout(() => {
@@ -474,12 +481,6 @@ export class AnthropicConnector extends LLMConnector {
             systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
         }
         messages = otherMessages;
-
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            systemPrompt += JSON_RESPONSE_INSTRUCTION;
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
-        }
         //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = params?.credentials?.apiKey;
@@ -497,6 +498,8 @@ export class AnthropicConnector extends LLMConnector {
             messages,
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
         };
+
+        if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
         if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
@@ -559,10 +562,11 @@ export class AnthropicConnector extends LLMConnector {
                         prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
-                    
-                    
-                    
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    });
                 }
                 //only emit end event after processing the final message
                 setTimeout(() => {
@@ -782,7 +786,10 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number, cache_read_input_tokens?: number }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
+        metadata: { model: string; keySource: APIKeySource }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,

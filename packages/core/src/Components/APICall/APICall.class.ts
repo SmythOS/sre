@@ -10,7 +10,7 @@ import { parseProxy } from './parseProxy';
 import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
 import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHeaders } from './OAuth.helper';
 import { SocksProxyAgent } from 'socks-proxy-agent';
-import { isBuffer } from '@sre/utils';
+import { formatDataForDebug } from '@sre/utils/data.utils';
 
 export default class APICall extends Component {
     protected configSchema = Joi.object({
@@ -76,7 +76,7 @@ export default class APICall extends Component {
             if (data) {
                 reqConfig.data = data;
 
-                dataForDebug = getDebugData(data);
+                dataForDebug = await formatDataForDebug(data);
             }
 
             reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });
@@ -136,20 +136,4 @@ export default class APICall extends Component {
             }
         }
     }
-}
-
-// Mask data like Buffer, FormData, etc. in debug output
-// TODO [Forhad]: Need to apply same thing for Base64, etc.
-function getDebugData(data: any) {
-    let dataForDebug;
-
-    if (isBuffer(data)) {
-        dataForDebug = `[Buffer size=${data.length}]`;
-    } else if (data.constructor.name === 'FormData') {
-        dataForDebug = `[FormData]`;
-    } else {
-        dataForDebug = data;
-    }
-
-    return dataForDebug;
 }
