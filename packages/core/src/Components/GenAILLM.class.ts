@@ -197,7 +197,8 @@ function parseFiles(input: any, config: any) {
                 } else {
                     return TemplateString(value).parseRaw(input).result;
                 }
-            }) || [];
+            })
+            ?.filter((file) => file) || [];
 
     return inputFiles;
 }
