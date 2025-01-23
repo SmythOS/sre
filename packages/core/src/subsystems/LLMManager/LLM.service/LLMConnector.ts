@@ -13,6 +13,7 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { TBedrockModel, TVertexAIModel } from '@sre/types/LLM.types';
+import config from '@sre/config';
 
 const console = Logger('LLMConnector');
 
@@ -41,12 +42,12 @@ export type ImagesResponse = {
 };
 
 const SMYTHOS_API_KEYS = {
-    openai: process.env.OPENAI_API_KEY,
-    anthropic: process.env.ANTHROPIC_API_KEY,
-    googleai: process.env.GOOGLE_AI_API_KEY,
-    togetherai: process.env.TOGETHER_AI_API_KEY,
-    groq: process.env.GROQ_API_KEY,
-    xai: process.env.XAI_API_KEY,
+    openai: config.env.OPENAI_API_KEY,
+    anthropic: config.env.ANTHROPIC_API_KEY,
+    googleai: config.env.GOOGLE_AI_API_KEY,
+    togetherai: config.env.TOGETHER_AI_API_KEY,
+    groq: config.env.GROQ_API_KEY,
+    xai: config.env.XAI_API_KEY,
 };
 
 export class LLMStream extends Readable {
@@ -96,7 +97,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
-    protected abstract reportUsage(usage: any, metadata: {model: string, keySource: APIKeySource}): void;
+    protected abstract reportUsage(usage: any, metadata: { model: string; keySource: APIKeySource }): void;
 
     private vaultConnector: VaultConnector;
 
@@ -228,7 +229,9 @@ export abstract class LLMConnector extends Connector {
             const llmProvider = LLMRegistry.getProvider(model);
 
             if (LLMRegistry.isSmythOSModel(model)) {
-                _params.credentials = SMYTHOS_API_KEYS?.[llmProvider] || '';
+                _params.credentials = {
+                    apiKey: SMYTHOS_API_KEYS?.[llmProvider] || '',
+                };
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
