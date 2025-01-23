@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { FunctionCallingMode } from '@google/generative-ai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { LLMModel, LLMProvider } from '@sre/LLMManager/models';
 
 export type TLLMParams = {
     model: string;
@@ -13,6 +14,7 @@ export type TLLMParams = {
               keyId?: string; // for Bedrock
               secretKey?: string; // for Bedrock
               sessionKey?: string; // for Bedrock
+              isUserKey?: boolean; // for Bedrock
           };
 
     messages?: any[]; // TODO [Forhad]: apply proper typing
@@ -182,4 +184,20 @@ export interface ILLMContextStore {
     save(messages: any[]): Promise<void>;
     load(count?: number): Promise<any[]>;
     getMessage(message_id: string): Promise<any[]>;
+}
+
+export enum APIKeySource {
+    Smyth = 'smyth-managed',
+    User = 'user-managed',
+    Custom = 'custom',
+}
+
+export interface SmythLLMUsage {
+    input_tokens: number;
+    input_tokens_cache_write: number;
+    input_tokens_cache_read: number;
+    output_tokens: number;
+    llm_provider: LLMProvider;
+    model: LLMModel | string;
+    keySource?: APIKeySource;
 }

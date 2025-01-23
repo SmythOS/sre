@@ -5,10 +5,11 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('GroqConnector');
 
@@ -76,9 +77,12 @@ export class GroqConnector extends LLMConnector {
         if (params.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
         try {
-            const response: any = await groq.chat.completions.create(chatCompletionArgs);
+            const response = await groq.chat.completions.create(chatCompletionArgs);
             const content = response.choices[0]?.message?.content;
             const finishReason = response.choices[0]?.finish_reason;
+            const usage = response.usage;
+
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -115,6 +119,8 @@ export class GroqConnector extends LLMConnector {
             const result = await groq.chat.completions.create(chatCompletionArgs as any); // TODO [Forhad]: apply proper typing
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
+            const usage = result.usage;
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -153,6 +159,7 @@ export class GroqConnector extends LLMConnector {
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
+        const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
 
         const groq = new Groq({ apiKey });
@@ -166,10 +173,12 @@ export class GroqConnector extends LLMConnector {
             tools?: any; // TODO [Forhad]: apply proper typing
             tool_choice?: any; // TODO [Forhad]: apply proper typing
             stream?: boolean;
+            stream_options?: { include_usage: boolean };
         } = {
             model: params.model,
             messages,
             stream: true,
+            stream_options: { include_usage: true }
         };
 
         if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
@@ -184,7 +193,13 @@ export class GroqConnector extends LLMConnector {
 
             (async () => {
                 for await (const chunk of stream as any) {
+                    
                     const delta = chunk.choices[0]?.delta;
+                    const usage = chunk['x_groq']?.usage || chunk['usage'];
+                    
+                    if (usage) {
+                        usage_data.push(usage);
+                    }
                     emitter.emit('data', delta);
 
                     if (delta?.content) {
@@ -212,6 +227,11 @@ export class GroqConnector extends LLMConnector {
                 if (toolsData.length > 0) {
                     emitter.emit('toolsData', toolsData);
                 }
+                
+                usage_data.forEach((usage) => {
+                    // probably we can acc them and send them as one event
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                });
 
                 setTimeout(() => {
                     emitter.emit('end', toolsData);
@@ -271,6 +291,18 @@ export class GroqConnector extends LLMConnector {
             _message.content = textContent;
 
             return _message;
+        });
+    }
+
+    protected reportUsage(usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
+            output_tokens: usage?.completion_tokens,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            llm_provider: 'Groq',
+            model: metadata.model,
+            keySource: metadata.keySource,
         });
     }
 }

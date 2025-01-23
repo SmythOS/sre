@@ -5,7 +5,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData, TLLMProvider } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData, TLLMProvider, APIKeySource } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
@@ -96,6 +96,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
+    protected abstract reportUsage(usage: any, metadata: {model: string, keySource: APIKeySource}): void;
 
     private vaultConnector: VaultConnector;
 

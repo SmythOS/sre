@@ -7,13 +7,14 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource } from '@sre/types/LLM.types';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('AnthropicConnector');
 
@@ -62,6 +63,7 @@ export class AnthropicConnector extends LLMConnector {
             model: params.model,
             messages: messages as Anthropic.MessageParam[],
             max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+
         };
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
@@ -75,10 +77,13 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
 
             if (responseFormat === 'json') {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
+
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -139,6 +144,11 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
+
+
+            
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -198,6 +208,9 @@ export class AnthropicConnector extends LLMConnector {
             const response = await anthropic.messages.create(messageCreateArgs);
             let content = (response?.content?.[0] as Anthropic.TextBlock)?.text;
             const finishReason = response?.stop_reason;
+            const usage = response?.usage;
+
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason };
         } catch (error) {
@@ -273,6 +286,11 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             const content = (result?.content?.[0] as Anthropic.TextBlock)?.text;
+
+
+            const usage = result?.usage;
+           
+            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return {
                 data: {
@@ -416,19 +434,13 @@ export class AnthropicConnector extends LLMConnector {
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
 
-                    /*
-                        const smyth_usage = {
-                            input_tokens: 0,
-                            input_tokens_cache_write: 0,
-                            input_tokens_cache_read: 0,
-                            output_tokens: 0,
-                            llm_provider: 'anthropic',                            
-                            model: params?.model,
-                        }
-
-                        //SystemEvents.emit('LLM:Usage', smyth_usage);
-                    */
+                    
+                    
+                    this.reportUsage(usage, { model: params?.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
+
+                
+
                 //only emit end event after processing the final message
                 setTimeout(() => {
                     emitter.emit('end', toolsData, usage_data);
@@ -547,6 +559,10 @@ export class AnthropicConnector extends LLMConnector {
                         prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
                         completion_tokens_details: { reasoning_tokens: 0 },
                     });
+                    
+                    
+                    
+                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
                 }
                 //only emit end event after processing the final message
                 setTimeout(() => {
@@ -764,5 +780,17 @@ export class AnthropicConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    protected reportUsage(usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number, cache_read_input_tokens?: number }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+            input_tokens_cache_write: usage.cache_creation_input_tokens,
+            input_tokens_cache_read: usage.cache_read_input_tokens,
+            llm_provider: 'Anthropic',
+            model: metadata.model,
+            keySource: metadata.keySource,
+        });
     }
 }
