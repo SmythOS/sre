@@ -15,10 +15,10 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 const console = Logger('AnthropicConnector');
 
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
@@ -28,7 +28,7 @@ const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
 export class AnthropicConnector extends LLMConnector {
     public name = 'LLM:Anthropic';
 
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.Anthropic.image;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
