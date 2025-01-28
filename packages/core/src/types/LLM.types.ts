@@ -3,7 +3,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { FunctionCallingMode } from '@google/generative-ai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { LLMModel, LLMProvider } from '@sre/LLMManager/models';
+import { type models } from '@sre/LLMManager/models';
+
+export type LLMProvider = (typeof models)[keyof typeof models]['llm'] | 'VertexAI' | 'Bedrock';
+export type LLMModel = keyof typeof models;
+export type LLMModelInfo = (typeof models)[LLMModel];
 
 export type TLLMParams = {
     model: string;

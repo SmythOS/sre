@@ -95,7 +95,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for OpenAI.');
+        throw new Error('Multimodal request is not supported for Groq.');
     }
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
