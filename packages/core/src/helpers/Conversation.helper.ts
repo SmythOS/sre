@@ -13,6 +13,8 @@ import { JSONContent } from './JsonContent.helper';
 import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { delay } from '@sre/utils/date-time.utils';
+import { EventSource, FetchLike } from 'eventsource';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -71,7 +73,7 @@ export class Conversation extends EventEmitter {
     private _customToolsDeclarations: FunctionDeclaration[] = [];
     private _customToolsHandlers: Record<string, (args: Record<string, any>) => Promise<any>> = {};
     public stop = false;
-    public set spec(specSource) {      
+    public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
             this.loadSpecFromSource(specSource).then(async (spec) => {
@@ -81,7 +83,6 @@ export class Conversation extends EventEmitter {
                     throw new Error('Invalid OpenAPI specification data format');
                 }
                 this._spec = spec;
-
 
                 // teamId is required to load custom LLMs, we must assign it before updateModel()
                 await this.assignTeamIdFromAgentId(this._agentId);
@@ -140,7 +141,6 @@ export class Conversation extends EventEmitter {
         }
 
         this._agentVersion = _settings?.agentVersion;
-
 
         (async () => {
             if (_specSource) {
@@ -362,6 +362,7 @@ export class Conversation extends EventEmitter {
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
         const message_id = 'msg_' + uid();
+        const isDebugSession = toolHeaders['X-DEBUG'];
 
         /* ==================== STEP ENTRY ==================== */
         // console.debug('Request to LLM with the given model, messages and functions properties.', {
@@ -437,7 +438,6 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-
                 let passThroughContent = '';
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
@@ -445,8 +445,7 @@ export class Conversation extends EventEmitter {
                     passThroughContent += data;
                     //this is currently used to handle agent callbacks when running local agents
                     this.emit('agentCallback', data);
-                };  
-
+                };
 
                 const toolProcessingTasks = toolsData.map(
                     (tool: { index: number; name: string; type: string; arguments: Record<string, any> }) => async () => {
@@ -493,25 +492,12 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({
-                //     messageBlock: llmMessage,
-                //     toolsData: processedToolsData,
-                // });
-
-                // this._context.push(...messagesWithToolResult);
-                // this._context.push({
-                //     //store raw tool call data, we'll convert it when reading the context window
-                //     messageBlock: llmMessage,
-                //     toolsData: processedToolsData,
-                // });
-
                 if (!passThroughContent) {
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
-                this._context.addToolMessage(llmMessage, processedToolsData, message_id);
-
-                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
-                }
-                else {
+                    this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                } else {
+                    //TODO : add passthrough content to the context window ??
 
                     //if passThroughContent is not empty, it means that the current agent streamed content through components
                     resolve(passThroughContent);
@@ -638,7 +624,13 @@ export class Conversation extends EventEmitter {
                 console.debug('Calling tool: ', reqConfig);
 
                 //TODO : implement a timeout for the tool call
-                if (reqConfig.url.includes('localhost') || reqConfig.url.includes('localagent')) {
+                if (
+                    reqConfig.url.includes('localhost') ||
+                    (reqConfig.headers['X-AGENT-ID'] && !reqConfig.headers['X-DEBUG'])
+                    //empty string is accepted
+
+                    // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
+                ) {
                     //if it's a local agent, invoke it directly
                     const response = await AgentProcess.load(
                         reqConfig.headers['X-AGENT-ID'] || this._agentId,
@@ -646,9 +638,55 @@ export class Conversation extends EventEmitter {
                     ).run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
+                    let eventSource;
+
+                    if (reqConfig.headers['X-DEBUG'] && reqConfig.headers['X-AGENT-ID']) {
+                        const monitUrl = reqConfig.url.split('/api')[0] + '/agent/' + reqConfig.headers['X-AGENT-ID'] + '/monitor';
+
+                        // Create custom fetch implementation that includes our headers
+                        const customFetch: FetchLike = (url, init) => {
+                            return fetch(url, {
+                                ...init,
+                                headers: {
+                                    ...(init?.headers || {}),
+                                    ...Object.fromEntries(Object.entries(reqConfig.headers).map(([k, v]) => [k, String(v)])),
+                                },
+                            });
+                        };
+
+                        const eventSource = new EventSource(monitUrl, {
+                            fetch: customFetch,
+                        });
+                        let monitorId = '';
+
+                        eventSource.addEventListener('init', (event) => {
+                            monitorId = event.data;
+                            console.log('monitorId', monitorId);
+                            reqConfig.headers['X-MONITOR-ID'] = monitorId;
+                        });
+                        eventSource.addEventListener('llm/passthrough', (event: any) => {
+                            if (params.agentCallback) params.agentCallback(event.data);
+                        });
+
+                        await new Promise((resolve) => {
+                            let maxTime = 5 * 1000; //5 seconds
+                            let itv = setInterval(() => {
+                                if (monitorId || maxTime <= 0) {
+                                    clearInterval(itv);
+                                    resolve(true);
+                                }
+                                maxTime -= 100;
+                            }, 100);
+                        });
+                    }
+
                     //if it's a remote agent, call the API via HTTP
                     const response = await axios.request(reqConfig);
 
+                    if (eventSource) {
+                        eventSource.close();
+                        console.log('eventSource closed');
+                    }
                     return { data: response.data, error: null };
                 }
             } catch (error: any) {

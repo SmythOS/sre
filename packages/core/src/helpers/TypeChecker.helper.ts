@@ -174,7 +174,7 @@ function extractSmythFsAgentId(url: string): string | null {
     }
 }
 
-async function inferBinaryType(value: any, key?: string, agent?: Agent) {
+async function _createBinaryInput(value: any, key?: string, agent?: Agent) {
     // If the value is already a BinaryInput, just return it
     if (value instanceof BinaryInput) {
         return value;
@@ -186,39 +186,47 @@ async function inferBinaryType(value: any, key?: string, agent?: Agent) {
     let mimetype: string = '';
     let fileName = `${uid()}-${key}`;
 
-    try {
-        if (value && typeof value === 'object' && value?.url && value?.mimetype) {
-            const url = value?.url;
-            mimetype = value?.mimetype;
+    if (value && typeof value === 'object' && value?.url && value?.mimetype) {
+        const url = value?.url;
+        mimetype = value?.mimetype;
 
-            if (value?.name) {
-                fileName = value?.name;
-            }
+        if (value?.name) {
+            fileName = value?.name;
+        }
 
-            if (url?.startsWith('smythfs://')) {
-                // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
-                data = value;
-
-                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
-                agentId = extractSmythFsAgentId(url);
-            } else {
-                data = url;
-            }
-        } else {
-            if (typeof value === 'string' && value.startsWith('smythfs://')) {
-                // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
-                agentId = extractSmythFsAgentId(value);
-            }
+        if (url?.startsWith('smythfs://')) {
+            // If the URL uses the smythfs:// protocol, we can use the binary object directly since it's already in our internal file system
             data = value;
+
+            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+            agentId = extractSmythFsAgentId(url);
+        } else {
+            data = url;
+        }
+    } else {
+        if (typeof value === 'string' && value.startsWith('smythfs://')) {
+            // Extract agent ID from smythfs:// URLs to create an access candidate to read the file
+            agentId = extractSmythFsAgentId(value);
+        }
+        data = value;
+    }
+
+    if (agentId) {
+        candidate = AccessCandidate.agent(agentId);
+    }
+
+    const binaryInput = BinaryInput.from(data, fileName, mimetype, candidate);
+    await binaryInput.ready();
+    return binaryInput;
+}
+
+async function inferBinaryType(value: any, key?: string, agent?: Agent) {
+    try {
+        if (Array.isArray(value)) {
+            return await Promise.all(value.map((item) => _createBinaryInput(item, key, agent)));
         }
 
-        if (agentId) {
-            candidate = AccessCandidate.agent(agentId);
-        }
-
-        const binaryInput = BinaryInput.from(data, fileName, mimetype, candidate);
-        await binaryInput.ready();
-        return binaryInput;
+        return await _createBinaryInput(value, key, agent);
     } catch (error: any) {
         console.warn('Error in binary type handler', error);
 

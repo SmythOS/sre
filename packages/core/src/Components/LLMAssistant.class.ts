@@ -212,6 +212,7 @@ export default class LLMAssistant extends Component {
                         if (typeof agent.callback === 'function') {
                             agent.callback(content);
                         }
+                        agent.sse.send('llm/passthrough', content);
                         _content += content;
                     });
                     eventEmitter.on('end', () => {

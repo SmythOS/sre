@@ -1,8 +1,296 @@
+const MODEL_SCHEMA_VERSION: number = 2;
+const isDev = process.env.NODE_ENV === 'DEV';
+
 export const models = {
   Echo: {
     llm: 'Echo',
   },
 
+  // #region SmythOS Models
+
+  // #region OpenAI
+  'smythos/gpt-4o-mini': {
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  'smythos/gpt-4o': {
+    label: 'GPT 4o',
+    modelId: 'gpt-4o-2024-08-06',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_384,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  'smythos/o1': {
+    label: 'GPT o1',
+    modelId: 'o1-2024-12-17',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 200_000,
+    completionTokens: 100_000,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  'smythos/o1-mini': {
+    label: 'GPT o1 mini',
+    modelId: 'o1-mini-2024-09-12',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 65_536,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  // #endregion OpenAI
+
+  // #region Anthropic
+  'smythos/claude-3-5-sonnet': {
+    label: 'Claude 3.5 Sonnet',
+    modelId: 'claude-3-5-sonnet-20240620',
+    provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['SmythOS'],
+    tokens: 200_000,
+    completionTokens: 8_192,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  'smythos/claude-3.5-haiku': {
+    label: 'Claude 3.5 Haiku',
+    modelId: 'claude-3-5-haiku-latest',
+    provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 200_000,
+    completionTokens: 8_192,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  // #endregion Anthropic
+
+  // #region Google AI
+  'smythos/gemini-2.0-flash': {
+    label: 'Gemini 2.0 Flash Experimental',
+    modelId: 'gemini-2.0-flash-exp',
+    provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['SmythOS'],
+    tokens: 1_048_576,
+    completionTokens: 8_192,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  'smythos/gemini-1.5-pro': {
+    label: 'Gemini 1.5 Pro',
+    modelId: 'gemini-1.5-pro',
+    provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 2_097_152,
+    completionTokens: 8_192,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  // #endregion Google AI
+
+  // #region Groq
+  'smythos/groq-gemma2-9b': {
+    label: 'Google - Gemma 2 9B',
+    modelId: 'gemma2-9b-it',
+    provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 8_192,
+    completionTokens: 8_192,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+
+  'smythos/llama-3.3-70b': {
+    label: 'Meta - Llama 3.3 70B',
+    modelId: 'llama-3.3-70b-versatile',
+    provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 32_768,
+    enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+  },
+  // #endregion Groq
+
+  // #endregion SmythOS Models
+
+  // #region User Models
+
+  // #region OpenAI
+  'user/gpt-4o-mini': {
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
+  },
+  'user/gpt-4o': {
+    label: 'GPT 4o',
+    modelId: 'gpt-4o-2024-08-06',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
+  'user/o1': {
+    label: 'GPT o1',
+    modelId: 'o1-2024-12-17',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
+  'user/o1-mini': {
+    label: 'GPT o1 mini',
+    modelId: 'o1-mini-2024-09-12',
+    provider: 'OpenAI',
+    llm: 'OpenAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
+  },
+  // #endregion OpenAI
+
+  // #region Anthropic
+  'user/claude-3-5-sonnet': {
+    label: 'Claude 3.5 Sonnet',
+    modelId: 'claude-3-5-sonnet-20240620',
+    provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
+  },
+  'user/claude-3.5-haiku': {
+    label: 'Claude 3.5 Haiku',
+    modelId: 'claude-3-5-haiku-latest',
+    provider: 'Anthropic',
+    llm: 'Anthropic', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
+  },
+  // #endregion Anthropic
+
+  // #region Google AI
+  'user/gemini-2.0-flash': {
+    label: 'Gemini 2.0 Flash Experimental',
+    modelId: 'gemini-2.0-flash-exp',
+    provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+  },
+  'user/gemini-1.5-pro': {
+    label: 'Gemini 1.5 Pro',
+    modelId: 'gemini-1.5-pro',
+    provider: 'GoogleAI',
+    llm: 'GoogleAI', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 2_097_152, completionTokens: 8_192, enabled: true },
+  },
+  // #endregion Google AI
+
+  // #region Groq
+  'user/groq-gemma2-9b': {
+    label: 'Google - Gemma 2 9B',
+    modelId: 'gemma2-9b-it',
+    provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 8_192, completionTokens: 8_192, enabled: true },
+  },
+
+  'user/llama-3.3-70b': {
+    label: 'Meta - Llama 3.3 70B',
+    modelId: 'llama-3.3-70b-versatile',
+    provider: 'Groq',
+    llm: 'Groq', // ! DEPRECATED
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
+  },
+  // #endregion Groq
+
+  // #endregion User Models
+
+  //#region [legacy models] ==============================================================
   // DeepSeek
   'deepseek-v2.5': {
     llm: 'DeepSeek',
@@ -311,7 +599,7 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+    tags: ['deprecated'],
   },
   'claude-3-sonnet-20240229': {
     llm: 'Anthropic',
@@ -1397,4 +1685,11 @@ export const models = {
     },
     baseURL: 'https://api.x.ai/v1',
   },
-};
+
+  //#endregion [legacy models] ==============================================================
+} as const;
+
+export type LLMProvider = (typeof models)[keyof typeof models]['llm'] | 'VertexAI' | 'Bedrock';
+export type LLMModel = keyof typeof models ;
+export type LLMModelInfo = (typeof models)[LLMModel];
+

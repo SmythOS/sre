@@ -3,6 +3,8 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { APIKeySource } from '@sre/types/LLM.types';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
@@ -25,8 +27,31 @@ export class EchoConnector extends LLMConnector {
     protected async streamToolRequest(acRequest: AccessRequest, params) {
         throw new Error('Echo model does not support tool requests');
     }
-    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<Readable> {
-        throw new Error('Echo model does not support streaming');
+    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const content = params?.messages?.[0]?.content;
+
+        // Process stream asynchronously as we need to return emitter immediately
+        (async () => {
+            // Simulate streaming by splitting content into chunks
+            const chunks = content.split(' ');
+            
+            for (const chunk of chunks) {
+                // Simulate network delay
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                const delta = { content: chunk + ' ' };
+                emitter.emit('data', delta);
+                emitter.emit('content', delta.content);
+            }
+
+            // Emit end event after all chunks are processed
+            setTimeout(() => {
+                emitter.emit('end', [], []); // Empty arrays for toolsData and usage_data
+            }, 100);
+        })();
+
+        return emitter;
     }
     protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
         throw new Error('Echo model does not support passthrough with File(s)');
@@ -48,4 +73,6 @@ export class EchoConnector extends LLMConnector {
             return response;
         }
     }
+
+    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {}
 }

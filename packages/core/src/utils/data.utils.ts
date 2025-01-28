@@ -4,6 +4,7 @@ import axios from 'axios';
 import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64 } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -162,4 +163,31 @@ export async function getMimeType(data: any): Promise<string> {
     if (!matchedType) return '';
 
     return await mimeTypeGetters?.[matchedType]?.();
+}
+
+// Mask data like Buffer, FormData, etc. in debug output
+// TODO [Forhad]: Need to apply same thing for Base64, etc.
+export async function formatDataForDebug(data: any) {
+    let dataForDebug;
+
+    if (!data) {
+        return data;
+    }
+
+    try {
+        if (data.constructor?.name === 'BinaryInput') {
+            dataForDebug = `[BinaryInput name=${await data.getName()}]`;
+        } else if (isBuffer(data)) {
+            dataForDebug = `[Buffer size=${data.length}]`;
+        } else if (data.constructor?.name === 'FormData') {
+            dataForDebug = `[FormData]`;
+        } else {
+            dataForDebug = data;
+        }
+    } catch (error) {
+        // Fallback to a safe representation if any error occurs
+        dataForDebug = '[Object]';
+    }
+
+    return dataForDebug;
 }

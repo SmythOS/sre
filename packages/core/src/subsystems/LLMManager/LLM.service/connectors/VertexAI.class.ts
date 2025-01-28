@@ -1,17 +1,21 @@
-import { VertexAI, type ModelParams, type GenerationConfig, type Content } from '@google-cloud/vertexai';
+import { VertexAI, type ModelParams, type GenerationConfig, type Content, UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, TLLMMessageRole, TVertexAIModel } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, TLLMMessageRole, TVertexAIModel, APIKeySource } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { SystemEvents } from '@sre/index';
 
 const console = Logger('VertexAIConnector');
+
+//TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
+// we had no access to VertexAI so we assumed it is working (potential bug)
 
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
@@ -69,6 +73,8 @@ export class VertexAIConnector extends LLMConnector {
 
             const result = await generativeModel.generateContent({ contents: messages });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const usage = result?.response?.usageMetadata;
+            this.reportUsage(usage, { model: modelParams.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -124,6 +130,18 @@ export class VertexAIConnector extends LLMConnector {
                 role: message.role,
                 parts: textBlock,
             };
+        });
+    }
+
+    protected reportUsage(usage: UsageMetadata & { cachedContentTokenCount?: number }, metadata: { model: string, keySource: APIKeySource }) {
+        SystemEvents.emit('USAGE:LLM', {
+            input_tokens: usage.promptTokenCount || 0,
+            output_tokens: usage.candidatesTokenCount || 0,
+            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
+            input_tokens_cache_write: 0,
+            llm_provider: "VertexAI",
+            model: metadata.model,
+            keySource: metadata.keySource,
         });
     }
 }

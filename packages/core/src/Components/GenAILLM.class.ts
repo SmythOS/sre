@@ -8,6 +8,7 @@ import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { SUPPORTED_FILE_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
+import { formatDataForDebug } from '@sre/utils/data.utils';
 
 //TODO : better handling of context window exceeding max length
 
@@ -58,23 +59,20 @@ export default class GenAILLM extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
-            const files = input?.Files;
-            let fileSources: any[] = [];
+            let fileSources: any[] = parseFiles(input, config);
             let isMultimodalRequest = false;
             const provider = llmRegistry.getProvider(model);
             const isEcho = provider === 'Echo';
 
             // Ignore files for Echo model
-            if (files && !isEcho) {
-                fileSources = Array.isArray(files) ? files : [files];
-
+            if (fileSources?.length > 0 && !isEcho) {
                 const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP?.[provider] || {};
                 const features = llmRegistry.getModelFeatures(model);
                 const fileTypes = new Set(); // Set to avoid duplicates
 
                 const validFiles = await Promise.all(
                     fileSources.map(async (file) => {
-                        const mimeType = await getMimeType(file);
+                        const mimeType = file?.mimetype || (await getMimeType(file));
                         const [requestFeature = ''] =
                             Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
 
@@ -99,7 +97,7 @@ export default class GenAILLM extends Component {
             logger.debug(` Prompt\n`, prompt, '\n');
 
             if (!isEcho) {
-                logger.debug(' Files\n', fileSources);
+                logger.debug(' Files\n', await Promise.all(fileSources.map((file) => formatDataForDebug(file))));
             }
 
             // default to json response format
@@ -136,6 +134,7 @@ export default class GenAILLM extends Component {
                         if (typeof agent.callback === 'function') {
                             agent.callback(content);
                         }
+                        agent.sse.send('llm/passthrough', content);
                         _content += content;
                     });
                     eventEmitter.on('end', () => {
@@ -181,4 +180,25 @@ export default class GenAILLM extends Component {
         const llmInference: LLMInference = await LLMInference.getInstance(model, agent?.teamId);
         return llmInference.streamRequest(prompt, agent);
     }
+}
+
+function parseFiles(input: any, config: any) {
+    const mediaTypes = ['Image', 'Audio', 'Video', 'Binary'];
+
+    // Parse media inputs from config
+    const inputFiles =
+        config.inputs
+            ?.filter((_input) => mediaTypes.includes(_input.type))
+            ?.flatMap((_input) => {
+                const value = input[_input.name];
+
+                if (Array.isArray(value)) {
+                    return value.map((item) => TemplateString(item).parseRaw(input).result);
+                } else {
+                    return TemplateString(value).parseRaw(input).result;
+                }
+            })
+            ?.filter((file) => file) || [];
+
+    return inputFiles;
 }

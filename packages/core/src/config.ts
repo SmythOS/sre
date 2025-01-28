@@ -8,6 +8,10 @@ const config = {
 
         OPENAI_API_KEY: process.env.OPENAI_API_KEY,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+        GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY,
+        TOGETHER_AI_API_KEY: process.env.TOGETHER_AI_API_KEY,
+        GROQ_API_KEY: process.env.GROQ_API_KEY,
+        XAI_API_KEY: process.env.XAI_API_KEY,
 
         DATA_PATH: process.env.DATA_PATH,
 

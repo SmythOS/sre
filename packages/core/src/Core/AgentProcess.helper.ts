@@ -93,12 +93,19 @@ export class AgentProcess {
      * Note: even if the response is streamed through the callback, the response is still returned as a single object in the response.data field.
      * @returns The result of the agent process
      */
-    public async run(reqConfig: TAgentProcessParams | Array<string> | AgentRequest, callback?: (data: any) => void) {
+    public async run(
+        reqConfig: TAgentProcessParams | Array<string> | AgentRequest,
+        callback?: (data: any) => void
+    ): Promise<{
+        status?: number;
+        data: any;
+    }> {
         await this.ready();
         if (!this.agent) throw new Error('Failed to load agent');
         let request: AgentRequest = this.parseReqConfig(reqConfig);
 
         this.agent.setRequest(request);
+
         if (typeof callback === 'function') {
             this.agent.setCallback(callback);
         }
