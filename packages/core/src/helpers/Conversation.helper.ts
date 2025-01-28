@@ -14,7 +14,7 @@ import { OpenAPIParser } from './OpenApiParser.helper';
 import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { delay } from '@sre/utils/date-time.utils';
-import { EventSource } from 'eventsource';
+import { EventSource, FetchLike } from 'eventsource';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -625,9 +625,8 @@ export class Conversation extends EventEmitter {
 
                 //TODO : implement a timeout for the tool call
                 if (
-                    /*reqConfig.url.includes('localhost') || */
-                    reqConfig.headers['X-AGENT-ID'] &&
-                    !reqConfig.headers['X-DEBUG']
+                    reqConfig.url.includes('localhost') ||
+                    (reqConfig.headers['X-AGENT-ID'] && !reqConfig.headers['X-DEBUG'])
                     //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
@@ -640,9 +639,24 @@ export class Conversation extends EventEmitter {
                     return { data: response.data, error: null };
                 } else {
                     let eventSource;
+
                     if (reqConfig.headers['X-DEBUG'] && reqConfig.headers['X-AGENT-ID']) {
                         const monitUrl = reqConfig.url.split('/api')[0] + '/agent/' + reqConfig.headers['X-AGENT-ID'] + '/monitor';
-                        const eventSource = new EventSource(monitUrl);
+
+                        // Create custom fetch implementation that includes our headers
+                        const customFetch: FetchLike = (url, init) => {
+                            return fetch(url, {
+                                ...init,
+                                headers: {
+                                    ...(init?.headers || {}),
+                                    ...Object.fromEntries(Object.entries(reqConfig.headers).map(([k, v]) => [k, String(v)])),
+                                },
+                            });
+                        };
+
+                        const eventSource = new EventSource(monitUrl, {
+                            fetch: customFetch,
+                        });
                         let monitorId = '';
 
                         eventSource.addEventListener('init', (event) => {
