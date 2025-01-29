@@ -240,6 +240,8 @@ export default class LLMAssistant extends Component {
             messages.push({ role: 'assistant', content: response });
             saveMessagesToSession(agent.id, userId, conversationId, messages, ttl);
 
+            logger.debug(' Response \n', response);
+
             const result = { Response: response };
 
             result['_debug'] = logger.output;
