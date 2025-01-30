@@ -29,8 +29,8 @@ import { default as AgentLogger } from '@sre/AgentManager/AgentLogger.class';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { ILLMContextStore } from '@sre/types/LLM.types';
-import { version } from '../package.json';
 import { APIKeySource } from '@sre/types/LLM.types';
+import { version } from '../package.json';
 
 boot();
 
@@ -62,8 +62,8 @@ export {
     AgentLogger,
     LLMRegistry,
     CustomLLMRegistry,
-    version,
     APIKeySource,
+    version,
 
     // Interfaces: we must use the type-only export syntax when re-exporting interfaces
     type ILLMContextStore,

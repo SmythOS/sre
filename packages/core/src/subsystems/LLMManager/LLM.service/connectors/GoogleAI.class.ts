@@ -1029,6 +1029,15 @@ export class GoogleAIConnector extends LLMConnector {
         usage: UsageMetadata,
         metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
+
+        const modelEntryName = metadata.modelEntryName;
+        const inputTokens = usage.promptTokenCount;
+        let tier = 'tier-1';
+
+        if(['gemini-1.5-pro'].includes(modelEntryName) && inputTokens > 128_000) {
+            tier = 'tier-2';
+        }
+
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
@@ -1039,6 +1048,7 @@ export class GoogleAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
+            tier,
         });
     }
 }

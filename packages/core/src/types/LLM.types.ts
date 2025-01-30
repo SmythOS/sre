@@ -208,4 +208,5 @@ export interface SmythLLMUsage {
     keySource?: APIKeySource;
     agentId: string;
     teamId: string;
+    tier?: string; // for Google AI
 }
