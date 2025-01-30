@@ -3,6 +3,7 @@ import Component from './Component.class';
 import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 
 export default class WebSearch extends Component {
@@ -47,6 +48,7 @@ export default class WebSearch extends Component {
             });
             logger.debug(JSON.stringify(response.data));
             Output = { results: response.data.results };
+            this.reportUsage(agent.id);
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.response?.data || err?.message || err.toString();
@@ -55,4 +57,11 @@ export default class WebSearch extends Component {
         }
     }
 
+    protected reportUsage(agentId: string) {
+        SystemEvents.emit('USAGE:API', {
+            domain: 'websearch.smyth',
+            requests: 1,
+            agentId,
+        });
+    }
 }
