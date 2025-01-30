@@ -11,6 +11,7 @@ export type LLMModelInfo = (typeof models)[LLMModel];
 
 export type TLLMParams = {
     model: string;
+    modelEntryName: string; // for usage reporting
     credentials:
         | Record<string, string> // for VertexAI
         | {
@@ -204,4 +205,5 @@ export interface SmythLLMUsage {
     llm_provider: LLMProvider;
     model: LLMModel | string;
     keySource?: APIKeySource;
+    agentId: string;
 }

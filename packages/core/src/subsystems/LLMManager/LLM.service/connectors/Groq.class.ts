@@ -37,8 +37,10 @@ type ToolRequestParams = {
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -82,7 +84,12 @@ export class GroqConnector extends LLMConnector {
             const finishReason = response.choices[0]?.finish_reason;
             const usage = response.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -90,21 +97,23 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Groq');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for Groq.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         try {
             const apiKey = params?.credentials?.apiKey;
 
             const groq = new Groq({ apiKey });
 
             const messages = params?.messages || [];
+
+            const agentId = agent instanceof Agent ? agent.id : agent;
 
             let chatCompletionArgs: ChatCompletionCreateParams = {
                 model: params.model,
@@ -120,7 +129,12 @@ export class GroqConnector extends LLMConnector {
             const message = result?.choices?.[0]?.message;
             const toolCalls = message?.tool_calls;
             const usage = result.usage;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -145,7 +159,7 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Groq.');
     }
 
@@ -157,7 +171,7 @@ export class GroqConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
@@ -165,6 +179,8 @@ export class GroqConnector extends LLMConnector {
         const groq = new Groq({ apiKey });
 
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         let chatCompletionArgs: {
             model: string;
@@ -178,7 +194,7 @@ export class GroqConnector extends LLMConnector {
             model: params.model,
             messages,
             stream: true,
-            stream_options: { include_usage: true }
+            stream_options: { include_usage: true },
         };
 
         if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
@@ -193,10 +209,9 @@ export class GroqConnector extends LLMConnector {
 
             (async () => {
                 for await (const chunk of stream as any) {
-                    
                     const delta = chunk.choices[0]?.delta;
                     const usage = chunk['x_groq']?.usage || chunk['usage'];
-                    
+
                     if (usage) {
                         usage_data.push(usage);
                     }
@@ -227,10 +242,15 @@ export class GroqConnector extends LLMConnector {
                 if (toolsData.length > 0) {
                     emitter.emit('toolsData', toolsData);
                 }
-                
+
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                    });
                 });
 
                 setTimeout(() => {
@@ -294,15 +314,19 @@ export class GroqConnector extends LLMConnector {
         });
     }
 
-    protected reportUsage(usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            llm_provider: 'Groq',
+            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
         });
     }
 }

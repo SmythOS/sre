@@ -12,7 +12,15 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import {
+    TLLMParams,
+    ToolData,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
+    GenerateImageConfig,
+    APIKeySource,
+} from '@sre/types/LLM.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import SystemEvents from '@sre/Core/SystemEvents';
@@ -28,8 +36,10 @@ export class OpenAIConnector extends LLMConnector {
 
     private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -109,8 +119,12 @@ export class OpenAIConnector extends LLMConnector {
             const finishReason = response?.choices?.[0]?.finish_reason;
             const usage = response?.usage as any;
 
-            
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -118,7 +132,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent) {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -185,7 +199,12 @@ export class OpenAIConnector extends LLMConnector {
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -193,7 +212,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -259,8 +278,12 @@ export class OpenAIConnector extends LLMConnector {
 
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
-
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -268,10 +291,12 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
         // throw new Error('Image generation request is not supported for OpenAI.');
         try {
             const { model, size, quality, n, responseFormat, style } = params;
+            const agentId = agent instanceof Agent ? agent.id : agent;
+
             const args: GenerateImageConfig & { prompt: string } = {
                 prompt,
                 model,
@@ -286,7 +311,6 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const apiKey = params?.credentials?.apiKey;
-
             if (!apiKey) {
                 throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
             }
@@ -306,7 +330,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         const apiKey = params?.credentials?.apiKey;
 
         const openai = new OpenAI({
@@ -315,6 +339,8 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: params.model,
@@ -354,8 +380,12 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const usage = result?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
-            
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
@@ -451,7 +481,7 @@ export class OpenAIConnector extends LLMConnector {
 
             // usage_data.forEach((usage) => {
             //     // probably we can acc them and send them as one event
-            //     
+            //
             //     this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
             // });
 
@@ -477,10 +507,12 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         const openai = new OpenAI({
             apiKey: apiKey, // we provide default API key for OpenAI with limited quota
@@ -519,7 +551,7 @@ export class OpenAIConnector extends LLMConnector {
                 for await (const part of stream) {
                     delta = part.choices[0]?.delta;
                     const usage = part.usage;
-                    
+
                     if (usage) {
                         usage_data.push(usage);
                     }
@@ -549,7 +581,12 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                    });
                 });
 
                 setTimeout(() => {
@@ -562,7 +599,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const messages = params?.messages || [];
         const emitter = new EventEmitter();
         const usage_data = [];
@@ -669,7 +706,12 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                    });
                 });
 
                 setTimeout(() => {
@@ -807,16 +849,19 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-
-    protected reportUsage(usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            llm_provider: 'OpenAI',
+            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
         });
     }
 }

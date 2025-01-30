@@ -97,7 +97,7 @@ export class GoogleAIConnector extends LLMConnector {
         image: VALID_IMAGE_MIME_TYPES,
     };
 
-    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<LLMChatResponse> {
         let prompt = '';
 
         const model = params?.model || DEFAULT_MODEL;
@@ -105,6 +105,8 @@ export class GoogleAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction = '';
@@ -181,7 +183,12 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -189,7 +196,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         const model = params?.model || 'gemini-pro-vision';
         const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
@@ -276,7 +283,12 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -381,7 +393,12 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -389,7 +406,9 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
         try {
             let systemInstruction = '';
             let formattedMessages;
@@ -443,7 +462,12 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result.response;
             const content = response.text();
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+            });
 
             const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
 
@@ -470,7 +494,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
@@ -482,13 +506,15 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const apiKey = params?.credentials?.apiKey;
 
         let systemInstruction = '';
         let formattedMessages;
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -567,9 +593,14 @@ export class GoogleAIConnector extends LLMConnector {
                         usage = chunk.usageMetadata;
                     }
                 }
-                
+
                 if (usage) {
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                    });
                 }
 
                 setTimeout(() => {
@@ -713,7 +744,12 @@ export class GoogleAIConnector extends LLMConnector {
                 }
 
                 if (usage) {
-                    this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                    });
                 }
 
                 setTimeout(() => {
@@ -865,7 +901,7 @@ export class GoogleAIConnector extends LLMConnector {
             const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
 
             // Write buffer data to temp file
-            await fs.promises.writeFile(tempFilePath, bufferData);
+            await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
 
             // Upload the file to the Google File Manager
             const fileManager = new GoogleAIFileManager(apiKey);
@@ -983,15 +1019,16 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: UsageMetadata, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(usage: UsageMetadata, metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            llm_provider: "GoogleAI",
+            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
         });
     }
 }
