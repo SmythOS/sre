@@ -3,6 +3,8 @@ import Component from './Component.class';
 import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
+import SystemEvents from '@sre/Core/SystemEvents';
+const CREDITS_PER_URL = 0.2;
 
 export default class WebScrape extends Component {
 
@@ -36,6 +38,7 @@ export default class WebScrape extends Component {
 
             Output = { results: response.data.results };
             _error = response.data.failedResults?.length ? JSON.stringify(response.data.failedResults) : undefined;
+            this.reportUsage(response?.data?.results?.length, agent.id);
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.response?.data || err?.message || err.toString();
@@ -82,5 +85,13 @@ export default class WebScrape extends Component {
         } catch (error) {
             return false;
         }
+    }
+
+    protected reportUsage(urlsScraped: number, agentId: string) {
+        SystemEvents.emit('USAGE:API', {
+            domain: 'webscrape.smyth',
+            requests: urlsScraped * CREDITS_PER_URL,
+            agentId,
+        });
     }
 }
