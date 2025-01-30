@@ -81,6 +81,7 @@ export class VertexAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason: 'stop' };
@@ -146,7 +147,7 @@ export class VertexAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: UsageMetadata & { cachedContentTokenCount?: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.promptTokenCount || 0,
@@ -157,6 +158,7 @@ export class VertexAIConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

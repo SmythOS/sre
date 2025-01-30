@@ -42,6 +42,7 @@ export type TLLMParams = {
     style?: 'vivid' | 'natural'; // for image generation
 
     cache?: boolean;
+    teamId?: string;
 };
 
 export type TLLMModelEntry = {
@@ -206,4 +207,5 @@ export interface SmythLLMUsage {
     model: LLMModel | string;
     keySource?: APIKeySource;
     agentId: string;
+    teamId: string;
 }

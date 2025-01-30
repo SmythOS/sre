@@ -112,6 +112,7 @@ export class BedrockConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason: 'stop' };
@@ -183,6 +184,7 @@ export class BedrockConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             const message = response.output?.message;
@@ -343,6 +345,7 @@ export class BedrockConnector extends LLMConnector {
                                 modelEntryName: params.modelEntryName,
                                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                                 agentId,
+                                teamId: params.teamId,
                             });
                         }
                     }
@@ -494,7 +497,7 @@ export class BedrockConnector extends LLMConnector {
 
     protected reportUsage(
         usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.inputTokens,
@@ -505,6 +508,7 @@ export class BedrockConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

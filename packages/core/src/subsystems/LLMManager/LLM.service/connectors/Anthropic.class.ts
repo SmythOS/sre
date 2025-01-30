@@ -87,6 +87,7 @@ export class AnthropicConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -161,6 +162,7 @@ export class AnthropicConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -234,6 +236,7 @@ export class AnthropicConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -318,6 +321,7 @@ export class AnthropicConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return {
@@ -467,6 +471,7 @@ export class AnthropicConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 }
 
@@ -590,6 +595,7 @@ export class AnthropicConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 }
                 //only emit end event after processing the final message
@@ -812,7 +818,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.input_tokens,
@@ -823,6 +829,7 @@ export class AnthropicConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

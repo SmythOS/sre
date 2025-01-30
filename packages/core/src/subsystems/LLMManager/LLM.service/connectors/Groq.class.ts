@@ -89,6 +89,7 @@ export class GroqConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -134,6 +135,7 @@ export class GroqConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             let toolsData: ToolData[] = [];
@@ -250,6 +252,7 @@ export class GroqConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 });
 
@@ -316,7 +319,7 @@ export class GroqConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
@@ -327,6 +330,7 @@ export class GroqConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

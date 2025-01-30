@@ -188,6 +188,7 @@ export class GoogleAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -288,6 +289,7 @@ export class GoogleAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -398,6 +400,7 @@ export class GoogleAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -467,6 +470,7 @@ export class GoogleAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
@@ -600,6 +604,7 @@ export class GoogleAIConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 }
 
@@ -749,6 +754,7 @@ export class GoogleAIConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 }
 
@@ -1019,7 +1025,10 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: UsageMetadata, metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }) {
+    protected reportUsage(
+        usage: UsageMetadata,
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
@@ -1029,6 +1038,7 @@ export class GoogleAIConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

@@ -124,6 +124,7 @@ export class OpenAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason };
@@ -204,6 +205,7 @@ export class OpenAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
@@ -283,6 +285,7 @@ export class OpenAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
@@ -385,6 +388,7 @@ export class OpenAIConnector extends LLMConnector {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
+                teamId: params.teamId,
             });
 
             return {
@@ -586,6 +590,7 @@ export class OpenAIConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 });
 
@@ -711,6 +716,7 @@ export class OpenAIConnector extends LLMConnector {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
+                        teamId: params.teamId,
                     });
                 });
 
@@ -851,7 +857,7 @@ export class OpenAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
@@ -862,6 +868,7 @@ export class OpenAIConnector extends LLMConnector {
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

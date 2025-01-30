@@ -222,9 +222,11 @@ export abstract class LLMConnector extends Connector {
         const _params = this.formatParamValues(clonedParams);
 
         const model = _params.model;
+        const teamId = await this.getTeamId(candidate);
 
         // We need the model entry name for usage reporting
         _params.modelEntryName = model;
+        _params.teamId = teamId;
 
         const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
@@ -258,8 +260,6 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            const teamId = await this.getTeamId(candidate);
-
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
 
             const modelInfo = customLLMRegistry.getModelInfo(model);
