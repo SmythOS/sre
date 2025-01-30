@@ -7,19 +7,31 @@
 const MODEL_SCHEMA_VERSION: number = 2;
 const isDev = process.env.NODE_ENV === 'DEV';
 
+/**
+ * * DEPRECATION NOTICE:
+ * The following fields are being deprecated in favor of more semantic alternatives:
+ *
+ * - 'llm' -> 'provider'        : Use 'provider' to specify the LLM service provider
+ * - 'alias' -> 'modelId'       : Use 'modelId' to specify the unique model identifier
+ * - 'components' -> 'features' : Use 'features' to specify model capabilities
+ *
+ */
+
 export const models = {
   Echo: {
     llm: 'Echo',
   },
 
-  // #region SmythOS Models
+  // #region [SmythOS Models] ==============================================================
 
-  // #region OpenAI
+  // #region OpenAI ==========================
+
   'smythos/gpt-4o-mini': {
+    llm: 'OpenAI',
+
     label: 'GPT 4o mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -28,10 +40,11 @@ export const models = {
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/gpt-4o': {
+    llm: 'OpenAI',
+
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -40,10 +53,11 @@ export const models = {
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/o1': {
+    llm: 'OpenAI',
+
     label: 'GPT o1',
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -52,10 +66,11 @@ export const models = {
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/o1-mini': {
+    llm: 'OpenAI',
+
     label: 'GPT o1 mini',
     modelId: 'o1-mini-2024-09-12',
     provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -63,14 +78,17 @@ export const models = {
     enabled: true,
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
-  // #endregion OpenAI
 
-  // #region Anthropic
+  // #endregion OpenAI ==========================
+
+  // #region Anthropic ==========================
+
   'smythos/claude-3-5-sonnet': {
+    llm: 'Anthropic',
+
     label: 'Claude 3.5 Sonnet',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
-    llm: 'Anthropic', // ! DEPRECATED
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -79,10 +97,11 @@ export const models = {
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/claude-3.5-haiku': {
+    llm: 'Anthropic',
+
     label: 'Claude 3.5 Haiku',
     modelId: 'claude-3-5-haiku-latest',
     provider: 'Anthropic',
-    llm: 'Anthropic', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
@@ -90,14 +109,17 @@ export const models = {
     enabled: true,
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
-  // #endregion Anthropic
 
-  // #region Google AI
+  // #endregion Anthropic ==========================
+
+  // #region Google AI ==========================
+
   'smythos/gemini-2.0-flash': {
     label: 'Gemini 2.0 Flash Experimental',
+
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
-    llm: 'GoogleAI', // ! DEPRECATED
+    llm: 'GoogleAI',
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 1_048_576,
@@ -106,10 +128,11 @@ export const models = {
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'smythos/gemini-1.5-pro': {
+    llm: 'GoogleAI',
+
     label: 'Gemini 1.5 Pro',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
-    llm: 'GoogleAI', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 2_097_152,
@@ -117,14 +140,17 @@ export const models = {
     enabled: true,
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
-  // #endregion Google AI
 
-  // #region Groq
+  // #endregion Google AI ==========================
+
+  // #region Groq ==========================
+
   'smythos/groq-gemma2-9b': {
+    llm: 'Groq',
+
     label: 'Google - Gemma 2 9B',
     modelId: 'gemma2-9b-it',
     provider: 'Groq',
-    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 8_192,
@@ -134,10 +160,11 @@ export const models = {
   },
 
   'smythos/llama-3.3-70b': {
+    llm: 'Groq',
+
     label: 'Meta - Llama 3.3 70B',
     modelId: 'llama-3.3-70b-versatile',
     provider: 'Groq',
-    llm: 'Groq', // ! DEPRECATED
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
@@ -145,177 +172,35 @@ export const models = {
     enabled: true,
     hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
-  // #endregion Groq
 
-  // #endregion SmythOS Models
+  // #endregion Groq ==========================
 
-  // #region User Models
+  // #endregion [SmythOS Models] ==============================================================
 
-  // #region OpenAI
-  'user/gpt-4o-mini': {
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
-    features: ['text', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
-  },
-  'user/gpt-4o': {
-    label: 'GPT 4o',
-    modelId: 'gpt-4o-2024-08-06',
-    provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
-    features: ['text', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
-  },
-  'user/o1': {
-    label: 'GPT o1',
-    modelId: 'o1-2024-12-17',
-    provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
-  },
-  'user/o1-mini': {
-    label: 'GPT o1 mini',
-    modelId: 'o1-mini-2024-09-12',
-    provider: 'OpenAI',
-    llm: 'OpenAI', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
-  },
-  // #endregion OpenAI
+  // #region [User Models] ==============================================================
 
-  // #region Anthropic
-  'user/claude-3-5-sonnet': {
-    label: 'Claude 3.5 Sonnet',
-    modelId: 'claude-3-5-sonnet-20240620',
-    provider: 'Anthropic',
-    llm: 'Anthropic', // ! DEPRECATED
-    features: ['text', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
-  },
-  'user/claude-3.5-haiku': {
-    label: 'Claude 3.5 Haiku',
-    modelId: 'claude-3-5-haiku-latest',
-    provider: 'Anthropic',
-    llm: 'Anthropic', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 200_000, completionTokens: 8_192, enabled: true },
-  },
-  // #endregion Anthropic
+  // #region DeepSeek ==========================
 
-  // #region Google AI
-  'user/gemini-2.0-flash': {
-    label: 'Gemini 2.0 Flash Experimental',
-    modelId: 'gemini-2.0-flash-exp',
-    provider: 'GoogleAI',
-    llm: 'GoogleAI', // ! DEPRECATED
-    features: ['text', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
-  },
-  'user/gemini-1.5-pro': {
-    label: 'Gemini 1.5 Pro',
-    modelId: 'gemini-1.5-pro',
-    provider: 'GoogleAI',
-    llm: 'GoogleAI', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 2_097_152, completionTokens: 8_192, enabled: true },
-  },
-  // #endregion Google AI
+  /******************************************************
+   * NOTE: From Alexander: About the DeepSeek API implementation
+   * We're not allowing our users to send their data to China
+   * Instead we use Deepseek from Groq and Together.ai - companies in the West
+   ******************************************************/
 
-  // #region Groq
-  'deepseek-r1-distill-llama-70b': {
-    llm: 'Groq',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-
-    label: 'DeepSeek - R1 Distill Llama 70b',
-    modelId: 'deepseek-r1-distill-llama-70b',
-    provider: 'Groq',
-    features: ['text'],
-    tags: ['new', 'Preview', 'Groq'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
-  },
-  'user/groq-gemma2-9b': {
-    label: 'Google - Gemma 2 9B',
-    modelId: 'gemma2-9b-it',
-    provider: 'Groq',
-    llm: 'Groq', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 8_192, completionTokens: 8_192, enabled: true },
-  },
-
-  'user/llama-3.3-70b': {
-    label: 'Meta - Llama 3.3 70B',
-    modelId: 'llama-3.3-70b-versatile',
-    provider: 'Groq',
-    llm: 'Groq', // ! DEPRECATED
-    features: ['text'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
-    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
-  },
-  // #endregion Groq
-
-  // #endregion User Models
-
-  //#region [legacy models] ==============================================================
-  // DeepSeek
   'deepseek-v2.5': {
     llm: 'DeepSeek',
+
+    label: 'DeepSeek Chat',
+    modelId: 'deepseek-chat',
+    provider: 'DeepSeek',
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+
     baseURL: 'https://api.deepseek.com/beta',
-    alias: 'deepseek-chat',
   },
   'deepseek-chat': {
     llm: 'DeepSeek',
@@ -323,10 +208,14 @@ export const models = {
     tokens: 128000,
     completionTokens: 8192,
     enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 8192 },
+    keyOptions: { tokens: 128_000, completionTokens: 8192 },
   },
 
-  // GPT-4o
+  // #endregion DeepSeek ==========================
+
+  // #region OpenAI Models ==========================
+
+  // #region GPT 4o
   'gpt-4o-mini': {
     llm: 'OpenAI',
     alias: 'gpt-4o-mini-2024-07-18',
@@ -340,7 +229,16 @@ export const models = {
       'GPTPlugin',
       'GenAILLM',
     ],
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
     features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
   },
   'gpt-4o-mini-2024-07-18': {
     llm: 'OpenAI',
@@ -362,7 +260,16 @@ export const models = {
       'GPTPlugin',
       'GenAILLM',
     ],
+
+    label: 'GPT 4o',
+    modelId: 'gpt-4o-2024-08-06',
+    provider: 'OpenAI',
     features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
   },
   'gpt-4o-2024-08-06': {
     llm: 'OpenAI',
@@ -371,14 +278,23 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 128000, completionTokens: 16384 },
   },
+  // #endregion GPT 4o
 
-  // o1 models
+  // #region o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',
     components: ['PromptGenerator', 'GenAILLM'],
+
+    label: 'GPT o1',
+    modelId: 'o1-2024-12-17',
+    provider: 'OpenAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   'o1-2024-12-17': {
     llm: 'OpenAI',
@@ -391,7 +307,16 @@ export const models = {
     llm: 'OpenAI',
     alias: 'o1-mini-2024-09-12',
     components: ['PromptGenerator', 'GenAILLM'],
+
+    label: 'GPT o1 mini',
+    modelId: 'o1-mini-2024-09-12',
+    provider: 'OpenAI',
     features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
   },
   'o1-mini-2024-09-12': {
     llm: 'OpenAI',
@@ -404,8 +329,16 @@ export const models = {
     llm: 'OpenAI',
     alias: 'o1-preview-2024-09-12',
     components: ['PromptGenerator', 'GenAILLM'],
+
+    label: 'GPT o1 Preview',
+    modelId: 'o1-preview-2024-09-12',
+    provider: 'OpenAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
   },
   'o1-preview-2024-09-12': {
     llm: 'OpenAI',
@@ -414,13 +347,23 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 128_000, completionTokens: 32_768 },
   },
+  // #endregion o1 models
 
-  // GPT-4-turbo
+  // #region GPT-4-turbo
   'gpt-4-turbo-latest': {
     llm: 'OpenAI',
     alias: 'gpt-4-turbo-2024-04-09',
     components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
-    tags: ['legacy'],
+
+    label: 'GPT 4 Turbo Latest',
+    modelId: 'gpt-4-turbo-2024-04-09',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
   },
   'gpt-4-turbo': {
     llm: 'OpenAI',
@@ -433,7 +376,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+
+    label: 'GPT 4 Turbo',
+    modelId: 'gpt-4-turbo-2024-04-09',
+    provider: 'OpenAI',
+    features: ['text', 'image'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
   },
   'gpt-4-turbo-2024-04-09': {
     llm: 'OpenAI',
@@ -442,21 +394,26 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 128000, completionTokens: 4096 },
   },
+  // #endregion GPT-4-turbo
 
-  // GPT-4
+  // #region GPT-4
   'gpt-4-latest': {
     llm: 'OpenAI',
     alias: 'gpt-4-0613',
-    enabled: true,
     components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
+
+    label: 'GPT 4 Latest',
+    modelId: 'gpt-4-0613',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'gpt-4': {
     llm: 'OpenAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 8192, completionTokens: 8192 },
     components: [
       'PromptGenerator',
       'LLMAssistant',
@@ -465,7 +422,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+
+    label: 'GPT 4',
+    modelId: 'gpt-4-0613',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'gpt-4-0613': {
     llm: 'OpenAI',
@@ -475,8 +441,9 @@ export const models = {
     hidden: true,
     keyOptions: { tokens: 8192, completionTokens: 8192 },
   },
+  // #endregion GPT-4
 
-  // GPT-3.5
+  // #region GPT-3.5
   'gpt-3.5-turbo-latest': {
     llm: 'OpenAI',
     alias: 'gpt-3.5-turbo-0125',
@@ -488,7 +455,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+
+    label: 'GPT 3.5 Turbo Latest',
+    modelId: 'gpt-3.5-turbo-0125',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
   },
   'gpt-3.5-turbo': {
     llm: 'OpenAI',
@@ -501,7 +477,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+
+    label: 'GPT 3.5 Turbo',
+    modelId: 'gpt-3.5-turbo-0125',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
   },
   'gpt-3.5-turbo-0125': {
     llm: 'OpenAI',
@@ -510,24 +495,12 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 16385, completionTokens: 4096 },
   },
-  'gpt-3.5-turbo-1106': {
-    llm: 'OpenAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 16384, completionTokens: 4096 },
-    //components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
-  },
+  // #endregion GPT-3.5
 
-  'gpt-3.5-turbo-16k': {
-    llm: 'OpenAI',
-    alias: 'gpt-3.5-turbo-0125',
-    //components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
-  },
+  // #endregion OpenAI Models ==========================
 
-  // Anthropic
+  // #region Anthropic Models ==========================
+
   'claude-3.5-haiku': {
     llm: 'Anthropic',
     alias: 'claude-3-5-haiku-latest',
@@ -539,8 +512,16 @@ export const models = {
       'Chatbot',
       'GenAILLM',
     ],
+
+    label: 'Claude 3.5 Haiku',
+    modelId: 'claude-3-5-haiku-latest',
+    provider: 'Anthropic',
     features: ['text'],
-    tags: ['new'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
   },
   'claude-3-5-haiku-latest': {
     llm: 'Anthropic',
@@ -551,10 +532,6 @@ export const models = {
   },
   'claude-3-5-sonnet-latest': {
     llm: 'Anthropic',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 200000, completionTokens: 8192, enabled: true },
     components: [
       'PromptGenerator',
       'LLMAssistant',
@@ -564,7 +541,16 @@ export const models = {
       'Chatbot',
       'GenAILLM',
     ],
+
+    label: 'Claude 3.5 Sonnet',
+    modelId: 'claude-3-5-sonnet-latest',
+    provider: 'Anthropic',
     features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
   },
   'claude-3.5-sonnet': {
     llm: 'Anthropic',
@@ -578,7 +564,16 @@ export const models = {
       'Chatbot',
       'GenAILLM',
     ],
+
+    label: 'Claude 3.5 Sonnet',
+    modelId: 'claude-3-5-sonnet-20240620',
+    provider: 'Anthropic',
     features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
   },
   'claude-3-5-sonnet-20240620': {
     llm: 'Anthropic',
@@ -599,7 +594,16 @@ export const models = {
       'Chatbot',
       'GenAILLM',
     ],
+
+    label: 'Claude 3 Opus',
+    modelId: 'claude-3-opus-20240229',
+    provider: 'Anthropic',
     features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
   },
   'claude-3-opus-20240229': {
     llm: 'Anthropic',
@@ -619,7 +623,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['deprecated'],
+
+    label: 'Claude 3 Sonnet',
+    modelId: 'claude-3-sonnet-20240229',
+    provider: 'Anthropic',
+    features: ['text', 'image'],
+    tags: ['Personal', 'deprecated'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
   },
   'claude-3-sonnet-20240229': {
     llm: 'Anthropic',
@@ -639,7 +652,16 @@ export const models = {
       'AgentPlugin',
       'Chatbot',
     ],
-    tags: ['legacy'],
+
+    label: 'Claude 3 Haiku',
+    modelId: 'claude-3-haiku-20240307',
+    provider: 'Anthropic',
+    features: ['text', 'image'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
   },
   'claude-3-haiku-20240307': {
     llm: 'Anthropic',
@@ -650,55 +672,111 @@ export const models = {
   },
   'claude-2.1': {
     llm: 'Anthropic',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 200000, completionTokens: 4096, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
-    tags: ['legacy'],
+
+    label: 'Claude 2.1',
+    modelId: 'claude-2.1',
+    provider: 'Anthropic',
+    features: ['text', 'image'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
   },
   'claude-instant-1.2': {
     llm: 'Anthropic',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 100000, completionTokens: 4096, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
-    tags: ['legacy'],
-  },
 
-  /*** Models from Google AI ***/
-
-  // Gemini 1.5 pro
-  'gemini-1.5-pro-latest': {
-    llm: 'GoogleAI',
-    tokens: 2048,
-    completionTokens: 2048,
+    label: 'Claude Instant 1.2',
+    modelId: 'claude-instant-1.2',
+    provider: 'Anthropic',
+    features: ['text', 'image'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
-    tags: ['legacy'],
+    keyOptions: { tokens: 100_000, completionTokens: 4096, enabled: true },
   },
+
+  // #endregion Anthropic Models ==========================
+
+  // #region Google AI Models ==========================
+
+  // #region Gemini 2.0 flash
+  'gemini-2.0-flash': {
+    llm: 'GoogleAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+
+    label: 'Gemini 2.0 Flash Experimental',
+    modelId: 'gemini-2.0-flash-exp',
+    provider: 'GoogleAI',
+    features: ['text', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+  },
+  // #endregion Gemini 2.0 flash
+
+  // #region Gemini 1.5 pro
   'gemini-1.5-pro-exp-0801': {
     llm: 'GoogleAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
-    features: ['text', 'image', 'video', 'audio', 'document'],
+
+    label: 'Gemini 1.5 Pro Experimental',
+    modelId: 'gemini-1.5-pro-exp-0801',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 2_097_152, completionTokens: 8192, enabled: true },
   },
   'gemini-1.5-pro-latest-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.5-pro',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
-    features: ['text', 'image', 'video', 'audio', 'document'],
+
+    label: 'Gemini 1.5 Pro Latest Stable',
+    modelId: 'gemini-1.5-pro',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 2_097_152, completionTokens: 8192, enabled: true },
+  },
+  'gemini-1.5-pro-latest': {
+    llm: 'GoogleAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+
+    label: 'Gemini 1.5 Pro',
+    modelId: 'gemini-1.5-pro',
+    provider: 'GoogleAI',
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 2_097_152, completionTokens: 8_192, enabled: true },
   },
   'gemini-1.5-pro-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.5-pro-001',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
-    features: ['text', 'image', 'video', 'audio', 'document'],
+
+    label: 'Gemini 1.5 Pro Stable',
+    modelId: 'gemini-1.5-pro',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 2_097_152, completionTokens: 8192, enabled: true },
   },
   'gemini-1.5-pro': {
     llm: 'GoogleAI',
@@ -714,28 +792,52 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 2097152, completionTokens: 8192, enabled: true },
   },
+  // #endregion Gemini 1.5 pro
 
-  // Gemini 1.5 flash
+  // #region Gemini 1.5 flash
   'gemini-1.5-flash-latest': {
     llm: 'GoogleAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
-    tags: ['legacy'],
+
+    label: 'Gemini 1.5 Flash Latest',
+    modelId: 'gemini-1.5-flash-latest',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8192, enabled: true },
   },
   'gemini-1.5-flash-latest-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.5-flash',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
-    tags: ['legacy'],
+
+    label: 'Gemini 1.5 Flash Latest Stable',
+    modelId: 'gemini-1.5-flash',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8192, enabled: true },
   },
   'gemini-1.5-flash-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.5-flash-001',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
-    features: ['text', 'image', 'video', 'audio', 'document'],
+
+    label: 'Gemini 1.5 Flash Stable',
+    modelId: 'gemini-1.5-flash-001',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8192, enabled: true },
   },
   'gemini-1.5-flash': {
     llm: 'GoogleAI',
@@ -751,186 +853,119 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 1048576, completionTokens: 8192, enabled: true },
   },
+  // #endregion Gemini 1.5 flash
 
-  // Gemini 1.0 pro
+  // #region Gemini 1.0 pro
   'gemini-1.0-pro-latest': {
     llm: 'GoogleAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
+
+    label: 'Gemini 1.0 Pro Latest',
+    modelId: 'gemini-1.0-pro-latest',
+    provider: 'GoogleAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
   },
   'gemini-1.0-pro-latest-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.0-pro',
     components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
+
+    label: 'Gemini 1.0 Pro Latest Stable',
+    modelId: 'gemini-1.0-pro',
+    provider: 'GoogleAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
   },
   'gemini-1.0-pro-stable': {
     llm: 'GoogleAI',
     alias: 'gemini-1.0-pro-001',
     components: ['PromptGenerator', 'LLMAssistant'],
-    tags: ['legacy'],
+
+    label: 'Gemini 1.0 Pro Stable',
+    modelId: 'gemini-1.0-pro-001',
+    provider: 'GoogleAI',
+    features: ['text'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
   },
   'gemini-1.0-pro': {
     llm: 'GoogleAI',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
   },
   'gemini-1.0-pro-001': {
     llm: 'GoogleAI',
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 30720, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
   },
+  // #endregion Gemini 1.0 pro
+
+  // #region Gemini Pro Vision
   'gemini-pro-vision': {
     llm: 'GoogleAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 12288, completionTokens: 4096, enabled: true },
     components: ['VisionLLM'],
-    tags: ['legacy'],
-  },
 
-  // Groq
-  'llama-3.2-1b-preview': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
+    label: 'Gemini Pro Vision',
+    modelId: 'gemini-pro-vision',
+    provider: 'GoogleAI',
+    features: ['image'],
+    tags: ['Personal', 'legacy'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 12_288, completionTokens: 4096, enabled: true },
+  },
+  // #endregion Gemini Pro Vision
+
+  // #endregion Google AI Models ==========================
+
+  // #region Groq Models ==========================
+
+  // #region Groq - Production Models
+  'llama-3.3-70b': {
+    llm: 'Groq',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.3 70B',
+    modelId: 'llama-3.3-70b-versatile',
+    provider: 'Groq',
     features: ['text'],
-    tags: ['new'],
-  },
-  'llama-3.2-3b-preview': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama-3.2-11b-vision-preview': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'GenAILLM'],
-    features: ['text', 'image'],
-    tags: ['new'],
-  },
-  'llama-guard-3-8b': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llava-v1.5-7b-4096-preview': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'groq-llama-3.1-405b-reasoning': {
-    llm: 'Groq',
-    alias: 'llama-3.1-405b-reasoning',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama-3.1-405b-reasoning': {
-    llm: 'Groq',
-    tokens: 16000,
-    completionTokens: 16000,
-    enabled: false,
-    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
-  },
-  'groq-llama-3.1-70b-versatile': {
-    llm: 'Groq',
-    alias: 'llama-3.1-70b-versatile',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama-3.1-70b-versatile': {
-    llm: 'Groq',
-    tokens: 8000,
-    completionTokens: 8000,
-    enabled: false,
-    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
-  },
-  'groq-llama-3.1-8b-instant': {
-    llm: 'Groq',
-    alias: 'llama-3.1-8b-instant',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama-3.1-8b-instant': {
-    llm: 'Groq',
-    tokens: 8000,
-    completionTokens: 8000,
-    enabled: false,
-    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
-  },
-  'llama3-groq-70b-8192-tool-use-preview': {
-    llm: 'Groq',
-    tokens: 8192,
-    completionTokens: 8192,
-    enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama3-groq-8b-8192-tool-use-preview': {
-    llm: 'Groq',
-    tokens: 8192,
-    completionTokens: 8192,
-    enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'groq-llama3-8b': {
-    llm: 'Groq',
-    alias: 'llama3-8b-8192',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-  },
-  'llama3-8b-8192': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
   },
   'groq-llama3-70b': {
     llm: 'Groq',
     alias: 'llama3-70b-8192',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 70B',
+    modelId: 'llama3-70b-8192',
+    provider: 'Groq',
     features: ['text'],
-    tags: ['new'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'llama3-70b-8192': {
     llm: 'Groq',
@@ -939,40 +974,58 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
-  'groq-llama2-70b': {
+  'groq-llama-3.1-8b-instant': {
     llm: 'Groq',
-    alias: 'llama2-70b-4096',
+    alias: 'llama-3.1-8b-instant',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.1 8B',
+    modelId: 'llama-3.1-8b-instant',
+    provider: 'Groq',
     features: ['text'],
-    tags: ['new'],
-  },
-  'llama2-70b-4096': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
   },
-  'groq-mixtral-8x7b': {
+  'llama-3.1-8b-instant': {
     llm: 'Groq',
-    alias: 'mixtral-8x7b-32768',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-  },
-  'mixtral-8x7b-32768': {
-    llm: 'Groq',
-    tokens: 2048,
-    completionTokens: 2048,
+    tokens: 8000,
+    completionTokens: 8000,
     enabled: false,
-    keyOptions: { tokens: 32768, completionTokens: 32768, enabled: true },
+    keyOptions: { tokens: 131072, completionTokens: 8192, enabled: true },
   },
-  'groq-gemma-7b': {
+  'llama-guard-3-8b': {
     llm: 'Groq',
-    alias: 'gemma-7b-it',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama Guard 3 8B',
+    modelId: 'llama-guard-3-8b',
+    provider: 'Groq',
     features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
-  'gemma-7b-it': {
+  'groq-llama3-8b': {
+    llm: 'Groq',
+    alias: 'llama3-8b-8192',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 8B',
+    modelId: 'llama3-8b-8192',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+  },
+  'llama3-8b-8192': {
     llm: 'Groq',
     tokens: 2048,
     completionTokens: 2048,
@@ -983,7 +1036,16 @@ export const models = {
     llm: 'Groq',
     alias: 'gemma2-9b-it',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Google - Gemma 2 9B',
+    modelId: 'gemma2-9b-it',
+    provider: 'Groq',
     features: ['text'],
+    tags: ['Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'gemma2-9b-it': {
     llm: 'Groq',
@@ -992,535 +1054,127 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
+  'groq-mixtral-8x7b': {
+    llm: 'Groq',
+    alias: 'mixtral-8x7b-32768',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
 
-  // Together AI
-  'zero-one-ai/Yi-34B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has "```json...```" with JSON response)
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Austism/chronos-hermes-13b': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+    label: 'Mistral - Mixtral 8x7b',
+    modelId: 'mixtral-8x7b-32768',
+    provider: 'Groq',
     features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
+    tags: ['Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
   },
+  'mixtral-8x7b-32768': {
+    llm: 'Groq',
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 32768, completionTokens: 32768, enabled: true },
+  },
+  // #endregion Groq - Production Models
 
-  // Together AI - Meta
-  'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+  // #region Groq - Preview Models
+  'deepseek-r1-distill-llama-70b': {
+    llm: 'Groq',
+
+    label: 'DeepSeek - R1 Distill Llama 70b Preview',
+    modelId: 'deepseek-r1-distill-llama-70b',
+    provider: 'Groq',
     features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+  },
+  'llama-3.3-70b-specdec': {
+    llm: 'Groq',
+
+    label: 'Meta - Llama 3.3 70B SpecDec Preview',
+    modelId: 'llama-3.3-70b-specdec',
+    provider: 'Groq',
     features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 130815, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
-  'meta-llama/Meta-Llama-3-8B-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Meta-Llama-3-70B-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Meta-Llama-3-8B-Instruct-Lite': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Meta-Llama-3-70B-Instruct-Lite': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'codellama/CodeLlama-13b-Instruct-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
+  'llama-3.2-1b-preview': {
+    llm: 'Groq',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.2 1B Preview',
+    modelId: 'llama-3.2-1b-preview',
+    provider: 'Groq',
     features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'codellama/CodeLlama-34b-Instruct-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+  },
+  'llama-3.2-3b-preview': {
+    llm: 'Groq',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.2 3B Preview',
+    modelId: 'llama-3.2-3b-preview',
+    provider: 'Groq',
     features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'codellama/CodeLlama-70b-Instruct-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
   },
-  'codellama/CodeLlama-7b-Instruct-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 16384, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-2-70b-chat-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-2-13b-chat-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-2-7b-chat-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-3-8b-chat-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-3-70b-chat-hf': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-Vision-Free': {
-    llm: 'TogetherAI',
-    tokens: 4096,
-    enabled: false,
-    keyOptions: { tokens: 131072, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'VisionLLM', 'GenAILLM'],
+  'llama-3.2-11b-vision-preview': {
+    llm: 'Groq',
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.2 11B Vision Preview',
+    modelId: 'llama-3.2-11b-vision-preview',
+    provider: 'Groq',
     features: ['text', 'image'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131072, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'VisionLLM', 'GenAILLM'],
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+  },
+  'llama-3.2-90b-vision-preview': {
+    llm: 'Groq',
+
+    label: 'Meta - Llama 3.2 90b Vision Preview',
+    modelId: 'llama-3.2-90b-vision-preview',
+    provider: 'Groq',
     features: ['text', 'image'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo': {
-    llm: 'TogetherAI',
-    tokens: 4096,
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131072, enabled: true },
-    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
+    keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
   },
-  'togethercomputer/falcon-7b-instruct': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
+  // #endregion Groq - Preview Models
 
-  // Together AI - Mistral
-  'mistralai/Mistral-7B-Instruct-v0.1': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'mistralai/Mistral-7B-Instruct-v0.2': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'mistralai/Mistral-7B-Instruct-v0.3': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'mistralai/Mixtral-8x7B-Instruct-v0.1': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'mistralai/Mixtral-8x22B-Instruct-v0.1': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 65536, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Gryphe/MythoMax-L2-13b': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
+  // #endregion Groq Models ==========================
 
-  // Together AI - NousResearch
-  'NousResearch/Nous-Capybara-7B-V1p9': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-2-Mistral-7B-DPO': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-2-Yi-34B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-llama-2-7b': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'NousResearch/Nous-Hermes-Llama2-13b': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
+  // #region Together AI Models ==========================
 
-  // Together AI - OpenChat
-  'openchat/openchat-3.5-1210': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-
-  // Together AI - Teknium
-  'teknium/OpenHermes-2-Mistral-7B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'teknium/OpenHermes-2p5-Mistral-7B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'garage-bAInd/Platypus2-70B-instruct': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'upstage/SOLAR-10.7B-Instruct-v1.0': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'togethercomputer/StripedHyena-Nous-7B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'lmsys/vicuna-7b-v1.5': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'lmsys/vicuna-13b-v1.5': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-
-  // Together AI - Allen AI
-  'allenai/OLMo-7B-Twin-2T': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'allenai/OLMo-7B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 2048, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-
-  // Together AI - Qwen
-  'Qwen/Qwen1.5-0.5B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-1.8B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-4B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-7B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-14B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-32B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-72B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'Qwen/Qwen1.5-110B-Chat': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-
-  // Together AI - DeepSeek
+  // #region Together AI - DeepSeek
   'deepseek-ai/DeepSeek-R1': {
     llm: 'TogetherAI',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
 
     label: 'DeepSeek - R1',
     modelId: 'deepseek-ai/DeepSeek-R1',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new', 'TogetherAI'],
+    tags: ['New', 'Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1530,13 +1184,12 @@ export const models = {
   },
   'deepseek-ai/DeepSeek-V3': {
     llm: 'TogetherAI',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
 
     label: 'DeepSeek - V3',
     modelId: 'deepseek-ai/DeepSeek-V3',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new', 'TogetherAI'],
+    tags: ['New', 'Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1552,7 +1205,7 @@ export const models = {
     modelId: 'deepseek-ai/deepseek-llm-67b-chat',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1560,156 +1213,620 @@ export const models = {
 
     baseURL: 'https://api.together.xyz/v1',
   },
+  // #endregion Together AI - DeepSeek
 
-  // Together AI - Google
-  'google/gemma-2b-it': {
+  // #region Together AI - Meta
+  'meta-llama/Llama-3.3-70B-Instruct-Turbo': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.3 70B Instruct Turbo',
+    modelId: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'google/gemma-7b-it': {
+  'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.1 8B Instruct Turbo',
+    modelId: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.1 70B Instruct Turbo',
+    modelId: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.1 405B Instruct Turbo',
+    modelId: 'meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 130_815, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3-8B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 8B Instruct Turbo',
+    modelId: 'meta-llama/Meta-Llama-3-8B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3-70B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 70B Instruct Turbo',
+    modelId: 'meta-llama/Meta-Llama-3-70B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-3.2-3B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+
+    label: 'Meta - Llama 3.2 3B Instruct Turbo',
+    modelId: 'meta-llama/Llama-3.2-3B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3-8B-Instruct-Lite': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 8B Instruct Lite',
+    modelId: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Meta-Llama-3-70B-Instruct-Lite': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 70B Instruct Lite',
+    modelId: 'meta-llama/Meta-Llama-3-70B-Instruct-Lite',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-3-8b-chat-hf': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 8B Chat',
+    modelId: 'meta-llama/Llama-3-8b-chat-hf',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-3-70b-chat-hf': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Meta - Llama 3 70B Chat',
+    modelId: 'meta-llama/Llama-3-70b-chat-hf',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-2-13b-chat-hf': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has introductory text with JSON response)
+
+    label: 'Meta - Llama 2 13B Chat',
+    modelId: 'meta-llama/Llama-2-13b-chat-hf',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-Vision-Free': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'VisionLLM', 'GenAILLM'],
+
+    label: 'Meta - Llama Vision Free',
+    modelId: 'meta-llama/Llama-Vision-Free',
+    provider: 'TogetherAI',
+    features: ['text', 'image'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'VisionLLM', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.2 11B Vision Instruct Turbo',
+    modelId: 'meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text', 'image'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo': {
+    llm: 'TogetherAI',
+    components: ['LLMAssistant', 'PromptGenerator', 'VisionLLM', 'GenAILLM'],
+
+    label: 'Meta - Llama 3.2 90B Vision Instruct Turbo',
+    modelId: 'meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text', 'image'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131072, completionTokens: 131072, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - Meta
+
+  // #region Together AI - Google
+  'google/gemma-2-27b-it': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Google - Gemma 2 27B',
+    modelId: 'google/gemma-2-27b-it',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
   'google/gemma-2-9b-it': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'google/gemma-2-27b-it': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
 
-  // Together AI - Undi95
-  'Undi95/Toppy-M-7B': {
-    llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+    label: 'Google - Gemma 2 9B',
+    modelId: 'google/gemma-2-9b-it',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
 
-  // Together AI - Others
-  'cognitivecomputations/dolphin-2.5-mixtral-8x7b': {
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'google/gemma-2b-it': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Google - Gemma 2 2B',
+    modelId: 'google/gemma-2b-it',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'databricks/dbrx-instruct': {
+  // #endregion Together AI - Google
+
+  // #region Together AI - Mistral
+  'mistralai/Mistral-7B-Instruct-v0.3': {
     llm: 'TogetherAI',
-    tokens: 2048,
+    components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GenAILLM'],
+
+    label: 'Mistral - 7B Instruct v0.3',
+    modelId: 'mistralai/Mistral-7B-Instruct-v0.3',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'mistralai/Mistral-7B-Instruct-v0.2': {
+    llm: 'TogetherAI',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Mistral - 7B Instruct v0.2',
+    modelId: 'mistralai/Mistral-7B-Instruct-v0.2',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'Open-Orca/Mistral-7B-OpenOrca': {
+  'mistralai/Mistral-7B-Instruct-v0.1': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 8192, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Mistral - 7B Instruct v0.1',
+    modelId: 'mistralai/Mistral-7B-Instruct-v0.1',
+    provider: 'TogetherAI',
     features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'snorkelai/Snorkel-Mistral-PairRM-DPO': {
+  'mistralai/Mixtral-8x7B-Instruct-v0.1': {
     llm: 'TogetherAI',
-    tokens: 2048,
+    components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GenAILLM'],
+
+    label: 'Mistral - 8x7B Instruct v0.1',
+    modelId: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 32768, enabled: true },
-    components: ['LLMAssistant'], // * Excluded from 'PromptGenerator' (has some other text)
-    tags: ['new'],
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'Snowflake/snowflake-arctic-instruct': {
+  'mistralai/Mixtral-8x22B-Instruct-v0.1': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Mistral - 8x22B Instruct v0.1',
+    modelId: 'mistralai/Mixtral-8x22B-Instruct-v0.1',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
-    baseURL: 'https://api.together.xyz/v1',
-  },
-  'togethercomputer/alpaca-7b': {
-    llm: 'TogetherAI',
-    tokens: 2048,
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 2048, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
-    features: ['text'],
+    keyOptions: { tokens: 65_536, completionTokens: 65_536, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
-  'WizardLM/WizardLM-13B-V1.2': {
+  // #endregion Together AI - Mistral
+
+  // #region Together AI - Qwen
+  'Qwen/Qwen2.5-Coder-32B-Instruct': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Qwen - 2.5 Coder 32B',
+    modelId: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+    provider: 'TogetherAI',
     features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
+  'Qwen/QwQ-32B-Preview': {
+    llm: 'TogetherAI',
+
+    label: 'Qwen - QwQ 32B Preview',
+    modelId: 'Qwen/QwQ-32B-Preview',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'Qwen/Qwen2.5-7B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+
+    label: 'Qwen - 2.5 7B Instruct Turbo',
+    modelId: 'Qwen/Qwen2.5-7B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'Qwen/Qwen2.5-72B-Instruct-Turbo': {
+    llm: 'TogetherAI',
+
+    label: 'Qwen - 2.5 72B Instruct Turbo',
+    modelId: 'Qwen/Qwen2.5-72B-Instruct-Turbo',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'Qwen/Qwen2-72B-Instruct': {
+    llm: 'TogetherAI',
+
+    label: 'Qwen - 2 72B Instruct',
+    modelId: 'Qwen/Qwen2-72B-Instruct',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'Qwen/Qwen2-VL-72B-Instruct': {
+    llm: 'TogetherAI',
+
+    label: 'Qwen - 2 VL 72B Instruct',
+    modelId: 'Qwen/Qwen2-VL-72B-Instruct',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - Qwen
+
+  // #region Together AI - Nvidia
+  'nvidia/Llama-3.1-Nemotron-70B-Instruct-HF': {
+    llm: 'TogetherAI',
+
+    label: 'Nvidia - Llama 3.1 Nemotron 70B',
+    modelId: 'nvidia/Llama-3.1-Nemotron-70B-Instruct-HF',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - Nvidia
+
+  // #region Together AI - Microsoft
   'microsoft/WizardLM-2-8x22B': {
     llm: 'TogetherAI',
-    tokens: 65536,
-    enabled: false,
-    keyOptions: { tokens: 65536, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Microsoft - WizardLM 2 8x22B',
+    modelId: 'microsoft/WizardLM-2-8x22B',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 65_536, completionTokens: 65_536, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
+  // #endregion Together AI - Microsoft
+
+  // #region Together AI - databricks
+  'databricks/dbrx-instruct': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Databricks - DBRX Instruct',
+    modelId: 'databricks/dbrx-instruct',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - databricks
+
+  // #region Together AI - NousResearch
+  'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'NousResearch - Hermes 2 Mixtral 8x7B DPO',
+    modelId: 'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - NousResearch
+
+  // #region Together AI - Upstage
+  'upstage/SOLAR-10.7B-Instruct-v1.0': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Upstage - SOLAR 10.7B Instruct v1.0',
+    modelId: 'upstage/SOLAR-10.7B-Instruct-v1.0',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - Upstage
+
+  // #region Together AI - Gryphe
+  'Gryphe/MythoMax-L2-13b': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'Gryphe - MythoMax L2 13B',
+    modelId: 'Gryphe/MythoMax-L2-13b',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  // #endregion Together AI - Gryphe
+
+  // #endregion Together AI Models ==========================
 
   // We do not get the exact token information for Dalle models, so use the maximum possible values
   'dall-e-3': {
     llm: 'OpenAI',
     alias: 'dall-e-3',
-    enabled: true,
     components: ['ImageGenerator'],
-    tokens: 2048,
-    completionTokens: 2048,
+
+    label: 'OpenAI - Dall-E 3',
+    modelId: 'dall-e-3',
+    provider: 'OpenAI',
+    features: ['image'],
+    tags: ['Personal', 'OpenAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
     keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
   'dall-e-2': {
     llm: 'OpenAI',
     alias: 'dall-e-2',
-    enabled: true,
     components: ['ImageGenerator'],
-    tokens: 2048,
-    completionTokens: 2048,
+
+    label: 'OpenAI - Dall-E 2',
+    modelId: 'dall-e-2',
+    provider: 'OpenAI',
+    features: ['image'],
+    tags: ['Personal', 'OpenAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
     keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
 
@@ -1718,8 +1835,18 @@ export const models = {
     llm: 'xAI',
     alias: 'grok-beta',
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'xAI - Grok',
+    modelId: 'grok-beta',
+    provider: 'xAI',
     features: ['text'],
-    tags: ['new'],
+    tags: [],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131072, completionTokens: 4096, enabled: true },
+
+    baseURL: 'https://api.x.ai/v1',
   },
   'grok-beta': {
     llm: 'xAI',
@@ -1734,7 +1861,7 @@ export const models = {
     baseURL: 'https://api.x.ai/v1',
   },
 
-  //#endregion [legacy models] ==============================================================
+  // #endregion [User Models] ==============================================================
 };
 
 /******************************************************
