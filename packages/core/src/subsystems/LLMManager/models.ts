@@ -1,3 +1,9 @@
+/******************************************************
+ * ! DO NOT MODIFY THIS FILE INDEPENDENTLY
+ * ! TO ENSURE CONSISTENCY, THIS FILE IS SYNCED WITH
+ * ! THE FRONTEND AND BACKEND VERSIONS
+ ******************************************************/
+
 const MODEL_SCHEMA_VERSION: number = 2;
 const isDev = process.env.NODE_ENV === 'DEV';
 
@@ -259,6 +265,20 @@ export const models = {
   // #endregion Google AI
 
   // #region Groq
+  'deepseek-r1-distill-llama-70b': {
+    llm: 'Groq',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'DeepSeek - R1 Distill Llama 70b',
+    modelId: 'deepseek-r1-distill-llama-70b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['new', 'Preview', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
+  },
   'user/groq-gemma2-9b': {
     label: 'Google - Gemma 2 9B',
     modelId: 'gemma2-9b-it',
@@ -1492,24 +1512,52 @@ export const models = {
   },
 
   // Together AI - DeepSeek
-  'deepseek-ai/deepseek-coder-33b-instruct': {
+  'deepseek-ai/DeepSeek-R1': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 16384, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'DeepSeek - R1',
+    modelId: 'deepseek-ai/DeepSeek-R1',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['new', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 163_840, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'deepseek-ai/DeepSeek-V3': {
+    llm: 'TogetherAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'DeepSeek - V3',
+    modelId: 'deepseek-ai/DeepSeek-V3',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['new', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 8192, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
   'deepseek-ai/deepseek-llm-67b-chat': {
     llm: 'TogetherAI',
-    tokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 4096, enabled: true },
     components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
+
+    label: 'DeepSeek - Llama 67B Chat',
+    modelId: 'deepseek-ai/deepseek-llm-67b-chat',
+    provider: 'TogetherAI',
     features: ['text'],
-    tags: ['new'],
+    tags: ['TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 4096, completionTokens: 4096, enabled: true },
+
     baseURL: 'https://api.together.xyz/v1',
   },
 
@@ -1687,9 +1735,10 @@ export const models = {
   },
 
   //#endregion [legacy models] ==============================================================
-} as const;
+};
 
-export type LLMProvider = (typeof models)[keyof typeof models]['llm'] | 'VertexAI' | 'Bedrock';
-export type LLMModel = keyof typeof models ;
-export type LLMModelInfo = (typeof models)[LLMModel];
-
+/******************************************************
+ * ! DO NOT MODIFY THIS FILE INDEPENDENTLY
+ * ! TO ENSURE CONSISTENCY, THIS FILE IS SYNCED WITH
+ * ! THE FRONTEND AND BACKEND VERSIONS
+ ******************************************************/
