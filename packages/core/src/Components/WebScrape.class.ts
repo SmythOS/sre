@@ -7,7 +7,6 @@ import SystemEvents from '@sre/Core/SystemEvents';
 const CREDITS_PER_URL = 0.2;
 
 export default class WebScrape extends Component {
-
     protected configSchema = Joi.object({
         includeImages: Joi.boolean().default(false).label('Include Image Results'),
     });
@@ -15,7 +14,7 @@ export default class WebScrape extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
@@ -32,13 +31,17 @@ export default class WebScrape extends Component {
                 data: {
                     api_key: SREConfig.env.TAVILY_API_KEY,
                     urls: scrapeUrls,
-                    ...(config.includeImages ? { include_images: true } : {})
-                }
+                    ...(config.includeImages ? { include_images: true } : {}),
+                },
             });
 
             Output = { results: response.data.results };
             _error = response.data.failedResults?.length ? JSON.stringify(response.data.failedResults) : undefined;
-            this.reportUsage(response?.data?.results?.length, agent.id);
+            this.reportUsage({
+                urlsScraped: response?.data?.results?.length,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.response?.data || err?.message || err.toString();
@@ -87,11 +90,14 @@ export default class WebScrape extends Component {
         }
     }
 
-    protected reportUsage(urlsScraped: number, agentId: string) {
+    protected reportUsage({ urlsScraped, agentId, teamId }: { urlsScraped: number; agentId: string; teamId: string }) {
         SystemEvents.emit('USAGE:API', {
-            domain: 'webscrape.smyth',
-            requests: urlsScraped * CREDITS_PER_URL,
+            sourceId: 'api:webscrape.smyth',
+            requests: urlsScraped,
+            credits: CREDITS_PER_URL,
+            costs: urlsScraped * CREDITS_PER_URL,
             agentId,
+            teamId,
         });
     }
 }
