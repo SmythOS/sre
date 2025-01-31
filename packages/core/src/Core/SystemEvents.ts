@@ -7,6 +7,7 @@ export type SystemEventMap = {
     'SRE:Initialized': [];
     'USAGE:LLM': [SmythLLMUsage];
     'USAGE:API': any;
+    'USAGE:TASK': [{ number: number; agentId: string }];
 };
 
 const SystemEvents = new EventEmitter<SystemEventMap>();
