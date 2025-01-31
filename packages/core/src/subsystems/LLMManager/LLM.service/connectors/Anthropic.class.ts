@@ -821,11 +821,11 @@ export class AnthropicConnector extends LLMConnector {
         metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,
             input_tokens_cache_write: usage.cache_creation_input_tokens,
             input_tokens_cache_read: usage.cache_read_input_tokens,
-            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,

@@ -5,7 +5,6 @@ import SREConfig from '@sre/config';
 import axios from 'axios';
 import SystemEvents from '@sre/Core/SystemEvents';
 
-
 export default class WebSearch extends Component {
     protected configSchema = Joi.object({
         includeImages: Joi.boolean().default(false).label('Include Image Results'),
@@ -19,7 +18,7 @@ export default class WebSearch extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
@@ -43,12 +42,14 @@ export default class WebSearch extends Component {
                     ...(config.includeImages ? { include_images: true } : {}),
                     ...(config.data.includeQAs ? { include_answer: true } : {}),
                     ...(config.data.includeRawContent ? { include_raw_content: true } : {}),
-
-                }
+                },
             });
             logger.debug(JSON.stringify(response.data));
             Output = { results: response.data.results };
-            this.reportUsage(agent.id);
+            this.reportUsage({
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.response?.data || err?.message || err.toString();
@@ -57,11 +58,14 @@ export default class WebSearch extends Component {
         }
     }
 
-    protected reportUsage(agentId: string) {
+    protected reportUsage({ agentId, teamId }: { agentId: string; teamId: string }) {
         SystemEvents.emit('USAGE:API', {
-            domain: 'websearch.smyth',
+            sourceId: 'api:websearch.smyth',
             requests: 1,
+            credits: 1,
+            costs: 1,
             agentId,
+            teamId,
         });
     }
 }

@@ -882,11 +882,11 @@ export class OpenAIConnector extends LLMConnector {
         metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,

@@ -150,11 +150,11 @@ export class VertexAIConnector extends LLMConnector {
         metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.promptTokenCount || 0,
             output_tokens: usage.candidatesTokenCount || 0,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
