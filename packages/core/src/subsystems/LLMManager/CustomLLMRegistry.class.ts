@@ -53,9 +53,9 @@ export class CustomLLMRegistry {
         return modelInfo?.features || [];
     }
 
-    public modelEnabled(model: string): boolean {
-        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
-        return true;
+    public async modelEnabled(): Promise<boolean> {
+        const subscriptionFlags = await this.getSubscriptionFlags();
+        return subscriptionFlags.customModelsEnabled;
     }
 
     public getMaxContextTokens(model: string): number {
@@ -115,5 +115,12 @@ export class CustomLLMRegistry {
         } catch (error) {
             return {};
         }
+    }
+
+    private async getSubscriptionFlags(): Promise<{ customModelsEnabled: boolean }> {
+        // TODO: V2 MODEL TEMPLATE: get subscription flags from the subscription
+        return {
+            customModelsEnabled: true,
+        };
     }
 }

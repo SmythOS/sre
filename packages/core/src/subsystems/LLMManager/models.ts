@@ -281,6 +281,21 @@ export const models = {
   // #endregion GPT 4o
 
   // #region o1 models
+  'o3-mini': {
+    llm: 'OpenAI',
+    alias: 'o3-mini-2025-01-31',
+    components: ['PromptGenerator', 'GenAILLM'],
+
+    label: 'GPT o3 mini',
+    modelId: 'o3-mini-2025-01-31',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: true,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',

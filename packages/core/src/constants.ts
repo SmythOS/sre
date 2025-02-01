@@ -107,3 +107,12 @@ export const SUPPORTED_MIME_TYPES_MAP = {
         ],
     },
 };
+
+export const DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS = {
+    openai: { enabled: true },
+    anthropic: { enabled: true },
+    googleai: { enabled: true },
+    togetherai: { enabled: true },
+    groq: { enabled: true },
+    xai: { enabled: true },
+};

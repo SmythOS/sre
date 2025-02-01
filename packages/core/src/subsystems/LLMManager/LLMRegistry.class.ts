@@ -1,19 +1,7 @@
 import { models } from './models';
-
+import { DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS } from '@sre/constants';
 export class LLMRegistry {
-    private static instance: LLMRegistry = null;
-
-    private constructor(private model: string) {
-        this.model = model;
-    }
-
-    public static getInstance(model: string) {
-        if (!this.instance) {
-            this.instance = new LLMRegistry(model);
-        }
-
-        return this.instance;
-    }
+    private constructor() {} // Prevents instantiation
 
     public static isStandardLLM(model: string): boolean {
         return this.modelExists(model);
@@ -21,6 +9,10 @@ export class LLMRegistry {
 
     public static isSmythOSModel(model: string): boolean {
         return model?.startsWith('smythos/');
+    }
+
+    public static getModelEntryId(model: string): string {
+        return model;
     }
 
     public static getModelId(model: string): string {
@@ -37,22 +29,26 @@ export class LLMRegistry {
 
     public static getBaseURL(model: string): string {
         const modelId = this.getModelId(model);
-        return models?.[modelId]?.baseURL || undefined;
+        const modelEntryId = this.getModelEntryId(model);
+        return models?.[modelId]?.baseURL || models?.[modelEntryId]?.baseURL || undefined;
     }
 
     public static getModelKeyOptions(model: string): Record<string, any> {
         const modelId = this.getModelId(model);
-        return models?.[modelId]?.keyOptions || {};
+        const modelEntryId = this.getModelEntryId(model);
+        return models?.[modelId]?.keyOptions || models?.[modelEntryId]?.keyOptions || {};
     }
 
     public static getProvider(model: string): string {
         const modelId = this.getModelId(model);
-        return models?.[modelId]?.provider || models?.[modelId]?.llm;
+        const modelEntryId = this.getModelEntryId(model);
+        return models?.[modelId]?.provider || models?.[modelEntryId]?.provider || models?.[modelId]?.llm || models?.[modelEntryId]?.llm;
     }
 
     public static getModelInfo(model: string, hasAPIKey: boolean = false): Record<string, any> {
         const modelId = this.getModelId(model);
-        const modelInfo = models?.[modelId] || {};
+        const modelEntryId = this.getModelEntryId(model);
+        const modelInfo = models?.[modelId] || models?.[modelEntryId] || {};
 
         if (hasAPIKey) {
             const keyOptions = LLMRegistry.getModelKeyOptions(modelId);
@@ -65,12 +61,14 @@ export class LLMRegistry {
     public static modelExists(model: string): boolean {
         if (model?.toLowerCase() === 'echo') return true;
         const modelId = this.getModelId(model);
-        return !!models?.[modelId];
+        const modelEntryId = this.getModelEntryId(model);
+        return !!models?.[modelId] || modelId === models?.[modelEntryId]?.modelId;
     }
 
-    public static modelEnabled(model: string): boolean {
-        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
-        return true;
+    public static async modelEnabled(model: string): Promise<boolean> {
+        const subscriptionFlags = await this.getSubscriptionFlags();
+        const isSmythOSProviderEnabled = await this.isSmythOSProviderEnabled(model);
+        return isSmythOSProviderEnabled || subscriptionFlags.hasBuiltinModels;
     }
 
     //#region tokens related methods
@@ -111,4 +109,35 @@ export class LLMRegistry {
         }
     }
     //#endregion tokens related methods
+
+    private static async getEnabledSmythOSProviders(): Promise<string[]> {
+        const subscriptionFlags = await this.getSubscriptionFlags();
+        const smythosLLMProviders = await this.getSmythOSLLMProviders();
+
+        if (Object.keys(smythosLLMProviders || {}).length === 0 && subscriptionFlags.hasBuiltinModels) {
+            return Object.keys(DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS).filter(
+                (provider) => DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS[provider]?.enabled
+            );
+        }
+
+        return Object.keys(smythosLLMProviders).filter((provider) => smythosLLMProviders[provider]?.enabled);
+    }
+
+    private static async isSmythOSProviderEnabled(model: string): Promise<boolean> {
+        const provider = this.getProvider(model);
+        const enabledSmythOSProviders = await this.getEnabledSmythOSProviders();
+        return enabledSmythOSProviders.includes(provider);
+    }
+
+    private static async getSmythOSLLMProviders(): Promise<Record<string, any>> {
+        // TODO: V2 MODEL TEMPLATE: get LLM providers settings from team settings
+        return {};
+    }
+
+    private static async getSubscriptionFlags(): Promise<{ hasBuiltinModels: boolean }> {
+        // TODO: V2 MODEL TEMPLATE: get subscription flags from the subscription
+        return {
+            hasBuiltinModels: true,
+        };
+    }
 }

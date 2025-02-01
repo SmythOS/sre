@@ -31,7 +31,7 @@ export class LLMInference {
         } else if (teamId) {
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
             const llmProvider = customLLMRegistry.getProvider(model);
-            const isEnabled = customLLMRegistry.modelEnabled(model);
+            const isEnabled = customLLMRegistry.modelEnabled();
 
             if (llmProvider && isEnabled) {
                 llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
