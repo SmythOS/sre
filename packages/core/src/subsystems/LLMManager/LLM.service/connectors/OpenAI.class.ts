@@ -29,7 +29,7 @@ const console = Logger('OpenAIConnector');
 
 const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const o1Models = ['o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
+const o1Models = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
