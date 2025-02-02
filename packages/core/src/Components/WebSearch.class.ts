@@ -38,16 +38,20 @@ export default class WebSearch extends Component {
                     query: searchQuery,
                     topic: config.data.searchTopic,
                     exclude_domains: config.data.excludeDomains?.split(','),
-                    time_range: config.data.timeRange,
                     max_results: config.data.sourcesLimit,
-                    ...(config.includeImages ? { include_images: true } : {}),
+                    ...(config.data.timeRange !== 'None' ? { time_range: config.data.timeRange } : {}),
+                    ...(config.data.includeImages ? { include_images: true } : {}),
                     ...(config.data.includeQAs ? { include_answer: true } : {}),
                     ...(config.data.includeRawContent ? { include_raw_content: true } : {}),
 
                 }
             });
             logger.debug(JSON.stringify(response.data));
-            Output = { results: response.data.results };
+            Output = { 
+                results: response.data.results,
+                ...(config.data.includeImages ? { images: response.data.images } : {}),
+                ...(config.data.includeQAs ? { answer: response.data.answer } : {}),
+             };
             this.reportUsage(agent.id);
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {

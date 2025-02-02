@@ -32,7 +32,7 @@ export default class WebScrape extends Component {
                 data: {
                     api_key: SREConfig.env.TAVILY_API_KEY,
                     urls: scrapeUrls,
-                    ...(config.includeImages ? { include_images: true } : {})
+                    ...(config.data.includeImages ? { include_images: true } : {})
                 }
             });
 
@@ -61,8 +61,11 @@ export default class WebScrape extends Component {
                             }
                         }
                     } catch (error) {
-                        if (this.isValidUrl(inputItem)) {
-                            scrapeUrls.push(inputItem);
+                        const commaSeparatedUrls = inputItem.split(',');
+                        for (const url of commaSeparatedUrls) {
+                            if (this.isValidUrl(url)) {
+                                scrapeUrls.push(url);
+                            }
                         }
                     }
                 } else if (typeof inputItem === 'object') {
