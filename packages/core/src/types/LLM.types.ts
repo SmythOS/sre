@@ -11,6 +11,7 @@ export type LLMModelInfo = (typeof models)[LLMModel];
 
 export type TLLMParams = {
     model: string;
+    modelEntryName: string; // for usage reporting
     credentials:
         | Record<string, string> // for VertexAI
         | {
@@ -41,6 +42,7 @@ export type TLLMParams = {
     style?: 'vivid' | 'natural'; // for image generation
 
     cache?: boolean;
+    teamId?: string;
 };
 
 export type TLLMModelEntry = {
@@ -204,4 +206,7 @@ export interface SmythLLMUsage {
     llm_provider: LLMProvider;
     model: LLMModel | string;
     keySource?: APIKeySource;
+    agentId: string;
+    teamId: string;
+    tier?: string; // for Google AI
 }

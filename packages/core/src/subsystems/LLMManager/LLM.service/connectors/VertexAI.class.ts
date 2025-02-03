@@ -20,8 +20,10 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
@@ -74,7 +76,13 @@ export class VertexAIConnector extends LLMConnector {
             const result = await generativeModel.generateContent({ contents: messages });
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
             const usage = result?.response?.usageMetadata;
-            this.reportUsage(usage, { model: modelParams.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: modelParams.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -82,15 +90,19 @@ export class VertexAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamToolRequest(acRequest: AccessRequest, { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }): Promise<any> {
+    protected async streamToolRequest(
+        acRequest: AccessRequest,
+        { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
+        agent: string | Agent
+    ): Promise<any> {
         throw new Error('streamToolRequest() is not supported by Vertex AI');
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not currently implemented for Vertex AI');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not currently implemented for Vertex AI');
     }
 
@@ -98,20 +110,20 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Tool requests are not currently implemented for Vertex AI');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not currently implemented for Vertex AI');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('Streaming is not currently implemented for Vertex AI');
+    }
+
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
+        throw new Error('VertexAI model does not support passthrough with File(s)');
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         throw new Error('Tool configuration is not currently implemented for Vertex AI');
-    }
-
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
-        throw new Error('VertexAI model does not support passthrough with File(s)');
     }
 
     public getConsistentMessages(messages) {
@@ -133,15 +145,20 @@ export class VertexAIConnector extends LLMConnector {
         });
     }
 
-    protected reportUsage(usage: UsageMetadata & { cachedContentTokenCount?: number }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: UsageMetadata & { cachedContentTokenCount?: number },
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
             input_tokens: usage.promptTokenCount || 0,
             output_tokens: usage.candidatesTokenCount || 0,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            llm_provider: "VertexAI",
+            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

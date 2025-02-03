@@ -9,6 +9,7 @@ import { getM2MToken } from '@sre/utils/oauth.utils';
 import axios, { AxiosInstance } from 'axios';
 import { LogConnector } from '../LogConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('SmythLog');
 
@@ -56,8 +57,14 @@ export class SmythLog extends LogConnector {
         const agentId = acRequest.candidate.id;
 
         try {
+            // ! DEPRECATED: in favor of SystemEvents.emit('USAGE:TASK', ...), we will remove it later
             const day = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
             await this.smythAPI.put(`/v1/quota/agent/${agentId}/tasks`, { number: tasks, day }, { headers: await this.getSmythRequestHeaders() });
+
+            SystemEvents.emit('USAGE:TASK', {
+                number: tasks,
+                agentId,
+            });
         } catch (error) {
             console.error('Error logging task:', error?.response?.data?.message || error);
         }
