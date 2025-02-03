@@ -39,6 +39,8 @@ const config = {
 
         LOGTO_SERVER: process.env.LOGTO_SERVER,
         SMYTH_VAULT_API_BASE_URL: process.env.SMYTH_VAULT_API_BASE_URL,
+
+        TAVILY_API_KEY: process.env.TAVILY_API_KEY,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

@@ -5,29 +5,30 @@ import EventEmitter from 'events';
 import { Readable } from 'stream';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { APIKeySource } from '@sre/types/LLM.types';
+import Agent from '@sre/AgentManager/Agent.class';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<LLMChatResponse> {
         const content = params?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
         return { content, finishReason: 'stop' } as LLMChatResponse;
     }
-    protected async visionRequest(acRequest: AccessRequest, prompt, params) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params) {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
     }
-    protected async toolRequest(acRequest: AccessRequest, params) {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent) {
         throw new Error('Echo model does not support tool requests');
     }
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Echo.');
     }
-    protected async streamToolRequest(acRequest: AccessRequest, params) {
+    protected async streamToolRequest(acRequest: AccessRequest, params, agent: string | Agent) {
         throw new Error('Echo model does not support tool requests');
     }
-    protected async streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const content = params?.messages?.[0]?.content;
 
@@ -35,11 +36,11 @@ export class EchoConnector extends LLMConnector {
         (async () => {
             // Simulate streaming by splitting content into chunks
             const chunks = content.split(' ');
-            
+
             for (const chunk of chunks) {
                 // Simulate network delay
-                await new Promise(resolve => setTimeout(resolve, 50));
-                
+                await new Promise((resolve) => setTimeout(resolve, 50));
+
                 const delta = { content: chunk + ' ' };
                 emitter.emit('data', delta);
                 emitter.emit('content', delta.content);
@@ -53,7 +54,7 @@ export class EchoConnector extends LLMConnector {
 
         return emitter;
     }
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('Echo model does not support passthrough with File(s)');
     }
 
@@ -74,5 +75,5 @@ export class EchoConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: any, metadata: { model: string, keySource: APIKeySource }) {}
+    protected reportUsage(usage: any, metadata: { model: string; keySource: APIKeySource }) {}
 }

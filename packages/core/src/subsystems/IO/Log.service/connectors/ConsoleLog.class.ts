@@ -13,12 +13,12 @@ export class ConsoleLog extends LogConnector {
         return Promise.resolve(new ACL());
     }
     protected log(acRequest: AccessRequest, logData: AgentCallLog, callId?: string): Promise<any> {
-        console.log(`Log for agent ${acRequest.candidate.id}: ${logData}`);
+        console.debug(`Log for agent ${acRequest.candidate.id}: ${logData}`);
 
         return Promise.resolve();
     }
     protected logTask(acRequest: AccessRequest, tasks: number, isUsingTestDomain: boolean): Promise<void> {
-        console.log(
+        console.debug(
             `${tasks} Task(s) Consumed by agent ${acRequest.candidate.id}: ${isUsingTestDomain ? 'Using Test Domain' : 'Using Production Domain'}`
         );
 

@@ -10,26 +10,35 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import {
+    TLLMParams,
+    ToolData,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
+    GenerateImageConfig,
+    APIKeySource,
+} from '@sre/types/LLM.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('OpenAIConnector');
 
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const o1Models = ['o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
+const o1Models = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -63,6 +72,10 @@ export class OpenAIConnector extends LLMConnector {
 
         // Check if the team has their own API key, then use it
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
@@ -109,8 +122,13 @@ export class OpenAIConnector extends LLMConnector {
             const finishReason = response?.choices?.[0]?.finish_reason;
             const usage = response?.usage as any;
 
-            
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -118,7 +136,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent) {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -151,6 +169,10 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // Check if the team has their own API key, then use it
             const apiKey = params?.credentials?.apiKey;
+
+            if (!apiKey) {
+                throw new Error('An API key from OpenAI is required to use this model.');
+            }
 
             const openai = new OpenAI({
                 apiKey: apiKey,
@@ -185,7 +207,13 @@ export class OpenAIConnector extends LLMConnector {
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -193,7 +221,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -227,6 +255,10 @@ export class OpenAIConnector extends LLMConnector {
             // Check if the team has their own API key, then use it
             const apiKey = params?.credentials?.apiKey;
 
+            if (!apiKey) {
+                throw new Error('An API key from OpenAI is required to use this model.');
+            }
+
             const openai = new OpenAI({
                 apiKey: apiKey,
                 baseURL: params.baseURL,
@@ -259,8 +291,13 @@ export class OpenAIConnector extends LLMConnector {
 
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
-
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason: response?.choices?.[0]?.finish_reason };
         } catch (error) {
@@ -268,10 +305,12 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
         // throw new Error('Image generation request is not supported for OpenAI.');
         try {
             const { model, size, quality, n, responseFormat, style } = params;
+            const agentId = agent instanceof Agent ? agent.id : agent;
+
             const args: GenerateImageConfig & { prompt: string } = {
                 prompt,
                 model,
@@ -286,7 +325,6 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const apiKey = params?.credentials?.apiKey;
-
             if (!apiKey) {
                 throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
             }
@@ -306,8 +344,12 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             apiKey: apiKey,
@@ -315,6 +357,8 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: params.model,
@@ -354,8 +398,13 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             const usage = result?.usage;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
-            
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return {
                 data: { useTool, message: message, content: message?.content ?? '', toolsData },
@@ -451,7 +500,7 @@ export class OpenAIConnector extends LLMConnector {
 
             // usage_data.forEach((usage) => {
             //     // probably we can acc them and send them as one event
-            //     
+            //
             //     this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
             // });
 
@@ -477,10 +526,15 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         const openai = new OpenAI({
             apiKey: apiKey, // we provide default API key for OpenAI with limited quota
@@ -519,7 +573,7 @@ export class OpenAIConnector extends LLMConnector {
                 for await (const part of stream) {
                     delta = part.choices[0]?.delta;
                     const usage = part.usage;
-                    
+
                     if (usage) {
                         usage_data.push(usage);
                     }
@@ -549,7 +603,13 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
                 });
 
                 setTimeout(() => {
@@ -562,7 +622,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const messages = params?.messages || [];
         const emitter = new EventEmitter();
         const usage_data = [];
@@ -596,6 +656,10 @@ export class OpenAIConnector extends LLMConnector {
 
         // Check if the team has their own API key, then use it
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             apiKey: apiKey,
@@ -669,7 +733,13 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
                 });
 
                 setTimeout(() => {
@@ -807,16 +877,20 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-
-    protected reportUsage(usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            llm_provider: 'OpenAI',
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

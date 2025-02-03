@@ -33,6 +33,8 @@ import MultimodalLLM from './MultimodalLLM.class';
 import ServerlessCode from './ServerlessCode.class';
 import GenAILLM from './GenAILLM.class';
 import FileStore from './FileStore.class';
+import WebScrape from './WebScrape.class';
+import WebSearch from './WebSearch.class';
 
 const components = {
     Component: new Component(),
@@ -72,6 +74,8 @@ const components = {
     ServerlessCode: new ServerlessCode(),
     GenAILLM: new GenAILLM(),
     FileStore: new FileStore(),
+    WebSearch: new WebSearch(),
+    WebScrape: new WebScrape(),
 };
 
 export default components;

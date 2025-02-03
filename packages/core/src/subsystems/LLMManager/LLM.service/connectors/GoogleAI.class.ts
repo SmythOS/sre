@@ -3,7 +3,6 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import axios from 'axios';
 import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
@@ -17,19 +16,15 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit } from '@sre/utils';
 
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
-import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('GoogleAIConnector');
-
-type FileObject = {
-    url: string;
-    mimetype: string;
-};
 
 const DEFAULT_MODEL = 'gemini-1.5-pro';
 
@@ -47,57 +42,21 @@ const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
-    'video/mp4',
-    'video/mpeg',
-    'video/mov',
-    'video/avi',
-    'video/x-flv',
-    'video/mpg',
-    'video/webm',
-    'video/wmv',
-    'video/3gpp',
-    'image/png',
-    'image/jpeg',
-    'image/jpg',
-    'image/webp',
-    'image/heic',
-    'image/heif',
-    'audio/wav',
-    'audio/mp3',
-    'audio/aiff',
-    'audio/aac',
-    'audio/ogg',
-    'audio/flac',
-    'application/pdf',
-    'application/x-javascript',
-    'application/x-typescript',
-    'application/x-python-code',
-    'application/json',
-    'application/rtf',
-    'text/plain',
-    'text/html',
-    'text/css',
-    'text/javascript',
-    'text/x-typescript',
-    'text/csv',
-    'text/markdown',
-    'text/x-python',
-    'text/xml',
-    'text/rtf',
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.audio,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.video,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.document,
 ];
-
-// Supported image MIME types for Google AI's Gemini models
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
     private validMimeTypes = {
         all: VALID_MIME_TYPES,
-        image: VALID_IMAGE_MIME_TYPES,
+        image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    protected async chatRequest(acRequest: AccessRequest, params): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<LLMChatResponse> {
         let prompt = '';
 
         const model = params?.model || DEFAULT_MODEL;
@@ -105,6 +64,8 @@ export class GoogleAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction = '';
@@ -181,7 +142,13 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -189,7 +156,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
         const model = params?.model || 'gemini-pro-vision';
         const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
@@ -276,7 +243,13 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -381,7 +354,13 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -389,7 +368,9 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
         try {
             let systemInstruction = '';
             let formattedMessages;
@@ -443,7 +424,13 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result.response;
             const content = response.text();
             const usage = response?.usageMetadata;
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
 
@@ -470,7 +457,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
@@ -482,13 +469,15 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const apiKey = params?.credentials?.apiKey;
 
         let systemInstruction = '';
         let formattedMessages;
         const messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -567,9 +556,15 @@ export class GoogleAIConnector extends LLMConnector {
                         usage = chunk.usageMetadata;
                     }
                 }
-                
+
                 if (usage) {
-                    this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model: params.model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
                 }
 
                 setTimeout(() => {
@@ -713,7 +708,13 @@ export class GoogleAIConnector extends LLMConnector {
                 }
 
                 if (usage) {
-                    this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                    this.reportUsage(usage, {
+                        model,
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
                 }
 
                 setTimeout(() => {
@@ -865,7 +866,7 @@ export class GoogleAIConnector extends LLMConnector {
             const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
 
             // Write buffer data to temp file
-            await fs.promises.writeFile(tempFilePath, bufferData);
+            await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
 
             // Upload the file to the Google File Manager
             const fileManager = new GoogleAIFileManager(apiKey);
@@ -983,15 +984,29 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: UsageMetadata, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: UsageMetadata,
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        const modelEntryName = metadata.modelEntryName;
+        const inputTokens = usage.promptTokenCount;
+        let tier = 'tier-1';
+
+        if (['gemini-1.5-pro'].includes(modelEntryName) && inputTokens > 128_000) {
+            tier = 'tier-2';
+        }
+
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            llm_provider: "GoogleAI",
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+            tier,
         });
     }
 }

@@ -53,11 +53,6 @@ export class CustomLLMRegistry {
         return modelInfo?.features || [];
     }
 
-    public modelEnabled(model: string): boolean {
-        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
-        return true;
-    }
-
     public getMaxContextTokens(model: string): number {
         const modelInfo = this.getModelInfo(model);
         return modelInfo?.tokens;
@@ -94,7 +89,7 @@ export class CustomLLMRegistry {
                     label: entry.name,
                     modelId: customModel || foundationModel,
                     provider: entry.provider,
-                    features: entry.features,
+                    features: entry.features?.map((feature) => (feature === 'text-completion' ? 'text' : feature)),
                     tags: Array.isArray(entry?.tags) ? ['Enterprise', ...entry?.tags] : ['Enterprise'],
                     tokens: customModelData?.tokens ?? 100000,
                     completionTokens: customModelData?.completionTokens ?? 4096,

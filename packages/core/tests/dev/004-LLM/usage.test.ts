@@ -7,7 +7,6 @@ import { delay } from '@sre/utils/index';
 import { APIKeySource, SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
-
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {
@@ -27,27 +26,25 @@ vi.mock('@sre/Security/Account.service/connectors/DummyAccount.class', async () 
     class MockedDummyAccount extends DummyAccount {
         public getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
             if (settingKey === 'custom-llm') {
-                return Promise.resolve(JSON.stringify({
-                    "m5zlsw6gduo": {
-                        "id": "m5zlsw6gduo",
-                        "name": "NEW_LLM",
-                        "provider": "Bedrock",
-                        "features": [
-                            "text-completion"
-                        ],
-                        "tags": [
-                            "Bedrock"
-                        ],
-                        "settings": {
-                            "foundationModel": "ai21.jamba-instruct-v1:0",
-                            "customModel": "",
-                            "region": "us-east-1",
-                            "keyIDName": "BEDROCK_TESINTG_AWS_KEY_ID",
-                            "secretKeyName": "BEDROCK_TESINTG_AWS_SECRET_KEY",
-                            "sessionKeyName": ""
-                        }
-                    }
-                }));
+                return Promise.resolve(
+                    JSON.stringify({
+                        m5zlsw6gduo: {
+                            id: 'm5zlsw6gduo',
+                            name: 'NEW_LLM',
+                            provider: 'Bedrock',
+                            features: ['text-completion'],
+                            tags: ['Bedrock'],
+                            settings: {
+                                foundationModel: 'ai21.jamba-instruct-v1:0',
+                                customModel: '',
+                                region: 'us-east-1',
+                                keyIDName: 'BEDROCK_TESINTG_AWS_KEY_ID',
+                                secretKeyName: 'BEDROCK_TESINTG_AWS_SECRET_KEY',
+                                sessionKeyName: '',
+                            },
+                        },
+                    })
+                );
             }
             return super.getTeamSetting(acRequest, teamId, settingKey);
         }
@@ -92,32 +89,50 @@ const sre = SmythRuntime.Instance.init({
 });
 
 const models = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest", 'imageGenRequest'] },
-    { provider: 'Anthropic', id: 'claude-3.5-sonnet', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest"] },
-    { provider: 'Groq', id: 'gemma2-9b-it', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest']},
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest', "visionRequest", "multimodalRequest", "toolRequest", 'streamRequest', "multimodalStreamRequest"] },
-    { provider: 'Bedrock', id: 'm5zlsw6gduo', supportedMethods: ['chatRequest', "toolRequest", 'streamRequest'] },
+    {
+        provider: 'OpenAI',
+        id: 'gpt-4o-mini',
+        supportedMethods: [
+            'chatRequest',
+            'visionRequest',
+            'multimodalRequest',
+            'toolRequest',
+            'streamRequest',
+            'multimodalStreamRequest',
+            'imageGenRequest',
+        ],
+    },
+    {
+        provider: 'Anthropic',
+        id: 'claude-3.5-sonnet',
+        supportedMethods: ['chatRequest', 'visionRequest', 'multimodalRequest', 'toolRequest', 'streamRequest', 'multimodalStreamRequest'],
+    },
+    { provider: 'Groq', id: 'gemma2-9b-it', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] },
+    {
+        provider: 'GoogleAI',
+        id: 'gemini-1.5-flash',
+        supportedMethods: ['chatRequest', 'visionRequest', 'multimodalRequest', 'toolRequest', 'streamRequest', 'multimodalStreamRequest'],
+    },
+    { provider: 'Bedrock', id: 'm5zlsw6gduo', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] },
     //* disabled for now since we have no valid access to VertexAI
-    // { provider: 'VertexAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest'] }, 
+    // { provider: 'VertexAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest'] },
 ];
 
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
 let agent = new Agent();
 
-function listenForUsageEvent(){
+function listenForUsageEvent() {
     let usageEvent: SmythLLMUsage = undefined;
     SystemEvents.once('USAGE:LLM', (usage) => {
-        console.log("USAGE:LLM received", usage);
+        console.log('USAGE:LLM received', usage);
         usageEvent = usage;
     });
     return {
         get(): SmythLLMUsage {
             return usageEvent;
         },
-    }
+    };
 }
-
-
 
 async function consumeStream(stream) {
     // stream.on('end', resolve);
@@ -145,160 +160,156 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
             },
         };
 
-
         // make sure to info the user to put the needed vault keys in vault.json before running
         // "keyIDName": "BEDROCK_TESINTG_AWS_KEY_ID",
         // "secretKeyName": "BEDROCK_TESINTG_AWS_SECRET_KEY",
-        console.warn("|----------------------------------------------------------|");
-        console.warn("| Make sure to put the following keys in vault.json to make sure all tests pass |");
-        console.warn("| BEDROCK_TESINTG_AWS_KEY_ID                                               |");
-        console.warn("| BEDROCK_TESINTG_AWS_SECRET_KEY                                           |");
-        console.warn("|----------------------------------------------------------|");
+        console.warn('|----------------------------------------------------------|');
+        console.warn('| Make sure to put the following keys in vault.json to make sure all tests pass |');
+        console.warn('| BEDROCK_TESINTG_AWS_KEY_ID                                               |');
+        console.warn('| BEDROCK_TESINTG_AWS_SECRET_KEY                                           |');
+        console.warn('|----------------------------------------------------------|');
     });
 
-    
-
-    const llmInference: LLMInference = await LLMInference.getInstance(id, "default");
-    const  isSupported = (method:string) => supportedMethods.includes(method);
+    const llmInference: LLMInference = await LLMInference.getInstance(id, 'default');
+    const isSupported = (method: string) => supportedMethods.includes(method);
     const vaultConnector = ConnectorService.getVaultConnector();
     const apiKey = await vaultConnector
         .user(AccessCandidate.agent(agent.id))
         .get(provider)
         .catch(() => '');
-        
+
     let expectedKeySource = apiKey ? APIKeySource.User : APIKeySource.Smyth;
 
-
-    isSupported("chatRequest") && it('should report usage for chatRequest', async () => {
-        
-
-        const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        await llmInference.promptRequest(prompt, config, agent);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-    isSupported("visionRequest") && it('should report usage for visionRequest', async () => {
-       
-        const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
-        await llmInference.visionRequest(prompt, fileSources, config, agent);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-    isSupported("multimodalRequest") && it('should report usage for multimodalRequest', async () => {
-       
-        const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
-        await llmInference.multimodalRequest(prompt, fileSources, config, agent);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-    isSupported("toolRequest") && it('should report usage for toolRequest', async () => {
-        
-        const usageEvent = listenForUsageEvent();
-        const toolDefinitions = [
-            {
-                name: 'get_weather',
-                description: 'Get the current weather',
-                properties: {
-                    location: { type: 'string' },
+    isSupported('chatRequest') &&
+        it('should report usage for chatRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const prompt = 'Hello, what is the smallest country in the world?';
+            await llmInference.promptRequest(prompt, config, agent);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
+    isSupported('visionRequest') &&
+        it('should report usage for visionRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const prompt = 'Hello, what is the smallest country in the world?';
+            const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+            await llmInference.visionRequest(prompt, fileSources, config, agent);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
+    isSupported('multimodalRequest') &&
+        it('should report usage for multimodalRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const prompt = 'Hello, what is the smallest country in the world?';
+            const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+            await llmInference.multimodalRequest(prompt, fileSources, config, agent);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
+    isSupported('toolRequest') &&
+        it('should report usage for toolRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const toolDefinitions = [
+                {
+                    name: 'get_weather',
+                    description: 'Get the current weather',
+                    properties: {
+                        location: { type: 'string' },
+                    },
+                    requiredFields: ['location'],
                 },
-                requiredFields: ['location'],
-            },
-        ];
-        const params = {
-            messages: [{ role: 'user', content: 'Hello, how are you?' }],
-            toolsConfig: {
-                type: 'function',
-                toolDefinitions,
-                toolChoice: 'auto',
-            },
-        };
+            ];
+            const params = {
+                messages: [{ role: 'user', content: 'Hello, how are you?' }],
+                toolsConfig: {
+                    type: 'function',
+                    toolDefinitions,
+                    toolChoice: 'auto',
+                },
+            };
 
-        const result = await llmInference.toolRequest(params, agent);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-   
-    isSupported("streamRequest") && it('should report usage for streamRequest', async () => {
-        
-        const usageEvent = listenForUsageEvent();
-        const msgs = [];
-        // 30*2 messages with same q&a to test prompt caching (for eg. OpenAI starts caching when tokens >= 1024)
-        for (let i = 0; i < 30; i++) {
-            msgs.push({ role: 'user', content: ' Explain quantum physics in simple terms.' });
-            msgs.push({ role: 'assistant', content: 'Quantum physics is the study of the behavior of matter and energy at the smallest scales, where it behaves differently than it does at larger scales.' });
-        }
-        const params: Partial<TLLMParams> = {
-            messages: [...msgs, { role: 'user', content: ' Explain quantum physics in simple terms.' }],
-            cache: true,
-            model: id,
-        };
-        const stream = await llmInference.streamRequest(params, agent);
-        await consumeStream(stream);
-        let eventValue = usageEvent.get();
-        // if the event was not emitted even after the stream ended,
-        // wait for additional 500ms in case the usage is reported after the content stream ends
-        if (!eventValue) {
-            await delay(500);
-            eventValue = usageEvent.get();
-        }
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-    isSupported("multimodalStreamRequest") && it('should report usage for multimodalStreamRequest', async () => {
-     
-        const usageEvent = listenForUsageEvent();
-        const prompt = 'Hello, what is the smallest country in the world?';
-        const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
-        const stream = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
-        await consumeStream(stream);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
-    isSupported("imageGenRequest") && it('should report usage for imageGenRequest', async () => {
-       
-        const usageEvent = listenForUsageEvent();
-        const prompt = 'A cat';
-        let args = {
-            responseFormat: 'url',
-            model: id,
-        };
-        await llmInference.imageGenRequest(prompt, args, agent);
-        const eventValue = usageEvent.get();
-        expect(eventValue, "Did not receive usage event").toBeDefined();
-        expect(eventValue.input_tokens, "Input tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.output_tokens, "Output tokens should be greater than 0").toBeGreaterThan(0);
-        expect(eventValue.llm_provider, "LLM provider mismatch").toBe(provider);
-        expect(eventValue.keySource, "Key source mismatch").toBe(expectedKeySource);
-    });
+            const result = await llmInference.toolRequest(params, agent);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
 
-
-   
+    isSupported('streamRequest') &&
+        it('should report usage for streamRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const msgs = [];
+            // 30*2 messages with same q&a to test prompt caching (for eg. OpenAI starts caching when tokens >= 1024)
+            for (let i = 0; i < 30; i++) {
+                msgs.push({ role: 'user', content: ' Explain quantum physics in simple terms.' });
+                msgs.push({
+                    role: 'assistant',
+                    content:
+                        'Quantum physics is the study of the behavior of matter and energy at the smallest scales, where it behaves differently than it does at larger scales.',
+                });
+            }
+            const params: Partial<TLLMParams> = {
+                messages: [...msgs, { role: 'user', content: ' Explain quantum physics in simple terms.' }],
+                cache: true,
+                model: id,
+            };
+            const stream = await llmInference.streamRequest(params, agent);
+            await consumeStream(stream);
+            let eventValue = usageEvent.get();
+            // if the event was not emitted even after the stream ended,
+            // wait for additional 500ms in case the usage is reported after the content stream ends
+            if (!eventValue) {
+                await delay(500);
+                eventValue = usageEvent.get();
+            }
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
+    isSupported('multimodalStreamRequest') &&
+        it('should report usage for multimodalStreamRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const prompt = 'Hello, what is the smallest country in the world?';
+            const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
+            const stream = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
+            await consumeStream(stream);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
+    isSupported('imageGenRequest') &&
+        it('should report usage for imageGenRequest', async () => {
+            const usageEvent = listenForUsageEvent();
+            const prompt = 'A cat';
+            let args = {
+                responseFormat: 'url',
+                model: id,
+            };
+            await llmInference.imageGenRequest(prompt, args, agent);
+            const eventValue = usageEvent.get();
+            expect(eventValue, 'Did not receive usage event').toBeDefined();
+            expect(eventValue.input_tokens, 'Input tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.output_tokens, 'Output tokens should be greater than 0').toBeGreaterThan(0);
+            expect(eventValue.sourceId, 'LLM sourceId mismatch').toContain('llm:');
+            expect(eventValue.keySource, 'Key source mismatch').toBe(expectedKeySource);
+        });
 });

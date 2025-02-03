@@ -13,7 +13,15 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import {
+    TLLMParams,
+    ToolData,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
+    GenerateImageConfig,
+    APIKeySource,
+} from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
@@ -36,8 +44,10 @@ type InferenceConfig = {
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt;
@@ -97,7 +107,13 @@ export class BedrockConnector extends LLMConnector {
             const content = response.output?.message?.content?.[0]?.text;
             const usage = response.usage;
 
-            this.reportUsage(usage as any, { model: modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage as any, {
+                model: modelId,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason: 'stop' };
         } catch (error) {
@@ -105,19 +121,23 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async streamToolRequest(acRequest: AccessRequest, { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }): Promise<any> {
+    protected async streamToolRequest(
+        acRequest: AccessRequest,
+        { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
+        agent: string | Agent
+    ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Bedrock');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for Bedrock.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
         try {
             const customModelInfo = params.modelInfo;
 
@@ -128,6 +148,8 @@ export class BedrockConnector extends LLMConnector {
 
             let systemPrompt;
             let messages = params?.messages || [];
+
+            const agentId = agent instanceof Agent ? agent.id : agent;
 
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
@@ -157,7 +179,13 @@ export class BedrockConnector extends LLMConnector {
             const response = await client.send(command);
 
             const usage = response.usage;
-            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage as any, {
+                model: converseCommandInput.modelId,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             const message = response.output?.message;
             const finishReason = response.stopReason;
@@ -192,12 +220,14 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Bedrock.');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         try {
             const customModelInfo = params.modelInfo;
@@ -239,8 +269,6 @@ export class BedrockConnector extends LLMConnector {
             const response: ConverseStreamCommandOutput = await client.send(command);
             const stream = response.stream;
 
-            
-
             if (stream) {
                 (async () => {
                     let currentMessage = {
@@ -252,9 +280,6 @@ export class BedrockConnector extends LLMConnector {
                     };
 
                     for await (const chunk of stream) {
-                        
-                        
-
                         // Handle message start
                         if (chunk.messageStart) {
                             currentMessage.role = chunk.messageStart.role || '';
@@ -305,8 +330,6 @@ export class BedrockConnector extends LLMConnector {
                             currentMessage.currentToolInput = '';
                         }
 
-                       
-
                         // Handle message completion
                         if (chunk.messageStop) {
                             if (currentMessage.toolCalls.length > 0) {
@@ -315,13 +338,16 @@ export class BedrockConnector extends LLMConnector {
                             emitter.emit('end', currentMessage.toolCalls);
                         }
 
-
                         if (chunk?.metadata?.usage) {
                             const usage = chunk.metadata.usage;
-                            this.reportUsage(usage as any, { model: converseCommandInput.modelId, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+                            this.reportUsage(usage as any, {
+                                model: converseCommandInput.modelId,
+                                modelEntryName: params.modelEntryName,
+                                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId,
+                                teamId: params.teamId,
+                            });
                         }
-
-                        
                     }
                 })();
             }
@@ -334,7 +360,7 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('Bedrock model does not support passthrough with File(s)');
     }
 
@@ -469,15 +495,20 @@ export class BedrockConnector extends LLMConnector {
         });
     }
 
-    protected reportUsage(usage: TokenUsage & { cacheReadInputTokenCount: number, cacheWriteInputTokenCount: number }, metadata: { model: string, keySource: APIKeySource }) {
+    protected reportUsage(
+        usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.inputTokens,
             output_tokens: usage.outputTokens,
             input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
             input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
-            llm_provider: "Bedrock",
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

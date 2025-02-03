@@ -20,7 +20,7 @@ const program = new Command();
 program
     .name('smyth')
     .description('Smyth CLI tool for agent management')
-    .version('0.0.1', '-v, --version', 'Output the current version')
+    .version('0.0.2', '-v, --version', 'Output the current version')
     .addOption(new Option('-d, --debug <level>', 'Log level').choices(['min', 'full']))
     .requiredOption('--agent <path>', 'Path to the agent file', validateFilePath('Agent'))
     .requiredOption('--endpoint <name>', 'Call endpoint')

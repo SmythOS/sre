@@ -1,8 +1,10 @@
+import axios from 'axios';
+import mime from 'mime';
+import { fileTypeFromBuffer } from 'file-type';
+
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
-import axios from 'axios';
-import mime from 'mime';
 import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
 export class BinaryInput {
     private size: number;
@@ -92,11 +94,6 @@ export class BinaryInput {
         }
 
         if (isUrl(data)) {
-            const info: any = await this.getUrlInfo(data);
-            this.mimetype = info.contentType;
-            this.size = info.contentLength;
-            //this.url = data;
-
             try {
                 const response = await axios({
                     method: 'get',
@@ -104,11 +101,30 @@ export class BinaryInput {
                     responseType: 'arraybuffer', // Important for handling binary data
                 });
 
-                this._source = Buffer.from(response.data, 'binary');
                 this.size = response.data.byteLength;
+                this._source = Buffer.from(response.data, 'binary');
 
-                const ext = mime.getExtension(this.mimetype);
-                if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
+                let mimetype = response.headers?.['content-type'] || '';
+
+                // Try to get the file extension from the URL
+                const urlPath = new URL(data).pathname;
+                let extension = urlPath.split('.')?.length > 1 ? urlPath.split('.').pop() : '';
+
+                // When content-type header is missing or invalid, try to determine mime type from file extension
+                if (!mimetype || mimetype.startsWith('binary/octet-stream')) {
+                    mimetype = extension ? mime.getType(extension) : '';
+                }
+
+                // If we couldn't determine the mime type from headers or file extension, try detecting it from the actual file content
+                if (!mimetype) {
+                    const type = await fileTypeFromBuffer(this._source);
+                    mimetype = type?.mime || '';
+                }
+
+                this.mimetype = mimetype;
+
+                extension = extension || mime.getExtension(this.mimetype);
+                if (!this._name.endsWith(`.${extension}`)) this._name += `.${extension}`;
             } catch (error) {
                 console.error('Error loading binary data from url:', data.url);
             }
