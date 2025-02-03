@@ -226,7 +226,7 @@ export abstract class LLMConnector extends Connector {
         const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
         if (isStandardLLM) {
-            const llmProvider = LLMRegistry.getProvider(model);
+            const llmProvider = LLMRegistry.getProvider(model)?.toLowerCase();
 
             if (LLMRegistry.isSmythOSModel(model)) {
                 _params.credentials = {
@@ -235,8 +235,8 @@ export abstract class LLMConnector extends Connector {
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
-                // we provide the api key for OpenAI models to support existing components
-                if (!_params.credentials?.apiKey && llmProvider === 'OpenAI') {
+                // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+                if (!_params.credentials?.apiKey && llmProvider === 'openai') {
                     _params.credentials.apiKey = SMYTHOS_API_KEYS.OpenAI;
                 } else {
                     _params.credentials.isUserKey = true;
@@ -245,6 +245,11 @@ export abstract class LLMConnector extends Connector {
 
             if (_params.maxTokens) {
                 _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+
+                // Set default max output tokens to 2048 for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+                if (_params.maxTokens === 0 && llmProvider === 'openai') {
+                    _params.maxTokens = 2048;
+                }
             }
 
             const baseUrl = LLMRegistry.getBaseURL(params.model);

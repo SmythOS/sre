@@ -23,17 +23,15 @@ export class LLMInference {
 
         if (isStandardLLM) {
             const llmProvider = LLMRegistry.getProvider(model);
-            const isEnabled = LLMRegistry.modelEnabled(model);
 
-            if (llmProvider && isEnabled) {
+            if (llmProvider) {
                 llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
             }
         } else if (teamId) {
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
             const llmProvider = customLLMRegistry.getProvider(model);
-            const isEnabled = customLLMRegistry.modelEnabled();
 
-            if (llmProvider && isEnabled) {
+            if (llmProvider) {
                 llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
             }
         }

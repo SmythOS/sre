@@ -53,11 +53,6 @@ export class CustomLLMRegistry {
         return modelInfo?.features || [];
     }
 
-    public async modelEnabled(): Promise<boolean> {
-        const subscriptionFlags = await this.getSubscriptionFlags();
-        return subscriptionFlags.customModelsEnabled;
-    }
-
     public getMaxContextTokens(model: string): number {
         const modelInfo = this.getModelInfo(model);
         return modelInfo?.tokens;
@@ -115,12 +110,5 @@ export class CustomLLMRegistry {
         } catch (error) {
             return {};
         }
-    }
-
-    private async getSubscriptionFlags(): Promise<{ customModelsEnabled: boolean }> {
-        // TODO: V2 MODEL TEMPLATE: get subscription flags from the subscription
-        return {
-            customModelsEnabled: true,
-        };
     }
 }

@@ -65,12 +65,6 @@ export class LLMRegistry {
         return !!models?.[modelId] || modelId === models?.[modelEntryId]?.modelId;
     }
 
-    public static async modelEnabled(model: string): Promise<boolean> {
-        const subscriptionFlags = await this.getSubscriptionFlags();
-        const isSmythOSProviderEnabled = await this.isSmythOSProviderEnabled(model);
-        return isSmythOSProviderEnabled || subscriptionFlags.hasBuiltinModels;
-    }
-
     //#region tokens related methods
     public static getMaxContextTokens(model: string, hasAPIKey: boolean = false): number {
         const modelInfo = this.getModelInfo(model, hasAPIKey);
@@ -109,35 +103,4 @@ export class LLMRegistry {
         }
     }
     //#endregion tokens related methods
-
-    private static async getEnabledSmythOSProviders(): Promise<string[]> {
-        const subscriptionFlags = await this.getSubscriptionFlags();
-        const smythosLLMProviders = await this.getSmythOSLLMProviders();
-
-        if (Object.keys(smythosLLMProviders || {}).length === 0 && subscriptionFlags.hasBuiltinModels) {
-            return Object.keys(DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS).filter(
-                (provider) => DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS[provider]?.enabled
-            );
-        }
-
-        return Object.keys(smythosLLMProviders).filter((provider) => smythosLLMProviders[provider]?.enabled);
-    }
-
-    private static async isSmythOSProviderEnabled(model: string): Promise<boolean> {
-        const provider = this.getProvider(model);
-        const enabledSmythOSProviders = await this.getEnabledSmythOSProviders();
-        return enabledSmythOSProviders.includes(provider);
-    }
-
-    private static async getSmythOSLLMProviders(): Promise<Record<string, any>> {
-        // TODO: V2 MODEL TEMPLATE: get LLM providers settings from team settings
-        return {};
-    }
-
-    private static async getSubscriptionFlags(): Promise<{ hasBuiltinModels: boolean }> {
-        // TODO: V2 MODEL TEMPLATE: get subscription flags from the subscription
-        return {
-            hasBuiltinModels: true,
-        };
-    }
 }
