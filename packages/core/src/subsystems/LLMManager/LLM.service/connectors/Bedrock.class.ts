@@ -500,11 +500,11 @@ export class BedrockConnector extends LLMConnector {
         metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.inputTokens,
             output_tokens: usage.outputTokens,
             input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
             input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
-            llm_provider: metadata.modelEntryName,
             model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,

@@ -199,11 +199,11 @@ export enum APIKeySource {
 }
 
 export interface SmythLLMUsage {
+    sourceId: string;
     input_tokens: number;
     input_tokens_cache_write: number;
     input_tokens_cache_read: number;
     output_tokens: number;
-    llm_provider: LLMProvider;
     model: LLMModel | string;
     keySource?: APIKeySource;
     agentId: string;
