@@ -5,7 +5,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
-import { SUPPORTED_FILE_TYPES_MAP } from '@sre/constants';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
@@ -66,7 +66,7 @@ export default class GenAILLM extends Component {
 
             // Ignore files for Echo model
             if (fileSources?.length > 0 && !isEcho) {
-                const supportedFileTypes = SUPPORTED_FILE_TYPES_MAP?.[provider] || {};
+                const supportedFileTypes = SUPPORTED_MIME_TYPES_MAP?.[provider] || {};
                 const features = llmRegistry.getModelFeatures(model);
                 const fileTypes = new Set(); // Set to avoid duplicates
 

@@ -94,7 +94,7 @@ export class CustomLLMRegistry {
                     label: entry.name,
                     modelId: customModel || foundationModel,
                     provider: entry.provider,
-                    features: entry.features,
+                    features: entry.features?.map((feature) => (feature === 'text-completion' ? 'text' : feature)),
                     tags: Array.isArray(entry?.tags) ? ['Enterprise', ...entry?.tags] : ['Enterprise'],
                     tokens: customModelData?.tokens ?? 100000,
                     completionTokens: customModelData?.completionTokens ?? 4096,

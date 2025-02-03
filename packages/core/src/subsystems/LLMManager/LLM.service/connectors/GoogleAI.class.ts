@@ -3,7 +3,6 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import axios from 'axios';
 import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
@@ -17,19 +16,15 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit } from '@sre/utils';
 
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
-import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('GoogleAIConnector');
-
-type FileObject = {
-    url: string;
-    mimetype: string;
-};
 
 const DEFAULT_MODEL = 'gemini-1.5-pro';
 
@@ -47,54 +42,18 @@ const MODELS_SUPPORT_JSON_RESPONSE = MODELS_SUPPORT_SYSTEM_INSTRUCTION;
 
 // Supported file MIME types for Google AI's Gemini models
 const VALID_MIME_TYPES = [
-    'video/mp4',
-    'video/mpeg',
-    'video/mov',
-    'video/avi',
-    'video/x-flv',
-    'video/mpg',
-    'video/webm',
-    'video/wmv',
-    'video/3gpp',
-    'image/png',
-    'image/jpeg',
-    'image/jpg',
-    'image/webp',
-    'image/heic',
-    'image/heif',
-    'audio/wav',
-    'audio/mp3',
-    'audio/aiff',
-    'audio/aac',
-    'audio/ogg',
-    'audio/flac',
-    'application/pdf',
-    'application/x-javascript',
-    'application/x-typescript',
-    'application/x-python-code',
-    'application/json',
-    'application/rtf',
-    'text/plain',
-    'text/html',
-    'text/css',
-    'text/javascript',
-    'text/x-typescript',
-    'text/csv',
-    'text/markdown',
-    'text/x-python',
-    'text/xml',
-    'text/rtf',
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.audio,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.video,
+    ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.document,
 ];
-
-// Supported image MIME types for Google AI's Gemini models
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
     private validMimeTypes = {
         all: VALID_MIME_TYPES,
-        image: VALID_IMAGE_MIME_TYPES,
+        image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
     protected async chatRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<LLMChatResponse> {

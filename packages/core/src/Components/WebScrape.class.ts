@@ -31,8 +31,8 @@ export default class WebScrape extends Component {
                 data: {
                     api_key: SREConfig.env.TAVILY_API_KEY,
                     urls: scrapeUrls,
-                    ...(config.data.includeImages ? { include_images: true } : {})
-                }
+                    ...(config.includeImages ? { include_images: true } : {}),
+                },
             });
 
             Output = { results: response.data.results };

@@ -62,7 +62,7 @@ Example of a valid response:
 {"result": "This is a valid JSON response without any extra text."}
 `;
 
-export const SUPPORTED_FILE_TYPES_MAP = {
+export const SUPPORTED_MIME_TYPES_MAP = {
     OpenAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
     },
@@ -73,8 +73,19 @@ export const SUPPORTED_FILE_TYPES_MAP = {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
     },
     GoogleAI: {
-        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/heic', 'image/heif'],
-        video: ['video/mp4', 'video/mpeg', 'video/mov', 'video/avi', 'video/x-flv', 'video/mpg', 'video/webm', 'video/wmv', 'video/3gpp'],
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'],
+        video: [
+            'video/mp4',
+            'video/mpeg',
+            'video/mov',
+            'video/avi',
+            'video/x-msvideo', // mimetype for .avi files
+            'video/x-flv',
+            'video/mpg',
+            'video/webm',
+            'video/wmv',
+            'video/3gpp',
+        ],
         audio: ['audio/wav', 'audio/mp3', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'],
         document: [
             'application/pdf',
