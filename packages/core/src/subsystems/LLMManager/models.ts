@@ -280,6 +280,7 @@ export const models = {
   },
   // #endregion GPT 4o
 
+
   // #region o1 models
   'o3-mini': {
     llm: 'OpenAI',
@@ -296,6 +297,7 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
+  // o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',

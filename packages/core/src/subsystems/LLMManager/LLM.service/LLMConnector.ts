@@ -240,9 +240,11 @@ export abstract class LLMConnector extends Connector {
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
+
                 // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
                 if (!_params.credentials?.apiKey && llmProvider === 'openai') {
                     _params.credentials.apiKey = SMYTHOS_API_KEYS.OpenAI;
+
                 } else {
                     _params.credentials.isUserKey = true;
                 }
