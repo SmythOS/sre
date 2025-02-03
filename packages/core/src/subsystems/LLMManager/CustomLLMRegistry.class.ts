@@ -53,11 +53,6 @@ export class CustomLLMRegistry {
         return modelInfo?.features || [];
     }
 
-    public modelEnabled(model: string): boolean {
-        // TODO: V2 MODEL TEMPLATE: check if the user has api key + enabled smythos provider
-        return true;
-    }
-
     public getMaxContextTokens(model: string): number {
         const modelInfo = this.getModelInfo(model);
         return modelInfo?.tokens;

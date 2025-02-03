@@ -42,12 +42,12 @@ export type ImagesResponse = {
 };
 
 const SMYTHOS_API_KEYS = {
-    openai: config.env.OPENAI_API_KEY,
-    anthropic: config.env.ANTHROPIC_API_KEY,
-    googleai: config.env.GOOGLE_AI_API_KEY,
-    togetherai: config.env.TOGETHER_AI_API_KEY,
-    groq: config.env.GROQ_API_KEY,
-    xai: config.env.XAI_API_KEY,
+    OpenAI: config.env.OPENAI_API_KEY,
+    Anthropic: config.env.ANTHROPIC_API_KEY,
+    GoogleAI: config.env.GOOGLE_AI_API_KEY,
+    TogetherAI: config.env.TOGETHER_AI_API_KEY,
+    Groq: config.env.GROQ_API_KEY,
+    xAI: config.env.XAI_API_KEY,
 };
 
 export class LLMStream extends Readable {
@@ -240,9 +240,11 @@ export abstract class LLMConnector extends Connector {
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
-                // we provide the api key for OpenAI models to support existing components
+
+                // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
                 if (!_params.credentials?.apiKey && llmProvider === 'openai') {
-                    _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                    _params.credentials.apiKey = SMYTHOS_API_KEYS.OpenAI;
+
                 } else {
                     _params.credentials.isUserKey = true;
                 }
@@ -250,6 +252,11 @@ export abstract class LLMConnector extends Connector {
 
             if (_params.maxTokens) {
                 _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+
+                // Set default max output tokens to 2048 for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+                if (_params.maxTokens === 0 && llmProvider === 'openai') {
+                    _params.maxTokens = 2048;
+                }
             }
 
             const baseUrl = LLMRegistry.getBaseURL(params.model);
