@@ -373,19 +373,6 @@ export const models = {
   },
 
   // o1 models
-  'o3-mini': {
-    llm: 'OpenAI',
-    alias: 'o3-mini-2025-01-31',
-    components: ['PromptGenerator', 'GenAILLM'],
-    features: ['text'],
-  },
-  'o3-mini-2025-01-31': {
-    llm: 'OpenAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 200_000, completionTokens: 100_000 },
-  },
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',

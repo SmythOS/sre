@@ -231,7 +231,7 @@ export abstract class LLMConnector extends Connector {
         const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
         if (isStandardLLM) {
-            const llmProvider = LLMRegistry.getProvider(model);
+            const llmProvider = LLMRegistry.getProvider(model)?.toLowerCase();
 
             if (LLMRegistry.isSmythOSModel(model)) {
                 _params.credentials = {
@@ -241,7 +241,7 @@ export abstract class LLMConnector extends Connector {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
                 // we provide the api key for OpenAI models to support existing components
-                if (!_params.credentials?.apiKey && llmProvider === 'OpenAI') {
+                if (!_params.credentials?.apiKey && llmProvider === 'openai') {
                     _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
                 } else {
                     _params.credentials.isUserKey = true;

@@ -10,7 +10,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
     TLLMParams,
@@ -27,14 +27,13 @@ import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('OpenAIConnector');
 
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 const o1Models = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
@@ -73,6 +72,10 @@ export class OpenAIConnector extends LLMConnector {
 
         // Check if the team has their own API key, then use it
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             //FIXME: use config.env instead of process.env
@@ -167,6 +170,10 @@ export class OpenAIConnector extends LLMConnector {
             // Check if the team has their own API key, then use it
             const apiKey = params?.credentials?.apiKey;
 
+            if (!apiKey) {
+                throw new Error('An API key from OpenAI is required to use this model.');
+            }
+
             const openai = new OpenAI({
                 apiKey: apiKey,
                 baseURL: params.baseURL,
@@ -247,6 +254,10 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // Check if the team has their own API key, then use it
             const apiKey = params?.credentials?.apiKey;
+
+            if (!apiKey) {
+                throw new Error('An API key from OpenAI is required to use this model.');
+            }
 
             const openai = new OpenAI({
                 apiKey: apiKey,
@@ -335,6 +346,10 @@ export class OpenAIConnector extends LLMConnector {
 
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             apiKey: apiKey,
@@ -516,6 +531,9 @@ export class OpenAIConnector extends LLMConnector {
         const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
 
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
         const agentId = agent instanceof Agent ? agent.id : agent;
 
         const openai = new OpenAI({
@@ -638,6 +656,10 @@ export class OpenAIConnector extends LLMConnector {
 
         // Check if the team has their own API key, then use it
         const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key from OpenAI is required to use this model.');
+        }
 
         const openai = new OpenAI({
             apiKey: apiKey,
