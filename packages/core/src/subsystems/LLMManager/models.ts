@@ -144,7 +144,7 @@ export const models = {
   // #endregion Google AI ==========================
 
   // #region Groq ==========================
-
+  // ? We don't have the Groq API key, so we hide it for now.
   'smythos/groq-gemma2-9b': {
     llm: 'Groq',
 
@@ -155,8 +155,8 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 8_192,
     completionTokens: 8_192,
-    enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    enabled: false,
+    hidden: true,
   },
 
   'smythos/llama-3.3-70b': {
@@ -169,8 +169,8 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 32_768,
-    enabled: true,
-    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
+    enabled: false,
+    hidden: true,
   },
 
   // #endregion Groq ==========================
