@@ -15,10 +15,10 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 const console = Logger('AnthropicConnector');
 
-const VALID_IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
@@ -28,10 +28,12 @@ const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
 export class AnthropicConnector extends LLMConnector {
     public name = 'LLM:Anthropic';
 
-    private validImageMimeTypes = VALID_IMAGE_MIME_TYPES;
+    private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.Anthropic.image;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt = '';
@@ -50,8 +52,6 @@ export class AnthropicConnector extends LLMConnector {
         //#endregion Separate system message and add JSON response instruction if needed
 
         const apiKey = params?.credentials?.apiKey;
-
-        // We do not provide default API key for claude, so user/team must provide their own API key
         if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
 
         const anthropic = new Anthropic({ apiKey });
@@ -82,7 +82,13 @@ export class AnthropicConnector extends LLMConnector {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -91,7 +97,7 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent) {
         let messages = params?.messages || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
@@ -151,7 +157,13 @@ export class AnthropicConnector extends LLMConnector {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -159,7 +171,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
         const agentId = agent instanceof Agent ? agent.id : agent;
@@ -219,7 +231,13 @@ export class AnthropicConnector extends LLMConnector {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return { content, finishReason };
         } catch (error) {
@@ -227,11 +245,11 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         try {
+            const agentId = agent instanceof Agent ? agent.id : agent;
+
             const apiKey = params?.credentials?.apiKey;
-
-            // We do not provide default API key for claude, so user/team must provide their own API key
             if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
 
             const anthropic = new Anthropic({ apiKey });
@@ -298,7 +316,13 @@ export class AnthropicConnector extends LLMConnector {
 
             const usage = result?.usage;
 
-            this.reportUsage(usage, { model: params.model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
+            this.reportUsage(usage, {
+                model: params.model,
+                modelEntryName: params.modelEntryName,
+                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId,
+                teamId: params.teamId,
+            });
 
             return {
                 data: {
@@ -313,7 +337,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Anthropic.');
     }
 
@@ -325,14 +349,14 @@ export class AnthropicConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         try {
             const emitter = new EventEmitter();
             const usage_data = [];
 
-            const apiKey = params?.credentials?.apiKey;
+            const agentId = agent instanceof Agent ? agent.id : agent;
 
-            // We do not provide default API key for claude, so user/team must provide their own API key
+            const apiKey = params?.credentials?.apiKey;
             if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
 
             const anthropic = new Anthropic({ apiKey });
@@ -444,7 +468,10 @@ export class AnthropicConnector extends LLMConnector {
 
                     this.reportUsage(usage, {
                         model: params?.model,
+                        modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
                     });
                 }
 
@@ -460,7 +487,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent?: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         let messages = params?.messages || [];
@@ -565,7 +592,10 @@ export class AnthropicConnector extends LLMConnector {
 
                     this.reportUsage(usage, {
                         model: params.model,
+                        modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
                     });
                 }
                 //only emit end event after processing the final message
@@ -788,16 +818,18 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { model: string; keySource: APIKeySource }
+        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         SystemEvents.emit('USAGE:LLM', {
+            sourceId: `llm:${metadata.modelEntryName}`,
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,
             input_tokens_cache_write: usage.cache_creation_input_tokens,
             input_tokens_cache_read: usage.cache_read_input_tokens,
-            llm_provider: 'Anthropic',
             model: metadata.model,
             keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
         });
     }
 }

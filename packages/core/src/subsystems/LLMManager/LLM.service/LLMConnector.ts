@@ -89,15 +89,15 @@ export class LLMStream extends Readable {
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, params: any): Promise<LLMChatResponse>;
+    protected abstract chatRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
     protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract toolRequest(acRequest: AccessRequest, params: any): Promise<any>;
-    protected abstract streamToolRequest(acRequest: AccessRequest, params: any): Promise<any>;
-    protected abstract streamRequest(acRequest: AccessRequest, params: any): Promise<EventEmitter>;
+    protected abstract toolRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<any>;
+    protected abstract streamToolRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<any>;
+    protected abstract streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any): Promise<ImagesResponse>;
-    protected abstract reportUsage(usage: any, metadata: { model: string; keySource: APIKeySource }): void;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
+    protected abstract reportUsage(usage: any, metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }): void;
 
     private vaultConnector: VaultConnector;
 
@@ -112,7 +112,7 @@ export abstract class LLMConnector extends Connector {
             chatRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.chatRequest(candidate.readRequest, _params);
+                return this.chatRequest(candidate.readRequest, _params, candidate.id);
             },
             visionRequest: async (prompt, params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
@@ -127,22 +127,22 @@ export abstract class LLMConnector extends Connector {
             imageGenRequest: async (prompt, params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.imageGenRequest(candidate.readRequest, prompt, _params);
+                return this.imageGenRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             toolRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.toolRequest(candidate.readRequest, _params);
+                return this.toolRequest(candidate.readRequest, _params, candidate.id);
             },
             streamToolRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.streamToolRequest(candidate.readRequest, _params);
+                return this.streamToolRequest(candidate.readRequest, _params, candidate.id);
             },
             streamRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
-                return this.streamRequest(candidate.readRequest, _params);
+                return this.streamRequest(candidate.readRequest, _params, candidate.id);
             },
             multimodalStreamRequest: async (prompt, params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
@@ -222,11 +222,16 @@ export abstract class LLMConnector extends Connector {
         const _params = this.formatParamValues(clonedParams);
 
         const model = _params.model;
+        const teamId = await this.getTeamId(candidate);
+
+        // We need the model entry name for usage reporting
+        _params.modelEntryName = model;
+        _params.teamId = teamId;
 
         const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
         if (isStandardLLM) {
-            const llmProvider = LLMRegistry.getProvider(model);
+            const llmProvider = LLMRegistry.getProvider(model)?.toLowerCase();
 
             if (LLMRegistry.isSmythOSModel(model)) {
                 _params.credentials = {
@@ -235,9 +240,11 @@ export abstract class LLMConnector extends Connector {
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
-                // we provide the api key for OpenAI models to support existing components
-                if (!_params.credentials?.apiKey && llmProvider === 'OpenAI') {
+
+                // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+                if (!_params.credentials?.apiKey && llmProvider === 'openai') {
                     _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+
                 } else {
                     _params.credentials.isUserKey = true;
                 }
@@ -245,6 +252,11 @@ export abstract class LLMConnector extends Connector {
 
             if (_params.maxTokens) {
                 _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+
+                // Set default max output tokens to 2048 for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+                if (_params.maxTokens === 0 && llmProvider === 'openai') {
+                    _params.maxTokens = 2048;
+                }
             }
 
             const baseUrl = LLMRegistry.getBaseURL(params.model);
@@ -255,8 +267,6 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            const teamId = await this.getTeamId(candidate);
-
             const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
 
             const modelInfo = customLLMRegistry.getModelInfo(model);
