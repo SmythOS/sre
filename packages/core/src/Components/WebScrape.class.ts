@@ -60,21 +60,21 @@ export default class WebScrape extends Component {
                         let urls = JSON.parse(inputItem);
                         for (const url of urls) {
                             if (this.isValidUrl(url)) {
-                                scrapeUrls.push(url);
+                                scrapeUrls.push(url.trim());
                             }
                         }
                     } catch (error) {
                         const commaSeparatedUrls = inputItem.split(',');
                         for (const url of commaSeparatedUrls) {
                             if (this.isValidUrl(url)) {
-                                scrapeUrls.push(url);
+                                scrapeUrls.push(url.trim());
                             }
                         }
                     }
                 } else if (typeof inputItem === 'object') {
                     for (const url of inputItem) {
                         if (this.isValidUrl(url)) {
-                            scrapeUrls.push(url);
+                            scrapeUrls.push(url.trim());
                         }
                     }
                 }
