@@ -1,6 +1,6 @@
 {
     "name": "smyth-runtime",
-    "version": "1.3.11",
+    "version": "1.3.12",
     "description": "Smyth Runtime Environment",
     "main": "dist/index.dev.js",
     "types": "dist/types/index.d.ts",
