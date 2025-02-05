@@ -36,7 +36,7 @@ export default class WebScrape extends Component {
             });
 
             Output = { results: response.data.results };
-            _error = response.data.failedResults?.length ? JSON.stringify(response.data.failedResults) : undefined;
+            _error = response.data.failed_results?.length ? JSON.stringify(response.data.failed_results) : undefined;
             this.reportUsage({
                 urlsScraped: response?.data?.results?.length,
                 agentId: agent.id,
