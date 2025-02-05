@@ -28,7 +28,7 @@ export default class WebSearch extends Component {
             let Output: any = {};
             let _error = undefined;
             let searchQuery = input['SearchQuery'];
-            logger.debug(config.data);
+            logger.debug('Payload:', JSON.stringify(config.data));
             const response = await axios({
                 method: 'post',
                 url: 'https://api.tavily.com/search',
@@ -44,7 +44,6 @@ export default class WebSearch extends Component {
                     ...(config.data.includeRawContent ? { include_raw_content: true } : {}),
                 },
             });
-            logger.debug(JSON.stringify(response.data));
             Output = {
                 results: response.data.results,
                 ...(config.data.includeImages ? { images: response.data.images } : {}),
