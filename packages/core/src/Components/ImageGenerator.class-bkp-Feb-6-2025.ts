@@ -4,7 +4,6 @@ import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
@@ -37,29 +36,32 @@ export default class ImageGenerator extends Component {
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
         prompt = TemplateString(prompt).parse(input).result;
 
+        // ! LATER IMPROVEMENT: support image variation API
+        /* let image = input?.Image || null;
+        let shouldGenerateVariation = false;
+        let tempImagePath = '';
+
+        if (image) {
+            const file = new SmythFile(image);
+            image = await file.toFsReadStream();
+
+            if (image) {
+                shouldGenerateVariation = true;
+                tempImagePath = image?.path;
+
+                model = 'dall-e-2';
+            }
+        } */
+
+        // ! LATER IMPROVEMENT: support image variation API
+        // if (!prompt && !image)
         if (!prompt) {
             return { _error: 'Please provide a prompt or Image', _debug: logger.output };
         }
 
-        logger.debug(`Prompt: \n`, prompt);
-
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
-
-        try {
-            const output = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
-
-            logger.debug(`Output:`, output);
-
-            return { Output: output, _debug: logger.output };
-        } catch (error: any) {
-            return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
-        }
-    }
-}
-
-const imageGenerator = {
-    openai: async ({ model, prompt, config, input, logger, agent }) => {
         let _finalPrompt = prompt;
+
+        logger.debug(`Prompt: \n`, prompt);
 
         const responseFormat = config?.data?.responseFormat || 'url';
 
@@ -67,6 +69,22 @@ const imageGenerator = {
             responseFormat,
             model,
         };
+
+        // ! LATER IMPROVEMENT: support image variation API
+        /* if (shouldGenerateVariation) {
+            args = {
+                image,
+                model,
+                responseFormat,
+            };
+        } else {
+            args = {
+                prompt,
+                model,
+                responseFormat,
+            };
+        } */
+
         if (model === 'dall-e-3') {
             const size = config?.data?.sizeDalle3 || '1024x1024';
             const quality = config?.data?.quality || 'standard';
@@ -87,23 +105,42 @@ const imageGenerator = {
             args.n = numberOfImages;
         }
 
-        const llmInference: LLMInference = await LLMInference.getInstance(model);
+        try {
+            // ! LATER IMPROVEMENT: support image variation API
+            /* if (shouldGenerateVariation) {
+                response = await OpenAI.generateImageVariation(args);
 
-        // if the llm is undefined, then it means we removed the model from our system
-        if (!llmInference.connector) {
-            return {
-                _error: `The model '${model}' is not available. Please try a different one.`,
-                _debug: logger.output,
-            };
+                // remove temp image
+                const removeFile = promisify(fs.unlink);
+                removeFile(tempImagePath);
+            } else {
+                response = await OpenAI.generateImage(args);
+            } */
+
+            // let response = await OpenAI.generateImage(args);
+            const llmInference: LLMInference = await LLMInference.getInstance(model);
+
+            // if the llm is undefined, then it means we removed the model from our system
+            if (!llmInference.connector) {
+                return {
+                    _error: `The model '${model}' is not available. Please try a different one.`,
+                    _debug: logger.output,
+                };
+            }
+            const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
+
+            let output = response?.data?.[0]?.[responseFormat];
+            const revised_prompt = response?.data?.[0]?.revised_prompt;
+
+            if (revised_prompt && prompt !== revised_prompt) {
+                logger.debug(`Revised Prompt:\n${revised_prompt}`);
+            }
+
+            logger.debug(`Output:`, output);
+
+            return { Output: output, _debug: logger.output };
+        } catch (error: any) {
+            return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
-        const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
-
-        let output = response?.data?.[0]?.[responseFormat];
-        const revised_prompt = response?.data?.[0]?.revised_prompt;
-
-        if (revised_prompt && prompt !== revised_prompt) {
-            logger.debug(`Revised Prompt:\n${revised_prompt}`);
-        }
-    },
-    runware: () => {},
-};
+    }
+}
