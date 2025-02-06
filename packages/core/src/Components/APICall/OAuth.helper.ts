@@ -91,7 +91,18 @@ export const retrieveOAuthTokens = async (agent, config) => {
             const primaryToken = tokensData.primary; // accessToken or token
             const secondaryToken = tokensData.secondary; // refreshToken or tokenSecret
             const type = tokensData.type; // oauth || oauth2
-            // sometimes refreshToken is not avaialbe . e.g in case of linkedIn. so only add check for primary token
+
+            // Add warning logs for OAuth2
+            if (type === 'oauth2' && config.data.oauthService !== 'OAuth2 Client Credentials') {
+                if (!secondaryToken) {
+                    console.warn('Warning: refresh_token is missing for OAuth2');
+                }
+                if (!tokensData.expires_in) {
+                    console.warn('Warning: expires_in is missing for OAuth2.');
+                }
+            }
+
+            // sometimes refreshToken is not available . e.g in case of linkedIn. so only add check for primary token
             if (config.data.oauthService !== 'OAuth2 Client Credentials') {
                 if (!primaryToken) {
                     throw new Error('Retrieved OAuth tokens do not exist, invalid OR incomplete. Please authenticate ...');
