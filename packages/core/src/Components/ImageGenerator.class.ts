@@ -1,3 +1,5 @@
+import { Runware } from '@runware/sdk-js';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
@@ -6,9 +8,11 @@ import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
+import appConfig from '@sre/config';
+
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
-        model: Joi.string().valid('dall-e-2', 'dall-e-3').required(),
+        model: Joi.string().max(100).required(),
         prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').required(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').required(),
@@ -48,7 +52,7 @@ export default class ImageGenerator extends Component {
         try {
             const output = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
 
-            logger.debug(`Output:`, output);
+            logger.debug(`Output: `, output);
 
             return { Output: output, _debug: logger.output };
         } catch (error: any) {
@@ -58,7 +62,7 @@ export default class ImageGenerator extends Component {
 }
 
 const imageGenerator = {
-    openai: async ({ model, prompt, config, input, logger, agent }) => {
+    openai: async ({ model, prompt, config, logger, agent }) => {
         let _finalPrompt = prompt;
 
         const responseFormat = config?.data?.responseFormat || 'url';
@@ -78,7 +82,7 @@ const imageGenerator = {
             const isRawInputPrompt = config?.data?.isRawInputPrompt || false;
 
             if (isRawInputPrompt) {
-                _finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${input?.Prompt}`;
+                _finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${prompt}`;
             }
         } else if (model === 'dall-e-2') {
             const size = config?.data?.sizeDalle2 || '256x256';
@@ -104,6 +108,45 @@ const imageGenerator = {
         if (revised_prompt && prompt !== revised_prompt) {
             logger.debug(`Revised Prompt:\n${revised_prompt}`);
         }
+
+        return output;
     },
-    runware: () => {},
+    runware: async ({ model, prompt, config }) => {
+        // Initialize Runware client
+        const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
+        await runware.ensureConnection();
+
+        const modelId = LLMRegistry.getModelId(model);
+        const width = config?.data?.width || 1024;
+        const height = config?.data?.height || 1024;
+        const outputFormat = config?.data?.outputFormat || 'JPEG';
+        const numberResults = 1; // For Image Generation we only need 1 image
+        const outputType = 'URL'; // For Image Generation we only need the URL
+
+        try {
+            const response = await runware.requestImages({
+                positivePrompt: prompt,
+                width: width,
+                height: height,
+                model: modelId,
+                numberResults,
+                outputType,
+                outputFormat,
+                includeCost: true,
+            });
+
+            // Get first image from response array
+            const firstImage = response[0];
+
+            // Map response to match expected format
+            let output = firstImage.imageURL;
+
+            return output;
+        } catch (error: any) {
+            throw new Error(`Runware Image Generation Error: ${error?.message || JSON.stringify(error)}`);
+        } finally {
+            // Clean up connection
+            await runware.disconnect();
+        }
+    },
 };
