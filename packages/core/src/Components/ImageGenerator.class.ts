@@ -7,6 +7,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import SystemEvents from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
 
@@ -14,11 +15,15 @@ export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
         prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
-        sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').required(),
-        sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').required(),
-        quality: Joi.string().valid('standard', 'hd').required(),
-        style: Joi.string().valid('vivid', 'natural').required(),
-        isRawInputPrompt: Joi.boolean().strict(),
+        sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
+        sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
+        quality: Joi.string().valid('standard', 'hd').optional(),
+        style: Joi.string().valid('vivid', 'natural').optional(),
+        isRawInputPrompt: Joi.boolean().strict().optional(),
+
+        width: Joi.number().min(128).max(2048).optional(),
+        height: Joi.number().min(128).max(2048).optional(),
+        outputFormat: Joi.string().valid('JPEG', 'PNG', 'WEBP').optional(),
     });
     constructor() {
         super();
@@ -111,14 +116,14 @@ const imageGenerator = {
 
         return output;
     },
-    runware: async ({ model, prompt, config }) => {
+    runware: async ({ model, prompt, config, agent }) => {
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
         const modelId = LLMRegistry.getModelId(model);
-        const width = config?.data?.width || 1024;
-        const height = config?.data?.height || 1024;
+        const width = +config?.data?.width || 1024;
+        const height = +config?.data?.height || 1024;
         const outputFormat = config?.data?.outputFormat || 'JPEG';
         const numberResults = 1; // For Image Generation we only need 1 image
         const outputType = 'URL'; // For Image Generation we only need the URL
@@ -140,6 +145,13 @@ const imageGenerator = {
 
             // Map response to match expected format
             let output = firstImage.imageURL;
+
+            SystemEvents.emit('USAGE:API', {
+                sourceId: 'api:imageGen.smyth',
+                costs: firstImage.cost,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
 
             return output;
         } catch (error: any) {
