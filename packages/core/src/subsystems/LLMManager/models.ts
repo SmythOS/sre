@@ -115,11 +115,11 @@ export const models = {
   // #region Google AI ==========================
 
   'smythos/gemini-2.0-flash': {
-    label: 'Gemini 2.0 Flash Experimental',
+    llm: 'GoogleAI',
 
+    label: 'Gemini 2.0 Flash Experimental',
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
-    llm: 'GoogleAI',
     features: ['text', 'image'],
     tags: ['SmythOS'],
     tokens: 1_048_576,
@@ -280,7 +280,6 @@ export const models = {
   },
   // #endregion GPT 4o
 
-
   // #region o1 models
   'o3-mini': {
     llm: 'OpenAI',
@@ -297,7 +296,6 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
-  // o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',

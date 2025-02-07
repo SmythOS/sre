@@ -24,6 +24,7 @@ export default class WebScrape extends Component {
             let Output: any = {};
             let _error = undefined;
             const scrapeUrls = this.extractUrls(input);
+            logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
             const response = await axios({
                 method: 'post',
@@ -31,12 +32,12 @@ export default class WebScrape extends Component {
                 data: {
                     api_key: SREConfig.env.TAVILY_API_KEY,
                     urls: scrapeUrls,
-                    ...(config.includeImages ? { include_images: true } : {}),
+                    ...(config.data.includeImages ? { include_images: true } : {}),
                 },
             });
 
             Output = { results: response.data.results };
-            _error = response.data.failedResults?.length ? JSON.stringify(response.data.failedResults) : undefined;
+            _error = response.data.failed_results?.length ? JSON.stringify(response.data.failed_results) : undefined;
             this.reportUsage({
                 urlsScraped: response?.data?.results?.length,
                 agentId: agent.id,
