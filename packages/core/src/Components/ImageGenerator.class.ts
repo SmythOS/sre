@@ -1,4 +1,4 @@
-import { Runware } from '@runware/sdk-js';
+import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
@@ -14,16 +14,40 @@ import appConfig from '@sre/config';
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
-        prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
+        prompt: Joi.string().optional().min(2).max(2000).label('Prompt'),
+
+        // #region OpenAI (DALL·E)
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
         quality: Joi.string().valid('standard', 'hd').optional(),
         style: Joi.string().valid('vivid', 'natural').optional(),
         isRawInputPrompt: Joi.boolean().strict().optional(),
+        // #endregion
 
-        width: Joi.number().min(128).max(2048).optional(),
-        height: Joi.number().min(128).max(2048).optional(),
-        outputFormat: Joi.string().valid('JPEG', 'PNG', 'WEBP').optional(),
+        // #region Runware
+        negativePrompt: Joi.string().optional().allow('').min(2).max(2000).label('Negative Prompt'),
+        width: Joi.number()
+            .min(128)
+            .max(2048)
+            .custom((value, helpers) => {
+                if (value % 64 !== 0) {
+                    return helpers.error('any.invalid', { message: 'Width must be divisible by 64' });
+                }
+                return value;
+            })
+            .optional(),
+        height: Joi.number()
+            .min(128)
+            .max(2048)
+            .custom((value, helpers) => {
+                if (value % 64 !== 0) {
+                    return helpers.error('any.invalid', { message: 'Height must be divisible by 64' });
+                }
+                return value;
+            })
+            .optional(),
+        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        // #endregion
     });
     constructor() {
         super();
@@ -39,8 +63,10 @@ export default class ImageGenerator extends Component {
         let model = config?.data?.model;
 
         if (!model) {
-            return { _error: 'Model Not Found: Either DALL·E 3 or DALL·E 2 is required!', _debug: logger.output };
+            return { _error: 'Model Not Found: ', _debug: logger.output };
         }
+
+        logger.debug(`Model: ${model}`);
 
         let prompt = config.data?.prompt || input?.Prompt;
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
@@ -105,6 +131,7 @@ const imageGenerator = {
                 _debug: logger.output,
             };
         }
+
         const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
 
         let output = response?.data?.[0]?.[responseFormat];
@@ -121,24 +148,26 @@ const imageGenerator = {
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
-        const modelId = LLMRegistry.getModelId(model);
-        const width = +config?.data?.width || 1024;
-        const height = +config?.data?.height || 1024;
-        const outputFormat = config?.data?.outputFormat || 'JPEG';
-        const numberResults = 1; // For Image Generation we only need 1 image
-        const outputType = 'URL'; // For Image Generation we only need the URL
+        const negativePrompt = config?.data?.negativePrompt || '';
+
+        const imageRequestArgs: IRequestImage = {
+            model: LLMRegistry.getModelId(model),
+            positivePrompt: prompt,
+            width: +config?.data?.width || 1024,
+            height: +config?.data?.height || 1024,
+            numberResults: 1, // For Image Generation we only need 1 image
+            outputType: 'URL', // For Image Generation we only need the URL
+            outputFormat: config?.data?.outputFormat || 'JPEG',
+            includeCost: true,
+        };
+
+        // If a negative prompt is provided, add it to the request args
+        if (negativePrompt) {
+            imageRequestArgs.negativePrompt = negativePrompt;
+        }
 
         try {
-            const response = await runware.requestImages({
-                positivePrompt: prompt,
-                width: width,
-                height: height,
-                model: modelId,
-                numberResults,
-                outputType,
-                outputFormat,
-                includeCost: true,
-            });
+            const response = await runware.requestImages(imageRequestArgs);
 
             // Get first image from response array
             const firstImage = response[0];
