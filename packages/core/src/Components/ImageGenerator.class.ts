@@ -176,7 +176,7 @@ const imageGenerator = {
             let output = firstImage.imageURL;
 
             SystemEvents.emit('USAGE:API', {
-                sourceId: 'api:imageGen.smyth',
+                sourceId: 'api:imagegen.smyth',
                 costs: firstImage.cost,
                 agentId: agent.id,
                 teamId: agent.teamId,
