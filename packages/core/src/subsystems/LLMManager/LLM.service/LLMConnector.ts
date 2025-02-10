@@ -97,7 +97,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
-    protected abstract reportUsage(usage: any, metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string }): void;
+    protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): void;
 
     private vaultConnector: VaultConnector;
 
@@ -240,11 +240,9 @@ export abstract class LLMConnector extends Connector {
             } else {
                 _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
 
-
                 // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
                 if (!_params.credentials?.apiKey && llmProvider === 'openai') {
                     _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
-
                 } else {
                     _params.credentials.isUserKey = true;
                 }

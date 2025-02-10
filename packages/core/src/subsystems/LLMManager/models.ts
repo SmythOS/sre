@@ -83,11 +83,11 @@ export const models = {
 
   // #region Anthropic ==========================
 
-  'smythos/claude-3-5-sonnet': {
+  'smythos/claude-3.5-sonnet': {
     llm: 'Anthropic',
 
     label: 'Claude 3.5 Sonnet',
-    modelId: 'claude-3-5-sonnet-20240620',
+    modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
     tags: ['SmythOS'],
@@ -280,7 +280,6 @@ export const models = {
   },
   // #endregion GPT 4o
 
-
   // #region o1 models
   'o3-mini': {
     llm: 'OpenAI',
@@ -297,7 +296,6 @@ export const models = {
     enabled: true,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
-  // o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',
@@ -559,7 +557,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Latest',
     modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
@@ -582,7 +580,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Stable',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
     features: ['text', 'image'],
