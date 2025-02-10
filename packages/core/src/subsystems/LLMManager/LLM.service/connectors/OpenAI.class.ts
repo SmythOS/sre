@@ -123,7 +123,6 @@ export class OpenAIConnector extends LLMConnector {
             const usage = response?.usage as any;
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -208,7 +207,6 @@ export class OpenAIConnector extends LLMConnector {
             const usage = response?.usage;
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -292,7 +290,6 @@ export class OpenAIConnector extends LLMConnector {
             const content = response?.choices?.[0]?.message.content;
             const usage = response?.usage;
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -399,7 +396,6 @@ export class OpenAIConnector extends LLMConnector {
 
             const usage = result?.usage;
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -604,7 +600,6 @@ export class OpenAIConnector extends LLMConnector {
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
                     this.reportUsage(usage, {
-                        model: params.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -734,7 +729,6 @@ export class OpenAIConnector extends LLMConnector {
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
                     this.reportUsage(usage, {
-                        model: params.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -879,15 +873,20 @@ export class OpenAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
         SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+            sourceId: `llm:${modelName}`,
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,

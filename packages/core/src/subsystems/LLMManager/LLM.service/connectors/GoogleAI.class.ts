@@ -143,7 +143,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -244,7 +243,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -355,7 +353,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -425,7 +422,6 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response.text();
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -559,7 +555,6 @@ export class GoogleAIConnector extends LLMConnector {
 
                 if (usage) {
                     this.reportUsage(usage, {
-                        model: params.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -709,7 +704,6 @@ export class GoogleAIConnector extends LLMConnector {
 
                 if (usage) {
                     this.reportUsage(usage, {
-                        model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -984,10 +978,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(
-        usage: UsageMetadata,
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
+    protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         const modelEntryName = metadata.modelEntryName;
         const inputTokens = usage.promptTokenCount;
         let tier = 'tier-1';
@@ -996,13 +987,18 @@ export class GoogleAIConnector extends LLMConnector {
             tier = 'tier-2';
         }
 
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
         SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+            sourceId: `llm:${modelName}`,
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,

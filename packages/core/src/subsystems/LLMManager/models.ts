@@ -83,11 +83,11 @@ export const models = {
 
   // #region Anthropic ==========================
 
-  'smythos/claude-3-5-sonnet': {
+  'smythos/claude-3.5-sonnet': {
     llm: 'Anthropic',
 
     label: 'Claude 3.5 Sonnet',
-    modelId: 'claude-3-5-sonnet-20240620',
+    modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
     tags: ['SmythOS'],
@@ -557,7 +557,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Latest',
     modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
@@ -580,7 +580,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Stable',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
     features: ['text', 'image'],

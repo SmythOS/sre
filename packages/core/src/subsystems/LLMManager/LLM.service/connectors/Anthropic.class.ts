@@ -83,7 +83,6 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -158,7 +157,6 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -232,7 +230,6 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -317,7 +314,6 @@ export class AnthropicConnector extends LLMConnector {
             const usage = result?.usage;
 
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -467,7 +463,6 @@ export class AnthropicConnector extends LLMConnector {
                     });
 
                     this.reportUsage(usage, {
-                        model: params?.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -591,7 +586,6 @@ export class AnthropicConnector extends LLMConnector {
                     });
 
                     this.reportUsage(usage, {
-                        model: params.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -818,15 +812,20 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
         SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+            sourceId: `llm:${modelName}`,
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,
             input_tokens_cache_write: usage.cache_creation_input_tokens,
             input_tokens_cache_read: usage.cache_read_input_tokens,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
