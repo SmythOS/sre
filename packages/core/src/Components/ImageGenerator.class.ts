@@ -1,19 +1,53 @@
+import { IRequestImage, Runware } from '@runware/sdk-js';
+
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import SystemEvents from '@sre/Core/SystemEvents';
+
+import appConfig from '@sre/config';
 
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
-        model: Joi.string().valid('dall-e-2', 'dall-e-3').required(),
-        prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
-        sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').required(),
-        sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').required(),
-        quality: Joi.string().valid('standard', 'hd').required(),
-        style: Joi.string().valid('vivid', 'natural').required(),
-        isRawInputPrompt: Joi.boolean().strict(),
+        model: Joi.string().max(100).required(),
+        prompt: Joi.string().optional().min(2).max(2000).label('Prompt'),
+
+        // #region OpenAI (DALL·E)
+        sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
+        sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
+        quality: Joi.string().valid('standard', 'hd').optional(),
+        style: Joi.string().valid('vivid', 'natural').optional(),
+        isRawInputPrompt: Joi.boolean().strict().optional(),
+        // #endregion
+
+        // #region Runware
+        negativePrompt: Joi.string().optional().allow('').min(2).max(2000).label('Negative Prompt'),
+        width: Joi.number()
+            .min(128)
+            .max(2048)
+            .custom((value, helpers) => {
+                if (value % 64 !== 0) {
+                    return helpers.error('any.invalid', { message: 'Width must be divisible by 64' });
+                }
+                return value;
+            })
+            .optional(),
+        height: Joi.number()
+            .min(128)
+            .max(2048)
+            .custom((value, helpers) => {
+                if (value % 64 !== 0) {
+                    return helpers.error('any.invalid', { message: 'Height must be divisible by 64' });
+                }
+                return value;
+            })
+            .optional(),
+        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        // #endregion
     });
     constructor() {
         super();
@@ -29,39 +63,38 @@ export default class ImageGenerator extends Component {
         let model = config?.data?.model;
 
         if (!model) {
-            return { _error: 'Model Not Found: Either DALL·E 3 or DALL·E 2 is required!', _debug: logger.output };
+            return { _error: 'Model Not Found: ', _debug: logger.output };
         }
+
+        logger.debug(`Model: ${model}`);
 
         let prompt = config.data?.prompt || input?.Prompt;
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
         prompt = TemplateString(prompt).parse(input).result;
 
-        // ! LATER IMPROVEMENT: support image variation API
-        /* let image = input?.Image || null;
-        let shouldGenerateVariation = false;
-        let tempImagePath = '';
-
-        if (image) {
-            const file = new SmythFile(image);
-            image = await file.toFsReadStream();
-
-            if (image) {
-                shouldGenerateVariation = true;
-                tempImagePath = image?.path;
-
-                model = 'dall-e-2';
-            }
-        } */
-
-        // ! LATER IMPROVEMENT: support image variation API
-        // if (!prompt && !image)
         if (!prompt) {
             return { _error: 'Please provide a prompt or Image', _debug: logger.output };
         }
 
-        let _finalPrompt = prompt;
-
         logger.debug(`Prompt: \n`, prompt);
+
+        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+
+        try {
+            const output = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
+
+            logger.debug(`Output: `, output);
+
+            return { Output: output, _debug: logger.output };
+        } catch (error: any) {
+            return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
+        }
+    }
+}
+
+const imageGenerator = {
+    openai: async ({ model, prompt, config, logger, agent }) => {
+        let _finalPrompt = prompt;
 
         const responseFormat = config?.data?.responseFormat || 'url';
 
@@ -69,22 +102,6 @@ export default class ImageGenerator extends Component {
             responseFormat,
             model,
         };
-
-        // ! LATER IMPROVEMENT: support image variation API
-        /* if (shouldGenerateVariation) {
-            args = {
-                image,
-                model,
-                responseFormat,
-            };
-        } else {
-            args = {
-                prompt,
-                model,
-                responseFormat,
-            };
-        } */
-
         if (model === 'dall-e-3') {
             const size = config?.data?.sizeDalle3 || '1024x1024';
             const quality = config?.data?.quality || 'standard';
@@ -96,7 +113,7 @@ export default class ImageGenerator extends Component {
             const isRawInputPrompt = config?.data?.isRawInputPrompt || false;
 
             if (isRawInputPrompt) {
-                _finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${input?.Prompt}`;
+                _finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${prompt}`;
             }
         } else if (model === 'dall-e-2') {
             const size = config?.data?.sizeDalle2 || '256x256';
@@ -105,42 +122,72 @@ export default class ImageGenerator extends Component {
             args.n = numberOfImages;
         }
 
-        try {
-            // ! LATER IMPROVEMENT: support image variation API
-            /* if (shouldGenerateVariation) {
-                response = await OpenAI.generateImageVariation(args);
+        const llmInference: LLMInference = await LLMInference.getInstance(model);
 
-                // remove temp image
-                const removeFile = promisify(fs.unlink);
-                removeFile(tempImagePath);
-            } else {
-                response = await OpenAI.generateImage(args);
-            } */
-
-            // let response = await OpenAI.generateImage(args);
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
-
-            // if the llm is undefined, then it means we removed the model from our system
-            if (!llmInference.connector) {
-                return {
-                    _error: `The model '${model}' is not available. Please try a different one.`,
-                    _debug: logger.output,
-                };
-            }
-            const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
-
-            let output = response?.data?.[0]?.[responseFormat];
-            const revised_prompt = response?.data?.[0]?.revised_prompt;
-
-            if (revised_prompt && prompt !== revised_prompt) {
-                logger.debug(`Revised Prompt:\n${revised_prompt}`);
-            }
-
-            logger.debug(`Output:`, output);
-
-            return { Output: output, _debug: logger.output };
-        } catch (error: any) {
-            return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
+        // if the llm is undefined, then it means we removed the model from our system
+        if (!llmInference.connector) {
+            return {
+                _error: `The model '${model}' is not available. Please try a different one.`,
+                _debug: logger.output,
+            };
         }
-    }
-}
+
+        const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
+
+        let output = response?.data?.[0]?.[responseFormat];
+        const revised_prompt = response?.data?.[0]?.revised_prompt;
+
+        if (revised_prompt && prompt !== revised_prompt) {
+            logger.debug(`Revised Prompt:\n${revised_prompt}`);
+        }
+
+        return output;
+    },
+    runware: async ({ model, prompt, config, agent }) => {
+        // Initialize Runware client
+        const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
+        await runware.ensureConnection();
+
+        const negativePrompt = config?.data?.negativePrompt || '';
+
+        const imageRequestArgs: IRequestImage = {
+            model: LLMRegistry.getModelId(model),
+            positivePrompt: prompt,
+            width: +config?.data?.width || 1024,
+            height: +config?.data?.height || 1024,
+            numberResults: 1, // For Image Generation we only need 1 image
+            outputType: 'URL', // For Image Generation we only need the URL
+            outputFormat: config?.data?.outputFormat || 'JPEG',
+            includeCost: true,
+        };
+
+        // If a negative prompt is provided, add it to the request args
+        if (negativePrompt) {
+            imageRequestArgs.negativePrompt = negativePrompt;
+        }
+
+        try {
+            const response = await runware.requestImages(imageRequestArgs);
+
+            // Get first image from response array
+            const firstImage = response[0];
+
+            // Map response to match expected format
+            let output = firstImage.imageURL;
+
+            SystemEvents.emit('USAGE:API', {
+                sourceId: 'api:imagegen.smyth',
+                costs: firstImage.cost,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
+
+            return output;
+        } catch (error: any) {
+            throw new Error(`Runware Image Generation Error: ${error?.message || JSON.stringify(error)}`);
+        } finally {
+            // Clean up connection
+            await runware.disconnect();
+        }
+    },
+};

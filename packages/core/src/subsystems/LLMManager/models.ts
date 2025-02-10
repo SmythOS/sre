@@ -1814,36 +1814,45 @@ export const models = {
   // #endregion Together AI Models ==========================
 
   // We do not get the exact token information for Dalle models, so use the maximum possible values
-  'dall-e-3': {
-    llm: 'OpenAI',
-    alias: 'dall-e-3',
-    components: ['ImageGenerator'],
+  // #region Image Generation Models ============================
 
-    label: 'OpenAI - Dall-E 3',
+  // #region OpenAI Models DALL-E
+  'dall-e-3': {
+    label: 'DALL·E 3',
     modelId: 'dall-e-3',
     provider: 'OpenAI',
-    features: ['image'],
-    tags: ['Personal', 'OpenAI'],
-    tokens: 0,
-    completionTokens: 0,
+    features: ['image-generation'],
+    tags: ['Deprecated'],
     enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
   'dall-e-2': {
-    llm: 'OpenAI',
-    alias: 'dall-e-2',
-    components: ['ImageGenerator'],
-
-    label: 'OpenAI - Dall-E 2',
+    label: 'DALL·E 2',
     modelId: 'dall-e-2',
     provider: 'OpenAI',
-    features: ['image'],
-    tags: ['Personal', 'OpenAI'],
-    tokens: 0,
-    completionTokens: 0,
+    features: ['image-generation'],
+    tags: ['Deprecated'],
     enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
+  // #endregion OpenAI Models DALL-E
+
+  // #region Runware Models
+  'flux.1-schnell': {
+    label: 'FLUX.1 (Schnell)',
+    modelId: 'runware:100@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    enabled: true,
+  },
+  'flux.1-dev': {
+    label: 'FLUX.1 (Dev)',
+    modelId: 'runware:101@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    enabled: true,
+  },
+  // #endregion Runware Models
+
+  // #endregion Image Generation Models ============================
 
   // xAI models
   grok: {
