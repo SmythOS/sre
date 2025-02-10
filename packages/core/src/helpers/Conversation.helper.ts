@@ -63,6 +63,7 @@ export class Conversation extends EventEmitter {
     private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
+    private _agentData: any;
 
     public get context() {
         return this._context;
@@ -631,11 +632,20 @@ export class Conversation extends EventEmitter {
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {
+                    let agentProcess;
+                    if (this._agentData === this._specSource) {
+                        //the agent was loaded from data
+                        agentProcess = AgentProcess.load(this._agentData, this._agentVersion);
+                    } else {
+                        //the agent was loaded from a spec
+                        agentProcess = AgentProcess.load(
+                            reqConfig.headers['X-AGENT-ID'] || this._agentId,
+                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
+                        );
+                    }
                     //if it's a local agent, invoke it directly
-                    const response = await AgentProcess.load(
-                        reqConfig.headers['X-AGENT-ID'] || this._agentId,
-                        reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
-                    ).run(reqConfig as TAgentProcessParams, agentCallback);
+
+                    const response = await agentProcess.run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
                     let eventSource;
@@ -804,10 +814,15 @@ export class Conversation extends EventEmitter {
             if (OpenAPIParser.isValidOpenAPI(specSource)) {
                 this.systemPrompt = specSource?.info?.description || '';
 
+                this._agentData = specSource;
                 return this.patchSpec(specSource);
             }
             //is this a valid agent data?
-            if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
+            if (specSource?.behavior && specSource?.components && specSource?.connections) {
+                this._agentData = specSource;
+                return await this.loadSpecFromAgent(specSource);
+            }
+
             return null;
         }
 

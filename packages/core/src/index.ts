@@ -31,6 +31,8 @@ import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { ILLMContextStore } from '@sre/types/LLM.types';
 import { APIKeySource } from '@sre/types/LLM.types';
 import { version } from '../package.json';
+import Component from './Components/Component.class';
+import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
 
 boot();
 
@@ -55,6 +57,7 @@ export {
     CLIConnector,
     VaultConnector,
     LogConnector,
+    ComponentConnector,
     CLIAgentDataConnector,
     TemplateStringHelper,
     JSONContentHelper,
@@ -64,7 +67,7 @@ export {
     CustomLLMRegistry,
     APIKeySource,
     version,
-
+    Component,
     // Interfaces: we must use the type-only export syntax when re-exporting interfaces
     type ILLMContextStore,
 };
