@@ -1888,6 +1888,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
+    hidden: true,
     keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
 
     baseURL: 'https://api.x.ai/v1',
