@@ -63,7 +63,7 @@ export class Conversation extends EventEmitter {
     private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
-    private _agentData: any;
+    public agentData: any;
 
     public get context() {
         return this._context;
@@ -633,9 +633,9 @@ export class Conversation extends EventEmitter {
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {
                     let agentProcess;
-                    if (this._agentData === this._specSource) {
+                    if (this.agentData === this._specSource) {
                         //the agent was loaded from data
-                        agentProcess = AgentProcess.load(this._agentData, this._agentVersion);
+                        agentProcess = AgentProcess.load(this.agentData, this._agentVersion);
                     } else {
                         //the agent was loaded from a spec
                         agentProcess = AgentProcess.load(
@@ -762,6 +762,10 @@ export class Conversation extends EventEmitter {
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
                 const llmInference: LLMInference = await LLMInference.getInstance(this._model, this._teamId);
+                if (!llmInference.connector) {
+                    this.emit('error', 'No connector found for model: ' + this._model);
+                    return;
+                }
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
@@ -813,13 +817,11 @@ export class Conversation extends EventEmitter {
             //is this a valid OpenAPI spec?
             if (OpenAPIParser.isValidOpenAPI(specSource)) {
                 this.systemPrompt = specSource?.info?.description || '';
-
-                this._agentData = specSource;
                 return this.patchSpec(specSource);
             }
             //is this a valid agent data?
             if (specSource?.behavior && specSource?.components && specSource?.connections) {
-                this._agentData = specSource;
+                this.agentData = specSource; //agent loaded from data directly
                 return await this.loadSpecFromAgent(specSource);
             }
 
@@ -861,10 +863,10 @@ export class Conversation extends EventEmitter {
                 this._agentVersion = isDeployed ? 'latest' : '';
             }
 
-            const agentData = await agentDataConnector.getAgentData(agentId, this._agentVersion).catch((error) => null);
-            if (!agentData) return null;
+            this.agentData = await agentDataConnector.getAgentData(agentId, this._agentVersion).catch((error) => null);
+            if (!this.agentData) return null;
 
-            const spec = await this.loadSpecFromAgent(agentData);
+            const spec = await this.loadSpecFromAgent(this.agentData);
             return spec;
         }
     }

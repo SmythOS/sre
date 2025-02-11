@@ -26,7 +26,7 @@ let logLevel = () => {
 const namespaces = (config.env.LOG_FILTER || '').split(',');
 
 // Create a Winston format that filters messages based on namespaces
-const namespaceFilter = winston.format((info) => {
+const namespaceFilter = winston.format((info: any) => {
     // If DEBUG is not set, log everything
     if (!config.env.LOG_FILTER || namespaces.some((ns) => info.module?.includes(ns))) {
         return info;
@@ -127,7 +127,7 @@ function createBaseLogger(memoryStore?: any[]) {
         //level: 'info', // log level
 
         format: winston.format.combine(
-            winston.format((info) => {
+            winston.format((info: any) => {
                 if (config.env.LOG_LEVEL == 'none' || logLevel() == 'none' || logLevel() == '') return false; // skip logging if log level is none
 
                 // Apply redaction to the log message
@@ -149,7 +149,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 level: 'error',
                 //handleExceptions: true,
                 format: winston.format.combine(
-                    winston.format.printf((info) => {
+                    winston.format.printf((info: any) => {
                         let message = info.message;
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
@@ -161,7 +161,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 level: logLevel(),
                 format: winston.format.combine(
                     namespaceFilter,
-                    winston.format.printf((info) => {
+                    winston.format.printf((info: any) => {
                         const module = info.module ? winston.format.colorize().colorize(info.level, ` [${info.module}]`) : '';
                         const ns = winston.format.colorize().colorize(info.level, `${info.level}${module}`);
 
