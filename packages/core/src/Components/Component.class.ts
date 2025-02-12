@@ -2,7 +2,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
-
+import { hook } from '@sre/Core/HookService';
 export default class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;
@@ -39,14 +39,8 @@ export default class Component {
         return {};
     }
 
+    @hook('Component.process')
     async process(input, config, agent: Agent): Promise<any> {
-        // console.log(
-        //     `Called component ${this.constructor.name}\n ID=${config.id} \ninput ${JSON.stringify(input, null, 2)} \nand config ${JSON.stringify(
-        //         config,
-        //         null,
-        //         2,
-        //     )}`,
-        // );
         const _input = await performTypeInference(input, config?.inputs, agent);
 
         // modify the input object for component's process method

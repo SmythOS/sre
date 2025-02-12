@@ -33,7 +33,7 @@ import { APIKeySource } from '@sre/types/LLM.types';
 import { version } from '../package.json';
 import Component from './Components/Component.class';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
-
+import { HookService } from './Core/HookService';
 boot();
 
 export {
@@ -68,6 +68,7 @@ export {
     APIKeySource,
     version,
     Component,
+    HookService,
     // Interfaces: we must use the type-only export syntax when re-exporting interfaces
     type ILLMContextStore,
 };
