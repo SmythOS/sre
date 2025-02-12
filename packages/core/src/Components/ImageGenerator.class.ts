@@ -4,12 +4,32 @@ import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig } from '@sre/types/LLM.types';
+import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
+
+const IMAGE_GEN_COST_MAP = {
+    'dall-e-3': {
+        standard: {
+            '1024x1024': '0.04',
+            '1024x1792': '0.08',
+            '1792x1024': '0.08',
+        },
+        hd: {
+            '1024x1024': '0.08',
+            '1024x1792': '0.12',
+            '1792x1024': '0.12',
+        },
+    },
+    'dall-e-2': {
+        '256x256': '0.016',
+        '512x512': '0.018',
+        '1024x1024': '0.02',
+    },
+};
 
 export default class ImageGenerator extends Component {
     protected configSchema = Joi.object({
@@ -81,9 +101,19 @@ export default class ImageGenerator extends Component {
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
         try {
-            const output = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
+            const { output, cost } = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
 
             logger.debug(`Output: `, output);
+
+            if (output) {
+                SystemEvents.emit('USAGE:API', {
+                    sourceId: `api:imagegen.smyth`,
+                    costs: cost,
+                    agentId: agent.id,
+                    teamId: agent.teamId,
+                    keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,
+                });
+            }
 
             return { Output: output, _debug: logger.output };
         } catch (error: any) {
@@ -102,6 +132,9 @@ const imageGenerator = {
             responseFormat,
             model,
         };
+
+        let cost = 0;
+
         if (model === 'dall-e-3') {
             const size = config?.data?.sizeDalle3 || '1024x1024';
             const quality = config?.data?.quality || 'standard';
@@ -115,11 +148,15 @@ const imageGenerator = {
             if (isRawInputPrompt) {
                 _finalPrompt = `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${prompt}`;
             }
+
+            cost = IMAGE_GEN_COST_MAP[model][quality][size];
         } else if (model === 'dall-e-2') {
             const size = config?.data?.sizeDalle2 || '256x256';
             const numberOfImages = parseInt(config?.data?.numberOfImages) || 1;
             args.size = size;
             args.n = numberOfImages;
+
+            cost = IMAGE_GEN_COST_MAP[model][size];
         }
 
         const llmInference: LLMInference = await LLMInference.getInstance(model);
@@ -141,7 +178,7 @@ const imageGenerator = {
             logger.debug(`Revised Prompt:\n${revised_prompt}`);
         }
 
-        return output;
+        return { output, cost };
     },
     runware: async ({ model, prompt, config, agent }) => {
         // Initialize Runware client
@@ -175,14 +212,7 @@ const imageGenerator = {
             // Map response to match expected format
             let output = firstImage.imageURL;
 
-            SystemEvents.emit('USAGE:API', {
-                sourceId: 'api:imagegen.smyth',
-                costs: firstImage.cost,
-                agentId: agent.id,
-                teamId: agent.teamId,
-            });
-
-            return output;
+            return { output, cost: firstImage.cost };
         } catch (error: any) {
             throw new Error(`Runware Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         } finally {
