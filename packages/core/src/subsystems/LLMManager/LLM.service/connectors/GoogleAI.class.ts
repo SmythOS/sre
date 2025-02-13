@@ -917,15 +917,17 @@ export class GoogleAIConnector extends LLMConnector {
                     _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
+            // * empty text causes error that's why we added '...'
+
             if (_message?.parts) {
-                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (Array.isArray(_message?.content)) {
-                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.content.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (_message?.content) {
-                textContent = _message.content as string;
+                textContent = (_message.content as string) || '...';
             }
 
-            _message.parts = [{ text: textContent }];
+            _message.parts = [{ text: textContent || '...' }];
 
             delete _message.content; // Remove content to avoid error
 

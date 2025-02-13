@@ -120,7 +120,7 @@ export const models = {
     label: 'Gemini 2.0 Flash Experimental',
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
-    features: ['text', 'image'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['SmythOS'],
     tokens: 1_048_576,
     completionTokens: 8_192,
@@ -728,12 +728,12 @@ export const models = {
   // #region Gemini 2.0 flash
   'gemini-2.0-flash': {
     llm: 'GoogleAI',
-    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM'],
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
 
     label: 'Gemini 2.0 Flash Experimental',
     modelId: 'gemini-2.0-flash-exp',
     provider: 'GoogleAI',
-    features: ['text', 'image'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
