@@ -454,20 +454,22 @@ export class AnthropicConnector extends LLMConnector {
 
                 if (finalMessage?.usage) {
                     const usage = finalMessage.usage;
-                    usage_data.push({
-                        prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
-                        completion_tokens: usage.output_tokens,
-                        total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
-                        prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
-                        completion_tokens_details: { reasoning_tokens: 0 },
-                    });
+                    // usage_data.push({
+                    //     prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
+                    //     completion_tokens: usage.output_tokens,
+                    //     total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
+                    //     prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
+                    //     completion_tokens_details: { reasoning_tokens: 0 },
+                    // });
 
-                    this.reportUsage(usage, {
+                    const reportedUsage = this.reportUsage(usage, {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
                         teamId: params.teamId,
                     });
+
+                    usage_data.push(reportedUsage);
                 }
 
                 //only emit end event after processing the final message
@@ -820,7 +822,7 @@ export class AnthropicConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage.input_tokens,
             output_tokens: usage.output_tokens,
@@ -829,6 +831,9 @@ export class AnthropicConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

@@ -502,7 +502,7 @@ export class BedrockConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage.inputTokens,
             output_tokens: usage.outputTokens,
@@ -511,7 +511,10 @@ export class BedrockConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }
 

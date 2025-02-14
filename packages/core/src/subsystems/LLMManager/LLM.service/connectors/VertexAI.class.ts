@@ -154,7 +154,7 @@ export class VertexAIConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage.promptTokenCount || 0,
             output_tokens: usage.candidatesTokenCount || 0,
@@ -163,6 +163,9 @@ export class VertexAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

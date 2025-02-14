@@ -525,6 +525,7 @@ export class OpenAIConnector extends LLMConnector {
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
+        const reportedUsage = [];
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
@@ -599,16 +600,18 @@ export class OpenAIConnector extends LLMConnector {
 
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
-                    this.reportUsage(usage, {
+                    const _reported = this.reportUsage(usage, {
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
                         teamId: params.teamId,
                     });
+
+                    reportedUsage.push(_reported);
                 });
 
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data);
+                    emitter.emit('end', toolsData, reportedUsage);
                 }, 100);
             })();
             return emitter;
@@ -881,7 +884,7 @@ export class OpenAIConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
@@ -890,6 +893,9 @@ export class OpenAIConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

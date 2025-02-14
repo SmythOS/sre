@@ -993,7 +993,7 @@ export class GoogleAIConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
@@ -1003,6 +1003,9 @@ export class GoogleAIConnector extends LLMConnector {
             agentId: metadata.agentId,
             teamId: metadata.teamId,
             tier,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }
