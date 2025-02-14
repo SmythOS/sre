@@ -5,7 +5,7 @@ import { FunctionCallingMode } from '@google/generative-ai';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
 
-export type LLMProvider = (typeof models)[keyof typeof models]['llm'] | 'VertexAI' | 'Bedrock';
+export type LLMProvider = Extract<(typeof models)[keyof typeof models], { llm: string }>['llm'] | 'VertexAI' | 'Bedrock';
 export type LLMModel = keyof typeof models;
 export type LLMModelInfo = (typeof models)[LLMModel];
 
@@ -204,7 +204,6 @@ export interface SmythLLMUsage {
     input_tokens_cache_write: number;
     input_tokens_cache_read: number;
     output_tokens: number;
-    model: LLMModel | string;
     keySource?: APIKeySource;
     agentId: string;
     teamId: string;

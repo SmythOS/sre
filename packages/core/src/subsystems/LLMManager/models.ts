@@ -83,11 +83,11 @@ export const models = {
 
   // #region Anthropic ==========================
 
-  'smythos/claude-3-5-sonnet': {
+  'smythos/claude-3.5-sonnet': {
     llm: 'Anthropic',
 
     label: 'Claude 3.5 Sonnet',
-    modelId: 'claude-3-5-sonnet-20240620',
+    modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
     tags: ['SmythOS'],
@@ -237,15 +237,15 @@ export const models = {
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
   },
   'gpt-4o-mini-2024-07-18': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16383 },
+    enabled: false,
+    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
   },
   'gpt-4o': {
     llm: 'OpenAI',
@@ -268,15 +268,15 @@ export const models = {
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
   },
   'gpt-4o-2024-08-06': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16384 },
+    enabled: false,
+    keyOptions: { tokens: 128000, completionTokens: 16384, enabled: true },
   },
   // #endregion GPT 4o
 
@@ -293,7 +293,14 @@ export const models = {
     tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
+  'o3-mini-2025-01-31': {
+    llm: 'OpenAI',
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   o1: {
@@ -308,15 +315,15 @@ export const models = {
     tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   'o1-2024-12-17': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 200_000, completionTokens: 100_000 },
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   'o1-mini': {
     llm: 'OpenAI',
@@ -330,15 +337,15 @@ export const models = {
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
   },
   'o1-mini-2024-09-12': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 128_000, completionTokens: 65_536 },
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
   },
   'o1-preview': {
     llm: 'OpenAI',
@@ -352,15 +359,15 @@ export const models = {
     tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
   },
   'o1-preview-2024-09-12': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 128_000, completionTokens: 32_768 },
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
   },
   // #endregion o1 models
 
@@ -377,7 +384,7 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
   },
   'gpt-4-turbo': {
@@ -399,15 +406,15 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
   },
   'gpt-4-turbo-2024-04-09': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 4096 },
+    enabled: false,
+    keyOptions: { tokens: 128000, completionTokens: 4096, enabled: true },
   },
   // #endregion GPT-4-turbo
 
@@ -424,7 +431,7 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'gpt-4': {
@@ -445,16 +452,16 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   'gpt-4-0613': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
+    enabled: false,
     hidden: true,
-    keyOptions: { tokens: 8192, completionTokens: 8192 },
+    keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
   },
   // #endregion GPT-4
 
@@ -478,7 +485,7 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
   },
   'gpt-3.5-turbo': {
@@ -500,15 +507,15 @@ export const models = {
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
-    enabled: true,
+    enabled: false,
     keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
   },
   'gpt-3.5-turbo-0125': {
     llm: 'OpenAI',
     tokens: 2048,
     completionTokens: 2048,
-    enabled: true,
-    keyOptions: { tokens: 16385, completionTokens: 4096 },
+    enabled: false,
+    keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
   },
   // #endregion GPT-3.5
 
@@ -557,7 +564,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Latest',
     modelId: 'claude-3-5-sonnet-latest',
     provider: 'Anthropic',
     features: ['text', 'image'],
@@ -580,7 +587,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'Claude 3.5 Sonnet',
+    label: 'Claude 3.5 Sonnet Stable',
     modelId: 'claude-3-5-sonnet-20240620',
     provider: 'Anthropic',
     features: ['text', 'image'],
@@ -1814,65 +1821,76 @@ export const models = {
   // #endregion Together AI Models ==========================
 
   // We do not get the exact token information for Dalle models, so use the maximum possible values
-  'dall-e-3': {
-    llm: 'OpenAI',
-    alias: 'dall-e-3',
-    components: ['ImageGenerator'],
+  // #region Image Generation Models ============================
 
-    label: 'OpenAI - Dall-E 3',
+  // #region OpenAI Models DALL-E
+  'dall-e-3': {
+    label: 'DALL·E 3',
     modelId: 'dall-e-3',
     provider: 'OpenAI',
-    features: ['image'],
-    tags: ['Personal', 'OpenAI'],
-    tokens: 0,
-    completionTokens: 0,
+    features: ['image-generation'],
+    tags: ['Deprecated'],
     enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
   'dall-e-2': {
-    llm: 'OpenAI',
-    alias: 'dall-e-2',
-    components: ['ImageGenerator'],
-
-    label: 'OpenAI - Dall-E 2',
+    label: 'DALL·E 2',
     modelId: 'dall-e-2',
     provider: 'OpenAI',
-    features: ['image'],
-    tags: ['Personal', 'OpenAI'],
-    tokens: 0,
-    completionTokens: 0,
+    features: ['image-generation'],
+    tags: ['Deprecated'],
     enabled: true,
-    keyOptions: { tokens: 128000, completionTokens: 16383 },
   },
+  // #endregion OpenAI Models DALL-E
+
+  // #region Runware Models
+  'flux.1-schnell': {
+    label: 'FLUX.1 (Schnell)',
+    modelId: 'runware:100@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    enabled: true,
+  },
+  'flux.1-dev': {
+    label: 'FLUX.1 (Dev)',
+    modelId: 'runware:101@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    enabled: true,
+  },
+  // #endregion Runware Models
+
+  // #endregion Image Generation Models ============================
 
   // xAI models
   grok: {
     llm: 'xAI',
-    alias: 'grok-beta',
-    components: ['PromptGenerator', 'LLMAssistant', 'GenAILLM'],
 
-    label: 'xAI - Grok',
-    modelId: 'grok-beta',
+    label: 'Grok',
+    modelId: 'grok-2-latest',
     provider: 'xAI',
     features: ['text'],
-    tags: [],
+    tags: ['Personal', 'xAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131072, completionTokens: 4096, enabled: true },
+    keyOptions: { tokens: 131_072, completionTokens: 8192, enabled: true },
 
     baseURL: 'https://api.x.ai/v1',
   },
-  'grok-beta': {
+  'grok-2-vision': {
     llm: 'xAI',
-    tokens: 2048,
-    completionTokens: 2048,
+
+    label: 'Grok Vision',
+    modelId: 'grok-2-vision-latest',
+    provider: 'xAI',
+    features: ['image'],
+    tags: ['New', 'Personal', 'xAI'],
+    tokens: 0,
+    completionTokens: 0,
     enabled: false,
-    keyOptions: {
-      tokens: 131072,
-      completionTokens: 4096, // assumed
-      enabled: true,
-    },
+    hidden: true,
+    keyOptions: { tokens: 32_768, completionTokens: 32_768, enabled: true },
+
     baseURL: 'https://api.x.ai/v1',
   },
 

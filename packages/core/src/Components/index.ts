@@ -35,6 +35,7 @@ import GenAILLM from './GenAILLM.class';
 import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
+import ComponentHost from './ComponentHost.class';
 
 const components = {
     Component: new Component(),
@@ -76,6 +77,7 @@ const components = {
     FileStore: new FileStore(),
     WebSearch: new WebSearch(),
     WebScrape: new WebScrape(),
+    ComponentHost: new ComponentHost(),
 };
 
 export default components;

@@ -12,6 +12,7 @@ const config = {
         TOGETHER_AI_API_KEY: process.env.TOGETHER_AI_API_KEY,
         GROQ_API_KEY: process.env.GROQ_API_KEY,
         XAI_API_KEY: process.env.XAI_API_KEY,
+        RUNWARE_API_KEY: process.env.RUNWARE_API_KEY,
 
         DATA_PATH: process.env.DATA_PATH,
 

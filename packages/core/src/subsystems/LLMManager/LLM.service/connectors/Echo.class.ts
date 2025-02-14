@@ -75,5 +75,5 @@ export class EchoConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: any, metadata: { model: string; keySource: APIKeySource }) {}
+    protected reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {}
 }
