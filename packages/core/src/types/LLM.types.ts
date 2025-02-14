@@ -209,3 +209,10 @@ export interface SmythLLMUsage {
     teamId: string;
     tier?: string; // for Google AI
 }
+
+export interface SmythTaskUsage {
+    sourceId: string;
+    number: number;
+    agentId: string;
+    teamId: string;
+}
