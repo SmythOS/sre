@@ -982,11 +982,15 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         const modelEntryName = metadata.modelEntryName;
-        const inputTokens = usage.promptTokenCount;
-        let tier = 'tier-1';
+        const inputTokens = usage?.promptTokenCount || 0;
+        let tier = '';
 
-        if (['gemini-1.5-pro'].includes(modelEntryName) && inputTokens > 128_000) {
-            tier = 'tier-2';
+        if (modelEntryName.includes('gemini-1.5-pro')) {
+            if (inputTokens < 128_000) {
+                tier = 'tier1';
+            } else {
+                tier = 'tier2';
+            }
         }
 
         let modelName = metadata.modelEntryName;
