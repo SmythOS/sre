@@ -9,7 +9,7 @@ import Component from './Component.class';
 export default class GPTPlugin extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().optional(),
-        openAiModel: Joi.string().required(), // ! Legacy
+        openAiModel: Joi.string().required(), // for backward compatibility
         specUrl: Joi.string().max(2048).uri().required().description('URL of the OpenAPI specification'),
         descForModel: Joi.string().max(5000).required().allow('').label('Description for Model'),
         name: Joi.string().max(500).required().allow(''),
