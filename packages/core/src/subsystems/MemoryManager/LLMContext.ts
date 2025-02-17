@@ -90,6 +90,8 @@ export class LLMContext {
             // internal_messages are smythOS specific intermediate formats that enable us to store certain data and only convert them when needed
             let internal_message: any;
 
+            delete this._messages?.[i]?.['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
+
             //parse specific tools messages
             if (this._messages[i]?.messageBlock && this._messages[i]?.toolsData) {
                 internal_message = this.llmInference.connector
@@ -115,8 +117,6 @@ export class LLMContext {
                     messages.unshift(message);
                     continue;
                 }
-
-                delete message['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
 
                 const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
                 const encoded = encode(textContent);

@@ -917,15 +917,17 @@ export class GoogleAIConnector extends LLMConnector {
                     _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
+            // * empty text causes error that's why we added '...'
+
             if (_message?.parts) {
-                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (Array.isArray(_message?.content)) {
-                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.content.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (_message?.content) {
-                textContent = _message.content as string;
+                textContent = (_message.content as string) || '...';
             }
 
-            _message.parts = [{ text: textContent }];
+            _message.parts = [{ text: textContent || '...' }];
 
             delete _message.content; // Remove content to avoid error
 
@@ -980,11 +982,15 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         const modelEntryName = metadata.modelEntryName;
-        const inputTokens = usage.promptTokenCount;
-        let tier = 'tier-1';
+        const inputTokens = usage?.promptTokenCount || 0;
+        let tier = '';
 
-        if (['gemini-1.5-pro'].includes(modelEntryName) && inputTokens > 128_000) {
-            tier = 'tier-2';
+        if (modelEntryName.includes('gemini-1.5-pro')) {
+            if (inputTokens < 128_000) {
+                tier = 'tier1';
+            } else {
+                tier = 'tier2';
+            }
         }
 
         let modelName = metadata.modelEntryName;
