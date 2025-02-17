@@ -45,9 +45,9 @@ export default class WebSearch extends Component {
                 },
             });
             Output = {
-                results: response.data.results,
-                ...(config.data.includeImages ? { images: response.data.images } : {}),
-                ...(config.data.includeQAs ? { answer: response.data.answer } : {}),
+                Results: response.data.results,
+                ...(config.data.includeImages ? { Images: response.data.images } : {}),
+                ...(config.data.includeQAs ? { Answer: response.data.answer } : {}),
             };
             this.reportUsage({
                 agentId: agent.id,

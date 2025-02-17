@@ -324,7 +324,7 @@ export class GroqConnector extends LLMConnector {
             modelName = metadata.modelEntryName.split('/').pop();
         }
 
-        SystemEvents.emit('USAGE:LLM', {
+        const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
             output_tokens: usage?.completion_tokens,
@@ -333,6 +333,9 @@ export class GroqConnector extends LLMConnector {
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

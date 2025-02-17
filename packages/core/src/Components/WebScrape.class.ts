@@ -36,7 +36,7 @@ export default class WebScrape extends Component {
                 },
             });
 
-            Output = { results: response.data.results, failed_urls: response.data.failed_results };
+            Output = { Results: response?.data?.results, FailedURLs: response?.data?.failed_results?.length ? response?.data?.failed_results : undefined };
             this.reportUsage({
                 urlsScraped: response?.data?.results?.length,
                 agentId: agent.id,
