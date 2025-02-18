@@ -54,29 +54,17 @@ export class SmythLog extends LogConnector {
     }
 
     protected async logTask(acRequest: AccessRequest, tasks: number, isUsingTestDomain: boolean): Promise<void> {
-        if (isUsingTestDomain) return;
+        // if (isUsingTestDomain) return;
         const agentId = acRequest.candidate.id;
         const accountConnector: AccountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
 
-        try {
-            SystemEvents.emit('USAGE:TASK', {
-                sourceId: 'smyth',
-                number: tasks,
-                agentId,
-                teamId,
-            });
-        } catch (error) {
-            console.error('Error emitting task usage:', error?.message || error);
-        }
-
-        try {
-            // ! DEPRECATED: in favor of SystemEvents.emit('USAGE:TASK', ...), we will move it later to USAGE:TASK event listener
-            const day = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
-            await this.smythAPI.put(`/v1/quota/agent/${agentId}/tasks`, { number: tasks, day }, { headers: await this.getSmythRequestHeaders() });
-        } catch (error) {
-            console.error('Error logging task:', error?.response?.data?.message || error);
-        }
+        SystemEvents.emit('USAGE:TASK', {
+            sourceId: 'smyth',
+            number: tasks,
+            agentId,
+            teamId,
+        });
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
