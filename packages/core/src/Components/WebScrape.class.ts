@@ -9,6 +9,9 @@ import SystemEvents from '@sre/Core/SystemEvents';
 export default class WebScrape extends Component {
     protected configSchema = Joi.object({
         // includeImages: Joi.boolean().default(false).label('Include Image Results'),
+        antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),
+        javascriptRendering: Joi.boolean().default(false).label('Enable JavaScript Rendering'),
+        autoScroll: Joi.boolean().default(false).label('Enable Auto Scroll'),
     });
 
     constructor() {
@@ -27,7 +30,7 @@ export default class WebScrape extends Component {
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
        
-            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url)));
+            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url, config)));
             const results = scrapeResults.filter(result => result.success).map((result) => { return { url: result.url, content: result.content } });
             const failedResults = scrapeResults.filter(result => !result.success).map((result) => { return { url: result.url, error: result.error } });
 
@@ -47,7 +50,7 @@ export default class WebScrape extends Component {
         }
     }
 
-    async scrapeURL(url) {
+    async scrapeURL(url, config) {
         try {
             const response = await axios({
                 method: 'get',
@@ -56,6 +59,9 @@ export default class WebScrape extends Component {
                     url: encodeURIComponent(url),
                     key: SREConfig.env.SCRAPFLY_API_KEY,
                     format: 'markdown',
+                    ...(config.antiScrapingProtection && { asp: true, cost_budget: 30 }),
+                    ...(config.javascriptRendering && { render_js: true }),
+                    ...(config.autoScroll && { auto_scroll: true }),
                 },
             });
             return {
