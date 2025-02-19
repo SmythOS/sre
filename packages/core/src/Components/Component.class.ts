@@ -2,7 +2,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
-import { hook } from '@sre/Core/HookService';
+import { hookAsync } from '@sre/Core/HookService';
 export default class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;
@@ -39,7 +39,7 @@ export default class Component {
         return {};
     }
 
-    @hook('Component.process')
+    @hookAsync('Component.process')
     async process(input, config, agent: Agent): Promise<any> {
         const _input = await performTypeInference(input, config?.inputs, agent);
 

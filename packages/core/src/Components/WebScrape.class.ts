@@ -44,7 +44,7 @@ export default class WebScrape extends Component {
             });
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
-            const _error = err?.response?.data || err?.message || err.toString();
+            const _error = err?.message || err?.response?.data || err.toString();
             logger.error(` Error scraping web \n${_error}\n`);
             return { Output: undefined, _error, _debug: logger.output };
         }
