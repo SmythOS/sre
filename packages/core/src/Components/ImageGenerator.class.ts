@@ -49,23 +49,19 @@ export default class ImageGenerator extends Component {
         width: Joi.number()
             .min(128)
             .max(2048)
-            .custom((value, helpers) => {
-                if (value % 64 !== 0) {
-                    return helpers.error('any.invalid', { message: 'Width must be divisible by 64' });
-                }
-                return value;
-            })
-            .optional(),
+            .multiple(64)
+            .optional()
+            .messages({
+                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
+            }),
         height: Joi.number()
             .min(128)
             .max(2048)
-            .custom((value, helpers) => {
-                if (value % 64 !== 0) {
-                    return helpers.error('any.invalid', { message: 'Height must be divisible by 64' });
-                }
-                return value;
-            })
-            .optional(),
+            .multiple(64)
+            .optional()
+            .messages({
+                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
+            }),
         outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
         // #endregion
     });
