@@ -1868,6 +1868,7 @@ export const models = {
     provider: 'Runware',
     features: ['image-generation'],
     enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'flux.1-dev': {
     label: 'FLUX.1 (Dev)',
@@ -1875,6 +1876,7 @@ export const models = {
     provider: 'Runware',
     features: ['image-generation'],
     enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion Runware Models
 
