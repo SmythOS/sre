@@ -4,17 +4,21 @@ import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
 import SystemEvents from '@sre/Core/SystemEvents';
-const CREDITS_PER_URL = 0.2;
+// const CREDITS_PER_URL = 0.2;
 
 export default class WebScrape extends Component {
     protected configSchema = Joi.object({
-        includeImages: Joi.boolean().default(false).label('Include Image Results'),
+        // includeImages: Joi.boolean().default(false).label('Include Image Results'),
+        antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),
+        javascriptRendering: Joi.boolean().default(false).label('Enable JavaScript Rendering'),
+        autoScroll: Joi.boolean().default(false).label('Enable Auto Scroll'),
+        format: Joi.string().default('markdown').label('Format').optional(),
     });
 
     constructor() {
         super();
     }
-    init() {}
+    init() { }
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
@@ -26,27 +30,55 @@ export default class WebScrape extends Component {
             const scrapeUrls = this.extractUrls(input);
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
-            const response = await axios({
-                method: 'post',
-                url: 'https://api.tavily.com/extract',
-                data: {
-                    api_key: SREConfig.env.TAVILY_API_KEY,
-                    urls: scrapeUrls,
-                    ...(config.data.includeImages ? { include_images: true } : {}),
-                },
-            });
 
-            Output = { Results: response?.data?.results, FailedURLs: response?.data?.failed_results?.length ? response?.data?.failed_results : undefined };
+            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url, config.data)));
+            const results = scrapeResults.filter(result => result.success).map((result) => { return { url: result.url, content: result.content } });
+            const failedResults = scrapeResults.filter(result => !result.success).map((result) => { return { url: result.url, error: result.error } });
+
+            Output = { Results: results, FailedURLs: failedResults };
+            const totalCredits = scrapeResults.reduce((acc, result) => acc + (result.cost || 0), 0);
             this.reportUsage({
-                urlsScraped: response?.data?.results?.length,
+                urlsScraped: results?.length,
                 agentId: agent.id,
                 teamId: agent.teamId,
+                totalCredits,
             });
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.message || err?.response?.data || err.toString();
             logger.error(` Error scraping web \n${_error}\n`);
             return { Output: undefined, _error, _debug: logger.output };
+        }
+    }
+
+    async scrapeURL(url, data) {
+        try {
+            const response = await axios({
+                method: 'get',
+                url: 'https://api.scrapfly.io/scrape',
+                params: {
+                    url: encodeURIComponent(url),
+                    key: SREConfig.env.SCRAPFLY_API_KEY,
+                    ...(data.format ? { format: data.format } : { format: 'markdown' }),
+                    ...(data.antiScrapingProtection && { asp: true, cost_budget: 30 }),
+                    ...(data.javascriptRendering && { render_js: true }),
+                    ...(data.autoScroll && { auto_scroll: true, render_js: true }),
+                },
+            });
+            return {
+                content: response.data?.result?.content,
+                success: true,
+                url,
+                cost: response.data?.context?.cost?.total || 0,
+            };
+        } catch (error) {
+            return {
+                content: undefined,
+                success: false,
+                error: error?.response?.data?.result?.error?.message || 'Failed to scrape URL',
+                url,
+                cost: 0,
+            };
         }
     }
 
@@ -93,12 +125,12 @@ export default class WebScrape extends Component {
         }
     }
 
-    protected reportUsage({ urlsScraped, agentId, teamId }: { urlsScraped: number; agentId: string; teamId: string }) {
+    protected reportUsage({ urlsScraped, agentId, teamId, totalCredits }: { urlsScraped: number; agentId: string; teamId: string; totalCredits: number }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:webscrape.smyth',
             requests: urlsScraped,
-            credits: CREDITS_PER_URL,
-            costs: urlsScraped * CREDITS_PER_URL,
+            credits: totalCredits,
+            costs: totalCredits,
             agentId,
             teamId,
         });
