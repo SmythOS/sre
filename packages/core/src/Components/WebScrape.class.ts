@@ -12,6 +12,7 @@ export default class WebScrape extends Component {
         antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),
         javascriptRendering: Joi.boolean().default(false).label('Enable JavaScript Rendering'),
         autoScroll: Joi.boolean().default(false).label('Enable Auto Scroll'),
+        format: Joi.string().default('markdown').label('Format').optional(),
     });
 
     constructor() {
@@ -29,8 +30,8 @@ export default class WebScrape extends Component {
             const scrapeUrls = this.extractUrls(input);
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
-       
-            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url, config)));
+
+            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url, config.data)));
             const results = scrapeResults.filter(result => result.success).map((result) => { return { url: result.url, content: result.content } });
             const failedResults = scrapeResults.filter(result => !result.success).map((result) => { return { url: result.url, error: result.error } });
 
@@ -50,7 +51,7 @@ export default class WebScrape extends Component {
         }
     }
 
-    async scrapeURL(url, config) {
+    async scrapeURL(url, data) {
         try {
             const response = await axios({
                 method: 'get',
@@ -58,10 +59,10 @@ export default class WebScrape extends Component {
                 params: {
                     url: encodeURIComponent(url),
                     key: SREConfig.env.SCRAPFLY_API_KEY,
-                    format: 'markdown',
-                    ...(config.antiScrapingProtection && { asp: true, cost_budget: 30 }),
-                    ...(config.javascriptRendering && { render_js: true }),
-                    ...(config.autoScroll && { auto_scroll: true }),
+                    ...(data.format ? { format: data.format } : { format: 'markdown' }),
+                    ...(data.antiScrapingProtection && { asp: true, cost_budget: 30 }),
+                    ...(data.javascriptRendering && { render_js: true }),
+                    ...(data.autoScroll && { auto_scroll: true, render_js: true }),
                 },
             });
             return {
