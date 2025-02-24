@@ -15,6 +15,7 @@ const isDev = process.env.NODE_ENV === 'DEV';
  * - 'alias' -> 'modelId'       : Use 'modelId' to specify the unique model identifier
  * - 'components' -> 'features' : Use 'features' to specify model capabilities
  *
+ * * We will remove the 'legacy' and 'deprecated' models soon, for now we just hide them.
  */
 
 export const models = {
@@ -386,6 +387,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'gpt-4-turbo': {
     llm: 'OpenAI',
@@ -408,6 +410,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'gpt-4-turbo-2024-04-09': {
     llm: 'OpenAI',
@@ -433,6 +436,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gpt-4': {
     llm: 'OpenAI',
@@ -454,6 +458,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gpt-4-0613': {
     llm: 'OpenAI',
@@ -487,6 +492,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'gpt-3.5-turbo': {
     llm: 'OpenAI',
@@ -509,6 +515,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'gpt-3.5-turbo-0125': {
     llm: 'OpenAI',
@@ -655,6 +662,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'claude-3-sonnet-20240229': {
     llm: 'Anthropic',
@@ -684,6 +692,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'claude-3-haiku-20240307': {
     llm: 'Anthropic',
@@ -705,6 +714,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   'claude-instant-1.2': {
     llm: 'Anthropic',
@@ -719,6 +729,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 100_000, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
 
   // #endregion Anthropic Models ==========================
@@ -756,6 +767,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 2_097_152, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.5-pro-latest-stable': {
     llm: 'GoogleAI',
@@ -784,6 +796,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 2_097_152, completionTokens: 8_192, enabled: true },
+    hidden: true,
   },
   'gemini-1.5-pro-stable': {
     llm: 'GoogleAI',
@@ -830,6 +843,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 1_048_576, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.5-flash-latest-stable': {
     llm: 'GoogleAI',
@@ -845,6 +859,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 1_048_576, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.5-flash-stable': {
     llm: 'GoogleAI',
@@ -891,6 +906,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.0-pro-latest-stable': {
     llm: 'GoogleAI',
@@ -906,6 +922,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.0-pro-stable': {
     llm: 'GoogleAI',
@@ -921,6 +938,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 30_720, completionTokens: 8192, enabled: true },
+    hidden: true,
   },
   'gemini-1.0-pro': {
     llm: 'GoogleAI',
@@ -952,6 +970,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 12_288, completionTokens: 4096, enabled: true },
+    hidden: true,
   },
   // #endregion Gemini Pro Vision
 
@@ -1849,6 +1868,7 @@ export const models = {
     provider: 'Runware',
     features: ['image-generation'],
     enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   'flux.1-dev': {
     label: 'FLUX.1 (Dev)',
@@ -1856,6 +1876,7 @@ export const models = {
     provider: 'Runware',
     features: ['image-generation'],
     enabled: true,
+    hidden: MODEL_SCHEMA_VERSION !== 2 || !isDev,
   },
   // #endregion Runware Models
 
