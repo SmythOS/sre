@@ -89,6 +89,18 @@ export const models = {
     completionTokens: 8_192,
     enabled: true,
   },
+  'smythos/claude-3.7-sonnet-thinking': {
+    llm: 'Anthropic',
+
+    label: 'Claude 3.7 Sonnet Thinking',
+    modelId: 'claude-3-7-sonnet-20250219',
+    provider: 'Anthropic',
+    features: ['text', 'image', 'tools'],
+    tags: ['New', 'SmythOS'],
+    tokens: 200_000,
+    completionTokens: 8_192,
+    enabled: true,
+  },
   'smythos/claude-3.5-haiku': {
     llm: 'Anthropic',
 
@@ -565,6 +577,29 @@ export const models = {
     provider: 'Anthropic',
     features: ['text', 'tools', 'image'],
     tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
+  },
+  'claude-3.7-sonnet-thinking': {
+    llm: 'Anthropic',
+    alias: 'claude-3-5-sonnet-20240620',
+    components: [
+      'PromptGenerator',
+      'LLMAssistant',
+      'Classifier',
+      'VisionLLM',
+      'AgentPlugin',
+      'Chatbot',
+      'GenAILLM',
+    ],
+
+    label: 'Claude 3.7 Sonnet Thinking',
+    modelId: 'claude-3-7-sonnet-20250219',
+    provider: 'Anthropic',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
