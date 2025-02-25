@@ -28,7 +28,7 @@ export default class WebSearch extends Component {
             let Output: any = {};
             let _error = undefined;
             let searchQuery = input['SearchQuery'];
-            logger.debug(config.data);
+            logger.debug('Payload:', JSON.stringify(config.data));
             const response = await axios({
                 method: 'post',
                 url: 'https://api.tavily.com/search',
@@ -44,11 +44,10 @@ export default class WebSearch extends Component {
                     ...(config.data.includeRawContent ? { include_raw_content: true } : {}),
                 },
             });
-            logger.debug(JSON.stringify(response.data));
             Output = {
-                results: response.data.results,
-                ...(config.data.includeImages ? { images: response.data.images } : {}),
-                ...(config.data.includeQAs ? { answer: response.data.answer } : {}),
+                Results: response.data.results,
+                ...(config.data.includeImages ? { Images: response.data.images } : {}),
+                ...(config.data.includeQAs ? { Answer: response.data.answer } : {}),
             };
             this.reportUsage({
                 agentId: agent.id,
@@ -56,7 +55,7 @@ export default class WebSearch extends Component {
             });
             return { ...Output, _error, _debug: logger.output };
         } catch (err: any) {
-            const _error = err?.response?.data || err?.message || err.toString();
+            const _error = err?.message || err?.response?.data || err.toString();
             logger.error(` Error scraping web \n${JSON.stringify(_error)}\n`);
             return { Output: undefined, _error, _debug: logger.output };
         }

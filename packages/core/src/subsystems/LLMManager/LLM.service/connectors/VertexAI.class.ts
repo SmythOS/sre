@@ -77,7 +77,6 @@ export class VertexAIConnector extends LLMConnector {
             const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
             const usage = result?.response?.usageMetadata;
             this.reportUsage(usage, {
-                model: modelParams.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -147,18 +146,26 @@ export class VertexAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: UsageMetadata & { cachedContentTokenCount?: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
-        SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
             input_tokens: usage.promptTokenCount || 0,
             output_tokens: usage.candidatesTokenCount || 0,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }

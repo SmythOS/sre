@@ -1,6 +1,9 @@
 {
     "compilerOptions": {
-        "outDir": "./dist",
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "rootDir": "./src",
+        "outDir": "./dist/types",
         "module": "ESNext",
         "target": "ESNext",
         "moduleResolution": "node",
@@ -10,9 +13,11 @@
         "resolveJsonModule": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
+
         //"noImplicitAny": false,
         //"ignoreDeprecations": "5.0",
         //"suppressImplicitAnyIndexErrors": true,
+
         "paths": {
             "@sre/index": ["index.ts"],
             "@sre/config": ["config.ts"],
@@ -54,7 +59,6 @@
         "skipLibCheck": true,
         "typeRoots": ["./node_modules/@types"]
     },
-    "include": ["src/**/*.ts"],
-
+    "include": ["src"],
     "exclude": ["node_modules"]
 }

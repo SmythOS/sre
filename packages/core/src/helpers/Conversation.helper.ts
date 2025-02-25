@@ -63,6 +63,7 @@ export class Conversation extends EventEmitter {
     private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
+    public agentData: any;
 
     public get context() {
         return this._context;
@@ -631,11 +632,20 @@ export class Conversation extends EventEmitter {
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {
+                    let agentProcess;
+                    if (this.agentData === this._specSource) {
+                        //the agent was loaded from data
+                        agentProcess = AgentProcess.load(this.agentData, this._agentVersion);
+                    } else {
+                        //the agent was loaded from a spec
+                        agentProcess = AgentProcess.load(
+                            reqConfig.headers['X-AGENT-ID'] || this._agentId,
+                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
+                        );
+                    }
                     //if it's a local agent, invoke it directly
-                    const response = await AgentProcess.load(
-                        reqConfig.headers['X-AGENT-ID'] || this._agentId,
-                        reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
-                    ).run(reqConfig as TAgentProcessParams, agentCallback);
+
+                    const response = await agentProcess.run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
                     let eventSource;
@@ -752,6 +762,10 @@ export class Conversation extends EventEmitter {
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
                 const llmInference: LLMInference = await LLMInference.getInstance(this._model, this._teamId);
+                if (!llmInference.connector) {
+                    this.emit('error', 'No connector found for model: ' + this._model);
+                    return;
+                }
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: functionDeclarations,
@@ -803,11 +817,14 @@ export class Conversation extends EventEmitter {
             //is this a valid OpenAPI spec?
             if (OpenAPIParser.isValidOpenAPI(specSource)) {
                 this.systemPrompt = specSource?.info?.description || '';
-
                 return this.patchSpec(specSource);
             }
             //is this a valid agent data?
-            if (specSource?.behavior && specSource?.components && specSource?.connections) return await this.loadSpecFromAgent(specSource);
+            if (specSource?.behavior && specSource?.components && specSource?.connections) {
+                this.agentData = specSource; //agent loaded from data directly
+                return await this.loadSpecFromAgent(specSource);
+            }
+
             return null;
         }
 
@@ -846,10 +863,10 @@ export class Conversation extends EventEmitter {
                 this._agentVersion = isDeployed ? 'latest' : '';
             }
 
-            const agentData = await agentDataConnector.getAgentData(agentId, this._agentVersion).catch((error) => null);
-            if (!agentData) return null;
+            this.agentData = await agentDataConnector.getAgentData(agentId, this._agentVersion).catch((error) => null);
+            if (!this.agentData) return null;
 
-            const spec = await this.loadSpecFromAgent(agentData);
+            const spec = await this.loadSpecFromAgent(this.agentData);
             return spec;
         }
     }

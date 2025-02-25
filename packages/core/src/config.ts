@@ -12,6 +12,7 @@ const config = {
         TOGETHER_AI_API_KEY: process.env.TOGETHER_AI_API_KEY,
         GROQ_API_KEY: process.env.GROQ_API_KEY,
         XAI_API_KEY: process.env.XAI_API_KEY,
+        RUNWARE_API_KEY: process.env.RUNWARE_API_KEY,
 
         DATA_PATH: process.env.DATA_PATH,
 
@@ -41,6 +42,8 @@ const config = {
         SMYTH_VAULT_API_BASE_URL: process.env.SMYTH_VAULT_API_BASE_URL,
 
         TAVILY_API_KEY: process.env.TAVILY_API_KEY,
+
+        SCRAPFLY_API_KEY: process.env.SCRAPFLY_API_KEY,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

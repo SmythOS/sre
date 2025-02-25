@@ -108,7 +108,6 @@ export class BedrockConnector extends LLMConnector {
             const usage = response.usage;
 
             this.reportUsage(usage as any, {
-                model: modelId,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -180,7 +179,6 @@ export class BedrockConnector extends LLMConnector {
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
-                model: converseCommandInput.modelId,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -341,7 +339,6 @@ export class BedrockConnector extends LLMConnector {
                         if (chunk?.metadata?.usage) {
                             const usage = chunk.metadata.usage;
                             this.reportUsage(usage as any, {
-                                model: converseCommandInput.modelId,
                                 modelEntryName: params.modelEntryName,
                                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                                 agentId,
@@ -497,19 +494,27 @@ export class BedrockConnector extends LLMConnector {
 
     protected reportUsage(
         usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
-        SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
             input_tokens: usage.inputTokens,
             output_tokens: usage.outputTokens,
             input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
             input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }
 

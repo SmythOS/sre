@@ -13,6 +13,7 @@ import { NKVService } from '@sre/IO/NKV.service';
 import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 import { LogService } from '@sre/IO/Log.service';
+import { ComponentService } from '@sre/AgentManager/Component.service';
 const console = Logger('Boot');
 
 export function boot() {
@@ -30,6 +31,7 @@ export function boot() {
     service.VectorDB = new VectorDBService();
     service.Router = new RouterService();
     service.Log = new LogService();
+    service.Component = new ComponentService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

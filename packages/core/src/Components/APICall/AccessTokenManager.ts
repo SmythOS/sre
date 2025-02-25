@@ -50,7 +50,17 @@ class AccessTokenManager {
     async getAccessToken(): Promise<string> {
         try {
             const currentTime: any = new Date().getTime();
-            // should be alway currentTime >= Number(this.expires_in)
+
+            // If there's no secondaryToken (refresh token) and no expires_in, 
+            // assume it's a long-lived token and return the primaryToken directly
+            if (!this.secondaryToken && !this.expires_in) {
+                console.log('Using long-lived access token');
+                this.logger.debug('Using long-lived access token. If authentication failes, please re-authenticate and try again');
+                return this.primaryToken;
+            }
+
+            // Regular token expiration check for tokens with expiration
+           // should be alway currentTime >= Number(this.expires_in)
             if (!this.expires_in || currentTime >= Number(this.expires_in)) {
                 if (!this.secondaryToken) {
                     this.logger.debug('Refresh token is missing. Please re authenticate');
@@ -90,13 +100,13 @@ class AccessTokenManager {
                 }
             );
 
-            const newAccessToken: string = response.data.access_token;
+            const newAccessToken: string = response?.data?.access_token;
             console.log('Access token refreshed successfully.');
             this.logger.debug('Access token refreshed successfully.');
-            const expiresInMilliseconds: number = response.data.expires_in * 1000;
-            const expirationTimestamp: number = new Date().getTime() + expiresInMilliseconds;
+            const expiresInMilliseconds: number = response?.data?.expires_in ? response?.data?.expires_in * 1000 : response?.data?.expires_in;
+            const expirationTimestamp: number = expiresInMilliseconds ? new Date().getTime() + expiresInMilliseconds : expiresInMilliseconds;
             this.data.primary = newAccessToken;
-            this.data.expires_in = expirationTimestamp?.toString();
+            this.data.expires_in = expirationTimestamp ? expirationTimestamp?.toString() : expirationTimestamp;
             //const oauthTeamSettings = new OauthTeamSettings();
             //const save: any = await oauthTeamSettings.update({ keyId: this.keyId, data: this.data });
 

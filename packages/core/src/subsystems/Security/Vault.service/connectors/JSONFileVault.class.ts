@@ -81,11 +81,17 @@ export class JSONFileVault extends VaultConnector {
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const accountConnector = ConnectorService.getAccountConnector();
-        const teamId = this.sharedVault ? 'shared' : await accountConnector.getCandidateTeam(candidate);
+        const teamId = /*this.sharedVault ? 'shared' : */ await accountConnector.getCandidateTeam(candidate);
 
         const acl = new ACL();
 
-        if (typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') return acl;
+        if (typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') {
+            if (this.sharedVault && typeof this.vaultData?.['shared']?.[resourceId] === 'string') {
+                acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
+            }
+
+            return acl;
+        }
 
         acl.addAccess(TAccessRole.Team, teamId, TAccessLevel.Owner)
             .addAccess(TAccessRole.Team, teamId, TAccessLevel.Read)

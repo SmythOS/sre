@@ -33,12 +33,6 @@ export class LLMRegistry {
         return models?.[modelId]?.baseURL || models?.[modelEntryId]?.baseURL || undefined;
     }
 
-    public static getModelKeyOptions(model: string): Record<string, any> {
-        const modelId = this.getModelId(model);
-        const modelEntryId = this.getModelEntryId(model);
-        return models?.[modelId]?.keyOptions || models?.[modelEntryId]?.keyOptions || {};
-    }
-
     public static getProvider(model: string): string {
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
@@ -51,7 +45,7 @@ export class LLMRegistry {
         const modelInfo = models?.[modelId] || models?.[modelEntryId] || {};
 
         if (hasAPIKey) {
-            const keyOptions = LLMRegistry.getModelKeyOptions(modelId);
+            const keyOptions = models?.[modelId]?.keyOptions || models?.[modelEntryId]?.keyOptions || {};
             return { ...modelInfo, ...keyOptions, modelId };
         }
 

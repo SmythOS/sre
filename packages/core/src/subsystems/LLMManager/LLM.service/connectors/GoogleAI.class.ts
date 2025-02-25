@@ -143,7 +143,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -244,7 +243,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -355,7 +353,6 @@ export class GoogleAIConnector extends LLMConnector {
             const finishReason = response.candidates[0].finishReason;
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -425,7 +422,6 @@ export class GoogleAIConnector extends LLMConnector {
             const content = response.text();
             const usage = response?.usageMetadata;
             this.reportUsage(usage, {
-                model: params.model,
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                 agentId,
@@ -559,7 +555,6 @@ export class GoogleAIConnector extends LLMConnector {
 
                 if (usage) {
                     this.reportUsage(usage, {
-                        model: params.model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -709,7 +704,6 @@ export class GoogleAIConnector extends LLMConnector {
 
                 if (usage) {
                     this.reportUsage(usage, {
-                        model,
                         modelEntryName: params.modelEntryName,
                         keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
                         agentId,
@@ -923,15 +917,17 @@ export class GoogleAIConnector extends LLMConnector {
                     _message.role = TLLMMessageRole.User; // Default to user for unknown roles
             }
 
+            // * empty text causes error that's why we added '...'
+
             if (_message?.parts) {
-                textContent = _message.parts.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.parts.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (Array.isArray(_message?.content)) {
-                textContent = _message.content.map((textBlock) => textBlock?.text || '').join(' ');
+                textContent = _message.content.map((textBlock) => textBlock?.text || '...').join(' ');
             } else if (_message?.content) {
-                textContent = _message.content as string;
+                textContent = (_message.content as string) || '...';
             }
 
-            _message.parts = [{ text: textContent }];
+            _message.parts = [{ text: textContent || '...' }];
 
             delete _message.content; // Remove content to avoid error
 
@@ -984,29 +980,38 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(
-        usage: UsageMetadata,
-        metadata: { model: string; modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
+    protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         const modelEntryName = metadata.modelEntryName;
-        const inputTokens = usage.promptTokenCount;
-        let tier = 'tier-1';
+        const inputTokens = usage?.promptTokenCount || 0;
+        let tier = '';
 
-        if (['gemini-1.5-pro'].includes(modelEntryName) && inputTokens > 128_000) {
-            tier = 'tier-2';
+        if (modelEntryName.includes('gemini-1.5-pro')) {
+            if (inputTokens < 128_000) {
+                tier = 'tier1';
+            } else {
+                tier = 'tier2';
+            }
         }
 
-        SystemEvents.emit('USAGE:LLM', {
-            sourceId: `llm:${metadata.modelEntryName}`,
+        let modelName = metadata.modelEntryName;
+        // SmythOS models have a prefix, so we need to remove it to get the model name
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
             input_tokens: usage.promptTokenCount,
             output_tokens: usage.candidatesTokenCount,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            model: metadata.model,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
             tier,
-        });
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 }
