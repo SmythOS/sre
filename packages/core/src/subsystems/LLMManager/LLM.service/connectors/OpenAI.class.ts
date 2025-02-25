@@ -28,7 +28,7 @@ import SystemEvents from '@sre/Core/SystemEvents';
 const console = Logger('OpenAIConnector');
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const o1Models = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
+const reasoningModels = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
@@ -44,7 +44,7 @@ export class OpenAIConnector extends LLMConnector {
         const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             // We assume that the system message is first item in messages array
-            if (o1Models.includes(params.model)) {
+            if (reasoningModels.includes(params.model)) {
                 // If the model doesn't support system prompt, then we need to add JSON response instruction to the last message
                 if (messages?.[0]?.role === TLLMMessageRole.System) {
                     delete messages[0];
@@ -89,14 +89,15 @@ export class OpenAIConnector extends LLMConnector {
         };
 
         if (params?.maxTokens !== undefined) {
-            if (o1Models.includes(params.model)) {
+            if (reasoningModels.includes(params.model)) {
                 chatCompletionArgs.max_completion_tokens = params.maxTokens;
             } else {
                 chatCompletionArgs.max_tokens = params.maxTokens;
             }
         }
         if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        // Top P is not supported for o1 models
+        if (params?.topP !== undefined && !reasoningModels.includes(params.model)) chatCompletionArgs.top_p = params.topP;
         if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
         if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
         if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
