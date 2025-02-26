@@ -1,7 +1,7 @@
 /******************************************************
  * ! DO NOT MODIFY THIS FILE INDEPENDENTLY
  * ! TO ENSURE CONSISTENCY, THIS FILE IS SYNCED WITH
- * ! THE FRONTEND AND BACKEND VERSIONS
+ * ! THE APP AND SRE VERSIONS
  ******************************************************/
 
 /**
@@ -24,18 +24,6 @@ export const models = {
 
   // #region OpenAI ==========================
 
-  'smythos/gpt-4o-mini': {
-    llm: 'OpenAI',
-
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    features: ['text', 'image', 'tools'],
-    tags: ['SmythOS'],
-    tokens: 128_000,
-    completionTokens: 16_383,
-    enabled: true,
-  },
   'smythos/gpt-4o': {
     llm: 'OpenAI',
 
@@ -46,6 +34,18 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_384,
+    enabled: true,
+  },
+  'smythos/gpt-4o-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    features: ['text', 'image', 'tools'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_383,
     enabled: true,
   },
   'smythos/o1': {
@@ -218,37 +218,6 @@ export const models = {
   // #region OpenAI Models ==========================
 
   // #region GPT 4o
-  'gpt-4o-mini': {
-    llm: 'OpenAI',
-    alias: 'gpt-4o-mini-2024-07-18',
-    components: [
-      'PromptGenerator',
-      'LLMAssistant',
-      'Classifier',
-      'VisionLLM',
-      'AgentPlugin',
-      'Chatbot',
-      'GPTPlugin',
-      'GenAILLM',
-    ],
-
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    features: ['text', 'tools', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
-  },
-  'gpt-4o-mini-2024-07-18': {
-    llm: 'OpenAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
-  },
   'gpt-4o': {
     llm: 'OpenAI',
     alias: 'gpt-4o-2024-08-06',
@@ -279,6 +248,37 @@ export const models = {
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 128000, completionTokens: 16384, enabled: true },
+  },
+  'gpt-4o-mini': {
+    llm: 'OpenAI',
+    alias: 'gpt-4o-mini-2024-07-18',
+    components: [
+      'PromptGenerator',
+      'LLMAssistant',
+      'Classifier',
+      'VisionLLM',
+      'AgentPlugin',
+      'Chatbot',
+      'GPTPlugin',
+      'GenAILLM',
+    ],
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
+  },
+  'gpt-4o-mini-2024-07-18': {
+    llm: 'OpenAI',
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
   },
   // #endregion GPT 4o
 
@@ -1909,21 +1909,43 @@ export const models = {
   // #endregion OpenAI Models DALL-E
 
   // #region Runware Models
+  'smythos/flux.1-schnell': {
+    label: 'FLUX.1 (Schnell)',
+    modelId: 'runware:100@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    tags: ['SmythOS'],
+    enabled: true,
+  },
+  'smythos/flux.1-dev': {
+    label: 'FLUX.1 (Dev)',
+    modelId: 'runware:101@1',
+    provider: 'Runware',
+    features: ['image-generation'],
+    tags: ['SmythOS'],
+    enabled: true,
+  },
+  // #endregion Runware Models
+
+  // #region Retrocompatible Runware Models
+  // TODO: Will be removed a few days later
   'flux.1-schnell': {
     label: 'FLUX.1 (Schnell)',
     modelId: 'runware:100@1',
     provider: 'Runware',
     features: ['image-generation'],
-    enabled: true,
+    tags: ['SmythOS'],
+    enabled: false,
   },
   'flux.1-dev': {
     label: 'FLUX.1 (Dev)',
     modelId: 'runware:101@1',
     provider: 'Runware',
     features: ['image-generation'],
-    enabled: true,
+    tags: ['SmythOS'],
+    enabled: false,
   },
-  // #endregion Runware Models
+  // #endregion Retrocompatible Runware Models
 
   // #endregion Image Generation Models ============================
 
@@ -1966,5 +1988,5 @@ export const models = {
 /******************************************************
  * ! DO NOT MODIFY THIS FILE INDEPENDENTLY
  * ! TO ENSURE CONSISTENCY, THIS FILE IS SYNCED WITH
- * ! THE FRONTEND AND BACKEND VERSIONS
+ * ! THE APP AND SRE VERSIONS
  ******************************************************/
