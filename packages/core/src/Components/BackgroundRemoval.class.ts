@@ -3,22 +3,15 @@ import { IRemoveImageBackground, IRequestImage, Runware } from '@runware/sdk-js'
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { APIKeySource } from '@sre/types/LLM.types';
 import SystemEvents from '@sre/Core/SystemEvents';
-
+import { isBase64, isBase64DataUrl, isUrl } from '../utils';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import appConfig from '@sre/config';
 
 export default class BackgroundRemoval extends Component {
     protected configSchema = Joi.object({
-        inputImage: Joi.string()
-            .required()
-            .min(2)
-            .max(10_485_760) // Approximately 10MB in base64
-            .label('Input Image'),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
         rgba: Joi.array()
             .items(
                 Joi.number()
@@ -31,6 +24,7 @@ export default class BackgroundRemoval extends Component {
             )
             .length(4)
             .optional()
+            .allow('')
             .label('Background Color')
             .description('RGBA color array [red, green, blue, alpha]. RGB values must be between 0-255, alpha must be between 0-1'),
         outputQuality: Joi.number().min(20).max(99).optional().label('Output Quality'),
@@ -44,34 +38,16 @@ export default class BackgroundRemoval extends Component {
 
         const logger = this.createComponentLogger(agent, config.name);
 
-        logger.debug(`=== Image Generator Log ===`);
-
-        let model = config?.data?.model;
-
-        if (!model) {
-            return { _error: 'Model Not Found: ', _debug: logger.output };
-        }
-
-        logger.debug(`Model: ${model}`);
-
-        let prompt = config.data?.prompt || input?.Prompt;
-        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-        prompt = TemplateString(prompt).parse(input).result;
-
-        if (!prompt) {
-            return { _error: 'Please provide a prompt or Image', _debug: logger.output };
-        }
-
-        logger.debug(`Prompt: \n`, prompt);
-
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        logger.debug(`=== Background Removal Log ===`);
 
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
+        const inputImage = await getBase64DataUrl(Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage);
+
         const imageRequestArgs: IRemoveImageBackground = {
-            inputImage: config?.data?.inputImage,
+            inputImage,
             rgba: config?.data?.rgba || [255, 255, 255, 0],
             outputFormat: config?.data?.outputFormat || 'PNG',
             outputQuality: config?.data?.outputQuality || 95,
@@ -92,16 +68,38 @@ export default class BackgroundRemoval extends Component {
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
-                    keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,
+                    keySource: APIKeySource.Smyth,
                 });
             }
 
             return { Output: output, _debug: logger.output };
         } catch (error: any) {
-            return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
+            return { _error: `Removing Background\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         } finally {
             // Clean up connection
             await runware.disconnect();
         }
     }
+}
+
+async function getBase64DataUrl(inputImage: string | BinaryInput): Promise<string> {
+    let dataUrl: string;
+
+    if (typeof inputImage === 'string' && (isBase64(inputImage) || isBase64DataUrl(inputImage))) {
+        inputImage = `data:image/png;base64,${inputImage}`;
+    } else if (typeof inputImage === 'string' && isUrl(inputImage)) {
+        const response = await fetch(inputImage);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        dataUrl = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+        });
+    } else if (inputImage instanceof BinaryInput) {
+        const buffer = await inputImage.getBuffer();
+        const base64Data = buffer.toString('base64');
+        dataUrl = `data:image/png;base64,${base64Data}`;
+    }
+
+    return dataUrl;
 }

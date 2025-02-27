@@ -19,7 +19,7 @@ export default class Inpainting extends Component {
             .min(2)
             .max(10_485_760) // Approximately 10MB in base64
             .label('Input Image'),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
         outputQuality: Joi.number().min(20).max(99).optional().label('Output Quality'),
         confidence: Joi.number().min(0).max(1).optional().label('Confidence'),
         maxDetections: Joi.number().min(1).max(20).optional().label('Max Detections'),

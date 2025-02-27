@@ -23,7 +23,7 @@ export default class RestyleIPAdapter extends Component {
         height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
             'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
         }),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
         numberResults: Joi.number().min(1).max(20).optional().label('Number of Results'),
 
         seedImage: Joi.string()
@@ -33,21 +33,20 @@ export default class RestyleIPAdapter extends Component {
             .label('Seed Image'),
         strength: Joi.number().min(0).max(1).optional().label('Strength'),
 
-        ipAdapters: Joi.array().items(
-            Joi.object({
-                model: Joi.string().required().label('IP Adapter Model'),
-                guideImage: Joi.string()
-                    .required()
-                    .min(2)
-                    .max(10_485_760) // Approximately 10MB in base64
-                    .label('Guide Image'),
-                weight: Joi.number()
-                    .required()
-                    .min(0)
-                    .max(1)
-                    .label('IP Adapter Weight'),
-            })
-        ).optional().label('IP Adapters'),
+        ipAdapters: Joi.array()
+            .items(
+                Joi.object({
+                    model: Joi.string().required().label('IP Adapter Model'),
+                    guideImage: Joi.string()
+                        .required()
+                        .min(2)
+                        .max(10_485_760) // Approximately 10MB in base64
+                        .label('Guide Image'),
+                    weight: Joi.number().required().min(0).max(1).label('IP Adapter Weight'),
+                })
+            )
+            .optional()
+            .label('IP Adapters'),
     });
     constructor() {
         super();
@@ -86,7 +85,7 @@ export default class RestyleIPAdapter extends Component {
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
-        const imageRequestArgs: IRequestImage  = {
+        const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
             positivePrompt: prompt,
             width: +config?.data?.width || 1024,

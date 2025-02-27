@@ -18,7 +18,7 @@ export default class ImageUpscaling extends Component {
             .min(2)
             .max(10_485_760) // Approximately 10MB in base64
             .label('Input Image'),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
         outputQuality: Joi.number().min(20).max(99).optional().label('Output Quality'),
         upscaleFactor: Joi.number().min(2).max(4).optional().label('Upscale Factor'),
     });

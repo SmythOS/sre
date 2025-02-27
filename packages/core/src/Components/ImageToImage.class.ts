@@ -23,7 +23,7 @@ export default class ImageToImage extends Component {
         height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
             'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
         }),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
         numberResults: Joi.number().min(1).max(20).optional().label('Number of Results'),
 
         seedImage: Joi.string()
