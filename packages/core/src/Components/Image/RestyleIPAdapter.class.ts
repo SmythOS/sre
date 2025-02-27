@@ -24,6 +24,7 @@ export default class RestyleIPAdapter extends Component {
         numberResults: ImageSettingsConfig.numberResults,
         strength: ImageSettingsConfig.strength,
         ipAdapters: ImageSettingsConfig.ipAdapters,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

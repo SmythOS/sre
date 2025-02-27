@@ -23,6 +23,7 @@ export default class ImageToImage extends Component {
         outputQuality: ImageSettingsConfig.outputQuality,
         numberResults: ImageSettingsConfig.numberResults,
         strength: ImageSettingsConfig.strength,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

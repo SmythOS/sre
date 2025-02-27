@@ -22,6 +22,7 @@ export default class Outpainting extends Component {
         outputFormat: ImageSettingsConfig.outputFormat,
         numberResults: ImageSettingsConfig.numberResults,
         strength: ImageSettingsConfig.strength,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

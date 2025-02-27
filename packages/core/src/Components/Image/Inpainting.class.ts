@@ -21,6 +21,7 @@ export default class Inpainting extends Component {
         maxDetections: ImageSettingsConfig.maxDetections,
         maskPadding: ImageSettingsConfig.maskPadding,
         maskBlur: ImageSettingsConfig.maskBlur,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

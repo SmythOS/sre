@@ -17,6 +17,7 @@ export default class RestyleControlNet extends Component {
         outputFormat: ImageSettingsConfig.outputFormat,
         outputQuality: ImageSettingsConfig.outputQuality,
         preProcessorType: ImageSettingsConfig.preProcessorType,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

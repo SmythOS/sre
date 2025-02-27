@@ -14,6 +14,7 @@ export default class BackgroundRemoval extends Component {
         outputFormat: ImageSettingsConfig.outputFormat,
         backgroundColor: ImageSettingsConfig.backgroundColor,
         outputQuality: ImageSettingsConfig.outputQuality,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

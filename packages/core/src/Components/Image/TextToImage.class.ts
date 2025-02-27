@@ -9,7 +9,6 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
-import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './imageSettings.config';
 
 export default class TextToImage extends Component {
@@ -23,6 +22,7 @@ export default class TextToImage extends Component {
         outputQuality: ImageSettingsConfig.outputQuality,
         numberResults: ImageSettingsConfig.numberResults,
         steps: ImageSettingsConfig.steps,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

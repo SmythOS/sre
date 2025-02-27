@@ -16,6 +16,7 @@ export default class ImageUpscaling extends Component {
         outputFormat: ImageSettingsConfig.outputFormat,
         outputQuality: ImageSettingsConfig.outputQuality,
         upscaleFactor: ImageSettingsConfig.upscaleFactor,
+        ctaButton: Joi.string().optional().allow(''),
     });
     constructor() {
         super();

@@ -10,7 +10,9 @@ import { normalizeImageInput } from '@sre/utils/data.utils';
 import appConfig from '@sre/config';
 
 export default class ImageToText extends Component {
-    protected configSchema = Joi.object({});
+    protected configSchema = Joi.object({
+        ctaButton: Joi.string().optional().allow(''),
+    });
     constructor() {
         super();
     }
