@@ -52,6 +52,7 @@ export class PerplexityConnector extends LLMConnector {
         const agentId = agent instanceof Agent ? agent.id : agent;
 
         //#region Handle JSON response format
+        // TODO: For now attach JSON response instruction, Perplexity has option to provide response_format as parameter. We'll check it later
         const responseFormat = params?.responseFormat || '';
         if (responseFormat === 'json') {
             // We assume that the system message is first item in messages array
@@ -60,6 +61,8 @@ export class PerplexityConnector extends LLMConnector {
             } else {
                 messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
             }
+
+            delete params.responseFormat;
         }
         //#endregion Handle JSON response format
 
