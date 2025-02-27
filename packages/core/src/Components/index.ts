@@ -26,7 +26,6 @@ import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
 import ZapierAction from './ZapierAction.class';
 import GPTPlugin from './GPTPlugin.class';
-import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
@@ -36,6 +35,15 @@ import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
 import ComponentHost from './ComponentHost.class';
+import ImageGenerator from './ImageGenerator.class';
+import ImageToImage from './ImageToImage.class';
+import ImageToText from './ImageToText.class';
+import BackgroundRemoval from './BackgroundRemoval.class';
+import ImageUpscaling from './ImageUpscaling.class';
+import RestyleControlNet from './RestyleControlNet.class';
+import RestyleIPAdapter from './RestyleIPAdapter.class';
+import Outpainting from './Outpainting.class';
+import Inpainting from './Inpainting.class';
 
 const components = {
     Component: new Component(),
@@ -69,7 +77,6 @@ const components = {
     HuggingFace: new HuggingFace(),
     ZapierAction: new ZapierAction(),
     GPTPlugin: new GPTPlugin(),
-    ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
     ServerlessCode: new ServerlessCode(),
@@ -78,6 +85,15 @@ const components = {
     WebSearch: new WebSearch(),
     WebScrape: new WebScrape(),
     ComponentHost: new ComponentHost(),
+    ImageGenerator: new ImageGenerator(),
+    ImageToImage: new ImageToImage(),
+    ImageToText: new ImageToText(),
+    BackgroundRemoval: new BackgroundRemoval(),
+    ImageUpscaling: new ImageUpscaling(),
+    RestyleControlNet: new RestyleControlNet(),
+    RestyleIPAdapter: new RestyleIPAdapter(),
+    Outpainting: new Outpainting(),
+    Inpainting: new Inpainting(),
 };
 
 export default components;

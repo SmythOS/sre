@@ -46,23 +46,14 @@ export default class ImageGenerator extends Component {
 
         // #region Runware
         negativePrompt: Joi.string().optional().allow('').min(2).max(2000).label('Negative Prompt'),
-        width: Joi.number()
-            .min(128)
-            .max(2048)
-            .multiple(64)
-            .optional()
-            .messages({
-                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
-            }),
-        height: Joi.number()
-            .min(128)
-            .max(2048)
-            .multiple(64)
-            .optional()
-            .messages({
-                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
-            }),
+        width: Joi.number().min(128).max(2048).multiple(64).optional().messages({
+            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
+        }),
+        height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
+            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
+        }),
         outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        numberResults: Joi.number().min(1).max(20).optional().label('Number of Results'),
         // #endregion
     });
     constructor() {
@@ -188,7 +179,7 @@ const imageGenerator = {
             positivePrompt: prompt,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,
-            numberResults: 1, // For Image Generation we only need 1 image
+            numberResults: +config?.data?.numberResults || 1,
             outputType: 'URL', // For Image Generation we only need the URL
             outputFormat: config?.data?.outputFormat || 'JPEG',
             includeCost: true,
@@ -202,13 +193,15 @@ const imageGenerator = {
         try {
             const response = await runware.requestImages(imageRequestArgs);
 
-            // Get first image from response array
-            const firstImage = response[0];
+            const output = [];
+            let cost = 0;
 
-            // Map response to match expected format
-            let output = firstImage.imageURL;
+            for (const image of response) {
+                output.push(image.imageURL);
+                cost += image.cost;
+            }
 
-            return { output, cost: firstImage.cost };
+            return { output, cost };
         } catch (error: any) {
             throw new Error(`Runware Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         } finally {
