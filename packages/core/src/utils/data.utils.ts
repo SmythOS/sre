@@ -1,7 +1,7 @@
 import { Readable } from 'stream';
 import axios from 'axios';
 
-import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64 } from './base64.utils';
+import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64, isBase64DataUrl } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -96,6 +96,8 @@ export const isBinaryData = (data): boolean => {
         return false;
     }
 };
+
+// TODO: Need to check if this is intentional, I think we're checking for http/https urls only
 export function isUrl(str: string): boolean {
     if (typeof str !== 'string') return false;
     // This regex checks for protocol, hostname, domain, port (optional), path (optional), and query string (optional)
@@ -190,4 +192,22 @@ export async function formatDataForDebug(data: any) {
     }
 
     return dataForDebug;
+}
+
+// TODO: Maybe we need move this function to any helper file, as it depends on BinaryInput class
+export async function normalizeImageInput(inputImage: string | BinaryInput): Promise<string> {
+    let dataUrl: string;
+
+    if (typeof inputImage === 'string' && (isBase64(inputImage) || isBase64DataUrl(inputImage))) {
+        inputImage = `data:image/png;base64,${inputImage}`;
+    } else if (typeof inputImage === 'string' && isUrl(inputImage)) {
+        // Runware supports http/https urls
+        return inputImage;
+    } else if (inputImage instanceof BinaryInput) {
+        const buffer = await inputImage.getBuffer();
+        const base64Data = buffer.toString('base64');
+        dataUrl = `data:image/png;base64,${base64Data}`;
+    }
+
+    return dataUrl;
 }

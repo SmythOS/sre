@@ -5,8 +5,7 @@ import Component from './Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
 import SystemEvents from '@sre/Core/SystemEvents';
-import { isBase64, isBase64DataUrl, isUrl } from '../utils';
-import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { normalizeImageInput } from '@sre/utils/data.utils';
 import appConfig from '@sre/config';
 
 export default class BackgroundRemoval extends Component {
@@ -44,7 +43,8 @@ export default class BackgroundRemoval extends Component {
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
-        const inputImage = await getBase64DataUrl(Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage);
+        let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
+        inputImage = await normalizeImageInput(inputImage);
 
         const imageRequestArgs: IRemoveImageBackground = {
             inputImage,
@@ -80,26 +80,4 @@ export default class BackgroundRemoval extends Component {
             await runware.disconnect();
         }
     }
-}
-
-async function getBase64DataUrl(inputImage: string | BinaryInput): Promise<string> {
-    let dataUrl: string;
-
-    if (typeof inputImage === 'string' && (isBase64(inputImage) || isBase64DataUrl(inputImage))) {
-        inputImage = `data:image/png;base64,${inputImage}`;
-    } else if (typeof inputImage === 'string' && isUrl(inputImage)) {
-        const response = await fetch(inputImage);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        dataUrl = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-        });
-    } else if (inputImage instanceof BinaryInput) {
-        const buffer = await inputImage.getBuffer();
-        const base64Data = buffer.toString('base64');
-        dataUrl = `data:image/png;base64,${base64Data}`;
-    }
-
-    return dataUrl;
 }

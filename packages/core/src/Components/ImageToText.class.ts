@@ -7,12 +7,13 @@ import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { normalizeImageInput } from '@sre/utils/data.utils';
 
 import appConfig from '@sre/config';
 
 export default class ImageToText extends Component {
     protected configSchema = Joi.object({
-        inputImage: Joi.string()
+        InputImage: Joi.string()
             .required()
             .min(2)
             .max(10_485_760) // Approximately 10MB in base64
@@ -29,29 +30,12 @@ export default class ImageToText extends Component {
 
         logger.debug(`=== Image Generator Log ===`);
 
-        let model = config?.data?.model;
-
-        if (!model) {
-            return { _error: 'Model Not Found: ', _debug: logger.output };
-        }
-
-        logger.debug(`Model: ${model}`);
-
-        let prompt = config.data?.prompt || input?.Prompt;
-        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-        prompt = TemplateString(prompt).parse(input).result;
-
-        if (!prompt) {
-            return { _error: 'Please provide a prompt or Image', _debug: logger.output };
-        }
-
-        logger.debug(`Prompt: \n`, prompt);
-
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
-
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
+
+        let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
+        inputImage = await normalizeImageInput(inputImage);
 
         const imageRequestArgs: IRequestImageToText = {
             includeCost: true,
@@ -72,7 +56,7 @@ export default class ImageToText extends Component {
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
-                    keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,
+                    keySource: APIKeySource.Smyth,
                 });
             }
 
