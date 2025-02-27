@@ -41,16 +41,6 @@ export default class Inpainting extends Component {
 
         logger.debug(`Model: ${model}`);
 
-        let prompt = config.data?.prompt || input?.Prompt;
-        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-        prompt = TemplateString(prompt).parse(input).result;
-
-        if (!prompt) {
-            return { _error: 'Please provide a prompt or Image', _debug: logger.output };
-        }
-
-        logger.debug(`Prompt: \n`, prompt);
-
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
         let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
@@ -60,11 +50,11 @@ export default class Inpainting extends Component {
             model: LLMRegistry.getModelId(model),
             inputImage,
             outputFormat: config?.data?.outputFormat || 'PNG',
-            outputQuality: config?.data?.outputQuality || 95,
-            confidence: config?.data?.confidence || 0.25,
-            maxDetections: config?.data?.maxDetections || 6,
-            maskPadding: config?.data?.maskPadding || 4,
-            maskBlur: config?.data?.maskBlur || 4,
+            outputQuality: +config?.data?.outputQuality || 95,
+            confidence: +config?.data?.confidence || 0.25,
+            maxDetections: +config?.data?.maxDetections || 6,
+            maskPadding: +config?.data?.maskPadding || 4,
+            maskBlur: +config?.data?.maskBlur || 4,
             includeCost: true,
         };
         // Initialize Runware client
@@ -74,8 +64,8 @@ export default class Inpainting extends Component {
         try {
             const response = await runware.imageMasking(imageRequestArgs);
 
-            const output = response[0].imageURL;
-            let cost = response[0].cost;
+            const output = response.maskImageURL;
+            let cost = response.cost;
 
             logger.debug(`Output: `, output);
 

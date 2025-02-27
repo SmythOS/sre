@@ -69,8 +69,8 @@ export default class RestyleIPAdapter extends Component {
             height: +config?.data?.height || 1024,
             numberResults: +config?.data?.numberResults || 1,
             outputFormat: config?.data?.outputFormat || 'JPG',
-            outputQuality: config?.data?.outputQuality || 95,
-            strength: config?.data?.strength || 0.8,
+            outputQuality: +config?.data?.outputQuality || 95,
+            strength: +config?.data?.strength || 0.8,
             ipAdapters: config?.data?.ipAdapters,
 
             outputType: 'URL', // For Image Generation we only need the URL

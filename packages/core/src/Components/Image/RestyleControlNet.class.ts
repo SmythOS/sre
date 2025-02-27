@@ -37,7 +37,7 @@ export default class RestyleControlNet extends Component {
             width: config?.data?.width || 512,
             height: config?.data?.height || 512,
             outputFormat: config?.data?.outputFormat || 'PNG',
-            outputQuality: config?.data?.outputQuality || 95,
+            outputQuality: +config?.data?.outputQuality || 95,
             preProcessorType: config?.data?.preProcessorType || 'canny',
 
             includeCost: true,
@@ -50,8 +50,8 @@ export default class RestyleControlNet extends Component {
         try {
             const response = await runware.controlNetPreProcess(imageRequestArgs);
 
-            const output = response[0].imageURL;
-            let cost = response[0].cost;
+            const output = response.guideImageURL;
+            let cost = response.cost;
 
             logger.debug(`Output: `, output);
 

@@ -42,15 +42,15 @@ export default class Outpainting extends Component {
 
         logger.debug(`Model: ${model}`);
 
-        let prompt = config.data?.prompt || input?.Prompt;
-        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-        prompt = TemplateString(prompt).parse(input).result;
+        let positivePrompt = config.data?.positivePrompt;
+        positivePrompt = typeof positivePrompt === 'string' ? positivePrompt : JSON.stringify(positivePrompt);
+        positivePrompt = TemplateString(positivePrompt).parse(input).result;
 
-        if (!prompt) {
+        if (!positivePrompt) {
             return { _error: 'Please provide a prompt or Image', _debug: logger.output };
         }
 
-        logger.debug(`Prompt: \n`, prompt);
+        logger.debug(`Positive Prompt: \n`, positivePrompt);
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
@@ -62,7 +62,7 @@ export default class Outpainting extends Component {
         const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
             seedImage,
-            positivePrompt: prompt,
+            positivePrompt,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,
             numberResults: +config?.data?.numberResults || 1,

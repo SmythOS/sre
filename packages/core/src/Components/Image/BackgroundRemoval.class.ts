@@ -33,7 +33,7 @@ export default class BackgroundRemoval extends Component {
             inputImage,
             rgba: config?.data?.backgroundColor || [255, 255, 255, 0],
             outputFormat: config?.data?.outputFormat || 'PNG',
-            outputQuality: config?.data?.outputQuality || 95,
+            outputQuality: +config?.data?.outputQuality || 95,
             includeCost: true,
         };
 

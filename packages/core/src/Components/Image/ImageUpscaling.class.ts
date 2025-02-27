@@ -33,9 +33,9 @@ export default class ImageUpscaling extends Component {
 
         const imageRequestArgs: IUpscaleGan = {
             inputImage,
-            upscaleFactor: config?.data?.upscaleFactor || 2,
             outputFormat: config?.data?.outputFormat || 'JPG',
-            outputQuality: config?.data?.outputQuality || 95,
+            outputQuality: +config?.data?.outputQuality || 95,
+            upscaleFactor: +config?.data?.upscaleFactor || 2,
 
             includeCost: true,
         };

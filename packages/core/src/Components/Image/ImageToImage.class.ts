@@ -43,11 +43,11 @@ export default class ImageToImage extends Component {
 
         logger.debug(`Model: ${model}`);
 
-        let prompt = config.data?.prompt || input?.Prompt;
-        prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-        prompt = TemplateString(prompt).parse(input).result;
+        let positivePrompt = config.data?.positivePrompt;
+        positivePrompt = typeof positivePrompt === 'string' ? positivePrompt : JSON.stringify(positivePrompt);
+        positivePrompt = TemplateString(positivePrompt).parse(input).result;
 
-        logger.debug(`Prompt: \n`, prompt);
+        logger.debug(`Prompt: \n`, positivePrompt);
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
@@ -58,7 +58,7 @@ export default class ImageToImage extends Component {
 
         const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
-            positivePrompt: prompt,
+            positivePrompt,
             seedImage,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,

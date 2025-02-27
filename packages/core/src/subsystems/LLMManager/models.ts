@@ -203,7 +203,7 @@ export const models = {
     tokens: 200_000,
     completionTokens: 200_000,
     enabled: true,
-    
+
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
   'smythos/sonar-reasoning-pro': {
@@ -217,7 +217,7 @@ export const models = {
     tokens: 128_000,
     completionTokens: 128_000,
     enabled: true,
-    
+
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
   // #endregion Perplexity ==========================
@@ -1958,7 +1958,11 @@ export const models = {
     label: 'FLUX.1 (Schnell)',
     modelId: 'runware:100@1',
     provider: 'Runware',
-    features: ['image-generation', 'image-to-image'],
+    features: [
+      'image-generation', // Legacy
+      'text-to-image',
+      'image-to-image',
+    ],
     tags: ['SmythOS'],
     enabled: true,
   },
@@ -1966,11 +1970,142 @@ export const models = {
     label: 'FLUX.1 (Dev)',
     modelId: 'runware:101@1',
     provider: 'Runware',
-    features: ['image-generation', 'image-to-image'],
+    features: [
+      'image-generation', // Legacy
+      'text-to-image',
+      'image-to-image',
+    ],
     tags: ['SmythOS'],
     enabled: true,
   },
-  // #endregion Retrocompatible Runware Models
+  // #region Full face detection models
+  'smythos/face_yolov8n': {
+    label: 'Face YOLOv8n',
+    modelId: 'runware:35@1',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Full face detection'],
+    enabled: true,
+  },
+  'smythos/face_yolov8s': {
+    label: 'Face YOLOv8s',
+    modelId: 'runware:35@2',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Full face detection'],
+    enabled: true,
+  },
+  'smythos/mediapipe_face_full': {
+    label: 'MediaPipe Face Full',
+    modelId: 'runware:35@6',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Full face detection'],
+    enabled: true,
+  },
+  'smythos/mediapipe_face_short': {
+    label: 'MediaPipe Face Short',
+    modelId: 'runware:35@7',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Full face detection'],
+    enabled: true,
+  },
+  'smythos/mediapipe_face_mesh': {
+    label: 'MediaPipe Face Mesh',
+    modelId: 'runware:35@8',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Full face detection'],
+    enabled: true,
+  },
+  // #endregion Full face detection models
+
+  // #region Facial features models
+  'smythos/mediapipe_face_mesh_eyes_only': {
+    label: 'MediaPipe Face Mesh Eyes Only',
+    modelId: 'runware:35@9',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/eyes_mesh_mediapipe': {
+    label: 'Eyes Mesh MediaPipe',
+    modelId: 'runware:35@15',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/nose_mesh_mediapipe': {
+    label: 'Nose Mesh MediaPipe',
+    modelId: 'runware:35@13',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/lips_mesh_mediapipe': {
+    label: 'Lips Mesh MediaPipe',
+    modelId: 'runware:35@14',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/eyes_lips_mesh': {
+    label: 'Eyes & Lips Mesh',
+    modelId: 'runware:35@10',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/nose_eyes_mesh': {
+    label: 'Nose & Eyes Mesh',
+    modelId: 'runware:35@11',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  'smythos/nose_lips_mesh': {
+    label: 'Nose & Lips Mesh',
+    modelId: 'runware:35@12',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Facial features'],
+    enabled: true,
+  },
+  // #endregion Facial features models
+
+  // #region Other body parts models
+  'smythos/hand_yolov8n': {
+    label: 'Hand YOLOv8n',
+    modelId: 'runware:35@3',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Other body parts'],
+    enabled: true,
+  },
+  'smythos/person_yolov8n-seg': {
+    label: 'Person YOLOv8n-seg',
+    modelId: 'runware:35@4',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Other body parts'],
+    enabled: true,
+  },
+  'smythos/person_yolov8s-seg': {
+    label: 'Person YOLOv8s-seg',
+    modelId: 'runware:35@5',
+    provider: 'Runware',
+    features: ['image-inpainting'],
+    tags: ['SmythOS', 'Other body parts'],
+    enabled: true,
+  },
+  // #endregion Runware Models
 
   // #region Retrocompatible Runware Models
   // TODO: Will be removed a few days later
