@@ -35,15 +35,16 @@ import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
 import ComponentHost from './ComponentHost.class';
-import ImageGenerator from './ImageGenerator.class';
-import ImageToImage from './ImageToImage.class';
-import ImageToText from './ImageToText.class';
-import BackgroundRemoval from './BackgroundRemoval.class';
-import ImageUpscaling from './ImageUpscaling.class';
-import RestyleControlNet from './RestyleControlNet.class';
-import RestyleIPAdapter from './RestyleIPAdapter.class';
-import Outpainting from './Outpainting.class';
-import Inpainting from './Inpainting.class';
+import ImageGenerator from './ImageGenerator.class'; // Legacy
+import TextToImage from './Image/TextToImage.class';
+import ImageToImage from './Image/ImageToImage.class';
+import ImageToText from './Image/ImageToText.class';
+import BackgroundRemoval from './Image/BackgroundRemoval.class';
+import ImageUpscaling from './Image/ImageUpscaling.class';
+import RestyleControlNet from './Image/RestyleControlNet.class';
+import RestyleIPAdapter from './Image/RestyleIPAdapter.class';
+import Outpainting from './Image/Outpainting.class';
+import Inpainting from './Image/Inpainting.class';
 
 const components = {
     Component: new Component(),
@@ -86,6 +87,7 @@ const components = {
     WebScrape: new WebScrape(),
     ComponentHost: new ComponentHost(),
     ImageGenerator: new ImageGenerator(),
+    TextToImage: new TextToImage(),
     ImageToImage: new ImageToImage(),
     ImageToText: new ImageToText(),
     BackgroundRemoval: new BackgroundRemoval(),

@@ -1,30 +1,27 @@
-import { IRemoveImageBackground, IRequestImage, Runware, TImageMasking } from '@runware/sdk-js';
+import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { normalizeImageInput } from '@sre/utils/data.utils';
+import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class Inpainting extends Component {
+export default class Outpainting extends Component {
     protected configSchema = Joi.object({
-        model: Joi.string().max(100).required(),
-        inputImage: Joi.string()
-            .required()
-            .min(2)
-            .max(10_485_760) // Approximately 10MB in base64
-            .label('Input Image'),
-        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
-        outputQuality: Joi.number().min(20).max(99).optional().label('Output Quality'),
-        confidence: Joi.number().min(0).max(1).optional().label('Confidence'),
-        maxDetections: Joi.number().min(1).max(20).optional().label('Max Detections'),
-        maskPadding: Joi.number().min(0).max(100).optional().label('Mask Padding'),
-        maskBlur: Joi.number().min(0).max(100).optional().label('Mask Blur'),
+        model: ImageSettingsConfig.model,
+        positivePrompt: ImageSettingsConfig.positivePrompt,
+        negativePrompt: ImageSettingsConfig.negativePrompt,
+        width: ImageSettingsConfig.width,
+        height: ImageSettingsConfig.height,
+        outputFormat: ImageSettingsConfig.outputFormat,
+        numberResults: ImageSettingsConfig.numberResults,
+        strength: ImageSettingsConfig.strength,
     });
     constructor() {
         super();
@@ -57,27 +54,43 @@ export default class Inpainting extends Component {
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
+        const negativePrompt = config?.data?.negativePrompt || '';
+
+        let seedImage = Array.isArray(input?.SeedImage) ? input?.SeedImage[0] : input?.SeedImage;
+        seedImage = await normalizeImageInput(seedImage);
+
+        const imageRequestArgs: IRequestImage = {
+            model: LLMRegistry.getModelId(model),
+            seedImage,
+            positivePrompt: prompt,
+            width: +config?.data?.width || 1024,
+            height: +config?.data?.height || 1024,
+            numberResults: +config?.data?.numberResults || 1,
+            outputFormat: config?.data?.outputFormat || 'JPG',
+            strength: config?.data?.strength || 0.8,
+
+            outputType: 'URL', // For Image Generation we only need the URL
+            includeCost: true,
+        };
+
+        // If a negative prompt is provided, add it to the request args
+        if (negativePrompt) {
+            imageRequestArgs.negativePrompt = negativePrompt;
+        }
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
-        const imageRequestArgs: TImageMasking = {
-            model: LLMRegistry.getModelId(model),
-            inputImage: config?.data?.inputImage,
-            outputFormat: config?.data?.outputFormat || 'PNG',
-            outputQuality: config?.data?.outputQuality || 95,
-            confidence: config?.data?.confidence || 0.25,
-            maxDetections: config?.data?.maxDetections || 6,
-            maskPadding: config?.data?.maskPadding || 4,
-            maskBlur: config?.data?.maskBlur || 4,
-            includeCost: true,
-        };
-
         try {
-            const response = await runware.imageMasking(imageRequestArgs);
+            const response = await runware.requestImages(imageRequestArgs);
 
-            const output = response[0].imageURL;
-            let cost = response[0].cost;
+            const output = [];
+            let cost = 0;
+
+            for (const image of response) {
+                output.push(image.imageURL);
+                cost += image.cost;
+            }
 
             logger.debug(`Output: `, output);
 

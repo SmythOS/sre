@@ -1,52 +1,28 @@
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
+import { normalizeImageInput } from '@sre/utils/data.utils';
+import { ImageSettingsConfig } from './imageSettings.config';
 
-export default class RestyleIPAdapter extends Component {
+export default class ImageToImage extends Component {
     protected configSchema = Joi.object({
-        model: Joi.string().max(100).required(),
-        prompt: Joi.string().optional().min(2).max(2000).label('Prompt'),
-
-        negativePrompt: Joi.string().optional().allow('').min(2).max(2000).label('Negative Prompt'),
-        width: Joi.number().min(128).max(2048).multiple(64).optional().messages({
-            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
-        }),
-        height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
-            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
-        }),
-        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
-        numberResults: Joi.number().min(1).max(20).optional().label('Number of Results'),
-
-        seedImage: Joi.string()
-            .optional()
-            .min(2)
-            .max(10_485_760) // Approximately 10MB in base64
-            .label('Seed Image'),
-        strength: Joi.number().min(0).max(1).optional().label('Strength'),
-
-        ipAdapters: Joi.array()
-            .items(
-                Joi.object({
-                    model: Joi.string().required().label('IP Adapter Model'),
-                    guideImage: Joi.string()
-                        .required()
-                        .min(2)
-                        .max(10_485_760) // Approximately 10MB in base64
-                        .label('Guide Image'),
-                    weight: Joi.number().required().min(0).max(1).label('IP Adapter Weight'),
-                })
-            )
-            .optional()
-            .label('IP Adapters'),
+        model: ImageSettingsConfig.model,
+        positivePrompt: ImageSettingsConfig.positivePrompt,
+        negativePrompt: ImageSettingsConfig.negativePrompt,
+        width: ImageSettingsConfig.width,
+        height: ImageSettingsConfig.height,
+        outputFormat: ImageSettingsConfig.outputFormat,
+        outputQuality: ImageSettingsConfig.outputQuality,
+        numberResults: ImageSettingsConfig.numberResults,
+        strength: ImageSettingsConfig.strength,
     });
     constructor() {
         super();
@@ -57,7 +33,7 @@ export default class RestyleIPAdapter extends Component {
 
         const logger = this.createComponentLogger(agent, config.name);
 
-        logger.debug(`=== Image Generator Log ===`);
+        logger.debug(`=== Image To Image Log ===`);
 
         let model = config?.data?.model;
 
@@ -71,39 +47,37 @@ export default class RestyleIPAdapter extends Component {
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
         prompt = TemplateString(prompt).parse(input).result;
 
-        if (!prompt) {
-            return { _error: 'Please provide a prompt or Image', _debug: logger.output };
-        }
-
         logger.debug(`Prompt: \n`, prompt);
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
-        // Initialize Runware client
-        const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
-        await runware.ensureConnection();
-
         const negativePrompt = config?.data?.negativePrompt || '';
+
+        let seedImage = Array.isArray(input?.SeedImage) ? input?.SeedImage[0] : input?.SeedImage;
+        seedImage = await normalizeImageInput(seedImage);
 
         const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
             positivePrompt: prompt,
+            seedImage,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,
             numberResults: +config?.data?.numberResults || 1,
-            outputType: 'URL', // For Image Generation we only need the URL
             outputFormat: config?.data?.outputFormat || 'JPG',
-            includeCost: true,
-
-            seedImage: config?.data?.seedImage,
             strength: config?.data?.strength || 0.8,
-            ipAdapters: config?.data?.ipAdapters,
+
+            outputType: 'URL', // For Image Generation we only need the URL
+            includeCost: true,
         };
 
         // If a negative prompt is provided, add it to the request args
         if (negativePrompt) {
             imageRequestArgs.negativePrompt = negativePrompt;
         }
+
+        // Initialize Runware client
+        const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
+        await runware.ensureConnection();
 
         try {
             const response = await runware.requestImages(imageRequestArgs);

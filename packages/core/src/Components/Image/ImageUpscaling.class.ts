@@ -1,16 +1,22 @@
-import { IRequestImageToText, Runware } from '@runware/sdk-js';
+import { IUpscaleGan, Runware } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
+
 import SystemEvents from '@sre/Core/SystemEvents';
 import { normalizeImageInput } from '@sre/utils/data.utils';
+import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class ImageToText extends Component {
-    protected configSchema = Joi.object({});
+export default class ImageUpscaling extends Component {
+    protected configSchema = Joi.object({
+        outputFormat: ImageSettingsConfig.outputFormat,
+        outputQuality: ImageSettingsConfig.outputQuality,
+        upscaleFactor: ImageSettingsConfig.upscaleFactor,
+    });
     constructor() {
         super();
     }
@@ -20,25 +26,29 @@ export default class ImageToText extends Component {
 
         const logger = this.createComponentLogger(agent, config.name);
 
-        logger.debug(`=== Image Generator Log ===`);
+        logger.debug(`=== Image Upscaling Log ===`);
+
+        let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
+        inputImage = await normalizeImageInput(inputImage);
+
+        const imageRequestArgs: IUpscaleGan = {
+            inputImage,
+            upscaleFactor: config?.data?.upscaleFactor || 2,
+            outputFormat: config?.data?.outputFormat || 'JPG',
+            outputQuality: config?.data?.outputQuality || 95,
+
+            includeCost: true,
+        };
 
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
-        let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
-        inputImage = await normalizeImageInput(inputImage);
-
-        const imageRequestArgs: IRequestImageToText = {
-            inputImage,
-            includeCost: true,
-        };
-
         try {
-            const response = await runware.requestImageToText(imageRequestArgs);
+            const response = await runware.upscaleGan(imageRequestArgs);
 
-            const output = response.text;
-            const cost = response.cost;
+            const output = response.imageURL;
+            let cost = response.cost;
 
             logger.debug(`Output: `, output);
 

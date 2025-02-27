@@ -188,7 +188,7 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 128_000,
-    enabled: false,
+    enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
@@ -202,7 +202,7 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 200_000,
     completionTokens: 200_000,
-    enabled: false,
+    enabled: true,
     
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
@@ -216,7 +216,7 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 128_000,
-    enabled: false,
+    enabled: true,
     
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
@@ -1958,7 +1958,7 @@ export const models = {
     label: 'FLUX.1 (Schnell)',
     modelId: 'runware:100@1',
     provider: 'Runware',
-    features: ['image-generation'],
+    features: ['image-generation', 'image-to-image'],
     tags: ['SmythOS'],
     enabled: true,
   },
@@ -1966,11 +1966,11 @@ export const models = {
     label: 'FLUX.1 (Dev)',
     modelId: 'runware:101@1',
     provider: 'Runware',
-    features: ['image-generation'],
+    features: ['image-generation', 'image-to-image'],
     tags: ['SmythOS'],
     enabled: true,
   },
-  // #endregion Runware Models
+  // #endregion Retrocompatible Runware Models
 
   // #region Retrocompatible Runware Models
   // TODO: Will be removed a few days later

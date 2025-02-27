@@ -1,35 +1,26 @@
-import { IControlNetPreprocess, IRemoveImageBackground, IRequestImage, Runware } from '@runware/sdk-js';
+import { IRemoveImageBackground, IRequestImage, Runware, TImageMasking } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
-import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
+import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { normalizeImageInput } from '@sre/utils/data.utils';
+import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class RestyleControlNet extends Component {
+export default class Inpainting extends Component {
     protected configSchema = Joi.object({
-        inputImage: Joi.string()
-            .required()
-            .min(2)
-            .max(10_485_760) // Approximately 10MB in base64
-            .label('Input Image'),
-        outputFormat: Joi.string().valid('JPG', 'PNG', 'WEBP').optional(),
-        outputQuality: Joi.number().min(20).max(99).optional().label('Output Quality'),
-        preProcessorType: Joi.string()
-            .valid('canny', 'depth', 'mlsd', 'normalbae', 'openpose', 'tile', 'seg', 'lineart', 'lineart_anime', 'shuffle', 'scribble', 'softedge')
-            .optional()
-            .label('Pre-Processor Type'),
-        width: Joi.number().min(128).max(2048).multiple(64).optional().messages({
-            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
-        }),
-        height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
-            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
-        }),
+        model: ImageSettingsConfig.model,
+        outputFormat: ImageSettingsConfig.outputFormat,
+        outputQuality: ImageSettingsConfig.outputQuality,
+        confidence: ImageSettingsConfig.confidence,
+        maxDetections: ImageSettingsConfig.maxDetections,
+        maskPadding: ImageSettingsConfig.maskPadding,
+        maskBlur: ImageSettingsConfig.maskBlur,
     });
     constructor() {
         super();
@@ -62,22 +53,26 @@ export default class RestyleControlNet extends Component {
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
 
+        let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
+        inputImage = await normalizeImageInput(inputImage);
+
+        const imageRequestArgs: TImageMasking = {
+            model: LLMRegistry.getModelId(model),
+            inputImage,
+            outputFormat: config?.data?.outputFormat || 'PNG',
+            outputQuality: config?.data?.outputQuality || 95,
+            confidence: config?.data?.confidence || 0.25,
+            maxDetections: config?.data?.maxDetections || 6,
+            maskPadding: config?.data?.maskPadding || 4,
+            maskBlur: config?.data?.maskBlur || 4,
+            includeCost: true,
+        };
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
-        const imageRequestArgs: IControlNetPreprocess = {
-            inputImage: config?.data?.inputImage,
-            outputFormat: config?.data?.outputFormat || 'PNG',
-            outputQuality: config?.data?.outputQuality || 95,
-            preProcessorType: config?.data?.preProcessorType || 'canny',
-            width: config?.data?.width || 512,
-            height: config?.data?.height || 512,
-            includeCost: true,
-        };
-
         try {
-            const response = await runware.controlNetPreProcess(imageRequestArgs);
+            const response = await runware.imageMasking(imageRequestArgs);
 
             const output = response[0].imageURL;
             let cost = response[0].cost;
