@@ -74,7 +74,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
-            throw new Error('An API key from OpenAI is required to use this model.');
+            throw new Error('An API key is required to use this model.');
         }
 
         const openai = new OpenAI({
@@ -171,7 +171,7 @@ export class OpenAIConnector extends LLMConnector {
             const apiKey = params?.credentials?.apiKey;
 
             if (!apiKey) {
-                throw new Error('An API key from OpenAI is required to use this model.');
+                throw new Error('An API key is required to use this model.');
             }
 
             const openai = new OpenAI({
@@ -255,7 +255,7 @@ export class OpenAIConnector extends LLMConnector {
             const apiKey = params?.credentials?.apiKey;
 
             if (!apiKey) {
-                throw new Error('An API key from OpenAI is required to use this model.');
+                throw new Error('An API key is required to use this model.');
             }
 
             const openai = new OpenAI({
@@ -346,7 +346,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
-            throw new Error('An API key from OpenAI is required to use this model.');
+            throw new Error('An API key is required to use this model.');
         }
 
         const openai = new OpenAI({
@@ -530,7 +530,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
-            throw new Error('An API key from OpenAI is required to use this model.');
+            throw new Error('An API key is required to use this model.');
         }
         const agentId = agent instanceof Agent ? agent.id : agent;
 
@@ -657,7 +657,7 @@ export class OpenAIConnector extends LLMConnector {
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
-            throw new Error('An API key from OpenAI is required to use this model.');
+            throw new Error('An API key is required to use this model.');
         }
 
         const openai = new OpenAI({

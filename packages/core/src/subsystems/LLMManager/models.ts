@@ -177,6 +177,51 @@ export const models = {
 
   // #endregion Groq ==========================
 
+  // #region Perplexity ==========================
+  'smythos/sonar': {
+    llm: 'Perplexity',
+
+    label: 'Sonar',
+    modelId: 'sonar',
+    provider: 'Perplexity',
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 128_000,
+    enabled: false,
+
+    baseURL: 'https://api.perplexity.ai/chat/completions',
+  },
+  'smythos/sonar-pro': {
+    llm: 'Perplexity',
+
+    label: 'Sonar Pro',
+    modelId: 'sonar-pro',
+    provider: 'Perplexity',
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 200_000,
+    completionTokens: 200_000,
+    enabled: false,
+    
+    baseURL: 'https://api.perplexity.ai/chat/completions',
+  },
+  'smythos/sonar-reasoning-pro': {
+    llm: 'Perplexity',
+
+    label: 'Sonar Reasoning Pro',
+    modelId: 'sonar-reasoning-pro',
+    provider: 'Perplexity',
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 128_000,
+    enabled: false,
+    
+    baseURL: 'https://api.perplexity.ai/chat/completions',
+  },
+  // #endregion Perplexity ==========================
+
   // #endregion [SmythOS Models] ==============================================================
 
   // #region [User Models] ==============================================================

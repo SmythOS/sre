@@ -48,6 +48,7 @@ const SMYTHOS_API_KEYS = {
     togetherai: config.env.TOGETHER_AI_API_KEY,
     groq: config.env.GROQ_API_KEY,
     xai: config.env.XAI_API_KEY,
+    perplexity: config.env.PERPLEXITY_API_KEY,
 };
 
 export class LLMStream extends Readable {
