@@ -10,6 +10,7 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
+import { normalizeImageInput } from '@sre/utils/data.utils';
 
 export default class ImageToImage extends Component {
     protected configSchema = Joi.object({
@@ -70,6 +71,9 @@ export default class ImageToImage extends Component {
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
+        let seedImage = Array.isArray(input?.SeedImage) ? input?.SeedImage[0] : input?.SeedImage;
+        seedImage = await normalizeImageInput(seedImage);
+
         const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
             positivePrompt: prompt,
@@ -80,7 +84,7 @@ export default class ImageToImage extends Component {
             outputFormat: config?.data?.outputFormat || 'JPG',
             includeCost: true,
 
-            seedImage: config?.data?.seedImage,
+            seedImage,
             strength: config?.data?.strength || 0.8,
         };
 

@@ -196,18 +196,42 @@ export async function formatDataForDebug(data: any) {
 
 // TODO: Maybe we need move this function to any helper file, as it depends on BinaryInput class
 export async function normalizeImageInput(inputImage: string | BinaryInput): Promise<string> {
-    let dataUrl: string;
-
-    if (typeof inputImage === 'string' && (isBase64(inputImage) || isBase64DataUrl(inputImage))) {
-        inputImage = `data:image/png;base64,${inputImage}`;
-    } else if (typeof inputImage === 'string' && isUrl(inputImage)) {
-        // Runware supports http/https urls
-        return inputImage;
-    } else if (inputImage instanceof BinaryInput) {
-        const buffer = await inputImage.getBuffer();
-        const base64Data = buffer.toString('base64');
-        dataUrl = `data:image/png;base64,${base64Data}`;
+    if (!inputImage) {
+        throw new Error('Input image is required');
     }
 
-    return dataUrl;
+    // Handle string inputs
+    if (typeof inputImage === 'string') {
+        if (isBase64(inputImage)) {
+            // Convert raw base64 to data URL with proper MIME type
+            const mimeType = (await getMimeType(inputImage)) || 'image/png';
+            return `data:${mimeType};base64,${inputImage}`;
+        }
+
+        if (isBase64DataUrl(inputImage)) {
+            return inputImage; // Already in correct format
+        }
+
+        if (isUrl(inputImage)) {
+            return inputImage; // Valid URL, return as-is
+        }
+
+        throw new Error('Invalid string input: must be base64, data URL, or HTTP(S) URL');
+    }
+
+    // Handle BinaryInput
+    // * There is a bug (server crash) when we check like this: inputImage instanceof BinaryInput
+    // TODO [Forhad]: Need find out the root cause and fix it
+    if (inputImage.constructor?.name === 'BinaryInput') {
+        try {
+            const buffer = await inputImage.getBuffer();
+            const mimeType = (await getMimeType(buffer)) || 'image/png';
+            const base64Data = buffer.toString('base64');
+            return `data:${mimeType};base64,${base64Data}`;
+        } catch (error) {
+            throw new Error(`Failed to process BinaryInput: ${error.message}`);
+        }
+    }
+
+    throw new Error('Unsupported input type');
 }

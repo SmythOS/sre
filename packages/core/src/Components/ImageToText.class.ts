@@ -4,21 +4,13 @@ import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 
 import appConfig from '@sre/config';
 
 export default class ImageToText extends Component {
-    protected configSchema = Joi.object({
-        InputImage: Joi.string()
-            .required()
-            .min(2)
-            .max(10_485_760) // Approximately 10MB in base64
-            .label('Input Image'),
-    });
+    protected configSchema = Joi.object({});
     constructor() {
         super();
     }
@@ -38,15 +30,15 @@ export default class ImageToText extends Component {
         inputImage = await normalizeImageInput(inputImage);
 
         const imageRequestArgs: IRequestImageToText = {
+            inputImage,
             includeCost: true,
-            inputImage: input?.InputImage,
         };
 
         try {
             const response = await runware.requestImageToText(imageRequestArgs);
 
-            const output = response[0].text;
-            const cost = response[0].cost;
+            const output = response.text;
+            const cost = response.cost;
 
             logger.debug(`Output: `, output);
 
