@@ -1,7 +1,7 @@
 import { Readable } from 'stream';
 import axios from 'axios';
 
-import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64 } from './base64.utils';
+import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyMimetypeFromBase64, isBase64DataUrl } from './base64.utils';
 import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -96,6 +96,8 @@ export const isBinaryData = (data): boolean => {
         return false;
     }
 };
+
+// TODO: Need to check if this is intentional, I think we're checking for http/https urls only
 export function isUrl(str: string): boolean {
     if (typeof str !== 'string') return false;
     // This regex checks for protocol, hostname, domain, port (optional), path (optional), and query string (optional)
@@ -190,4 +192,46 @@ export async function formatDataForDebug(data: any) {
     }
 
     return dataForDebug;
+}
+
+// TODO: Maybe we need move this function to any helper file, as it depends on BinaryInput class
+export async function normalizeImageInput(inputImage: string | BinaryInput): Promise<string> {
+    if (!inputImage) {
+        throw new Error('Input image is required');
+    }
+
+    // Handle string inputs
+    if (typeof inputImage === 'string') {
+        if (isBase64(inputImage)) {
+            // Convert raw base64 to data URL with proper MIME type
+            const mimeType = (await getMimeType(inputImage)) || 'image/png';
+            return `data:${mimeType};base64,${inputImage}`;
+        }
+
+        if (isBase64DataUrl(inputImage)) {
+            return inputImage; // Already in correct format
+        }
+
+        if (isUrl(inputImage)) {
+            return inputImage; // Valid URL, return as-is
+        }
+
+        throw new Error('Invalid string input: must be base64, data URL, or HTTP(S) URL');
+    }
+
+    // Handle BinaryInput
+    // * There is a bug (server crash) when we check like this: inputImage instanceof BinaryInput
+    // TODO [Forhad]: Need find out the root cause and fix it
+    if (inputImage.constructor?.name === 'BinaryInput') {
+        try {
+            const buffer = await inputImage.getBuffer();
+            const mimeType = (await getMimeType(buffer)) || 'image/png';
+            const base64Data = buffer.toString('base64');
+            return `data:${mimeType};base64,${base64Data}`;
+        } catch (error) {
+            throw new Error(`Failed to process BinaryInput: ${error.message}`);
+        }
+    }
+
+    throw new Error('Unsupported input type');
 }
