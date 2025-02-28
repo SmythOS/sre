@@ -97,7 +97,7 @@ export default class Outpainting extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:outpainting.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,

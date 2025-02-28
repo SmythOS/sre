@@ -90,7 +90,7 @@ export default class TextToImage extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:texttoimage.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
