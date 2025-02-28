@@ -44,6 +44,10 @@ const config = {
         TAVILY_API_KEY: process.env.TAVILY_API_KEY,
 
         SCRAPFLY_API_KEY: process.env.SCRAPFLY_API_KEY,
+        
+        AWS_LAMBDA_ACCESS_KEY_ID: process.env.AWS_LAMBDA_ACCESS_KEY_ID,
+        AWS_LAMBDA_SECRET_ACCESS_KEY: process.env.AWS_LAMBDA_SECRET_ACCESS_KEY,
+        AWS_LAMBDA_REGION: process.env.AWS_LAMBDA_REGION,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',

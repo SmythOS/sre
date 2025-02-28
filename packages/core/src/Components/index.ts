@@ -30,7 +30,6 @@ import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
-import ServerlessCode from './ServerlessCode.class';
 import GenAILLM from './GenAILLM.class';
 import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
@@ -72,7 +71,6 @@ const components = {
     ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
-    ServerlessCode: new ServerlessCode(),
     GenAILLM: new GenAILLM(),
     FileStore: new FileStore(),
     WebSearch: new WebSearch(),
