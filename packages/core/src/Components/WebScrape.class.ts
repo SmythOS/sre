@@ -59,6 +59,7 @@ export default class WebScrape extends Component {
                 params: {
                     url: encodeURIComponent(url),
                     key: SREConfig.env.SCRAPFLY_API_KEY,
+                    cost_budget: 80,
                     ...(data.format ? { format: data.format } : { format: 'markdown' }),
                     ...(data.antiScrapingProtection && { asp: true, cost_budget: 30 }),
                     ...(data.javascriptRendering && { render_js: true }),
