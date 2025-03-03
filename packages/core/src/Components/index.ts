@@ -34,6 +34,7 @@ import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
 import ComponentHost from './ComponentHost.class';
+import ServerlessCode from './ServerlessCode.class';
 import ImageGenerator from './ImageGenerator.class'; // Legacy
 import TextToImage from './Image/TextToImage.class';
 import ImageToImage from './Image/ImageToImage.class';
@@ -84,6 +85,7 @@ const components = {
     WebSearch: new WebSearch(),
     WebScrape: new WebScrape(),
     ComponentHost: new ComponentHost(),
+    ServerlessCode: new ServerlessCode(),
     ImageGenerator: new ImageGenerator(),
     TextToImage: new TextToImage(),
     ImageToImage: new ImageToImage(),
