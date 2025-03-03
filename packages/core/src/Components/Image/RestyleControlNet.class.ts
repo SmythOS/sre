@@ -58,7 +58,7 @@ export default class RestyleControlNet extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:restylecontrolnet.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
