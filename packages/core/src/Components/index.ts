@@ -35,6 +35,7 @@ import FileStore from './FileStore.class';
 import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
 import ComponentHost from './ComponentHost.class';
+import ServerlessCode from './ServerlessCode.class';
 
 const components = {
     Component: new Component(),
@@ -76,6 +77,7 @@ const components = {
     WebSearch: new WebSearch(),
     WebScrape: new WebScrape(),
     ComponentHost: new ComponentHost(),
+    ServerlessCode: new ServerlessCode(),
 };
 
 export default components;
