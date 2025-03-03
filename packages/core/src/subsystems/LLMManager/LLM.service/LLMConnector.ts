@@ -48,6 +48,7 @@ const SMYTHOS_API_KEYS = {
     togetherai: config.env.TOGETHER_AI_API_KEY,
     groq: config.env.GROQ_API_KEY,
     xai: config.env.XAI_API_KEY,
+    perplexity: config.env.PERPLEXITY_API_KEY,
 };
 
 export class LLMStream extends Readable {
@@ -160,7 +161,7 @@ export abstract class LLMConnector extends Connector {
         if (config?.outputs) {
             for (let con of config.outputs) {
                 if (con.default) continue;
-                outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+                outputs[con.name] = con?.description ? ` (${con?.description})` : '';
             }
         }
 
@@ -169,7 +170,7 @@ export abstract class LLMConnector extends Connector {
 
         if (outputKeys.length > 0) {
             const outputFormat = {};
-            outputKeys.forEach((key) => (outputFormat[key] = config.name === 'Classifier' ? '<Boolean|String>' : '<value>'));
+            outputKeys.forEach((key) => (outputFormat[key] = (config.name === 'Classifier' ? '<Boolean|String>' : '<value>') + (outputs[key] || '')));
 
             newPrompt +=
                 '\n##\nExpected output format = ' +

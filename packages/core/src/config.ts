@@ -12,6 +12,7 @@ const config = {
         TOGETHER_AI_API_KEY: process.env.TOGETHER_AI_API_KEY,
         GROQ_API_KEY: process.env.GROQ_API_KEY,
         XAI_API_KEY: process.env.XAI_API_KEY,
+        PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
         RUNWARE_API_KEY: process.env.RUNWARE_API_KEY,
 
         DATA_PATH: process.env.DATA_PATH,
@@ -44,6 +45,10 @@ const config = {
         TAVILY_API_KEY: process.env.TAVILY_API_KEY,
 
         SCRAPFLY_API_KEY: process.env.SCRAPFLY_API_KEY,
+        
+        AWS_LAMBDA_ACCESS_KEY_ID: process.env.AWS_LAMBDA_ACCESS_KEY_ID,
+        AWS_LAMBDA_SECRET_ACCESS_KEY: process.env.AWS_LAMBDA_SECRET_ACCESS_KEY,
+        AWS_LAMBDA_REGION: process.env.AWS_LAMBDA_REGION,
     },
     agent: {
         ENDPOINT_PREFIX: '/api',
