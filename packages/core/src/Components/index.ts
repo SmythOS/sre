@@ -26,7 +26,6 @@ import Code from './Code.class';
 import HuggingFace from './HuggingFace.class';
 import ZapierAction from './ZapierAction.class';
 import GPTPlugin from './GPTPlugin.class';
-import ImageGenerator from './ImageGenerator.class';
 import Classifier from './Classifier.class';
 import FSign from './FSign.class';
 import MultimodalLLM from './MultimodalLLM.class';
@@ -36,6 +35,16 @@ import WebScrape from './WebScrape.class';
 import WebSearch from './WebSearch.class';
 import ComponentHost from './ComponentHost.class';
 import ServerlessCode from './ServerlessCode.class';
+import ImageGenerator from './ImageGenerator.class'; // Legacy
+import TextToImage from './Image/TextToImage.class';
+import ImageToImage from './Image/ImageToImage.class';
+import ImageToText from './Image/ImageToText.class';
+import BackgroundRemoval from './Image/BackgroundRemoval.class';
+import ImageUpscaling from './Image/ImageUpscaling.class';
+import RestyleControlNet from './Image/RestyleControlNet.class';
+import RestyleIPAdapter from './Image/RestyleIPAdapter.class';
+import Outpainting from './Image/Outpainting.class';
+import Inpainting from './Image/Inpainting.class';
 
 const components = {
     Component: new Component(),
@@ -69,7 +78,6 @@ const components = {
     HuggingFace: new HuggingFace(),
     ZapierAction: new ZapierAction(),
     GPTPlugin: new GPTPlugin(),
-    ImageGenerator: new ImageGenerator(),
     Classifier: new Classifier(),
     MultimodalLLM: new MultimodalLLM(),
     GenAILLM: new GenAILLM(),
@@ -78,6 +86,16 @@ const components = {
     WebScrape: new WebScrape(),
     ComponentHost: new ComponentHost(),
     ServerlessCode: new ServerlessCode(),
+    ImageGenerator: new ImageGenerator(),
+    TextToImage: new TextToImage(),
+    ImageToImage: new ImageToImage(),
+    ImageToText: new ImageToText(),
+    BackgroundRemoval: new BackgroundRemoval(),
+    ImageUpscaling: new ImageUpscaling(),
+    RestyleControlNet: new RestyleControlNet(),
+    RestyleIPAdapter: new RestyleIPAdapter(),
+    Outpainting: new Outpainting(),
+    Inpainting: new Inpainting(),
 };
 
 export default components;

@@ -46,22 +46,12 @@ export default class ImageGenerator extends Component {
 
         // #region Runware
         negativePrompt: Joi.string().optional().allow('').min(2).max(2000).label('Negative Prompt'),
-        width: Joi.number()
-            .min(128)
-            .max(2048)
-            .multiple(64)
-            .optional()
-            .messages({
-                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
-            }),
-        height: Joi.number()
-            .min(128)
-            .max(2048)
-            .multiple(64)
-            .optional()
-            .messages({
-                'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}'
-            }),
+        width: Joi.number().min(128).max(2048).multiple(64).optional().messages({
+            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
+        }),
+        height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
+            'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
+        }),
         outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
         // #endregion
     });
@@ -95,6 +85,10 @@ export default class ImageGenerator extends Component {
         logger.debug(`Prompt: \n`, prompt);
 
         const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+
+        if (typeof imageGenerator[provider] !== 'function') {
+            return { _error: `The model '${model}' is not available. Please try a different one.`, _debug: logger.output };
+        }
 
         try {
             const { output, cost } = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
