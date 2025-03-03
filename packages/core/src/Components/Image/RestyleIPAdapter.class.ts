@@ -102,7 +102,7 @@ export default class RestyleIPAdapter extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:restyleipadapter.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,

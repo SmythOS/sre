@@ -52,7 +52,7 @@ export default class BackgroundRemoval extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:backgroundremoval.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
