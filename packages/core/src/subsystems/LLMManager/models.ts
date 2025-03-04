@@ -575,7 +575,7 @@ export const models = {
   // #endregion OpenAI Models ==========================
 
   // #region Anthropic Models ==========================
-  'claude-3.7-sonnet': {
+'claude-3.7-sonnet': {
     llm: 'Anthropic',
     alias: 'claude-3-7-sonnet-20250219',
     components: [
