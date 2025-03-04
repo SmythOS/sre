@@ -25,8 +25,8 @@ export default class ServerlessCode extends Component {
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
         deploy_btn: Joi.string().max(500000).allow('').label('Deploy'),
-        access_key_id: Joi.string().max(100).allow('').label('AWS Access Key ID').optional(),
-        secret_access_key: Joi.string().max(200).allow('').label('AWS Secret Access Key').optional(),
+        accessKeyId: Joi.string().max(100).allow('').label('AWS Access Key ID').optional(),
+        secretAccessKey: Joi.string().max(200).allow('').label('AWS Secret Access Key').optional(),
         region: Joi.string().label('AWS Region').optional(),
         _templateSettings: Joi.object().allow(null).label('Template Settings'),
         _templateVars: Joi.object().allow(null).label('Template Variables'),
@@ -77,10 +77,10 @@ export default class ServerlessCode extends Component {
                 let awsSecretAccessKey = SREConfig.env.AWS_LAMBDA_SECRET_ACCESS_KEY;
                 let awsRegion = SREConfig.env.AWS_LAMBDA_REGION;
 
-                if (config.data.access_key_id && config.data.secret_access_key && config.data.region) {
+                if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region) {
                     [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
-                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.access_key_id), agent?.teamId),
-                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secret_access_key), agent?.teamId)
+                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
+                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId)
                     ]);
                     awsRegion = config.data.region;
                 }
