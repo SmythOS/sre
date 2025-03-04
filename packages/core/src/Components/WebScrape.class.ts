@@ -61,7 +61,7 @@ export default class WebScrape extends Component {
                     key: SREConfig.env.SCRAPFLY_API_KEY,
                     cost_budget: 80,
                     ...(data.format ? { format: data.format } : { format: 'markdown' }),
-                    ...(data.antiScrapingProtection && { asp: true, cost_budget: 30 }),
+                    ...(data.antiScrapingProtection && { asp: true }),
                     ...(data.javascriptRendering && { render_js: true }),
                     ...(data.autoScroll && { auto_scroll: true, render_js: true }),
                 },
