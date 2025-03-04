@@ -95,7 +95,7 @@ export const models = {
     label: 'Claude 3.7 Sonnet Thinking',
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
-    features: ['text', 'image', 'tools'],
+    features: ['text', 'tools'],
     tags: ['New', 'SmythOS'],
     tokens: 200_000,
     completionTokens: 8_192,
@@ -575,7 +575,7 @@ export const models = {
   // #endregion OpenAI Models ==========================
 
   // #region Anthropic Models ==========================
-'claude-3.7-sonnet': {
+  'claude-3.7-sonnet': {
     llm: 'Anthropic',
     alias: 'claude-3-7-sonnet-20250219',
     components: [
@@ -606,15 +606,13 @@ export const models = {
       'LLMAssistant',
       'Classifier',
       'VisionLLM',
-      'AgentPlugin',
-      'Chatbot',
       'GenAILLM',
     ],
 
     label: 'Claude 3.7 Sonnet Thinking',
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
-    features: ['text', 'tools', 'image'],
+    features: ['text', 'image'],
     tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
