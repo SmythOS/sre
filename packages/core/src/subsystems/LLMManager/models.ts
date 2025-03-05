@@ -98,7 +98,7 @@ export const models = {
     features: ['text', 'tools', 'image'],
     tags: ['New', 'SmythOS'],
     tokens: 200_000,
-    completionTokens: 64_000,
+    completionTokens: 16_384,
     enabled: true,
   },
   'smythos/claude-3.5-haiku': {
@@ -292,7 +292,7 @@ export const models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 16384, enabled: true },
+    keyOptions: { tokens: 128000, completionTokens: 16_384, enabled: true },
   },
   'gpt-4o-mini': {
     llm: 'OpenAI',
@@ -619,7 +619,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 200_000, completionTokens: 64_000, enabled: true },
+    keyOptions: { tokens: 200_000, completionTokens: 16384, enabled: true },
   },
   'claude-3.5-haiku': {
     llm: 'Anthropic',
