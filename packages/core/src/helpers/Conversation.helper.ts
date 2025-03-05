@@ -408,14 +408,20 @@ export class Conversation extends EventEmitter {
         });
 
         eventEmitter.on('content', (content) => {
+            if (toolHeaders['x-passthrough']) {
+                console.log('Passthrough skiped content ', content);
+                return;
+            }
             _content += content;
-            //console.log('content', content);
+            console.log('content', content);
             this.emit('content', content);
         });
 
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
             let hasError = false;
+            let passThroughContent = '';
+
             eventEmitter.on('error', (error) => {
                 hasError = true;
                 reject(error);
@@ -450,13 +456,16 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-                let passThroughContent = '';
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
                     if (typeof data !== 'string') return;
                     passThroughContent += data;
                     //this is currently used to handle agent callbacks when running local agents
-                    this.emit('agentCallback', data);
+                    //this.emit('agentCallback', data);
+
+                    //this.emit('content', data);
+                    this.emit('content', data);
+                    //eventEmitter.emit('content', data);
                 };
 
                 const toolProcessingTasks = toolsData.map(
@@ -504,16 +513,23 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
-                if (!passThroughContent) {
-                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                //if (!passThroughContent) {
+                this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
-                    this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                if (passThroughContent) {
+                    toolHeaders['x-passthrough'] = 'true';
                 } else {
-                    //TODO : add passthrough content to the context window ??
-
-                    //if passThroughContent is not empty, it means that the current agent streamed content through components
-                    resolve(passThroughContent);
+                    delete toolHeaders['x-passthrough'];
                 }
+
+                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+
+                //} else {
+                //TODO : add passthrough content to the context window ??
+
+                //if passThroughContent is not empty, it means that the current agent streamed content through components
+                //resolve(passThroughContent);
+                //}
                 //const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
                 //console.log('Result after tool call: ', result);
             });
@@ -525,7 +541,7 @@ export class Conversation extends EventEmitter {
                 }
                 if (hasError) return;
 
-                if (!hasTools) {
+                if (!hasTools || passThroughContent) {
                     //console.log(' ===> resolved content no tool', _content);
                     //this._context.push({ role: 'assistant', content: _content });
                     this._context.addAssistantMessage(_content, message_id);
