@@ -62,7 +62,7 @@ export class AnthropicConnector extends LLMConnector {
         // TODO: implement claude specific token counting to validate token limit
         // this.validateTokenLimit(params);
 
-        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
@@ -150,7 +150,7 @@ export class AnthropicConnector extends LLMConnector {
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
 
-        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
@@ -237,7 +237,7 @@ export class AnthropicConnector extends LLMConnector {
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
 
-        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
@@ -296,7 +296,7 @@ export class AnthropicConnector extends LLMConnector {
 
             const anthropic = new Anthropic({ apiKey });
 
-            const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+            const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
             const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model: params?.model,
@@ -411,7 +411,7 @@ export class AnthropicConnector extends LLMConnector {
             const anthropic = new Anthropic({ apiKey });
 
             const isThinkingModel = THINKING_MODELS.includes(params.model);
-            const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+            const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
                 model: params?.model,
@@ -584,7 +584,7 @@ export class AnthropicConnector extends LLMConnector {
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
 
-        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
