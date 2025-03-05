@@ -76,7 +76,9 @@ export class LLMRegistry {
     }
 
     public static adjustMaxThinkingTokens(maxTokens, maxThinkingTokens): number {
-        return Math.min(maxTokens, maxThinkingTokens);
+        // Limit the thinking tokens to 80% of the max tokens, (thinking tokens must be less than max tokens)
+        const validMaxThinkingTokens = Math.min(maxTokens * 0.8, maxThinkingTokens);
+        return Math.min(validMaxThinkingTokens, maxThinkingTokens);
     }
 
     public static async validateTokensLimit({
