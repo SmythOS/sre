@@ -93,7 +93,7 @@
         "vitest": "^2.0.5"
     },
     "dependencies": {
-        "@anthropic-ai/sdk": "^0.29.0",
+        "@anthropic-ai/sdk": "^0.39.0",
         "@apidevtools/json-schema-ref-parser": "^11.6.4",
         "@aws-sdk/client-bedrock-runtime": "^3.651.1",
         "@aws-sdk/client-iam": "^3.750.0",

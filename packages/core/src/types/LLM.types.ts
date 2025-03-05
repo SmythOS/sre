@@ -43,6 +43,11 @@ export type TLLMParams = {
 
     cache?: boolean;
     teamId?: string;
+    thinking?: { // for Anthropic
+        type: 'enabled' | 'disabled';
+        budget_tokens: number;
+    };
+    maxThinkingTokens?: number;
 };
 
 export type TLLMModelEntry = {

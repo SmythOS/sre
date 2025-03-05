@@ -403,6 +403,10 @@ export class Conversation extends EventEmitter {
             this.emit('data', data);
         });
 
+        eventEmitter.on('thinking', (thinking) => {
+            this.emit('thinking', thinking);
+        });
+
         eventEmitter.on('content', (content) => {
             _content += content;
             //console.log('content', content);
@@ -417,13 +421,20 @@ export class Conversation extends EventEmitter {
                 reject(error);
             });
 
-            eventEmitter.on('toolsData', async (toolsData) => {
+            eventEmitter.on('toolsData', async (toolsData, thinkingBlocks = []) => {
                 hasTools = true;
                 let llmMessage: any = {
                     role: 'assistant',
                     content: _content,
                     tool_calls: [],
                 };
+
+                if (thinkingBlocks?.length > 0) {
+                    this.emit('thoughtProcess', thinkingBlocks.filter((block) => block.type === 'thinking').map((block) => block.thinking || '').join('\n'));
+
+                    llmMessage.thinkingBlocks = thinkingBlocks;
+                }
+
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
                         id: tool.id,
