@@ -259,6 +259,10 @@ export abstract class LLMConnector extends Connector {
                 }
             }
 
+            if (_params.maxThinkingTokens) {
+                _params.maxThinkingTokens = LLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
+            }
+
             const baseUrl = LLMRegistry.getBaseURL(params.model);
 
             if (baseUrl) {
@@ -283,6 +287,10 @@ export abstract class LLMConnector extends Connector {
 
             if (_params.maxTokens) {
                 _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+            }
+
+            if (_params.maxThinkingTokens) {
+                _params.maxThinkingTokens = customLLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
             }
 
             _params.model = customLLMRegistry.getModelId(model) || model;

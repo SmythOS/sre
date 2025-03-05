@@ -72,7 +72,7 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
@@ -80,7 +80,7 @@ export class AnthropicConnector extends LLMConnector {
         if (THINKING_MODELS.includes(params.model)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
-                budget_tokens: Math.floor(maxTokens * 0.7),
+                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
             };
         }
 
@@ -160,7 +160,7 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
@@ -168,7 +168,7 @@ export class AnthropicConnector extends LLMConnector {
         if (THINKING_MODELS.includes(params.model)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
-                budget_tokens: Math.floor(maxTokens * 0.7),
+                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
             };
         }
 
@@ -247,7 +247,7 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
         if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
@@ -255,7 +255,7 @@ export class AnthropicConnector extends LLMConnector {
         if (THINKING_MODELS.includes(params.model)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
-                budget_tokens: Math.floor(maxTokens * 0.7),
+                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
             };
         }
 
@@ -325,7 +325,7 @@ export class AnthropicConnector extends LLMConnector {
             if (isThinkingModel) {
                 messageCreateArgs.thinking = {
                     type: 'enabled',
-                    budget_tokens: Math.floor(maxTokens * 0.7),
+                    budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
                 };
             }
 
@@ -361,7 +361,6 @@ export class AnthropicConnector extends LLMConnector {
                 useTool = true;
             }
 
-            const thinkingBlocks = result?.content?.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
             const textBlock = result?.content?.find((block) => block.type === 'text');
             const content = textBlock?.text;
 
@@ -424,7 +423,7 @@ export class AnthropicConnector extends LLMConnector {
             if (isThinkingModel) {
                 messageCreateArgs.thinking = {
                     type: 'enabled',
-                    budget_tokens: Math.floor(maxTokens * 0.7), // Allocate 70% of max tokens to thinking
+                    budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7), // Allocate 70% of max tokens to thinking
                 };
             }
 
@@ -557,6 +556,8 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
+        const isThinkingModel = THINKING_MODELS.includes(params.model);
+
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
@@ -583,18 +584,27 @@ export class AnthropicConnector extends LLMConnector {
         // TODO (Forhad): implement claude specific token counting properly
         // this.validateTokenLimit(params);
 
+        const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey);
+
         const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
             messages,
-            max_tokens: params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.model, !!apiKey), // * max token is required
+            max_tokens: maxTokens, // * max token is required
         };
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
+        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
+
+        if (isThinkingModel) {
+            messageCreateArgs.thinking = {
+                type: 'enabled',
+                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
+            };
+        }
 
         try {
             let stream = anthropic.messages.stream(messageCreateArgs);
@@ -616,8 +626,13 @@ export class AnthropicConnector extends LLMConnector {
                 emitter.emit('content', text);
             });
 
+            stream.on('thinking', (thinking) => {
+                emitter.emit('thinking', thinking);
+            });
+
             stream.on('finalMessage', (finalMessage) => {
                 //console.log('finalMessage', finalMessage);
+                const thinkingBlocks = finalMessage?.content?.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
                 const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
 
                 if (toolUseContentBlocks?.length > 0) {
@@ -632,7 +647,7 @@ export class AnthropicConnector extends LLMConnector {
                         });
                     });
 
-                    emitter.emit('toolsData', toolsData);
+                    emitter.emit('toolsData', toolsData, thinkingBlocks);
                 }
 
                 if (finalMessage?.usage) {

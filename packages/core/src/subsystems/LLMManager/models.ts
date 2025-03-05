@@ -98,7 +98,7 @@ export const models = {
     features: ['text', 'tools', 'image'],
     tags: ['New', 'SmythOS'],
     tokens: 200_000,
-    completionTokens: 8_192,
+    completionTokens: 64_000,
     enabled: true,
   },
   'smythos/claude-3.5-haiku': {
@@ -619,7 +619,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
+    keyOptions: { tokens: 200_000, completionTokens: 64_000, enabled: true },
   },
   'claude-3.5-haiku': {
     llm: 'Anthropic',

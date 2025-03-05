@@ -75,6 +75,10 @@ export class LLMRegistry {
         return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
     }
 
+    public static adjustMaxThinkingTokens(maxTokens, maxThinkingTokens): number {
+        return Math.min(maxTokens, maxThinkingTokens);
+    }
+
     public static async validateTokensLimit({
         model,
         promptTokens,

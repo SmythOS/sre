@@ -47,6 +47,7 @@ export type TLLMParams = {
         type: 'enabled' | 'disabled';
         budget_tokens: number;
     };
+    maxThinkingTokens?: number;
 };
 
 export type TLLMModelEntry = {
