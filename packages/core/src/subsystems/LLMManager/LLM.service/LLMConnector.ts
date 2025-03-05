@@ -31,6 +31,7 @@ export interface ILLMConnectorRequest {
 export type LLMChatResponse = {
     content: string;
     finishReason: string;
+    thinkingContent?: string;
 };
 
 export type ImagesResponse = {
