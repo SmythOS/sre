@@ -46,7 +46,7 @@ export default class ImageToText extends Component {
 
             if (output) {
                 SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
+                    sourceId: `api:imagetotext.smyth`,
                     costs: cost,
                     agentId: agent.id,
                     teamId: agent.teamId,

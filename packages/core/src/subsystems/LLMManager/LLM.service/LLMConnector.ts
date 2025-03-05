@@ -161,7 +161,7 @@ export abstract class LLMConnector extends Connector {
         if (config?.outputs) {
             for (let con of config.outputs) {
                 if (con.default) continue;
-                outputs[con.name] = con?.description ? `<${con?.description}>` : '';
+                outputs[con.name] = con?.description ? ` (${con?.description})` : '';
             }
         }
 
@@ -170,7 +170,7 @@ export abstract class LLMConnector extends Connector {
 
         if (outputKeys.length > 0) {
             const outputFormat = {};
-            outputKeys.forEach((key) => (outputFormat[key] = config.name === 'Classifier' ? '<Boolean|String>' : '<value>'));
+            outputKeys.forEach((key) => (outputFormat[key] = (config.name === 'Classifier' ? '<Boolean|String>' : '<value>') + (outputs[key] || '')));
 
             newPrompt +=
                 '\n##\nExpected output format = ' +
