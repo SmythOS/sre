@@ -181,9 +181,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
         it(
             'should passthrough responses immediately midst agent execution',
             async () => {
-                const conv = new Conversation(id, 'cm7wjypk62xvk6j7vqd7np9z1', {
-                    systemPrompt: 'You are a helpful assistant that can answer questions about SmythOS.',
-                });
+                const conv = new Conversation(id, 'cm7wjypk62xvk6j7vqd7np9z1');
 
                 const prompt = 'Generate story with first name as John. call the endpoint /passthrough_story';
 
