@@ -16,7 +16,10 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
 import axios from 'axios';
+import SystemEvents from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
+const PER_REQUEST_COST = '0.0000002';
+const PER_SECOND_COST = '0.0000166667';
 
 export default class ServerlessCode extends Component {
     private cachePrefix: string = 'serverless_code';
@@ -50,7 +53,7 @@ export default class ServerlessCode extends Component {
             let _error = undefined;
             if (config?.data?.code_environment === 'ecmascript') {
                 const url = _config.env.CODE_SANDBOX_URL + '/run-js/async';
-                
+
                 let code_body = config.data.javascript_code_body;
                 if (config.data._templateVars) {
                     code_body = TemplateStringHelper.create(code_body).parse(config.data._templateVars).result;
@@ -121,10 +124,19 @@ export default class ServerlessCode extends Component {
                 }
                 try {
                     const functionName = `${agent.id}-${config.id}`;
-                    const result = await this.invokeLambdaFunction(functionName, codeInputs, awsCredentials);
+                    const lambdaResponse = JSON.parse(await this.invokeLambdaFunction(functionName, codeInputs, awsCredentials));
+                    const executionTime = lambdaResponse.executionTime;
                     await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
-                    logger.debug(`Code result \n${JSON.stringify(result, null, 2)}\n`);
-                    Output = result;
+                    logger.debug(`Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result}\n`);
+                    logger.debug(`Execution time: ${executionTime}ms\n`);
+                    const cost = this.calculateExecutionCost(executionTime);
+                    // logger.debug(`Execution cost: $${cost}\n`);
+                    Output = lambdaResponse.result;
+                    this.reportUsage({
+                        cost,
+                        agentId: agent.id,
+                        teamId: agent.teamId,
+                    });
 
                 } catch (error: any) {
                     logger.error(`Error running code \n${error}\n`);
@@ -258,30 +270,53 @@ export default class ServerlessCode extends Component {
         }
     }
 
-    private extractNpmImports(code_imports: string) {
+    private extractNpmImports(code: string) {
+        const importRegex = /import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]/g;
         const requireRegex = /require\(['"]([^'"]+)['"]\)/g;
-        const importRegex = /import\s+(?:[^'"]+\s+from\s+)?['"]([^'"]+)['"]/g;
+        const dynamicImportRegex = /import\(['"]([^'"]+)['"]\)/g;
 
         let libraries = new Set();
-
-        // Match require statements
         let match;
-        while ((match = requireRegex.exec(code_imports)) !== null) {
-            libraries.add(match[1]);
+
+        // Function to extract the main package name
+        function extractPackageName(modulePath: string) {
+            if (modulePath.startsWith("@")) {
+                // Handle scoped packages (e.g., @babel/core)
+                return modulePath.split("/").slice(0, 2).join("/");
+            }
+            return modulePath.split("/")[0]; // Extract the first part (main package)
         }
-        // Match import statements
-        while ((match = importRegex.exec(code_imports)) !== null) {
-            libraries.add(match[1]);
+        // Match static ESM imports
+        while ((match = importRegex.exec(code)) !== null) {
+            libraries.add(extractPackageName(match[1]));
         }
+        // Match CommonJS require() calls
+        while ((match = requireRegex.exec(code)) !== null) {
+            libraries.add(extractPackageName(match[1]));
+        }
+        // Match dynamic import() calls
+        while ((match = dynamicImportRegex.exec(code)) !== null) {
+            libraries.add(extractPackageName(match[1]));
+        }
+
         return Array.from(libraries);
     }
+
 
     private generateLambdaCode(code_imports: string, code_body: string, input_variables: string[]) {
         const lambdaCode = `${code_imports}\nexport const handler = async (event, context) => {
           try {
             context.callbackWaitsForEmptyEventLoop = false;
+            let startTime = Date.now();
+             const result = await (async () => {
            ${input_variables && input_variables.length ? input_variables.map((variable) => `const ${variable} = event.${variable};`).join('\n') : ''}
         \n${code_body}
+            })();
+            let endTime = Date.now();
+            return {
+                result,
+                executionTime: endTime - startTime
+            }
           } catch (e) {
             throw e;
           }
@@ -483,5 +518,19 @@ export default class ServerlessCode extends Component {
     private async updateDeployedCodeTTL(agentId: string, componentId: string, ttl: number) {
         const redisCache = ConnectorService.getCacheConnector('Redis');
         await redisCache.user(AccessCandidate.agent(agentId)).updateTTL(`${this.cachePrefix}_${agentId}-${componentId}`, ttl);
+    }
+
+    private calculateExecutionCost(executionTime: number) { // executionTime in milliseconds
+        const cost = ((executionTime / 1000) * Number(PER_SECOND_COST)) + Number(PER_REQUEST_COST);
+        return cost;
+    }
+
+    protected reportUsage({ cost, agentId, teamId }: { cost: number; agentId: string; teamId: string }) {
+        SystemEvents.emit('USAGE:API', {
+            sourceId: 'api:serverless_code.smyth',
+            costs: cost,
+            agentId,
+            teamId,
+        });
     }
 }
