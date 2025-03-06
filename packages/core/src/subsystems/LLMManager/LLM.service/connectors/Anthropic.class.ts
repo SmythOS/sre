@@ -22,7 +22,7 @@ const console = Logger('AnthropicConnector');
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
-const THINKING_MODELS = ['claude-3-7-sonnet-20250219'];
+const THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
 
 // TODO [Forhad]: implement proper typing
 
@@ -36,7 +36,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.model);
+        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt = '';
@@ -77,7 +77,7 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.model)) {
+        if (THINKING_MODELS.includes(params.modelEntryName)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
                 budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
@@ -116,7 +116,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.model);
+        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
@@ -165,7 +165,7 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.model)) {
+        if (THINKING_MODELS.includes(params.modelEntryName)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
                 budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
@@ -203,7 +203,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.model);
+        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
@@ -252,7 +252,7 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.model)) {
+        if (THINKING_MODELS.includes(params.modelEntryName)) {
             messageCreateArgs.thinking = {
                 type: 'enabled',
                 budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
@@ -289,7 +289,7 @@ export class AnthropicConnector extends LLMConnector {
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
 
-            const isThinkingModel = THINKING_MODELS.includes(params.model);
+            const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
             const apiKey = params?.credentials?.apiKey;
             if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
@@ -320,6 +320,17 @@ export class AnthropicConnector extends LLMConnector {
 
             if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
                 messageCreateArgs.tools = params?.toolsConfig?.tools as Anthropic.Tool[];
+            }
+
+            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+            if (toolChoice) {
+                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
+                    messageCreateArgs.tool_choice = {
+                        type: 'auto',
+                    };
+                } else {
+                    messageCreateArgs.tool_choice = toolChoice;
+                }
             }
 
             if (isThinkingModel) {
@@ -410,7 +421,7 @@ export class AnthropicConnector extends LLMConnector {
 
             const anthropic = new Anthropic({ apiKey });
 
-            const isThinkingModel = THINKING_MODELS.includes(params.model);
+            const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
             const maxTokens = params?.maxTokens || LLMRegistry.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey);
 
             const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
@@ -466,8 +477,16 @@ export class AnthropicConnector extends LLMConnector {
                     messageCreateArgs.tools[messageCreateArgs.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
                 }
             }
-            if (params?.toolsConfig?.tool_choice) {
-                messageCreateArgs.tool_choice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+
+            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+            if (toolChoice) {
+                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
+                    messageCreateArgs.tool_choice = {
+                        type: 'auto',
+                    };
+                } else {
+                    messageCreateArgs.tool_choice = toolChoice;
+                }
             }
 
             let stream = anthropic.messages.stream(messageCreateArgs);
@@ -556,7 +575,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.model);
+        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
