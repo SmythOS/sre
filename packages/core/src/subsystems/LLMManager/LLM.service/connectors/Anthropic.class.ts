@@ -322,6 +322,17 @@ export class AnthropicConnector extends LLMConnector {
                 messageCreateArgs.tools = params?.toolsConfig?.tools as Anthropic.Tool[];
             }
 
+            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+            if (toolChoice) {
+                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
+                    messageCreateArgs.tool_choice = {
+                        type: 'auto',
+                    };
+                } else {
+                    messageCreateArgs.tool_choice = toolChoice;
+                }
+            }
+
             if (isThinkingModel) {
                 messageCreateArgs.thinking = {
                     type: 'enabled',
@@ -466,8 +477,16 @@ export class AnthropicConnector extends LLMConnector {
                     messageCreateArgs.tools[messageCreateArgs.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
                 }
             }
-            if (params?.toolsConfig?.tool_choice) {
-                messageCreateArgs.tool_choice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+
+            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+            if (toolChoice) {
+                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
+                    messageCreateArgs.tool_choice = {
+                        type: 'auto',
+                    };
+                } else {
+                    messageCreateArgs.tool_choice = toolChoice;
+                }
             }
 
             let stream = anthropic.messages.stream(messageCreateArgs);
