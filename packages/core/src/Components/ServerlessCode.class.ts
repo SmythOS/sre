@@ -27,7 +27,7 @@ export default class ServerlessCode extends Component {
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
-        deploy_btn: Joi.string().max(500000).allow('').label('Deploy'),
+        deploy_btn: Joi.string().max(500000).allow('').label('Deploy').optional(),
         accessKeyId: Joi.string().max(100).allow('').label('AWS Access Key ID').optional(),
         secretAccessKey: Joi.string().max(200).allow('').label('AWS Secret Access Key').optional(),
         region: Joi.string().label('AWS Region').optional(),
@@ -35,8 +35,6 @@ export default class ServerlessCode extends Component {
         _templateVars: Joi.object().allow(null).label('Template Variables'),
         function_label: Joi.string().max(100).allow('').label('Function Label').optional(),
         function_label_end: Joi.string().allow(null).label('Function Label End').optional(),
-        javascript_code_body: Joi.string().allow('').label('Javascript Code Body').optional(),
-        code_environment: Joi.string().allow('').label('Code Environment').optional(),
         use_own_keys: Joi.boolean().label('Use Own Keys').optional(),
     });
     constructor() {
@@ -51,99 +49,78 @@ export default class ServerlessCode extends Component {
             logger.debug(`=== Serverless Code Log ===`);
             let Output: any = {};
             let _error = undefined;
-            if (config?.data?.code_environment === 'ecmascript') {
-                const url = _config.env.CODE_SANDBOX_URL + '/run-js/async';
 
-                let code_body = config.data.javascript_code_body;
-                if (config.data._templateVars) {
-                    code_body = TemplateStringHelper.create(code_body).parse(config.data._templateVars).result;
-                }
-                const code = this.generateEcmaScriptCode(input, code_body);
-
-                logger.debug(` Running code \n${code}\n`);
-
-                const result: any = await axios.post(url, { code }).catch((error) => ({ error }));
-
-                if (result.error) {
-                    _error = result.error?.response?.data || result.error?.message || result.error.toString() || 'Unknown error';
-                    logger.error(` Error running code \n${JSON.stringify(result.error, null, 2)}\n`);
-                    Output = undefined; //prevents running next component if the code execution failed
-                } else {
-                    logger.debug(` Code result \n${JSON.stringify(result.data, null, 2)}\n`);
-                    Output = result.data?.Output;
-                }
-
-                return { Output, _error, _debug: logger.output };
-            }
-            else {
-                let awsAccessKeyId = SREConfig.env.AWS_LAMBDA_ACCESS_KEY_ID;
-                let awsSecretAccessKey = SREConfig.env.AWS_LAMBDA_SECRET_ACCESS_KEY;
-                let awsRegion = SREConfig.env.AWS_LAMBDA_REGION;
-
-                if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region) {
-                    [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
-                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
-                        VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId)
-                    ]);
-                    awsRegion = config.data.region;
-                }
-                const awsCredentials = {
-                    accessKeyId: awsAccessKeyId,
-                    secretAccessKey: awsSecretAccessKey,
-                    region: awsRegion
-                }
-
-                let codeInputs = {};
-                for (let fieldName in input) {
-                    const _type = typeof input[fieldName];
-                    switch (_type) {
-                        case 'string':
-                            codeInputs[fieldName] = `${input[fieldName]}`;
-                            break;
-                        case 'number':
-                        case 'boolean':
-                            codeInputs[fieldName] = input[fieldName];
-                            break;
-                        default:
-                            codeInputs[fieldName] = input[fieldName];
-                            break;
-                    }
-                }
-
-                logger.debug(`\nInput Variables: \n${JSON.stringify(codeInputs, null, 2)}\n`);
-                const functionName = this.getLambdaFunctionName(agent.id, config.id);
-                const [isLambdaExists, exisitingCodeHash] = await Promise.all([
-                    this.getDeployedFunction(functionName, awsCredentials),
-                    this.getDeployedCodeHash(agent.id, config.id)
+            let awsAccessKeyId = SREConfig.env.AWS_LAMBDA_ACCESS_KEY_ID;
+            let awsSecretAccessKey = SREConfig.env.AWS_LAMBDA_SECRET_ACCESS_KEY;
+            let awsRegion = SREConfig.env.AWS_LAMBDA_REGION;
+            let userProvidedKeys = false;
+            if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region) {
+                userProvidedKeys = true;
+                [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
+                    VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
+                    VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId)
                 ]);
-                const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports);
+                awsRegion = config.data.region;
+            }
+            const awsCredentials = {
+                accessKeyId: awsAccessKeyId,
+                secretAccessKey: awsSecretAccessKey,
+                region: awsRegion
+            }
 
-                if (!isLambdaExists || exisitingCodeHash !== codeHash) {
-                    // Deploy lambda function
-                    await this.deployServerlessCode({ agentId: agent.id, componentId: config.id, code_imports: config?.data?.code_imports, code_body: config?.data?.code_body, input_variables: Object.keys(codeInputs), awsConfigs: awsCredentials });
+            let codeInputs = {};
+            for (let fieldName in input) {
+                const _type = typeof input[fieldName];
+                switch (_type) {
+                    case 'string':
+                        codeInputs[fieldName] = `${input[fieldName]}`;
+                        break;
+                    case 'number':
+                    case 'boolean':
+                        codeInputs[fieldName] = input[fieldName];
+                        break;
+                    default:
+                        codeInputs[fieldName] = input[fieldName];
+                        break;
                 }
-                try {
-                    const functionName = `${agent.id}-${config.id}`;
-                    const lambdaResponse = JSON.parse(await this.invokeLambdaFunction(functionName, codeInputs, awsCredentials));
-                    const executionTime = lambdaResponse.executionTime;
-                    await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
-                    logger.debug(`Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result}\n`);
-                    logger.debug(`Execution time: ${executionTime}ms\n`);
-                    const cost = this.calculateExecutionCost(executionTime);
-                    // logger.debug(`Execution cost: $${cost}\n`);
-                    Output = lambdaResponse.result;
+            }
+
+            logger.debug(`\nInput Variables: \n${JSON.stringify(codeInputs, null, 2)}\n`);
+            const functionName = this.getLambdaFunctionName(agent.id, config.id);
+            const [isLambdaExists, exisitingCodeHash] = await Promise.all([
+                this.getDeployedFunction(functionName, awsCredentials),
+                this.getDeployedCodeHash(agent.id, config.id)
+            ]);
+            const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports);
+
+            if (!isLambdaExists || exisitingCodeHash !== codeHash) {
+                // Deploy lambda function
+                await this.deployServerlessCode({ agentId: agent.id, componentId: config.id, code_imports: config?.data?.code_imports, code_body: config?.data?.code_body, input_variables: Object.keys(codeInputs), awsConfigs: awsCredentials });
+            }
+            try {
+                const functionName = `${agent.id}-${config.id}`;
+                const lambdaResponse = JSON.parse(await this.invokeLambdaFunction(functionName, codeInputs, awsCredentials));
+                const executionTime = lambdaResponse.executionTime;
+                await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
+                logger.debug(`Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result}\n`);
+                logger.debug(`Execution time: ${executionTime}ms\n`);
+                const cost = this.calculateExecutionCost(executionTime);
+                // logger.debug(`Execution cost: $${cost}\n`);
+                Output = lambdaResponse.result;
+                if (!userProvidedKeys) {
                     this.reportUsage({
                         cost,
                         agentId: agent.id,
                         teamId: agent.teamId,
                     });
-
-                } catch (error: any) {
-                    logger.error(`Error running code \n${error}\n`);
-                    _error = error?.response?.data || error?.message || error.toString();
-                    Output = undefined; //prevents running next component if the code execution failed
                 }
+
+            } catch (error: any) {
+                logger.error(`Error running code \n${error}\n`);
+                _error = error?.response?.data || error?.message || error.toString();
+                Output = undefined; //prevents running next component if the code execution failed
             }
+
             return { Output, _error, _debug: logger.output };
         } catch (err: any) {
             const _error = err?.response?.data || err?.message || err.toString();
@@ -152,18 +129,6 @@ export default class ServerlessCode extends Component {
         }
     }
 
-    generateEcmaScriptCode(inputs, codeBody) {
-        const inputsKeys = Object.keys(inputs);
-        const inputsValues = Object.values(inputs);
-        const formattedCode = `async function main(${inputsKeys.join(', ')}) {
-            ${codeBody}
-        }
-            var _output = {};
-      _output = await main(${inputsValues.join(', ')}).catch((error) => {
-            throw error;
-         })`
-        return formattedCode;
-    }
     extractKeyFromTemplateVar(input: string) {
         const regex = /\{\{KEY\((.*?)\)\}\}/;
         const match = input.match(regex);
