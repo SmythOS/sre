@@ -1954,7 +1954,7 @@ export const models = {
 
   // #region Runware Models
   'smythos/flux.1-schnell': {
-    label: 'FLUX.1 (Schnell)',
+    label: 'FLUX Schnell',
     modelId: 'runware:100@1',
     provider: 'Runware',
     features: [
@@ -1962,11 +1962,11 @@ export const models = {
       'text-to-image',
       'image-to-image',
     ],
-    tags: ['SmythOS'],
+    tags: ['SmythOS', '1.0'],
     enabled: true,
   },
   'smythos/flux.1-dev': {
-    label: 'FLUX.1 (Dev)',
+    label: 'FLUX Dev',
     modelId: 'runware:101@1',
     provider: 'Runware',
     features: [
@@ -1974,7 +1974,7 @@ export const models = {
       'text-to-image',
       'image-to-image',
     ],
-    tags: ['SmythOS'],
+    tags: ['SmythOS', '1.0'],
     enabled: true,
   },
   // #region Full face detection models
