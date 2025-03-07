@@ -408,12 +408,12 @@ export class Conversation extends EventEmitter {
         });
 
         eventEmitter.on('content', (content) => {
-            if (toolHeaders['x-passthrough']) {
-                console.log('Passthrough skiped content ', content);
-                return;
-            }
+            // if (toolHeaders['x-passthrough']) {
+            //     console.log('Passthrough skiped content ', content);
+            //     return;
+            // }
             _content += content;
-            console.log('content', content);
+            //console.log('content', content);
             this.emit('content', content);
         });
 
@@ -520,12 +520,22 @@ export class Conversation extends EventEmitter {
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
                 //if (!passThroughContent) {
-                this._context.addToolMessage(llmMessage, processedToolsData, message_id);
 
-                if (passThroughContent) {
-                    toolHeaders['x-passthrough'] = 'true';
+                if (!passThroughContent) {
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                    //delete toolHeaders['x-passthrough'];
                 } else {
-                    delete toolHeaders['x-passthrough'];
+                    //this._context.addAssistantMessage(passThroughContent, message_id);
+                    llmMessage.content += '\n' + passThroughContent;
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                    //this should not be stored in the persistent conversation store
+                    //it's just a workaround to avoid generating more content after passthrough content
+                    this._context.addUserMessage(
+                        'Continue with the next tool call of there are any, or just inform the user that you are done',
+                        message_id,
+                        { internal: true }
+                    );
+                    //toolHeaders['x-passthrough'] = 'true';
                 }
 
                 this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
