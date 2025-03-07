@@ -48,14 +48,14 @@ export class LLMContext {
             this._llmContextStore.save(this._messages);
         }
     }
-    public addUserMessage(content: string, message_id: string) {
-        this.push({ role: 'user', content, __smyth_data__: { message_id } });
+    public addUserMessage(content: string, message_id: string, metadata?: any) {
+        this.push({ role: 'user', content, __smyth_data__: { message_id, ...metadata } });
     }
-    public addAssistantMessage(content: string, message_id: string) {
-        this.push({ role: 'assistant', content, __smyth_data__: { message_id } });
+    public addAssistantMessage(content: string, message_id: string, metadata?: any) {
+        this.push({ role: 'assistant', content, __smyth_data__: { message_id, ...metadata } });
     }
-    public addToolMessage(messageBlock: any, toolsData: any, message_id: string) {
-        this.push({ messageBlock, toolsData, __smyth_data__: { message_id } });
+    public addToolMessage(messageBlock: any, toolsData: any, message_id: string, metadata?: any) {
+        this.push({ messageBlock, toolsData, __smyth_data__: { message_id, ...metadata } });
     }
 
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 256): Promise<any[]> {
