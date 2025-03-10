@@ -188,25 +188,40 @@ export default class APIEndpoint extends Component {
 
         //Handle binary data
         for (let input of config.inputs) {
-            if (!input.isFile && input?.type?.toLowerCase() !== 'binary') continue;
+            if (!input.isFile && !['image', 'audio', 'video', 'binary'].includes(input?.type?.toLowerCase())) continue;
 
             const fieldname = input.name;
 
             logger.debug('Parsing file input ', fieldname);
 
-            let binaryInput = body[fieldname];
-
-            if (!(binaryInput instanceof BinaryInput)) {
-                // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
-                if (req.files?.length > 0) {
-                    const file = req.files.find((file) => file.fieldname === fieldname);
-                    if (!file) continue;
-                    binaryInput = new BinaryInput(file.buffer, uid() + '-' + file.originalname, file.mimetype);
-                }
+            let binaryInputs = body[fieldname];
+            
+            // Ensure we're working with an array
+            if (!Array.isArray(binaryInputs)) {
+                binaryInputs = [binaryInputs];
             }
 
-            if (binaryInput instanceof BinaryInput) {
-                body[fieldname] = await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+            // Process each binary input
+            const processedInputs = await Promise.all(binaryInputs.map(async (binaryInput) => {
+                if (!(binaryInput instanceof BinaryInput)) {
+                    // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
+                    if (req.files?.length > 0) {
+                        const file = req.files.find((file) => file.fieldname === fieldname);
+                        if (!file) return null;
+                        binaryInput = new BinaryInput(file.buffer, uid() + '-' + file.originalname, file.mimetype);
+                    }
+                }
+
+                if (binaryInput instanceof BinaryInput) {
+                    return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+                }
+                return null;
+            }));
+
+            // Filter out null values and handle single/multiple results
+            const validResults = processedInputs.filter(result => result !== null);
+            if (validResults.length > 0) {
+                body[fieldname] = validResults.length === 1 ? validResults[0] : validResults;
             }
             //console.log('file', fieldname, body[fieldname]);
         }
