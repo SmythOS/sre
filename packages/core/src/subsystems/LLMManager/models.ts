@@ -263,6 +263,19 @@ export const models = {
   // #region OpenAI Models ==========================
 
   // #region GPT 4o
+  'gpt-4.5-preview': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.5 Preview',
+    modelId: 'gpt-4.5-preview',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
   'gpt-4o': {
     llm: 'OpenAI',
     alias: 'gpt-4o-2024-08-06',
@@ -337,7 +350,7 @@ export const models = {
     modelId: 'o3-mini-2025-01-31',
     provider: 'OpenAI',
     features: ['text'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
