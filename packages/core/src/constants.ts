@@ -106,6 +106,9 @@ export const SUPPORTED_MIME_TYPES_MAP = {
             'text/rtf',
         ],
     },
+    Groq: {
+        image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+    },
 };
 
 export const DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS = {

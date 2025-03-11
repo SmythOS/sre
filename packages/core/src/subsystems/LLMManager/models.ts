@@ -1304,6 +1304,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+    hidden: true, // !TEMP: we need to support image input for Groq
   },
   'llama-3.2-90b-vision-preview': {
     llm: 'Groq',
@@ -1317,6 +1318,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+    hidden: true, // !TEMP: we need to support image input for Groq
   },
   // #endregion Groq - Preview Models
 
