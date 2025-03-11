@@ -1392,6 +1392,51 @@ export const models = {
   // #region Together AI Models ==========================
 
   // #region Together AI - DeepSeek
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Qwen 14B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Qwen 1.5B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Llama 70B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
   'deepseek-ai/DeepSeek-R1': {
     llm: 'TogetherAI',
 
@@ -1399,11 +1444,11 @@ export const models = {
     modelId: 'deepseek-ai/DeepSeek-R1',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 163_840, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
@@ -1414,7 +1459,7 @@ export const models = {
     modelId: 'deepseek-ai/DeepSeek-V3',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1448,7 +1493,7 @@ export const models = {
     modelId: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     provider: 'TogetherAI',
     features: ['text', 'tools'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
