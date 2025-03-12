@@ -140,4 +140,15 @@ export class SmythAccount extends AccountConnector {
             })}`,
         };
     }
+
+    public async getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string> {
+        try {
+            const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings/${settingKey}`, {
+                headers: await this.getSmythRequestHeaders(),
+            });
+            return response?.data?.setting?.settingValue || null;
+        } catch (error) {
+            return null;
+        }
+    }
 }

@@ -81,11 +81,12 @@ async function inferStringType(value: any, key?: string, agent?: Agent) {
     } else if (isBase64(value) || isBase64DataUrl(value)) {
         // If the value is a base64 string then return the value as it is
         return value;
-    } /*else if (isSmythFileObject(value) || isBuffer(value) || isBinaryData(value)) {
-        const file = new SmythFile(value);
-        const base64Obj = await file.toBase64Object();
-        return `data:${base64Obj.mimetype};base64,${base64Obj.base64}`;
-    }*/ else if (typeof value === 'object' || Array.isArray(value)) {
+    } else if (isSmythFileObject(value)) {
+        const file = await _createBinaryInput(value, key, agent);
+        const buffer = await file.getBuffer();
+        const base64 = buffer.toString('base64');
+        return file.mimetype ? `data:${file.mimetype};base64,${base64}` : base64;
+    } else if (typeof value === 'object' || Array.isArray(value)) {
         return JSON.stringify(value);
     } else {
         return String(value);
