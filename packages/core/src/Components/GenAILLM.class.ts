@@ -77,7 +77,9 @@ export default class GenAILLM extends Component {
                         const [requestFeature = ''] =
                             Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
 
-                        fileTypes.add(mimeType);
+                        if (mimeType) {
+                            fileTypes.add(mimeType);
+                        }
 
                         return features?.includes(requestFeature) ? file : null;
                     })
