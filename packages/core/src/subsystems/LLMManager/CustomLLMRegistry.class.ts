@@ -69,6 +69,12 @@ export class CustomLLMRegistry {
         return Math.min(maxTokens, modelInfo?.completionTokens || modelInfo?.tokens);
     }
 
+    public adjustMaxThinkingTokens(maxTokens: number, maxThinkingTokens: number): number {
+        // Limit the thinking tokens to 80% of the max tokens, (thinking tokens must be less than max tokens)
+        const validMaxThinkingTokens = Math.min(maxTokens * 0.8, maxThinkingTokens);
+        return Math.min(validMaxThinkingTokens, maxThinkingTokens);
+    }
+
     private async getCustomModels(teamId: string): Promise<Record<string, any>> {
         const models = {};
         const settingsKey = 'custom-llm';

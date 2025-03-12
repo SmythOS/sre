@@ -301,6 +301,6 @@ export class LocalStorage extends StorageConnector {
                 deserializedMetadata[key] = metadata[key];
             }
         }
-        return metadata;
+        return deserializedMetadata;
     }
 }

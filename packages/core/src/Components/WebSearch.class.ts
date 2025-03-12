@@ -36,7 +36,7 @@ export default class WebSearch extends Component {
                     api_key: SREConfig.env.TAVILY_API_KEY,
                     query: searchQuery,
                     topic: config.data.searchTopic,
-                    exclude_domains: config.data.excludeDomains?.split(','),
+                    exclude_domains: config.data.excludeDomains?.length ? config.data.excludeDomains.split(',') : [],
                     max_results: config.data.sourcesLimit,
                     ...(config.data.timeRange !== 'None' ? { time_range: config.data.timeRange } : {}),
                     ...(config.data.includeImages ? { include_images: true } : {}),
