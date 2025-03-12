@@ -141,12 +141,18 @@ export class SmythAccount extends AccountConnector {
         };
     }
 
-    public async getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string> {
+    public async getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<KeyValueObject> {
         try {
-            const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings/${settingKey}`, {
+            // TODO: use following endpoint when Ahmed make it available
+            // const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings/${settingKey}`, {
+            //     headers: await this.getSmythRequestHeaders(),
+            // });
+
+            const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings/`, {
                 headers: await this.getSmythRequestHeaders(),
             });
-            return response?.data?.setting?.settingValue || null;
+            const setting = response?.data?.settings?.find((setting: KeyValueObject) => setting?.key === settingKey) || null;
+            return JSON.parse(setting?.value || '{}');
         } catch (error) {
             return null;
         }

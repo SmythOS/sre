@@ -36,7 +36,7 @@ export class DummyAccount extends AccountConnector {
     public getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string> {
         throw new Error('getUserSetting Method not implemented.');
     }
-    public getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string> {
+    public getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<KeyValueObject> {
         throw new Error('getAgentSetting Method not implemented.');
     }
 }
