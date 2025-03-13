@@ -121,10 +121,10 @@ export const models = {
   'smythos/gemini-2.0-flash': {
     llm: 'GoogleAI',
 
-    label: 'Gemini 2.0 Flash Experimental',
-    modelId: 'gemini-2.0-flash-exp',
+    label: 'Gemini 2.0 Flash',
+    modelId: 'gemini-2.0-flash',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['SmythOS'],
     tokens: 1_048_576,
     completionTokens: 8_192,
@@ -136,7 +136,7 @@ export const models = {
     label: 'Gemini 1.5 Pro',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['SmythOS'],
     tokens: 2_097_152,
     completionTokens: 8_192,
@@ -263,6 +263,19 @@ export const models = {
   // #region OpenAI Models ==========================
 
   // #region GPT 4o
+  'gpt-4.5-preview': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.5 Preview',
+    modelId: 'gpt-4.5-preview',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
   'gpt-4o': {
     llm: 'OpenAI',
     alias: 'gpt-4o-2024-08-06',
@@ -337,7 +350,7 @@ export const models = {
     modelId: 'o3-mini-2025-01-31',
     provider: 'OpenAI',
     features: ['text'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -832,11 +845,24 @@ export const models = {
     llm: 'GoogleAI',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
 
-    label: 'Gemini 2.0 Flash Experimental',
-    modelId: 'gemini-2.0-flash-exp',
+    label: 'Gemini 2.0 Flash',
+    modelId: 'gemini-2.0-flash',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+  },
+  'gemini-2.0-flash-lite': {
+    llm: 'GoogleAI',
+
+    label: 'Gemini 2.0 Flash Lite',
+    modelId: 'gemini-2.0-flash-lite',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -852,7 +878,7 @@ export const models = {
     label: 'Gemini 1.5 Pro Experimental',
     modelId: 'gemini-1.5-pro-exp-0801',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['Personal', 'legacy'],
     tokens: 0,
     completionTokens: 0,
@@ -868,7 +894,7 @@ export const models = {
     label: 'Gemini 1.5 Pro Latest Stable',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -897,7 +923,7 @@ export const models = {
     label: 'Gemini 1.5 Pro Stable',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
-    features: ['text', 'tools', 'image', 'audio', 'video', 'document'],
+    features: ['text', 'image', 'audio', 'video', 'document'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -1211,6 +1237,71 @@ export const models = {
   // #endregion Groq - Production Models
 
   // #region Groq - Preview Models
+  'qwen-qwq-32b': {
+    llm: 'Groq',
+
+    label: 'Qwen - QWQ 32b Preview',
+    modelId: 'qwen-qwq-32b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
+  'mistral-saba-24b': {
+    llm: 'Groq',
+
+    label: 'Mistral - Saba 24b Preview',
+    modelId: 'mistral-saba-24b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
+  'qwen-2.5-coder-32b': {
+    llm: 'Groq',
+
+    label: 'Qwen - 2.5 Coder 32b Preview',
+    modelId: 'qwen-2.5-coder-32b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
+  'qwen-2.5-32b': {
+    llm: 'Groq',
+
+    label: 'Qwen - 2.5 32b Preview',
+    modelId: 'qwen-2.5-32b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
+  'deepseek-r1-distill-qwen-32b': {
+    llm: 'Groq',
+
+    label: 'DeepSeek - R1 Distill Qwen 32b Preview',
+    modelId: 'deepseek-r1-distill-qwen-32b',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
+  },
   'deepseek-r1-distill-llama-70b': {
     llm: 'Groq',
 
@@ -1218,7 +1309,7 @@ export const models = {
     modelId: 'deepseek-r1-distill-llama-70b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1231,7 +1322,7 @@ export const models = {
     modelId: 'llama-3.3-70b-specdec',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1245,7 +1336,7 @@ export const models = {
     modelId: 'llama-3.2-1b-preview',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1259,7 +1350,7 @@ export const models = {
     modelId: 'llama-3.2-3b-preview',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1273,11 +1364,12 @@ export const models = {
     modelId: 'llama-3.2-11b-vision-preview',
     provider: 'Groq',
     features: ['text', 'image'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+    hidden: true, // !TEMP: we need to support image input for Groq
   },
   'llama-3.2-90b-vision-preview': {
     llm: 'Groq',
@@ -1286,11 +1378,12 @@ export const models = {
     modelId: 'llama-3.2-90b-vision-preview',
     provider: 'Groq',
     features: ['text', 'image'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+    hidden: true, // !TEMP: we need to support image input for Groq
   },
   // #endregion Groq - Preview Models
 
@@ -1299,6 +1392,51 @@ export const models = {
   // #region Together AI Models ==========================
 
   // #region Together AI - DeepSeek
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Qwen 14B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Qwen 1.5B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'deepseek-ai/DeepSeek-R1-Distill-Llama-70B': {
+    llm: 'TogetherAI',
+
+    label: 'DeepSeek - R1 Distill Llama 70B',
+    modelId: 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B',
+    provider: 'TogetherAI',
+    features: ['text'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
   'deepseek-ai/DeepSeek-R1': {
     llm: 'TogetherAI',
 
@@ -1306,11 +1444,11 @@ export const models = {
     modelId: 'deepseek-ai/DeepSeek-R1',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 163_840, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
@@ -1321,7 +1459,7 @@ export const models = {
     modelId: 'deepseek-ai/DeepSeek-V3',
     provider: 'TogetherAI',
     features: ['text'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1355,7 +1493,7 @@ export const models = {
     modelId: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
     provider: 'TogetherAI',
     features: ['text', 'tools'],
-    tags: ['New', 'Personal', 'TogetherAI'],
+    tags: ['Personal', 'TogetherAI'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1954,7 +2092,7 @@ export const models = {
 
   // #region Runware Models
   'smythos/flux.1-schnell': {
-    label: 'FLUX.1 (Schnell)',
+    label: 'FLUX Schnell',
     modelId: 'runware:100@1',
     provider: 'Runware',
     features: [
@@ -1962,11 +2100,11 @@ export const models = {
       'text-to-image',
       'image-to-image',
     ],
-    tags: ['SmythOS'],
+    tags: ['SmythOS', '1.0'],
     enabled: true,
   },
   'smythos/flux.1-dev': {
-    label: 'FLUX.1 (Dev)',
+    label: 'FLUX Dev',
     modelId: 'runware:101@1',
     provider: 'Runware',
     features: [
@@ -1974,7 +2112,7 @@ export const models = {
       'text-to-image',
       'image-to-image',
     ],
-    tags: ['SmythOS'],
+    tags: ['SmythOS', '1.0'],
     enabled: true,
   },
   // #region Full face detection models
