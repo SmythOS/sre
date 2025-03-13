@@ -187,7 +187,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 128_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -201,7 +201,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
-    completionTokens: 200_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -215,7 +215,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 128_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
