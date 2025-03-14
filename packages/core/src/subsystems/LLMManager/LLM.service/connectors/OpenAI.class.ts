@@ -27,8 +27,17 @@ import SystemEvents from '@sre/Core/SystemEvents';
 
 const console = Logger('OpenAIConnector');
 
-const MODELS_WITH_JSON_RESPONSE = ['gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const reasoningModels = ['o3-mini', 'o3-mini-2025-01-31', 'o1', 'o1-mini', 'o1-preview', 'o1-2024-12-17', 'o1-mini-2024-09-12', 'o1-preview-2024-09-12'];
+const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+const reasoningModels = [
+    'o3-mini',
+    'o3-mini-2025-01-31',
+    'o1',
+    'o1-mini',
+    'o1-preview',
+    'o1-2024-12-17',
+    'o1-mini-2024-09-12',
+    'o1-preview-2024-09-12',
+];
 
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
@@ -151,6 +160,8 @@ export class OpenAIConnector extends LLMConnector {
 
             if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
                 params.responseFormat = { type: 'json_object' };
+            } else {
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
         //#endregion Handle JSON response format
@@ -235,6 +246,8 @@ export class OpenAIConnector extends LLMConnector {
 
             if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
                 params.responseFormat = { type: 'json_object' };
+            } else {
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
         //#endregion Handle JSON response format
@@ -638,6 +651,8 @@ export class OpenAIConnector extends LLMConnector {
 
             if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
                 params.responseFormat = { type: 'json_object' };
+            } else {
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
             }
         }
         //#endregion Handle JSON response format

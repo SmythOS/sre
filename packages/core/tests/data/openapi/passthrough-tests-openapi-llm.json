@@ -1,0 +1,55 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Regression - Code Comp",
+    "description": "",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://cm3zi85920fxmodn27zej75no.agent.stage.smyth.ai"
+    }
+  ],
+  "paths": {
+    "/api/passthrough_story": {
+      "post": {
+        "summary": "{{summary}}",
+        "operationId": "passthrough_story",
+        "x-openai-isConsequential": false,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "first_name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {}
+  }
+}

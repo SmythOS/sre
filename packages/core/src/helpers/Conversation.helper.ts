@@ -403,7 +403,15 @@ export class Conversation extends EventEmitter {
             this.emit('data', data);
         });
 
+        eventEmitter.on('thinking', (thinking) => {
+            this.emit('thinking', thinking);
+        });
+
         eventEmitter.on('content', (content) => {
+            // if (toolHeaders['x-passthrough']) {
+            //     console.log('Passthrough skiped content ', content);
+            //     return;
+            // }
             _content += content;
             //console.log('content', content);
             this.emit('content', content);
@@ -412,18 +420,33 @@ export class Conversation extends EventEmitter {
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
             let hasError = false;
+            let passThroughContent = '';
+
             eventEmitter.on('error', (error) => {
                 hasError = true;
                 reject(error);
             });
 
-            eventEmitter.on('toolsData', async (toolsData) => {
+            eventEmitter.on('toolsData', async (toolsData, thinkingBlocks = []) => {
                 hasTools = true;
                 let llmMessage: any = {
                     role: 'assistant',
                     content: _content,
                     tool_calls: [],
                 };
+
+                if (thinkingBlocks?.length > 0) {
+                    this.emit(
+                        'thoughtProcess',
+                        thinkingBlocks
+                            .filter((block) => block.type === 'thinking')
+                            .map((block) => block.thinking || '')
+                            .join('\n')
+                    );
+
+                    llmMessage.thinkingBlocks = thinkingBlocks;
+                }
+
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
                         id: tool.id,
@@ -439,13 +462,16 @@ export class Conversation extends EventEmitter {
 
                 this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
 
-                let passThroughContent = '';
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
                     if (typeof data !== 'string') return;
                     passThroughContent += data;
                     //this is currently used to handle agent callbacks when running local agents
-                    this.emit('agentCallback', data);
+                    //this.emit('agentCallback', data);
+
+                    //this.emit('content', data);
+                    this.emit('content', data);
+                    //eventEmitter.emit('content', data);
                 };
 
                 const toolProcessingTasks = toolsData.map(
@@ -493,16 +519,33 @@ export class Conversation extends EventEmitter {
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
 
+                //if (!passThroughContent) {
+
                 if (!passThroughContent) {
                     this._context.addToolMessage(llmMessage, processedToolsData, message_id);
-
-                    this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                    //delete toolHeaders['x-passthrough'];
                 } else {
-                    //TODO : add passthrough content to the context window ??
-
-                    //if passThroughContent is not empty, it means that the current agent streamed content through components
-                    resolve(passThroughContent);
+                    //this._context.addAssistantMessage(passThroughContent, message_id);
+                    llmMessage.content += '\n' + passThroughContent;
+                    this._context.addToolMessage(llmMessage, processedToolsData, message_id);
+                    //this should not be stored in the persistent conversation store
+                    //it's just a workaround to avoid generating more content after passthrough content
+                    this._context.addUserMessage(
+                        'Continue with the next tool call of there are any, or just inform the user that you are done',
+                        message_id,
+                        { internal: true }
+                    );
+                    //toolHeaders['x-passthrough'] = 'true';
                 }
+
+                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+
+                //} else {
+                //TODO : add passthrough content to the context window ??
+
+                //if passThroughContent is not empty, it means that the current agent streamed content through components
+                //resolve(passThroughContent);
+                //}
                 //const result = await resolve(await this.streamPrompt(null, toolHeaders, concurrentToolCalls));
                 //console.log('Result after tool call: ', result);
             });
@@ -514,7 +557,7 @@ export class Conversation extends EventEmitter {
                 }
                 if (hasError) return;
 
-                if (!hasTools) {
+                if (!hasTools || passThroughContent) {
                     //console.log(' ===> resolved content no tool', _content);
                     //this._context.push({ role: 'assistant', content: _content });
                     this._context.addAssistantMessage(_content, message_id);
@@ -624,14 +667,22 @@ export class Conversation extends EventEmitter {
 
                 console.debug('Calling tool: ', reqConfig);
 
+                /*
+                 * Objective for the following conditions:
+                 * - In case it is not a debug call and there is no monitor id, then we need to run the agent locally to reduce latency
+                 * - but if it a debug call, we need to forward req to sre-builder-debugger since it holds the debug promises
+                 * - or if there is a monitor id, we need to forward req to sre-builder-debugger since it holds the monitor SSE connections.
+                 * So the objecive is mainly reducing latency when possible
+                 */
                 //TODO : implement a timeout for the tool call
                 if (
                     reqConfig.url.includes('localhost') ||
-                    (reqConfig.headers['X-AGENT-ID'] && !reqConfig.headers['X-DEBUG'])
+                    (reqConfig.headers['X-AGENT-ID'] && !reqConfig.headers['X-DEBUG'] && !reqConfig.headers['X-MONITOR-ID'])
                     //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
                 ) {
+                    console.log('RUNNING AGENT LOCALLY');
                     let agentProcess;
                     if (this.agentData === this._specSource) {
                         //the agent was loaded from data
@@ -648,9 +699,12 @@ export class Conversation extends EventEmitter {
                     const response = await agentProcess.run(reqConfig as TAgentProcessParams, agentCallback);
                     return { data: response.data, error: null };
                 } else {
+                    console.log('RUNNING AGENT REMOTELY');
                     let eventSource;
 
-                    if (reqConfig.headers['X-DEBUG'] && reqConfig.headers['X-AGENT-ID']) {
+                    // if debug mode is on OR the user attached a monitor to the call, then we need to attach a monitor to the agent call
+                    if ((reqConfig.headers['X-DEBUG'] && reqConfig.headers['X-AGENT-ID']) || reqConfig.headers['X-MONITOR-ID']) {
+                        console.log('ATTACHING MONITOR TO REMOTE AGENT CALL');
                         const monitUrl = reqConfig.url.split('/api')[0] + '/agent/' + reqConfig.headers['X-AGENT-ID'] + '/monitor';
 
                         // Create custom fetch implementation that includes our headers
@@ -672,7 +726,12 @@ export class Conversation extends EventEmitter {
                         eventSource.addEventListener('init', (event) => {
                             monitorId = event.data;
                             console.log('monitorId', monitorId);
-                            reqConfig.headers['X-MONITOR-ID'] = monitorId;
+                            if (reqConfig.headers['X-MONITOR-ID']) {
+                                // an external monitor was sent, so we do not override it
+                                reqConfig.headers['X-MONITOR-ID'] = `${reqConfig.headers['X-MONITOR-ID']},${monitorId}`;
+                            } else {
+                                reqConfig.headers['X-MONITOR-ID'] = monitorId;
+                            }
                         });
                         eventSource.addEventListener('llm/passthrough', (event: any) => {
                             if (params.agentCallback) params.agentCallback(event.data);

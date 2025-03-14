@@ -5,7 +5,6 @@ import AgentRequest from './AgentRequest.class';
 import AgentRuntime from './AgentRuntime.class';
 import AgentSettings from './AgentSettings.class';
 import OSResourceMonitor from './OSResourceMonitor';
-
 import config from '@sre/config';
 import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
@@ -122,11 +121,14 @@ export default class Agent {
         //this.settings = new AgentSettings(this.id);
     }
 
-    public setSSE(sseSource: Response | AgentSSE) {
+    public addSSE(sseSource: Response | AgentSSE, monitorId?: string) {
         if (sseSource instanceof AgentSSE) {
-            this.sse = sseSource;
+            for (const [monitorId, res] of sseSource) {
+                this.sse.add(res, monitorId); // add each connection to the new sse
+            }
         } else {
-            this.sse.updateRes(sseSource);
+            const id = monitorId || Math.random().toString(36).substring(2, 15);
+            this.sse.add(sseSource, id);
         }
     }
     public setRequest(agentRequest: AgentRequest | any) {

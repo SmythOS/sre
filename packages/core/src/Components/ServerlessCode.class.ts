@@ -22,8 +22,8 @@ const PER_REQUEST_COST = '0.0000002';
 const PER_SECOND_COST = '0.0000166667';
 
 export default class ServerlessCode extends Component {
-    private cachePrefix: string = 'serverless_code';
-    private cacheTTL: number = 60 * 60 * 24 * 16; // 16 days
+    cachePrefix = 'serverless_code';
+    cacheTTL = 60 * 60 * 24 * 15; // 15 days
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
@@ -138,7 +138,7 @@ export default class ServerlessCode extends Component {
     async invokeLambdaFunction(
         functionName: string,
         inputs: { [key: string]: any },
-        awsCredentials: AWSCredentials):
+        awsCredentials: { accessKeyId: string, secretAccessKey: string, region: string }):
         Promise<any> {
         try {
             const client = new LambdaClient({
