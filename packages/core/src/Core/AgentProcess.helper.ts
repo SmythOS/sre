@@ -227,6 +227,7 @@ export class AgentProcess {
         let request: AgentRequest = this.parseReqConfig(reqConfig);
 
         this.agent.setRequest(request);
+        await this.agent.agentRuntime.ready();
 
         return this.agent.agentRuntime.readState(stateId, true);
     }

@@ -1,5 +1,5 @@
 import Component from '@sre/Components/Component.class';
-import componentInstance from '@sre/Components/index';
+import builtinComponents from '@sre/Components/index';
 import AgentLogger from './AgentLogger.class';
 import AgentRequest from './AgentRequest.class';
 import AgentRuntime from './AgentRuntime.class';
@@ -11,9 +11,11 @@ import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import AgentSSE from './AgentSSE.class';
+import { AccessCandidate, ConnectorService, SystemEvents } from '@sre/index';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
+
 export default class Agent {
     public name: any;
     public data: any;
@@ -44,6 +46,8 @@ export default class Agent {
 
     public agentRequest: AgentRequest;
     public sse: AgentSSE;
+
+    private _componentInstance = { ...builtinComponents };
     constructor(
         public id,
         agentData,
@@ -119,6 +123,20 @@ export default class Agent {
 
         this.sse = new AgentSSE(this);
         //this.settings = new AgentSettings(this.id);
+
+        try {
+            //add hosted components to the available instances
+            //hosted components are custom components that are specific to some SRE instances implementations : e.g Shell component is only available to local SRE
+            const componentConnector = ConnectorService.getComponentConnector();
+            componentConnector
+                .user(AccessCandidate.agent(id))
+                .getAll()
+                .then((customComponents) => {
+                    this._componentInstance = { ...this._componentInstance, ...customComponents };
+                });
+        } catch (error) {
+            console.warn('Could not load custom components');
+        }
     }
 
     public addSSE(sseSource: Response | AgentSSE, monitorId?: string) {
@@ -172,6 +190,8 @@ export default class Agent {
     }
 
     async process(endpointPath, input) {
+        await this.agentRuntime.ready();
+
         //TODO: replace endpointPath + input params with a single agentRequest object. (This will require intensive regression testing)
         let result: any;
         let dbgSession: any = null;
@@ -345,7 +365,7 @@ export default class Agent {
             if (_result._debug_time) delete _result._debug_time;
             const _componentData = this.components[_result.id];
             if (!_componentData) continue;
-            const _component: Component = componentInstance[_componentData.name];
+            const _component: Component = this._componentInstance[_componentData.name];
             if (!_component) continue;
             //if (_component.hasPostProcess) {
             const postProcessResult = await _component.postProcess(_result, _componentData, this).catch((error) => ({ error }));
@@ -402,7 +422,7 @@ export default class Agent {
     private getComponentMissingInputs(componentId, _input) {
         let missingInputs: any = [];
         const componentData = this.components[componentId];
-        const component: Component = componentInstance[componentData.name];
+        const component: Component = this._componentInstance[componentData.name];
         if (component.alwaysActive) return missingInputs;
 
         const readablePredecessors = this.findReadablePredecessors(componentId);
@@ -439,13 +459,13 @@ export default class Agent {
 
     public findReadablePredecessors(componentId) {
         const componentData = this.components[componentId];
-        const component: Component = componentInstance[componentData.name];
+        const component: Component = this._componentInstance[componentData.name];
 
         const connections = this.connections.filter((c) => c.targetId == componentId);
         const readablePredecessors = connections.map((c) => {
             //this.components[c.sourceId])
             const sourceComponentData = this.components[c.sourceId];
-            const sourceComponent: Component = componentInstance[sourceComponentData.name];
+            const sourceComponent: Component = this._componentInstance[sourceComponentData.name];
             const output = sourceComponentData.outputs[c.sourceIndex];
             const input = componentData.inputs[c.targetIndex];
             if (sourceComponent.hasReadOutput) {
@@ -482,7 +502,7 @@ export default class Agent {
         const startTime = Date.now();
         const agentRuntime = this.agentRuntime;
         const componentData = this.components[componentId];
-        const component: Component = componentInstance[componentData.name];
+        const component: Component = this._componentInstance[componentData.name];
 
         const eventId = 'e-' + uid();
 
@@ -801,7 +821,7 @@ export default class Agent {
         //agentRuntime.incStep();
 
         const componentData = this.components[componentId];
-        const component: Component = componentInstance[componentData.name];
+        const component: Component = this._componentInstance[componentData.name];
 
         //if (component.hasReadOutput) return [];
 
@@ -821,7 +841,7 @@ export default class Agent {
                 const output = {};
                 const waitingComponent = waitingComponents.find((e) => e.id == c.targetId);
                 const prevComponentData = this.components[c.sourceId];
-                const prevComponent: Component = componentInstance[prevComponentData.name];
+                const prevComponent: Component = this._componentInstance[prevComponentData.name];
                 const outputEndpoint = prevComponentData.outputs[c.sourceIndex];
                 output[outputEndpoint.name] = prevComponent.readOutput(outputEndpoint.name, prevComponentData, this);
 
@@ -852,7 +872,7 @@ export default class Agent {
             //Note : we exclude Async component from this rule because it's the one that initiates the async job
             if (!this.async && targetComponentData.async && targetComponentData.name !== 'Async') continue;
 
-            const targetComponent: Component = componentInstance[targetComponentData.name];
+            const targetComponent: Component = this._componentInstance[targetComponentData.name];
             const connections = targetComponents[targetId];
 
             let _isErrorHandler = false;

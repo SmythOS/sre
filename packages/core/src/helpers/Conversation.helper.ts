@@ -879,7 +879,7 @@ export class Conversation extends EventEmitter {
                 return this.patchSpec(specSource);
             }
             //is this a valid agent data?
-            if (specSource?.behavior && specSource?.components && specSource?.connections) {
+            if (typeof specSource?.behavior === 'string' && specSource?.components && specSource?.connections) {
                 this.agentData = specSource; //agent loaded from data directly
                 return await this.loadSpecFromAgent(specSource);
             }
