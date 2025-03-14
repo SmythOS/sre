@@ -464,13 +464,32 @@ export class Conversation extends EventEmitter {
 
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
-                    if (typeof data !== 'string') return;
-                    passThroughContent += data;
+                    //if (typeof data !== 'string') return;
+                    let content = '';
+                    let thinking = '';
+                    if (typeof data === 'object') {
+                        if (data.content) {
+                            content = data.content;
+                            passThroughContent += content;
+                            this.emit('content', content);
+                        }
+                        if (data.thinking) {
+                            thinking = data.thinking;
+                            this.emit('thinking', thinking);
+                        }
+                        return;
+                    }
+                    if (typeof data === 'string') {
+                        passThroughContent += data;
+                        this.emit('content', data);
+                    }
+
+                    //passThroughContent += data;
                     //this is currently used to handle agent callbacks when running local agents
                     //this.emit('agentCallback', data);
 
                     //this.emit('content', data);
-                    this.emit('content', data);
+                    //this.emit('content', data);
                     //eventEmitter.emit('content', data);
                 };
 
@@ -531,7 +550,7 @@ export class Conversation extends EventEmitter {
                     //this should not be stored in the persistent conversation store
                     //it's just a workaround to avoid generating more content after passthrough content
                     this._context.addUserMessage(
-                        'Continue with the next tool call of there are any, or just inform the user that you are done',
+                        'Continue with the next tool call if there are any, or just inform the user that you are done',
                         message_id,
                         { internal: true }
                     );
@@ -733,8 +752,11 @@ export class Conversation extends EventEmitter {
                                 reqConfig.headers['X-MONITOR-ID'] = monitorId;
                             }
                         });
-                        eventSource.addEventListener('llm/passthrough', (event: any) => {
-                            if (params.agentCallback) params.agentCallback(event.data);
+                        eventSource.addEventListener('llm/passthrough/content', (event: any) => {
+                            if (params.agentCallback) params.agentCallback({ content: event.data });
+                        });
+                        eventSource.addEventListener('llm/passthrough/thinking', (event: any) => {
+                            if (params.agentCallback) params.agentCallback({ thinking: event.data });
                         });
 
                         await new Promise((resolve) => {
