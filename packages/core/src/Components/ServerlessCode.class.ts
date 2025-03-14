@@ -8,22 +8,19 @@ import SREConfig from '@sre/config';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-// import zipFolder from 'zip-folder';
 import { CreateRoleCommand, GetRoleCommand, IAMClient } from '@aws-sdk/client-iam';
 import zl from 'zip-lib';
 import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
-import axios from 'axios';
 import SystemEvents from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
 const PER_REQUEST_COST = '0.0000002';
 const PER_SECOND_COST = '0.0000166667';
 
 export default class ServerlessCode extends Component {
-    cachePrefix = 'serverless_code';
-    cacheTTL = 60 * 60 * 24 * 15; // 15 days
+    private cachePrefix: string = 'serverless_code';
+    private cacheTTL: number = 60 * 60 * 24 * 16; // 16 days
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
