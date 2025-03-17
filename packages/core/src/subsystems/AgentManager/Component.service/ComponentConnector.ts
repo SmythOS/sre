@@ -7,12 +7,14 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 export interface IComponentRequest {
     register(componentName: string, componentInstance: any): Promise<void>;
     get(componentName: string): Promise<any>;
+    getAll(): Promise<any>;
 }
 
 export abstract class ComponentConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     protected abstract register(acRequest: AccessRequest, componentName: string, componentInstance: any): Promise<void>;
     protected abstract get(acRequest: AccessRequest, componentName: string): Promise<any>;
+    protected abstract getAll(acRequest: AccessRequest): Promise<any>;
 
     public user(candidate: AccessCandidate): IComponentRequest {
         return {
@@ -21,6 +23,9 @@ export abstract class ComponentConnector extends SecureConnector {
             },
             get: async (componentName: string) => {
                 return await this.get(candidate.readRequest, componentName);
+            },
+            getAll: async () => {
+                return await this.getAll(candidate.readRequest);
             },
         } as IComponentRequest;
     }
