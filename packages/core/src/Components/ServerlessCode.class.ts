@@ -16,7 +16,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import SystemEvents from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
 const PER_REQUEST_COST = '0.0000002';
-const PER_SECOND_MEMORY_COST = '0.00000208375';
+const PER_SECOND_MEMORY_COST = '0.0000041675';
 const PER_SECOND_STORAGE_COST = '0.00000001545';
 
 export default class ServerlessCode extends Component {
