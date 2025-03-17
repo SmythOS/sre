@@ -354,7 +354,8 @@ export default class ServerlessCode extends Component {
                     Timeout: 900,
                     Tags: {
                         'auto-delete': 'true'
-                    }
+                    },
+                    MemorySize: 256
                 };
 
                 const functionCreateCommand = new CreateFunctionCommand(functionParams)
