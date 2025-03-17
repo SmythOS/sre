@@ -164,6 +164,10 @@ export default class AgentRuntime {
         //console.debug(`New Agent Runtime initialized for agentId=${this.agent.id}  tag=${this.reqTag} debug file=${this.ctxFile}`);
     }
 
+    public async ready() {
+        return this.agentContext.ready();
+    }
+
     public destroy() {
         this.sessionClosed = true;
         this.sync();

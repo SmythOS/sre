@@ -27,6 +27,11 @@ export class LocalComponentConnector extends ComponentConnector {
         return this.components[componentName];
     }
 
+    @SecureConnector.AccessControl
+    protected async getAll(acRequest: AccessRequest) {
+        return this.components;
+    }
+
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
         const accountConnector = ConnectorService.getAccountConnector();
 
