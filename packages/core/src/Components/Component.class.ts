@@ -12,9 +12,19 @@ export default class Component {
     constructor() {}
     init() {}
 
-    createComponentLogger(agent: Agent, name: string) {
-        const logger = Logger(name || this.constructor.name, agent?.agentRuntime?.debug);
+    createComponentLogger(agent: Agent, config: any) {
+        const logger = Logger(config.name || this.constructor.name, agent?.agentRuntime?.debug);
 
+        logger.on('logged', (info: { level: string; message: string }) => {
+            if (agent.sse && config.eventId) {
+                agent.sse.send('component', {
+                    eventId: config.eventId,
+                    action: 'log',
+                    name: config.name || this.constructor.name,
+                    logs: [{ level: info.level, message: info.message }],
+                });
+            }
+        });
         return logger;
     }
 
