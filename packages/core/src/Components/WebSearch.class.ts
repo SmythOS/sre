@@ -22,7 +22,7 @@ export default class WebSearch extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== Web Scrape Log ===`);
             let Output: any = {};

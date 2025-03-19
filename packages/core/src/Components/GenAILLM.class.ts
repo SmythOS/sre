@@ -35,7 +35,7 @@ export default class GenAILLM extends Component {
         await super.process(input, config, agent);
 
         //let debugLog = agent.agentRuntime?.debug ? [] : undefined;
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         try {
             logger.debug(`=== LLM Prompt Log ===`);
