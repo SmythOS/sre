@@ -420,7 +420,7 @@ export default class ServerlessCode extends Component {
             })
     }
 
-    private generateCodeHash(code_body: string, code_imports: string, codeInputs: { [key: string]: any }) {
+    private generateCodeHash(code_body: string, code_imports: string, codeInputs: string[]) {
         const importsHash = this.getSanitizeCodeHash(code_imports);
         const bodyHash = this.getSanitizeCodeHash(code_body);
         const inputsHash = this.getSanitizeCodeHash(JSON.stringify(codeInputs));
