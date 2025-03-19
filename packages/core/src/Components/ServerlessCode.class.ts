@@ -65,20 +65,21 @@ export default class ServerlessCode extends Component {
                 secretAccessKey: awsSecretAccessKey,
                 region: awsRegion
             }
+            const componentInputs = agent.components[config.id]?.inputs || {};
 
             let codeInputs = {};
-            for (let fieldName in input) {
-                const _type = typeof input[fieldName];
+            for (let field of componentInputs) {
+                const _type = typeof input[field.name];
                 switch (_type) {
                     case 'string':
-                        codeInputs[fieldName] = `${input[fieldName]}`;
+                        codeInputs[field.name] = `${input[field.name]}`;
                         break;
                     case 'number':
                     case 'boolean':
-                        codeInputs[fieldName] = input[fieldName];
+                        codeInputs[field.name] = input[field.name];
                         break;
                     default:
-                        codeInputs[fieldName] = input[fieldName];
+                        codeInputs[field.name] = input[field.name];
                         break;
                 }
             }
@@ -89,7 +90,7 @@ export default class ServerlessCode extends Component {
                 this.getDeployedFunction(functionName, awsCredentials),
                 this.getDeployedCodeHash(agent.id, config.id)
             ]);
-            const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports);
+            const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports, Object.keys(codeInputs));
 
             if (!isLambdaExists || exisitingCodeHash !== codeHash) {
                 // Deploy lambda function
@@ -206,7 +207,7 @@ export default class ServerlessCode extends Component {
         }
         const folderName = this.getLambdaFunctionName(agentId, componentId);
         const directory = `${baseFolder}/${folderName}__${Date.now()}`;
-        const codeHash = this.generateCodeHash(code_body, code_imports);
+        const codeHash = this.generateCodeHash(code_body, code_imports, input_variables);
         try {
             const libraries = this.extractNpmImports(code_imports);
 
@@ -419,10 +420,11 @@ export default class ServerlessCode extends Component {
             })
     }
 
-    private generateCodeHash(code_body: string, code_imports: string) {
+    private generateCodeHash(code_body: string, code_imports: string, codeInputs: string[]) {
         const importsHash = this.getSanitizeCodeHash(code_imports);
         const bodyHash = this.getSanitizeCodeHash(code_body);
-        return `imports-${importsHash}__body-${bodyHash}`;
+        const inputsHash = this.getSanitizeCodeHash(JSON.stringify(codeInputs));
+        return `imports-${importsHash}__body-${bodyHash}__inputs-${inputsHash}`;
     }
 
     private getSanitizeCodeHash(code: string) {
