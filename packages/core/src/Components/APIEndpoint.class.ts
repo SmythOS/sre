@@ -57,7 +57,7 @@ export default class APIEndpoint extends Component {
         await super.process(input, config, agent);
 
         const req: AgentRequest = agent.agentRequest;
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         const headers = req ? req.headers : {};
         let body = req ? req.body : input; //handle debugger injection
@@ -195,31 +195,33 @@ export default class APIEndpoint extends Component {
             logger.debug('Parsing file input ', fieldname);
 
             let binaryInputs = body[fieldname];
-            
+
             // Ensure we're working with an array
             if (!Array.isArray(binaryInputs)) {
                 binaryInputs = [binaryInputs];
             }
 
             // Process each binary input
-            const processedInputs = await Promise.all(binaryInputs.map(async (binaryInput) => {
-                if (!(binaryInput instanceof BinaryInput)) {
-                    // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
-                    if (req.files?.length > 0) {
-                        const file = req.files.find((file) => file.fieldname === fieldname);
-                        if (!file) return null;
-                        binaryInput = new BinaryInput(file.buffer, uid() + '-' + file.originalname, file.mimetype);
+            const processedInputs = await Promise.all(
+                binaryInputs.map(async (binaryInput) => {
+                    if (!(binaryInput instanceof BinaryInput)) {
+                        // * when data sent with 'multipart/form-data' content type, we expect the files to be in req.files
+                        if (req.files?.length > 0) {
+                            const file = req.files.find((file) => file.fieldname === fieldname);
+                            if (!file) return null;
+                            binaryInput = new BinaryInput(file.buffer, uid() + '-' + file.originalname, file.mimetype);
+                        }
                     }
-                }
 
-                if (binaryInput instanceof BinaryInput) {
-                    return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
-                }
-                return null;
-            }));
+                    if (binaryInput instanceof BinaryInput) {
+                        return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
+                    }
+                    return null;
+                })
+            );
 
             // Filter out null values and handle single/multiple results
-            const validResults = processedInputs.filter(result => result !== null);
+            const validResults = processedInputs.filter((result) => result !== null);
             if (validResults.length > 0) {
                 body[fieldname] = validResults.length === 1 ? validResults[0] : validResults;
             }

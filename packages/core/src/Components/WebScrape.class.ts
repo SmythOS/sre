@@ -18,11 +18,11 @@ export default class WebScrape extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== Web Scrape Log ===`);
             let Output: any = {};
@@ -31,9 +31,17 @@ export default class WebScrape extends Component {
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
 
-            const scrapeResults = await Promise.all(scrapeUrls.map(url => this.scrapeURL(url, config.data)));
-            const results = scrapeResults.filter(result => result.success).map((result) => { return { url: result.url, content: result.content } });
-            const failedResults = scrapeResults.filter(result => !result.success).map((result) => { return { url: result.url, error: result.error } });
+            const scrapeResults = await Promise.all(scrapeUrls.map((url) => this.scrapeURL(url, config.data)));
+            const results = scrapeResults
+                .filter((result) => result.success)
+                .map((result) => {
+                    return { url: result.url, content: result.content };
+                });
+            const failedResults = scrapeResults
+                .filter((result) => !result.success)
+                .map((result) => {
+                    return { url: result.url, error: result.error };
+                });
 
             Output = { Results: results, FailedURLs: failedResults };
             const totalCredits = scrapeResults.reduce((acc, result) => acc + (result.cost || 0), 0);
@@ -126,7 +134,17 @@ export default class WebScrape extends Component {
         }
     }
 
-    protected reportUsage({ urlsScraped, agentId, teamId, totalCredits }: { urlsScraped: number; agentId: string; teamId: string; totalCredits: number }) {
+    protected reportUsage({
+        urlsScraped,
+        agentId,
+        teamId,
+        totalCredits,
+    }: {
+        urlsScraped: number;
+        agentId: string;
+        teamId: string;
+        totalCredits: number;
+    }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:webscrape.smyth',
             requests: urlsScraped,

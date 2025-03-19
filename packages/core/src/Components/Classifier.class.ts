@@ -28,7 +28,7 @@ export default class Classifier extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
         //let debugLog = agent.agentRuntime?.debug ? [] : undefined;
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         const inputCopy = JSON.parse(JSON.stringify(input));
         for (let key in inputCopy) {

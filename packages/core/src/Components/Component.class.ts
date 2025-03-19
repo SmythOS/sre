@@ -21,6 +21,7 @@ export default class Component {
                     eventId: config.eventId,
                     action: 'log',
                     name: config.name || this.constructor.name,
+                    title: config.title,
                     logs: [{ level: info.level, message: info.message }],
                 });
             }
