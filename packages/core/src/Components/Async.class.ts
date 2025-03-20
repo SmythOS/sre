@@ -17,7 +17,7 @@ export default class Async extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         //we set data.forked to true in the forked component in order to refork it again.
         const forked = config.data.forked;
         let _error = null;

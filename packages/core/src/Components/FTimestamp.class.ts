@@ -8,7 +8,7 @@ export default class FTimestamp extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             const _error = undefined;
             const format = config.data.format; //TODO set timestamp format

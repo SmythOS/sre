@@ -26,7 +26,7 @@ export default class RestyleControlNet extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         logger.debug(`=== Restyle (ControlNet) Log ===`);
 

@@ -20,7 +20,7 @@ export default class MultimodalLLM extends Component {
     async process(input, config, agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         logger.debug(`=== Multimodal LLM Log ===`);
 

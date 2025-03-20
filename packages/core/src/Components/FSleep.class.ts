@@ -8,7 +8,7 @@ export default class FSleep extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             const _error = undefined;
             const delay = parseInt(config.data.delay || 1);
