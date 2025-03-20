@@ -14,9 +14,10 @@ import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import SystemEvents from '@sre/Core/SystemEvents';
-type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
+type AWSCredentials = { accessKeyId: string; secretAccessKey: string; region: string };
 const PER_REQUEST_COST = '0.0000002';
-const PER_SECOND_COST = '0.0000166667';
+const PER_SECOND_MEMORY_COST = '0.0000041675';
+const PER_SECOND_STORAGE_COST = '0.00000001545';
 
 export default class ServerlessCode extends Component {
     private cachePrefix: string = 'serverless_code';
@@ -37,11 +38,11 @@ export default class ServerlessCode extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== Serverless Code Log ===`);
             let Output: any = {};
@@ -55,7 +56,7 @@ export default class ServerlessCode extends Component {
                 userProvidedKeys = true;
                 [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
                     VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
-                    VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId)
+                    VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId),
                 ]);
                 awsRegion = config.data.region;
             }
@@ -64,20 +65,21 @@ export default class ServerlessCode extends Component {
                 secretAccessKey: awsSecretAccessKey,
                 region: awsRegion
             }
+            const componentInputs = agent.components[config.id]?.inputs || {};
 
             let codeInputs = {};
-            for (let fieldName in input) {
-                const _type = typeof input[fieldName];
+            for (let field of componentInputs) {
+                const _type = typeof input[field.name];
                 switch (_type) {
                     case 'string':
-                        codeInputs[fieldName] = `${input[fieldName]}`;
+                        codeInputs[field.name] = `${input[field.name]}`;
                         break;
                     case 'number':
                     case 'boolean':
-                        codeInputs[fieldName] = input[fieldName];
+                        codeInputs[field.name] = input[field.name];
                         break;
                     default:
-                        codeInputs[fieldName] = input[fieldName];
+                        codeInputs[field.name] = input[field.name];
                         break;
                 }
             }
@@ -86,20 +88,31 @@ export default class ServerlessCode extends Component {
             const functionName = this.getLambdaFunctionName(agent.id, config.id);
             const [isLambdaExists, exisitingCodeHash] = await Promise.all([
                 this.getDeployedFunction(functionName, awsCredentials),
-                this.getDeployedCodeHash(agent.id, config.id)
+                this.getDeployedCodeHash(agent.id, config.id),
             ]);
-            const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports);
+            const codeHash = this.generateCodeHash(config?.data?.code_body, config?.data?.code_imports, Object.keys(codeInputs));
 
             if (!isLambdaExists || exisitingCodeHash !== codeHash) {
                 // Deploy lambda function
-                await this.deployServerlessCode({ agentId: agent.id, componentId: config.id, code_imports: config?.data?.code_imports, code_body: config?.data?.code_body, input_variables: Object.keys(codeInputs), awsConfigs: awsCredentials });
+                await this.deployServerlessCode({
+                    agentId: agent.id,
+                    componentId: config.id,
+                    code_imports: config?.data?.code_imports,
+                    code_body: config?.data?.code_body,
+                    input_variables: Object.keys(codeInputs),
+                    awsConfigs: awsCredentials,
+                });
             }
             try {
                 const functionName = `${agent.id}-${config.id}`;
                 const lambdaResponse = JSON.parse(await this.invokeLambdaFunction(functionName, codeInputs, awsCredentials));
                 const executionTime = lambdaResponse.executionTime;
                 await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
-                logger.debug(`Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result}\n`);
+                logger.debug(
+                    `Code result:\n ${
+                        typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
+                    }\n`
+                );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
                 const cost = this.calculateExecutionCost(executionTime);
                 // logger.debug(`Execution cost: $${cost}\n`);
@@ -111,7 +124,6 @@ export default class ServerlessCode extends Component {
                         teamId: agent.teamId,
                     });
                 }
-
             } catch (error: any) {
                 logger.error(`Error running code \n${error}\n`);
                 _error = error?.response?.data || error?.message || error.toString();
@@ -135,28 +147,28 @@ export default class ServerlessCode extends Component {
     async invokeLambdaFunction(
         functionName: string,
         inputs: { [key: string]: any },
-        awsCredentials: { accessKeyId: string, secretAccessKey: string, region: string }):
-        Promise<any> {
+        awsCredentials: { accessKeyId: string; secretAccessKey: string; region: string }
+    ): Promise<any> {
         try {
             const client = new LambdaClient({
                 region: awsCredentials.region as string,
                 ...(awsCredentials.accessKeyId && {
                     credentials: {
                         accessKeyId: awsCredentials.accessKeyId as string,
-                        secretAccessKey: awsCredentials.secretAccessKey as string
-                    }
-                })
+                        secretAccessKey: awsCredentials.secretAccessKey as string,
+                    },
+                }),
             });
 
             const invokeCommand = new InvokeCommand({
                 FunctionName: functionName,
                 Payload: new TextEncoder().encode(`${JSON.stringify(inputs)}`),
-                InvocationType: 'RequestResponse'
-            })
+                InvocationType: 'RequestResponse',
+            });
 
-            const response = await client.send(invokeCommand)
+            const response = await client.send(invokeCommand);
             if (response.FunctionError) {
-                throw new Error(new TextDecoder().decode(response.Payload))
+                throw new Error(new TextDecoder().decode(response.Payload));
             }
             return new TextDecoder().decode(response.Payload);
         } catch (error) {
@@ -170,10 +182,10 @@ export default class ServerlessCode extends Component {
                 region: awsConfigs.region,
                 credentials: {
                     accessKeyId: awsConfigs.accessKeyId,
-                    secretAccessKey: awsConfigs.secretAccessKey
-                }
+                    secretAccessKey: awsConfigs.secretAccessKey,
+                },
             });
-            const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName })
+            const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
             const lambdaResponse = await client.send(getFunctionCommand);
             return {
                 status: lambdaResponse.Configuration.LastUpdateStatus,
@@ -191,21 +203,32 @@ export default class ServerlessCode extends Component {
         return `${agentId}-${componentId}`;
     }
 
-    private async deployServerlessCode({ agentId, componentId, code_imports, code_body, input_variables, awsConfigs }:
-        {
-            agentId: string, componentId: string, code_imports: string, code_body: string, input_variables: string[], awsConfigs: {
-                region: string,
-                accessKeyId: string,
-                secretAccessKey: string
-            }
-        }): Promise<boolean> {
+    private async deployServerlessCode({
+        agentId,
+        componentId,
+        code_imports,
+        code_body,
+        input_variables,
+        awsConfigs,
+    }: {
+        agentId: string;
+        componentId: string;
+        code_imports: string;
+        code_body: string;
+        input_variables: string[];
+        awsConfigs: {
+            region: string;
+            accessKeyId: string;
+            secretAccessKey: string;
+        };
+    }): Promise<boolean> {
         const baseFolder = `${process.cwd()}/lambda_archives`;
         if (!fs.existsSync(baseFolder)) {
             fs.mkdirSync(baseFolder);
         }
         const folderName = this.getLambdaFunctionName(agentId, componentId);
         const directory = `${baseFolder}/${folderName}__${Date.now()}`;
-        const codeHash = this.generateCodeHash(code_body, code_imports);
+        const codeHash = this.generateCodeHash(code_body, code_imports, input_variables);
         try {
             const libraries = this.extractNpmImports(code_imports);
 
@@ -220,7 +243,7 @@ export default class ServerlessCode extends Component {
             execSync(`npm install ${libraries.join(' ')}`, { cwd: directory });
 
             const zipFilePath = await this.zipCode(directory);
-            await this.createOrUpdateLambdaFunction(folderName, zipFilePath, awsConfigs)
+            await this.createOrUpdateLambdaFunction(folderName, zipFilePath, awsConfigs);
             await this.setDeployedCodeHash(agentId, componentId, codeHash);
             // console.log('Lambda function updated successfully!');
             return true;
@@ -242,11 +265,11 @@ export default class ServerlessCode extends Component {
 
         // Function to extract the main package name
         function extractPackageName(modulePath: string) {
-            if (modulePath.startsWith("@")) {
+            if (modulePath.startsWith('@')) {
                 // Handle scoped packages (e.g., @babel/core)
-                return modulePath.split("/").slice(0, 2).join("/");
+                return modulePath.split('/').slice(0, 2).join('/');
             }
-            return modulePath.split("/")[0]; // Extract the first part (main package)
+            return modulePath.split('/')[0]; // Extract the first part (main package)
         }
         // Match static ESM imports
         while ((match = importRegex.exec(code)) !== null) {
@@ -263,7 +286,6 @@ export default class ServerlessCode extends Component {
 
         return Array.from(libraries);
     }
-
 
     private generateLambdaCode(code_imports: string, code_body: string, input_variables: string[]) {
         const lambdaCode = `${code_imports}\nexport const handler = async (event, context) => {
@@ -288,11 +310,14 @@ export default class ServerlessCode extends Component {
 
     private async zipCode(directory: string) {
         return new Promise((resolve, reject) => {
-            zl.archiveFolder(directory, `${directory}.zip`).then(function () {
-                resolve(`${directory}.zip`);
-            }, function (err) {
-                reject(err);
-            });
+            zl.archiveFolder(directory, `${directory}.zip`).then(
+                function () {
+                    resolve(`${directory}.zip`);
+                },
+                function (err) {
+                    reject(err);
+                }
+            );
         });
     }
 
@@ -301,8 +326,8 @@ export default class ServerlessCode extends Component {
             region: awsConfigs.region,
             credentials: {
                 accessKeyId: awsConfigs.accessKeyId,
-                secretAccessKey: awsConfigs.secretAccessKey
-            }
+                secretAccessKey: awsConfigs.secretAccessKey,
+            },
         });
         const functionContent = fs.readFileSync(zipFilePath);
 
@@ -311,34 +336,43 @@ export default class ServerlessCode extends Component {
             const exisitingFunction = await this.getDeployedFunction(functionName, awsConfigs);
             if (exisitingFunction) {
                 if (exisitingFunction.status === 'InProgress') {
-                    await this.verifyFunctionDeploymentStatus(functionName, client)
+                    await this.verifyFunctionDeploymentStatus(functionName, client);
                 }
                 // Update function code if it exists
                 const updateCodeParams = {
                     FunctionName: functionName,
                     ZipFile: functionContent,
                 };
-                const updateFunctionCodeCommand = new UpdateFunctionCodeCommand(updateCodeParams)
-                await client.send(updateFunctionCodeCommand)
+                const updateFunctionCodeCommand = new UpdateFunctionCodeCommand(updateCodeParams);
+                await client.send(updateFunctionCodeCommand);
                 // Update function configuration to attach layer
-                await this.verifyFunctionDeploymentStatus(functionName, client)
+                await this.verifyFunctionDeploymentStatus(functionName, client);
                 // console.log('Lambda function code and configuration updated successfully!');
             } else {
                 // Create function if it does not exist
                 let roleArn = '';
                 // check if the role exists
                 try {
-                    const iamClient = new IAMClient({ region: awsConfigs.region, credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey } });
+                    const iamClient = new IAMClient({
+                        region: awsConfigs.region,
+                        credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
+                    });
                     const getRoleCommand = new GetRoleCommand({ RoleName: `smyth-${functionName}-role` });
                     const roleResponse = await iamClient.send(getRoleCommand);
                     roleArn = roleResponse.Role.Arn;
                 } catch (error) {
                     if (error.name === 'NoSuchEntityException') {
                         // create role
-                        const iamClient = new IAMClient({ region: awsConfigs.region, credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey } });
-                        const createRoleCommand = new CreateRoleCommand({ RoleName: `smyth-${functionName}-role`, AssumeRolePolicyDocument: this.getLambdaRolePolicy() });
+                        const iamClient = new IAMClient({
+                            region: awsConfigs.region,
+                            credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
+                        });
+                        const createRoleCommand = new CreateRoleCommand({
+                            RoleName: `smyth-${functionName}-role`,
+                            AssumeRolePolicyDocument: this.getLambdaRolePolicy(),
+                        });
                         const roleResponse = await iamClient.send(createRoleCommand);
-                        await this.waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient)
+                        await this.waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                         roleArn = roleResponse.Role.Arn;
                     }
                 }
@@ -352,14 +386,15 @@ export default class ServerlessCode extends Component {
                     Layers: [],
                     Timeout: 900,
                     Tags: {
-                        'auto-delete': 'true'
-                    }
+                        'auto-delete': 'true',
+                    },
+                    MemorySize: 256,
                 };
 
-                const functionCreateCommand = new CreateFunctionCommand(functionParams)
-                const functionResponse = await client.send(functionCreateCommand)
+                const functionCreateCommand = new CreateFunctionCommand(functionParams);
+                const functionResponse = await client.send(functionCreateCommand);
                 // console.log('Function ARN:', functionResponse.FunctionArn);
-                await this.verifyFunctionDeploymentStatus(functionName, client)
+                await this.verifyFunctionDeploymentStatus(functionName, client);
             }
         } catch (error) {
             throw error;
@@ -370,57 +405,57 @@ export default class ServerlessCode extends Component {
         return new Promise((resolve, reject) => {
             try {
                 let interval = setInterval(async () => {
-                    const getRoleCommand = new GetRoleCommand({ RoleName: roleName })
+                    const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
                     const roleResponse = await client.send(getRoleCommand);
                     if (roleResponse.Role.AssumeRolePolicyDocument) {
-                        clearInterval(interval)
+                        clearInterval(interval);
                         return resolve(true);
                     }
                 }, 7000);
             } catch (error) {
                 return false;
             }
-        })
+        });
     }
 
     private async verifyFunctionDeploymentStatus(functionName, client): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try {
                 let interval = setInterval(async () => {
-                    const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName })
+                    const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
                     const lambdaResponse = await client.send(getFunctionCommand);
 
                     if (lambdaResponse.Configuration.LastUpdateStatus === 'Successful') {
-                        clearInterval(interval)
+                        clearInterval(interval);
                         return resolve(true);
                     }
                 }, 5000);
             } catch (error) {
                 return false;
             }
-        })
+        });
     }
 
     private getLambdaRolePolicy() {
-        return JSON.stringify(
-            {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "Service": "lambda.amazonaws.com"
-                        },
-                        "Action": "sts:AssumeRole"
-                    }
-                ]
-            })
+        return JSON.stringify({
+            Version: '2012-10-17',
+            Statement: [
+                {
+                    Effect: 'Allow',
+                    Principal: {
+                        Service: 'lambda.amazonaws.com',
+                    },
+                    Action: 'sts:AssumeRole',
+                },
+            ],
+        });
     }
 
-    private generateCodeHash(code_body: string, code_imports: string) {
+    private generateCodeHash(code_body: string, code_imports: string, codeInputs: string[]) {
         const importsHash = this.getSanitizeCodeHash(code_imports);
         const bodyHash = this.getSanitizeCodeHash(code_body);
-        return `imports-${importsHash}__body-${bodyHash}`;
+        const inputsHash = this.getSanitizeCodeHash(JSON.stringify(codeInputs));
+        return `imports-${importsHash}__body-${bodyHash}__inputs-${inputsHash}`;
     }
 
     private getSanitizeCodeHash(code: string) {
@@ -463,7 +498,7 @@ export default class ServerlessCode extends Component {
             prevChar = char;
         }
 
-        return crypto.createHash("md5").update(output.replace(/\s+/g, ' ').trim()).digest("hex");
+        return crypto.createHash('md5').update(output.replace(/\s+/g, ' ').trim()).digest('hex');
     }
 
     private async getDeployedCodeHash(agentId: string, componentId: string) {
@@ -474,7 +509,9 @@ export default class ServerlessCode extends Component {
 
     private async setDeployedCodeHash(agentId: string, componentId: string, codeHash: string) {
         const redisCache = ConnectorService.getCacheConnector('Redis');
-        await redisCache.user(AccessCandidate.agent(agentId)).set(`${this.cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, this.cacheTTL);
+        await redisCache
+            .user(AccessCandidate.agent(agentId))
+            .set(`${this.cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, this.cacheTTL);
     }
 
     private async updateDeployedCodeTTL(agentId: string, componentId: string, ttl: number) {
@@ -482,8 +519,12 @@ export default class ServerlessCode extends Component {
         await redisCache.user(AccessCandidate.agent(agentId)).updateTTL(`${this.cachePrefix}_${agentId}-${componentId}`, ttl);
     }
 
-    private calculateExecutionCost(executionTime: number) { // executionTime in milliseconds
-        const cost = ((executionTime / 1000) * Number(PER_SECOND_COST)) + Number(PER_REQUEST_COST);
+    private calculateExecutionCost(executionTime: number) {
+        // executionTime in milliseconds
+        const cost =
+            (executionTime / 1000) * Number(PER_SECOND_MEMORY_COST) +
+            (executionTime / 1000) * Number(PER_SECOND_STORAGE_COST) +
+            Number(PER_REQUEST_COST);
         return cost;
     }
 

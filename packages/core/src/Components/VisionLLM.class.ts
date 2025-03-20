@@ -21,7 +21,7 @@ export default class VisionLLM extends Component {
     async process(input, config, agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== Vision LLM Log ===`);
 

@@ -18,7 +18,7 @@ export default class LogicAtLeast extends Component {
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         const result: any = { Output: undefined };
 
         if (typeof config.data.minSetInputs !== 'string' || config.data.minSetInputs.trim() === '' || isNaN(Number(config.data.minSetInputs))) {

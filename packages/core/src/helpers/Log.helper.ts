@@ -3,7 +3,7 @@ import winston from 'winston';
 import Transport from 'winston-transport';
 import { parseCLIArgs } from '../utils';
 import config from '@sre/config';
-
+import { EventEmitter } from 'events';
 winston.addColors({
     error: 'red',
     warn: 'yellow',
@@ -56,7 +56,7 @@ class ArrayTransport extends Transport {
     }
 }
 
-export class LogHelper {
+export class LogHelper extends EventEmitter {
     public startTime = Date.now();
     public get output() {
         return Array.isArray(this.data) ? this.data.join('\n') : undefined;
@@ -64,28 +64,36 @@ export class LogHelper {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {}
+    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {
+        super();
+    }
 
     public log(...args) {
         this._logger.log('info', formatLogMessage(...args), this.labels);
+        this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public warn(...args) {
         this._logger.log('warn', formatLogMessage(...args), this.labels);
+        this.emit('logged', { level: 'warn', message: formatLogMessage(...args) });
     }
     public debug(...args) {
         this._logger.log('debug', formatLogMessage(...args), this.labels);
+        this.emit('logged', { level: 'debug', message: formatLogMessage(...args) });
     }
     public info(...args) {
         this._logger.log('info', formatLogMessage(...args), this.labels);
+        this.emit('logged', { level: 'info', message: formatLogMessage(...args) });
     }
     public verbose(...args) {
         this._logger.log('verbose', formatLogMessage(...args), this.labels);
+        this.emit('logged', { level: 'verbose', message: formatLogMessage(...args) });
     }
 
     public error(...args) {
         const stack = new Error().stack;
 
         this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack });
+        this.emit('logged', { level: 'error', message: formatLogMessage(...args) });
     }
 
     public close() {
