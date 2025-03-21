@@ -72,7 +72,11 @@ export default class ServerlessCode extends Component {
                 const _type = typeof input[field.name];
                 switch (_type) {
                     case 'string':
-                        codeInputs[field.name] = `${input[field.name]}`;
+                        try {
+                            codeInputs[field.name] = JSON.parse(input[field.name].replace(/\\"/g, '"'));
+                        } catch (error) {
+                            codeInputs[field.name] = `${input[field.name]}`;
+                        }
                         break;
                     case 'number':
                     case 'boolean':
