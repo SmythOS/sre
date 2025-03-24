@@ -18,7 +18,7 @@ export default class Await extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             let Results: any = {};
             const _error = null;

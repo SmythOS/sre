@@ -17,7 +17,7 @@ export default class ComponentHost extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
         //let debugLog = agent.agentRuntime?.debug ? [] : undefined;
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         try {
             const componentName = config.data._component;
