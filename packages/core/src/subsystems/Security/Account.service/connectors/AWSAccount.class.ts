@@ -72,7 +72,7 @@ export class AWSAccount extends AccountConnector {
         throw new Error('getUserSetting Method not implemented.');
     }
 
-    public getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<KeyValueObject> {
+    public getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string> {
         throw new Error('getAgentSetting Method not implemented.');
     }
 }

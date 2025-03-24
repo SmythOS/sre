@@ -12,7 +12,7 @@ export interface ISmythAccountRequest {
     getAllUserSettings(): Promise<KeyValueObject>;
     getTeamSetting(settingKey: string): Promise<string>;
     getUserSetting(settingKey: string): Promise<string>;
-    getAgentSetting(settingKey: string): Promise<KeyValueObject>;
+    getAgentSetting(settingKey: string): Promise<string>;
 }
 
 export abstract class AccountConnector extends Connector {
@@ -35,5 +35,5 @@ export abstract class AccountConnector extends Connector {
     public abstract getAllUserSettings(acRequest: AccessRequest, accountId: string): Promise<KeyValueObject>;
     public abstract getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string>;
     public abstract getUserSetting(acRequest: AccessRequest, accountId: string, settingKey: string): Promise<string>;
-    public abstract getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<KeyValueObject>;
+    public abstract getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string>;
 }

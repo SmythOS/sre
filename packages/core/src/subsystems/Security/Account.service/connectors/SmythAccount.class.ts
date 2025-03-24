@@ -141,7 +141,7 @@ export class SmythAccount extends AccountConnector {
         };
     }
 
-    public async getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<KeyValueObject> {
+    public async getAgentSetting(acRequest: AccessRequest, agentId: string, settingKey: string): Promise<string> {
         try {
             // TODO: use following endpoint when Ahmed make it available
             // const response = await this.smythAPI.get(`/v1/ai-agent/${agentId}/settings/${settingKey}`, {
@@ -152,9 +152,9 @@ export class SmythAccount extends AccountConnector {
                 headers: await this.getSmythRequestHeaders(),
             });
             const setting = response?.data?.settings?.find((setting: KeyValueObject) => setting?.key === settingKey) || null;
-            return JSON.parse(setting?.value || '{}');
+            return setting?.value || '';
         } catch (error) {
-            return null;
+            return '';
         }
     }
 }
