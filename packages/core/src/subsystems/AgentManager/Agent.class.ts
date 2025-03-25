@@ -176,6 +176,9 @@ export default class Agent {
     public kill() {
         this._kill = true;
     }
+    public isKilled() {
+        return this._kill;
+    }
     private async parseVariables() {
         //parse vault agent variables
         if (typeof this.agentVariables === 'object') {

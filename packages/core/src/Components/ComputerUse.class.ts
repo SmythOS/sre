@@ -81,9 +81,18 @@ export default class ComputerUse extends Component {
         prompt = TemplateString(prompt).parse(input).result;
 
         let socket: Socket | null = null;
+        let agentActiveCheckInterval: NodeJS.Timeout | null = null;
         try {
             socket = await this.setupSocket();
-            agent.kill;
+
+            agentActiveCheckInterval = setInterval(() => {
+                if (agent.isKilled()) {
+                    socket?.disconnect();
+                    console.log('Agent killed, disconnecting ComputerUse socket');
+                    clearInterval(agentActiveCheckInterval);
+                    agentActiveCheckInterval = null;
+                }
+            }, 5_000);
 
             const agentRunPromise = new Promise((resolve, reject) => {
                 let result: any = null;
@@ -133,6 +142,7 @@ export default class ComputerUse extends Component {
             });
 
             const result = await agentRunPromise;
+
             logger.debug(' Agent run completed successfully');
 
             if (socket?.connected) {
@@ -154,6 +164,11 @@ export default class ComputerUse extends Component {
                 _error: error.message,
                 _debug: logger.output,
             };
+        } finally {
+            if (agentActiveCheckInterval) {
+                clearInterval(agentActiveCheckInterval);
+                agentActiveCheckInterval = null;
+            }
         }
     }
 }
