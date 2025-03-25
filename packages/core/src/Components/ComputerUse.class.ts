@@ -3,6 +3,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import smythConfig from '@sre/config';
 
 interface AgentProgressPayload {
     status: 'iteration' | 'completion' | 'error';
@@ -70,8 +71,11 @@ export default class ComputerUse extends Component {
     }
 
     async process(input, config, agent: Agent) {
+        if (smythConfig.env.NODE_ENV !== 'DEV') {
+            throw new Error('ComputerUse is not available');
+        }
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         let prompt = config.data?.prompt || input?.Prompt;
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
@@ -90,6 +94,7 @@ export default class ComputerUse extends Component {
 
                             switch (progressPayload.status) {
                                 case 'completion':
+                                    logger.debug(`computer session completed`);
                                     result = progressPayload.data;
                                     resolve(result);
 
@@ -98,7 +103,7 @@ export default class ComputerUse extends Component {
                                     reject(new Error(progressPayload.data));
                                     break;
                                 case 'iteration':
-                                    logger.debug(` Agent iteration: ${progressPayload.data}`);
+                                    // logger.debug(` Agent iteration`);
                                     break;
                             }
                             break;
@@ -109,8 +114,8 @@ export default class ComputerUse extends Component {
                             //     agent.callback({ log: logPayload.message });
                             // }
                             // TODO: send this as "component" message with the appropriate config
-                            agent.sse.send('computer/logs', logPayload.message);
-                            logger.debug(` Agent Log: ${logPayload.message}`);
+                            // agent.sse.send('computer/logs', logPayload.message);
+                            logger.debug(logPayload.message);
                             break;
                     }
                 });
@@ -121,7 +126,7 @@ export default class ComputerUse extends Component {
                         computer: 'local-playwright',
                         input: prompt,
                         logSteps: true,
-                        startUrl: 'https://duckduckgo.com',
+                        startUrl: 'https://bing.com',
                     },
                 });
             });
