@@ -28,7 +28,7 @@ export default class ComputerUse extends Component {
     });
 
     private socket: Socket | null = null;
-    private readonly API_URL = 'http://localhost:3005';
+    private readonly API_URL = smythConfig.env.COMPUTER_USE_API_URL;
 
     constructor() {
         super();
