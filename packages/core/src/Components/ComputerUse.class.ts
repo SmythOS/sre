@@ -27,7 +27,6 @@ export default class ComputerUse extends Component {
         environment: Joi.string().valid('browser').default('browser').label('Environment'),
     });
 
-    private socket: Socket | null = null;
     private readonly API_URL = smythConfig.env.COMPUTER_USE_API_URL;
 
     constructor() {
@@ -81,13 +80,15 @@ export default class ComputerUse extends Component {
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
         prompt = TemplateString(prompt).parse(input).result;
 
+        let socket: Socket | null = null;
         try {
-            this.socket = await this.setupSocket();
+            socket = await this.setupSocket();
+            agent.kill;
 
             const agentRunPromise = new Promise((resolve, reject) => {
                 let result: any = null;
 
-                this.socket!.on('message', (message: WebSocketMessage) => {
+                socket!.on('message', (message: WebSocketMessage) => {
                     switch (message.type) {
                         case 'agent:progress':
                             const progressPayload = message.payload as AgentProgressPayload;
@@ -120,7 +121,7 @@ export default class ComputerUse extends Component {
                     }
                 });
 
-                this.socket!.emit('message', {
+                socket!.emit('message', {
                     type: 'agent:run',
                     payload: {
                         computer: 'local-playwright',
@@ -134,8 +135,8 @@ export default class ComputerUse extends Component {
             const result = await agentRunPromise;
             logger.debug(' Agent run completed successfully');
 
-            if (this.socket?.connected) {
-                this.socket.disconnect();
+            if (socket?.connected) {
+                socket.disconnect();
             }
 
             return {
@@ -143,8 +144,8 @@ export default class ComputerUse extends Component {
                 _debug: logger.output,
             };
         } catch (error: any) {
-            if (this.socket?.connected) {
-                this.socket.disconnect();
+            if (socket?.connected) {
+                socket.disconnect();
             }
 
             logger.error(` Error: ${error.message}`);
