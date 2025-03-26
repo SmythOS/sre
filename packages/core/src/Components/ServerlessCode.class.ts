@@ -15,9 +15,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
-const PER_REQUEST_COST = '0.0000002';
-const PER_SECOND_MEMORY_COST = '0.0000041675';
-const PER_SECOND_STORAGE_COST = '0.00000001545';
+const PER_SECOND_COST = 0.0001;
 
 export default class ServerlessCode extends Component {
     private cachePrefix: string = 'serverless_code';
@@ -34,6 +32,7 @@ export default class ServerlessCode extends Component {
         function_label: Joi.string().max(100).allow('').label('Function Label').optional(),
         function_label_end: Joi.string().allow(null).label('Function Label End').optional(),
         use_own_keys: Joi.boolean().label('Use Own Keys').optional(),
+        pricing_note: Joi.string().allow(null).label('Pricing Note').optional(),
     });
     constructor() {
         super();
@@ -346,6 +345,8 @@ export default class ServerlessCode extends Component {
                         const roleResponse = await iamClient.send(createRoleCommand);
                         await this.waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient)
                         roleArn = roleResponse.Role.Arn;
+                    } else {
+                        throw error;
                     }
                 }
 
@@ -491,7 +492,7 @@ export default class ServerlessCode extends Component {
     }
 
     private calculateExecutionCost(executionTime: number) { // executionTime in milliseconds
-        const cost = ((executionTime / 1000) * Number(PER_SECOND_MEMORY_COST)) + ((executionTime / 1000) * Number(PER_SECOND_STORAGE_COST)) + Number(PER_REQUEST_COST);
+        const cost = ((executionTime / 1000) * Number(PER_SECOND_COST))
         return cost;
     }
 
