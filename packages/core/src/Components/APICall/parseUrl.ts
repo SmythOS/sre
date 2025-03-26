@@ -54,7 +54,7 @@ export async function parseUrl(input, config, agent: Agent) {
     url = TemplateString(url).parse(input).clean().result;
 
     // Decode URL parts again after all parsing is done
-    url = decodeURIComponent(url);
+    //url = decodeURIComponent(url); //This seems to be causing issues with some variables being encoded while they should not be
 
     //URL will take care of encoding the url properly
     const urlObj = new URL(url);
