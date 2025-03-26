@@ -11,7 +11,7 @@ export default class FSign extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             const _error = undefined;
             const teamId = agent ? agent.teamId : null;

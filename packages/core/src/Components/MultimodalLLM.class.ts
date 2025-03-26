@@ -20,7 +20,7 @@ export default class MultimodalLLM extends Component {
     async process(input, config, agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
 
         logger.debug(`=== Multimodal LLM Log ===`);
 
@@ -77,10 +77,16 @@ export default class MultimodalLLM extends Component {
                     });
                     eventEmitter.on('content', (content) => {
                         if (typeof agent.callback === 'function') {
-                            agent.callback(content);
+                            agent.callback({ content });
                         }
-                        agent.sse.send('llm/passthrough', content);
+                        agent.sse.send('llm/passthrough/content', content);
                         _content += content;
+                    });
+                    eventEmitter.on('thinking', (thinking) => {
+                        if (typeof agent.callback === 'function') {
+                            agent.callback({ thinking });
+                        }
+                        agent.sse.send('llm/passthrough/thinking', thinking);
                     });
                     eventEmitter.on('end', () => {
                         console.log('end');

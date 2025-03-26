@@ -27,8 +27,8 @@ export class RedisCache extends CacheConnector {
         let port = sentinels.length === 1 ? sentinels[0].port : null;
 
         this.redis = new IORedis({
-            ...(host ? { host, port } : { sentinels, name: settings.name || process.env.REDIS_MASTER_NAME, }),
-            password: settings.password || process.env.REDIS_PASSWORD
+            ...(host ? { host, port } : { sentinels, name: settings.name || process.env.REDIS_MASTER_NAME }),
+            password: settings.password || process.env.REDIS_PASSWORD,
         });
 
         this.redis.on('error', (error) => {
@@ -69,11 +69,16 @@ export class RedisCache extends CacheConnector {
         newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         promises.push(this.setMetadata(acRequest, key, newMetadata));
 
+        await Promise.all(promises);
+
         if (ttl) {
-            promises.push(this.updateTTL(acRequest, key, ttl));
+            try {
+                await this.updateTTL(acRequest, key, ttl);
+            } catch (error) {
+                console.error(`Error setting TTL for key ${key}`, error);
+            }
         }
 
-        await Promise.all(promises);
         return true;
     }
 
@@ -117,7 +122,7 @@ export class RedisCache extends CacheConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
-        const _metadata: any = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => { });
+        const _metadata: any = await this.redis.get(`${this._mdPrefix}:${resourceId}`).catch((error) => {});
         const exists = _metadata !== undefined && _metadata !== null; //null or undefined metadata means the resource does not exist
         const metadata = exists ? this.deserializeRedisMetadata(_metadata) : {};
 

@@ -25,6 +25,7 @@ const config = {
 
         AGENT_DOMAIN_PORT: process.env?.AGENT_DOMAIN_PORT,
         CODE_SANDBOX_URL: process.env?.CODE_SANDBOX_URL,
+        COMPUTER_USE_API_URL: process.env?.COMPUTER_USE_API_URL,
         TOGETHER_AI_API_URL: process.env?.TOGETHER_AI_API_URL,
 
         REDIS_SENTINEL_HOSTS: process.env?.REDIS_SENTINEL_HOSTS || '',
@@ -45,7 +46,7 @@ const config = {
         TAVILY_API_KEY: process.env.TAVILY_API_KEY,
 
         SCRAPFLY_API_KEY: process.env.SCRAPFLY_API_KEY,
-        
+
         AWS_LAMBDA_ACCESS_KEY_ID: process.env.AWS_LAMBDA_ACCESS_KEY_ID,
         AWS_LAMBDA_SECRET_ACCESS_KEY: process.env.AWS_LAMBDA_SECRET_ACCESS_KEY,
         AWS_LAMBDA_REGION: process.env.AWS_LAMBDA_REGION,

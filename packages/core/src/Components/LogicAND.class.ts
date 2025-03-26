@@ -8,7 +8,7 @@ export default class LogicAND extends Component {
     init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         const result: any = { Output: true };
 
         for (let cfgInput of config.inputs) {

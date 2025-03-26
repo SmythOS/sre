@@ -16,7 +16,7 @@ export default class ForEach extends Component {
         let _temp_result;
         let _error = null;
         let _in_progress = true;
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             const inputObject = input.Input;
             let inputArray;

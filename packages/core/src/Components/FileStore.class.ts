@@ -9,9 +9,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
-
 export default class FileStore extends Component {
-
     protected configSchema = Joi.object({
         name: Joi.string().max(1000).allow('').label('Name'),
         ttl: Joi.number().integer().label('TTL'),
@@ -19,11 +17,11 @@ export default class FileStore extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
-        const logger = this.createComponentLogger(agent, config.name);
+        const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== File Store Log ===`);
             let Output: any = {};
@@ -35,7 +33,7 @@ export default class FileStore extends Component {
             const buffer = await binaryData.getBuffer();
             const customFileName = TemplateString(config.data.name).parse(input).result;
             const metadata = {
-                'ContentType': fileData.mimetype,
+                ContentType: fileData.mimetype,
             };
             const ttl = config.data.ttl || 86400;
             const extension = fileData.url?.split('.').pop();
@@ -46,12 +44,11 @@ export default class FileStore extends Component {
 
                 await s3StorageConnector.user(AccessCandidate.agent(agent.teamId)).write(s3Key, buffer, null, metadata);
                 await s3StorageConnector.user(AccessCandidate.agent(agent.teamId)).expire(s3Key, +ttl);
-                const smythFSUrl = `smythfs://${agent.teamId}.team/components_data/${fileName}`
+                const smythFSUrl = `smythfs://${agent.teamId}.team/components_data/${fileName}`;
                 const url = await SmythFS.Instance.genResourceUrl(smythFSUrl, AccessCandidate.agent(agent.teamId));
                 Output = {
-                    Url: url
+                    Url: url,
                 };
-
             } catch (error: any) {
                 logger.error(`Error saving file \n${error}\n`);
                 _error = error?.response?.data || error?.message || error.toString();
@@ -72,7 +69,7 @@ export default class FileStore extends Component {
     }
 
     getFileName(customName: string, extension: string) {
-        const uniqueId = (() => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(9)))).replace(/[+/=]/g, ''))()
+        const uniqueId = (() => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(9)))).replace(/[+/=]/g, ''))();
         return `${uniqueId}${customName ? `.${customName}` : ''}.${extension}`;
     }
 }
