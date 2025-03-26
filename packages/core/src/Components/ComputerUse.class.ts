@@ -127,6 +127,15 @@ export default class ComputerUse extends Component {
                             // agent.sse.send('computer/logs', logPayload.message);
                             logger.debug(logPayload.message);
                             break;
+                        case 'agent:ui_state_change':
+                            const uiStatePayload = message.payload as { image_url?: string };
+                            if (uiStatePayload.image_url) {
+                                agent.sse.send('computer-use/ui-state', {
+                                    componentId: config.id,
+                                    image_url: uiStatePayload.image_url,
+                                });
+                            }
+                            break;
                     }
                 });
 
