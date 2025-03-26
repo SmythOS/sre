@@ -120,7 +120,9 @@ async function handleMultipartFormData(body: any, input: any, config, agent: Age
                 .parse(input)
                 .clean().result;
 
-            formData.append(key, value);
+            if (value) {
+                formData.append(key, value);
+            }
 
             //formData.append(key, typeof value === 'boolean' ? String(value) : value);
         }
