@@ -26,6 +26,9 @@ export default class GenAILLM extends Component {
         presencePenalty: Joi.number().min(0).max(2).label('Presence Penalty'),
         responseFormat: Joi.string().valid('json', 'text').optional().label('Response Format'),
         passthrough: Joi.boolean().optional().label('Passthrough'),
+        useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
+        useContextWindow: Joi.boolean().optional().label('Use Context Window'),
+        maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
     });
     constructor() {
         super();

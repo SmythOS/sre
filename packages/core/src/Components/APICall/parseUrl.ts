@@ -38,7 +38,7 @@ export async function parseUrl(input, config, agent: Agent) {
     let url = config?.data?.url.replace(/\+/g, '%20'); // replace + with %20 from query params to make it a valid url
 
     // Decode URL parts
-    url = decodeURIComponent(url);
+    //url = decodeURIComponent(url);
 
     //parse component template vars
     if (config.data._templateVars && templateSettings) {

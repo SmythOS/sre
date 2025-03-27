@@ -63,21 +63,26 @@ export class RedisCache extends CacheConnector {
         const accessCandidate = acRequest.candidate;
         const promises: any[] = [];
 
-        promises.push(this.redis.set(`${this._prefix}:${key}`, data));
-
         const newMetadata: CacheMetadata = metadata || {};
         newMetadata.acl = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
-        promises.push(this.setMetadata(acRequest, key, newMetadata));
+
+        if (ttl && ttl > 0) {
+            promises.push(this.redis.set(`${this._prefix}:${key}`, data, 'EX', ttl));
+            promises.push(this.setMetadataWithTTL(acRequest, key, newMetadata, ttl));
+        } else {
+            promises.push(this.redis.set(`${this._prefix}:${key}`, data));
+            promises.push(this.setMetadata(acRequest, key, newMetadata));
+        }
 
         await Promise.all(promises);
 
-        if (ttl) {
-            try {
-                await this.updateTTL(acRequest, key, ttl);
-            } catch (error) {
-                console.error(`Error setting TTL for key ${key}`, error);
-            }
-        }
+        // if (ttl) {
+        //     try {
+        //         await this.updateTTL(acRequest, key, ttl);
+        //     } catch (error) {
+        //         console.error(`Error setting TTL for key ${key}`, error);
+        //     }
+        // }
 
         return true;
     }
@@ -106,7 +111,14 @@ export class RedisCache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
-        await this.redis.set(`${this._mdPrefix}:${key}`, this.serializeRedisMetadata(metadata));
+        await this.setMetadataWithTTL(acRequest, key, metadata);
+    }
+    private async setMetadataWithTTL(acRequest: AccessRequest, key: string, metadata: CacheMetadata, ttl?: number): Promise<void> {
+        if (ttl && ttl > 0) {
+            await this.redis.set(`${this._mdPrefix}:${key}`, this.serializeRedisMetadata(metadata), 'EX', ttl);
+        } else {
+            await this.redis.set(`${this._mdPrefix}:${key}`, this.serializeRedisMetadata(metadata));
+        }
     }
 
     @SecureConnector.AccessControl
