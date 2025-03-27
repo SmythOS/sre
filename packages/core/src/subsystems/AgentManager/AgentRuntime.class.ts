@@ -156,6 +156,37 @@ export default class AgentRuntime {
                     this.saveRuntimeComponentData(component.id, runtimeData);
                 }
             }
+
+            // X-OUTPUT-INJ header indicates mock data is present in the workflow
+            // When mock data exists, we need to properly inject the active component into this.xDebugPendingInject
+            // This ensures the mock data flows through the workflow correctly
+            // if (agent.agentRequest.header('X-OUTPUT-INJ') != undefined) {
+            //     const ctxData = this.agentContext;
+            //     const requestBody = agent.agentRequest.body;
+            //     const hasActiveComponentInGivenBody = requestBody.some((c: any) => c.ctx.active);
+
+            //     // If no active components exist in the request body, find and add the currently active component
+            //     if (!hasActiveComponentInGivenBody) {
+            //         const dbgAllComponents: any = Object.values(ctxData?.components || []);
+            //         const activeComponent = dbgAllComponents.find((c: any) => c.ctx.active);
+            //         const hasActiveComponentInRequestBody = requestBody.some((c: any) => c.id == activeComponent.id);
+
+            //         // If the active component exists in the request body (from agent settings with mock data),
+            //         // update its active status to true since it must be activated
+            //         if (hasActiveComponentInRequestBody) {
+            //             requestBody.map((c: any) => {
+            //                 if (c.id == activeComponent.id) {
+            //                     c.ctx.active = true;
+            //                 }
+            //                 return c;
+            //             });
+            //         } else {
+            //             // If the active component does not exist in the request body, add it to the beginning of the body
+            //             requestBody.unshift(activeComponent);
+            //         }
+            //     }
+            //     this.xDebugPendingInject = requestBody;
+            // }
         });
 
         //if xDebugId is equal to agent session, it means that the debugging features are not active
@@ -354,6 +385,7 @@ export default class AgentRuntime {
 
             for (let dbgComponent of dbgActiveReadyComponents) {
                 const injectInput = runtime.xDebugPendingInject ? dbgComponent.ctx.input : undefined;
+
                 promises.push(agent.callComponent(dbgComponent.ctx.sourceId, dbgComponent.id, injectInput));
             }
             const dbgResults = await Promise.all(promises);
