@@ -24,18 +24,6 @@ export const models = {
 
   // #region OpenAI ==========================
 
-  'smythos/gpt-4o': {
-    llm: 'OpenAI',
-
-    label: 'GPT 4o',
-    modelId: 'gpt-4o-2024-08-06',
-    provider: 'OpenAI',
-    features: ['text', 'image', 'tools'],
-    tags: ['SmythOS'],
-    tokens: 128_000,
-    completionTokens: 16_384,
-    enabled: true,
-  },
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
@@ -46,6 +34,18 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_383,
+    enabled: true,
+  },
+  'smythos/gpt-4o': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4o',
+    modelId: 'gpt-4o-2024-08-06',
+    provider: 'OpenAI',
+    features: ['text', 'image', 'tools'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_384,
     enabled: true,
   },
   'smythos/o1': {
@@ -187,7 +187,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 8_192,
+    completionTokens: 128_000,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -201,7 +201,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
-    completionTokens: 8_192,
+    completionTokens: 200_000,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -215,7 +215,7 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 8_192,
+    completionTokens: 128_000,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -263,6 +263,37 @@ export const models = {
   // #region OpenAI Models ==========================
 
   // #region GPT 4o
+  'gpt-4o-mini': {
+    llm: 'OpenAI',
+    alias: 'gpt-4o-mini-2024-07-18',
+    components: [
+      'PromptGenerator',
+      'LLMAssistant',
+      'Classifier',
+      'VisionLLM',
+      'AgentPlugin',
+      'Chatbot',
+      'GPTPlugin',
+      'GenAILLM',
+    ],
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
+  },
+  'gpt-4o-mini-2024-07-18': {
+    llm: 'OpenAI',
+    tokens: 2048,
+    completionTokens: 2048,
+    enabled: false,
+    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
+  },
   'gpt-4.5-preview': {
     llm: 'OpenAI',
 
@@ -306,37 +337,6 @@ export const models = {
     completionTokens: 2048,
     enabled: false,
     keyOptions: { tokens: 128000, completionTokens: 16_384, enabled: true },
-  },
-  'gpt-4o-mini': {
-    llm: 'OpenAI',
-    alias: 'gpt-4o-mini-2024-07-18',
-    components: [
-      'PromptGenerator',
-      'LLMAssistant',
-      'Classifier',
-      'VisionLLM',
-      'AgentPlugin',
-      'Chatbot',
-      'GPTPlugin',
-      'GenAILLM',
-    ],
-
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    features: ['text', 'tools', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
-  },
-  'gpt-4o-mini-2024-07-18': {
-    llm: 'OpenAI',
-    tokens: 2048,
-    completionTokens: 2048,
-    enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
   },
   // #endregion GPT 4o
 
