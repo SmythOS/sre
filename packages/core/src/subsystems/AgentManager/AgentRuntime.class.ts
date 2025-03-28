@@ -37,6 +37,7 @@ export default class AgentRuntime {
     private xDebugRead: string | undefined = '';
     private xDebugStop: string | undefined = '';
     private xDebugPendingInject: any = null;
+    private xMockDataInject: any = null;
     public xDebugId: string | undefined = '';
     private xDebugCmd: string | undefined = '';
     private _debugActive = false;
@@ -103,6 +104,10 @@ export default class AgentRuntime {
             this.xDebugId = this.xDebugRun;
         }
 
+        if (agent.agentRequest.header('X-MOCK-DATA-INJ') !== undefined) {
+            this.xMockDataInject = agent.agentRequest.body;
+        }
+
         this.processID = this.xDebugId;
 
         if (!this.xDebugId) {
@@ -156,37 +161,6 @@ export default class AgentRuntime {
                     this.saveRuntimeComponentData(component.id, runtimeData);
                 }
             }
-
-            // X-OUTPUT-INJ header indicates mock data is present in the workflow
-            // When mock data exists, we need to properly inject the active component into this.xDebugPendingInject
-            // This ensures the mock data flows through the workflow correctly
-            // if (agent.agentRequest.header('X-OUTPUT-INJ') != undefined) {
-            //     const ctxData = this.agentContext;
-            //     const requestBody = agent.agentRequest.body;
-            //     const hasActiveComponentInGivenBody = requestBody.some((c: any) => c.ctx.active);
-
-            //     // If no active components exist in the request body, find and add the currently active component
-            //     if (!hasActiveComponentInGivenBody) {
-            //         const dbgAllComponents: any = Object.values(ctxData?.components || []);
-            //         const activeComponent = dbgAllComponents.find((c: any) => c.ctx.active);
-            //         const hasActiveComponentInRequestBody = requestBody.some((c: any) => c.id == activeComponent.id);
-
-            //         // If the active component exists in the request body (from agent settings with mock data),
-            //         // update its active status to true since it must be activated
-            //         if (hasActiveComponentInRequestBody) {
-            //             requestBody.map((c: any) => {
-            //                 if (c.id == activeComponent.id) {
-            //                     c.ctx.active = true;
-            //                 }
-            //                 return c;
-            //             });
-            //         } else {
-            //             // If the active component does not exist in the request body, add it to the beginning of the body
-            //             requestBody.unshift(activeComponent);
-            //         }
-            //     }
-            //     this.xDebugPendingInject = requestBody;
-            // }
         });
 
         //if xDebugId is equal to agent session, it means that the debugging features are not active
@@ -520,21 +494,28 @@ export default class AgentRuntime {
     }
 
     public async injectDebugOutput(componentId: string) {
-        if (this.xDebugPendingInject) {
-            const component = this.xDebugPendingInject.find((c: any) => c.id == componentId);
-            if (component?.ctx?.output) {
-                //if all outputs values are empty, we don't inject
-                let allEmpty = true;
-                for (let key in component.ctx.output) {
-                    if (component.ctx.output[key] != '') {
-                        allEmpty = false;
-                        break;
-                    }
-                }
-                if (allEmpty) return null;
+        let component: {
+            ctx?: Record<string, any>;
+        } = {};
 
-                return component.ctx.output;
+        if (this.xDebugPendingInject) {
+            component = this.xDebugPendingInject?.find((c: any) => c.id == componentId);
+        } else if (this.xMockDataInject) {
+            component = this.xMockDataInject.find((c: any) => c.id == componentId);
+        }
+
+        if (component?.ctx?.output) {
+            //if all outputs values are empty, we don't inject
+            let allEmpty = true;
+            for (let key in component.ctx.output) {
+                if (component.ctx.output[key] != '') {
+                    allEmpty = false;
+                    break;
+                }
             }
+            if (allEmpty) return null;
+
+            return component.ctx.output;
         }
     }
     public getRuntimeData(componentId) {
