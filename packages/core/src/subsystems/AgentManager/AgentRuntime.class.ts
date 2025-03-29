@@ -37,6 +37,7 @@ export default class AgentRuntime {
     private xDebugRead: string | undefined = '';
     private xDebugStop: string | undefined = '';
     private xDebugPendingInject: any = null;
+    private xMockDataInject: any = null;
     public xDebugId: string | undefined = '';
     private xDebugCmd: string | undefined = '';
     private _debugActive = false;
@@ -101,6 +102,10 @@ export default class AgentRuntime {
                 }
             }
             this.xDebugId = this.xDebugRun;
+        }
+
+        if (agent.agentRequest.header('X-MOCK-DATA-INJ') !== undefined) {
+            this.xMockDataInject = agent.agentRequest.body;
         }
 
         this.processID = this.xDebugId;
@@ -354,6 +359,7 @@ export default class AgentRuntime {
 
             for (let dbgComponent of dbgActiveReadyComponents) {
                 const injectInput = runtime.xDebugPendingInject ? dbgComponent.ctx.input : undefined;
+
                 promises.push(agent.callComponent(dbgComponent.ctx.sourceId, dbgComponent.id, injectInput));
             }
             const dbgResults = await Promise.all(promises);
@@ -488,21 +494,28 @@ export default class AgentRuntime {
     }
 
     public async injectDebugOutput(componentId: string) {
-        if (this.xDebugPendingInject) {
-            const component = this.xDebugPendingInject.find((c: any) => c.id == componentId);
-            if (component?.ctx?.output) {
-                //if all outputs values are empty, we don't inject
-                let allEmpty = true;
-                for (let key in component.ctx.output) {
-                    if (component.ctx.output[key] != '') {
-                        allEmpty = false;
-                        break;
-                    }
-                }
-                if (allEmpty) return null;
+        let component: {
+            ctx?: Record<string, any>;
+        } = {};
 
-                return component.ctx.output;
+        if (this.xDebugPendingInject) {
+            component = this.xDebugPendingInject?.find((c: any) => c.id == componentId);
+        } else if (this.xMockDataInject) {
+            component = this.xMockDataInject.find((c: any) => c.id == componentId);
+        }
+
+        if (component?.ctx?.output) {
+            //if all outputs values are empty, we don't inject
+            let allEmpty = true;
+            for (let key in component.ctx.output) {
+                if (component.ctx.output[key] != '') {
+                    allEmpty = false;
+                    break;
+                }
             }
+            if (allEmpty) return null;
+
+            return component.ctx.output;
         }
     }
     public getRuntimeData(componentId) {
