@@ -140,7 +140,7 @@ export default class GenAILLM extends Component {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ content });
                         }
-                        agent.sse.send('llm/passthrough/content', content);
+                        agent.sse.send('llm/passthrough/content', content.replace(/\n/g, '\\n'));
                         _content += content;
                     });
 
@@ -148,7 +148,7 @@ export default class GenAILLM extends Component {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ thinking });
                         }
-                        agent.sse.send('llm/passthrough/thinking', thinking);
+                        agent.sse.send('llm/passthrough/thinking', thinking.replace(/\n/g, '\\n'));
                     });
                     eventEmitter.on('end', () => {
                         console.log('end');
