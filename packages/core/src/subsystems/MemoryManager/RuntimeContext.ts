@@ -43,7 +43,7 @@ export class RuntimeContext extends EventEmitter {
     constructor(private runtime: AgentRuntime) {
         super();
         const agent = runtime.agent;
-        const dbgFolder = path.join(<string>config.env.DATA_PATH || path.join(os.tmpdir(), '.smyth'), `/debug/${agent.id}/`);
+        //const dbgFolder = path.join(<string>config.env.DATA_PATH || path.join(os.tmpdir(), '.smyth'), `/debug/${agent.id}/`);
         this._cacheConnector = ConnectorService.getCacheConnector();
         // if (!fs.existsSync(dbgFolder)) {
         //     fs.mkdirSync(dbgFolder, { recursive: true });
@@ -181,9 +181,14 @@ export class RuntimeContext extends EventEmitter {
 
         if (deleteSession) {
             const exists = await this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
-            if (this.runtime.debug && exists) this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
-            //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
-            //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
+
+            if (exists) {
+                if (this.runtime.debug)
+                    this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
+                else this._cacheConnector.user(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
+                //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
+                //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
+            }
         } else {
             const data = this.serialize();
             //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));

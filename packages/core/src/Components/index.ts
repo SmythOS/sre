@@ -45,6 +45,7 @@ import RestyleControlNet from './Image/RestyleControlNet.class';
 import RestyleIPAdapter from './Image/RestyleIPAdapter.class';
 import Outpainting from './Image/Outpainting.class';
 import Inpainting from './Image/Inpainting.class';
+import ComputerUse from './ComputerUse.class';
 
 const components = {
     Component: new Component(),
@@ -96,6 +97,7 @@ const components = {
     RestyleIPAdapter: new RestyleIPAdapter(),
     Outpainting: new Outpainting(),
     Inpainting: new Inpainting(),
+    ComputerUse: new ComputerUse(),
 };
 
 export default components;
