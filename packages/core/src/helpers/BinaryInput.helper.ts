@@ -82,6 +82,10 @@ export class BinaryInput {
                     this.mimetype = await getMimeType(this._source);
                     this.size = this._source.byteLength;
 
+                    if (!this.mimetype) {
+                        this.mimetype = mime.getType(this.url) || mime.getType(this._name) || '';
+                    }
+
                     const ext = mime.getExtension(this.mimetype);
                     if (!this._name.endsWith(`.${ext}`)) this._name += `.${ext}`;
                 } finally {
