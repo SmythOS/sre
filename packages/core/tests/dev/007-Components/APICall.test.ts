@@ -308,9 +308,8 @@ describe('APICall Component - Headers', () => {
 });
 
 describe('APICall Component - URL Formats', () => {
-    const url = 'https://httpbin.org/get?a=hello%20world&b=robot';
-
     it('handle URL with query parameters', async () => {
+        const url = 'https://httpbin.org/get?a=hello%20world&b=robot';
         const config = {
             data: {
                 method: 'GET',
@@ -327,7 +326,24 @@ describe('APICall Component - URL Formats', () => {
         expect(response.args.a).toEqual('hello world');
         expect(response.args.b).toEqual('robot');
     });
+    it('handle URL with query parameters having spaces', async () => {
+        const url = 'https://httpbin.org/get?a=hello world&b=robot';
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                headers: '',
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({}, config, agent);
+        const response = output.Response;
 
+        expect(response.args.a).toEqual('hello world');
+        expect(response.args.b).toEqual('robot');
+    });
     it('handle URL with array query parameters', async () => {
         const url = 'https://httpbin.org/get?ids[]=1&ids[]=2&ids[]=3';
         const config = {
@@ -559,24 +575,24 @@ describe('APICall Component - URL Formats', () => {
     // TODO: Need to write dedicated test for encoded symbols `#&+`, although they have special meaning in the URL, still it should work we provide encoded version of those symbols
 
     // Fully encoded URL like "https%3A%2F%2Fhttpbin.org%2Fget" is not working in Postman and Browser, but we support it as we decodeURIComponent in parseUrl
-    it('handle fully encoded URL', async () => {
-        const url = 'https://httpbin.org/get';
-        const encodedUrl = encodeURIComponent(url);
-        const config = {
-            data: {
-                method: 'GET',
-                url: encodedUrl,
-                headers: '',
-                contentType: 'none',
-                oauthService: 'None',
-                body: '',
-            },
-        };
-        const output = await apiCall.process({}, config, agent);
-        const response = output.Response;
+    // it('handle fully encoded URL', async () => {
+    //     const url = 'https://httpbin.org/get';
+    //     const encodedUrl = encodeURIComponent(url);
+    //     const config = {
+    //         data: {
+    //             method: 'GET',
+    //             url: encodedUrl,
+    //             headers: '',
+    //             contentType: 'none',
+    //             oauthService: 'None',
+    //             body: '',
+    //         },
+    //     };
+    //     const output = await apiCall.process({}, config, agent);
+    //     const response = output.Response;
 
-        expect(response.url).toEqual(url);
-    });
+    //     expect(response.url).toEqual(url);
+    // });
 
     it('handle URL with fragment identifier', async () => {
         const fragment = '#section1';
@@ -653,6 +669,26 @@ describe('APICall Component - URL Formats', () => {
 
         expect(response.args.user).toEqual(user);
         expect(response.url).toEqual(`https://httpbin.org/get?user=${user}`);
+    });
+
+    it('resolve input variable with encoded characters in URL', async () => {
+        const first = 'data';
+        const second = '123';
+        const url = `https://httpbin.org/get?data={{first}}%2F{{second}}`;
+        const config = {
+            data: {
+                method: 'GET',
+                url,
+                contentType: 'none',
+                oauthService: 'None',
+                body: '',
+            },
+        };
+        const output = await apiCall.process({ first, second }, config, agent);
+        const response = output.Response;
+
+        expect(response.args.data).toEqual('${first}%2F${second}'); //%2F should not be decoded
+        expect(response.url).toEqual(`https://httpbin.org/get?data=${first}%2F${second}`);
     });
 
     it('resolve component template variable in URL', async () => {

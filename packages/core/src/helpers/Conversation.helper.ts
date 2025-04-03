@@ -468,8 +468,10 @@ export class Conversation extends EventEmitter {
                     let content = '';
                     let thinking = '';
                     if (typeof data === 'object') {
+                        console.log('>>> data.content', data.content);
                         if (data.content) {
                             content = data.content;
+
                             passThroughContent += content;
                             this.emit('content', content);
                         }
@@ -480,6 +482,7 @@ export class Conversation extends EventEmitter {
                         return;
                     }
                     if (typeof data === 'string') {
+                        console.log('>>> data', data);
                         passThroughContent += data;
                         this.emit('content', data);
                     }
@@ -753,10 +756,10 @@ export class Conversation extends EventEmitter {
                             }
                         });
                         eventSource.addEventListener('llm/passthrough/content', (event: any) => {
-                            if (params.agentCallback) params.agentCallback({ content: event.data });
+                            if (params.agentCallback) params.agentCallback({ content: event.data.replace(/\\n/g, '\n') });
                         });
                         eventSource.addEventListener('llm/passthrough/thinking', (event: any) => {
-                            if (params.agentCallback) params.agentCallback({ thinking: event.data });
+                            if (params.agentCallback) params.agentCallback({ thinking: event.data.replace(/\\n/g, '\n') });
                         });
 
                         await new Promise((resolve) => {
