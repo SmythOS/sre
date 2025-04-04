@@ -694,12 +694,17 @@ export class Conversation extends EventEmitter {
                  * - In case it is not a debug call and there is no monitor id, then we need to run the agent locally to reduce latency
                  * - but if it a debug call, we need to forward req to sre-builder-debugger since it holds the debug promises
                  * - or if there is a monitor id, we need to forward req to sre-builder-debugger since it holds the monitor SSE connections.
+                 * - a remote call is often needed for file parsing be default agent we inject, it should not be loaded locally.
                  * So the objecive is mainly reducing latency when possible
                  */
                 //TODO : implement a timeout for the tool call
+                const requiresRemoteCall =
+                    reqConfig.headers['X-DEBUG'] !== undefined ||
+                    reqConfig.headers['X-MONITOR-ID'] !== undefined ||
+                    reqConfig.headers['X-AGENT-REMOTE-CALL'] !== undefined;
                 if (
                     reqConfig.url.includes('localhost') ||
-                    (reqConfig.headers['X-AGENT-ID'] && !reqConfig.headers['X-DEBUG'] && !reqConfig.headers['X-MONITOR-ID'])
+                    (reqConfig.headers['X-AGENT-ID'] && !requiresRemoteCall)
                     //empty string is accepted
 
                     // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
