@@ -108,7 +108,7 @@ export class SmythFS {
         }
     }
 
-    public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata) {
+    public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
         const smythURI = this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
         const accountConnector = ConnectorService.getAccountConnector();
@@ -135,6 +135,10 @@ export class SmythFS {
             }
         }
         await this.storage.user(_candidate).write(resourceId, data, acl, metadata);
+
+        if (ttl) {
+            await this.storage.user(_candidate).expire(resourceId, ttl);
+        }
     }
 
     public async delete(uri: string, candidate: IAccessCandidate) {

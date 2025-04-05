@@ -217,7 +217,7 @@ export class BinaryInput {
         return new BinaryInput(data, name, mimetype, candidate);
     }
 
-    public async upload(candidate: IAccessCandidate) {
+    public async upload(candidate: IAccessCandidate, ttl?: number) {
         await this.ready();
         if (this._uploading) return;
 
@@ -228,9 +228,7 @@ export class BinaryInput {
                 const teamId = await accountConnector.getCandidateTeam(candidate);
 
                 this.url = `smythfs://${teamId}.team/${candidate.id}/_temp/${this._name}`;
-                //TODO : set a TTL for temporary files
-                //we probably need a write with TTL method in SmythFS
-                await SmythFS.Instance.write(this.url, this._source, candidate);
+                await SmythFS.Instance.write(this.url, this._source, candidate, undefined, ttl);
                 this._uploading = false;
             }
         } catch (error) {
@@ -239,8 +237,8 @@ export class BinaryInput {
         }
     }
 
-    public async getJsonData(candidate: IAccessCandidate) {
-        await this.upload(candidate);
+    public async getJsonData(candidate: IAccessCandidate, ttl?: number) {
+        await this.upload(candidate, ttl);
         return {
             mimetype: this.mimetype,
             size: this.size,
