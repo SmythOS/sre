@@ -285,6 +285,9 @@ export abstract class LLMConnector extends Connector {
                 _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TVertexAIModel);
             }
 
+            // User key is always true for custom LLMs
+            _params.credentials.isUserKey = true;
+
             if (_params.maxTokens) {
                 _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
             }
