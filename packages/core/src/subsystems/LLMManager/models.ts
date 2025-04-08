@@ -117,7 +117,6 @@ export const models = {
   // #endregion Anthropic ==========================
 
   // #region Google AI ==========================
-
   'smythos/gemini-2.0-flash': {
     llm: 'GoogleAI',
 
@@ -130,6 +129,18 @@ export const models = {
     completionTokens: 8_192,
     enabled: true,
   },
+  'smythos/gemini-2.5-pro': {
+    llm: 'GoogleAI',
+
+    label: 'Gemini 2.5 Pro Preview',
+    modelId: 'gemini-2.5-pro-preview-03-25',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'SmythOS'],
+    tokens: 1_048_576,
+    completionTokens: 65_536,
+    enabled: true,
+  },
   'smythos/gemini-1.5-pro': {
     llm: 'GoogleAI',
 
@@ -137,12 +148,11 @@ export const models = {
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['SmythOS'],
+    tags: ['SmythOS', 'deprecated'],
     tokens: 2_097_152,
     completionTokens: 8_192,
     enabled: true,
   },
-
   // #endregion Google AI ==========================
 
   // #region Groq ==========================
@@ -187,21 +197,21 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 128_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
   },
-  'smythos/sonar-pro': {
+  'smythos/sonar-deep-research': {
     llm: 'Perplexity',
 
-    label: 'Sonar Pro',
-    modelId: 'sonar-pro',
+    label: 'Sonar Deep Research',
+    modelId: 'sonar-deep-research',
     provider: 'Perplexity',
     features: ['text'],
-    tags: ['SmythOS'],
-    tokens: 200_000,
-    completionTokens: 200_000,
+    tags: ['New', 'SmythOS'],
+    tokens: 128_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -215,7 +225,21 @@ export const models = {
     features: ['text'],
     tags: ['SmythOS'],
     tokens: 128_000,
-    completionTokens: 128_000,
+    completionTokens: 8_192,
+    enabled: true,
+
+    baseURL: 'https://api.perplexity.ai/chat/completions',
+  },
+  'smythos/sonar-pro': {
+    llm: 'Perplexity',
+
+    label: 'Sonar Pro',
+    modelId: 'sonar-pro',
+    provider: 'Perplexity',
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 200_000,
+    completionTokens: 8_192,
     enabled: true,
 
     baseURL: 'https://api.perplexity.ai/chat/completions',
@@ -650,7 +674,7 @@ export const models = {
     modelId: 'claude-3-5-haiku-latest',
     provider: 'Anthropic',
     features: ['text', 'tools'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -862,11 +886,39 @@ export const models = {
     modelId: 'gemini-2.0-flash-lite',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+  },
+  'gemini-2.5-pro': {
+    llm: 'GoogleAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
+
+    label: 'Gemini 2.5 Pro Preview',
+    modelId: 'gemini-2.5-pro-preview-03-25',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 65_536, enabled: true },
+  },
+  'gemini-2.5-pro-exp': {
+    llm: 'GoogleAI',
+    components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
+
+    label: 'Gemini 2.5 Pro Experimental',
+    modelId: 'gemini-2.5-pro-exp-03-25',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 65_536, enabled: true },
   },
   // #endregion Gemini 2.0 flash
 
@@ -879,7 +931,7 @@ export const models = {
     modelId: 'gemini-1.5-pro-exp-0801',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -895,7 +947,7 @@ export const models = {
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -908,7 +960,7 @@ export const models = {
     label: 'Gemini 1.5 Pro',
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -924,7 +976,7 @@ export const models = {
     modelId: 'gemini-1.5-pro',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -955,7 +1007,7 @@ export const models = {
     modelId: 'gemini-1.5-flash-latest',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -971,7 +1023,7 @@ export const models = {
     modelId: 'gemini-1.5-flash',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -987,7 +1039,7 @@ export const models = {
     modelId: 'gemini-1.5-flash-001',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['Personal'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1104,7 +1156,7 @@ export const models = {
     modelId: 'llama-3.3-70b-versatile',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1119,7 +1171,7 @@ export const models = {
     modelId: 'llama3-70b-8192',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1141,7 +1193,7 @@ export const models = {
     modelId: 'llama-3.1-8b-instant',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1162,7 +1214,7 @@ export const models = {
     modelId: 'llama-guard-3-8b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1177,7 +1229,7 @@ export const models = {
     modelId: 'llama3-8b-8192',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1244,7 +1296,7 @@ export const models = {
     modelId: 'qwen-qwq-32b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1257,7 +1309,7 @@ export const models = {
     modelId: 'mistral-saba-24b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1270,7 +1322,7 @@ export const models = {
     modelId: 'qwen-2.5-coder-32b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1283,7 +1335,7 @@ export const models = {
     modelId: 'qwen-2.5-32b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1296,7 +1348,7 @@ export const models = {
     modelId: 'deepseek-r1-distill-qwen-32b',
     provider: 'Groq',
     features: ['text'],
-    tags: ['New', 'Personal', 'Groq'],
+    tags: ['Personal', 'Groq'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -1314,6 +1366,20 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
+  },
+  // #endregion Groq - Meta Preview Models
+  'meta-llama/llama-4-scout-17b-16e-instruct': {
+    llm: 'Groq',
+
+    label: 'Meta - Llama 4 Scout 17B 16E Instruct',
+    modelId: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    provider: 'Groq',
+    features: ['text'],
+    tags: ['New', 'Personal', 'Groq'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 131_072, completionTokens: 8192, enabled: true },
   },
   'llama-3.3-70b-specdec': {
     llm: 'Groq',
@@ -1385,6 +1451,8 @@ export const models = {
     keyOptions: { tokens: 128_000, completionTokens: 8192, enabled: true },
     hidden: true, // !TEMP: we need to support image input for Groq
   },
+  // #endregion Groq - Meta Preview Models
+
   // #endregion Groq - Preview Models
 
   // #endregion Groq Models ==========================
@@ -1486,6 +1554,36 @@ export const models = {
   // #endregion Together AI - DeepSeek
 
   // #region Together AI - Meta
+  'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8': {
+    llm: 'TogetherAI',
+
+    label: 'Meta - Llama 4 Maverick (17Bx128E)',
+    modelId: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+    provider: 'TogetherAI',
+    features: ['text', 'tools'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 524_288, completionTokens: 524_288, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
+  'meta-llama/Llama-4-Scout-17B-16E-Instruct': {
+    llm: 'TogetherAI',
+
+    label: 'Meta - Llama 4 Scout (17Bx16E)',
+    modelId: 'meta-llama/Llama-4-Scout-17B-16E-Instruct',
+    provider: 'TogetherAI',
+    features: ['text', 'tools'],
+    tags: ['New', 'Personal', 'TogetherAI'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 327_680, completionTokens: 327_680, enabled: true },
+
+    baseURL: 'https://api.together.xyz/v1',
+  },
   'meta-llama/Llama-3.3-70B-Instruct-Turbo': {
     llm: 'TogetherAI',
 
@@ -1497,7 +1595,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 131_072, completionTokens: 131_072, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
@@ -1513,7 +1611,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 131_072, completionTokens: 131_072, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
@@ -1529,7 +1627,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 131_072, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 131_072, completionTokens: 131_072, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
@@ -1545,7 +1643,7 @@ export const models = {
     tokens: 0,
     completionTokens: 0,
     enabled: false,
-    keyOptions: { tokens: 130_815, completionTokens: 32_768, enabled: true },
+    keyOptions: { tokens: 130_815, completionTokens: 130_815, enabled: true },
 
     baseURL: 'https://api.together.xyz/v1',
   },
