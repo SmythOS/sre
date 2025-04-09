@@ -82,6 +82,7 @@ export class AgentSSE {
             try {
                 if (connection && !connection.finished) {
                     connection.end();
+                    console.log('Delibertly shutting down sse connection with id: ', id);
                 }
             } catch (error) {
                 console.error(`Error closing connection ${id}:`, error);

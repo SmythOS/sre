@@ -34,6 +34,8 @@ import { version } from '../package.json';
 import Component from './Components/Component.class';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
 import { HookService } from './Core/HookService';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+
 boot();
 
 export {
@@ -69,6 +71,7 @@ export {
     version,
     Component,
     HookService,
+    BinaryInput,
     // Interfaces: we must use the type-only export syntax when re-exporting interfaces
     type ILLMContextStore,
 };

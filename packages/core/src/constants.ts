@@ -86,7 +86,7 @@ export const SUPPORTED_MIME_TYPES_MAP = {
             'video/wmv',
             'video/3gpp',
         ],
-        audio: ['audio/wav', 'audio/mp3', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'],
+        audio: ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'],
         document: [
             'application/pdf',
             'application/x-javascript',

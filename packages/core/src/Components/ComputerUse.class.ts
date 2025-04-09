@@ -4,6 +4,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
+import { LLMInference } from '@sre/LLMManager/LLM.inference';
 
 interface AgentProgressPayload {
     status: 'iteration' | 'completion' | 'error';
@@ -76,9 +77,16 @@ export default class ComputerUse extends Component {
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
 
+        let teamId = agent?.teamId;
+
+        // TODO: once we have multiple models supporting Comp Use, we can use the model from the config to dynamically load the appropriate model
+        const model: string = '';
+        const llmInference: LLMInference = await LLMInference.getInstance('gpt-4o-mini');
+
         let prompt = config.data?.prompt || input?.Prompt;
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
         prompt = TemplateString(prompt).parse(input).result;
+        prompt = llmInference.connector.enhancePrompt(prompt, config);
 
         let socket: Socket | null = null;
         let agentActiveCheckInterval: NodeJS.Timeout | null = null;
@@ -94,7 +102,7 @@ export default class ComputerUse extends Component {
                 }
             }, 5_000);
 
-            const agentRunPromise = new Promise((resolve, reject) => {
+            const agentRunPromise: Promise<string> = new Promise((resolve, reject) => {
                 let result: any = null;
 
                 socket!.on('message', (message: WebSocketMessage) => {
@@ -113,18 +121,12 @@ export default class ComputerUse extends Component {
                                     reject(new Error(progressPayload.data));
                                     break;
                                 case 'iteration':
-                                    // logger.debug(` Agent iteration`);
                                     break;
                             }
                             break;
 
                         case 'agent:log':
                             const logPayload = message.payload as AgentLogPayload;
-                            // if (typeof agent.callback === 'function') {
-                            //     agent.callback({ log: logPayload.message });
-                            // }
-                            // TODO: send this as "component" message with the appropriate config
-                            // agent.sse.send('computer/logs', logPayload.message);
                             logger.debug(logPayload.message);
                             break;
                         case 'agent:ui_state_change':
@@ -145,12 +147,13 @@ export default class ComputerUse extends Component {
                         computer: 'local-playwright',
                         input: prompt,
                         logSteps: true,
-                        startUrl: 'https://bing.com',
+                        startUrl: 'https://duckduckgo.com',
                     },
                 });
             });
 
-            const result = await agentRunPromise;
+            let result = await agentRunPromise;
+            result = llmInference.connector.postProcess(result);
 
             logger.debug(' Agent run completed successfully');
 

@@ -982,16 +982,29 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         const modelEntryName = metadata.modelEntryName;
-        const inputTokens = usage?.promptTokenCount || 0;
+        let inputTokens = usage?.promptTokenCount || 0;
         let tier = '';
 
-        if (modelEntryName.includes('gemini-1.5-pro')) {
-            if (inputTokens < 128_000) {
-                tier = 'tier1';
-            } else {
-                tier = 'tier2';
-            }
+        const tierThresholds = {
+            'gemini-1.5-pro': 128_000,
+            'gemini-2.5-pro': 200_000,
+        };
+
+        // Find matching model and set tier based on threshold
+        const modelWithTier = Object.keys(tierThresholds).find((model) => modelEntryName.includes(model));
+        if (modelWithTier) {
+            tier = inputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
+
+        // #region model like 'gemini-2.0-flash' has different pricing for audio input tokens, so we need to handle it separately
+        let textInputTokens = 0;
+        let audioInputTokens = 0;
+        const modelsWithAudioTier = ['gemini-2.0-flash'];
+        if (modelsWithAudioTier.includes(modelEntryName)) {
+            textInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || 0;
+            audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+        }
+        // #endregion
 
         let modelName = metadata.modelEntryName;
         // SmythOS models have a prefix, so we need to remove it to get the model name
@@ -1001,8 +1014,9 @@ export class GoogleAIConnector extends LLMConnector {
 
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: usage.promptTokenCount,
+            input_tokens: textInputTokens || inputTokens,
             output_tokens: usage.candidatesTokenCount,
+            input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
             keySource: metadata.keySource,

@@ -64,9 +64,7 @@ export default class WebSearch extends Component {
     protected reportUsage({ agentId, teamId }: { agentId: string; teamId: string }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:websearch.smyth',
-            requests: 1,
             credits: 1,
-            costs: 1,
             agentId,
             teamId,
         });

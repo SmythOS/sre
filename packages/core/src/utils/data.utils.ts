@@ -128,6 +128,7 @@ export async function getMimeType(data: any): Promise<string> {
         blob: () => data.type,
         buffer: async () => {
             try {
+                // TODO: debug why this is not returning a file type for images when used through BinaryInput.helper.ts
                 const fileType = await fileTypeFromBuffer(data);
                 return fileType?.mime ?? '';
             } catch {
