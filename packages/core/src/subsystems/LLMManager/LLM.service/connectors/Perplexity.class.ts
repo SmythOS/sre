@@ -39,6 +39,7 @@ type TUsage = {
     completion_tokens: number;
     total_tokens: number;
     prompt_tokens_details?: { cached_tokens?: number };
+    reasoning_tokens?: number;
 };
 
 // TODO [Forhad]: Need to adjust some type definitions
@@ -236,6 +237,7 @@ export class PerplexityConnector extends LLMConnector {
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            reasoning_tokens: usage?.reasoning_tokens || 0,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
