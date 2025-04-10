@@ -43,7 +43,8 @@ export type TLLMParams = {
 
     cache?: boolean;
     teamId?: string;
-    thinking?: { // for Anthropic
+    thinking?: {
+        // for Anthropic
         type: 'enabled' | 'disabled';
         budget_tokens: number;
     };
@@ -65,12 +66,22 @@ export type TLLMModelEntry = {
 };
 
 export type TLLMModel = {
-    llmName: string;
-    modelId: string;
-    tokens: number;
-    completionTokens: number;
-    components: string[];
-    tags: string[];
+    llm: string;
+    modelId?: string;
+    tokens?: number;
+    completionTokens?: number;
+    components?: string[];
+    tags?: string[];
+    label?: string;
+    provider?: LLMProvider;
+    features?: string[];
+    enabled?: boolean;
+    alias?: string;
+    baseURL?: string;
+    keyOptions?: {
+        tokens: number;
+        completionTokens: number;
+    };
 };
 
 //#region === LLM Tools ===========================
@@ -221,3 +232,11 @@ export interface SmythTaskUsage {
     agentId: string;
     teamId: string;
 }
+
+export type TLLMModelsList = {
+    [key: string]: TLLMModel;
+};
+
+export type SmythModelsProviderConfig = {
+    models: (models: TLLMModelsList) => Promise<TLLMModelsList> | TLLMModelsList;
+};

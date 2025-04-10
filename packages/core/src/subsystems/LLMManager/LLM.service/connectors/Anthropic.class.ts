@@ -515,6 +515,7 @@ export class AnthropicConnector extends LLMConnector {
             });
 
             stream.on('finalMessage', (finalMessage) => {
+                let finishReason = 'stop';
                 // Preserve thinking blocks for subsequent tool interactions
                 thinkingBlocks = finalMessage.content.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
 
@@ -534,6 +535,8 @@ export class AnthropicConnector extends LLMConnector {
                     });
 
                     emitter.emit('toolsData', toolsData, thinkingBlocks);
+                } else {
+                    finishReason = finalMessage.stop_reason;
                 }
 
                 if (finalMessage?.usage) {
@@ -555,10 +558,13 @@ export class AnthropicConnector extends LLMConnector {
 
                     usage_data.push(reportedUsage);
                 }
+                if (finishReason !== 'stop') {
+                    emitter.emit('interrupted', finishReason);
+                }
 
                 //only emit end event after processing the final message
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data);
+                    emitter.emit('end', toolsData, usage_data, finishReason);
                 }, 100);
             });
 
@@ -650,6 +656,7 @@ export class AnthropicConnector extends LLMConnector {
             });
 
             stream.on('finalMessage', (finalMessage) => {
+                let finishReason = 'stop';
                 //console.log('finalMessage', finalMessage);
                 const thinkingBlocks = finalMessage?.content?.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
                 const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
@@ -667,6 +674,8 @@ export class AnthropicConnector extends LLMConnector {
                     });
 
                     emitter.emit('toolsData', toolsData, thinkingBlocks);
+                } else {
+                    finishReason = finalMessage.stop_reason;
                 }
 
                 if (finalMessage?.usage) {
@@ -686,9 +695,13 @@ export class AnthropicConnector extends LLMConnector {
                         teamId: params.teamId,
                     });
                 }
+
+                if (finishReason !== 'stop') {
+                    emitter.emit('interrupted', finishReason);
+                }
                 //only emit end event after processing the final message
                 setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data);
+                    emitter.emit('end', toolsData, usage_data, finishReason);
                 }, 100);
             });
 

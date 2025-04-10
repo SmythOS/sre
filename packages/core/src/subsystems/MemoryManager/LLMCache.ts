@@ -36,11 +36,24 @@ export class LLMCache {
     }
 
     async set(key: string, data: any) {
-        await this._cacheConnector.user(this._candidate).set(`${this._cacheId}:${key}`, data, null, null, this._ttl);
+        await this._cacheConnector
+            .user(this._candidate)
+            .set(`${this._cacheId}:${key}`, typeof data === 'object' ? JSON.stringify(data) : data, null, null, this._ttl);
     }
-    async get(key: string) {
+    async get(key: string, format: 'json' | 'text' = 'json') {
         const obj = await this._cacheConnector.user(this._candidate).get(`${this._cacheId}:${key}`);
-        return obj;
+        let result;
+        if (format === 'json') {
+            try {
+                result = JSON.parse(obj);
+            } catch (e) {
+                console.warn(`Invalid JSON data for key ${key}`);
+                result = null;
+            }
+        } else {
+            result = obj;
+        }
+        return result;
     }
     async delete(key: string) {
         await this._cacheConnector.user(this._candidate).delete(`${this._cacheId}:${key}`);

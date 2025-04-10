@@ -65,8 +65,8 @@ export default class ServerlessCode extends Component {
             const awsCredentials = {
                 accessKeyId: awsAccessKeyId,
                 secretAccessKey: awsSecretAccessKey,
-                region: awsRegion
-            }
+                region: awsRegion,
+            };
             const componentInputs = agent.components[config.id]?.inputs || {};
 
             let codeInputs = {};

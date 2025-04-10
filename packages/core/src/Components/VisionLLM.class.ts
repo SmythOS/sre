@@ -50,7 +50,7 @@ export default class VisionLLM extends Component {
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
-                    const eventEmitter: any = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent).catch((error) => {
+                    const eventEmitter: any = await llmInference.multimodalStreamRequestLegacy(prompt, fileSources, config, agent).catch((error) => {
                         console.error('Error on multimodalStreamRequest: ', error);
                         reject(error);
                     });

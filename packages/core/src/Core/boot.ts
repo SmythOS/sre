@@ -14,6 +14,7 @@ import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
+import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 const console = Logger('Boot');
 
 export function boot() {
@@ -25,6 +26,7 @@ export function boot() {
     service.ManagedVault = new ManagedVaultService();
     service.Cache = new CacheService();
     service.Storage = new StorageService();
+    service.ModelsProvider = new ModelsProviderService();
     service.LLM = new LLMService();
     service.AgentData = new AgentDataService();
     service.CLI = new CLIService();
