@@ -56,16 +56,20 @@ export function hook(hookName: string) {
 /**
  * Decorator function that executes registered hooks asynchronously before the decorated method
  * @param hookName The name of the hook to trigger
+ * @param contextFn Optional function to extract additional context from the class instance
  */
-export function hookAsync(hookName: string) {
+export function hookAsync(hookName: string, contextFn?: (instance: any) => Record<string, any>) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {
             // Execute all registered hooks for this hook name
             if (hooks[hookName]) {
+                // Get additional context if contextFn is provided
+                const additionalContext = typeof contextFn === 'function' ? await contextFn(this) : {};
+
                 // Wait for all hooks to complete before proceeding
-                await Promise.all(hooks[hookName].map((callback) => callback.apply(this, args)));
+                await Promise.all(hooks[hookName].map((callback) => callback.apply(this, [...args, additionalContext])));
             }
 
             // Call the original method
