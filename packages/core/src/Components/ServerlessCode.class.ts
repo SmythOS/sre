@@ -37,7 +37,7 @@ export default class ServerlessCode extends Component {
     constructor() {
         super();
     }
-    init() {}
+    init() { }
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
@@ -46,18 +46,21 @@ export default class ServerlessCode extends Component {
             logger.debug(`=== Serverless Code Log ===`);
             let Output: any = {};
             let _error = undefined;
-
+            const isLegacyPlan = !(agent.data?.planInfo?.flags?.hasBuiltinModels || agent.data?.planInfo?.isDefaultPlan);
             let awsAccessKeyId = SREConfig.env.AWS_LAMBDA_ACCESS_KEY_ID;
             let awsSecretAccessKey = SREConfig.env.AWS_LAMBDA_SECRET_ACCESS_KEY;
             let awsRegion = SREConfig.env.AWS_LAMBDA_REGION;
             let userProvidedKeys = false;
-            if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region) {
+            if (config.data.accessKeyId && config.data.secretAccessKey && config.data.region && config.data.use_own_keys) {
                 userProvidedKeys = true;
                 [awsAccessKeyId, awsSecretAccessKey] = await Promise.all([
                     VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.accessKeyId), agent?.teamId),
                     VaultHelper.getTeamKey(this.extractKeyFromTemplateVar(config.data.secretAccessKey), agent?.teamId),
                 ]);
                 awsRegion = config.data.region;
+            }
+            if (!userProvidedKeys && (isLegacyPlan || config.data.use_own_keys)) {
+                throw new Error('AWS Access Key Id and Secret Access Key are required to use this component');
             }
             const awsCredentials = {
                 accessKeyId: awsAccessKeyId,
@@ -112,8 +115,7 @@ export default class ServerlessCode extends Component {
                 const executionTime = lambdaResponse.executionTime;
                 await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
                 logger.debug(
-                    `Code result:\n ${
-                        typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
+                    `Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
                     }\n`
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
