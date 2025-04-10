@@ -6,7 +6,6 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import SystemEvents from '@sre/Core/SystemEvents';
-import { exec } from 'child_process';
 import { ControlledPromise } from '../utils';
 
 interface AgentProgressPayload {
