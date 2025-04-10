@@ -558,7 +558,7 @@ export class AnthropicConnector extends LLMConnector {
 
                     usage_data.push(reportedUsage);
                 }
-                if (finishReason !== 'stop') {
+                if (finishReason !== 'stop' && finishReason !== 'end_turn') {
                     emitter.emit('interrupted', finishReason);
                 }
 
@@ -696,7 +696,7 @@ export class AnthropicConnector extends LLMConnector {
                     });
                 }
 
-                if (finishReason !== 'stop') {
+                if (finishReason !== 'stop' && finishReason !== 'end_turn') {
                     emitter.emit('interrupted', finishReason);
                 }
                 //only emit end event after processing the final message

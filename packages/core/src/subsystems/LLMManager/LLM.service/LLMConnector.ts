@@ -32,6 +32,7 @@ export type LLMChatResponse = {
     content: string;
     finishReason: string;
     thinkingContent?: string;
+    usage?: any;
 };
 
 export type ImagesResponse = {

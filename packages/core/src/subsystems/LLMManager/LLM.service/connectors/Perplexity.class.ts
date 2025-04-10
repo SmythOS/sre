@@ -107,7 +107,7 @@ export class PerplexityConnector extends LLMConnector {
                 teamId: params.teamId,
             });
 
-            return { content, finishReason };
+            return { content, finishReason, usage };
         } catch (error) {
             throw error;
         }
@@ -138,7 +138,31 @@ export class PerplexityConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
-        throw new Error('Multimodal request is not supported for Perplexity.');
+        //throw new Error('Multimodal request is not supported for Perplexity.');
+        //fallback to chatRequest
+        const emitter = new EventEmitter();
+
+        setTimeout(() => {
+            try {
+                this.chatRequest(acRequest, params, agent)
+                    .then((respose) => {
+                        const finishReason = respose.finishReason;
+                        const usage = respose.usage;
+
+                        emitter.emit('interrupted', finishReason);
+                        emitter.emit('content', respose.content);
+                        emitter.emit('end', undefined, usage, finishReason);
+                    })
+                    .catch((error) => {
+                        emitter.emit('error', error.message || error.toString());
+                    });
+                //emitter.emit('finishReason', respose.finishReason);
+            } catch (error) {
+                emitter.emit('error', error.message || error.toString());
+            }
+        }, 100);
+
+        return emitter;
     }
 
     protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
