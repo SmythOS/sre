@@ -5,10 +5,14 @@ import Component from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { exec } from 'child_process';
+import { ControlledPromise } from '../utils';
 
 interface AgentProgressPayload {
     status: 'iteration' | 'completion' | 'error';
     data: any;
+    durationSec: number;
     timestamp: number;
 }
 
@@ -29,6 +33,7 @@ export default class ComputerUse extends Component {
     });
 
     private readonly API_URL = smythConfig.env.COMPUTER_USE_API_URL;
+    private readonly PER_MINUTE_COST = 0.2;
 
     constructor() {
         super();
@@ -36,27 +41,30 @@ export default class ComputerUse extends Component {
 
     init() {}
 
-    private setupSocket(): Promise<Socket> {
-        return new Promise((resolve, reject) => {
+    private setupSocket(): ControlledPromise<Socket> {
+        return new ControlledPromise((resolve, reject, isSettled) => {
             try {
                 const socket = io(this.API_URL);
 
-                socket.on('connect', () => {
+                socket.once('connect', () => {
                     resolve(socket);
                 });
 
-                socket.on('connect_error', (error) => {
-                    console.error('ComputerUse: WebSocket connection failed:', error);
+                socket.once('connect_error', (error) => {
+                    if (isSettled()) return;
+                    console.error('ComputerUse: WebSocket connection failed:', error?.message);
                     // reject(new Error(`WebSocket connection failed: ${error.message}`));
                     reject(new Error('Something went wrong'));
                 });
 
-                socket.on('disconnect', (reason) => {
+                socket.once('disconnect', (reason) => {
+                    if (isSettled()) return;
                     console.error('ComputerUse: WebSocket disconnected:', reason);
                     reject(new Error('Something went wrong'));
                 });
 
                 setTimeout(() => {
+                    if (isSettled()) return;
                     if (!socket.connected) {
                         socket.close();
                         console.error('ComputerUse: WebSocket connection timeout');
@@ -102,23 +110,32 @@ export default class ComputerUse extends Component {
                 }
             }, 5_000);
 
-            const agentRunPromise: Promise<string> = new Promise((resolve, reject) => {
+            const runPromise: ControlledPromise<{ result: string; durationSec: number }> = new ControlledPromise((resolve, reject, isSettled) => {
                 let result: any = null;
+                let executionTime: number | null = null;
+                let error: any = null;
+                let idleTimer: NodeJS.Timeout | null = null;
+                const IDLE_TIMEOUT_MS = 70_000;
 
                 socket!.on('message', (message: WebSocketMessage) => {
+                    updateIdleTimer();
+
                     switch (message.type) {
                         case 'agent:progress':
                             const progressPayload = message.payload as AgentProgressPayload;
 
                             switch (progressPayload.status) {
                                 case 'completion':
-                                    logger.debug(`computer session completed`);
                                     result = progressPayload.data;
-                                    resolve(result);
+                                    if (progressPayload.durationSec) {
+                                        executionTime = progressPayload.durationSec;
+                                    }
+                                    // resolve({ result, durationSec: progressPayload.durationSec });
 
                                     break;
                                 case 'error':
-                                    reject(new Error(progressPayload.data));
+                                    error = progressPayload.data;
+                                    // reject(new Error(progressPayload.data));
                                     break;
                                 case 'iteration':
                                     break;
@@ -127,7 +144,7 @@ export default class ComputerUse extends Component {
 
                         case 'agent:log':
                             const logPayload = message.payload as AgentLogPayload;
-                            logger.debug(logPayload.message);
+                            logger.debug(`\n${logPayload.message}`);
                             break;
                         case 'agent:ui_state_change':
                             const uiStatePayload = message.payload as { image_url?: string };
@@ -138,6 +155,22 @@ export default class ComputerUse extends Component {
                                 });
                             }
                             break;
+                        case 'agent:usage':
+                            const usagePayload = message.payload as any;
+                            if (usagePayload.durationSec) {
+                                executionTime = usagePayload.durationSec;
+                            }
+                            break;
+                    }
+
+                    if (executionTime && result) {
+                        updateIdleTimer(false);
+                        console.log('Completed run with result and execution time', result, executionTime);
+                        resolve({ result, durationSec: executionTime });
+                    } else if (executionTime && error) {
+                        updateIdleTimer(false);
+                        console.log('Completed run with error', error);
+                        reject(new Error(error));
                     }
                 });
 
@@ -150,12 +183,44 @@ export default class ComputerUse extends Component {
                         startUrl: 'https://duckduckgo.com',
                     },
                 });
+
+                //
+                socket!.once('disconnect', () => {
+                    if (isSettled()) return;
+                    console.error('ComputerUse: WebSocket disconnected midst computer use execution');
+                    updateIdleTimer(false); // remove idle timer since we are already disconnecting
+                    reject(new Error('Something went wrong'));
+                });
+
+                // TODO: add timeout when idle socket for too long
+                function updateIdleTimer(refresh: boolean = true) {
+                    if (idleTimer) clearTimeout(idleTimer);
+                    if (refresh) {
+                        idleTimer = setTimeout(() => {
+                            console.log('Computeruse socket: Idle too long as no messages received, disconnecting...');
+                            socket!.disconnect();
+                        }, IDLE_TIMEOUT_MS);
+                    } else {
+                        idleTimer = null;
+                    }
+                }
             });
 
-            let result = await agentRunPromise;
-            result = llmInference.connector.postProcess(result);
+            let agentResponse = await runPromise;
 
-            logger.debug(' Agent run completed successfully');
+            const result = llmInference.connector.postProcess(agentResponse.result);
+
+            logger.debug('Run completed successfully.');
+            logger.debug(`\n Total execution time: ${agentResponse.durationSec} seconds`);
+
+            // report usage
+            const cost = this.calculateExecutionCost(agentResponse.durationSec);
+            console.log('ComputerUse: Reporting usage', cost);
+            this.reportUsage({
+                cost,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
 
             if (socket?.connected) {
                 socket.disconnect();
@@ -182,5 +247,18 @@ export default class ComputerUse extends Component {
                 agentActiveCheckInterval = null;
             }
         }
+    }
+
+    private calculateExecutionCost(durationSec: number) {
+        return (durationSec / 60) * this.PER_MINUTE_COST;
+    }
+
+    protected reportUsage({ cost, agentId, teamId }: { cost: number; agentId: string; teamId: string }) {
+        SystemEvents.emit('USAGE:API', {
+            sourceId: 'api:computer_use.smyth',
+            costs: cost,
+            agentId,
+            teamId,
+        });
     }
 }
