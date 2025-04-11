@@ -507,7 +507,7 @@ export default class AgentRuntime {
         if (this.xDebugPendingInject) {
             component = this.xDebugPendingInject?.find((c: any) => c.id == componentId);
         } else if (this.xMockDataInject) {
-            component = this.xMockDataInject.find((c: any) => c.id == componentId);
+            component = this.xMockDataInject?.find((c: any) => c.id == componentId);
         }
 
         if (component?.ctx?.output) {
