@@ -154,6 +154,10 @@ export default class GenAILLM extends Component {
                     logger.warn('Error on parsing context window: ', error);
                     console.warn(cachedMessages);
                 }
+            } else {
+                // Messages must follow the correct format required by LLM providers
+                // (e.g. Gemini needs a specific structure like this: { role: 'user', parts: [{ text: 'Hello, world!' }] }).
+                messages = llmInference.connector.getConsistentMessages(messages);
             }
 
             if (messages[messages.length - 1]?.role == 'user') {
@@ -187,9 +191,7 @@ export default class GenAILLM extends Component {
                             {
                                 ...config.data,
                                 model,
-                                // We're using streamRequest for tool streaming, in this case messages must follow the correct format required by LLM providers
-                                // (e.g. Gemini needs a specific structure like this: { role: 'user', parts: [{ text: 'Hello, world!' }] }).
-                                messages: llmInference.connector.getConsistentMessages(messages),
+                                messages,
                             },
                             agent.id
                         )
