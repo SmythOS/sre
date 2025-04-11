@@ -324,9 +324,9 @@ export abstract class LLMConnector extends Connector {
                 _value = +_value;
             }
 
-            // if (key === 'messages') {
-            //     _value = this.getConsistentMessages(_value);
-            // }
+            if (key === 'messages') {
+                _value = this.getConsistentMessages(_value);
+            }
 
             _params[key] = _value;
         }

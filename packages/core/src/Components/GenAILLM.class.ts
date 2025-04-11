@@ -9,6 +9,7 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 //TODO : better handling of context window exceeding max length
 
@@ -61,7 +62,8 @@ export default class GenAILLM extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
-            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(teamId);
+            const team = AccessCandidate.team(teamId);
+            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
 
             logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
 
@@ -187,11 +189,7 @@ export default class GenAILLM extends Component {
                             {
                                 ...config.data,
                                 model,
-                                //FIXME: to revisit by Alaa-eddine.
-                                // Although getConsistentMessages() is used inside getContextWindow(), we still need to reapply it, since getContextWindow() runs only when useContextWindow is true, and the message structure is built from _prompt on line #159.
-                                // Messages must follow the correct format required by LLM providers
-                                // (e.g. Gemini needs a specific structure like this: { role: 'user', parts: [{ text: 'Hello, world!' }] }).
-                                messages: llmInference.connector.getConsistentMessages(messages),
+                                messages,
                             },
                             agent.id
                         )
