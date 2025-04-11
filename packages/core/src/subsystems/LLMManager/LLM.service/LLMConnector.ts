@@ -324,6 +324,7 @@ export abstract class LLMConnector extends Connector {
                 _value = +_value;
             }
 
+            //FIXME: to revisit by Alaa-eddine
             if (key === 'messages') {
                 _value = this.getConsistentMessages(_value);
             }
