@@ -1,6 +1,6 @@
 import { isBase64, isBase64DataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
-import { isBinaryData, isBuffer, isPlainObject, isSmythFileObject, isUrl, uid } from '../utils';
+import { isPlainObject, isSmythFileObject, isSmythFsUrl, isUrl, uid } from '../utils';
 import Agent from '@sre/AgentManager/Agent.class';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
@@ -221,16 +221,35 @@ async function _createBinaryInput(value: any, key?: string, agent?: Agent) {
     return binaryInput;
 }
 
-async function inferBinaryType(value: any, key?: string, agent?: Agent) {
+async function inferBinaryType(value: string | string[], key?: string, agent?: Agent): Promise<BinaryInput | BinaryInput[]> {
     try {
-        if (Array.isArray(value)) {
-            return await Promise.all(value.map((item) => _createBinaryInput(item, key, agent)));
+        let binarySource: string | string[] = value;
+
+        //#region Process string input
+        if (typeof value === 'string') {
+            const normalizedValue = value.trim();
+
+            if (isUrl(normalizedValue) || isSmythFsUrl(normalizedValue) || isBase64(value) || isBase64DataUrl(value)) {
+                // No transformation needed for a url, smythfs url, base64 or base64 data url
+                binarySource = normalizedValue;
+            } else {
+                // Extract URLs from text content
+                const extractedUrls = _extractUrls(value);
+                if (extractedUrls.length > 0) {
+                    binarySource = extractedUrls;
+                }
+            }
+        }
+        //#endregion
+        // Handle any array (original or created from extraction)
+        if (Array.isArray(binarySource)) {
+            return await Promise.all(binarySource.map((item) => _createBinaryInput(item, key, agent)));
         }
 
-        return await _createBinaryInput(value, key, agent);
-    } catch (error: any) {
-        console.warn('Error in binary type handler', error);
-
+        // Handle single value case
+        return await _createBinaryInput(binarySource, key, agent);
+    } catch (error) {
+        logger.warn('Error processing binary input', { key, error: error.message });
         return null;
     }
 }
@@ -257,4 +276,54 @@ async function inferDateType(value: any, key?: string, agent?: Agent) {
 
 async function inferAnyType(value: any) {
     return value;
+}
+
+/**
+ * Extracts URLs from various string formats that may be returned by AI/LLM outputs.
+ * The underscore prefix indicates this is an internal utility function.
+ *
+ * Handles the following formats:
+ * - JSON stringified arrays or objects containing URLs
+ * - Comma-separated URLs
+ * - Newline-separated URLs
+ * - Mixed formats (both comma and newline separators)
+ * - Single URL strings
+ *
+ * @param value - String potentially containing one or more URLs (typically from AI/LLM outputs)
+ * @returns Array of extracted URLs (empty array if none found)
+ * @private
+ */
+function _extractUrls(value: string): string[] {
+    // Return empty array for non-string inputs
+    if (typeof value !== 'string') return [];
+
+    try {
+        // Try parsing as JSON first
+        const parsedValue = JSONContent(value).tryParse();
+        if (typeof parsedValue === 'object') {
+            return Object.values(parsedValue)
+                .map((val) => String(val).trim())
+                .filter((val) => isUrl(val) || isSmythFsUrl(val));
+        }
+
+        // Split by both delimiters and flatten the results
+        const urls = new Set([
+            // Split by commas
+            ...value
+                .split(',')
+                .map((val) => val.trim())
+                .filter((val) => val && (isUrl(val) || isSmythFsUrl(val))),
+
+            // Split by newlines
+            ...value
+                .split('\n')
+                .map((val) => val.trim())
+                .filter((val) => val && (isUrl(val) || isSmythFsUrl(val))),
+        ]);
+
+        return Array.from(urls);
+    } catch (error) {
+        logger.warn('Error extracting URLs from value', { error });
+        return [];
+    }
 }
