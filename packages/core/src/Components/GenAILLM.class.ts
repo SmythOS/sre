@@ -155,6 +155,7 @@ export default class GenAILLM extends Component {
                     console.warn(cachedMessages);
                 }
             } else {
+                //FIXME: Alaa-eddine want to revisit
                 // Messages must follow the correct format required by LLM providers
                 // (e.g. Gemini needs a specific structure like this: { role: 'user', parts: [{ text: 'Hello, world!' }] }).
                 messages = llmInference.connector.getConsistentMessages(messages);
