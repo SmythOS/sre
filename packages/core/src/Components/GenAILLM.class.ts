@@ -187,7 +187,9 @@ export default class GenAILLM extends Component {
                             {
                                 ...config.data,
                                 model,
-                                messages,
+                                // We're using streamRequest for tool streaming, in this case messages must follow the correct format required by LLM providers
+                                // (e.g. Gemini needs a specific structure like this: { role: 'user', parts: [{ text: 'Hello, world!' }] }).
+                                messages: llmInference.connector.getConsistentMessages(messages),
                             },
                             agent.id
                         )
