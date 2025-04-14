@@ -32,6 +32,7 @@ export type LLMChatResponse = {
     content: string;
     finishReason: string;
     thinkingContent?: string;
+    usage?: any;
 };
 
 export type ImagesResponse = {
@@ -271,7 +272,8 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+            const team = AccessCandidate.team(teamId);
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
 
             const modelInfo = customLLMRegistry.getModelInfo(model);
 
@@ -322,9 +324,9 @@ export abstract class LLMConnector extends Connector {
                 _value = +_value;
             }
 
-            if (key === 'messages') {
-                _value = this.getConsistentMessages(_value);
-            }
+            // if (key === 'messages') {
+            //     _value = this.getConsistentMessages(_value);
+            // }
 
             _params[key] = _value;
         }

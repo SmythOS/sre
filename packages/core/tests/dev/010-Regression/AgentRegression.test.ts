@@ -60,8 +60,8 @@ const SREInstance = SmythRuntime.Instance.init({
     },
 });
 
-if (!SREInstance.ready()) {
-    process.exit(1);
-} //force SmythRuntime to initialize
+// if (!SREInstance.ready()) {
+//     process.exit(1);
+// } //force SmythRuntime to initialize
 
 await createRegressionTestSuite(BASE_DIR, { server, port: PORT });

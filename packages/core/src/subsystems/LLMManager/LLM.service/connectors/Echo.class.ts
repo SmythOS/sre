@@ -30,7 +30,12 @@ export class EchoConnector extends LLMConnector {
     }
     protected async streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
-        const content = params?.messages?.[0]?.content;
+        let content = '';
+
+        if (Array.isArray(params?.messages)) {
+            content = params?.messages?.filter((m) => m.role === 'user').pop()?.content;
+        }
+        //params?.messages?.[0]?.content;
 
         // Process stream asynchronously as we need to return emitter immediately
         (async () => {

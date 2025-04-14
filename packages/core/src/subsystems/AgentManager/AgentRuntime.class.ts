@@ -7,6 +7,8 @@ import componentInstance from '@sre/Components/index';
 import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
 import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
+import { LLMCache } from '@sre/MemoryManager/LLMCache';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('AgentRuntime');
 const AgentRuntimeUnavailable = new Proxy(
@@ -31,6 +33,7 @@ export default class AgentRuntime {
     public static dummy = AgentRuntimeUnavailable;
 
     private agentContext: RuntimeContext;
+    public llmCache: LLMCache;
     //private ctxFile: string = '';
     private xDebugRun: string | undefined = '';
     private xDebugInject: string | undefined = '';
@@ -39,6 +42,7 @@ export default class AgentRuntime {
     private xDebugPendingInject: any = null;
     private xMockDataInject: any = null;
     public xDebugId: string | undefined = '';
+
     private xDebugCmd: string | undefined = '';
     private _debugActive = false;
     private _runtimeFileReady = false;
@@ -166,7 +170,9 @@ export default class AgentRuntime {
         //if xDebugId is equal to agent session, it means that the debugging features are not active
         this._debugActive = this.xDebugId != agent.sessionId;
 
-        //console.debug(`New Agent Runtime initialized for agentId=${this.agent.id}  tag=${this.reqTag} debug file=${this.ctxFile}`);
+        const xCacheId = agent.agentRequest.header('X-CACHE-ID') || '';
+        this.llmCache = new LLMCache(AccessCandidate.agent(this.agent.id), xCacheId);
+        //this.xCacheId =
     }
 
     public async ready() {

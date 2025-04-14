@@ -2,16 +2,17 @@ import { ConnectorService } from '@sre/index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { customModels } from './custom-models';
 import { TVertexAIModel, TBedrockModel } from '@sre/types/LLM.types';
+import { TAccessRole } from '@sre/types/ACL.types';
 
 export class CustomLLMRegistry {
     private models: Record<string, any> = {}; // TODO [Forhad]: apply proper typing
 
-    public static async getInstance(teamId: string) {
-        if (!teamId) throw new Error('Please provide a valid team ID.');
+    public static async getInstance(team: AccessCandidate) {
+        if (!team || team.role !== TAccessRole.Team) throw new Error('Please provide a valid team.');
 
         const registry = new CustomLLMRegistry();
 
-        await registry.loadCustomModels(teamId);
+        await registry.loadCustomModels(team);
 
         return registry;
     }
@@ -28,8 +29,8 @@ export class CustomLLMRegistry {
         return { ...modelInfo, modelId: model };
     }
 
-    private async loadCustomModels(teamId?: string) {
-        const savedCustomModels = await this.getCustomModels(teamId);
+    private async loadCustomModels(team: AccessCandidate) {
+        const savedCustomModels = await this.getCustomModels(team);
 
         this.models = { ...this.models, ...savedCustomModels };
     }
@@ -75,14 +76,14 @@ export class CustomLLMRegistry {
         return Math.min(validMaxThinkingTokens, maxThinkingTokens);
     }
 
-    private async getCustomModels(teamId: string): Promise<Record<string, any>> {
+    private async getCustomModels(team: AccessCandidate): Promise<Record<string, any>> {
         const models = {};
         const settingsKey = 'custom-llm';
 
         try {
             const accountConnector = ConnectorService.getAccountConnector();
 
-            const teamSettings = await accountConnector.user(AccessCandidate.team(teamId)).getTeamSetting(settingsKey);
+            const teamSettings = await accountConnector.user(team).getTeamSetting(settingsKey);
             const savedCustomModelsData = JSON.parse(teamSettings || '{}') as Record<string, any>;
 
             for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {

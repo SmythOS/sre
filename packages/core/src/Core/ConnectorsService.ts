@@ -17,6 +17,8 @@ import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
 import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
+import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
+import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 const console = Logger('ConnectorService');
 
 const Connectors = {};
@@ -177,6 +179,10 @@ export class ConnectorService {
 
     static getComponentConnector(name?: string): ComponentConnector {
         return ConnectorService.getInstance<ComponentConnector>(TConnectorService.Component, name);
+    }
+
+    static getModelsProvider(name?: string): ModelsProviderConnector {
+        return ConnectorService.getInstance<ModelsProviderConnector>(TConnectorService.ModelsProvider, name);
     }
 
     //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...

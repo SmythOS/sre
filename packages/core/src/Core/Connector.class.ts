@@ -15,12 +15,12 @@ export class Connector {
     /**
      * Creates a new instance of the current class using the provided settings.
      * This method can be called on both Connector instances and its subclasses.
+     * This is used when we need to create a connector instance with a specific configuration (for example with user provided keys)
      *
      * @param config - Configuration settings for the new instance.
      * @returns A new instance of the current class.
      */
     public instance(config: any): this {
-
         const configHash = createHash('sha256').update(JSON.stringify(config)).digest('hex');
         const key = `${this.name}-${configHash}`;
 
@@ -36,7 +36,6 @@ export class Connector {
         return instance;
     }
 
-
     public async start() {
         console.info(`Starting ${this.name} connector ...`);
         this.started = true;
@@ -49,7 +48,7 @@ export class Connector {
     public ready() {
         if (!this._readyPromise) {
             this._readyPromise = new Promise((resolve) => {
-                let maxWait = 10000;
+                let maxWait = 60000;
                 const tick = 100;
                 if (this.started) {
                     resolve(true);
