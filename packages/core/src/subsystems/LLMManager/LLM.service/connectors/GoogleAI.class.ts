@@ -1000,7 +1000,8 @@ export class GoogleAIConnector extends LLMConnector {
         let textInputTokens = 0;
         let audioInputTokens = 0;
         const modelsWithAudioTier = ['gemini-2.0-flash'];
-        if (modelsWithAudioTier.includes(modelEntryName)) {
+        const hasAudioTier = modelsWithAudioTier.some((model) => modelEntryName.includes(model)); // we may have model prefixed with smythos, e.g. smythos/gemini-2.0-flash
+        if (hasAudioTier) {
             textInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || 0;
             audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
         }

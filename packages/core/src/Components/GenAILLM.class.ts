@@ -9,6 +9,7 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 //TODO : better handling of context window exceeding max length
 
@@ -61,7 +62,8 @@ export default class GenAILLM extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
-            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(teamId);
+            const team = AccessCandidate.team(teamId);
+            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
 
             logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
 
