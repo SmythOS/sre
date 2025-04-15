@@ -122,6 +122,12 @@ export function isUrl(str: string): boolean {
     return regex.test(str);
 }
 
+export function isSmythFsUrl(str: string): boolean {
+    if (typeof str !== 'string') return false;
+    const regex = /^smythfs:\/\/([^\s.]+\.[^\s]{2,})(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+    return regex.test(str);
+}
+
 export const isSmythFileObject = (data: any): boolean => {
     return !!(typeof data === 'object' && data !== null && data?.url && isUrl(data?.url) && 'size' in data && 'mimetype' in data);
 };

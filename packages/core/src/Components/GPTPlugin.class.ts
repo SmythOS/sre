@@ -30,7 +30,7 @@ export default class GPTPlugin extends Component {
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
 
-        logger.debug(`=== GPT Plugin Log ===`);
+        logger.debug(`=== Open API Log ===`);
 
         try {
             const specUrl = config?.data?.specUrl;
@@ -63,8 +63,8 @@ export default class GPTPlugin extends Component {
 
             return { Output: result, _debug: logger.output };
         } catch (error: any) {
-            console.error('Error on running GPT Plugin: ', error);
-            return { _error: `Error on running GPT Plugin!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
+            console.error('Error on running Open API: ', error);
+            return { _error: `Error on running Open API!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
     }
 }
