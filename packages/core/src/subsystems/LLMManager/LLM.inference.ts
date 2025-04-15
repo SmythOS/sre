@@ -346,7 +346,7 @@ export class LLMInference {
         //#endregion get max model context
 
         let maxInputContext = Math.min(maxTokens, maxModelContext);
-        let maxOutputContext = Math.min(maxOutputTokens, maxModelOutputTokens);
+        let maxOutputContext = Math.min(maxOutputTokens, maxModelOutputTokens || 0);
 
         if (maxInputContext + maxOutputContext > maxModelContext) {
             maxInputContext -= maxInputContext + maxOutputContext - maxModelContext;
@@ -370,15 +370,18 @@ export class LLMInference {
 
             tokensCount = 0;
             if (curMessage?.content) {
-                tokensCount += encodeChat([{ role: 'user', content: curMessage.content } as ChatMessage], 'gpt-4o').length;
+                // tokensCount += encodeChat([{ role: 'user', content: curMessage.content } as ChatMessage], 'gpt-4o').length;
+                tokensCount += countTokens(curMessage.content);
             }
 
             if (curMessage?.messageBlock?.content) {
-                tokensCount += encodeChat([{ role: 'user', content: curMessage.messageBlock.content } as ChatMessage], 'gpt-4o').length;
+                // tokensCount += encodeChat([{ role: 'user', content: curMessage.messageBlock.content } as ChatMessage], 'gpt-4o').length;
+                tokensCount += countTokens(curMessage.messageBlock.content);
             }
             if (curMessage.toolsData) {
                 for (let tool of curMessage.toolsData) {
-                    tokensCount += encodeChat([{ role: 'user', content: tool.result } as ChatMessage], 'gpt-4o').length;
+                    // tokensCount += encodeChat([{ role: 'user', content: tool.result } as ChatMessage], 'gpt-4o').length;
+                    tokensCount += countTokens(tool.result);
                 }
             }
 
@@ -412,7 +415,7 @@ export class LLMInference {
 
         return modelContextWindow;
 
-        /*
+        /* // ! DEPRECATED: will be removed in the future
         let modelMessages = [];
         let tokens = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
         for (let i = _messages.length - 1; i >= 0; i--) {
@@ -486,5 +489,18 @@ export class LLMInference {
         return modelMessages;
 
         */
+    }
+}
+
+function countTokens(content: any, model: 'gpt-4o' | 'gpt-4o-mini' = 'gpt-4o') {
+    try {
+        // Content must be stringified since some providers like Anthropic use object content
+        const _stringifiedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+        const tokens = encodeChat([{ role: 'user', content: _stringifiedContent } as ChatMessage], model);
+        return tokens.length;
+    } catch (error) {
+        console.warn('Error in countTokens: ', error);
+        return 0;
     }
 }
