@@ -23,6 +23,19 @@ export const models = {
   // #region [SmythOS Models] ==============================================================
 
   // #region OpenAI ==========================
+  // this will be the default model for Open AI
+  'smythos/gpt-4o-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    features: ['text', 'image', 'tools'],
+    tags: ['SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+  },
   'smythos/gpt-4.1-nano': {
     llm: 'OpenAI',
 
@@ -57,18 +70,6 @@ export const models = {
     tags: ['New', 'SmythOS'],
     tokens: 1_047_576,
     completionTokens: 32_768,
-    enabled: true,
-  },
-  'smythos/gpt-4o-mini': {
-    llm: 'OpenAI',
-
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    features: ['text', 'image', 'tools'],
-    tags: ['SmythOS'],
-    tokens: 128_000,
-    completionTokens: 16_383,
     enabled: true,
   },
   'smythos/gpt-4o': {
@@ -321,6 +322,32 @@ export const models = {
 
   // #region OpenAI Models ==========================
 
+  // this will be the default model for Open AI
+  'gpt-4o-mini': {
+    llm: 'OpenAI',
+    alias: 'gpt-4o-mini-2024-07-18',
+    components: [
+      'PromptGenerator',
+      'LLMAssistant',
+      'Classifier',
+      'VisionLLM',
+      'AgentPlugin',
+      'Chatbot',
+      'GPTPlugin',
+      'GenAILLM',
+    ],
+
+    label: 'GPT 4o mini',
+    modelId: 'gpt-4o-mini-2024-07-18',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
+  },
+
   // #region GPT 4.1
   'gpt-4.1-nano': {
     llm: 'OpenAI',
@@ -364,30 +391,6 @@ export const models = {
   // #endregion
 
   // #region GPT 4o
-  'gpt-4o-mini': {
-    llm: 'OpenAI',
-    alias: 'gpt-4o-mini-2024-07-18',
-    components: [
-      'PromptGenerator',
-      'LLMAssistant',
-      'Classifier',
-      'VisionLLM',
-      'AgentPlugin',
-      'Chatbot',
-      'GPTPlugin',
-      'GenAILLM',
-    ],
-
-    label: 'GPT 4o mini',
-    modelId: 'gpt-4o-mini-2024-07-18',
-    provider: 'OpenAI',
-    features: ['text', 'tools', 'image'],
-    tags: ['Personal'],
-    tokens: 0,
-    completionTokens: 0,
-    enabled: false,
-    keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
-  },
   'gpt-4o-mini-2024-07-18': {
     llm: 'OpenAI',
     tokens: 2048,
