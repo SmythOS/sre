@@ -610,10 +610,10 @@ export const models = {
     ],
 
     label: 'GPT 4',
-    modelId: 'gpt-4-0613',
+    modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
     features: ['text', 'tools'],
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
