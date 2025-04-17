@@ -170,7 +170,7 @@ export async function getMimeType(data: any): Promise<string> {
         smythFile: () => data.mimetype,
         base64DataUrl: () => identifyMimeTypeFromBase64DataUrl(data),
         base64: () => identifyMimetypeFromBase64(data),
-        string: () => 'text/plain',
+        string: () => '',
     };
 
     const typeChecks = {
