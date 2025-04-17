@@ -23,7 +23,7 @@ export const models = {
   // #region [SmythOS Models] ==============================================================
 
   // #region OpenAI ==========================
-  // this will be the default model for Open AI
+  // keep the gpt-4o-mini as default model for now
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
@@ -322,7 +322,7 @@ export const models = {
 
   // #region OpenAI Models ==========================
 
-  // this will be the default model for Open AI
+  // keep the gpt-4o-mini as default model for now
   'gpt-4o-mini': {
     llm: 'OpenAI',
     alias: 'gpt-4o-mini-2024-07-18',
