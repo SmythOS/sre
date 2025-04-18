@@ -980,6 +980,8 @@ export class OpenAIConnector extends LLMConnector {
         try {
             const documentData = [];
 
+            // Note: We're embedding the file data in the prompt, but we should ideally be uploading the files to OpenAI first
+            // in case we start to support bigger files. Refer to this guide: https://platform.openai.com/docs/guides/pdf-files?api-mode=chat
             for (let fileSource of fileSources) {
                 const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
                 const base64Data = bufferData.toString('base64');
