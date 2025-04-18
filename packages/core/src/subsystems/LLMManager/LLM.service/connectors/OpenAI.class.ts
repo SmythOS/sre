@@ -728,11 +728,28 @@ export class OpenAIConnector extends LLMConnector {
         const agentId = agent instanceof Agent ? agent.id : agent;
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
+        const validImageFileSources = this.getValidImageFileSources(fileSources);
+        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
 
-        // Add user message
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
+        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
+        // handle the invalid files in the prompt to let the user know that some files were not processed.
+
+        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
+        // const invalidFileNames = areAllFilesValid
+        //     ? []
+        //     : // get all the original file sources that are not valid image or document
+        //       fileSources
+        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
+        //           .map(async (file) => await file.getName());
+
+        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
+        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
+
+        const promptData = [
+            { type: 'text', text: prompt || '' },
+            ...imageData,
+            ...documentData,
+        ];
 
         messages.push({ role: 'user', content: promptData });
 
