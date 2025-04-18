@@ -287,7 +287,7 @@ describe.each(models)('LLM Usage Reporting Tests: $provider ($id)', async ({ pro
             const usageEvent = listenForUsageEvent();
             const prompt = 'Hello, what is the smallest country in the world?';
             const fileSources = ['https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300'];
-            const stream = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent);
+            const stream = await llmInference.multimodalStreamRequestLegacy(prompt, fileSources, config, agent);
             await consumeStream(stream);
             const eventValue = usageEvent.get();
             expect(eventValue, 'Did not receive usage event').toBeDefined();

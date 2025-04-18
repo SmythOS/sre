@@ -9,6 +9,7 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
 import Component from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 //TODO : better handling of context window exceeding max length
 
@@ -45,6 +46,10 @@ export default class GenAILLM extends Component {
             let teamId = agent?.teamId;
 
             const passThrough: boolean = config.data.passthrough || false;
+            const useContextWindow: boolean = config.data.useContextWindow || false;
+            const useSystemPrompt: boolean = config.data.useSystemPrompt || false;
+            const maxTokens: number = parseInt(config.data.maxTokens) || 1024;
+            const maxContextWindowLength: number = parseInt(config.data.maxContextWindowLength) || 1024;
             const model: string = config.data.model || 'echo';
             const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
 
@@ -57,7 +62,8 @@ export default class GenAILLM extends Component {
             }
 
             const isStandardLLM = LLMRegistry.isStandardLLM(model);
-            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(teamId);
+            const team = AccessCandidate.team(teamId);
+            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
 
             logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
 
@@ -111,57 +117,133 @@ export default class GenAILLM extends Component {
 
             // request to LLM
             let response: any;
-            if (passThrough) {
-                const contentPromise = new Promise(async (resolve, reject) => {
-                    let _content = '';
-                    let eventEmitter;
 
-                    if (isMultimodalRequest && fileSources.length > 0) {
-                        eventEmitter = await llmInference.multimodalStreamRequest(prompt, fileSources, config, agent).catch((error) => {
+            //response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+
+            const _prompt = llmInference.connector.enhancePrompt(prompt, config);
+            let messages = [];
+
+            let systemPrompt = '';
+            if (useSystemPrompt) {
+                //first we try to grab the system prompt from llmCache (in case of a ConversationHelper implementing dynamic system prompt)
+                const cachedPrompt = await agent.agentRuntime.llmCache.get('systemPrompt', 'text');
+                //if not found, we can read the system prompt from agent data.
+                systemPrompt = cachedPrompt || agent.data?.behavior || '';
+
+                if (systemPrompt) {
+                    logger.debug(' Using Agent System Prompt\n', systemPrompt);
+                }
+                if (systemPrompt) {
+                    messages = [{ role: 'system', content: systemPrompt }];
+                }
+            }
+
+            if (useContextWindow) {
+                const cachedMessages = await agent.agentRuntime.llmCache.get('messages', 'json');
+                try {
+                    const messagesJSON = typeof cachedMessages === 'string' ? JSON.parse(cachedMessages) : cachedMessages;
+                    //const contextWindow = messagesJSON.filter((message) => message.role !== 'user');
+
+                    const convMessages = await llmInference.getContextWindow(systemPrompt, messagesJSON, maxContextWindowLength, maxTokens);
+
+                    if (convMessages.length > 0) {
+                        logger.debug(` Using Agent Context Window : ${convMessages.length - 1} messages will be used`);
+                    }
+
+                    messages = [...convMessages];
+                    //messages.push(...contextWindowJSON);
+                } catch (error) {
+                    logger.warn('Error on parsing context window: ', error);
+                    console.warn(cachedMessages);
+                }
+            }
+
+            if (messages[messages.length - 1]?.role == 'user') {
+                messages[messages.length - 1].content = _prompt;
+            } else {
+                messages.push({ role: 'user', content: _prompt });
+            }
+            let finishReason = 'stop';
+            const contentPromise = new Promise(async (resolve, reject) => {
+                let _content = '';
+                let eventEmitter;
+
+                if (isMultimodalRequest && fileSources.length > 0) {
+                    eventEmitter = await llmInference
+                        .multimodalStreamRequest(
+                            {
+                                ...config.data,
+                                model,
+                                messages,
+                            },
+                            fileSources,
+                            agent
+                        )
+                        .catch((error) => {
                             console.error('Error on multimodalStreamRequest: ', error);
                             reject(error);
                         });
-                    } else {
-                        eventEmitter = await llmInference
-                            .streamRequest(
-                                {
-                                    model: model,
-                                    messages: [{ role: 'user', content: prompt }],
-                                },
-                                agent.id
-                            )
-                            .catch((error) => {
-                                console.error('Error on streamRequest: ', error);
-                                reject(error);
-                            });
-                    }
+                } else {
+                    eventEmitter = await llmInference
+                        .streamRequest(
+                            {
+                                ...config.data,
+                                model,
+                                messages,
+                            },
+                            agent.id
+                        )
+                        .catch((error) => {
+                            console.error('Error on streamRequest: ', error);
+                            reject(error);
+                        });
+                }
 
-                    eventEmitter.on('content', (content) => {
+                eventEmitter.on('content', (content) => {
+                    if (passThrough) {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ content });
                         }
                         agent.sse.send('llm/passthrough/content', content.replace(/\n/g, '\\n'));
-                        _content += content;
-                    });
+                    }
+                    _content += content;
+                });
 
-                    eventEmitter.on('thinking', (thinking) => {
+                eventEmitter.on('thinking', (thinking) => {
+                    if (passThrough) {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ thinking });
                         }
                         agent.sse.send('llm/passthrough/thinking', thinking.replace(/\n/g, '\\n'));
-                    });
-                    eventEmitter.on('end', () => {
-                        console.log('end');
-                        resolve(_content);
-                    });
+                    }
                 });
-                response = await contentPromise;
-            } else {
-                if (isMultimodalRequest && fileSources.length > 0) {
-                    response = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
-                } else {
-                    response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
-                }
+                eventEmitter.on('end', () => {
+                    if (passThrough) {
+                        if (typeof agent.callback === 'function') {
+                            agent.callback({ content: '\n' });
+                        }
+                        agent.sse.send('llm/passthrough/content', '\\n');
+                    }
+                    resolve(_content);
+                });
+                eventEmitter.on('interrupted', (reason) => {
+                    finishReason = reason || 'stop';
+                });
+
+                eventEmitter.on('error', (error) => {
+                    reject(error);
+                });
+            });
+            response = await contentPromise.catch((error) => {
+                return { error: error.message || error };
+            });
+            // // If the model stopped before completing the response, this is usually due to output token limit reached.
+            if (finishReason !== 'stop') {
+                return {
+                    Reply: response,
+                    _error: 'The model stopped before completing the response, this is usually due to output token limit reached.',
+                    _debug: logger.output,
+                };
             }
 
             // in case we have the response but it's empty string, undefined or null
@@ -176,9 +258,15 @@ export default class GenAILLM extends Component {
                 return { Output: response?.data, _error: error, _debug: logger.output };
             }
 
-            logger.debug(' Reply \n', response);
+            const Reply = llmInference.connector.postProcess(response);
+            if (Reply.error) {
+                logger.error(` LLM Error=`, Reply.error);
+                return { _error: Reply.error, _debug: logger.output };
+            }
 
-            const result = { Reply: response };
+            logger.debug(' Reply \n', Reply);
+
+            const result = { Reply };
 
             result['_debug'] = logger.output;
 

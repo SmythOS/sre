@@ -14,7 +14,11 @@ const console = Logger('OAuth.helper');
 let managedVault: any;
 
 SystemEvents.on('SRE:Booted', () => {
-    managedVault = ConnectorService.getManagedVaultConnector('oauth');
+    try {
+        managedVault = ConnectorService.getManagedVaultConnector('oauth');
+    } catch (error) {
+        console.warn('Could not find a compatible ManagedVault connector, OAuth APICalls will not work');
+    }
 });
 
 export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig = {}) {
@@ -82,7 +86,7 @@ export const retrieveOAuthTokens = async (agent, config) => {
 
         try {
             const result: any = await managedVault.user(AccessCandidate.agent(agent.id)).get(tokenKey);
-            const tokensData = typeof result === 'object' ? result : JSON.parse(result);
+            const tokensData = typeof result === 'object' ? result : JSON.parse(result || '{}');
 
             if (!tokensData) {
                 throw new Error('Failed to retrieve OAuth tokens from vault. Please authenticate ...');

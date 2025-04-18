@@ -1,7 +1,20 @@
-import { models } from './models';
+//import { models } from './models';
 import { DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS } from '@sre/constants';
+import { TLLMModelsList } from '@sre/types/LLM.types';
+import SystemEvents from '@sre/Core/SystemEvents';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
+import { ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
+//let models: TLLMModelsList = {};
+
+SystemEvents.on('SRE:Initialized', async () => {
+    const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProvider();
+    LLMRegistry.models = await modelsProvider.user(AccessCandidate.user('smyth')).getModels();
+});
 export class LLMRegistry {
-    private constructor() {} // Prevents instantiation
+    public static models: any = {};
+    private constructor() {}
 
     public static isStandardLLM(model: string): boolean {
         return this.modelExists(model);
@@ -16,36 +29,41 @@ export class LLMRegistry {
     }
 
     public static getModelId(model: string): string {
-        const modelId = models?.[model]?.modelId || model;
-        const alias = models?.[modelId]?.alias;
-        const aliasModelId = models?.[alias]?.modelId || alias;
+        const modelId = LLMRegistry.models?.[model]?.modelId || model;
+        const alias = LLMRegistry.models?.[modelId]?.alias;
+        const aliasModelId = LLMRegistry.models?.[alias]?.modelId || alias;
 
         return aliasModelId || modelId;
     }
 
     public static getModelFeatures(model: string): string[] {
-        return models?.[model]?.features || [];
+        return LLMRegistry.models?.[model]?.features || [];
     }
 
     public static getBaseURL(model: string): string {
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
-        return models?.[modelId]?.baseURL || models?.[modelEntryId]?.baseURL || undefined;
+        return LLMRegistry.models?.[modelId]?.baseURL || LLMRegistry.models?.[modelEntryId]?.baseURL || undefined;
     }
 
     public static getProvider(model: string): string {
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
-        return models?.[modelId]?.provider || models?.[modelEntryId]?.provider || models?.[modelId]?.llm || models?.[modelEntryId]?.llm;
+        return (
+            LLMRegistry.models?.[modelId]?.provider ||
+            LLMRegistry.models?.[modelEntryId]?.provider ||
+            LLMRegistry.models?.[modelId]?.llm ||
+            LLMRegistry.models?.[modelEntryId]?.llm
+        );
     }
 
     public static getModelInfo(model: string, hasAPIKey: boolean = false): Record<string, any> {
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
-        const modelInfo = models?.[modelId] || models?.[modelEntryId] || {};
+        const modelInfo = LLMRegistry.models?.[modelId] || LLMRegistry.models?.[modelEntryId] || {};
 
         if (hasAPIKey) {
-            const keyOptions = models?.[modelId]?.keyOptions || models?.[modelEntryId]?.keyOptions || {};
+            const keyOptions = LLMRegistry.models?.[modelId]?.keyOptions || LLMRegistry.models?.[modelEntryId]?.keyOptions || {};
             return { ...modelInfo, ...keyOptions, modelId };
         }
 
@@ -56,7 +74,7 @@ export class LLMRegistry {
         if (model?.toLowerCase() === 'echo') return true;
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
-        return !!models?.[modelId] || modelId === models?.[modelEntryId]?.modelId;
+        return !!LLMRegistry.models?.[modelId] || modelId === LLMRegistry.models?.[modelEntryId]?.modelId;
     }
 
     //#region tokens related methods

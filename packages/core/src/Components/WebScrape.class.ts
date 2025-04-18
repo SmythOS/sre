@@ -147,9 +147,7 @@ export default class WebScrape extends Component {
     }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:webscrape.smyth',
-            requests: urlsScraped,
             credits: totalCredits,
-            costs: totalCredits,
             agentId,
             teamId,
         });

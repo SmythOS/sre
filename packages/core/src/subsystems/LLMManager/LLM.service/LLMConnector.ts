@@ -32,6 +32,7 @@ export type LLMChatResponse = {
     content: string;
     finishReason: string;
     thinkingContent?: string;
+    usage?: any;
 };
 
 export type ImagesResponse = {
@@ -271,7 +272,8 @@ export abstract class LLMConnector extends Connector {
 
             _params.model = LLMRegistry.getModelId(model) || model;
         } else {
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+            const team = AccessCandidate.team(teamId);
+            const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
 
             const modelInfo = customLLMRegistry.getModelInfo(model);
 
@@ -284,6 +286,9 @@ export abstract class LLMConnector extends Connector {
             } else if (llmProvider === TLLMProvider.VertexAI) {
                 _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TVertexAIModel);
             }
+
+            // User key is always true for custom LLMs
+            _params.credentials.isUserKey = true;
 
             if (_params.maxTokens) {
                 _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
@@ -319,6 +324,7 @@ export abstract class LLMConnector extends Connector {
                 _value = +_value;
             }
 
+            //FIXME: to revisit by Alaa-eddine
             if (key === 'messages') {
                 _value = this.getConsistentMessages(_value);
             }

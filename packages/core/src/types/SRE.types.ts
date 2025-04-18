@@ -11,6 +11,8 @@ import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
+import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
+
 export type TServiceRegistry = {
     Storage?: StorageService;
     VectorDB?: VectorDBService;
@@ -25,6 +27,7 @@ export type TServiceRegistry = {
     ManagedVault?: ManagedVaultService;
     Log?: LogService;
     Component?: ComponentService;
+    ModelsProvider?: ModelsProviderService;
 };
 
 export enum TConnectorService {
@@ -41,6 +44,7 @@ export enum TConnectorService {
     ManagedVault = 'ManagedVault',
     Log = 'Log',
     Component = 'Component',
+    ModelsProvider = 'ModelsProvider',
 }
 
 export type SREConnectorConfig = {
