@@ -43,6 +43,7 @@ export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
+    private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
     protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
@@ -231,6 +232,33 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    private async processImageData(fileSources: BinaryInput[], agentId: string): Promise<any[]> {
+        const validSources = this.getValidImageFileSources(fileSources);
+        if (validSources.length === 0) {
+            return [];
+        }
+        return await this.getImageData(validSources, agentId);
+    }
+
+    private getValidDocumentFileSources(fileSources: BinaryInput[]): BinaryInput[] {
+        const validSources = [];
+        for (let fileSource of fileSources) {
+            if (this.validDocumentMimeTypes.includes(fileSource?.mimetype)) {
+                validSources.push(fileSource);
+            }
+        }
+
+        return validSources;
+    }
+
+    private async processDocumentData(fileSources: BinaryInput[], agentId: string): Promise<any[]> {
+        const validSources = this.getValidDocumentFileSources(fileSources);
+        if (validSources.length === 0) {
+            return [];
+        }
+        return await this.getDocumentData(validSources, agentId);
+    }
+
     protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
@@ -253,13 +281,29 @@ export class OpenAIConnector extends LLMConnector {
         //#endregion Handle JSON response format
 
         const agentId = agent instanceof Agent ? agent.id : agent;
+        const fileSources: BinaryInput[] = params?.fileSources || [];
+        const validImageFileSources = this.getValidImageFileSources(fileSources);
+        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
 
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
+        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
+        // handle the invalid files in the prompt to let the user know that some files were not processed.
 
-        // Add user message
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
+        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
+        // const invalidFileNames = areAllFilesValid
+        //     ? []
+        //     : // get all the original file sources that are not valid image or document
+        //       fileSources
+        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
+        //           .map(async (file) => await file.getName());
+
+        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
+        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
+
+        const promptData = [
+            { type: 'text', text: prompt || '' },
+            ...imageData,
+            ...documentData,
+        ];
 
         messages.push({ role: 'user', content: promptData });
 
@@ -854,10 +898,6 @@ export class OpenAIConnector extends LLMConnector {
             }
         }
 
-        if (validSources?.length === 0) {
-            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
-        }
-
         return validSources;
     }
 
@@ -885,6 +925,41 @@ export class OpenAIConnector extends LLMConnector {
             }
 
             return imageData;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    private async getDocumentData(
+        fileSources: BinaryInput[],
+        agentId: string
+    ): Promise<
+        {
+            type: string;
+            file: {
+                filename: string;
+                file_data: string;
+            };
+        }[]
+    > {
+        try {
+            const documentData = [];
+
+            for (let fileSource of fileSources) {
+                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const fileData = `data:${fileSource.mimetype};base64,${base64Data}`;
+
+                documentData.push({
+                    type: 'file',
+                    file: {
+                        file_data: fileData,
+                        filename: await fileSource.getName(),
+                    },
+                });
+            }
+
+            return documentData;
         } catch (error) {
             throw error;
         }
