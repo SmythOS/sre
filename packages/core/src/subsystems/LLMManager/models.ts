@@ -23,7 +23,7 @@ export const models = {
   // #region [SmythOS Models] ==============================================================
 
   // #region OpenAI ==========================
-
+  // keep the gpt-4o-mini as default model for now
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
@@ -34,6 +34,42 @@ export const models = {
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_383,
+    enabled: true,
+  },
+  'smythos/gpt-4.1-nano': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1 Nano',
+    modelId: 'gpt-4.1-nano',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'SmythOS'],
+    tokens: 1_047_576,
+    completionTokens: 32_768,
+    enabled: true,
+  },
+  'smythos/gpt-4.1-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1 Mini',
+    modelId: 'gpt-4.1-mini',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'SmythOS'],
+    tokens: 1_047_576,
+    completionTokens: 32_768,
+    enabled: true,
+  },
+  'smythos/gpt-4.1': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1',
+    modelId: 'gpt-4.1',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'SmythOS'],
+    tokens: 1_047_576,
+    completionTokens: 32_768,
     enabled: true,
   },
   'smythos/gpt-4o': {
@@ -286,7 +322,7 @@ export const models = {
 
   // #region OpenAI Models ==========================
 
-  // #region GPT 4o
+  // keep the gpt-4o-mini as default model for now
   'gpt-4o-mini': {
     llm: 'OpenAI',
     alias: 'gpt-4o-mini-2024-07-18',
@@ -311,6 +347,50 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
   },
+
+  // #region GPT 4.1
+  'gpt-4.1-nano': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1 Nano',
+    modelId: 'gpt-4.1-nano',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
+  },
+  'gpt-4.1-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1 Mini',
+    modelId: 'gpt-4.1-mini',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
+  },
+  'gpt-4.1': {
+    llm: 'OpenAI',
+
+    label: 'GPT 4.1',
+    modelId: 'gpt-4.1',
+    provider: 'OpenAI',
+    features: ['text', 'tools', 'image'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
+  },
+  // #endregion
+
+  // #region GPT 4o
   'gpt-4o-mini-2024-07-18': {
     llm: 'OpenAI',
     tokens: 2048,
@@ -325,7 +405,7 @@ export const models = {
     modelId: 'gpt-4.5-preview',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal', 'Deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -396,7 +476,7 @@ export const models = {
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
     features: ['text'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -440,7 +520,7 @@ export const models = {
     modelId: 'o1-preview-2024-09-12',
     provider: 'OpenAI',
     features: ['text'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -533,10 +613,10 @@ export const models = {
     ],
 
     label: 'GPT 4',
-    modelId: 'gpt-4-0613',
+    modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
     features: ['text', 'tools'],
-    tags: ['Personal', 'legacy'],
+    tags: ['Personal', 'deprecated'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,

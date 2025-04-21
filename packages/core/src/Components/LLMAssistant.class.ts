@@ -175,7 +175,8 @@ export default class LLMAssistant extends Component {
                 const apiKey = await VaultHelper.getAgentKey(provider, agent?.id);
                 maxTokens = LLMRegistry.getMaxCompletionTokens(model, !!apiKey);
             } else {
-                const customLLMRegistry = await CustomLLMRegistry.getInstance(teamId);
+                const team = AccessCandidate.team(teamId);
+                const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
                 maxTokens = await customLLMRegistry.getMaxCompletionTokens(model);
             }
             //#endregion get max tokens

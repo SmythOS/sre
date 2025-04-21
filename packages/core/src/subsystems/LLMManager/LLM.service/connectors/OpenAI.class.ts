@@ -98,11 +98,8 @@ export class OpenAIConnector extends LLMConnector {
         };
 
         if (params?.maxTokens !== undefined) {
-            if (reasoningModels.includes(params.model)) {
-                chatCompletionArgs.max_completion_tokens = params.maxTokens;
-            } else {
-                chatCompletionArgs.max_tokens = params.maxTokens;
-            }
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
         }
         if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
         // Top P is not supported for o1 models
@@ -195,7 +192,10 @@ export class OpenAIConnector extends LLMConnector {
                 messages,
             };
 
-            if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+            if (params?.maxTokens !== undefined) {
+                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+                chatCompletionArgs[maxTokensKey] = params.maxTokens;
+            }
             if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
             if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
             if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
@@ -281,7 +281,10 @@ export class OpenAIConnector extends LLMConnector {
                 messages,
             };
 
-            if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+            if (params?.maxTokens !== undefined) {
+                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+                chatCompletionArgs[maxTokensKey] = params.maxTokens;
+            }
             if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
             if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
             if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
@@ -376,7 +379,10 @@ export class OpenAIConnector extends LLMConnector {
             messages: messages,
         };
 
-        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
             chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
@@ -563,7 +569,10 @@ export class OpenAIConnector extends LLMConnector {
             stream: true,
         };
 
-        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
             chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];

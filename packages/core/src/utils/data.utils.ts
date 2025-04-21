@@ -54,6 +54,21 @@ export const getSizeFromBinary = (data: any) => {
     return buffer.byteLength;
 };
 
+/**
+ * Calculates the size in bytes of a base64-encoded string after decoding
+ *
+ * @param base64String - The base64 string to calculate the size for. Can be a raw base64 string or a data URL.
+ * @returns The size in bytes of the decoded data
+ */
+function getBase64FileSize(base64String: string): number {
+    // Remove data URL prefix if present
+    const base64Data = base64String.includes(';base64,') ? base64String.split(';base64,')[1] : base64String;
+
+    // Formula: (n * 3) / 4 - padding
+    const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0;
+    return Math.floor((base64Data.length * 3) / 4) - padding;
+}
+
 export const isPlainObject = (data: any): boolean => {
     return (
         typeof data === 'object' &&
@@ -107,6 +122,12 @@ export function isUrl(str: string): boolean {
     return regex.test(str);
 }
 
+export function isSmythFsUrl(str: string): boolean {
+    if (typeof str !== 'string') return false;
+    const regex = /^smythfs:\/\/([^\s.]+\.[^\s]{2,})(:[0-9]{1,5})?(\/[^\s]*)?(\?[^\s]*)?$/i;
+    return regex.test(str);
+}
+
 export const isSmythFileObject = (data: any): boolean => {
     return !!(typeof data === 'object' && data !== null && data?.url && isUrl(data?.url) && 'size' in data && 'mimetype' in data);
 };
@@ -149,7 +170,7 @@ export async function getMimeType(data: any): Promise<string> {
         smythFile: () => data.mimetype,
         base64DataUrl: () => identifyMimeTypeFromBase64DataUrl(data),
         base64: () => identifyMimetypeFromBase64(data),
-        string: () => 'text/plain',
+        string: () => '',
     };
 
     const typeChecks = {
@@ -169,7 +190,7 @@ export async function getMimeType(data: any): Promise<string> {
 }
 
 // Mask data like Buffer, FormData, etc. in debug output
-// TODO [Forhad]: Need to apply same thing for Base64, etc.
+// TODO [Forhad]: Need to get the size of FormData
 export async function formatDataForDebug(data: any) {
     let dataForDebug;
 
@@ -179,17 +200,20 @@ export async function formatDataForDebug(data: any) {
 
     try {
         if (data.constructor?.name === 'BinaryInput') {
-            dataForDebug = `[BinaryInput name=${await data.getName()}]`;
+            const jsonData = await data.getJsonData();
+            dataForDebug = `[BinaryInput size=${jsonData?.size}]`;
         } else if (isBuffer(data)) {
-            dataForDebug = `[Buffer size=${data.length}]`;
+            dataForDebug = `[Buffer size=${data.byteLength}]`;
         } else if (data.constructor?.name === 'FormData') {
             dataForDebug = `[FormData]`;
+        } else if (isBase64(data) || isBase64DataUrl(data)) {
+            dataForDebug = `[Base64 size=${getBase64FileSize(data)}]`;
         } else {
             dataForDebug = data;
         }
     } catch (error) {
         // Fallback to a safe representation if any error occurs
-        dataForDebug = '[Object]';
+        dataForDebug = '[Binary]';
     }
 
     return dataForDebug;

@@ -42,11 +42,13 @@ export class EchoConnector extends LLMConnector {
             // Simulate streaming by splitting content into chunks
             const chunks = content.split(' ');
 
-            for (const chunk of chunks) {
+            for (let i = 0; i < chunks.length; i++) {
                 // Simulate network delay
                 await new Promise((resolve) => setTimeout(resolve, 50));
 
-                const delta = { content: chunk + ' ' };
+                const isLastChunk = i === chunks.length - 1;
+                // Add space between chunks except for the last one to avoid trailing space in file URLs
+                const delta = { content: chunks[i] + (isLastChunk ? '' : ' ') };
                 emitter.emit('data', delta);
                 emitter.emit('content', delta.content);
             }
