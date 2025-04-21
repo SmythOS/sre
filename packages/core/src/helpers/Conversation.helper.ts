@@ -818,7 +818,7 @@ export class Conversation extends EventEmitter {
         const properties = {};
         for (let entry in tool.arguments) {
             properties[entry] = {
-                type: typeof tool.arguments[entry],
+                type: tool.arguments[entry].type || 'string',
                 description: tool.arguments[entry].description,
             };
         }
