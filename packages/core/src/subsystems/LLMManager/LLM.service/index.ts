@@ -27,7 +27,7 @@ export class LLMService extends ConnectorServiceProvider {
     }
 
     public init() {
-        //auto initialize builting models
+        //auto initialize built-in models
         ConnectorService.init(TConnectorService.LLM, 'Echo');
         ConnectorService.init(TConnectorService.LLM, 'OpenAI');
         ConnectorService.init(TConnectorService.LLM, 'DeepSeek');

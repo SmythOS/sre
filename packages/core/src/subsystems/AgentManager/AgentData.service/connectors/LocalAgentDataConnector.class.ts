@@ -34,10 +34,17 @@ export class LocalAgentDataConnector extends AgentDataConnector {
         const agentsData = {};
         const agentSettings = {};
         for (const agent of agents) {
+            if (!agent.endsWith('.smyth')) continue;
+
             const agentData = fs.readFileSync(path.join(dir, agent), 'utf8');
             let jsonData;
             try {
                 jsonData = JSON.parse(agentData);
+
+                if (!jsonData.components) {
+                    console.warn(`File ${agent} is not a valid agent data file, skipping...`);
+                    continue;
+                }
 
                 if (!jsonData.id) {
                     console.warn(`Agent data for ${agent} does not contain an id, generating one...`);

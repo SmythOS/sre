@@ -17,6 +17,11 @@ export default class AgentRequest {
         this.query = JSON.parse(JSON.stringify(req.query || {}));
         this.params = JSON.parse(JSON.stringify(req.params || {}));
 
+        //make a copy of headers in lower case
+        const lowerCaseHeaders = Object.fromEntries(Object.entries(this.headers).map(([key, value]) => [key.toLowerCase(), value]));
+
+        this.headers = { ...lowerCaseHeaders, ...this.headers };
+
         if (req?.url) {
             try {
                 this.path = new URL(req.url).pathname;

@@ -30,18 +30,25 @@ export class EchoConnector extends LLMConnector {
     }
     protected async streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
-        const content = params?.messages?.[0]?.content;
+        let content = '';
+
+        if (Array.isArray(params?.messages)) {
+            content = params?.messages?.filter((m) => m.role === 'user').pop()?.content;
+        }
+        //params?.messages?.[0]?.content;
 
         // Process stream asynchronously as we need to return emitter immediately
         (async () => {
             // Simulate streaming by splitting content into chunks
             const chunks = content.split(' ');
 
-            for (const chunk of chunks) {
+            for (let i = 0; i < chunks.length; i++) {
                 // Simulate network delay
                 await new Promise((resolve) => setTimeout(resolve, 50));
 
-                const delta = { content: chunk + ' ' };
+                const isLastChunk = i === chunks.length - 1;
+                // Add space between chunks except for the last one to avoid trailing space in file URLs
+                const delta = { content: chunks[i] + (isLastChunk ? '' : ' ') };
                 emitter.emit('data', delta);
                 emitter.emit('content', delta.content);
             }

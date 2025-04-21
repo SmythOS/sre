@@ -9,8 +9,14 @@ const CInstance = ConnectorService;
 export default class SmythRuntime {
     public started = false;
 
+    private _readyPromise: Promise<boolean>;
+    private _readyResolve: (value: boolean) => void;
+
     protected constructor() {
         this.started = true;
+        this._readyPromise = new Promise((resolve) => {
+            this._readyResolve = resolve;
+        });
     }
 
     protected static instance?: SmythRuntime;
@@ -36,6 +42,9 @@ export default class SmythRuntime {
             }
         }
 
+        SystemEvents.on('SRE:Booted', () => {
+            this._readyResolve(true);
+        });
         SystemEvents.emit('SRE:Initialized');
 
         return SmythRuntime.Instance as SmythRuntime;
@@ -79,8 +88,8 @@ export default class SmythRuntime {
         return newConfig;
     }
 
-    public ready(): boolean {
-        return this.initialized;
+    public ready(): Promise<boolean> {
+        return this._readyPromise;
     }
 
     public async _stop() {

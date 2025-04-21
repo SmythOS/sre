@@ -12,7 +12,7 @@ export default class EmbodimentSettings {
 
     async init(agentId) {
         const agentDataConnector = ConnectorService.getAgentDataConnector();
-        this._embodiments = await agentDataConnector.getAgentEmbodiments(agentId);
+        this._embodiments = await agentDataConnector.getAgentEmbodiments(agentId).catch((error) => []);
         this._ready = true;
     }
     public ready(maxWait = 10000) {

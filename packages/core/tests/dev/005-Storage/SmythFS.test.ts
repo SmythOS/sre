@@ -64,9 +64,9 @@ const SREInstance = SmythRuntime.Instance.init({
 //  make router listen on port 3000
 const server = http.createServer(app);
 
-if (!SREInstance.ready()) {
-    process.exit(1);
-} //force SmythRuntime to initialize
+// if (!SREInstance.ready()) {
+//     process.exit(1);
+// } //force SmythRuntime to initialize
 
 describe('Smyth FileSystem Tests', () => {
     beforeAll(async () => {

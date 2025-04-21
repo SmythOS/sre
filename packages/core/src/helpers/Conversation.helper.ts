@@ -436,6 +436,8 @@ export class Conversation extends EventEmitter {
             this.emit('content', content);
         });
 
+        let finishReason = 'stop';
+
         let toolsPromise = new Promise((resolve, reject) => {
             let hasTools = false;
             let hasError = false;
@@ -487,7 +489,6 @@ export class Conversation extends EventEmitter {
                     let content = '';
                     let thinking = '';
                     if (typeof data === 'object') {
-                        console.log('>>> data.content', data.content);
                         if (data.content) {
                             content = data.content;
 
@@ -501,7 +502,6 @@ export class Conversation extends EventEmitter {
                         return;
                     }
                     if (typeof data === 'string') {
-                        console.log('>>> data', data);
                         passThroughContent += data;
                         this.emit('content', data);
                     }
@@ -591,7 +591,8 @@ export class Conversation extends EventEmitter {
                 //console.log('Result after tool call: ', result);
             });
 
-            eventEmitter.on('end', async (toolsData, usage_data) => {
+            eventEmitter.on('end', async (toolsData, usage_data, _finishReason) => {
+                if (_finishReason) finishReason = _finishReason;
                 if (usage_data) {
                     //FIXME : normalize the usage data format
                     this.emit('usage', usage_data);
@@ -633,6 +634,10 @@ export class Conversation extends EventEmitter {
         if (message) {
             //console.log('main content', content);
             //this._context.push({ role: 'assistant', content: content });
+
+            if (finishReason !== 'stop') {
+                this.emit('interrupted', finishReason);
+            }
             this.emit('end');
         } else {
             //console.log('tool content', content);
@@ -707,6 +712,8 @@ export class Conversation extends EventEmitter {
                 }
 
                 console.debug('Calling tool: ', reqConfig);
+
+                reqConfig.headers['X-CACHE-ID'] = this._context?.llmCache?.id;
 
                 /*
                  * Objective for the following conditions:
