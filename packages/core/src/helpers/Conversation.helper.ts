@@ -245,10 +245,10 @@ export class Conversation extends EventEmitter {
             .catch((error: any) => {
                 throw new Error(
                     '[LLM Request Error]\n' +
-                        JSON.stringify({
-                            code: error?.name || 'LLMRequestFailed',
-                            message: error?.message || 'Something went wrong while calling LLM.',
-                        })
+                    JSON.stringify({
+                        code: error?.name || 'LLMRequestFailed',
+                        message: error?.message || 'Something went wrong while calling LLM.',
+                    })
                 );
             });
 
@@ -813,7 +813,7 @@ export class Conversation extends EventEmitter {
     }) {
         const requiredFields = Object.values(tool.arguments)
             .map((arg) => (arg.required ? arg.name : null))
-            .filter((arg) => arg !== null);
+            .filter((arg) => arg);
 
         const properties = {};
         for (let entry in tool.arguments) {
