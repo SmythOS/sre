@@ -150,5 +150,7 @@
         "winston-transport": "^4.7.0",
         "xxhashjs": "^0.2.2",
         "zip-lib": "^1.0.5"
-    }
+    },
+
+    
 }
