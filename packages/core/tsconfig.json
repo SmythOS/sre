@@ -46,7 +46,9 @@
             "@sre/Security": ["subsystems/Security/index"],
 
             "@sre/Components/*": ["Components/*"],
-            "@sre/Components": ["Components/index"]
+            "@sre/Components": ["Components/index"],
+
+          
         },
         "types": ["node"],
         "allowSyntheticDefaultImports": true

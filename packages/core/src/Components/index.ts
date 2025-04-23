@@ -46,6 +46,7 @@ import RestyleIPAdapter from './Image/RestyleIPAdapter.class';
 import Outpainting from './Image/Outpainting.class';
 import Inpainting from './Image/Inpainting.class';
 import ComputerUse from './ComputerUse.class';
+import MCPClient from './MCPClient.class';
 
 const components = {
     Component: new Component(),
@@ -98,6 +99,7 @@ const components = {
     Outpainting: new Outpainting(),
     Inpainting: new Inpainting(),
     ComputerUse: new ComputerUse(),
+    MCPClient: new MCPClient(),
 };
 
 export default components;
