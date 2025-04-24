@@ -43,13 +43,7 @@ export default class MCPClient extends Component {
 
             const model = config?.data?.model || config?.data?.openAiModel;
             const descForModel = TemplateString(config?.data?.descForModel).parse(input).result;
-            let prompt = '';
-
-            if (input?.Prompt) {
-                prompt = typeof input?.Prompt === 'string' ? input?.Prompt : JSON.stringify(input?.Prompt);
-            } else if (input?.Query) {
-                prompt = typeof input?.Query === 'string' ? input?.Query : JSON.stringify(input?.Query);
-            }
+            let prompt = TemplateString(config?.data?.prompt).parse(input).result;
 
             if (!prompt) {
                 return { _error: 'Please provide a prompt', _debug: logger.output };
@@ -68,7 +62,8 @@ export default class MCPClient extends Component {
                 "openapi": "3.0.1",
                 "info": {
                     "title": `${agent?.name}`,
-                    "version": `${agent?.version}`
+                    "version": `${agent?.version}`,
+                    "description": descForModel
                 },
                 "servers": [
                     {
@@ -76,7 +71,7 @@ export default class MCPClient extends Component {
                     }
                 ],
                 "paths": {}
-            }, { systemPrompt: descForModel, agentId: agent?.id });
+            }, { agentId: agent?.id });
 
             for (const tool of toolsData.tools) {
                 let toolArgs = {};
