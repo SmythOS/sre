@@ -29,6 +29,8 @@ const console = Logger('OpenAIConnector');
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 const reasoningModels = [
+    'o3',
+    'o3-2025-04-16',
     'o3-mini',
     'o3-mini-2025-01-31',
     'o1',

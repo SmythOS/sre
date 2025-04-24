@@ -30,7 +30,7 @@ export const models = {
     label: 'GPT 4o mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    features: ['text', 'image', 'tools', 'document'],
+    features: ['text', 'image', 'tools'],
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_383,
@@ -78,7 +78,7 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
-    features: ['text', 'image', 'tools', 'document'],
+    features: ['text', 'image', 'tools'],
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_384,
@@ -90,7 +90,7 @@ export const models = {
     label: 'GPT o1',
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
-    features: ['text', 'document'],
+    features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
     completionTokens: 100_000,
@@ -340,7 +340,7 @@ export const models = {
     label: 'GPT 4o mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    features: ['text', 'tools', 'image', 'document'],
+    features: ['text', 'tools', 'image'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -428,7 +428,7 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
-    features: ['text', 'tools', 'image', 'document'],
+    features: ['text', 'tools', 'image'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -444,7 +444,20 @@ export const models = {
   },
   // #endregion GPT 4o
 
-  // #region o1 models
+  // #region o3 models
+  o3: {
+    llm: 'OpenAI',
+
+    label: 'GPT o3',
+    modelId: 'o3-2025-04-16',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
   'o3-mini': {
     llm: 'OpenAI',
     alias: 'o3-mini-2025-01-31',
@@ -467,6 +480,9 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
+  // #endregion o3 models
+
+  // #region o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',
