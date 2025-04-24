@@ -79,7 +79,8 @@ export default class MCPClient extends Component {
                     toolArgs[propName] = {
                         description: '',
                         required: (tool.inputSchema.required as string[] || []).includes(propName) || false,
-                        type: (propDetails as any).type
+                        type: (propDetails as any).type,
+                        ...((propDetails as any).type === 'array' ? { items: { type: 'string' } } : {})
                     };
                 });
                 await conv.addTool({

@@ -820,6 +820,7 @@ export class Conversation extends EventEmitter {
             properties[entry] = {
                 type: tool.arguments[entry].type || 'string',
                 description: tool.arguments[entry].description,
+                ...(tool.arguments[entry].type === 'array' ? { items: { type: tool.arguments[entry].items?.type || 'string' } } : {}),
             };
         }
         const toolDefinition = {
