@@ -62,7 +62,8 @@ export default class MCPClient extends Component {
                 "openapi": "3.0.1",
                 "info": {
                     "title": `${agent?.name}`,
-                    "version": `${agent?.version}`
+                    "version": `${agent?.version}`,
+                    "description": descForModel
                 },
                 "servers": [
                     {
@@ -70,7 +71,7 @@ export default class MCPClient extends Component {
                     }
                 ],
                 "paths": {}
-            }, { systemPrompt: descForModel, agentId: agent?.id });
+            }, { agentId: agent?.id });
 
             for (const tool of toolsData.tools) {
                 let toolArgs = {};
