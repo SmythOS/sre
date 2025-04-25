@@ -181,7 +181,7 @@ export class ConnectorService {
         return ConnectorService.getInstance<ComponentConnector>(TConnectorService.Component, name);
     }
 
-    static getModelsProvider(name?: string): ModelsProviderConnector {
+    static getModelsProviderConnector(name?: string): ModelsProviderConnector {
         return ConnectorService.getInstance<ModelsProviderConnector>(TConnectorService.ModelsProvider, name);
     }
 
