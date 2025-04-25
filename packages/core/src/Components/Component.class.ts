@@ -52,8 +52,8 @@ export default class Component {
 
     @hookAsync('Component.process')
     async process(input, config, agent: Agent): Promise<any> {
-        if (agent.isKilled) {
-            return { _error: 'Agent killed' };
+        if (agent.isKilled()) {
+            throw new Error('Agent killed');
         }
         const _input = await performTypeInference(input, config?.inputs, agent);
 

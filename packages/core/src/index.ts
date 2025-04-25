@@ -35,6 +35,7 @@ import Component from './Components/Component.class';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
 import { HookService } from './Core/HookService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 
 boot();
 
@@ -58,6 +59,7 @@ export {
     NKVConnector,
     CLIConnector,
     VaultConnector,
+    ModelsProviderConnector,
     LogConnector,
     ComponentConnector,
     CLIAgentDataConnector,

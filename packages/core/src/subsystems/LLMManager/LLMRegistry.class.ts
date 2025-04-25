@@ -9,7 +9,7 @@ import { ModelsProviderConnector } from './ModelsProvider.service/ModelsProvider
 //let models: TLLMModelsList = {};
 
 SystemEvents.on('SRE:Initialized', async () => {
-    const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProvider();
+    const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
     LLMRegistry.models = await modelsProvider.user(AccessCandidate.user('smyth')).getModels();
 });
 export class LLMRegistry {
