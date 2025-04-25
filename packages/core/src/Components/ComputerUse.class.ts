@@ -32,7 +32,7 @@ export default class ComputerUse extends Component {
     });
 
     private readonly API_URL = smythConfig.env.COMPUTER_USE_API_URL;
-    private readonly PER_MINUTE_COST = 0.2;
+    private readonly PER_MINUTE_COST = 0.15;
 
     constructor() {
         super();
@@ -78,9 +78,8 @@ export default class ComputerUse extends Component {
     }
 
     async process(input, config, agent: Agent) {
-        if (smythConfig.env.NODE_ENV !== 'DEV') {
-            throw new Error('ComputerUse is not available');
-        }
+        //! TODO: LIMIT COMPUTER USE TO ENTERPRISE PLANS ONLY!!!!
+
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
 
@@ -97,6 +96,8 @@ export default class ComputerUse extends Component {
 
         let socket: Socket | null = null;
         let agentActiveCheckInterval: NodeJS.Timeout | null = null;
+        let runExecutionTime: number | null = null;
+        let execTimeFallbackStart = process.hrtime();
         try {
             socket = await this.setupSocket();
 
@@ -111,7 +112,7 @@ export default class ComputerUse extends Component {
 
             const runPromise: ControlledPromise<{ result: string; durationSec: number }> = new ControlledPromise((resolve, reject, isSettled) => {
                 let result: any = null;
-                let executionTime: number | null = null;
+                // let executionTime: number | null = null;
                 let error: any = null;
                 let idleTimer: NodeJS.Timeout | null = null;
                 const IDLE_TIMEOUT_MS = 70_000;
@@ -127,14 +128,13 @@ export default class ComputerUse extends Component {
                                 case 'completion':
                                     result = progressPayload.data;
                                     if (progressPayload.durationSec) {
-                                        executionTime = progressPayload.durationSec;
+                                        runExecutionTime = progressPayload.durationSec;
                                     }
                                     // resolve({ result, durationSec: progressPayload.durationSec });
 
                                     break;
                                 case 'error':
                                     error = progressPayload.data;
-                                    // reject(new Error(progressPayload.data));
                                     break;
                                 case 'iteration':
                                     break;
@@ -157,16 +157,16 @@ export default class ComputerUse extends Component {
                         case 'agent:usage':
                             const usagePayload = message.payload as any;
                             if (usagePayload.durationSec) {
-                                executionTime = usagePayload.durationSec;
+                                runExecutionTime = usagePayload.durationSec;
                             }
                             break;
                     }
 
-                    if (executionTime && result) {
+                    if (runExecutionTime && result) {
                         updateIdleTimer(false);
-                        console.log('Completed run with result and execution time', result, executionTime);
-                        resolve({ result, durationSec: executionTime });
-                    } else if (executionTime && error) {
+                        console.log('Completed run with result and execution time', result, runExecutionTime);
+                        resolve({ result, durationSec: runExecutionTime });
+                    } else if (runExecutionTime && error) {
                         updateIdleTimer(false);
                         console.log('Completed run with error', error);
                         reject(new Error(error));
@@ -207,19 +207,15 @@ export default class ComputerUse extends Component {
 
             let agentResponse = await runPromise;
 
+            // if (!agentResponse.durationSec) {
+            //     const duration = process.hrtime(fallbackDurationStart);
+            //     agentResponse.durationSec = duration[0] + duration[1] / 1e9;
+            // }
+
             const result = llmInference.connector.postProcess(agentResponse.result);
 
             logger.debug('Run completed successfully.');
             logger.debug(`\n Total execution time: ${agentResponse.durationSec} seconds`);
-
-            // report usage
-            const cost = this.calculateExecutionCost(agentResponse.durationSec);
-            console.log('ComputerUse: Reporting usage', cost);
-            this.reportUsage({
-                cost,
-                agentId: agent.id,
-                teamId: agent.teamId,
-            });
 
             if (socket?.connected) {
                 socket.disconnect();
@@ -245,6 +241,21 @@ export default class ComputerUse extends Component {
                 clearInterval(agentActiveCheckInterval);
                 agentActiveCheckInterval = null;
             }
+
+            // report usage
+            if (!runExecutionTime) {
+                // fallback to our own fallback execution time calculation
+                const fallbackDuration = process.hrtime(execTimeFallbackStart)[0] + process.hrtime(execTimeFallbackStart)[1] / 1e9;
+                console.log(`ComputerUse: No execution time from computer use service, using fallback ${fallbackDuration.toFixed(2)} seconds`);
+                runExecutionTime = fallbackDuration;
+            }
+            const cost = this.calculateExecutionCost(runExecutionTime);
+            console.log('ComputerUse: Reporting usage', cost);
+            this.reportUsage({
+                cost,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
         }
     }
 
