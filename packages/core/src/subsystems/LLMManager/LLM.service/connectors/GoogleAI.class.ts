@@ -48,6 +48,9 @@ const VALID_MIME_TYPES = [
     ...SUPPORTED_MIME_TYPES_MAP.GoogleAI.document,
 ];
 
+// will be removed after updating the SDK
+type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount: number };
+
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
 
@@ -141,7 +144,7 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
-            const usage = response?.usageMetadata;
+            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
             this.reportUsage(usage, {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -241,7 +244,7 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
-            const usage = response?.usageMetadata;
+            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
             this.reportUsage(usage, {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -351,7 +354,7 @@ export class GoogleAIConnector extends LLMConnector {
             const response = await result?.response;
             const content = response?.text();
             const finishReason = response.candidates[0].finishReason;
-            const usage = response?.usageMetadata;
+            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
             this.reportUsage(usage, {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -420,7 +423,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             const response = await result.response;
             const content = response.text();
-            const usage = response?.usageMetadata;
+            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
             this.reportUsage(usage, {
                 modelEntryName: params.modelEntryName,
                 keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -518,7 +521,7 @@ export class GoogleAIConnector extends LLMConnector {
             const result = await $model.generateContentStream(toolsPrompt);
 
             let toolsData: ToolData[] = [];
-            let usage: UsageMetadata;
+            let usage: UsageMetadataWithThoughtsToken;
 
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
@@ -549,7 +552,7 @@ export class GoogleAIConnector extends LLMConnector {
                     // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
                     // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
                     if (chunk?.usageMetadata) {
-                        usage = chunk.usageMetadata;
+                        usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
                     }
                 }
 
@@ -668,7 +671,7 @@ export class GoogleAIConnector extends LLMConnector {
             const result = await $model.generateContentStream(promptWithFiles);
 
             let toolsData: ToolData[] = [];
-            let usage: UsageMetadata;
+            let usage: UsageMetadataWithThoughtsToken;
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
                 for await (const chunk of result.stream) {
@@ -698,7 +701,7 @@ export class GoogleAIConnector extends LLMConnector {
                     // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
                     // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
                     if (chunk?.usageMetadata) {
-                        usage = chunk.usageMetadata;
+                        usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
                     }
                 }
 
@@ -980,7 +983,10 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected reportUsage(usage: UsageMetadata, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
+    protected reportUsage(
+        usage: UsageMetadataWithThoughtsToken,
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
         const modelEntryName = metadata.modelEntryName;
         let inputTokens = usage?.promptTokenCount || 0;
         let tier = '';
@@ -1020,6 +1026,7 @@ export class GoogleAIConnector extends LLMConnector {
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
+            reasoning_tokens: usage.thoughtsTokenCount,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,

@@ -1,3 +1,4 @@
+import { OpenAI } from 'openai';
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -8,8 +9,10 @@ import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import appConfig from '@sre/config';
+import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
 const IMAGE_GEN_COST_MAP = {
     'dall-e-3': {
@@ -91,25 +94,21 @@ export default class ImageGenerator extends Component {
         }
 
         try {
-            const { output, cost } = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
+            const { output } = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
 
             logger.debug(`Output: `, output);
-
-            if (output) {
-                SystemEvents.emit('USAGE:API', {
-                    sourceId: `api:imagegen.smyth`,
-                    costs: cost,
-                    agentId: agent.id,
-                    teamId: agent.teamId,
-                    keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,
-                });
-            }
 
             return { Output: output, _debug: logger.output };
         } catch (error: any) {
             return { _error: `Generating Image(s)\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
     }
+}
+
+// TODO: Create a separate service for image generation, similar to LLM.service.
+enum DALL_E_MODELS {
+    DALL_E_2 = 'dall-e-2',
+    DALL_E_3 = 'dall-e-3',
 }
 
 const imageGenerator = {
@@ -125,7 +124,7 @@ const imageGenerator = {
 
         let cost = 0;
 
-        if (model === 'dall-e-3') {
+        if (model === DALL_E_MODELS.DALL_E_3) {
             const size = config?.data?.sizeDalle3 || '1024x1024';
             const quality = config?.data?.quality || 'standard';
             const style = config?.data?.style || 'vivid';
@@ -140,7 +139,7 @@ const imageGenerator = {
             }
 
             cost = IMAGE_GEN_COST_MAP[model][quality][size];
-        } else if (model === 'dall-e-2') {
+        } else if (model === DALL_E_MODELS.DALL_E_2) {
             const size = config?.data?.sizeDalle2 || '256x256';
             const numberOfImages = parseInt(config?.data?.numberOfImages) || 1;
             args.size = size;
@@ -161,14 +160,35 @@ const imageGenerator = {
 
         const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
 
-        let output = response?.data?.[0]?.[responseFormat];
+        // Report usage based on the model
+        if (!Object.values(DALL_E_MODELS).includes(model)) {
+            imageGenerator.reportUsage({ cost }, { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId });
+        } else {
+            imageGenerator.reportTokenUsage(response?.usage, {
+                modelEntryName: model,
+                keySource: model.startsWith('smythos/') ? APIKeySource.Smyth : APIKeySource.User,
+                agentId: agent.id,
+                teamId: agent.teamId,
+            });
+        }
+
+        if (response?.error) {
+            throw new Error(`OpenAI Image Generation Error: ${response?.error?.message || JSON.stringify(response?.error)}`);
+        }
+
+        let output = response?.data?.[0]?.b64_json;
+
+        const binaryInput = BinaryInput.from(output);
+        const agentId = agent instanceof Agent ? agent.id : agent;
+        const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
+
         const revised_prompt = response?.data?.[0]?.revised_prompt;
 
         if (revised_prompt && prompt !== revised_prompt) {
             logger.debug(`Revised Prompt:\n${revised_prompt}`);
         }
 
-        return { output, cost };
+        return { output: smythFile };
     },
     runware: async ({ model, prompt, config, agent }) => {
         // Initialize Runware client
@@ -202,12 +222,57 @@ const imageGenerator = {
             // Map response to match expected format
             let output = firstImage.imageURL;
 
-            return { output, cost: firstImage.cost };
+            imageGenerator.reportUsage(
+                { cost: firstImage.cost },
+                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId }
+            );
+
+            return { output };
         } catch (error: any) {
             throw new Error(`Runware Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         } finally {
             // Clean up connection
             await runware.disconnect();
         }
+    },
+    reportTokenUsage(
+        usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        let modelName = metadata.modelEntryName;
+
+        // SmythOS models have a prefix, so we need to remove it
+        if (metadata.modelEntryName.startsWith('smythos/')) {
+            modelName = metadata.modelEntryName.split('/').pop();
+        }
+
+        const usageData = {
+            sourceId: `api:imagegen.${modelName}`,
+            keySource: metadata.keySource,
+
+            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
+            output_tokens: usage?.completion_tokens,
+            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:API', usageData);
+
+        return usageData;
+    },
+    reportUsage(usage: { cost: number }, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
+        const usageData = {
+            sourceId: `api:imagegen.smyth`,
+            keySource: metadata.keySource,
+
+            cost: usage?.cost,
+
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:API', usageData);
+
+        return usageData;
     },
 };
