@@ -78,8 +78,6 @@ export default class ComputerUse extends Component {
     }
 
     async process(input, config, agent: Agent) {
-        //! TODO: LIMIT COMPUTER USE TO ENTERPRISE PLANS ONLY!!!!
-
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
 
@@ -95,27 +93,23 @@ export default class ComputerUse extends Component {
         prompt = llmInference.connector.enhancePrompt(prompt, config);
 
         let socket: Socket | null = null;
-        let agentActiveCheckInterval: NodeJS.Timeout | null = null;
-        let runExecutionTime: number | null = null;
-        let execTimeFallbackStart = process.hrtime();
+        // let agentActiveCheckInterval: NodeJS.Timeout | null = null;
+        let totalExecTime: number | null = null;
+        let fallbackTimer = {
+            // fallback timer if computer use service fails to return execution time (due to early abort etc.)
+            startTime: null,
+            duration: null,
+        };
+        socket = await this.setupSocket();
+
         try {
-            socket = await this.setupSocket();
-
-            agentActiveCheckInterval = setInterval(() => {
-                if (agent.isKilled()) {
-                    socket?.disconnect();
-                    console.log('Agent killed, disconnecting ComputerUse socket');
-                    clearInterval(agentActiveCheckInterval);
-                    agentActiveCheckInterval = null;
-                }
-            }, 5_000);
-
             const runPromise: ControlledPromise<{ result: string; durationSec: number }> = new ControlledPromise((resolve, reject, isSettled) => {
                 let result: any = null;
                 // let executionTime: number | null = null;
                 let error: any = null;
                 let idleTimer: NodeJS.Timeout | null = null;
                 const IDLE_TIMEOUT_MS = 70_000;
+                fallbackTimer.startTime = process.hrtime();
 
                 socket!.on('message', (message: WebSocketMessage) => {
                     updateIdleTimer();
@@ -128,7 +122,7 @@ export default class ComputerUse extends Component {
                                 case 'completion':
                                     result = progressPayload.data;
                                     if (progressPayload.durationSec) {
-                                        runExecutionTime = progressPayload.durationSec;
+                                        totalExecTime = progressPayload.durationSec;
                                     }
                                     // resolve({ result, durationSec: progressPayload.durationSec });
 
@@ -137,6 +131,12 @@ export default class ComputerUse extends Component {
                                     error = progressPayload.data;
                                     break;
                                 case 'iteration':
+                                    if (agent.isKilled()) {
+                                        // TODO: instead of killing the socket, we should send a message to the agent to stop
+                                        socket?.disconnect();
+                                        fallbackTimer.duration = this.calcDuration(fallbackTimer.startTime);
+                                        console.log('Agent killed, disconnecting ComputerUse socket');
+                                    }
                                     break;
                             }
                             break;
@@ -157,16 +157,16 @@ export default class ComputerUse extends Component {
                         case 'agent:usage':
                             const usagePayload = message.payload as any;
                             if (usagePayload.durationSec) {
-                                runExecutionTime = usagePayload.durationSec;
+                                totalExecTime = usagePayload.durationSec;
                             }
                             break;
                     }
 
-                    if (runExecutionTime && result) {
+                    if (totalExecTime && result) {
                         updateIdleTimer(false);
-                        console.log('Completed run with result and execution time', result, runExecutionTime);
-                        resolve({ result, durationSec: runExecutionTime });
-                    } else if (runExecutionTime && error) {
+                        console.log('Completed run with result and execution time', result, totalExecTime);
+                        resolve({ result, durationSec: totalExecTime });
+                    } else if (totalExecTime && error) {
                         updateIdleTimer(false);
                         console.log('Completed run with error', error);
                         reject(new Error(error));
@@ -191,7 +191,6 @@ export default class ComputerUse extends Component {
                     reject(new Error('Something went wrong'));
                 });
 
-                // TODO: add timeout when idle socket for too long
                 function updateIdleTimer(refresh: boolean = true) {
                     if (idleTimer) clearTimeout(idleTimer);
                     if (refresh) {
@@ -237,25 +236,25 @@ export default class ComputerUse extends Component {
                 _debug: logger.output,
             };
         } finally {
-            if (agentActiveCheckInterval) {
-                clearInterval(agentActiveCheckInterval);
-                agentActiveCheckInterval = null;
+            if (!totalExecTime && fallbackTimer.duration) {
+                // fallback to our own fallback execution time calculation
+                // const fallbackDuration = process.hrtime(fallbackTimer.startTime)[0] + process.hrtime(fallbackTimer.startTime)[1] / 1e9;
+                console.log(`ComputerUse: No execution time from computer use service, using fallback ${fallbackTimer.duration.toFixed(2)} seconds`);
+                totalExecTime = fallbackTimer.duration;
             }
 
             // report usage
-            if (!runExecutionTime) {
-                // fallback to our own fallback execution time calculation
-                const fallbackDuration = process.hrtime(execTimeFallbackStart)[0] + process.hrtime(execTimeFallbackStart)[1] / 1e9;
-                console.log(`ComputerUse: No execution time from computer use service, using fallback ${fallbackDuration.toFixed(2)} seconds`);
-                runExecutionTime = fallbackDuration;
+            if (totalExecTime) {
+                const cost = this.calculateExecutionCost(totalExecTime);
+                console.log('ComputerUse: Reporting usage', cost);
+                this.reportUsage({
+                    cost,
+                    agentId: agent.id,
+                    teamId: agent.teamId,
+                });
+            } else {
+                console.error('ComputerUse: No execution time from computer use service, skipping usage report !!!!!!!!!!!');
             }
-            const cost = this.calculateExecutionCost(runExecutionTime);
-            console.log('ComputerUse: Reporting usage', cost);
-            this.reportUsage({
-                cost,
-                agentId: agent.id,
-                teamId: agent.teamId,
-            });
         }
     }
 
@@ -270,5 +269,10 @@ export default class ComputerUse extends Component {
             agentId,
             teamId,
         });
+    }
+
+    private calcDuration(startTime: any) {
+        const duration = process.hrtime(startTime)[0] + process.hrtime(startTime)[1] / 1e9;
+        return duration;
     }
 }
