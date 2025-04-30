@@ -2336,7 +2336,7 @@ export const models = {
 
   // #region OpenAI Models gpt-image-1
   'smythos/gpt-image-1': {
-    label: 'GPT Image 1 (GPT 4o)',
+    label: 'GPT Image 1',
     modelId: 'gpt-image-1',
     provider: 'OpenAI',
     features: ['image-generation'],
@@ -2344,7 +2344,7 @@ export const models = {
     enabled: true,
   },
   'gpt-image-1': {
-    label: 'GPT Image 1 (GPT 4o)',
+    label: 'GPT Image 1',
     modelId: 'gpt-image-1',
     provider: 'OpenAI',
     features: ['image-generation'],
