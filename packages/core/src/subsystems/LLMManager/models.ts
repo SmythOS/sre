@@ -27,7 +27,7 @@ export const models = {
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
-    label: 'GPT 4o mini',
+    label: 'GPT 4o Mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
     features: ['text', 'image', 'tools'],
@@ -182,7 +182,7 @@ export const models = {
   'smythos/gemini-2.5-flash': {
     llm: 'GoogleAI',
 
-    label: 'Gemini 2.5 Flash',
+    label: 'Gemini 2.5 Flash Preview',
     modelId: 'gemini-2.5-flash-preview-04-17',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
@@ -228,6 +228,7 @@ export const models = {
     tokens: 2_097_152,
     completionTokens: 8_192,
     enabled: true,
+    hidden: true,
   },
   // #endregion Google AI ==========================
 
@@ -377,7 +378,7 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'GPT 4o mini',
+    label: 'GPT 4o Mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image'],
@@ -1018,7 +1019,7 @@ export const models = {
   'gemini-2.5-flash': {
     llm: 'GoogleAI',
 
-    label: 'Gemini 2.5 Flash',
+    label: 'Gemini 2.5 Flash Preview',
     modelId: 'gemini-2.5-flash-preview-04-17',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
@@ -2335,7 +2336,7 @@ export const models = {
 
   // #region OpenAI Models gpt-image-1
   'smythos/gpt-image-1': {
-    label: 'GPT 4o (Image Generation)',
+    label: 'GPT Image 1 (GPT 4o)',
     modelId: 'gpt-image-1',
     provider: 'OpenAI',
     features: ['image-generation'],
@@ -2343,7 +2344,7 @@ export const models = {
     enabled: true,
   },
   'gpt-image-1': {
-    label: 'GPT 4o (Image Generation)',
+    label: 'GPT Image 1 (GPT 4o)',
     modelId: 'gpt-image-1',
     provider: 'OpenAI',
     features: ['image-generation'],
