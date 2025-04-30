@@ -14,8 +14,13 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import appConfig from '@sre/config';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 
+enum DALL_E_MODELS {
+    DALL_E_2 = 'dall-e-2',
+    DALL_E_3 = 'dall-e-3',
+}
+
 const IMAGE_GEN_COST_MAP = {
-    'dall-e-3': {
+    [DALL_E_MODELS.DALL_E_3]: {
         standard: {
             '1024x1024': '0.04',
             '1024x1792': '0.08',
@@ -27,7 +32,7 @@ const IMAGE_GEN_COST_MAP = {
             '1792x1024': '0.12',
         },
     },
-    'dall-e-2': {
+    [DALL_E_MODELS.DALL_E_2]: {
         '256x256': '0.016',
         '512x512': '0.018',
         '1024x1024': '0.02',
@@ -42,7 +47,7 @@ export default class ImageGenerator extends Component {
         // #region OpenAI (DALL·E)
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
-        quality: Joi.string().valid('standard', 'hd').optional(),
+        quality: Joi.string().valid('standard', 'hd', 'auto', 'high', 'medium', 'low').optional(),
         style: Joi.string().valid('vivid', 'natural').optional(),
         isRawInputPrompt: Joi.boolean().strict().optional(),
         // #endregion
@@ -55,7 +60,11 @@ export default class ImageGenerator extends Component {
         height: Joi.number().min(128).max(2048).multiple(64).optional().messages({
             'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
         }),
-        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP').optional(),
+        outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP', 'auto', 'jpeg', 'png', 'webp').optional(),
+        // #endregion
+
+        // #region GPT model
+        size: Joi.string().optional().allow('').max(100).label('Size'),
         // #endregion
     });
     constructor() {
@@ -87,14 +96,14 @@ export default class ImageGenerator extends Component {
 
         logger.debug(`Prompt: \n`, prompt);
 
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const modelFamily = getModelFamily(model);
 
-        if (typeof imageGenerator[provider] !== 'function') {
+        if (typeof imageGenerator[modelFamily] !== 'function') {
             return { _error: `The model '${model}' is not available. Please try a different one.`, _debug: logger.output };
         }
 
         try {
-            const { output } = await imageGenerator[provider]({ model, config, input, logger, agent, prompt });
+            const { output } = await imageGenerator[modelFamily]({ model, config, input, logger, agent, prompt });
 
             logger.debug(`Output: `, output);
 
@@ -106,13 +115,66 @@ export default class ImageGenerator extends Component {
 }
 
 // TODO: Create a separate service for image generation, similar to LLM.service.
-enum DALL_E_MODELS {
-    DALL_E_2 = 'dall-e-2',
-    DALL_E_3 = 'dall-e-3',
+
+// TODO: Hopefully we will have the proper type with new OpenAI SDK, then we can use their type
+type TokenUsage = OpenAI.Completions.CompletionUsage & {
+    prompt_tokens_details?: { cached_tokens?: number };
+    input_tokens_details: { image_tokens?: number; text_tokens?: number };
+    output_tokens: number;
+};
+
+enum MODEL_FAMILY {
+    GPT = 'gpt',
+    RUNWARE = 'runware',
+    DALL_E = 'dall-e',
 }
 
 const imageGenerator = {
-    openai: async ({ model, prompt, config, logger, agent }) => {
+    [MODEL_FAMILY.GPT]: async ({ model, prompt, config, logger, agent }) => {
+        let args: GenerateImageConfig = {
+            model,
+            size: config?.data?.size || 'auto',
+            quality: config?.data?.quality || 'auto',
+        };
+
+        try {
+            const llmInference: LLMInference = await LLMInference.getInstance(model);
+
+            // if the llm is undefined, then it means we removed the model from our system
+            if (!llmInference.connector) {
+                return {
+                    _error: `The model '${model}' is not available. Please try a different one.`,
+                    _debug: logger.output,
+                };
+            }
+
+            const response: any = await llmInference.imageGenRequest(prompt, args, agent).catch((error) => ({ error: error }));
+
+            if (response?.error) {
+                throw new Error(`OpenAI Image Generation Error: ${response?.error?.message || JSON.stringify(response?.error)}`);
+            }
+
+            if (response?.usage) {
+                imageGenerator.reportTokenUsage(response.usage, {
+                    modelEntryName: model,
+                    keySource: model.startsWith('smythos/') ? APIKeySource.Smyth : APIKeySource.User,
+                    agentId: agent.id,
+                    teamId: agent.teamId,
+                });
+            }
+
+            let output = response?.data?.[0]?.b64_json;
+
+            const binaryInput = BinaryInput.from(output);
+            const agentId = agent instanceof Agent ? agent.id : agent;
+            const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
+
+            return { output: smythFile };
+        } catch (error: any) {
+            throw new Error(`OpenAI Image Generation Error: ${error?.message || JSON.stringify(error)}`);
+        }
+    },
+    [MODEL_FAMILY.DALL_E]: async ({ model, prompt, config, logger, agent }) => {
         let _finalPrompt = prompt;
 
         const responseFormat = config?.data?.responseFormat || 'url';
@@ -160,37 +222,18 @@ const imageGenerator = {
 
         const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
 
-        // Report usage based on the model
-        if (!Object.values(DALL_E_MODELS).includes(model)) {
-            imageGenerator.reportUsage({ cost }, { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId });
-        } else {
-            imageGenerator.reportTokenUsage(response?.usage, {
-                modelEntryName: model,
-                keySource: model.startsWith('smythos/') ? APIKeySource.Smyth : APIKeySource.User,
-                agentId: agent.id,
-                teamId: agent.teamId,
-            });
-        }
-
-        if (response?.error) {
-            throw new Error(`OpenAI Image Generation Error: ${response?.error?.message || JSON.stringify(response?.error)}`);
-        }
-
-        let output = response?.data?.[0]?.b64_json;
-
-        const binaryInput = BinaryInput.from(output);
-        const agentId = agent instanceof Agent ? agent.id : agent;
-        const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
-
+        let output = response?.data?.[0]?.[responseFormat];
         const revised_prompt = response?.data?.[0]?.revised_prompt;
 
         if (revised_prompt && prompt !== revised_prompt) {
             logger.debug(`Revised Prompt:\n${revised_prompt}`);
         }
 
-        return { output: smythFile };
+        imageGenerator.reportUsage({ cost: cost }, { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId });
+
+        return { output };
     },
-    runware: async ({ model, prompt, config, agent }) => {
+    [MODEL_FAMILY.RUNWARE]: async ({ model, prompt, config, agent }) => {
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
@@ -235,10 +278,7 @@ const imageGenerator = {
             await runware.disconnect();
         }
     },
-    reportTokenUsage(
-        usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
+    reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         let modelName = metadata.modelEntryName;
 
         // SmythOS models have a prefix, so we need to remove it
@@ -250,8 +290,9 @@ const imageGenerator = {
             sourceId: `api:imagegen.${modelName}`,
             keySource: metadata.keySource,
 
-            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
-            output_tokens: usage?.completion_tokens,
+            input_tokens_txt: usage?.input_tokens_details?.text_tokens || 0,
+            input_tokens_img: usage?.input_tokens_details?.image_tokens || 0,
+            output_tokens: usage?.output_tokens,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
 
             agentId: metadata.agentId,
@@ -276,3 +317,33 @@ const imageGenerator = {
         return usageData;
     },
 };
+
+enum PROVIDERS {
+    OPENAI = 'OpenAI',
+    RUNWARE = 'Runware',
+}
+
+/**
+ * Gets the model family from a model identifier
+ * @param model The model identifier
+ * @returns The model family or null if not recognized
+ */
+function getModelFamily(model: string): string | null {
+    if (isGPTModel(model)) return MODEL_FAMILY.GPT;
+    if (isRunwareModel(model)) return MODEL_FAMILY.RUNWARE;
+    if (isDallEModel(model)) return MODEL_FAMILY.DALL_E;
+
+    return null;
+}
+
+function isGPTModel(model: string) {
+    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.GPT);
+}
+
+function isRunwareModel(model: string): boolean {
+    return LLMRegistry.getModelInfo(model)?.provider === PROVIDERS.RUNWARE;
+}
+
+function isDallEModel(model: string) {
+    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.DALL_E);
+}
