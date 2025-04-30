@@ -56,7 +56,7 @@ export default class ImageUpscaling extends Component {
             if (output) {
                 SystemEvents.emit('USAGE:API', {
                     sourceId: `api:imageupscaling.smyth`,
-                    costs: cost,
+                    cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
                     keySource: APIKeySource.Smyth,
