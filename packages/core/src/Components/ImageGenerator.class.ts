@@ -148,11 +148,7 @@ const imageGenerator = {
                 };
             }
 
-            const response: any = await llmInference.imageGenRequest(prompt, args, agent).catch((error) => ({ error: error }));
-
-            if (response?.error) {
-                throw new Error(`OpenAI Image Generation Error: ${response?.error?.message || JSON.stringify(response?.error)}`);
-            }
+            const response: any = await llmInference.imageGenRequest(prompt, args, agent);
 
             if (response?.usage) {
                 imageGenerator.reportTokenUsage(response.usage, {
@@ -220,7 +216,7 @@ const imageGenerator = {
             };
         }
 
-        const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent).catch((error) => ({ error: error }));
+        const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent);
 
         let output = response?.data?.[0]?.[responseFormat];
         const revised_prompt = response?.data?.[0]?.revised_prompt;
@@ -229,7 +225,7 @@ const imageGenerator = {
             logger.debug(`Revised Prompt:\n${revised_prompt}`);
         }
 
-        imageGenerator.reportUsage({ cost: cost }, { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId });
+        imageGenerator.reportUsage({ cost }, { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId });
 
         return { output };
     },
