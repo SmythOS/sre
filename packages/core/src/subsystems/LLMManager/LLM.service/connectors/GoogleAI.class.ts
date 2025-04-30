@@ -988,7 +988,6 @@ export class GoogleAIConnector extends LLMConnector {
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         const modelEntryName = metadata.modelEntryName;
-        let inputTokens = usage?.promptTokenCount || 0;
         let tier = '';
 
         const tierThresholds = {
@@ -996,21 +995,16 @@ export class GoogleAIConnector extends LLMConnector {
             'gemini-2.5-pro': 200_000,
         };
 
+        const textInputTokens =
+            usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || usage?.promptTokenCount || 0;
+        const audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+
         // Find matching model and set tier based on threshold
         const modelWithTier = Object.keys(tierThresholds).find((model) => modelEntryName.includes(model));
         if (modelWithTier) {
-            tier = inputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            tier = textInputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
 
-        // #region model like 'gemini-2.0-flash' has different pricing for audio input tokens, so we need to handle it separately
-        let textInputTokens = 0;
-        let audioInputTokens = 0;
-        const modelsWithAudioTier = ['gemini-2.0-flash'];
-        const hasAudioTier = modelsWithAudioTier.some((model) => modelEntryName.includes(model)); // we may have model prefixed with smythos, e.g. smythos/gemini-2.0-flash
-        if (hasAudioTier) {
-            textInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || 0;
-            audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
-        }
         // #endregion
 
         let modelName = metadata.modelEntryName;
@@ -1021,7 +1015,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: textInputTokens || inputTokens,
+            input_tokens: textInputTokens,
             output_tokens: usage.candidatesTokenCount,
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: usage.cachedContentTokenCount || 0,
