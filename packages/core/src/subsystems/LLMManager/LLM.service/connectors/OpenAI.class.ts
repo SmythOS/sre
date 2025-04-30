@@ -371,9 +371,12 @@ export class OpenAIConnector extends LLMConnector {
                 prompt,
                 model,
                 size,
-                quality,
                 n: n || 1,
             };
+
+            if (quality) {
+                args.quality = quality;
+            }
 
             // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
             if (responseFormat) {
