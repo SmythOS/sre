@@ -265,7 +265,7 @@ export default class ComputerUse extends Component {
     protected reportUsage({ cost, agentId, teamId }: { cost: number; agentId: string; teamId: string }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:computer_use.smyth',
-            costs: cost,
+            cost,
             agentId,
             teamId,
         });

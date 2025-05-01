@@ -53,7 +53,7 @@ export default class BackgroundRemoval extends Component {
             if (output) {
                 SystemEvents.emit('USAGE:API', {
                     sourceId: `api:backgroundremoval.smyth`,
-                    costs: cost,
+                    cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
                     keySource: APIKeySource.Smyth,

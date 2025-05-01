@@ -14,7 +14,7 @@ import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import SystemEvents from '@sre/Core/SystemEvents';
-type AWSCredentials = { accessKeyId: string, secretAccessKey: string, region: string }
+type AWSCredentials = { accessKeyId: string; secretAccessKey: string; region: string };
 const PER_SECOND_COST = 0.0001;
 
 export default class ServerlessCode extends Component {
@@ -37,7 +37,7 @@ export default class ServerlessCode extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
@@ -115,7 +115,8 @@ export default class ServerlessCode extends Component {
                 const executionTime = lambdaResponse.executionTime;
                 await this.updateDeployedCodeTTL(agent.id, config.id, this.cacheTTL);
                 logger.debug(
-                    `Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
+                    `Code result:\n ${
+                        typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
                     }\n`
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
@@ -526,15 +527,16 @@ export default class ServerlessCode extends Component {
         await redisCache.user(AccessCandidate.agent(agentId)).updateTTL(`${this.cachePrefix}_${agentId}-${componentId}`, ttl);
     }
 
-    private calculateExecutionCost(executionTime: number) { // executionTime in milliseconds
-        const cost = ((executionTime / 1000) * Number(PER_SECOND_COST))
+    private calculateExecutionCost(executionTime: number) {
+        // executionTime in milliseconds
+        const cost = (executionTime / 1000) * Number(PER_SECOND_COST);
         return cost;
     }
 
     protected reportUsage({ cost, agentId, teamId }: { cost: number; agentId: string; teamId: string }) {
         SystemEvents.emit('USAGE:API', {
             sourceId: 'api:serverless_code.smyth',
-            costs: cost,
+            cost,
             agentId,
             teamId,
         });

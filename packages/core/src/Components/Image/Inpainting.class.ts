@@ -73,7 +73,7 @@ export default class Inpainting extends Component {
             if (output) {
                 SystemEvents.emit('USAGE:API', {
                     sourceId: `api:inpainting.smyth`,
-                    costs: cost,
+                    cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
                     keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,
