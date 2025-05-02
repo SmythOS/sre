@@ -196,6 +196,12 @@ export class LLMInference {
         return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
     }
 
+    public async imageEditRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        return this.llmConnector.user(AccessCandidate.agent(agentId)).imageEditRequest(prompt, params);
+    }
+
     public async toolRequest(params: any, agent: string | Agent) {
         if (!params.messages || !params.messages?.length) {
             throw new Error('Input messages are required.');

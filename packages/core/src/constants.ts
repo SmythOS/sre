@@ -65,6 +65,7 @@ Example of a valid response:
 export const SUPPORTED_MIME_TYPES_MAP = {
     OpenAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'],
+        imageGen: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
         document: ['application/pdf'],
     },
     TogetherAI: {

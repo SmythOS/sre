@@ -13,6 +13,9 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import appConfig from '@sre/config';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { normalizeImageInput } from '@sre/utils/data.utils';
+import { ImageSettingsConfig } from './Image/imageSettings.config';
 
 enum DALL_E_MODELS {
     DALL_E_2 = 'dall-e-2',
@@ -61,6 +64,7 @@ export default class ImageGenerator extends Component {
             'number.multiple': '{{#label}} must be divisible by 64 (eg: 128...512, 576, 640...2048). Provided value: {{#value}}',
         }),
         outputFormat: Joi.string().valid('PNG', 'JPEG', 'WEBP', 'auto', 'jpeg', 'png', 'webp').optional(),
+        strength: ImageSettingsConfig.strength,
         // #endregion
 
         // #region GPT model
@@ -130,8 +134,8 @@ enum MODEL_FAMILY {
 }
 
 const imageGenerator = {
-    [MODEL_FAMILY.GPT]: async ({ model, prompt, config, logger, agent }) => {
-        let args: GenerateImageConfig = {
+    [MODEL_FAMILY.GPT]: async ({ model, prompt, config, logger, agent, input }) => {
+        let args: GenerateImageConfig & { fileSources?: BinaryInput[] } = {
             model,
             size: config?.data?.size || 'auto',
             quality: config?.data?.quality || 'auto',
@@ -148,7 +152,23 @@ const imageGenerator = {
                 };
             }
 
-            const response: any = await llmInference.imageGenRequest(prompt, args, agent);
+            const provider = LLMRegistry.getProvider(model);
+
+            const fileSources: any[] = parseFiles(input, config);
+            const validFileSources = fileSources.filter((file) => imageGenerator.isValidImageFile(provider, file.mimetype));
+
+            if (fileSources.length > 0 && validFileSources.length === 0) {
+                throw new Error('Supported image file types are: ' + SUPPORTED_MIME_TYPES_MAP[provider]?.imageGen?.join(', '));
+            }
+
+            let response;
+
+            if (validFileSources.length > 0) {
+                args.fileSources = validFileSources;
+                response = await llmInference.imageEditRequest(prompt, args, agent);
+            } else {
+                response = await llmInference.imageGenRequest(prompt, args, agent);
+            }
 
             if (response?.usage) {
                 imageGenerator.reportTokenUsage(response.usage, {
@@ -170,8 +190,14 @@ const imageGenerator = {
             throw new Error(`OpenAI Image Generation Error: ${error?.message || JSON.stringify(error)}`);
         }
     },
-    [MODEL_FAMILY.DALL_E]: async ({ model, prompt, config, logger, agent }) => {
+    [MODEL_FAMILY.DALL_E]: async ({ model, prompt, config, logger, agent, input }) => {
         let _finalPrompt = prompt;
+
+        const fileSources: any[] = parseFiles(input, config);
+
+        if (fileSources.length > 0) {
+            throw new Error('OpenAI Image Generation Error: DALL-E models do not support image editing or variations. Please use a different model.');
+        }
 
         const responseFormat = config?.data?.responseFormat || 'url';
 
@@ -229,12 +255,16 @@ const imageGenerator = {
 
         return { output };
     },
-    [MODEL_FAMILY.RUNWARE]: async ({ model, prompt, config, agent }) => {
+    [MODEL_FAMILY.RUNWARE]: async ({ model, prompt, config, agent, input }) => {
         // Initialize Runware client
         const runware = new Runware({ apiKey: appConfig.env.RUNWARE_API_KEY });
         await runware.ensureConnection();
 
         const negativePrompt = config?.data?.negativePrompt || '';
+
+        const fileSources: any[] = parseFiles(input, config);
+        let seedImage = Array.isArray(fileSources) ? fileSources[0] : fileSources;
+        seedImage = await normalizeImageInput(seedImage);
 
         const imageRequestArgs: IRequestImage = {
             model: LLMRegistry.getModelId(model),
@@ -246,6 +276,11 @@ const imageGenerator = {
             outputFormat: config?.data?.outputFormat || 'JPEG',
             includeCost: true,
         };
+
+        if (seedImage) {
+            imageRequestArgs.seedImage = seedImage;
+            imageRequestArgs.strength = +config?.data?.strength || 0.5;
+        }
 
         // If a negative prompt is provided, add it to the request args
         if (negativePrompt) {
@@ -312,6 +347,9 @@ const imageGenerator = {
 
         return usageData;
     },
+    isValidImageFile(provider: string, mimetype: string) {
+        return SUPPORTED_MIME_TYPES_MAP[provider]?.imageGen?.includes(mimetype);
+    },
 };
 
 enum PROVIDERS {
@@ -342,4 +380,25 @@ function isRunwareModel(model: string): boolean {
 
 function isDallEModel(model: string) {
     return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.DALL_E);
+}
+
+function parseFiles(input: any, config: any) {
+    const mediaTypes = ['Image', 'Audio', 'Video', 'Binary'];
+
+    // Parse media inputs from config
+    const inputFiles =
+        config.inputs
+            ?.filter((_input) => mediaTypes.includes(_input.type))
+            ?.flatMap((_input) => {
+                const value = input[_input.name];
+
+                if (Array.isArray(value)) {
+                    return value.map((item) => TemplateString(item).parseRaw(input).result);
+                } else {
+                    return TemplateString(value).parseRaw(input).result;
+                }
+            })
+            ?.filter((file) => file) || [];
+
+    return inputFiles;
 }
