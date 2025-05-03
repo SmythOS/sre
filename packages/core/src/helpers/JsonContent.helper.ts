@@ -22,8 +22,26 @@ export class JSONContentHelper {
      */
     public tryParse() {
         const strInput = this._current;
-        if (!isValidString(strInput)) return strInput;
-        let str = (this.extractJsonFromString(strInput) || strInput).trim();
+
+        // is it an object ? a digit ? a safe number ?
+        if (!isValidString(strInput) || isDigits(strInput) || isSafeNumber(strInput)) return strInput;
+
+        let str = strInput.trim();
+
+        // the string seems to be a json object
+        if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('[') && str.endsWith(']'))) {
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                try {
+                    const repairedJson = jsonrepair(str);
+                    return JSON.parse(repairedJson);
+                } catch (e: any) {}
+            }
+        }
+
+        // the string does not seem to be a json object, so we try to extract a json object from it
+        str = (this.extractJsonFromString(strInput) || strInput).trim();
 
         if ((isDigits(str) && !isSafeNumber(str)) || (!str.startsWith('{') && !str.startsWith('['))) return str;
 

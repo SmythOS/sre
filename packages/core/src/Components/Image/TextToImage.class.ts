@@ -91,7 +91,7 @@ export default class TextToImage extends Component {
             if (output) {
                 SystemEvents.emit('USAGE:API', {
                     sourceId: `api:texttoimage.smyth`,
-                    costs: cost,
+                    cost,
                     agentId: agent.id,
                     teamId: agent.teamId,
                     keySource: provider === 'runware' ? APIKeySource.Smyth : APIKeySource.User,

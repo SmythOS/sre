@@ -27,10 +27,10 @@ export const models = {
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
-    label: 'GPT 4o mini',
+    label: 'GPT 4o Mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    features: ['text', 'image', 'tools', 'document'],
+    features: ['text', 'image', 'tools'],
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_383,
@@ -78,11 +78,37 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
-    features: ['text', 'image', 'tools', 'document'],
+    features: ['text', 'image', 'tools'],
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_384,
     enabled: true,
+  },
+  'smythos/o4-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT o4 mini',
+    modelId: 'o4-mini-2025-04-16',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['New', 'SmythOS'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
+  'smythos/o3': {
+    llm: 'OpenAI',
+
+    label: 'GPT o3',
+    modelId: 'o3-2025-04-16',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['SmythOS'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
   'smythos/o1': {
     llm: 'OpenAI',
@@ -90,7 +116,7 @@ export const models = {
     label: 'GPT o1',
     modelId: 'o1-2024-12-17',
     provider: 'OpenAI',
-    features: ['text', 'document'],
+    features: ['text'],
     tags: ['SmythOS'],
     tokens: 200_000,
     completionTokens: 100_000,
@@ -153,6 +179,19 @@ export const models = {
   // #endregion Anthropic ==========================
 
   // #region Google AI ==========================
+  'smythos/gemini-2.5-flash': {
+    llm: 'GoogleAI',
+
+    label: 'Gemini 2.5 Flash Preview',
+    modelId: 'gemini-2.5-flash-preview-04-17',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'SmythOS'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 65_536, enabled: true },
+  },
   'smythos/gemini-2.0-flash': {
     llm: 'GoogleAI',
 
@@ -164,6 +203,7 @@ export const models = {
     tokens: 1_048_576,
     completionTokens: 8_192,
     enabled: true,
+    hidden: true,
   },
   'smythos/gemini-2.5-pro': {
     llm: 'GoogleAI',
@@ -188,6 +228,7 @@ export const models = {
     tokens: 2_097_152,
     completionTokens: 8_192,
     enabled: true,
+    hidden: true,
   },
   // #endregion Google AI ==========================
 
@@ -337,10 +378,10 @@ export const models = {
       'GenAILLM',
     ],
 
-    label: 'GPT 4o mini',
+    label: 'GPT 4o Mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    features: ['text', 'tools', 'image', 'document'],
+    features: ['text', 'tools', 'image'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -428,7 +469,7 @@ export const models = {
     label: 'GPT 4o',
     modelId: 'gpt-4o-2024-08-06',
     provider: 'OpenAI',
-    features: ['text', 'tools', 'image', 'document'],
+    features: ['text', 'tools', 'image'],
     tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
@@ -444,7 +485,33 @@ export const models = {
   },
   // #endregion GPT 4o
 
-  // #region o1 models
+  // #region o3 models
+  'o4-mini': {
+    llm: 'OpenAI',
+
+    label: 'GPT o4 mini',
+    modelId: 'o4-mini-2025-04-16',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
+  o3: {
+    llm: 'OpenAI',
+
+    label: 'GPT o3',
+    modelId: 'o3-2025-04-16',
+    provider: 'OpenAI',
+    features: ['text'],
+    tags: ['Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+  },
   'o3-mini': {
     llm: 'OpenAI',
     alias: 'o3-mini-2025-01-31',
@@ -459,6 +526,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
+    hidden: true,
   },
   'o3-mini-2025-01-31': {
     llm: 'OpenAI',
@@ -467,6 +535,9 @@ export const models = {
     enabled: false,
     keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
   },
+  // #endregion o3 models
+
+  // #region o1 models
   o1: {
     llm: 'OpenAI',
     alias: 'o1-2024-12-17',
@@ -945,6 +1016,19 @@ export const models = {
   // #region Google AI Models ==========================
 
   // #region Gemini 2.0 flash
+  'gemini-2.5-flash': {
+    llm: 'GoogleAI',
+
+    label: 'Gemini 2.5 Flash Preview',
+    modelId: 'gemini-2.5-flash-preview-04-17',
+    provider: 'GoogleAI',
+    features: ['text', 'image', 'audio', 'video', 'document'],
+    tags: ['New', 'Personal'],
+    tokens: 0,
+    completionTokens: 0,
+    enabled: false,
+    keyOptions: { tokens: 1_048_576, completionTokens: 65_536, enabled: true },
+  },
   'gemini-2.0-flash': {
     llm: 'GoogleAI',
     components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'MultimodalLLM', 'GenAILLM'],
@@ -958,6 +1042,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+    hidden: true,
   },
   'gemini-2.0-flash-lite': {
     llm: 'GoogleAI',
@@ -971,6 +1056,7 @@ export const models = {
     completionTokens: 0,
     enabled: false,
     keyOptions: { tokens: 1_048_576, completionTokens: 8_192, enabled: true },
+    hidden: true,
   },
   'gemini-2.5-pro': {
     llm: 'GoogleAI',
@@ -980,7 +1066,7 @@ export const models = {
     modelId: 'gemini-2.5-pro-preview-03-25',
     provider: 'GoogleAI',
     features: ['text', 'image', 'audio', 'video', 'document'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -2246,8 +2332,26 @@ export const models = {
 
   // #endregion Together AI Models ==========================
 
-  // We do not get the exact token information for Dalle models, so use the maximum possible values
   // #region Image Generation Models ============================
+
+  // #region OpenAI Models gpt-image-1
+  'smythos/gpt-image-1': {
+    label: 'GPT Image 1',
+    modelId: 'gpt-image-1',
+    provider: 'OpenAI',
+    features: ['image-generation'],
+    tags: ['New', 'SmythOS'],
+    enabled: true,
+  },
+  'gpt-image-1': {
+    label: 'GPT Image 1',
+    modelId: 'gpt-image-1',
+    provider: 'OpenAI',
+    features: ['image-generation'],
+    tags: ['New', 'Personal'],
+    enabled: true,
+  },
+  // #endregion gpt-image-1
 
   // #region OpenAI Models DALL-E
   'dall-e-3': {

@@ -29,6 +29,10 @@ const console = Logger('OpenAIConnector');
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 const reasoningModels = [
+    'o4-mini',
+    'o4-mini-2025-04-16',
+    'o3',
+    'o3-2025-04-16',
     'o3-mini',
     'o3-mini-2025-01-31',
     'o1',
@@ -299,11 +303,7 @@ export class OpenAIConnector extends LLMConnector {
         const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
         const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
 
-        const promptData = [
-            { type: 'text', text: prompt || '' },
-            ...imageData,
-            ...documentData,
-        ];
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
 
         messages.push({ role: 'user', content: promptData });
 
@@ -364,19 +364,24 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
-        // throw new Error('Image generation request is not supported for OpenAI.');
         try {
             const { model, size, quality, n, responseFormat, style } = params;
-            const agentId = agent instanceof Agent ? agent.id : agent;
 
             const args: GenerateImageConfig & { prompt: string } = {
                 prompt,
                 model,
                 size,
-                quality,
                 n: n || 1,
-                response_format: responseFormat || 'url',
             };
+
+            if (quality) {
+                args.quality = quality;
+            }
+
+            // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
+            if (responseFormat) {
+                args.response_format = responseFormat;
+            }
 
             if (style) {
                 args.style = style;
@@ -745,11 +750,7 @@ export class OpenAIConnector extends LLMConnector {
         const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
         const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
 
-        const promptData = [
-            { type: 'text', text: prompt || '' },
-            ...imageData,
-            ...documentData,
-        ];
+        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
 
         messages.push({ role: 'user', content: promptData });
 
