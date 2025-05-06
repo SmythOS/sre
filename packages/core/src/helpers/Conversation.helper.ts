@@ -15,7 +15,7 @@ import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
-import { hookAsync } from '@sre/Core/HookService';
+import { hookAsyncWithContext } from '@sre/Core/HookService';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -204,7 +204,7 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
-    @hookAsync('Conversation.prompt', async (instance: Conversation) => {
+    @hookAsyncWithContext('Conversation.prompt', async (instance: Conversation) => {
         await instance.ready;
 
         return {
@@ -356,7 +356,7 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
-    @hookAsync('Conversation.streamPrompt', async (instance: Conversation) => {
+    @hookAsyncWithContext('Conversation.streamPrompt', async (instance: Conversation) => {
         await instance.ready;
 
         return {
