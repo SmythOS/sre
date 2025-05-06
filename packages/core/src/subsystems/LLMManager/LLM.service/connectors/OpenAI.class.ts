@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
+import { Uploadable } from 'openai/uploads';
 import { encodeChat } from 'gpt-tokenizer';
 
 import Agent from '@sre/AgentManager/Agent.class';
@@ -24,6 +25,7 @@ import {
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import SystemEvents from '@sre/Core/SystemEvents';
+import { ImageEditParams } from 'openai/resources/images';
 
 const console = Logger('OpenAIConnector');
 
@@ -363,6 +365,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    // #region Image Generation, will be moved to a different subsystem
     protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
         try {
             const { model, size, quality, n, responseFormat, style } = params;
@@ -407,6 +410,63 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    protected async imageEditRequest(
+        acRequest: AccessRequest,
+        prompt,
+        params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
+        agent: string | Agent
+    ): Promise<ImagesResponse> {
+        try {
+            const { model, size, quality, n, responseFormat, style } = params;
+
+            const args: ImageEditParams = {
+                prompt,
+                model,
+                size,
+                n: n || 1,
+                image: null,
+            };
+
+            // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
+            if (responseFormat) {
+                args.response_format = responseFormat;
+            }
+
+            const apiKey = params?.credentials?.apiKey;
+            if (!apiKey) {
+                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
+            }
+
+            const openai = new OpenAI({
+                apiKey: apiKey,
+                baseURL: params?.baseURL,
+            });
+
+            const fileSources: BinaryInput[] = params?.fileSources || [];
+
+            if (fileSources.length > 0) {
+                const images = await Promise.all(
+                    fileSources.map(
+                        async (file) =>
+                            await toFile(await file.getReadStream(), await file.getName(), {
+                                type: file.mimetype,
+                            })
+                    )
+                );
+
+                args.image = images as unknown as Uploadable; // ! FIXME: This is a workaround to avoid type error, will be fixed in the next version of openai
+            }
+
+            const response = await openai.images.edit(args);
+
+            return response;
+        } catch (error: any) {
+            console.warn('Error generating image(s) with DALL·E: ', error);
+
+            throw error;
+        }
+    }
+    // #endregion Image Generation
     protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
         const apiKey = params?.credentials?.apiKey;
 

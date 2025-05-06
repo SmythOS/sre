@@ -1,6 +1,10 @@
 import axios from 'axios';
 import mime from 'mime';
 import { fileTypeFromBuffer } from 'file-type';
+import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
@@ -265,5 +269,37 @@ export class BinaryInput {
         await this.ready();
 
         return this._source;
+    }
+
+    /**
+     * Creates a read stream from the binary data.
+     * Uses temporary files to reduce memory usage for large files.
+     */
+    public async getReadStream(): Promise<Readable> {
+        await this.ready();
+
+        // Create a temporary directory if it doesn't exist
+        const tempDir = path.join(os.tmpdir(), 'smyth-streams');
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        // Generate a unique temp file name
+        const tempFilePath = path.join(tempDir, `${Date.now()}-${this._name || uid()}`);
+
+        // Write the buffer to a temp file
+        fs.writeFileSync(tempFilePath, this._source);
+
+        // Create cleanup handler to remove temp file when stream ends
+        const stream = fs.createReadStream(tempFilePath);
+        stream.on('close', () => {
+            try {
+                fs.unlinkSync(tempFilePath);
+            } catch (e) {
+                console.error('Failed to clean up temporary file:', tempFilePath, e);
+            }
+        });
+
+        return stream;
     }
 }
