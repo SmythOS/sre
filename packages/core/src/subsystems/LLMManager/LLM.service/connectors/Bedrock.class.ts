@@ -26,7 +26,7 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import SystemEvents from '@sre/Core/SystemEvents';
 
@@ -218,7 +218,7 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
         throw new Error('Image generation request is not supported for Bedrock.');
     }
 

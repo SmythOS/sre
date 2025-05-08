@@ -17,7 +17,7 @@ import {
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import SystemEvents from '@sre/Core/SystemEvents';
 
@@ -133,7 +133,7 @@ export class PerplexityConnector extends LLMConnector {
         throw new Error('Tool request is not supported for Perplexity.');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
         throw new Error('Image generation request is not supported for Perplexity.');
     }
 

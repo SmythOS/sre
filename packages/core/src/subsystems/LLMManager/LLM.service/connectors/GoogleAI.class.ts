@@ -22,7 +22,7 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 
 const console = Logger('GoogleAIConnector');
 
@@ -456,7 +456,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 

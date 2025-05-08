@@ -9,7 +9,7 @@ import { TLLMParams, TLLMMessageBlock, TLLMMessageRole, TVertexAIModel, APIKeySo
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/index';
 
 const console = Logger('VertexAIConnector');
@@ -109,7 +109,7 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Tool requests are not currently implemented for Vertex AI');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
         throw new Error('Image generation request is not currently implemented for Vertex AI');
     }
 

@@ -12,7 +12,7 @@ import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import {  LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
@@ -319,7 +319,7 @@ export class AnthropicConnector extends LLMConnector {
             messageCreateArgs.messages = messages;
 
             if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
-                messageCreateArgs.tools = params?.toolsConfig?.tools as Anthropic.Tool[];
+                messageCreateArgs.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
             }
 
             const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
@@ -397,7 +397,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<any> {
         throw new Error('Image generation request is not supported for Anthropic.');
     }
 

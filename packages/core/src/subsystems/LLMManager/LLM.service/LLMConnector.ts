@@ -1,3 +1,4 @@
+import { type OpenAI } from 'openai';
 import Agent from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -34,14 +35,6 @@ export type LLMChatResponse = {
     finishReason: string;
     thinkingContent?: string;
     usage?: any;
-};
-
-export type ImagesResponse = {
-    created: number;
-    data: Array<{
-        b64_json?: string;
-        url?: string;
-    }>;
 };
 
 const SMYTHOS_API_KEYS = {
@@ -102,7 +95,7 @@ export abstract class LLMConnector extends Connector {
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<OpenAI.ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
     protected imageEditRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
