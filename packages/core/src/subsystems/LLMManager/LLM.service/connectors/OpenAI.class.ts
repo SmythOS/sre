@@ -880,19 +880,14 @@ export class OpenAIConnector extends LLMConnector {
         let llmRegistry = LLMRegistry.isStandardLLM(params.modelEntryName) ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
         const modelInfo = llmRegistry.getModelInfo(params.modelEntryName);
 
-        // * Use streamRequestV2 for search to support the new OpenAI SDK. Keep streamRequestV1 for legacy functionality
-        if (params?.useSearch && modelInfo?.features?.includes('search')) {
-            // TODO: Only support Web Search tool for now, need to implement other tools as well
-            const tools = [
-                {
-                    type: 'web_search_preview' as 'web_search_preview',
-                    search_context_size: params?.searchContentSize || 'medium',
-                },
-            ];
+        // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
+        if (params?.useWebSearch && modelInfo?.features?.includes('search')) {
+            const searchTool = this.getWebSearchTool(params);
 
+            // TODO: Only support Web Search tool for now, need to implement other tools as well
             const _params = {
                 ...params,
-                toolsConfig: { tools },
+                toolsConfig: { tools: [searchTool] },
             };
 
             return this.streamRequestV2(acRequest, _params, agent);
@@ -1212,6 +1207,41 @@ export class OpenAIConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    private getWebSearchTool(params: TLLMParamsV2) {
+        const searchCity = params?.webSearchCity;
+        const searchCountry = params?.webSearchCountry;
+        const searchRegion = params?.webSearchRegion;
+        const searchTimezone = params?.webSearchTimezone;
+
+        const location: {
+            type: 'approximate';
+            city?: string;
+            country?: string;
+            region?: string;
+            timezone?: string;
+        } = {
+            type: 'approximate', // Required, always be 'approximate' when we implement location
+        };
+
+        if (searchCity) location.city = searchCity;
+        if (searchCountry) location.country = searchCountry;
+        if (searchRegion) location.region = searchRegion;
+        if (searchTimezone) location.timezone = searchTimezone;
+
+        const searchTool = {
+            type: 'web_search_preview' as 'web_search_preview',
+            search_context_size: params?.webSearchContextSize || 'medium',
+            location,
+        };
+
+        // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
+        if (Object.keys(location).length > 1) {
+            searchTool.location = location;
+        }
+
+        return searchTool;
     }
 
     protected reportUsage(

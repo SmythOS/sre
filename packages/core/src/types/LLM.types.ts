@@ -52,8 +52,15 @@ export type TLLMParams = {
         budget_tokens: number;
     };
     maxThinkingTokens?: number;
-    useSearch?: boolean;
-    searchContentSize?: 'high' | 'medium' | 'low';
+
+    // #region Search
+    useWebSearch?: boolean;
+    webSearchContextSize?: 'high' | 'medium' | 'low';
+    webSearchCity?: string;
+    webSearchCountry?: string;
+    webSearchRegion?: string;
+    webSearchTimezone?: string;
+    // #endregion
 };
 
 export type TLLMParamsV2 = {
@@ -78,8 +85,15 @@ export type TLLMParamsV2 = {
     frequency_penalty?: number;
     presence_penalty?: number;
     teamId?: string;
-    useSearch?: boolean;
-    searchContentSize?: 'high' | 'medium' | 'low';
+
+    // #region Search
+    useWebSearch?: boolean;
+    webSearchContextSize?: 'high' | 'medium' | 'low';
+    webSearchCity?: string;
+    webSearchCountry?: string;
+    webSearchRegion?: string;
+    webSearchTimezone?: string;
+    // #endregion
 };
 
 export type TLLMModelEntry = {
