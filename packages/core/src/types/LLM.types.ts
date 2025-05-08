@@ -33,7 +33,10 @@ export type TLLMParams = {
     responseFormat?: any; // TODO [Forhad]: apply proper typing
     modelInfo?: TVertexAIModel | TBedrockModel;
     fileSources?: BinaryInput[];
-    toolsConfig?: ToolsConfig;
+    toolsConfig?: {
+        tools?: OpenAI.ChatCompletionTool[];
+        tool_choice?: OpenAI.ChatCompletionToolChoiceOption;
+    };
     baseURL?: string;
 
     size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'; // for image generation
@@ -49,6 +52,34 @@ export type TLLMParams = {
         budget_tokens: number;
     };
     maxThinkingTokens?: number;
+    useSearch?: boolean;
+    searchContentSize?: 'high' | 'medium' | 'low';
+};
+
+export type TLLMParamsV2 = {
+    model: string;
+    modelEntryName: string;
+    messages: any[];
+    toolsConfig?: {
+        tools?: OpenAI.Responses.Tool[];
+        tool_choice?: OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
+    };
+    baseURL?: string;
+    stream?: boolean;
+    responseFormat?: any;
+    credentials?: {
+        apiKey?: string;
+        isUserKey?: boolean;
+    };
+    max_output_tokens?: number;
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    teamId?: string;
+    useSearch?: boolean;
+    searchContentSize?: 'high' | 'medium' | 'low';
 };
 
 export type TLLMModelEntry = {

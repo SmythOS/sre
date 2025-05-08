@@ -60,10 +60,12 @@ export class LLMRegistry {
     public static getModelInfo(model: string, hasAPIKey: boolean = false): Record<string, any> {
         const modelId = this.getModelId(model);
         const modelEntryId = this.getModelEntryId(model);
-        const modelInfo = LLMRegistry.models?.[modelId] || LLMRegistry.models?.[modelEntryId] || {};
+
+        // modelId returns the model alias (if any). In the new model structure, some information exists only in the model entry accessed via modelEntryId, so we merge data from both modelId and modelEntryId.
+        const modelInfo = { ...(LLMRegistry.models?.[modelId] || {}), ...(LLMRegistry.models?.[modelEntryId] || {}) };
 
         if (hasAPIKey) {
-            const keyOptions = LLMRegistry.models?.[modelId]?.keyOptions || LLMRegistry.models?.[modelEntryId]?.keyOptions || {};
+            const keyOptions = { ...(LLMRegistry.models?.[modelId]?.keyOptions || {}), ...(LLMRegistry.models?.[modelEntryId]?.keyOptions || {}) };
             return { ...modelInfo, ...keyOptions, modelId };
         }
 

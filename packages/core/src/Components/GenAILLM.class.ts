@@ -30,6 +30,8 @@ export default class GenAILLM extends Component {
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
+        useSearch: Joi.boolean().optional().label('Use Search'),
+        searchContentSize: Joi.string().valid('high', 'medium', 'low').optional().label('Search Content Size'),
     });
     constructor() {
         super();

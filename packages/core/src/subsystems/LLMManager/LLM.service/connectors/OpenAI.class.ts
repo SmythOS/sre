@@ -21,11 +21,13 @@ import {
     TLLMMessageRole,
     GenerateImageConfig,
     APIKeySource,
+    TLLMParamsV2,
 } from '@sre/types/LLM.types';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
+import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 
 const console = Logger('OpenAIConnector');
 
@@ -366,7 +368,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     // #region Image Generation, will be moved to a different subsystem
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<OpenAI.ImagesResponse> {
         try {
             const { model, size, quality, n, responseFormat, style } = params;
 
@@ -415,7 +417,7 @@ export class OpenAIConnector extends LLMConnector {
         prompt,
         params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
         agent: string | Agent
-    ): Promise<ImagesResponse> {
+    ): Promise<OpenAI.ImagesResponse> {
         try {
             const { model, size, quality, n, responseFormat, style } = params;
 
@@ -651,7 +653,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    private async streamRequestV1(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const reportedUsage = [];
@@ -668,8 +670,7 @@ export class OpenAIConnector extends LLMConnector {
         });
 
         //TODO: check token limits for non api key users
-        console.debug('model', params.model);
-        //console.debug('messages', params.messages);
+
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
             model: params.model,
             messages: params.messages,
@@ -764,6 +765,139 @@ export class OpenAIConnector extends LLMConnector {
             return emitter;
         } catch (error: any) {
             throw error;
+        }
+    }
+
+    private async streamRequestV2(acRequest: AccessRequest, params: TLLMParamsV2, agent: string | Agent): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const usage_data = [];
+        const reportedUsage = [];
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const openai = new OpenAI({
+            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
+            baseURL: params.baseURL,
+        });
+
+        // Prepare the request parameters
+        const requestParams: OpenAI.Responses.ResponseCreateParams = {
+            model: params.model,
+            input: params.messages,
+            stream: true,
+        };
+
+        if (params?.max_output_tokens !== undefined) {
+            requestParams.max_output_tokens = params.max_output_tokens;
+        }
+
+        // #region Handle tools configuration
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            requestParams.tools = params?.toolsConfig?.tools;
+        }
+
+        if (params?.toolsConfig?.tool_choice) {
+            requestParams.tool_choice = params.toolsConfig.tool_choice;
+        }
+        // #endregion
+
+        try {
+            let finishReason = 'stop';
+            const stream = await openai.responses.create(requestParams);
+
+            // Process stream asynchronously while we need to return emitter immediately
+            (async () => {
+                let toolsData: any = [];
+                let currentToolCall = null;
+
+                for await (const part of stream) {
+                    // Handle different event types from the stream
+                    if ('type' in part) {
+                        const event = part.type;
+
+                        switch (event) {
+                            case 'response.output_text.delta': {
+                                if (part?.delta) {
+                                    // Emit content in delta format for compatibility
+                                    const deltaMsg = {
+                                        role: 'assistant',
+                                        content: part.delta,
+                                    };
+                                    emitter.emit('data', deltaMsg);
+                                    emitter.emit('content', part.delta, 'assistant');
+                                }
+                                break;
+                            }
+                            // TODO: Handle other events
+                            default: {
+                                break;
+                            }
+                        }
+                    }
+
+                    if ('response' in part) {
+                        // Handle usage statistics
+                        if (part.response?.usage) {
+                            usage_data.push(part.response.usage);
+                        }
+                    }
+                }
+
+                // Report usage statistics
+                usage_data.forEach((usage) => {
+                    const _reported = this.reportUsage(usage, {
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
+                    reportedUsage.push(_reported);
+                });
+
+                // Emit interrupted event if finishReason is not 'stop'
+                if (finishReason !== 'stop') {
+                    emitter.emit('interrupted', finishReason);
+                }
+
+                // Emit end event with same data structure as v1
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, reportedUsage, finishReason);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams & TLLMParamsV2, agent: string | Agent): Promise<EventEmitter> {
+        const team = AccessCandidate.team(params.teamId);
+        let llmRegistry = LLMRegistry.isStandardLLM(params.modelEntryName) ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
+        const modelInfo = llmRegistry.getModelInfo(params.modelEntryName);
+
+        // * Use streamRequestV2 for search to support the new OpenAI SDK. Keep streamRequestV1 for legacy functionality
+        if (params?.useSearch && modelInfo?.features?.includes('search')) {
+            // TODO: Only support Web Search tool for now, need to implement other tools as well
+            const tools = [
+                {
+                    type: 'web_search_preview' as 'web_search_preview',
+                    search_context_size: params?.searchContentSize || 'medium',
+                },
+            ];
+
+            const _params = {
+                ...params,
+                toolsConfig: { tools },
+            };
+
+            return this.streamRequestV2(acRequest, _params, agent);
+        } else {
+            return this.streamRequestV1(acRequest, params, agent);
         }
     }
 
