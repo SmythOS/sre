@@ -455,7 +455,12 @@ export const models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 16383, enabled: true },
+    keyOptions: {
+      tokens: 128000,
+      searchContextTokens: 128000,
+      completionTokens: 16383,
+      enabled: true,
+    },
   },
   'gpt-4.5-preview': {
     llm: 'OpenAI',
@@ -504,7 +509,12 @@ export const models = {
     tokens: 2048,
     completionTokens: 2048,
     enabled: false,
-    keyOptions: { tokens: 128000, completionTokens: 16_384, enabled: true },
+    keyOptions: {
+      tokens: 128000,
+      searchContextTokens: 128000,
+      completionTokens: 16_384,
+      enabled: true,
+    },
   },
   // #endregion GPT 4o
 
