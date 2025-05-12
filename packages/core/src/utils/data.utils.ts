@@ -222,7 +222,7 @@ export async function formatDataForDebug(data: any) {
 // TODO: Maybe we need move this function to any helper file, as it depends on BinaryInput class
 export async function normalizeImageInput(inputImage: string | BinaryInput): Promise<string> {
     if (!inputImage) {
-        throw new Error('Input image is required');
+        return '';
     }
 
     // Handle string inputs

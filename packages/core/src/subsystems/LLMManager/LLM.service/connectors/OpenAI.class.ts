@@ -419,7 +419,7 @@ export class OpenAIConnector extends LLMConnector {
         agent: string | Agent
     ): Promise<OpenAI.ImagesResponse> {
         try {
-            const { model, size, quality, n, responseFormat, style } = params;
+            const { model, size, n, responseFormat } = params;
 
             const args: ImageEditParams = {
                 prompt,

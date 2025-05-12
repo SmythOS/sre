@@ -252,7 +252,13 @@ export abstract class LLMConnector extends Connector {
 
                 // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
                 if (!_params.credentials?.apiKey && llmProvider === 'openai') {
-                    _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                    const modelInfo = LLMRegistry.getModelInfo(model);
+                    const isImageGenerationModel = modelInfo?.features?.includes('image-generation');
+
+                    // We will not provide Smyth OS key for image generation models
+                    if (!isImageGenerationModel) {
+                        _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                    }
                 } else {
                     _params.credentials.isUserKey = true;
                 }

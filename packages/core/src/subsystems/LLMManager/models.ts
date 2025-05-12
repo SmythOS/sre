@@ -2382,7 +2382,8 @@ export const models = {
     provider: 'OpenAI',
     features: ['image-generation'],
     tags: ['New', 'Personal'],
-    enabled: true,
+    enabled: false,
+    keyOptions: { enabled: true },
   },
   // #endregion gpt-image-1
 
