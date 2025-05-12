@@ -15,6 +15,7 @@ import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
+import { hookAsyncWithContext } from '@sre/Core/HookService';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -203,6 +204,15 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
+    @hookAsyncWithContext('Conversation.prompt', async (instance: Conversation) => {
+        await instance.ready;
+
+        return {
+            teamId: instance._teamId,
+            agentId: instance._agentId,
+            model: instance._model,
+        };
+    })
     public async prompt(message?: string, toolHeaders = {}) {
         if (message) {
             this.stop = false;
@@ -346,6 +356,15 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
+    @hookAsyncWithContext('Conversation.streamPrompt', async (instance: Conversation) => {
+        await instance.ready;
+
+        return {
+            teamId: instance._teamId,
+            agentId: instance._agentId,
+            model: instance._model,
+        };
+    })
     public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
         if (message) {
             //initial call, reset stop flag
