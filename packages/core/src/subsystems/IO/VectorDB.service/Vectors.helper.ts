@@ -11,6 +11,7 @@ import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { PineconeVectorDB } from './connectors/PineconeVectorDB.class';
 import { isUrl } from '@sre/utils/data.utils';
+import { SmythManagedVectorDB } from './connectors/SmythManagedVectorDB.class';
 
 type SupportedSources = 'text' | 'vector' | 'url';
 
@@ -42,6 +43,10 @@ export class VectorsHelper {
 
     public setVectorDimention(vectorDimention: number) {
         this._vectorDimention = vectorDimention;
+    }
+
+    public get shouldCreateNsImplicitly() {
+        return !(this._vectorDBconnector instanceof SmythManagedVectorDB); // we do not create namespaces on behalf of the user on Smyth Managed VectorDB
     }
 
     public static async chunkText(

@@ -10,6 +10,7 @@ import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper'
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import DataSourceIndexer from './DataSourceIndexer.class';
+import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
 export default class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
@@ -51,6 +52,9 @@ export default class DataSourceCleaner extends Component {
 
             let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
             if (!existingnamespace) {
+                if (!vectorDBHelper.shouldCreateNsImplicitly) {
+                    throw new Error(`Namespace ${namespaceId} does not exist`);
+                }
                 await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${namespaceId}\n\n`;
             } else if (!existingnamespace.metadata.isOnCustomStorage) {
