@@ -85,6 +85,7 @@ export default class GenAILLM extends Component {
 
             // Ignore files for Echo model
             if (fileSources?.length > 0 && !isEcho) {
+                // TODO: simplify the valid files checking logic
                 const supportedFileTypes = SUPPORTED_MIME_TYPES_MAP?.[provider] || {};
                 const features = llmRegistry.getModelFeatures(model);
                 const fileTypes = new Set(); // Set to avoid duplicates
@@ -105,7 +106,7 @@ export default class GenAILLM extends Component {
 
                 fileSources = validFiles.filter(Boolean);
 
-                if (fileSources.length === 0) {
+                if (fileSources.length === 0) {                    
                     return {
                         _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
                         _debug: logger.output,

@@ -406,7 +406,7 @@ export class OpenAIConnector extends LLMConnector {
 
             return response;
         } catch (error: any) {
-            console.warn('Error generating image(s) with DALL·E: ', error);
+            console.warn('Error generating image(s)', error);
 
             throw error;
         }
@@ -463,7 +463,7 @@ export class OpenAIConnector extends LLMConnector {
 
             return response;
         } catch (error: any) {
-            console.warn('Error generating image(s) with DALL·E: ', error);
+            console.warn('Error editing image(s): ', error);
 
             throw error;
         }
