@@ -1,11 +1,16 @@
 import axios from 'axios';
 import mime from 'mime';
 import { fileTypeFromBuffer } from 'file-type';
+import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
+import config from '@sre/config';
 export class BinaryInput {
     private size: number;
     private url: string;
@@ -265,5 +270,55 @@ export class BinaryInput {
         await this.ready();
 
         return this._source;
+    }
+
+    /**
+     * Creates a read stream from the binary data.
+     * Uses temporary files to reduce memory usage for large files.
+     */
+    public async getReadStream(): Promise<Readable> {
+        await this.ready();
+
+        return Readable.from(this._source);
+
+        // Try multiple locations for temporary directory
+        // * For some reason, createReadStream() with the temp file isn't working on the live server, even though it works locally.
+        // let tempDir: string;
+
+        // try {
+        //     tempDir = path.join(config.env.DATA_PATH, 'tmp');
+        //     // Test if we can access/write to this directory
+        //     if (!fs.existsSync(tempDir)) {
+        //         fs.mkdirSync(tempDir, { recursive: true });
+        //     }
+        // } catch (error) {
+        //     // Last resort: try to use an in-memory stream instead of a temp file
+        //     console.warn('Failed to access temporary directories:', error, error);
+        //     return Readable.from(this._source);
+        // }
+
+        // // Generate a unique temp file name
+        // const tempFilePath = path.join(tempDir, `${Date.now()}-${this._name || uid()}`);
+
+        // try {
+        //     // Write the buffer to a temp file
+        //     fs.writeFileSync(tempFilePath, this._source);
+
+        //     // Create cleanup handler to remove temp file when stream ends
+        //     const stream = fs.createReadStream(tempFilePath);
+        //     stream.on('close', () => {
+        //         try {
+        //             fs.unlinkSync(tempFilePath);
+        //         } catch (e) {
+        //             console.warn('Failed to clean up temporary file:', tempFilePath, e);
+        //         }
+        //     });
+
+        //     return stream;
+        // } catch (writeError) {
+        //     // If we can't write to the temp file, fall back to an in-memory stream
+        //     console.warn('Failed to write temporary file:', writeError);
+        //     return Readable.from(this._source);
+        // }
     }
 }

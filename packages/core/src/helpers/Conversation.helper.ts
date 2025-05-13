@@ -15,6 +15,7 @@ import { Match, TemplateString } from './TemplateString.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
+import { hookAsyncWithContext } from '@sre/Core/HookService';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -203,7 +204,19 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
+    @hookAsyncWithContext('Conversation.prompt', async (instance: Conversation) => {
+        await instance.ready;
+
+        return {
+            teamId: instance._teamId,
+            agentId: instance._agentId,
+            model: instance._model,
+        };
+    })
     public async prompt(message?: string, toolHeaders = {}) {
+        if (message) {
+            this.stop = false;
+        }
         if (this.stop) return;
         await this.ready;
 
@@ -245,10 +258,10 @@ export class Conversation extends EventEmitter {
             .catch((error: any) => {
                 throw new Error(
                     '[LLM Request Error]\n' +
-                    JSON.stringify({
-                        code: error?.name || 'LLMRequestFailed',
-                        message: error?.message || 'Something went wrong while calling LLM.',
-                    })
+                        JSON.stringify({
+                            code: error?.name || 'LLMRequestFailed',
+                            message: error?.message || 'Something went wrong while calling LLM.',
+                        })
                 );
             });
 
@@ -343,8 +356,26 @@ export class Conversation extends EventEmitter {
     }
 
     //TODO : handle attachments
+    @hookAsyncWithContext('Conversation.streamPrompt', async (instance: Conversation) => {
+        await instance.ready;
+
+        return {
+            teamId: instance._teamId,
+            agentId: instance._agentId,
+            model: instance._model,
+        };
+    })
     public async streamPrompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
-        if (this.stop) return;
+        if (message) {
+            //initial call, reset stop flag
+
+            this.stop = false;
+        }
+        if (this.stop) {
+            this.emit('interrupted', 'interrupted');
+            this.emit('end');
+            return;
+        }
         await this.ready;
 
         // Add an abort handler
@@ -400,20 +431,23 @@ export class Conversation extends EventEmitter {
 
         if (message) this.emit('start');
         eventEmitter.on('data', (data) => {
+            if (this.stop) return;
             this.emit('data', data);
         });
 
         eventEmitter.on('thinking', (thinking) => {
+            if (this.stop) return;
             this.emit('thinking', thinking);
         });
 
         eventEmitter.on('content', (content) => {
+            if (this.stop) return;
             // if (toolHeaders['x-passthrough']) {
             //     console.log('Passthrough skiped content ', content);
             //     return;
             // }
             _content += content;
-            //console.log('content', content);
+            console.log('>>>>> content', content);
             this.emit('content', content);
         });
 
@@ -430,6 +464,7 @@ export class Conversation extends EventEmitter {
             });
 
             eventEmitter.on('toolsData', async (toolsData, thinkingBlocks = []) => {
+                if (this.stop) return;
                 hasTools = true;
                 let llmMessage: any = {
                     role: 'assistant',
@@ -466,6 +501,7 @@ export class Conversation extends EventEmitter {
 
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
+                    if (this.stop) return;
                     //if (typeof data !== 'string') return;
                     let content = '';
                     let thinking = '';
@@ -660,6 +696,10 @@ export class Conversation extends EventEmitter {
         data: any;
         error;
     }> {
+        if (this.stop) {
+            return { data: null, error: 'Conversation Interrupted' };
+        }
+
         const { type, endpoint, args, method, baseUrl, headers = {}, agentCallback } = params;
 
         if (type === 'function') {

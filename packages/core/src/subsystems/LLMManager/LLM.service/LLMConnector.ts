@@ -26,6 +26,7 @@ export interface ILLMConnectorRequest {
     streamRequest(params: any): Promise<EventEmitter>;
     multimodalStreamRequest(prompt, params: any): Promise<any>;
     imageGenRequest(prompt, params: any): Promise<any>;
+    imageEditRequest?(prompt, params: any): Promise<any>;
 }
 
 export type LLMChatResponse = {
@@ -99,8 +100,14 @@ export abstract class LLMConnector extends Connector {
     protected abstract streamToolRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<any>;
     protected abstract streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter>;
     protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
+
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
+
+    // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
+    protected imageEditRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
+        return Promise.reject(new Error('Image edit not supported by this model'));
+    }
 
     private vaultConnector: VaultConnector;
 
@@ -111,7 +118,7 @@ export abstract class LLMConnector extends Connector {
 
         if (!this.vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
 
-        return {
+        const request: ILLMConnectorRequest = {
             chatRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
@@ -126,11 +133,6 @@ export abstract class LLMConnector extends Connector {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
 
                 return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
-            },
-            imageGenRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
-
-                return this.imageGenRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             toolRequest: async (params: any) => {
                 const _params: TLLMParams = await this.prepareParams(candidate, params);
@@ -152,7 +154,19 @@ export abstract class LLMConnector extends Connector {
 
                 return this.multimodalStreamRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
+            imageGenRequest: async (prompt, params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.imageGenRequest(candidate.readRequest, prompt, _params, candidate.id);
+            },
+            imageEditRequest: async (prompt, params: any) => {
+                const _params: TLLMParams = await this.prepareParams(candidate, params);
+
+                return this.imageEditRequest(candidate.readRequest, prompt, _params, candidate.id);
+            },
         };
+
+        return request;
     }
 
     public enhancePrompt(prompt: string, config: any) {
@@ -245,7 +259,13 @@ export abstract class LLMConnector extends Connector {
 
                 // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
                 if (!_params.credentials?.apiKey && llmProvider === 'openai') {
-                    _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                    const modelInfo = LLMRegistry.getModelInfo(model);
+                    const isImageGenerationModel = modelInfo?.features?.includes('image-generation');
+
+                    // We will not provide Smyth OS key for image generation models
+                    if (!isImageGenerationModel) {
+                        _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+                    }
                 } else {
                     _params.credentials.isUserKey = true;
                 }
