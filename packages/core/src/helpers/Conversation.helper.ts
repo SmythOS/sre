@@ -381,9 +381,11 @@ export class Conversation extends EventEmitter {
         // Add an abort handler
         if (abortSignal) {
             abortSignal.addEventListener('abort', () => {
-                const error = new Error('Request aborted by user!');
-                error.name = 'AbortError';
-                throw error;
+                //this.emit('error', { name: 'AbortError', message: 'Request aborted by user!' });
+                this.emit('aborted', 'Aborted by user!');
+                //const error = new Error('Request aborted by user!');
+                //error.name = 'AbortError';
+                //throw error;
             });
         }
 
@@ -425,6 +427,12 @@ export class Conversation extends EventEmitter {
                 console.error('Error on streamRequest: ', error);
             });
 
+        // remove listeners from llm event emitter to stop receiving stream data
+        if (abortSignal) {
+            abortSignal.addEventListener('abort', () => {
+                eventEmitter.removeAllListeners();
+            });
+        }
         if (!eventEmitter || eventEmitter.error) {
             throw new Error('[LLM Request Error]');
         }
@@ -447,7 +455,6 @@ export class Conversation extends EventEmitter {
             //     return;
             // }
             _content += content;
-            console.log('>>>>> content', content);
             this.emit('content', content);
         });
 
@@ -596,7 +603,7 @@ export class Conversation extends EventEmitter {
                     //toolHeaders['x-passthrough'] = 'true';
                 }
 
-                this.streamPrompt(null, toolHeaders, concurrentToolCalls).then(resolve).catch(reject);
+                this.streamPrompt(null, toolHeaders, concurrentToolCalls, abortSignal).then(resolve).catch(reject);
 
                 //} else {
                 //TODO : add passthrough content to the context window ??

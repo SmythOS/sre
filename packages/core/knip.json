@@ -1,4 +1,4 @@
 {
-    "entry": ["src/index.ts"],
-    "project": ["src/**/*.{js,ts}"]
+    "entry": ["src/index.ts", "rollup.config.js"],
+    "project": ["src/**/*.{js,ts}", "test/**/*.{js,ts}"]
 }

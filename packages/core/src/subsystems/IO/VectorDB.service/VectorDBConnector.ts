@@ -14,7 +14,6 @@ import {
     VectorDBMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
-import { Document } from '@langchain/core/documents';
 
 export interface IVectorDBRequest {
     search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorsResultData>;

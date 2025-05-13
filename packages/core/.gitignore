@@ -139,3 +139,4 @@ dist
 tests/data/vault.json
 .DS_Store
 tests/dev/000-experimental
+distibutions

@@ -18,7 +18,6 @@ import {
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { OpenAIEmbeddings } from '@langchain/openai';
 import { VectorsHelper } from '../Vectors.helper';
 import { isUrl } from '@sre/utils/data.utils';
 import { Logger } from '@sre/helpers/Log.helper';
