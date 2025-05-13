@@ -10,6 +10,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { getSizeFromBinary, isUrl, uid, getBase64FileInfo, getMimeType } from '@sre/utils';
+import config from '@sre/config';
 export class BinaryInput {
     private size: number;
     private url: string;
@@ -280,30 +281,17 @@ export class BinaryInput {
 
         // Try multiple locations for temporary directory
         let tempDir: string;
-        let tempDirBase: string;
-        
+
         try {
-            // First try the standard OS temp directory
-            tempDirBase = os.tmpdir();
-            tempDir = path.join(tempDirBase, 'smyth-streams');
+            tempDir = path.join(config.env.DATA_PATH, 'tmp');
             // Test if we can access/write to this directory
             if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir, { recursive: true });
             }
         } catch (error) {
-            // Fallback options if os.tmpdir() is not available
-            try {
-                // Try the current working directory
-                tempDirBase = process.cwd();
-                tempDir = path.join(tempDirBase, '.smyth-tmp');
-                if (!fs.existsSync(tempDir)) {
-                    fs.mkdirSync(tempDir, { recursive: true });
-                }
-            } catch (fallbackError) {
-                // Last resort: try to use an in-memory stream instead of a temp file
-                console.warn('Failed to access temporary directories:', error, fallbackError);
-                return Readable.from(this._source);
-            }
+            // Last resort: try to use an in-memory stream instead of a temp file
+            console.warn('Failed to access temporary directories:', error, error);
+            return Readable.from(this._source);
         }
 
         // Generate a unique temp file name
