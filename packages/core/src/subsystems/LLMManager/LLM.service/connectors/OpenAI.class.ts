@@ -1,3 +1,4 @@
+import 'openai/shims/node';
 import EventEmitter from 'events';
 import OpenAI, { toFile } from 'openai';
 import { Uploadable } from 'openai/uploads';
