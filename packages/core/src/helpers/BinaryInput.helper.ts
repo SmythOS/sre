@@ -279,10 +279,10 @@ export class BinaryInput {
     public async getReadStream(): Promise<Readable> {
         await this.ready();
 
+        // * Direct in-memory stream; faster but uses memory for the entire file.
         return Readable.from(this._source);
 
-        // Try multiple locations for temporary directory
-        // * For some reason, createReadStream() with the temp file isn't working on the live server, even though it works locally.
+        // * Uses temp files (slower but memory-efficient). Disabled in favor of simpler in-memory approach.
         // let tempDir: string;
 
         // try {
