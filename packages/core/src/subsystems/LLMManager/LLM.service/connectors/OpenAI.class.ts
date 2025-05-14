@@ -47,6 +47,41 @@ const reasoningModels = [
     'o1-preview-2024-09-12',
 ];
 
+type TSearchTool = 'web_search_preview';
+type TSearchContextSize = 'low' | 'medium' | 'high';
+type TSearchLocation = {
+    type: 'approximate';
+    city?: string;
+    country?: string;
+    region?: string;
+    timezone?: string;
+};
+
+// per 1k requests
+const costForNormalModels = {
+    low: 30 / 1000,
+    medium: 35 / 1000,
+    high: 50 / 1000,
+};
+const costForMiniModels = {
+    low: 25 / 1000,
+    medium: 27.5 / 1000,
+    high: 30 / 1000,
+};
+
+const SEARCH_TOOL = {
+    type: 'web_search_preview' as TSearchTool,
+    cost: {
+        'gpt-4.1': costForNormalModels,
+        'gpt-4o': costForNormalModels,
+        'gpt-4o-search': costForNormalModels,
+
+        'gpt-4.1-mini': costForMiniModels,
+        'gpt-4o-mini': costForMiniModels,
+        'gpt-4o-mini-search': costForMiniModels,
+    },
+};
+
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
@@ -848,6 +883,7 @@ export class OpenAIConnector extends LLMConnector {
                 }
 
                 // Report usage statistics
+                // #region Report normal token usage
                 usage_data.forEach((usage) => {
                     const _reported = this.reportUsage(usage, {
                         modelEntryName: params.modelEntryName,
@@ -857,6 +893,31 @@ export class OpenAIConnector extends LLMConnector {
                     });
                     reportedUsage.push(_reported);
                 });
+                // #endregion
+
+                // #region Report web search tool usage
+                for (const tool of params.toolsConfig?.tools || []) {
+                    if (tool.type === SEARCH_TOOL.type) {
+                        this.reportUsage(
+                            {
+                                cost: SEARCH_TOOL.cost?.[params.modelEntryName]?.[tool.search_context_size] || 0,
+
+                                // 👇 Just to avoid a TypeScript error.
+                                completion_tokens: 0,
+                                prompt_tokens: 0,
+                                total_tokens: 0,
+                                // 👆 Just to avoid a TypeScript error.
+                            },
+                            {
+                                modelEntryName: params.modelEntryName,
+                                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId,
+                                teamId: params.teamId,
+                            }
+                        );
+                    }
+                }
+                // #endregion
 
                 // Emit interrupted event if finishReason is not 'stop'
                 if (finishReason !== 'stop') {
@@ -1230,22 +1291,28 @@ export class OpenAIConnector extends LLMConnector {
         if (searchRegion) location.region = searchRegion;
         if (searchTimezone) location.timezone = searchTimezone;
 
-        const searchTool = {
-            type: 'web_search_preview' as 'web_search_preview',
+        const searchTool: {
+            type: TSearchTool;
+            search_context_size: TSearchContextSize;
+            user_location?: TSearchLocation;
+        } = {
+            type: SEARCH_TOOL.type,
             search_context_size: params?.webSearchContextSize || 'medium',
-            location,
         };
 
         // Add location only if any location field is provided. Since 'type' is always present, we check if the number of keys in the location object is greater than 1.
         if (Object.keys(location).length > 1) {
-            searchTool.location = location;
+            searchTool.user_location = location;
         }
 
         return searchTool;
     }
 
     protected reportUsage(
-        usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        usage: OpenAI.Completions.CompletionUsage & {
+            prompt_tokens_details?: { cached_tokens?: number };
+            cost?: number; // for web search tool
+        },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         let modelName = metadata.modelEntryName;
@@ -1260,6 +1327,7 @@ export class OpenAIConnector extends LLMConnector {
             output_tokens: usage?.completion_tokens,
             input_tokens_cache_write: 0,
             input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            cost: usage?.cost, // for web search tool
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,

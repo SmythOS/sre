@@ -23,19 +23,47 @@ export const models = {
   // #region [SmythOS Models] ==============================================================
 
   // #region OpenAI ==========================
-  // keep the gpt-4o-mini as default model for now
+  // The first model in a group will be the default, so keep gpt-4o-mini as the default model for OpenAI
   'smythos/gpt-4o-mini': {
     llm: 'OpenAI',
 
     label: 'GPT 4o Mini',
     modelId: 'gpt-4o-mini-2024-07-18',
     provider: 'OpenAI',
-    features: ['text', 'image', 'tools'],
+    features: ['text', 'image', 'tools', 'search'],
     tags: ['SmythOS'],
     tokens: 128_000,
     completionTokens: 16_383,
     enabled: true,
   },
+
+  // #region Tool-specific models
+  'smythos/gpt-4o-search': {
+    llm: 'OpenAI',
+
+    label: 'GPT-4o Search Preview',
+    modelId: 'gpt-4o-search-preview-2025-03-11',
+    provider: 'OpenAI',
+    features: ['text', 'search'],
+    tags: ['New', 'SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+  },
+  'smythos/gpt-4o-mini-search': {
+    llm: 'OpenAI',
+
+    label: 'GPT-4o mini Search Preview',
+    modelId: 'gpt-4o-mini-search-preview-2025-03-11',
+    provider: 'OpenAI',
+    features: ['text', 'search'],
+    tags: ['New', 'SmythOS'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+  },
+  // #endregion Tool-specific models
+
   'smythos/gpt-4.1-nano': {
     llm: 'OpenAI',
 
@@ -43,7 +71,7 @@ export const models = {
     modelId: 'gpt-4.1-nano',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 1_047_576,
     completionTokens: 32_768,
     enabled: true,
@@ -55,7 +83,7 @@ export const models = {
     modelId: 'gpt-4.1-mini',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image', 'search'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 1_047_576,
     searchContextTokens: 128_000,
     completionTokens: 32_768,
@@ -68,7 +96,7 @@ export const models = {
     modelId: 'gpt-4.1',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image', 'search'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 1_047_576,
     searchContextTokens: 128_000,
     completionTokens: 32_768,
@@ -94,7 +122,7 @@ export const models = {
     modelId: 'o4-mini-2025-04-16',
     provider: 'OpenAI',
     features: ['text'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -366,7 +394,7 @@ export const models = {
 
   // #region OpenAI Models ==========================
 
-  // keep the gpt-4o-mini as default model for now
+  // The first model in a group will be the default, so keep gpt-4o-mini as the default model for OpenAI
   'gpt-4o-mini': {
     llm: 'OpenAI',
     alias: 'gpt-4o-mini-2024-07-18',
@@ -397,6 +425,33 @@ export const models = {
     },
   },
 
+  // #region Tool-specific models
+  'gpt-4o-search': {
+    llm: 'OpenAI',
+
+    label: 'GPT-4o Search Preview',
+    modelId: 'gpt-4o-search-preview-2025-03-11',
+    provider: 'OpenAI',
+    features: ['text', 'search'],
+    tags: ['New', 'Personal'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+  },
+  'gpt-4o-mini-search': {
+    llm: 'OpenAI',
+
+    label: 'GPT-4o mini Search Preview',
+    modelId: 'gpt-4o-mini-search-preview-2025-03-11',
+    provider: 'OpenAI',
+    features: ['text', 'search'],
+    tags: ['New', 'Personal'],
+    tokens: 128_000,
+    completionTokens: 16_383,
+    enabled: true,
+  },
+  // #endregion Tool-specific models
+
   // #region GPT 4.1
   'gpt-4.1-nano': {
     llm: 'OpenAI',
@@ -405,7 +460,7 @@ export const models = {
     modelId: 'gpt-4.1-nano',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -418,7 +473,7 @@ export const models = {
     modelId: 'gpt-4.1-mini',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image', 'search'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -436,7 +491,7 @@ export const models = {
     modelId: 'gpt-4.1',
     provider: 'OpenAI',
     features: ['text', 'tools', 'image', 'search'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
