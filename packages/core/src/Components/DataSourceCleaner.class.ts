@@ -12,7 +12,7 @@ import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import DataSourceIndexer from './DataSourceIndexer.class';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
-export default class DataSourceCleaner extends Component {
+export class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
         namespaceId: Joi.string().max(50).allow('').label('namespace'),
         id: Joi.string().custom(validateCharacterSet, 'custom validation characterSet').allow('').label('source identifier'),
@@ -103,3 +103,5 @@ export default class DataSourceCleaner extends Component {
             .validate(data);
     }
 }
+
+export default DataSourceCleaner;

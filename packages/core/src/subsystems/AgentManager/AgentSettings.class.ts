@@ -4,7 +4,7 @@ import EmbodimentSettings from './EmbodimentSettings.class';
 import { Logger } from '@sre/helpers/Log.helper';
 const console = Logger('AgentSettings');
 
-export default class AgentSettings {
+export class AgentSettings {
     private _settings: any;
     public embodiments?: EmbodimentSettings;
     private _ready = false;
@@ -50,3 +50,5 @@ export default class AgentSettings {
         return this._settings[key];
     }
 }
+
+export default AgentSettings;

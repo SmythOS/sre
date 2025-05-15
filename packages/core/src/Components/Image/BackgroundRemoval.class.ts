@@ -9,7 +9,7 @@ import { normalizeImageInput } from '@sre/utils/data.utils';
 import appConfig from '@sre/config';
 import { ImageSettingsConfig } from './imageSettings.config';
 
-export default class BackgroundRemoval extends Component {
+export class BackgroundRemoval extends Component {
     protected configSchema = Joi.object({
         outputFormat: ImageSettingsConfig.outputFormat,
         backgroundColor: ImageSettingsConfig.backgroundColor,
@@ -69,3 +69,5 @@ export default class BackgroundRemoval extends Component {
         }
     }
 }
+
+export default BackgroundRemoval;

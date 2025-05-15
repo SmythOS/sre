@@ -36,7 +36,7 @@ function parseKey(str: string = '', teamId: string): string {
     });
 }
 
-export default class APIEndpoint extends Component {
+export class APIEndpoint extends Component {
     protected configSchema = Joi.object({
         endpoint: Joi.string()
             .pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/)
@@ -87,7 +87,7 @@ export default class APIEndpoint extends Component {
 
         // set default value and agent variables
         const inputsWithDefaultValue = config.inputs.filter(
-            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null
+            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null,
         );
 
         const bodyInputNames: string[] = [];
@@ -218,7 +218,7 @@ export default class APIEndpoint extends Component {
                         return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
                     }
                     return null;
-                })
+                }),
             );
 
             // Filter out null values and handle single/multiple results
@@ -232,3 +232,5 @@ export default class APIEndpoint extends Component {
         return { headers, body, query, params, _authInfo, _debug: logger.output };
     }
 }
+
+export default APIEndpoint;

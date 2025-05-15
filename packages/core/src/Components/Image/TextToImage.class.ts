@@ -11,7 +11,7 @@ import SystemEvents from '@sre/Core/SystemEvents';
 import appConfig from '@sre/config';
 import { ImageSettingsConfig } from './imageSettings.config';
 
-export default class TextToImage extends Component {
+export class TextToImage extends Component {
     protected configSchema = Joi.object({
         model: ImageSettingsConfig.model,
         positivePrompt: ImageSettingsConfig.positivePrompt,
@@ -107,3 +107,5 @@ export default class TextToImage extends Component {
         }
     }
 }
+
+export default TextToImage;

@@ -3,7 +3,7 @@ import Component from './Component.class';
 import Joi from 'joi';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
-export default class ForEach extends Component {
+export class ForEach extends Component {
     protected configSchema = null;
     constructor() {
         super();
@@ -95,3 +95,5 @@ function cleanupResult(result) {
     if (result._in_progress) delete result._in_progress;
     return result;
 }
+
+export default ForEach;

@@ -1,7 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 
-export default class LogicXOR extends Component {
+export class LogicXOR extends Component {
     constructor() {
         super();
     }
@@ -32,3 +32,5 @@ export default class LogicXOR extends Component {
         return result;
     }
 }
+
+export default LogicXOR;

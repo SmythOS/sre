@@ -20,7 +20,7 @@ class LLMInference {
     }
 }
 
-export default class DataSourceLookup extends Component {
+export class DataSourceLookup extends Component {
     protected configSchema = Joi.object({
         topK: Joi.string()
             .custom(validateInteger({ min: 0 }), 'custom range validation')
@@ -92,7 +92,7 @@ export default class DataSourceLookup extends Component {
                 results = results.map((result) => ({
                     content: result.content,
                     metadata: this.parseMetadata(
-                        result.metadata?.user || result.metadata?.metadata //* legacy user-specific metadata key [result.metadata?.metadata]
+                        result.metadata?.user || result.metadata?.metadata, //* legacy user-specific metadata key [result.metadata?.metadata]
                     ),
                 }));
             } else {
@@ -153,3 +153,5 @@ export default class DataSourceLookup extends Component {
         }
     }
 }
+
+export default DataSourceLookup;

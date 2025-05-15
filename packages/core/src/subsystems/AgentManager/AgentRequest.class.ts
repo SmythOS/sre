@@ -1,4 +1,4 @@
-export default class AgentRequest {
+export class AgentRequest {
     public headers: any;
     public body: any;
     public query: any;
@@ -47,3 +47,5 @@ export default class AgentRequest {
         return this.headers[name.toLowerCase()];
     }
 }
+
+export default AgentRequest;

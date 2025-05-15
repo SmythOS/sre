@@ -12,7 +12,7 @@ import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHe
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { formatDataForDebug } from '@sre/utils/data.utils';
 
-export default class APICall extends Component {
+export class APICall extends Component {
     protected configSchema = Joi.object({
         method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').required().label('Method'),
         url: Joi.string()
@@ -137,3 +137,5 @@ export default class APICall extends Component {
         }
     }
 }
+
+export default APICall;

@@ -6,7 +6,7 @@ import axios from 'axios';
 import SystemEvents from '@sre/Core/SystemEvents';
 // const CREDITS_PER_URL = 0.2;
 
-export default class WebScrape extends Component {
+export class WebScrape extends Component {
     protected configSchema = Joi.object({
         // includeImages: Joi.boolean().default(false).label('Include Image Results'),
         antiScrapingProtection: Joi.boolean().default(false).label('Enable Anti-Scraping Protection'),
@@ -153,3 +153,5 @@ export default class WebScrape extends Component {
         });
     }
 }
+
+export default WebScrape;

@@ -5,7 +5,7 @@ import Joi from 'joi';
 import _config from '@sre/config';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
 
-export default class Code extends Component {
+export class Code extends Component {
     protected configSchema = Joi.object({
         code_vars: Joi.string().max(1000).allow('').label('Variables'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
@@ -84,3 +84,5 @@ export default class Code extends Component {
         }
     }
 }
+
+export default Code;

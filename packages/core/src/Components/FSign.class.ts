@@ -4,7 +4,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import crypto from 'crypto';
 import querystring from 'querystring';
 
-export default class FSign extends Component {
+export class FSign extends Component {
     constructor() {
         super();
     }
@@ -78,3 +78,5 @@ export default class FSign extends Component {
         return null;
     }
 }
+
+export default FSign;

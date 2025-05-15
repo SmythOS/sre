@@ -17,7 +17,7 @@ import SystemEvents from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string; secretAccessKey: string; region: string };
 const PER_SECOND_COST = 0.0001;
 
-export default class ServerlessCode extends Component {
+export class ServerlessCode extends Component {
     private cachePrefix: string = 'serverless_code';
     private cacheTTL: number = 60 * 60 * 24 * 16; // 16 days
     protected configSchema = Joi.object({
@@ -117,7 +117,7 @@ export default class ServerlessCode extends Component {
                 logger.debug(
                     `Code result:\n ${
                         typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
-                    }\n`
+                    }\n`,
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
                 const cost = this.calculateExecutionCost(executionTime);
@@ -153,7 +153,7 @@ export default class ServerlessCode extends Component {
     async invokeLambdaFunction(
         functionName: string,
         inputs: { [key: string]: any },
-        awsCredentials: { accessKeyId: string; secretAccessKey: string; region: string }
+        awsCredentials: { accessKeyId: string; secretAccessKey: string; region: string },
     ): Promise<any> {
         try {
             const client = new LambdaClient({
@@ -322,7 +322,7 @@ export default class ServerlessCode extends Component {
                 },
                 function (err) {
                     reject(err);
-                }
+                },
             );
         });
     }
@@ -542,3 +542,5 @@ export default class ServerlessCode extends Component {
         });
     }
 }
+
+export default ServerlessCode;

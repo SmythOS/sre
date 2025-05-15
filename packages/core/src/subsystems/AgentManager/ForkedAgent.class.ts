@@ -9,7 +9,7 @@ const console = Logger('ForkedAgent');
  * This class creates a forked agent from a parent agent branch, it allows running a sub-branch of the parent agent asynchrounously by providing a separate agent context
  * We use composition instead of inheritance to avoid circular dependencies between Agent and ForkedAgent
  */
-export default class ForkedAgent {
+export class ForkedAgent {
     public agent: Agent;
     public get agentRequest() {
         return this.agent.agentRequest;
@@ -25,7 +25,7 @@ export default class ForkedAgent {
     }
     constructor(
         private parent: Agent,
-        componentId: string //the component to fork from
+        componentId: string, //the component to fork from
     ) {
         const data: any = fork(this.parent.data, componentId);
         data.variables = JSON.parse(JSON.stringify(this.parent?.data?.variables || {})); //copy parent Agent variables to forked agent
@@ -150,3 +150,5 @@ function fork(componentData, componentID) {
         connections: clonedConnections,
     };
 }
+
+export default ForkedAgent;

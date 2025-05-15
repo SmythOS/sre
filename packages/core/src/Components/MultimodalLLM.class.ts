@@ -3,7 +3,8 @@ import Component from './Component.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-export default class MultimodalLLM extends Component {
+
+export class MultimodalLLM extends Component {
     protected configSchema = Joi.object({
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
@@ -125,3 +126,5 @@ export default class MultimodalLLM extends Component {
         }
     }
 }
+
+export default MultimodalLLM;

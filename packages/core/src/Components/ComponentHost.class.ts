@@ -7,7 +7,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
  * This component allows running components that are not natively shiped with SRE
  * it can be used to extend SRE components by registering custom component using ComponentService
  */
-export default class ComponentHost extends Component {
+export class ComponentHost extends Component {
     protected configSchema = null;
     constructor() {
         super();
@@ -36,3 +36,5 @@ export default class ComponentHost extends Component {
         }
     }
 }
+
+export default ComponentHost;

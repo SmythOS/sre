@@ -113,7 +113,7 @@ async function migrateLegacySession(agentId, userId, conversationId) {
         .set(cache_conv_uid, JSON.stringify(messages), null, null, null)
         .catch((error) => {
             console.error(
-                `LLMAssistant : Error migrating legacy session to cache for agent ${agentId}, user ${userId}, conversation ${conversationId}. Error=${error}`
+                `LLMAssistant : Error migrating legacy session to cache for agent ${agentId}, user ${userId}, conversation ${conversationId}. Error=${error}`,
             );
         });
     migrated = true;
@@ -126,7 +126,7 @@ async function migrateLegacySession(agentId, userId, conversationId) {
 
 //TODO : update this implementation to use ConversationManager
 //        This will allow better context management and support for tool calls
-export default class LLMAssistant extends Component {
+export class LLMAssistant extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         behavior: Joi.string().max(30000).allow('').label('Behavior'),
@@ -203,7 +203,7 @@ export default class LLMAssistant extends Component {
                                 model: model,
                                 messages,
                             },
-                            agent.id
+                            agent.id,
                         )
                         .catch((error) => {
                             console.error('Error on streamRequest: ', error);
@@ -259,3 +259,5 @@ export default class LLMAssistant extends Component {
         }
     }
 }
+
+export default LLMAssistant;

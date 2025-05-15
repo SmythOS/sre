@@ -12,7 +12,7 @@ import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class Inpainting extends Component {
+export class Inpainting extends Component {
     protected configSchema = Joi.object({
         model: ImageSettingsConfig.model,
         outputFormat: ImageSettingsConfig.outputFormat,
@@ -89,3 +89,5 @@ export default class Inpainting extends Component {
         }
     }
 }
+
+export default Inpainting;

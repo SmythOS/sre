@@ -92,7 +92,7 @@ export class VertexAIConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | Agent
+        agent: string | Agent,
     ): Promise<any> {
         throw new Error('streamToolRequest() is not supported by Vertex AI');
     }
@@ -146,7 +146,7 @@ export class VertexAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: UsageMetadata & { cachedContentTokenCount?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         let modelName = metadata.modelEntryName;
         // SmythOS models have a prefix, so we need to remove it to get the model name

@@ -4,7 +4,7 @@ import axios from 'axios';
 import Joi from 'joi';
 import Async from './Async.class';
 
-export default class Await extends Component {
+export class Await extends Component {
     static WAITS = {};
 
     protected configSchema = Joi.object({
@@ -88,3 +88,5 @@ export default class Await extends Component {
         }
     }
 }
+
+export default Await;

@@ -3,7 +3,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 
-export default class LogicAtLeast extends Component {
+export class LogicAtLeast extends Component {
     protected configSchema = Joi.object({
         // TODO (Forhad): Need to check if min and max work instead of the custom validateInteger
         minSetInputs: Joi.string()
@@ -83,3 +83,5 @@ function validateInteger(args: RangeValidationArgs) {
         return value; // Value is valid
     };
 }
+
+export default LogicAtLeast;

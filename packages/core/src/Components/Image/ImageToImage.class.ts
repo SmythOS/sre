@@ -12,7 +12,7 @@ import appConfig from '@sre/config';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './imageSettings.config';
 
-export default class ImageToImage extends Component {
+export class ImageToImage extends Component {
     protected configSchema = Joi.object({
         model: ImageSettingsConfig.model,
         positivePrompt: ImageSettingsConfig.positivePrompt,
@@ -112,3 +112,5 @@ export default class ImageToImage extends Component {
         }
     }
 }
+
+export default ImageToImage;
