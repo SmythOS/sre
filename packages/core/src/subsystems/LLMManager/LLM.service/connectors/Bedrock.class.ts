@@ -496,11 +496,8 @@ export class BedrockConnector extends LLMConnector {
         usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
-        let modelName = metadata.modelEntryName;
-        // SmythOS models have a prefix, so we need to remove it to get the model name
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace('smythos/', '');
 
         const usageData = {
             sourceId: `llm:${modelName}`,

@@ -310,12 +310,8 @@ const imageGenerator = {
         }
     },
     reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
-        let modelName = metadata.modelEntryName;
-
-        // SmythOS models have a prefix, so we need to remove it
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace('smythos/', '');
 
         const usageData = {
             sourceId: `api:imagegen.${modelName}`,
