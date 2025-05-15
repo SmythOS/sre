@@ -897,10 +897,12 @@ export class OpenAIConnector extends LLMConnector {
 
                 // #region Report web search tool usage
                 for (const tool of params.toolsConfig?.tools || []) {
-                    if (tool.type === SEARCH_TOOL.type) {
+                    if (SEARCH_TOOL.type === tool.type) {
+                        const modelName = params.modelEntryName?.replace('smythos/', '');
+
                         this.reportUsage(
                             {
-                                cost: SEARCH_TOOL.cost?.[params.modelEntryName]?.[tool.search_context_size] || 0,
+                                cost: SEARCH_TOOL.cost?.[modelName]?.[tool.search_context_size] || 0,
 
                                 // 👇 Just to avoid a TypeScript error.
                                 completion_tokens: 0,
@@ -1310,24 +1312,38 @@ export class OpenAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: OpenAI.Completions.CompletionUsage & {
+            input_tokens?: number;
+            output_tokens?: number;
+            input_tokens_details?: { cached_tokens?: number };
             prompt_tokens_details?: { cached_tokens?: number };
             cost?: number; // for web search tool
         },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
-        let modelName = metadata.modelEntryName;
-        // SmythOS models have a prefix, so we need to remove it to get the model name
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace('smythos/', '');
+
+        const inputTokens =
+            usage?.input_tokens || // Returned by the search tool
+            usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0);
+
+        const outputTokens =
+            usage?.output_tokens || // Returned by the search tool
+            usage?.completion_tokens ||
+            0;
+
+        const cachedInputTokens =
+            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
+            usage?.prompt_tokens_details?.cached_tokens ||
+            0;
 
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
-            output_tokens: usage?.completion_tokens,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
             input_tokens_cache_write: 0,
-            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            cost: usage?.cost, // for web search tool
+            input_tokens_cache_read: cachedInputTokens,
+            cost: usage?.cost || 0, // for web search tool
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
