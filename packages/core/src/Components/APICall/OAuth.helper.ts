@@ -8,7 +8,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 const console = Logger('OAuth.helper');
 let managedVault: any;
@@ -177,7 +177,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                         token: oauthTokens.primaryToken,
                         tokenSecret: oauthTokens.secondaryToken,
                     },
-                    additionalParams
+                    additionalParams,
                 );
 
                 headers = { ...reqConfig.headers, ...oauthHeader };
@@ -194,7 +194,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                     data,
                     keyId,
                     logger,
-                    agent
+                    agent,
                 );
 
                 const accessToken = await accessTokenManager.getAccessToken();

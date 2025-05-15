@@ -1,6 +1,6 @@
 import { StorageService } from '@sre/IO/Storage.service';
 import { LLMService } from '@sre/LLMManager/LLM.service';
-import SystemEvents from './SystemEvents';
+import { SystemEvents } from './SystemEvents';
 import { CacheService } from '@sre/MemoryManager/Cache.service';
 import { Logger } from '../helpers/Log.helper';
 import { TServiceRegistry } from '@sre/types/SRE.types';

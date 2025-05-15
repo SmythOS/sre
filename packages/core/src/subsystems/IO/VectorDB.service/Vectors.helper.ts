@@ -9,7 +9,7 @@ import { jsonrepair } from 'jsonrepair';
 import { NKVConnector } from '../NKV.service/NKVConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
-import { PineconeVectorDB } from './connectors/PineconeVectorDB.class';
+//import { PineconeVectorDB } from './connectors/PineconeVectorDB.class';
 import { isUrl } from '@sre/utils/data.utils';
 import { SmythManagedVectorDB } from './connectors/SmythManagedVectorDB.class';
 
@@ -57,7 +57,7 @@ export class VectorsHelper {
         }: {
             chunkSize?: number;
             chunkOverlap?: number;
-        } = {}
+        } = {},
     ): Promise<string[]> {
         const textSplitter = new RecursiveCharacterTextSplitter({
             chunkSize,
@@ -104,9 +104,9 @@ export class VectorsHelper {
     async getCustomStorageConfig(teamId: string) {
         const config = await this._vaultConnector.user(AccessCandidate.team(teamId)).get(this.cusStorageKeyName);
         if (!config) {
-            if (this._vectorDBconnector instanceof PineconeVectorDB) {
-                // TODO: try to grab the keys from the middleware team settings (legacy storage) (required for backward compatibility)
-            }
+            // if (this._vectorDBconnector instanceof PineconeVectorDB) {
+            //     // TODO: try to grab the keys from the middleware team settings (legacy storage) (required for backward compatibility)
+            // }
             return null;
         }
 

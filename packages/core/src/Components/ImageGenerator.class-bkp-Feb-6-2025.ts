@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';

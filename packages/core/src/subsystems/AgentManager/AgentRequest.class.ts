@@ -47,5 +47,3 @@ export class AgentRequest {
         return this.headers[name.toLowerCase()];
     }
 }
-
-export default AgentRequest;

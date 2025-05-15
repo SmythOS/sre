@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
@@ -70,55 +70,67 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
 const TIMEOUT = 30000;
 
 describe('ImageGenerator Component', () => {
-    it('should generate an image and return the URL', async () => {
-        const imageGenerator = new ImageGenerator();
-        const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
-            model: 'dall-e-3',
-            responseFormat: 'url',
-            prompt: 'A beautiful landscape with a river and mountains',
-        };
+    it(
+        'should generate an image and return the URL',
+        async () => {
+            const imageGenerator = new ImageGenerator();
+            const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
+                model: 'dall-e-3',
+                responseFormat: 'url',
+                prompt: 'A beautiful landscape with a river and mountains',
+            };
 
-        // @ts-ignore
-        const agent = new Agent();
-        const result = await imageGenerator.process({}, { data: configData }, agent);
+            // @ts-ignore
+            const agent = new Agent();
+            const result = await imageGenerator.process({}, { data: configData }, agent);
 
-        expect(result._error).toBeUndefined();
-        expect(result.Output).toBeDefined();
-        // match any valid URL.
-        expect(result.Output).toMatch(/^https:\/\/[^ ]+$/);
-    }, TIMEOUT);
+            expect(result._error).toBeUndefined();
+            expect(result.Output).toBeDefined();
+            // match any valid URL.
+            expect(result.Output).toMatch(/^https:\/\/[^ ]+$/);
+        },
+        TIMEOUT,
+    );
 
-    it('should generate an image and return the base64', async () => {
-        const imageGenerator = new ImageGenerator();
-        const configData = {
-            model: 'dall-e-3',
-            responseFormat: 'b64_json',
-            prompt: 'A beautiful landscape with a river and mountains',
-        };
+    it(
+        'should generate an image and return the base64',
+        async () => {
+            const imageGenerator = new ImageGenerator();
+            const configData = {
+                model: 'dall-e-3',
+                responseFormat: 'b64_json',
+                prompt: 'A beautiful landscape with a river and mountains',
+            };
 
-        // @ts-ignore
-        const agent = new Agent();
-        const result = await imageGenerator.process({}, { data: configData }, agent);
+            // @ts-ignore
+            const agent = new Agent();
+            const result = await imageGenerator.process({}, { data: configData }, agent);
 
-        expect(result._error).toBeUndefined();
-        expect(result.Output).toBeDefined();
-        expect(result.Output).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
-        //* it is a base64 image but not base64 URL
-    }, TIMEOUT);
+            expect(result._error).toBeUndefined();
+            expect(result.Output).toBeDefined();
+            expect(result.Output).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+            //* it is a base64 image but not base64 URL
+        },
+        TIMEOUT,
+    );
 
-    it('should throw an error when no prompt is given', async () => {
-        const imageGenerator = new ImageGenerator();
-        const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
-            model: 'dall-e-3',
-            responseFormat: 'url',
-            prompt: '',
-        };
+    it(
+        'should throw an error when no prompt is given',
+        async () => {
+            const imageGenerator = new ImageGenerator();
+            const configData: GenerateImageConfig & { responseFormat: 'url' | 'b64_json'; prompt: string } = {
+                model: 'dall-e-3',
+                responseFormat: 'url',
+                prompt: '',
+            };
 
-        // @ts-ignore
-        const agent = new Agent();
+            // @ts-ignore
+            const agent = new Agent();
 
-        const result = await imageGenerator.process({}, { data: configData }, agent);
+            const result = await imageGenerator.process({}, { data: configData }, agent);
 
-        expect(result._error).toBeDefined();
-    }, TIMEOUT);
+            expect(result._error).toBeDefined();
+        },
+        TIMEOUT,
+    );
 });

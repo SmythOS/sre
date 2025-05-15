@@ -8,10 +8,10 @@ import mime from 'mime';
 import { Readable } from 'stream';
 import { StorageConnector } from './StorageConnector';
 import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 export type TSmythFSURI = {
     hash: string;

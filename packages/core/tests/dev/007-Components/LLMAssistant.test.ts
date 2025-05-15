@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
@@ -113,7 +113,7 @@ function testProcessFunction(model) {
 
             expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     it(
@@ -136,7 +136,7 @@ function testProcessFunction(model) {
             expect(result.Response).toContain(LLM_OUTPUT_VALIDATOR);
             expect(result.Response).toContain('Smyth');
         },
-        TIMEOUT * 5
+        TIMEOUT * 5,
     );
 
     it(
@@ -160,7 +160,7 @@ function testProcessFunction(model) {
             result = await llmAssistant.process(input, config, agent);
             expect(result.Response.toLowerCase().indexOf('smyth')).toBe(-1);
         },
-        TIMEOUT * 5
+        TIMEOUT * 5,
     );
 }
 
@@ -246,7 +246,7 @@ describe('LLMAssistant: test process function with model switching', () => {
             expect(response).toContain(LLM_OUTPUT_VALIDATOR);
             expect(response.split(' ').length).toBeGreaterThan(20); // Ensure a substantial summary
         },
-        TIMEOUT * (models.length + 1) // Additional 30 seconds for getting credentials of custom LLM
+        TIMEOUT * (models.length + 1), // Additional 30 seconds for getting credentials of custom LLM
     );
 });
 

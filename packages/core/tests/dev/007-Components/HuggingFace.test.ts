@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, ConnectorService, SmythRuntime } from '@sre/index';
@@ -152,7 +152,7 @@ describe('HuggingFace Component', () => {
                     parameters: JSON.stringify({}),
                 },
             },
-            agent
+            agent,
         );
 
         const response = output.Output;
@@ -190,7 +190,7 @@ describe('HuggingFace Component', () => {
                     }),
                 },
             },
-            agent
+            agent,
         );
 
         const response = output.Output;
@@ -223,7 +223,7 @@ describe('HuggingFace Component', () => {
                     }),
                 },
             },
-            agent
+            agent,
         );
 
         const response = output.Output;
@@ -261,7 +261,7 @@ describe('HuggingFace Component', () => {
                     parameters: JSON.stringify({}),
                 },
             },
-            agent
+            agent,
         );
 
         const response = output.Output;
@@ -302,7 +302,7 @@ describe('HuggingFace Component', () => {
                     parameters: JSON.stringify({}),
                 },
             },
-            agent
+            agent,
         );
 
         const response1 = output1.Output;
@@ -339,7 +339,7 @@ describe('HuggingFace Component', () => {
                         'https://aeiljuispo.cloudimg.io/v7/https://cdn-uploads.huggingface.co/production/uploads/1592839207516-noauth.png?w=200&h=200&f=face',
                 },
             },
-            agent
+            agent,
         );
 
         const response2 = output2.Output;

@@ -24,7 +24,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
 import axios, { AxiosError } from 'axios';
 import { AxiosInstance } from 'axios';

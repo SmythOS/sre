@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -28,7 +28,7 @@ import { isJSONString } from '@sre/utils/general.utils';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 const console = Logger('BedrockConnector');
 
@@ -123,7 +123,7 @@ export class BedrockConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | Agent
+        agent: string | Agent,
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
@@ -494,7 +494,7 @@ export class BedrockConnector extends LLMConnector {
 
     protected reportUsage(
         usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         let modelName = metadata.modelEntryName;
         // SmythOS models have a prefix, so we need to remove it to get the model name

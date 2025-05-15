@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import config from '@sre/config';
 import { delay, uid } from '@sre/utils';
-import AgentRuntime from '@sre/AgentManager/AgentRuntime.class';
+import { AgentRuntime } from '@sre/AgentManager/AgentRuntime.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -60,11 +60,14 @@ export class RuntimeContext extends EventEmitter {
                 resolved = true;
                 resolve(true);
             });
-            setTimeout(() => {
-                if (!resolved) {
-                    reject(new Error('Agent Runtime context initialization timeout'));
-                }
-            }, 5 * 60 * 1000);
+            setTimeout(
+                () => {
+                    if (!resolved) {
+                        reject(new Error('Agent Runtime context initialization timeout'));
+                    }
+                },
+                5 * 60 * 1000,
+            );
         });
 
         this.initRuntimeContext();

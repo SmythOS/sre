@@ -1,4 +1,4 @@
-import Agent from './Agent.class';
+import { Agent } from './Agent.class';
 
 import { encode } from 'gpt-tokenizer';
 
@@ -290,5 +290,3 @@ export class AgentLogger {
         }
     }
 }
-
-export default AgentLogger;

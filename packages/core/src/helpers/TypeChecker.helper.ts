@@ -1,7 +1,7 @@
 import { isBase64, isBase64DataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isPlainObject, isSmythFileObject, isSmythFsUrl, isUrl, uid } from '../utils';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -37,7 +37,7 @@ const InferenceStrategies = {
 export async function performTypeInference(
     inputs: Record<string, any>,
     inputConfig: Record<string, any>[],
-    agent: Agent
+    agent: Agent,
 ): Promise<Record<string, any>> {
     try {
         if (!inputConfig || Object.keys(inputConfig)?.length === 0) return inputs;

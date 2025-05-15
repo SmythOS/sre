@@ -1,5 +1,5 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { CacheConnector } from './Cache.service/index';
+import { CacheConnector } from './Cache.service/CacheConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { uid } from '@sre/utils/index';
 

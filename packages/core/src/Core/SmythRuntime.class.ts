@@ -2,7 +2,7 @@ import { boot } from './boot';
 
 import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
-import SystemEvents from './SystemEvents';
+import { SystemEvents } from './SystemEvents';
 import { Logger } from '../helpers/Log.helper';
 
 const logger = Logger('SRE');

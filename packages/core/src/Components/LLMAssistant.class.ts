@@ -1,8 +1,8 @@
 import Joi from 'joi';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { DEFAULT_MAX_TOKENS_FOR_LLM } from '@sre/constants';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';

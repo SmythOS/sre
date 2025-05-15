@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookAsync } from '@sre/Core/HookService';

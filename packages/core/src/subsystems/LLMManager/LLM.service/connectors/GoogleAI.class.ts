@@ -6,7 +6,7 @@ import fs from 'fs';
 import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -19,7 +19,7 @@ import { processWithConcurrencyLimit } from '@sre/utils';
 import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -463,7 +463,7 @@ export class GoogleAIConnector extends LLMConnector {
     // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
@@ -784,7 +784,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 name: call.functionCall.name,
                                 args: JSON.parse(call.functionCall.args),
                             },
-                        }))
+                        })),
                     );
                 }
             }
@@ -809,7 +809,7 @@ export class GoogleAIConnector extends LLMConnector {
                         },
                     },
                 ],
-            })
+            }),
         );
 
         return [...messageBlocks, ...transformedToolsData];
@@ -958,7 +958,7 @@ export class GoogleAIConnector extends LLMConnector {
         fileSources: {
             url: string;
             mimetype: string;
-        }[]
+        }[],
     ): {
         fileData: {
             mimeType: string;
@@ -985,7 +985,7 @@ export class GoogleAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: UsageMetadataWithThoughtsToken,
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         const modelEntryName = metadata.modelEntryName;
         let tier = '';

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
 
@@ -99,7 +99,7 @@ async function runToolTestCases(model: string) {
             expect(result.data.toolsData.length).toBeGreaterThan(0);
             expect(result.data.toolsData[0].name).toBe('get_weather');
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -131,7 +131,7 @@ async function runToolTestCases(model: string) {
             expect(result.data.useTool).toBe(false);
             expect(result.data.content).toBeTruthy();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -152,7 +152,7 @@ async function runToolTestCases(model: string) {
             expect(result.data.useTool).toBe(false);
             expect(result.data.content).toBeTruthy();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -164,7 +164,7 @@ async function runToolTestCases(model: string) {
 
             expect(llmInference.toolRequest(params, agent)).rejects.toThrow();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 }
 
@@ -195,7 +195,7 @@ async function runStreamRequestTestCases(model: string) {
 
             expect(content).toBeTruthy();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -240,7 +240,7 @@ async function runStreamRequestTestCases(model: string) {
             expect(toolsData).toBeTruthy();
             expect(toolsData[0].name).toBe('get_weather');
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     it(
@@ -266,7 +266,7 @@ async function runStreamRequestTestCases(model: string) {
 
             expect(error).toBeInstanceOf(Error);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 }
 
@@ -326,7 +326,7 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
             expect(result.data.toolsData[0].name).toBe('get_weather');
             expect(result.data.toolsData[1].name).toBe('get_population');
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -357,7 +357,7 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
             expect(toolsData[0].name).toBe('get_weather');
             expect(toolsData[1].name).toBe('get_population');
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 }
 

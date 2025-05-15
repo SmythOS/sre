@@ -1,10 +1,10 @@
 import { IControlNetPreprocess, IRemoveImageBackground, IRequestImage, Runware } from '@runware/sdk-js';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
 import { normalizeImageInput } from '@sre/utils/data.utils';
@@ -75,5 +75,3 @@ export class RestyleControlNet extends Component {
         }
     }
 }
-
-export default RestyleControlNet;

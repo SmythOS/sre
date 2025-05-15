@@ -1,10 +1,11 @@
+//!!! This is a generated file, do not edit it directly !!!//
+
 import 'source-map-support/register.js';
 export { version } from '../package.json';
 
 
 export * from './config';
 export * from './constants';
-export * from './Components/index';
 export * from './Core/AgentProcess.helper';
 export * from './Core/boot';
 export * from './Core/Connector.class';
@@ -37,16 +38,14 @@ export * from './types/Security.types';
 export * from './types/SRE.types';
 export * from './types/Storage.types';
 export * from './types/VectorDB.types';
-export * from './utils/oauth.utils';
-export * from './Components/APICall/AccessTokenManager';
-export * from './Components/APICall/ArrayBufferResponse.helper';
-export * from './Components/APICall/mimeTypeCategories';
-export * from './Components/APICall/OAuth.helper';
-export * from './Components/APICall/parseData';
-export * from './Components/APICall/parseHeaders';
-export * from './Components/APICall/parseProxy';
-export * from './Components/APICall/parseUrl';
-export * from './Components/Image/imageSettings.config';
+export * from './subsystems/AgentManager/Agent.class';
+export * from './subsystems/AgentManager/AgentLogger.class';
+export * from './subsystems/AgentManager/AgentRequest.class';
+export * from './subsystems/AgentManager/AgentRuntime.class';
+export * from './subsystems/AgentManager/AgentSettings.class';
+export * from './subsystems/AgentManager/AgentSSE.class';
+export * from './subsystems/AgentManager/EmbodimentSettings.class';
+export * from './subsystems/AgentManager/ForkedAgent.class';
 export * from './subsystems/AgentManager/OSResourceMonitor';
 export * from './subsystems/LLMManager/custom-models';
 export * from './subsystems/LLMManager/CustomLLMRegistry.class';
@@ -81,6 +80,7 @@ export * from './subsystems/LLMManager/LLM.service/index';
 export * from './subsystems/LLMManager/LLM.service/LLMConnector';
 export * from './subsystems/LLMManager/ModelsProvider.service/index';
 export * from './subsystems/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+export * from './subsystems/MemoryManager/Cache.service/CacheConnector';
 export * from './subsystems/MemoryManager/Cache.service/index';
 export * from './subsystems/Security/AccessControl/AccessCandidate.class';
 export * from './subsystems/Security/AccessControl/AccessRequest.class';

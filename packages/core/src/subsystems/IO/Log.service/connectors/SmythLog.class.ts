@@ -9,7 +9,7 @@ import { getM2MToken } from '@sre/utils/oauth.utils';
 import axios, { AxiosInstance } from 'axios';
 import { LogConnector } from '../LogConnector';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 
 const console = Logger('SmythLog');

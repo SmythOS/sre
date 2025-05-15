@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import _config from '@sre/config';
@@ -13,7 +13,7 @@ import zl from 'zip-lib';
 import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 type AWSCredentials = { accessKeyId: string; secretAccessKey: string; region: string };
 const PER_SECOND_COST = 0.0001;
 

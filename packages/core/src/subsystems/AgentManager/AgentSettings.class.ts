@@ -1,5 +1,5 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import EmbodimentSettings from './EmbodimentSettings.class';
+import { EmbodimentSettings } from './EmbodimentSettings.class';
 
 import { Logger } from '@sre/helpers/Log.helper';
 const console = Logger('AgentSettings');
@@ -50,5 +50,3 @@ export class AgentSettings {
         return this._settings[key];
     }
 }
-
-export default AgentSettings;

@@ -1,7 +1,7 @@
 // accessTokenManager.ts
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import axios from 'axios';
@@ -33,7 +33,7 @@ class AccessTokenManager {
         data: any,
         keyId: any,
         logger: any,
-        agent: Agent
+        agent: Agent,
     ) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -51,7 +51,7 @@ class AccessTokenManager {
         try {
             const currentTime: any = new Date().getTime();
 
-            // If there's no secondaryToken (refresh token) and no expires_in, 
+            // If there's no secondaryToken (refresh token) and no expires_in,
             // assume it's a long-lived token and return the primaryToken directly
             if (!this.secondaryToken && !this.expires_in) {
                 console.log('Using long-lived access token');
@@ -60,7 +60,7 @@ class AccessTokenManager {
             }
 
             // Regular token expiration check for tokens with expiration
-           // should be alway currentTime >= Number(this.expires_in)
+            // should be alway currentTime >= Number(this.expires_in)
             if (!this.expires_in || currentTime >= Number(this.expires_in)) {
                 if (!this.secondaryToken) {
                     this.logger.debug('Refresh token is missing. Please re authenticate');
@@ -97,7 +97,7 @@ class AccessTokenManager {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                }
+                },
             );
 
             const newAccessToken: string = response?.data?.access_token;

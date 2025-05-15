@@ -1,9 +1,9 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import Joi from 'joi';
 import SREConfig from '@sre/config';
 import axios from 'axios';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 export class WebSearch extends Component {
     protected configSchema = Joi.object({

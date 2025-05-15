@@ -1,7 +1,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import Joi from 'joi';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from '../Component.class';
 import { parseHeaders } from './parseHeaders';
 import { parseUrl, parseSmythFsUrl, destroyPublicUrls } from './parseUrl';
@@ -137,5 +137,3 @@ export class APICall extends Component {
         }
     }
 }
-
-export default APICall;

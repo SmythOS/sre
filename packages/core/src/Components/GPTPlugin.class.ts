@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 

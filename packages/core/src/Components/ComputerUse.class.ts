@@ -1,11 +1,11 @@
 import { io, Socket } from 'socket.io-client';
 import Joi from 'joi';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ControlledPromise } from '../utils';
 
 interface AgentProgressPayload {

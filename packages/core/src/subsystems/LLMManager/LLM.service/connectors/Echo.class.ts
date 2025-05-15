@@ -3,9 +3,9 @@ import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { APIKeySource } from '@sre/types/LLM.types';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';

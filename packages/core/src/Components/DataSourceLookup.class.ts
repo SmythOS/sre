@@ -7,7 +7,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';

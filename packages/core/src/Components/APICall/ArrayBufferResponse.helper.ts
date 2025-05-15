@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { isBinaryData, isBinaryMimeType } from '@sre/utils/data.utils';
@@ -39,8 +39,7 @@ export async function parseArrayBufferResponse(response: AxiosResponse, agent: A
 
     // If no exact match, try to find a match for the first part of the handlerTypes, some handlers are generic like text/ in that case we check if the handler is a substring of the contentType
     if (!handlerType) {
-        handlerType =
-            Object.keys(mimeTypeCategories).find((type) => mimeTypeCategories[type].some((prefix) => cleanContentType?.startsWith(prefix)));
+        handlerType = Object.keys(mimeTypeCategories).find((type) => mimeTypeCategories[type].some((prefix) => cleanContentType?.startsWith(prefix)));
     }
 
     const handler = contentHandlers[handlerType];

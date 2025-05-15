@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
@@ -83,7 +83,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -96,7 +96,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -105,7 +105,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [];
             await expect(llmInference.multimodalRequest('Analyze this data', fileSources, config, agent)).rejects.toThrow();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -123,7 +123,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 5
+        TIMEOUT * 5,
     );
 
     it(
@@ -136,7 +136,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -149,7 +149,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     it(
@@ -162,7 +162,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 30 // 15 mins, it takes long time to process video file
+        TIMEOUT * 30, // 15 mins, it takes long time to process video file
     );
 
     it(
@@ -175,7 +175,7 @@ async function runMultimodalTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -184,7 +184,7 @@ async function runMultimodalTestCases(model: string) {
             const fileSources = [imageUrl1, audioUrl, videoUrl, pdfUrl];
             await expect(llmInference.multimodalRequest('Analyze these files', fileSources, config, agent)).rejects.toThrow();
         },
-        TIMEOUT * 20 // 10 mins
+        TIMEOUT * 20, // 10 mins
     );
 }
 

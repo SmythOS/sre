@@ -4,7 +4,7 @@ import OpenAI, { toFile } from 'openai';
 import { Uploadable } from 'openai/uploads';
 import { encodeChat } from 'gpt-tokenizer';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -25,7 +25,7 @@ import {
 } from '@sre/types/LLM.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
 
 const console = Logger('OpenAIConnector');
@@ -415,7 +415,7 @@ export class OpenAIConnector extends LLMConnector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
-        agent: string | Agent
+        agent: string | Agent,
     ): Promise<ImagesResponse> {
         try {
             const { model, size, n, responseFormat } = params;
@@ -451,8 +451,8 @@ export class OpenAIConnector extends LLMConnector {
                         async (file) =>
                             await toFile(await file.getReadStream(), await file.getName(), {
                                 type: file.mimetype,
-                            })
-                    )
+                            }),
+                    ),
                 );
 
                 args.image = images as unknown as Uploadable; // ! FIXME: This is a workaround to avoid type error, will be fixed in the next version of openai
@@ -543,7 +543,7 @@ export class OpenAIConnector extends LLMConnector {
     // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' },
     ): Promise<any> {
         try {
             // We provide
@@ -1017,7 +1017,7 @@ export class OpenAIConnector extends LLMConnector {
 
     private async getImageData(
         fileSources: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
@@ -1046,7 +1046,7 @@ export class OpenAIConnector extends LLMConnector {
 
     private async getDocumentData(
         fileSources: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
@@ -1083,7 +1083,7 @@ export class OpenAIConnector extends LLMConnector {
 
     protected reportUsage(
         usage: OpenAI.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         let modelName = metadata.modelEntryName;
         // SmythOS models have a prefix, so we need to remove it to get the model name

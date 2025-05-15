@@ -4,7 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach, beforeAll } from 'vite
 import ComputerUse from '@sre/Components/ComputerUse.class';
 import { io } from 'socket.io-client';
 import config from '@sre/config';
-import AgentSSE from '@sre/AgentManager/AgentSSE.class';
+import { AgentSSE } from '@sre/AgentManager/AgentSSE.class';
 
 // Initialize SmythRuntime
 const sre = SmythRuntime.Instance.init({
@@ -124,7 +124,7 @@ describe('ComputerUse Component', () => {
                         debug: true,
                     },
                 },
-                mockAgent
+                mockAgent,
             );
 
             expect(output.Output).toBeDefined();
@@ -155,7 +155,7 @@ describe('ComputerUse Component', () => {
                         environment: 'browser',
                     },
                 },
-                mockAgent
+                mockAgent,
             );
 
             expect(output.Output).toBeUndefined();
@@ -207,7 +207,7 @@ describe('ComputerUse Component', () => {
                         environment: 'browser',
                     },
                 },
-                testAgent
+                testAgent,
             );
 
             expect(logs.length).toBeGreaterThan(0);
@@ -249,14 +249,14 @@ describe('ComputerUse Component', () => {
                             debug: true,
                         },
                     },
-                    agent
+                    agent,
                 );
 
                 expect(output.Output).toBeDefined();
                 expect(output._error).toBeUndefined();
                 expect(output._debug).toBeDefined();
             },
-            TEST_TIMEOUT
+            TEST_TIMEOUT,
         );
 
         it(
@@ -273,14 +273,14 @@ describe('ComputerUse Component', () => {
                             debug: true,
                         },
                     },
-                    agent
+                    agent,
                 );
 
                 expect(output.Output).toBeUndefined();
                 expect(output._error).toBeDefined();
                 expect(output._debug).toBeDefined();
             },
-            TEST_TIMEOUT
+            TEST_TIMEOUT,
         );
 
         it(
@@ -302,14 +302,14 @@ describe('ComputerUse Component', () => {
                             debug: true,
                         },
                     },
-                    agent
+                    agent,
                 );
 
                 expect(output.Output).toBeDefined();
                 expect(output._error).toBeUndefined();
                 expect(output._debug).toBeDefined();
             },
-            TEST_TIMEOUT
+            TEST_TIMEOUT,
         );
 
         it(
@@ -337,7 +337,7 @@ describe('ComputerUse Component', () => {
                             debug: true,
                         },
                     },
-                    testAgent
+                    testAgent,
                 );
 
                 expect(logs.length).toBeGreaterThan(0);
@@ -345,7 +345,7 @@ describe('ComputerUse Component', () => {
                 expect(output._error).toBeUndefined();
                 expect(output._debug).toBeDefined();
             },
-            TEST_TIMEOUT
+            TEST_TIMEOUT,
         );
     });
 });

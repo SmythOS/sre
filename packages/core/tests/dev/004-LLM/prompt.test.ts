@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
@@ -92,7 +92,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTypeOf('object');
             expect(JSON.stringify(result)).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -112,7 +112,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTypeOf('object');
             expect(JSON.stringify(result)).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -126,7 +126,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTypeOf('object');
             expect(JSON.stringify(result)).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -140,7 +140,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTruthy();
             expect(result?.length).toBeGreaterThan(200);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -152,7 +152,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTypeOf('object');
             expect(JSON.stringify(result)).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -164,7 +164,7 @@ async function runTestCases(model: string) {
             expect(result).toBeTypeOf('object');
             expect(JSON.stringify(result)).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -172,7 +172,7 @@ async function runTestCases(model: string) {
         async () => {
             await expect(llmInference.promptRequest('', config, agent)).rejects.toThrow();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 }
 
