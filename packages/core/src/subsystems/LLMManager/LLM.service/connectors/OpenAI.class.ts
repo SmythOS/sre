@@ -1,4 +1,3 @@
-import 'openai/shims/node'; // to support File API in Node v18.17.1
 import EventEmitter from 'events';
 import OpenAI, { toFile } from 'openai';
 import { Uploadable } from 'openai/uploads';
