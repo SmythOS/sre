@@ -451,7 +451,7 @@ export class OpenAIConnector extends LLMConnector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
-        agent: string | Agent
+        agent: string | Agent,
     ): Promise<OpenAI.ImagesResponse> {
         try {
             const { model, size, n, responseFormat } = params;
@@ -487,8 +487,8 @@ export class OpenAIConnector extends LLMConnector {
                         async (file) =>
                             await toFile(await file.getReadStream(), await file.getName(), {
                                 type: file.mimetype,
-                            })
-                    )
+                            }),
+                    ),
                 );
 
                 args.image = images as unknown as Uploadable; // ! FIXME: This is a workaround to avoid type error, will be fixed in the next version of openai
@@ -579,7 +579,7 @@ export class OpenAIConnector extends LLMConnector {
     // ! DEPRECATED: will be removed
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' },
     ): Promise<any> {
         try {
             // We provide
@@ -895,31 +895,8 @@ export class OpenAIConnector extends LLMConnector {
                 });
                 // #endregion
 
-                // #region Report web search tool usage
-                for (const tool of params.toolsConfig?.tools || []) {
-                    if (SEARCH_TOOL.type === tool.type) {
-                        const modelName = params.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
-
-                        this.reportUsage(
-                            {
-                                cost: SEARCH_TOOL.cost?.[modelName]?.[tool.search_context_size] || 0,
-
-                                // 👇 Just to avoid a TypeScript error.
-                                completion_tokens: 0,
-                                prompt_tokens: 0,
-                                total_tokens: 0,
-                                // 👆 Just to avoid a TypeScript error.
-                            },
-                            {
-                                modelEntryName: params.modelEntryName,
-                                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                                agentId,
-                                teamId: params.teamId,
-                            }
-                        );
-                    }
-                }
-                // #endregion
+                // Report web search tool usage
+                this.reportWebSearchUsage(agentId, params);
 
                 // Emit interrupted event if finishReason is not 'stop'
                 if (finishReason !== 'stop') {
@@ -959,10 +936,17 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    private async multimodalStreamRequestV1(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         const messages = params?.messages || [];
         const emitter = new EventEmitter();
         const usage_data = [];
+
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -1005,13 +989,6 @@ export class OpenAIConnector extends LLMConnector {
         const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
 
         messages.push({ role: 'user', content: promptData });
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
 
         const openai = new OpenAI({
             apiKey: apiKey,
@@ -1115,6 +1092,184 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    private async multimodalStreamRequestV2(acRequest: AccessRequest, prompt, params: TLLMParamsV2, agent: string | Agent): Promise<EventEmitter> {
+        const emitter = new EventEmitter();
+        const usage_data = [];
+        const reportedUsage = [];
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+
+        const agentId = agent instanceof Agent ? agent.id : agent;
+
+        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
+        const validImageFileSources = this.getValidImageFileSources(fileSources);
+        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
+
+        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
+        // handle the invalid files in the prompt to let the user know that some files were not processed.
+
+        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
+        // const invalidFileNames = areAllFilesValid
+        //     ? []
+        //     : // get all the original file sources that are not valid image or document
+        //       fileSources
+        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
+        //           .map(async (file) => await file.getName());
+
+        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
+
+        // #region re-structure image data for the updated OpenAI SDK
+        for (const image of imageData) {
+            image.type = 'input_image';
+            image.image_url = image.image_url.url;
+            delete image.image_url.url;
+        }
+        // #endregion
+
+        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
+
+        for (const document of documentData) {
+            document.type = 'input_file';
+            document.filename = document.file.filename;
+            document.file = document.file.file_data;
+        }
+
+        const promptData = [{ type: 'input_text', text: prompt || '' }, ...imageData, ...documentData];
+
+        const input = params.messages;
+
+        input.push({ role: 'user', content: promptData });
+
+        const openai = new OpenAI({
+            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
+            baseURL: params.baseURL,
+        });
+
+        // Prepare the request parameters
+        const requestParams: OpenAI.Responses.ResponseCreateParams = {
+            model: params.model,
+            input,
+            stream: true,
+        };
+
+        if (params?.max_output_tokens !== undefined) {
+            requestParams.max_output_tokens = params.max_output_tokens;
+        }
+
+        // #region Handle tools configuration
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            requestParams.tools = params?.toolsConfig?.tools;
+        }
+
+        if (params?.toolsConfig?.tool_choice) {
+            requestParams.tool_choice = params.toolsConfig.tool_choice;
+        }
+        // #endregion
+
+        try {
+            let finishReason = 'stop';
+            const stream = await openai.responses.create(requestParams);
+
+            // Process stream asynchronously while we need to return emitter immediately
+            (async () => {
+                let toolsData: any = [];
+                let currentToolCall = null;
+
+                for await (const part of stream) {
+                    // Handle different event types from the stream
+                    if ('type' in part) {
+                        const event = part.type;
+
+                        switch (event) {
+                            case 'response.output_text.delta': {
+                                if (part?.delta) {
+                                    // Emit content in delta format for compatibility
+                                    const deltaMsg = {
+                                        role: 'assistant',
+                                        content: part.delta,
+                                    };
+                                    emitter.emit('data', deltaMsg);
+                                    emitter.emit('content', part.delta, 'assistant');
+                                }
+                                break;
+                            }
+                            // TODO: Handle other events
+                            default: {
+                                break;
+                            }
+                        }
+                    }
+
+                    if ('response' in part) {
+                        // Handle usage statistics
+                        if (part.response?.usage) {
+                            usage_data.push(part.response.usage);
+                        }
+                    }
+                }
+
+                // Report usage statistics
+                // #region Report normal token usage
+                usage_data.forEach((usage) => {
+                    const _reported = this.reportUsage(usage, {
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    });
+                    reportedUsage.push(_reported);
+                });
+                // #endregion
+
+                // Report web search tool usage
+                this.reportWebSearchUsage(agentId, params);
+
+                // Emit interrupted event if finishReason is not 'stop'
+                if (finishReason !== 'stop') {
+                    emitter.emit('interrupted', finishReason);
+                }
+
+                // Emit end event with same data structure as v1
+                setTimeout(() => {
+                    emitter.emit('end', toolsData, reportedUsage, finishReason);
+                }, 100);
+            })();
+
+            return emitter;
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
+    protected async multimodalStreamRequest(
+        acRequest: AccessRequest,
+        prompt,
+        params: TLLMParams & TLLMParamsV2,
+        agent: string | Agent,
+    ): Promise<EventEmitter> {
+        const team = AccessCandidate.team(params.teamId);
+        let llmRegistry = LLMRegistry.isStandardLLM(params.modelEntryName) ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
+        const modelInfo = llmRegistry.getModelInfo(params.modelEntryName);
+
+        // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
+        if (params?.useWebSearch && modelInfo?.features?.includes('search')) {
+            const searchTool = this.getWebSearchTool(params);
+
+            // TODO: Only support Web Search tool for now, need to implement other tools as well
+            const _params = {
+                ...params,
+                toolsConfig: { tools: [searchTool] },
+            };
+
+            return this.multimodalStreamRequestV2(acRequest, prompt, _params, agent);
+        } else {
+            return this.multimodalStreamRequestV1(acRequest, prompt, params, agent);
+        }
+    }
+
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
         let tools: OpenAI.ChatCompletionTool[] = [];
 
@@ -1208,7 +1363,7 @@ export class OpenAIConnector extends LLMConnector {
 
     private async getImageData(
         fileSources: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
@@ -1237,7 +1392,7 @@ export class OpenAIConnector extends LLMConnector {
 
     private async getDocumentData(
         fileSources: BinaryInput[],
-        agentId: string
+        agentId: string,
     ): Promise<
         {
             type: string;
@@ -1318,14 +1473,12 @@ export class OpenAIConnector extends LLMConnector {
             prompt_tokens_details?: { cached_tokens?: number };
             cost?: number; // for web search tool
         },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-        const inputTokens =
-            usage?.input_tokens || // Returned by the search tool
-            usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0);
+        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
 
         const outputTokens =
             usage?.output_tokens || // Returned by the search tool
@@ -1351,5 +1504,31 @@ export class OpenAIConnector extends LLMConnector {
         SystemEvents.emit('USAGE:LLM', usageData);
 
         return usageData;
+    }
+
+    private reportWebSearchUsage(agentId, params): void {
+        for (const tool of params.toolsConfig?.tools || []) {
+            if (SEARCH_TOOL.type === tool.type) {
+                const modelName = params.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
+
+                this.reportUsage(
+                    {
+                        cost: SEARCH_TOOL.cost?.[modelName]?.[tool.search_context_size] || 0,
+
+                        // 👇 Just to avoid a TypeScript error.
+                        completion_tokens: 0,
+                        prompt_tokens: 0,
+                        total_tokens: 0,
+                        // 👆 Just to avoid a TypeScript error.
+                    },
+                    {
+                        modelEntryName: params.modelEntryName,
+                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId,
+                        teamId: params.teamId,
+                    },
+                );
+            }
+        }
     }
 }

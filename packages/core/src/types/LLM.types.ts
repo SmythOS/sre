@@ -85,6 +85,7 @@ export type TLLMParamsV2 = {
     frequency_penalty?: number;
     presence_penalty?: number;
     teamId?: string;
+    fileSources?: BinaryInput[];
 
     // #region Search
     useWebSearch?: boolean;
