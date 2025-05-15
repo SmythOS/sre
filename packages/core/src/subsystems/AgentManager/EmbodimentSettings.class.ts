@@ -2,7 +2,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 const console = Logger('EmbodimentSettings');
 
-export default class EmbodimentSettings {
+export class EmbodimentSettings {
     private _embodiments: any;
     private _ready = false;
 
@@ -45,3 +45,5 @@ export default class EmbodimentSettings {
         return _embodiment?.properties;
     }
 }
+
+export default EmbodimentSettings;

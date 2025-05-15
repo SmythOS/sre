@@ -7,7 +7,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
-export default class Classifier extends Component {
+export class Classifier extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().max(30000).allow('').label('Prompt'),
@@ -130,3 +130,5 @@ ${JSON.stringify(categories, null, 2)}`;
         }
     }
 }
+
+export default Classifier;

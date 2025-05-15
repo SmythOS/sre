@@ -4,7 +4,6 @@ import { ConnectorService, SmythRuntime } from '@sre/index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
-import { Document } from '@langchain/core/documents';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';

@@ -5,7 +5,7 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
-export default class ImageGenerator extends Component {
+export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().valid('dall-e-2', 'dall-e-3').required(),
         prompt: Joi.string().optional().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
@@ -144,3 +144,5 @@ export default class ImageGenerator extends Component {
         }
     }
 }
+
+export default ImageGenerator;

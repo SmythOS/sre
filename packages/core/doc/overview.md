@@ -4,9 +4,11 @@
 
 SRE is designed following principles similar to operating system kernels, providing a robust and extensible environment for running AI Agents. Just as operating systems manage processes and resources through subsystems and drivers, SRE manages AI Agents through subsystems and connectors.
 
+![SRE Diagram](./images/sre-diagram.png)
+
 ### Key Architectural Concepts
 
-1. **Subsystems & Connectors**
+1. **Subsystem Connectors**
 
     - Similar to OS kernel subsystems and drivers
     - Each service is provided through extensible connector interfaces

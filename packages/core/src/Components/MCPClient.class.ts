@@ -5,10 +5,10 @@ import { Conversation } from '@sre/helpers/Conversation.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 import Component from './Component.class';
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 
-export default class MCPClient extends Component {
+export class MCPClient extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().optional(),
         openAiModel: Joi.string().optional(), // for backward compatibility
@@ -27,7 +27,7 @@ export default class MCPClient extends Component {
         super();
     }
 
-    init() { }
+    init() {}
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
@@ -58,29 +58,33 @@ export default class MCPClient extends Component {
             });
             await client.connect(transport);
             const toolsData = await client.listTools();
-            const conv = new Conversation(model, {
-                "openapi": "3.0.1",
-                "info": {
-                    "title": `${agent?.name}`,
-                    "version": `${agent?.version}`,
-                    "description": descForModel
+            const conv = new Conversation(
+                model,
+                {
+                    openapi: '3.0.1',
+                    info: {
+                        title: `${agent?.name}`,
+                        version: `${agent?.version}`,
+                        description: descForModel,
+                    },
+                    servers: [
+                        {
+                            url: agent?.domain,
+                        },
+                    ],
+                    paths: {},
                 },
-                "servers": [
-                    {
-                        "url": agent?.domain
-                    }
-                ],
-                "paths": {}
-            }, { agentId: agent?.id });
+                { agentId: agent?.id },
+            );
 
             for (const tool of toolsData.tools) {
                 let toolArgs = {};
                 Object.entries(tool.inputSchema.properties).forEach(([propName, propDetails]) => {
                     toolArgs[propName] = {
                         description: '',
-                        required: (tool.inputSchema.required as string[] || []).includes(propName) || false,
+                        required: ((tool.inputSchema.required as string[]) || []).includes(propName) || false,
                         type: (propDetails as any).type,
-                        ...((propDetails as any).type === 'array' ? { items: { type: 'string' } } : {})
+                        ...((propDetails as any).type === 'array' ? { items: { type: 'string' } } : {}),
                     };
                 });
                 await conv.addTool({
@@ -90,10 +94,10 @@ export default class MCPClient extends Component {
                     handler: async (input) => {
                         const result = await client.callTool({
                             name: tool.name,
-                            arguments: input
+                            arguments: input,
                         });
                         return result;
-                    }
+                    },
                 });
             }
             const result = await conv.prompt(prompt);
@@ -106,3 +110,5 @@ export default class MCPClient extends Component {
         }
     }
 }
+
+export default MCPClient;

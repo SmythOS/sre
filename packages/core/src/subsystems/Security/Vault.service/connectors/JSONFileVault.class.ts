@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -35,7 +35,7 @@ export class JSONFileVault extends VaultConnector {
                                 key: privateKey,
                                 padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
                             },
-                            Buffer.from(encryptedVault, 'base64')
+                            Buffer.from(encryptedVault, 'base64'),
                         );
                         this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
                     } catch (error) {

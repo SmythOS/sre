@@ -2,7 +2,7 @@ import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import crypto from 'crypto';
 
-export default class FHash extends Component {
+export class FHash extends Component {
     constructor() {
         super();
     }
@@ -31,3 +31,5 @@ export default class FHash extends Component {
         }
     }
 }
+
+export default FHash;

@@ -34,7 +34,7 @@ function validateAndParseJson(value, helpers) {
     return parsedJson;
 }
 
-export default class ZapierAction extends Component {
+export class ZapierAction extends Component {
     protected configSchema = Joi.object({
         actionName: Joi.string().max(100).required(),
         actionId: Joi.string().max(100).required(),
@@ -125,3 +125,5 @@ export default class ZapierAction extends Component {
         }
     }
 }
+
+export default ZapierAction;

@@ -5,7 +5,7 @@ import SREConfig from '@sre/config';
 import axios from 'axios';
 import SystemEvents from '@sre/Core/SystemEvents';
 
-export default class WebSearch extends Component {
+export class WebSearch extends Component {
     protected configSchema = Joi.object({
         includeImages: Joi.boolean().default(false).label('Include Image Results'),
         sourcesLimit: Joi.number().integer().default(10).label('Sources Limit'),
@@ -70,3 +70,5 @@ export default class WebSearch extends Component {
         });
     }
 }
+
+export default WebSearch;

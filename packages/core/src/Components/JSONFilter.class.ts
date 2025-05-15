@@ -3,7 +3,7 @@ import Joi from 'joi';
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 
-export default class JSONFilter extends Component {
+export class JSONFilter extends Component {
     protected configSchema = Joi.object({
         fields: Joi.string().max(30000).allow('').label('Prompt'),
     });
@@ -52,3 +52,5 @@ function filterFields(obj, fields) {
 
     return filterObject(obj);
 }
+
+export default JSONFilter;

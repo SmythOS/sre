@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -11,7 +11,13 @@ import { OAuthConfig, SecretsManagerConfig, SmythConfigs } from '@sre/types/Secu
 import { getM2MToken } from '@sre/utils/oauth.utils';
 import axios, { AxiosInstance } from 'axios';
 import { ManagedVaultConnector } from '../ManagedVaultConnector';
-import { CreateSecretCommand, DeleteSecretCommand, ListSecretsCommand, PutSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
+import {
+    CreateSecretCommand,
+    DeleteSecretCommand,
+    ListSecretsCommand,
+    PutSecretValueCommand,
+    SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
 import { GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { randomUUID } from 'crypto';
 
@@ -29,9 +35,9 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
             region: config.region,
             ...(config.awsAccessKeyId && config.awsSecretAccessKey
                 ? {
-                    accessKeyId: config.awsAccessKeyId,
-                    secretAccessKey: config.awsSecretAccessKey,
-                }
+                      accessKeyId: config.awsAccessKeyId,
+                      secretAccessKey: config.awsSecretAccessKey,
+                  }
                 : {}),
         });
     }
@@ -48,7 +54,13 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
         if (secret) {
             await this.secretsManager.send(new PutSecretValueCommand({ SecretId: secret.ARN, SecretString: value }));
         } else {
-            await this.secretsManager.send(new CreateSecretCommand({ Name: `smyth/${randomUUID()}`, SecretString: JSON.stringify({ [secretName]: value }), Tags: [{ Key: this.scope, Value: 'true' }] }));
+            await this.secretsManager.send(
+                new CreateSecretCommand({
+                    Name: `smyth/${randomUUID()}`,
+                    SecretString: JSON.stringify({ [secretName]: value }),
+                    Tags: [{ Key: this.scope, Value: 'true' }],
+                }),
+            );
         }
     }
 
@@ -79,13 +91,14 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
         return acl;
     }
 
-
     private async getSecretByName(secretName: string) {
         try {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: [this.scope] }] }));
+                const listResponse = await this.secretsManager.send(
+                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: [this.scope] }] }),
+                );
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
                         if (secret.Name) {
@@ -109,9 +122,8 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
             for (const result of results) {
                 formattedSecrets.push(result);
             }
-            const secret = formattedSecrets.find(s => s.Name === secretName);
+            const secret = formattedSecrets.find((s) => s.Name === secretName);
             return secret;
-
         } catch (error) {
             console.error(error);
         }
@@ -128,9 +140,7 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
                         secretName = Object.keys(parsedSecret)[0];
                         secretString = parsedSecret[secretName];
                     }
-                } catch (error) {
-
-                }
+                } catch (error) {}
             }
             return {
                 Name: secretName,

@@ -9,7 +9,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
-export default class FileStore extends Component {
+export class FileStore extends Component {
     protected configSchema = Joi.object({
         name: Joi.string().max(1000).allow('').label('Name'),
         ttl: Joi.number().integer().label('TTL'),
@@ -73,3 +73,5 @@ export default class FileStore extends Component {
         return `${uniqueId}${customName ? `.${customName}` : ''}.${extension}`;
     }
 }
+
+export default FileStore;

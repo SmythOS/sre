@@ -1,6 +1,6 @@
 import { AgentDataConnector } from '../AgentDataConnector';
 import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AxiosInstance } from 'axios';
 import axios from 'axios';
 import { getM2MToken } from '@sre/utils/oauth.utils';
@@ -176,7 +176,7 @@ export class SmythAgentDataConnector extends AgentDataConnector {
                 `/v1/ai-agent/teams/${teamId}/?deployedOnly=${deployedOnly ? 'true' : 'false'}&includeData=${includeData ? 'true' : 'false'}`,
                 {
                     headers,
-                }
+                },
             );
             const agentsList = response?.data?.agents;
 

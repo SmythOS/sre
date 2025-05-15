@@ -1,81 +1,127 @@
 import 'source-map-support/register.js';
-import AgentRequest from './subsystems/AgentManager/AgentRequest.class';
-import AgentSettings from './subsystems/AgentManager/AgentSettings.class';
-//import SRE from './Core/SRE.class';
-import Agent from './subsystems/AgentManager/Agent.class';
-import SmythRuntime from './Core/SmythRuntime.class';
-import { boot } from './Core/boot';
-import { ConnectorService } from './Core/ConnectorsService';
-import { CLIAgentDataConnector } from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
-import { AgentProcess } from './Core/AgentProcess.helper';
-import { Conversation } from './helpers/Conversation.helper';
-import config from './config';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
-import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
-import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
-import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
-import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
-import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
-import SystemEvents from './Core/SystemEvents';
-import { LogConnector } from '@sre/IO/Log.service/LogConnector';
-import { TemplateString as TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
-import { JSONContent as JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import { Logger } from '@sre/helpers/Log.helper';
-import { default as AgentLogger } from '@sre/AgentManager/AgentLogger.class';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
-import { ILLMContextStore } from '@sre/types/LLM.types';
-import { APIKeySource } from '@sre/types/LLM.types';
-import { version } from '../package.json';
-import Component from './Components/Component.class';
-import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
-import { HookService } from './Core/HookService';
-import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
-import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+export { version } from '../package.json';
 
-boot();
 
-export {
-    config,
-    SmythRuntime,
-    SystemEvents,
-    Agent,
-    AgentRequest,
-    AgentSettings,
-    AgentProcess,
-    AccessCandidate,
-    Conversation,
-    ConnectorService,
-    AccountConnector,
-    StorageConnector,
-    CacheConnector,
-    AgentDataConnector,
-    LLMConnector,
-    VectorDBConnector,
-    NKVConnector,
-    CLIConnector,
-    VaultConnector,
-    ModelsProviderConnector,
-    LogConnector,
-    ComponentConnector,
-    CLIAgentDataConnector,
-    TemplateStringHelper,
-    JSONContentHelper,
-    Logger,
-    AgentLogger,
-    LLMRegistry,
-    CustomLLMRegistry,
-    APIKeySource,
-    version,
-    Component,
-    HookService,
-    BinaryInput,
-    // Interfaces: we must use the type-only export syntax when re-exporting interfaces
-    type ILLMContextStore,
-    BUILT_IN_MODEL_PREFIX,
-};
+export * from './config';
+export * from './constants';
+export * from './Components/index';
+export * from './Core/AgentProcess.helper';
+export * from './Core/boot';
+export * from './Core/Connector.class';
+export * from './Core/ConnectorsService';
+export * from './Core/DummyConnector';
+export * from './Core/HookService';
+export * from './Core/SmythRuntime.class';
+export * from './Core/SystemEvents';
+export * from './helpers/BinaryInput.helper';
+export * from './helpers/Conversation.helper';
+export * from './helpers/JsonContent.helper';
+export * from './helpers/LocalCache.helper';
+export * from './helpers/Log.helper';
+export * from './helpers/OpenApiParser.helper';
+export * from './helpers/S3Cache.helper';
+export * from './helpers/SmythURI.helper';
+export * from './helpers/TemplateString.helper';
+export * from './helpers/TypeChecker.helper';
+export * from './types/ACL.types';
+export * from './types/Agent.types';
+export * from './types/AgentLogger.types';
+export * from './types/AWS.types';
+export * from './types/Cache.types';
+export * from './types/Common.types';
+export * from './types/LLM.types';
+export * from './types/LocalStorage.types';
+export * from './types/Redis.types';
+export * from './types/S3Cache.types';
+export * from './types/Security.types';
+export * from './types/SRE.types';
+export * from './types/Storage.types';
+export * from './types/VectorDB.types';
+export * from './utils/oauth.utils';
+export * from './Components/APICall/AccessTokenManager';
+export * from './Components/APICall/ArrayBufferResponse.helper';
+export * from './Components/APICall/mimeTypeCategories';
+export * from './Components/APICall/OAuth.helper';
+export * from './Components/APICall/parseData';
+export * from './Components/APICall/parseHeaders';
+export * from './Components/APICall/parseProxy';
+export * from './Components/APICall/parseUrl';
+export * from './Components/Image/imageSettings.config';
+export * from './subsystems/AgentManager/OSResourceMonitor';
+export * from './subsystems/LLMManager/custom-models';
+export * from './subsystems/LLMManager/CustomLLMRegistry.class';
+export * from './subsystems/LLMManager/LLM.helper';
+export * from './subsystems/LLMManager/LLM.inference';
+export * from './subsystems/LLMManager/LLMRegistry.class';
+export * from './subsystems/LLMManager/models';
+export * from './subsystems/LLMManager/paramMappings';
+export * from './subsystems/MemoryManager/LLMCache';
+export * from './subsystems/MemoryManager/LLMContext';
+export * from './subsystems/MemoryManager/RuntimeContext';
+export * from './subsystems/Security/SecureConnector.class';
+export * from './subsystems/AgentManager/AgentData.service/AgentDataConnector';
+export * from './subsystems/AgentManager/AgentData.service/index';
+export * from './subsystems/AgentManager/Component.service/ComponentConnector';
+export * from './subsystems/AgentManager/Component.service/index';
+export * from './subsystems/IO/CLI.service/CLIConnector';
+export * from './subsystems/IO/CLI.service/index';
+export * from './subsystems/IO/Log.service/index';
+export * from './subsystems/IO/Log.service/LogConnector';
+export * from './subsystems/IO/NKV.service/index';
+export * from './subsystems/IO/NKV.service/NKVConnector';
+export * from './subsystems/IO/Router.service/index';
+export * from './subsystems/IO/Router.service/RouterConnector';
+export * from './subsystems/IO/Storage.service/index';
+export * from './subsystems/IO/Storage.service/SmythFS.class';
+export * from './subsystems/IO/Storage.service/StorageConnector';
+export * from './subsystems/IO/VectorDB.service/index';
+export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
+export * from './subsystems/IO/VectorDB.service/Vectors.helper';
+export * from './subsystems/LLMManager/LLM.service/index';
+export * from './subsystems/LLMManager/LLM.service/LLMConnector';
+export * from './subsystems/LLMManager/ModelsProvider.service/index';
+export * from './subsystems/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+export * from './subsystems/MemoryManager/Cache.service/index';
+export * from './subsystems/Security/AccessControl/AccessCandidate.class';
+export * from './subsystems/Security/AccessControl/AccessRequest.class';
+export * from './subsystems/Security/AccessControl/ACL.class';
+export * from './subsystems/Security/Account.service/AccountConnector';
+export * from './subsystems/Security/Account.service/index';
+export * from './subsystems/Security/ManagedVault.service/index';
+export * from './subsystems/Security/ManagedVault.service/ManagedVaultConnector';
+export * from './subsystems/Security/Vault.service/index';
+export * from './subsystems/Security/Vault.service/Vault.helper';
+export * from './subsystems/Security/Vault.service/VaultConnector';
+export * from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+export * from './subsystems/AgentManager/AgentData.service/connectors/LocalAgentDataConnector.class';
+export * from './subsystems/AgentManager/AgentData.service/connectors/SmythAgentDataConnector.class';
+export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
+export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
+export * from './subsystems/IO/Log.service/connectors/SmythLog.class';
+export * from './subsystems/IO/NKV.service/connectors/NKVRedis.class';
+export * from './subsystems/IO/Router.service/connectors/ExpressRouter.class';
+export * from './subsystems/IO/Storage.service/connectors/LocalStorage.class';
+export * from './subsystems/IO/Storage.service/connectors/S3Storage.class';
+export * from './subsystems/IO/VectorDB.service/connectors/PineconeVectorDB.class';
+export * from './subsystems/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Anthropic.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Bedrock.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Echo.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/GoogleAI.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Groq.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/OpenAI.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
+export * from './subsystems/LLMManager/ModelsProvider.service/connectors/SmythModelsProvider.class';
+export * from './subsystems/MemoryManager/Cache.service/connectors/LocalStorageCache.class';
+export * from './subsystems/MemoryManager/Cache.service/connectors/RedisCache.class';
+export * from './subsystems/MemoryManager/Cache.service/connectors/S3Cache.class';
+export * from './subsystems/Security/Account.service/connectors/AWSAccount.class';
+export * from './subsystems/Security/Account.service/connectors/DummyAccount.class';
+export * from './subsystems/Security/Account.service/connectors/SmythAccount.class';
+export * from './subsystems/Security/ManagedVault.service/connectors/SecretManagerManagedVault';
+export * from './subsystems/Security/ManagedVault.service/connectors/SmythManagedVault';
+export * from './subsystems/Security/Vault.service/connectors/HashicorpVault.class';
+export * from './subsystems/Security/Vault.service/connectors/JSONFileVault.class';
+export * from './subsystems/Security/Vault.service/connectors/SecretsManager.class';
+export * from './subsystems/Security/Vault.service/connectors/SmythVault.class';

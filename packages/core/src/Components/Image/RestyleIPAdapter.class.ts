@@ -12,7 +12,7 @@ import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class RestyleIPAdapter extends Component {
+export class RestyleIPAdapter extends Component {
     protected configSchema = Joi.object({
         model: ImageSettingsConfig.model,
         positivePrompt: ImageSettingsConfig.positivePrompt,
@@ -119,3 +119,5 @@ export default class RestyleIPAdapter extends Component {
         }
     }
 }
+
+export default RestyleIPAdapter;

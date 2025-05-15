@@ -1,7 +1,7 @@
 import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 
-export default class FTimestamp extends Component {
+export class FTimestamp extends Component {
     constructor() {
         super();
     }
@@ -23,3 +23,5 @@ export default class FTimestamp extends Component {
         }
     }
 }
+
+export default FTimestamp;

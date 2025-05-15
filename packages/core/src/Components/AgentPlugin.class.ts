@@ -7,7 +7,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import Component from './Component.class';
 
-export default class AgentPlugin extends Component {
+export class AgentPlugin extends Component {
     protected configSchema = Joi.object({
         agentId: Joi.string().max(200).required(),
         openAiModel: Joi.string().max(200).optional(), // for backward compatibility
@@ -100,3 +100,5 @@ export default class AgentPlugin extends Component {
         }
     }
 }
+
+export default AgentPlugin;

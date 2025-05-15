@@ -10,7 +10,7 @@ import appConfig from '@sre/config';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './imageSettings.config';
 
-export default class RestyleControlNet extends Component {
+export class RestyleControlNet extends Component {
     protected configSchema = Joi.object({
         width: ImageSettingsConfig.width,
         height: ImageSettingsConfig.height,
@@ -75,3 +75,5 @@ export default class RestyleControlNet extends Component {
         }
     }
 }
+
+export default RestyleControlNet;

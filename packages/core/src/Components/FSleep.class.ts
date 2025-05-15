@@ -1,7 +1,7 @@
 import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 
-export default class FSleep extends Component {
+export class FSleep extends Component {
     constructor() {
         super();
     }
@@ -23,3 +23,5 @@ export default class FSleep extends Component {
         }
     }
 }
+
+export default FSleep;

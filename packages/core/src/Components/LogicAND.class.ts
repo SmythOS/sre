@@ -1,7 +1,7 @@
 import Agent from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
 
-export default class LogicAND extends Component {
+export class LogicAND extends Component {
     constructor() {
         super();
     }
@@ -26,3 +26,5 @@ export default class LogicAND extends Component {
         return result;
     }
 }
+
+export default LogicAND;

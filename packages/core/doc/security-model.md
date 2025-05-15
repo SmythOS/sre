@@ -22,7 +22,7 @@
 
 ## Overview
 
-The Security and Resource Execution (SRE) framework employs a robust security model centered around Access Control Lists (ACLs) to manage and enforce permissions across various connectors and components. This documentation provides a comprehensive guide to understanding the SRE security model, implementing secure connectors, and utilizing the provided tools to ensure consistent and effective access control within your applications.
+Smyth Runtime Environment (SRE) employs a robust security model centered around Access Control Lists (ACLs) to manage and enforce permissions across various connectors and components. This documentation provides a comprehensive guide to understanding the SRE security model, implementing secure connectors, and utilizing the provided tools to ensure consistent and effective access control within your applications.
 
 ## Core Concepts
 

@@ -11,7 +11,7 @@ import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class ImageUpscaling extends Component {
+export class ImageUpscaling extends Component {
     protected configSchema = Joi.object({
         outputFormat: ImageSettingsConfig.outputFormat,
         outputQuality: ImageSettingsConfig.outputQuality,
@@ -72,3 +72,5 @@ export default class ImageUpscaling extends Component {
         }
     }
 }
+
+export default ImageUpscaling;

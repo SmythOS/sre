@@ -12,7 +12,7 @@ import { ImageSettingsConfig } from './imageSettings.config';
 
 import appConfig from '@sre/config';
 
-export default class Outpainting extends Component {
+export class Outpainting extends Component {
     protected configSchema = Joi.object({
         model: ImageSettingsConfig.model,
         positivePrompt: ImageSettingsConfig.positivePrompt,
@@ -114,3 +114,5 @@ export default class Outpainting extends Component {
         }
     }
 }
+
+export default Outpainting;

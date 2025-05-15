@@ -11,12 +11,12 @@ import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import AgentSSE from './AgentSSE.class';
-import { AccessCandidate, ConnectorService, SystemEvents } from '@sre/index';
+import { AccessCandidate, ConnectorService } from '@sre/index';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
 
-export default class Agent {
+export class Agent {
     public name: any;
     public data: any;
     public teamId: any;
@@ -52,7 +52,7 @@ export default class Agent {
         public id,
         agentData,
         public agentSettings: AgentSettings,
-        agentRequest?: AgentRequest | any //private req: express.Request,
+        agentRequest?: AgentRequest | any, //private req: express.Request,
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
@@ -1083,3 +1083,5 @@ function _mergeInputs(existing, newValue) {
 
     return [...existing, newValue];
 }
+
+export default Agent;

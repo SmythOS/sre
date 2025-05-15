@@ -40,7 +40,7 @@ function validateAndParseJson(value, helpers) {
     return parsedJson;
 }
 
-export default class HuggingFace extends Component {
+export class HuggingFace extends Component {
     protected configSchema = Joi.object({
         accessToken: Joi.string().max(350).required().label('Access Token'),
         modelName: Joi.string().max(100).required(),
@@ -272,7 +272,7 @@ export default class HuggingFace extends Component {
                             } else {
                                 return item;
                             }
-                        })
+                        }),
                     );
                 } else {
                     // Handle case where result is neither a Blob nor an array of Blob-containing objects
@@ -312,3 +312,5 @@ export default class HuggingFace extends Component {
         }
     }
 }
+
+export default HuggingFace;

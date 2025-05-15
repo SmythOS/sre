@@ -16,8 +16,13 @@ import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 const console = Logger('Boot');
-
+let _booted = false;
 export function boot() {
+    if (_booted) {
+        console.warn('SRE already booted');
+        return;
+    }
+    _booted = true;
     console.debug('SRE Boot sequence started');
     const service: TServiceRegistry = {};
     service.NKV = new NKVService();

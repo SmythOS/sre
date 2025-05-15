@@ -25,9 +25,9 @@ const AgentRuntimeUnavailable = new Proxy(
                 };
             }
         },
-    }
+    },
 );
-export default class AgentRuntime {
+export class AgentRuntime {
     private static processResults: any = {};
     private static tagsData = {};
     public static dummy = AgentRuntimeUnavailable;
@@ -236,11 +236,11 @@ export default class AgentRuntime {
             dbgActiveComponents = dbgAllComponents.filter(
                 (c: any) =>
                     c?.ctx?.active == true ||
-                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
             );
         //find waiting components that was not previously run
         const dbgActiveWaitingComponents: any = dbgAllComponents.filter(
-            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined
+            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined,
         );
 
         const dbgActiveReadyComponents: any = dbgAllComponents.filter((c: any) => c?.ctx?.active == true && !c?.ctx?.status);
@@ -264,10 +264,10 @@ export default class AgentRuntime {
         }
 
         const remainingActiveComponents: any = Object.values(ctxData?.components || []).filter(
-            (c: any) => c?.ctx?.active == true && !c?.ctx?.alwaysActive
+            (c: any) => c?.ctx?.active == true && !c?.ctx?.alwaysActive,
         );
         const activeAsyncComponents: any = Object.values(ctxData?.components || []).filter(
-            (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0
+            (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0,
         );
 
         if (remainingActiveComponents.length == 0 && activeAsyncComponents.length == 0 /*&& awaitingInputs.length == 0*/) {
@@ -307,7 +307,7 @@ export default class AgentRuntime {
      */
     public async runCycle() {
         console.debug(
-            `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
+            `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`,
         );
         //this.checkRuntimeContext();
 
@@ -324,16 +324,16 @@ export default class AgentRuntime {
             dbgActiveComponents = dbgAllComponents.filter(
                 (c: any) =>
                     c?.ctx?.active == true ||
-                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                    (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
             );
         //find waiting components that was not previously run
         const dbgActiveWaitingComponents: any = dbgAllComponents.filter(
-            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined
+            (c: any) => c?.ctx?.active == true && c?.ctx?.status && typeof c?.ctx?.output !== undefined,
         );
         const dbgActiveReadyComponents: any = dbgAllComponents.filter(
             (c: any) =>
                 (c?.ctx?.active == true && !c?.ctx?.status) ||
-                (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0)
+                (!c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0),
         );
         //const dbgActiveReadyComponents: any = dbgActiveComponents.filter((c: any) => c?.ctx?.active == true && !c?.ctx?.status);
 
@@ -375,7 +375,7 @@ export default class AgentRuntime {
 
             const remainingActiveComponents: any = Object.values(ctxData?.components || []).filter((c: any) => c?.ctx?.active == true);
             const activeAsyncComponents: any = Object.values(ctxData?.components || []).filter(
-                (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0
+                (c: any) => !c?.ctx?.output?._error && Array.isArray(c?.ctx?._job_components) && c?.ctx?._job_components.length > 0,
             );
             const dbgActiveWaitingComponents: any = dbgAllComponents.filter((c: any) => c?.ctx?.status && typeof c?.ctx?.output !== undefined);
 
@@ -390,7 +390,7 @@ export default class AgentRuntime {
                     e.result &&
                     !e.result._missing_inputs &&
                     //check if this is the last component in the chain
-                    !agent.connections.find((c) => c.sourceId == e.id)
+                    !agent.connections.find((c) => c.sourceId == e.id),
             );
 
             let errorResults = dbgResults.flat().filter((e) => e.id && (e.error || e.result?._error));
@@ -470,7 +470,7 @@ export default class AgentRuntime {
                         }
                         return acc;
                     },
-                    { seen: {}, result: [] }
+                    { seen: {}, result: [] },
                 )
                 .result.filter((e) => !e.result?._exclude);
 
@@ -558,3 +558,5 @@ export default class AgentRuntime {
         return this.agentContext.getComponentData(componentId);
     }
 }
+
+export default AgentRuntime;

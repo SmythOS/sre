@@ -37,9 +37,6 @@ const devConfig = {
         // }),
         filenameReplacePlugin(),
         sourcemaps(),
-        copy({
-            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
-        }),
     ],
 };
 
@@ -69,9 +66,6 @@ const prodConfig = {
         filenameReplacePlugin(),
         sourcemaps(),
         terser(),
-        copy({
-            targets: [{ src: 'src/data/*', dest: 'dist/data' }],
-        }),
     ],
 };
 

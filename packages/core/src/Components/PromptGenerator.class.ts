@@ -8,7 +8,7 @@ import Component from './Component.class';
 
 //TODO : better handling of context window exceeding max length
 
-export default class PromptGenerator extends Component {
+export class PromptGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
@@ -70,7 +70,7 @@ export default class PromptGenerator extends Component {
                                 model: model,
                                 messages: [{ role: 'user', content: prompt }],
                             },
-                            agent.id
+                            agent.id,
                         )
                         .catch((error) => {
                             console.error('Error on streamRequest: ', error);
@@ -129,3 +129,5 @@ export default class PromptGenerator extends Component {
         return llmInference.streamRequest(prompt, agent);
     }
 }
+
+export default PromptGenerator;

@@ -10,8 +10,9 @@ import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper'
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import DataSourceIndexer from './DataSourceIndexer.class';
+import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
-export default class DataSourceCleaner extends Component {
+export class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
         namespaceId: Joi.string().max(50).allow('').label('namespace'),
         id: Joi.string().custom(validateCharacterSet, 'custom validation characterSet').allow('').label('source identifier'),
@@ -51,6 +52,9 @@ export default class DataSourceCleaner extends Component {
 
             let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
             if (!existingnamespace) {
+                if (!vectorDBHelper.shouldCreateNsImplicitly) {
+                    throw new Error(`Namespace ${namespaceId} does not exist`);
+                }
                 await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${namespaceId}\n\n`;
             } else if (!existingnamespace.metadata.isOnCustomStorage) {
@@ -99,3 +103,5 @@ export default class DataSourceCleaner extends Component {
             .validate(data);
     }
 }
+
+export default DataSourceCleaner;

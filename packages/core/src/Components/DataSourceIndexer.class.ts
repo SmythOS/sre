@@ -9,8 +9,9 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
+import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
-export default class DataSourceIndexer extends Component {
+export class DataSourceIndexer extends Component {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
     protected configSchema = Joi.object({
         namespace: Joi.string().max(50).allow(''),
@@ -50,7 +51,9 @@ export default class DataSourceIndexer extends Component {
             const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
 
             if (!nsExists) {
-                // throw new Error(`Namespace ${namespaceId} does not exist`);
+                if (!vectorDBHelper.shouldCreateNsImplicitly) {
+                    throw new Error(`Namespace ${namespaceId} does not exist`);
+                }
                 const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${newNs}\n\n`;
             }
@@ -181,3 +184,5 @@ export default class DataSourceIndexer extends Component {
         throw new Error('URLs are not supported yet');
     }
 }
+
+export default DataSourceIndexer;

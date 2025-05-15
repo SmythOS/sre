@@ -2,7 +2,7 @@ import Component from './Component.class';
 import Agent from '@sre/AgentManager/Agent.class';
 import Joi from 'joi';
 
-export default class APIOutput extends Component {
+export class APIOutput extends Component {
     protected configSchema = Joi.object({
         format: Joi.string().valid('full', 'minimal', 'raw').label('Output Format').required(),
         contentType: Joi.string().valid('application/json', 'text/plain', 'text/html', 'application/xml').optional().allow('').label('Content Type'),
@@ -56,3 +56,5 @@ export default class APIOutput extends Component {
         return output;
     }
 }
+
+export default APIOutput;

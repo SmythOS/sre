@@ -2,7 +2,7 @@
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -18,7 +18,6 @@ import {
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { OpenAIEmbeddings } from '@langchain/openai';
 import { VectorsHelper } from '../Vectors.helper';
 import { isUrl } from '@sre/utils/data.utils';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -71,7 +70,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     protected async createDatasource(
         acRequest: AccessRequest,
         namespace: string,
-        datasource: DatasourceDto
+        datasource: DatasourceDto,
     ): Promise<{ id: string; vectorIds: string[] }> {
         try {
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
@@ -86,7 +85,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
                     metadata: datasource.metadata ? JSON.stringify(datasource.metadata) : null,
                     teamId,
                 },
-                { headers: await this.getSmythRequestHeaders() }
+                { headers: await this.getSmythRequestHeaders() },
             );
 
             return {
@@ -186,7 +185,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
                     teamId,
                     useCustomVectorStorage: this.isCustomStorageInstance,
                 },
-                { headers: await this.getSmythRequestHeaders() }
+                { headers: await this.getSmythRequestHeaders() },
             );
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
@@ -283,7 +282,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions = {}
+        options: QueryOptions = {},
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
@@ -294,7 +293,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
         try {
             const response = await this.smythAPI.get<{ results: { pageContent: string; metadata: any }[] }>(
                 `/v1/vectors/namespaces/search?query=${query}&topK=${options?.topK}&namespaceId=${preparedNs}&raw=true`,
-                { headers: await this.getSmythRequestHeaders() }
+                { headers: await this.getSmythRequestHeaders() },
             );
 
             return response.data.results.map((result) => {
@@ -323,7 +322,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
     ): Promise<string[]> {
         throw new Error('Smyth Managed VectorDB does not support direct insertion by vector id(s)');
     }

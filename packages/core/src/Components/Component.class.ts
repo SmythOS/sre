@@ -3,7 +3,7 @@ import Agent from '@sre/AgentManager/Agent.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookAsync } from '@sre/Core/HookService';
-export default class Component {
+export class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;
     public alwaysActive = false; //for components like readable memories
@@ -78,3 +78,5 @@ export default class Component {
         return false;
     }
 }
+
+export default Component;

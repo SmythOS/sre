@@ -13,7 +13,15 @@ Object.defineProperty(global, 'crypto', {
 });
 //#endregion
 
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, PutObjectTaggingCommand, S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
+import {
+    DeleteObjectCommand,
+    GetObjectCommand,
+    HeadObjectCommand,
+    PutObjectCommand,
+    PutObjectTaggingCommand,
+    S3Client,
+    S3ClientConfig,
+} from '@aws-sdk/client-s3';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
@@ -24,7 +32,7 @@ import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { streamToBuffer } from '@sre/utils';
 import type { Readable } from 'stream';
 
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -52,7 +60,7 @@ export class S3Storage extends StorageConnector {
         }
 
         this.client = new S3Client(clientConfig);
-        this.initialize()
+        this.initialize();
     }
 
     private async initialize() {

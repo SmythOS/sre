@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -60,7 +60,7 @@ export class SmythManagedVault extends ManagedVaultConnector {
                 settingKey: this.vaultName,
                 settingValue: JSON.stringify(vaultData),
             },
-            { headers: await this.getSmythRequestHeaders() }
+            { headers: await this.getSmythRequestHeaders() },
         );
     }
 
@@ -77,7 +77,7 @@ export class SmythManagedVault extends ManagedVaultConnector {
                 settingKey: this.vaultName,
                 settingValue: JSON.stringify(vaultData),
             },
-            { headers: await this.getSmythRequestHeaders() }
+            { headers: await this.getSmythRequestHeaders() },
         );
     }
 

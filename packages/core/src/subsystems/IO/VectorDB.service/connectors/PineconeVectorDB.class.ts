@@ -4,7 +4,7 @@ import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/Stora
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -155,7 +155,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions = {}
+        options: QueryOptions = {},
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         let ns = await this.nkvConnector
@@ -202,7 +202,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
@@ -248,7 +248,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async createDatasource(
         acRequest: AccessRequest,
         namespace: string,
-        datasource: DatasourceDto
+        datasource: DatasourceDto,
     ): Promise<{ id: string; vectorIds: string[] }> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
@@ -304,7 +304,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString()
+            )?.toString(),
         ).tryParse();
 
         if (!ds || typeof ds !== 'object') {
@@ -333,7 +333,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                     id: ds.key,
                     data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
                 };
-            }
+            },
         );
     }
 
@@ -346,7 +346,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString()
+            )?.toString(),
         ).tryParse() as IStorageVectorDataSource;
     }
 

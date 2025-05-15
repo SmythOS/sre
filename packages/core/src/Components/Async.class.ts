@@ -4,7 +4,7 @@ import Component from './Component.class';
 import Joi from 'joi';
 import { delay } from '../utils';
 
-export default class Async extends Component {
+export class Async extends Component {
     static JOBS = {};
     protected configSchema = null;
     static ForkedAgent;
@@ -153,3 +153,5 @@ export default class Async extends Component {
         this.removeOrphanedBranches(agent);
     }
 }
+
+export default Async;

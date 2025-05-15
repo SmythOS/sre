@@ -13,7 +13,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 //TODO : better handling of context window exceeding max length
 
-export default class GenAILLM extends Component {
+export class GenAILLM extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
@@ -101,12 +101,12 @@ export default class GenAILLM extends Component {
                         }
 
                         return features?.includes(requestFeature) ? file : null;
-                    })
+                    }),
                 );
 
                 fileSources = validFiles.filter(Boolean);
 
-                if (fileSources.length === 0) {                    
+                if (fileSources.length === 0) {
                     return {
                         _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
                         _debug: logger.output,
@@ -187,7 +187,7 @@ export default class GenAILLM extends Component {
                                 messages,
                             },
                             fileSources,
-                            agent
+                            agent,
                         )
                         .catch((error) => {
                             console.error('Error on multimodalStreamRequest: ', error);
@@ -201,7 +201,7 @@ export default class GenAILLM extends Component {
                                 model,
                                 messages,
                             },
-                            agent.id
+                            agent.id,
                         )
                         .catch((error) => {
                             console.error('Error on streamRequest: ', error);
@@ -313,3 +313,5 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
+
+export default GenAILLM;

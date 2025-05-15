@@ -6,7 +6,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 import Component from './Component.class';
 
-export default class GPTPlugin extends Component {
+export class GPTPlugin extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().optional(),
         openAiModel: Joi.string().optional(), // for backward compatibility
@@ -68,3 +68,5 @@ export default class GPTPlugin extends Component {
         }
     }
 }
+
+export default GPTPlugin;

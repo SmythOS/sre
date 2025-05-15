@@ -16,9 +16,12 @@ const console = Logger('AgentLogger.class');
 // in the current implementation, the initial log line write is blocking, log update is non blocking
 
 //setup cleanup interval
-setInterval(() => {
-    AgentLogger.cleanup();
-}, 1000 * 60 * 1); //every 1 minute
+setInterval(
+    () => {
+        AgentLogger.cleanup();
+    },
+    1000 * 60 * 1,
+); //every 1 minute
 
 const transactionQueue: LogTransaction[] = [];
 
@@ -39,7 +42,10 @@ class LogTransaction {
     private _lastPush: number = 0;
     private storage: StorageConnector;
 
-    constructor(private agent: Agent, private trId: string) {
+    constructor(
+        private agent: Agent,
+        private trId: string,
+    ) {
         this.storage = ConnectorService.getStorageConnector();
     }
 
@@ -242,7 +248,7 @@ class LogTransaction {
         return this._lastPush != 0 && this._lastPush + 1000 * 60 * 60 * 1 < Date.now();
     }
 }
-export default class AgentLogger {
+export class AgentLogger {
     private static transactions: any = {};
     constructor(private agent: Agent) {}
     public static async cleanup() {
@@ -284,3 +290,5 @@ export default class AgentLogger {
         }
     }
 }
+
+export default AgentLogger;

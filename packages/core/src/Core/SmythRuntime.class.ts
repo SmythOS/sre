@@ -1,3 +1,5 @@
+import { boot } from './boot';
+
 import { SREConfig, TConnectorService } from '@sre/types/SRE.types';
 import { ConnectorService } from './ConnectorsService';
 import SystemEvents from './SystemEvents';
@@ -6,7 +8,7 @@ import { Logger } from '../helpers/Log.helper';
 const logger = Logger('SRE');
 const CInstance = ConnectorService;
 
-export default class SmythRuntime {
+export class SmythRuntime {
     public started = false;
 
     private _readyPromise: Promise<boolean>;
@@ -32,6 +34,11 @@ export default class SmythRuntime {
         if (this.initialized) {
             throw new Error('SRE already initialized');
         }
+        SystemEvents.on('SRE:Booted', () => {
+            this._readyResolve(true);
+        });
+        boot();
+
         this.initialized = true;
 
         const config = this.autoConf(_config);
@@ -42,9 +49,6 @@ export default class SmythRuntime {
             }
         }
 
-        SystemEvents.on('SRE:Booted', () => {
-            this._readyResolve(true);
-        });
         SystemEvents.emit('SRE:Initialized');
 
         return SmythRuntime.Instance as SmythRuntime;

@@ -25,7 +25,7 @@ interface WebSocketMessage {
     payload: AgentProgressPayload | AgentLogPayload;
 }
 
-export default class ComputerUse extends Component {
+export class ComputerUse extends Component {
     protected configSchema = Joi.object({
         prompt: Joi.string().required().min(2).max(2000).label('Prompt'),
         environment: Joi.string().valid('browser').default('browser').label('Environment'),
@@ -276,3 +276,5 @@ export default class ComputerUse extends Component {
         return duration;
     }
 }
+
+export default ComputerUse;

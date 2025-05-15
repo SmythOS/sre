@@ -42,7 +42,7 @@ const IMAGE_GEN_COST_MAP = {
     },
 };
 
-export default class ImageGenerator extends Component {
+export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
         prompt: Joi.string().optional().min(2).max(2000).label('Prompt'),
@@ -298,7 +298,7 @@ const imageGenerator = {
 
             imageGenerator.reportUsage(
                 { cost: firstImage.cost },
-                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId }
+                { modelEntryName: model, keySource: APIKeySource.Smyth, agentId: agent.id, teamId: agent.teamId },
             );
 
             return { output };
@@ -398,3 +398,5 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
+
+export default ImageGenerator;
