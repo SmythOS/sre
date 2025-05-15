@@ -36,6 +36,7 @@ import { ComponentConnector } from '@sre/AgentManager/Component.service/Componen
 import { HookService } from './Core/HookService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 
 boot();
 
@@ -76,4 +77,5 @@ export {
     BinaryInput,
     // Interfaces: we must use the type-only export syntax when re-exporting interfaces
     type ILLMContextStore,
+    BUILT_IN_MODEL_PREFIX,
 };

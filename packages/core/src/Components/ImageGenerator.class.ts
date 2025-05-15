@@ -13,7 +13,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import appConfig from '@sre/config';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './Image/imageSettings.config';
 
@@ -173,7 +173,7 @@ const imageGenerator = {
             if (response?.usage) {
                 imageGenerator.reportTokenUsage(response.usage, {
                     modelEntryName: model,
-                    keySource: model.startsWith('smythos/') ? APIKeySource.Smyth : APIKeySource.User,
+                    keySource: model.startsWith(BUILT_IN_MODEL_PREFIX) ? APIKeySource.Smyth : APIKeySource.User,
                     agentId: agent.id,
                     teamId: agent.teamId,
                 });
@@ -311,7 +311,7 @@ const imageGenerator = {
     },
     reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace('smythos/', '');
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `api:imagegen.${modelName}`,
@@ -367,7 +367,7 @@ function getModelFamily(model: string): string | null {
 }
 
 function isGPTModel(model: string) {
-    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.GPT);
+    return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.GPT);
 }
 
 function isRunwareModel(model: string): boolean {
@@ -375,7 +375,7 @@ function isRunwareModel(model: string): boolean {
 }
 
 function isDallEModel(model: string) {
-    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.DALL_E);
+    return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.DALL_E);
 }
 
 function parseFiles(input: any, config: any) {

@@ -121,3 +121,5 @@ export const DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS = {
     groq: { enabled: true },
     xai: { enabled: true },
 };
+
+export const BUILT_IN_MODEL_PREFIX = 'smythos/';

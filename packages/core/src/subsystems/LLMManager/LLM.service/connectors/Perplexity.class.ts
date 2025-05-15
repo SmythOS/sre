@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 import axios from 'axios';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
+import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import {
@@ -250,7 +250,7 @@ export class PerplexityConnector extends LLMConnector {
 
     protected reportUsage(usage: TUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace('smythos/', '');
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `llm:${modelName}`,

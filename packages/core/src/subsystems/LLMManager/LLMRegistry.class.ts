@@ -1,5 +1,5 @@
 //import { models } from './models';
-import { DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS } from '@sre/constants';
+import {  BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { TLLMModelsList } from '@sre/types/LLM.types';
 import SystemEvents from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -21,7 +21,7 @@ export class LLMRegistry {
     }
 
     public static isSmythOSModel(model: string): boolean {
-        return model?.startsWith('smythos/');
+        return model?.startsWith(BUILT_IN_MODEL_PREFIX);
     }
 
     public static getModelEntryId(model: string): string {

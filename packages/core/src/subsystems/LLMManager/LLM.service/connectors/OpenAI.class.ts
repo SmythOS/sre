@@ -4,7 +4,7 @@ import { Uploadable } from 'openai/uploads';
 import { encodeChat } from 'gpt-tokenizer';
 
 import Agent from '@sre/AgentManager/Agent.class';
-import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
+import { TOOL_USE_DEFAULT_MODEL, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -898,7 +898,7 @@ export class OpenAIConnector extends LLMConnector {
                 // #region Report web search tool usage
                 for (const tool of params.toolsConfig?.tools || []) {
                     if (SEARCH_TOOL.type === tool.type) {
-                        const modelName = params.modelEntryName?.replace('smythos/', '');
+                        const modelName = params.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
 
                         this.reportUsage(
                             {
@@ -1321,7 +1321,7 @@ export class OpenAIConnector extends LLMConnector {
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace('smythos/', '');
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const inputTokens =
             usage?.input_tokens || // Returned by the search tool
