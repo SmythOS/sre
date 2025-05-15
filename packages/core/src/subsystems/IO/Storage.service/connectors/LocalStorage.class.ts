@@ -5,7 +5,7 @@ import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { LocalStorageConfig } from '@sre/types/LocalStorage.types';
@@ -114,7 +114,7 @@ export class LocalStorage extends StorageConnector {
         let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         let fileMetadata = {
             ...metadata,
-            'acl': amzACL,
+            acl: amzACL,
         };
         // To create the directories for the resource we need to know the full path of the resource
         const storageFolderPath = this.getStorageFilePath(acRequest.candidate.id, resourceId, true);
@@ -149,7 +149,6 @@ export class LocalStorage extends StorageConnector {
             throw error;
         }
     }
-
 
     @SecureConnector.AccessControl
     async exists(acRequest: AccessRequest, resourceId: string): Promise<boolean> {
@@ -224,14 +223,13 @@ export class LocalStorage extends StorageConnector {
         throw new Error('Not implemented');
     }
 
-
     private createDirectories(basePath: string, resourceId: string) {
         const folders = resourceId.split('/').slice(0, -1);
         let currentPath = basePath;
         for (let folder of folders) {
             currentPath = path.join(currentPath, folder);
             if (!existsSync(currentPath)) {
-                fs.mkdirSync(currentPath)
+                fs.mkdirSync(currentPath);
             }
         }
     }
@@ -239,12 +237,15 @@ export class LocalStorage extends StorageConnector {
     private async initialize() {
         const storageFolderPath = path.join(this.folder, this.storagePrefix);
         if (!existsSync(storageFolderPath)) {
-            fs.mkdirSync(storageFolderPath)
+            fs.mkdirSync(storageFolderPath);
         }
         const metadataFolderPath = path.join(this.folder, this.metadataPrefix);
         if (!existsSync(metadataFolderPath)) {
             fs.mkdirSync(metadataFolderPath);
-            fs.writeFileSync(path.join(metadataFolderPath, 'README_IMPORTANT.txt'), 'This folder is used for smythOS metadata, do not delete it, it will break SmythOS filesystem');
+            fs.writeFileSync(
+                path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
+                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS filesystem',
+            );
         }
         this.isInitialized = true;
     }
@@ -269,10 +270,7 @@ export class LocalStorage extends StorageConnector {
         let updatedMetadata = {};
         if (metadata['acl']) {
             if (metadata['acl']) {
-                updatedMetadata['acl'] =
-                    typeof metadata['acl'] == 'string'
-                        ? metadata['acl']
-                        : ACL.from(metadata['acl']).serializedACL;
+                updatedMetadata['acl'] = typeof metadata['acl'] == 'string' ? metadata['acl'] : ACL.from(metadata['acl']).serializedACL;
             }
 
             delete metadata['acl'];

@@ -11,6 +11,7 @@ export * from './Core/Connector.class';
 export * from './Core/ConnectorsService';
 export * from './Core/DummyConnector';
 export * from './Core/HookService';
+export * from './Core/SmythRuntime.class';
 export * from './Core/SystemEvents';
 export * from './helpers/BinaryInput.helper';
 export * from './helpers/Conversation.helper';

@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -23,9 +23,9 @@ export class SecretsManager extends VaultConnector {
             region: config.region,
             ...(config.awsAccessKeyId && config.awsSecretAccessKey
                 ? {
-                    accessKeyId: config.awsAccessKeyId,
-                    secretAccessKey: config.awsSecretAccessKey,
-                }
+                      accessKeyId: config.awsAccessKeyId,
+                      secretAccessKey: config.awsSecretAccessKey,
+                  }
                 : {}),
         });
     }
@@ -71,7 +71,9 @@ export class SecretsManager extends VaultConnector {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] }));
+                const listResponse = await this.secretsManager.send(
+                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] }),
+                );
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
                         if (secret.Name) {
@@ -95,9 +97,8 @@ export class SecretsManager extends VaultConnector {
             for (const result of results) {
                 formattedSecrets.push(result);
             }
-            const secret = formattedSecrets.find(s => s.Name === secretName);
+            const secret = formattedSecrets.find((s) => s.Name === secretName);
             return secret;
-
         } catch (error) {
             console.error(error);
         }
@@ -114,9 +115,7 @@ export class SecretsManager extends VaultConnector {
                         secretName = Object.keys(parsedSecret)[0];
                         secretString = parsedSecret[secretName];
                     }
-                } catch (error) {
-
-                }
+                } catch (error) {}
             }
             return {
                 Name: secretName,

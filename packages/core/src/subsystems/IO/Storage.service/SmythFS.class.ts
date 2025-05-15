@@ -7,7 +7,7 @@ import { getMimeType } from '@sre/utils';
 import mime from 'mime';
 import { Readable } from 'stream';
 import { StorageConnector } from './StorageConnector';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
@@ -190,7 +190,7 @@ export class SmythFS {
             }),
             undefined,
             undefined,
-            ttlSeconds
+            ttlSeconds,
         ); // 1 hour
 
         const baseUrl = ConnectorService.getRouterConnector().baseUrl;
@@ -267,7 +267,7 @@ export class SmythFS {
                 contentType: resourceMetadata?.ContentType,
             }),
             undefined,
-            undefined
+            undefined,
             // 3600 // 1 hour
         );
 

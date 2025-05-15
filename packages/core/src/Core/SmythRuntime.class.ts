@@ -103,5 +103,3 @@ export class SmythRuntime {
         this.started = false;
     }
 }
-
-export default SmythRuntime;

@@ -5,7 +5,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
 import axios, { AxiosInstance } from 'axios';
-import SmythRuntime from '@sre/Core/SmythRuntime.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { getM2MToken } from '@sre/utils/oauth.utils';
 import { KeyValueObject } from '@sre/types/Common.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
