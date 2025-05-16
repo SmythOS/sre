@@ -13,7 +13,14 @@ const isProduction = process.env.BUILD === 'prod';
 
 // Function to automatically mark all non-local imports as external
 // avoids warning message about external dependencies
-const isExternal = (id) => !id.startsWith('.') && !id.startsWith('/') && !path.isAbsolute(id);
+const isExternal = (id) => {
+    // Don't mark @sre imports as external
+    if (id.startsWith('@sre/')) {
+        return false;
+    }
+    // Only mark node_modules as external
+    return id.includes('node_modules');
+};
 
 const projectRootDir = __dirname;
 const devConfig = {
@@ -261,7 +268,7 @@ function colorfulLogs(title = 'Builder') {
             });
 
             // Show success message at the very end
-            console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset} 💃 Let's Rock and Roll! 🕺\n`);
+            console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset} 🦙 Ride The Llama. 😹 Skip the Drama.\n`);
         },
     };
 }
