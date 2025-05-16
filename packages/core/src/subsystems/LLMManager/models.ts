@@ -37,33 +37,6 @@ export const models = {
     enabled: true,
   },
 
-  // #region Tool-specific models
-  'smythos/gpt-4o-search': {
-    llm: 'OpenAI',
-
-    label: 'GPT-4o Search Preview',
-    modelId: 'gpt-4o-search-preview-2025-03-11',
-    provider: 'OpenAI',
-    features: ['text', 'search'],
-    tags: ['New', 'SmythOS'],
-    tokens: 128_000,
-    completionTokens: 16_383,
-    enabled: true,
-  },
-  'smythos/gpt-4o-mini-search': {
-    llm: 'OpenAI',
-
-    label: 'GPT-4o mini Search Preview',
-    modelId: 'gpt-4o-mini-search-preview-2025-03-11',
-    provider: 'OpenAI',
-    features: ['text', 'search'],
-    tags: ['New', 'SmythOS'],
-    tokens: 128_000,
-    completionTokens: 16_383,
-    enabled: true,
-  },
-  // #endregion Tool-specific models
-
   'smythos/gpt-4.1-nano': {
     llm: 'OpenAI',
 
@@ -177,7 +150,7 @@ export const models = {
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
     features: ['text', 'image', 'tools'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 200_000,
     completionTokens: 8_192,
     enabled: true,
@@ -189,7 +162,7 @@ export const models = {
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'SmythOS'],
+    tags: ['SmythOS'],
     tokens: 200_000,
     completionTokens: 16_384,
     enabled: true,
@@ -424,33 +397,6 @@ export const models = {
       enabled: true,
     },
   },
-
-  // #region Tool-specific models
-  'gpt-4o-search': {
-    llm: 'OpenAI',
-
-    label: 'GPT-4o Search Preview',
-    modelId: 'gpt-4o-search-preview-2025-03-11',
-    provider: 'OpenAI',
-    features: ['text', 'search'],
-    tags: ['New', 'Personal'],
-    tokens: 128_000,
-    completionTokens: 16_383,
-    enabled: true,
-  },
-  'gpt-4o-mini-search': {
-    llm: 'OpenAI',
-
-    label: 'GPT-4o mini Search Preview',
-    modelId: 'gpt-4o-mini-search-preview-2025-03-11',
-    provider: 'OpenAI',
-    features: ['text', 'search'],
-    tags: ['New', 'Personal'],
-    tokens: 128_000,
-    completionTokens: 16_383,
-    enabled: true,
-  },
-  // #endregion Tool-specific models
 
   // #region GPT 4.1
   'gpt-4.1-nano': {
@@ -868,7 +814,7 @@ export const models = {
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
@@ -891,7 +837,7 @@ export const models = {
     modelId: 'claude-3-7-sonnet-20250219',
     provider: 'Anthropic',
     features: ['text', 'tools', 'image'],
-    tags: ['New', 'Personal'],
+    tags: ['Personal'],
     tokens: 0,
     completionTokens: 0,
     enabled: false,
