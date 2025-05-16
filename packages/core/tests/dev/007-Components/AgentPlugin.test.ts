@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { CLIAgentDataConnector, ConnectorService, SmythRuntime, AgentSettings } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import AgentPlugin from '@sre/Components/AgentPlugin.class';
 
 const sre = SmythRuntime.Instance.init({

@@ -1,5 +1,5 @@
-import Agent from './Agent.class';
-import AgentRequest from './AgentRequest.class';
+import { Agent } from './Agent.class';
+import { AgentRequest } from './AgentRequest.class';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
@@ -150,5 +150,3 @@ function fork(componentData, componentID) {
         connections: clonedConnections,
     };
 }
-
-export default ForkedAgent;

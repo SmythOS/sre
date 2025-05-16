@@ -1,4 +1,4 @@
-import Agent from './Agent.class';
+import { Agent } from './Agent.class';
 
 export class AgentSSE {
     private connections: Map<string, any> = new Map();
@@ -99,5 +99,3 @@ export class AgentSSE {
         return this.connections.size;
     }
 }
-
-export default AgentSSE;

@@ -45,5 +45,3 @@ export class EmbodimentSettings {
         return _embodiment?.properties;
     }
 }
-
-export default EmbodimentSettings;

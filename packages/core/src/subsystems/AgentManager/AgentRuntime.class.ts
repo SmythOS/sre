@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import Agent from './Agent.class';
+import { Agent } from './Agent.class';
 import Component from '@sre/Components/Component.class';
 import componentInstance from '@sre/Components/index';
 
@@ -558,5 +558,3 @@ export class AgentRuntime {
         return this.agentContext.getComponentData(componentId);
     }
 }
-
-export default AgentRuntime;

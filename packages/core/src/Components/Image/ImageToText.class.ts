@@ -1,10 +1,10 @@
 import { IRequestImageToText, Runware } from '@runware/sdk-js';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 
 import appConfig from '@sre/config';
@@ -63,5 +63,3 @@ export class ImageToText extends Component {
         }
     }
 }
-
-export default ImageToText;

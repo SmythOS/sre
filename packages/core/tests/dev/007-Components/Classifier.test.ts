@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
@@ -78,7 +78,7 @@ describe('Classifier Component', () => {
                     description: '',
                 })),
             },
-            agent
+            agent,
         );
 
         expect(output).toBeDefined();

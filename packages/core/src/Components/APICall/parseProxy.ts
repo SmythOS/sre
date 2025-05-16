@@ -1,7 +1,7 @@
 import { AxiosProxyConfig } from 'axios';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export async function parseProxy(input, config, agent: Agent): Promise<AxiosProxyConfig | SocksProxyAgent | false> {

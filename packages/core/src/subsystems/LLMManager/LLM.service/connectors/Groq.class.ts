@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 import EventEmitter from 'events';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -9,7 +9,7 @@ import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, APIKeySource }
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 const console = Logger('GroqConnector');
 
@@ -166,7 +166,7 @@ export class GroqConnector extends LLMConnector {
     // ! DEPRECATED METHOD
     protected async streamToolRequest(
         acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' }
+        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
@@ -316,7 +316,7 @@ export class GroqConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');

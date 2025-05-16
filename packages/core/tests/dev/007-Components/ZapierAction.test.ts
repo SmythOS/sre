@@ -1,4 +1,4 @@
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
 import { config, SmythRuntime } from '@sre/index';
@@ -151,7 +151,7 @@ describe('ZapierAction Component', () => {
                     params: '{"instructions":"run 1+1"}',
                 },
             },
-            agent
+            agent,
         );
 
         const response = output.Output;
@@ -188,7 +188,7 @@ describe('ZapierAction Component', () => {
                     params: '{"instructions":"str", "img": "{{FILE(img)}}"}',
                 },
             },
-            agent
+            agent,
         );
 
         //get the first argument of the first call to axios.post

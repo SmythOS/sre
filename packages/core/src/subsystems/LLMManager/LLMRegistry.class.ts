@@ -1,7 +1,7 @@
 //import { models } from './models';
 import {  BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { TLLMModelsList } from '@sre/types/LLM.types';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';

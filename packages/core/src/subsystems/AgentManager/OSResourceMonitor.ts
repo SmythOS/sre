@@ -7,7 +7,7 @@ const OSResourceMonitor: any = {
     cpu: getCpuUsage(),
     //processCpu: getProcessCpuUsage(),
 };
-export default OSResourceMonitor;
+export { OSResourceMonitor };
 
 function getCpuUsage() {
     const cpus = os.cpus();

@@ -1,5 +1,5 @@
 import Component from './Component.class';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import Joi from 'joi';
 
 export class APIOutput extends Component {

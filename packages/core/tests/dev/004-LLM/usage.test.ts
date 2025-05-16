@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AccessCandidate, ConnectorService, SmythRuntime, SystemEvents } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
 import { APIKeySource, SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
@@ -43,7 +43,7 @@ vi.mock('@sre/Security/Account.service/connectors/DummyAccount.class', async () 
                                 sessionKeyName: '',
                             },
                         },
-                    })
+                    }),
                 );
             }
             return super.getTeamSetting(acRequest, teamId, settingKey);

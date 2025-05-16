@@ -12,6 +12,4 @@ export type SystemEventMap = {
 
 const SystemEvents = new EventEmitter<SystemEventMap>();
 
-export { SystemEvents }; // for barrel
-
-export default SystemEvents;
+export { SystemEvents };

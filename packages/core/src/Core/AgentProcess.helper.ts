@@ -1,6 +1,6 @@
-import Agent from '@sre/AgentManager/Agent.class';
-import AgentRequest from '@sre/AgentManager/AgentRequest.class';
-import AgentSettings from '@sre/AgentManager/AgentSettings.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { AgentRequest } from '@sre/AgentManager/AgentRequest.class';
+import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
 import { uid } from '../utils';
 
@@ -15,7 +15,10 @@ export class AgentProcess {
 
     private _loadPromise: Promise<any>;
 
-    private constructor(private agentData: any, private agentVersion?: string) {
+    private constructor(
+        private agentData: any,
+        private agentVersion?: string,
+    ) {
         this.initAgent(agentData, agentVersion);
     }
     private async initAgent(agentData: any, agentVersion?: string) {
@@ -95,7 +98,7 @@ export class AgentProcess {
      */
     public async run(
         reqConfig: TAgentProcessParams | Array<string> | AgentRequest,
-        callback?: (data: any) => void
+        callback?: (data: any) => void,
     ): Promise<{
         status?: number;
         data: any;

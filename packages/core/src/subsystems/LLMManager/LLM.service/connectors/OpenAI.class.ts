@@ -3,7 +3,7 @@ import OpenAI, { toFile } from 'openai';
 import { Uploadable } from 'openai/uploads';
 import { encodeChat } from 'gpt-tokenizer';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -25,7 +25,7 @@ import {
 } from '@sre/types/LLM.types';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import SystemEvents from '@sre/Core/SystemEvents';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
 import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 

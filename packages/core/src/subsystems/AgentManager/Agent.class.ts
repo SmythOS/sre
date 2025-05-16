@@ -1,16 +1,16 @@
 import Component from '@sre/Components/Component.class';
 import builtinComponents from '@sre/Components/index';
-import AgentLogger from './AgentLogger.class';
-import AgentRequest from './AgentRequest.class';
-import AgentRuntime from './AgentRuntime.class';
-import AgentSettings from './AgentSettings.class';
-import OSResourceMonitor from './OSResourceMonitor';
+import { AgentLogger } from './AgentLogger.class';
+import { AgentRequest } from './AgentRequest.class';
+import { AgentRuntime } from './AgentRuntime.class';
+import { AgentSettings } from './AgentSettings.class';
+import { OSResourceMonitor } from './OSResourceMonitor';
 import config from '@sre/config';
 import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import AgentSSE from './AgentSSE.class';
+import { AgentSSE } from './AgentSSE.class';
 import { AccessCandidate, ConnectorService } from '@sre/index';
 
 const console = Logger('Agent');
@@ -1083,5 +1083,3 @@ function _mergeInputs(existing, newValue) {
 
     return [...existing, newValue];
 }
-
-export default Agent;

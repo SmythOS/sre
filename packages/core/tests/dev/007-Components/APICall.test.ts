@@ -2,9 +2,9 @@ import axios from 'axios';
 import express from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { config, SmythRuntime } from '@sre/index';
-import APICall from '@sre/Components/APICall/APICall.class';
+import { APICall } from '@sre/Components/APICall/APICall.class';
 
 const app = express();
 const BASE_URL = `http://agents-server.smyth.stage`;
@@ -958,7 +958,7 @@ describe('APICall Component - Body', () => {
                 },
             },
             config,
-            agent
+            agent,
         );
         const response = output.Response;
 
@@ -1000,7 +1000,7 @@ describe('APICall Component - Body', () => {
                 },
             },
             config,
-            agent
+            agent,
         );
         const response = output.Response;
 
@@ -1108,7 +1108,7 @@ describe('APICall Component - Body', () => {
                 },
             },
             config,
-            agent
+            agent,
         );
         const response = output.Response;
 
@@ -1151,7 +1151,7 @@ describe('APICall Component - Body', () => {
                 },
             },
             config,
-            agent
+            agent,
         );
         const response = output.Response;
 
@@ -1632,7 +1632,7 @@ describe('APICall Component - OAuth', () => {
         const output = await apiCall.process({}, config, agent);
         const response = output.Response;
         expect(response.headers['Authorization']).toMatch(
-            /OAuth oauth_consumer_key="[^"]+", oauth_nonce="[^"]+", oauth_signature="[^"]+", oauth_signature_method="HMAC-SHA1", oauth_timestamp="[^"]+", oauth_token="[^"]+", oauth_version="1.0"/
+            /OAuth oauth_consumer_key="[^"]+", oauth_nonce="[^"]+", oauth_signature="[^"]+", oauth_signature_method="HMAC-SHA1", oauth_timestamp="[^"]+", oauth_token="[^"]+", oauth_version="1.0"/,
         );
     });
 });

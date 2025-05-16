@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
@@ -82,7 +82,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -98,7 +98,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -111,7 +111,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -124,7 +124,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -133,7 +133,7 @@ async function runVisionTestCases(model: string) {
             const fileSources = ['invalid-url'];
             await expect(llmInference.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -142,7 +142,7 @@ async function runVisionTestCases(model: string) {
             const fileSources = [];
             await expect(llmInference.visionRequest('What is in this image?', fileSources, config, agent)).rejects.toThrow();
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -159,7 +159,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -172,7 +172,7 @@ async function runVisionTestCases(model: string) {
             expect(result.length).toBeGreaterThan(20);
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 }
 

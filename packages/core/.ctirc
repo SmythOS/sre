@@ -1,110 +1,33 @@
 {
-  // Stream of cli spinner, you can pass stdout or stderr
-  //
-  // @mode all
-  // @default stdout
   "spinnerStream": "stdout",
-  // Stream of cli progress, you can pass stdout or stderr
-  //
-  // @mode all
-  // @default stdout
   "progressStream": "stdout",
-  // Stream of cli reasoner. Reasoner show name conflict error and already exist index.ts file error.
-  // You can pass stdout or stderr
-  //
-  // @mode all
-  // @default stderr
   "reasonerStream": "stderr",
   "options": [
     {
-      // build mode
-      // - create: create an `index.ts` file in each directory
-      // - bundle: bundle all export information in one `index.ts` file
       "mode": "bundle",
-      // tsconfig.json path: you must pass path with filename, like this "./tsconfig.json"
-      // only work root directory or cli parameter
-      // 
-      // @mode all
       "project": "tsconfig.json",
-      // Export filename, if you not pass this field that use "index.ts" or "index.d.ts"
-      // 
-      // @mode create, bundle, remove
-      // @default index.ts
       "exportFilename": "index.ts",
-      // add ctix comment at first line of creted index.ts file, that remark created from ctix
-      //
-      // @mode create, bundle
-      // @default false
       "useSemicolon": true,
-      // add ctix comment at first line of creted index.ts file, that remark created from ctix
-      //
-      // @mode create, bundle
-      // @default false
       "useBanner": false,
-      // If specified as true, adds the created date to the top of the `index.ts` file,
-      // this option only works if the `useBanner` option is enabled
-      //
-      // @mode create, bundle
-      // @default false
       "useTimestamp": false,
-      // quote mark " or '
-      // @mode create, bundle
-      // 
-      // @default '
       "quote": "'",
-      // Use to add a literal like `"use strict"` to the top. It will be added before the banner.
-      //
-      // @mode create, bundle
-      "directive": "import 'source-map-support/register.js';\nexport { version } from '../package.json';",
-      // keep file extension in export statement path
-      //
-      // if this option set true that see below
-      // export * from './test.ts'
-      //
-      // @mode create, bundle
-      // @default none
+      "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nimport 'source-map-support/register.js';\nexport { version } from '../package.json';",
       "fileExt": "none",
-      // overwrite each index.ts file
-      // @mode create, bundle
-      // @default false
       "overwrite": false,
-      // Create a backup file if the `index.ts` file already exists. 
-      // This option only works if the `overwrite` option is enabled.
-      //
-      // @mode create, bundle
-      // @defulat true
       "backup": true,
-      // When generating the `index.ts` file, decide how you want to generate it
-      //
-      // @mode create, bundle
-      // @default auto
       "generationStyle": "auto",
-      // A list of files to use when generating the index.ts file. If no value is set,
-      // the value of the include setting set in the tsconfig.json file will be used
-      //
-      // @mode create, bundle
       "include": [
         "src/**/*.ts"
       ],
-      // A list of files to exclude when generating the index.ts file. If no value is set,
-      // the value of the exclude setting set in the tsconfig.json file is used
-      //
-      // @mode create, bundle
       "exclude": [
         "node_modules",
         "tests/**/*",
+        "src/utils/**/*",
+        "src/Components/**/*",
         "**/*.deprecated"
       ],
-      // Output directory. Default value is same project directory
-      // @mode bundle
       "output": "./src",
-      // remove with backup file
-      // @mode remove
-      // @default false
       "removeBackup": false,
-      // answer `yes` to all questions
-      // @mode remove
-      // @default false
       "forceYes": false
     }
   ]

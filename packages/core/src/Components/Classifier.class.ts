@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import Component from './Component.class';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';

@@ -1,5 +1,5 @@
 import { type OpenAI } from 'openai';
-import Agent from '@sre/AgentManager/Agent.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -380,7 +380,7 @@ export abstract class LLMConnector extends Connector {
      */
     private async getBedrockCredentials(
         candidate: AccessCandidate,
-        modelInfo: TBedrockModel
+        modelInfo: TBedrockModel,
     ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string }> {
         const keyIdName = modelInfo.settings?.keyIDName;
         const secretKeyName = modelInfo.settings?.secretKeyName;
