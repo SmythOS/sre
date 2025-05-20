@@ -1,4 +1,4 @@
-import { ConnectorService } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { customModels } from './custom-models';
 import { TVertexAIModel, TBedrockModel } from '@sre/types/LLM.types';
