@@ -16,7 +16,7 @@ export abstract class ComponentConnector extends SecureConnector {
     protected abstract get(acRequest: AccessRequest, componentName: string): Promise<any>;
     protected abstract getAll(acRequest: AccessRequest): Promise<any>;
 
-    public user(candidate: AccessCandidate): IComponentRequest {
+    public requester(candidate: AccessCandidate): IComponentRequest {
         return {
             register: async (componentName: string, componentInstance: any) => {
                 return await this.register(candidate.readRequest, componentName, componentInstance);

@@ -16,7 +16,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 // import {DummyAccount} from "@sre/Security/Account.service/connectors/DummyAccount.class"

@@ -165,7 +165,7 @@ export class PerplexityConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('Perplexity model does not support passthrough with File(s)');
     }
 

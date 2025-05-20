@@ -15,7 +15,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 const sre = SmythRuntime.Instance.init({

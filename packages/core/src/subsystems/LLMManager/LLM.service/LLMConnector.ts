@@ -18,15 +18,15 @@ import config from '@sre/config';
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
-    chatRequest(params: any): Promise<any>;
-    visionRequest(prompt, params: any): Promise<any>;
-    multimodalRequest(prompt, params: any): Promise<any>;
-    toolRequest(params: any): Promise<any>;
-    streamToolRequest(params: any): Promise<any>;
-    streamRequest(params: any): Promise<EventEmitter>;
-    multimodalStreamRequest(prompt, params: any): Promise<any>;
-    imageGenRequest(prompt, params: any): Promise<any>;
-    imageEditRequest?(prompt, params: any): Promise<any>;
+    chatRequest(params: TLLMParams): Promise<any>;
+    visionRequest(prompt, params: TLLMParams): Promise<any>;
+    multimodalRequest(prompt, params: TLLMParams): Promise<any>;
+    toolRequest(params: TLLMParams): Promise<any>;
+    streamToolRequest(params: TLLMParams): Promise<any>;
+    streamRequest(params: TLLMParams): Promise<EventEmitter>;
+    multimodalStreamRequest(prompt, params: TLLMParams): Promise<any>;
+    imageGenRequest(prompt, params: TLLMParams): Promise<any>;
+    imageEditRequest?(prompt, params: TLLMParams): Promise<any>;
 }
 
 export type LLMChatResponse = {
@@ -93,25 +93,25 @@ export class LLMStream extends Readable {
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract toolRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<any>;
-    protected abstract streamToolRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<any>;
-    protected abstract streamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter>;
-    protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<EventEmitter>;
+    protected abstract chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any>;
+    protected abstract streamToolRequest(acRequest: AccessRequest, params: TLLMParams | any, agent: string | Agent): Promise<any>;
+    protected abstract streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter>;
+    protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
-    protected imageEditRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
+    protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<any> {
         return Promise.reject(new Error('Image edit not supported by this model'));
     }
 
     private vaultConnector: VaultConnector;
 
-    public user(candidate: AccessCandidate): ILLMConnectorRequest {
+    public requester(candidate: AccessCandidate): ILLMConnectorRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
 
         this.vaultConnector = ConnectorService.getVaultConnector();

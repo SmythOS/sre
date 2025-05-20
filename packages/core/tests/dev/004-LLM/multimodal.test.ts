@@ -12,7 +12,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 const sre = SmythRuntime.Instance.init({

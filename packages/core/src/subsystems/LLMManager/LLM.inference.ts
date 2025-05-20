@@ -47,6 +47,8 @@ export class LLMInference {
         return llmInference;
     }
 
+    public static user(candidate: AccessCandidate): any {}
+
     public get connector(): LLMConnector {
         return this.llmConnector;
     }

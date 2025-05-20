@@ -117,7 +117,7 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Streaming is not currently implemented for Vertex AI');
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('VertexAI model does not support passthrough with File(s)');
     }
 

@@ -1,6 +1,7 @@
 import { LocalCache } from '@sre/helpers/LocalCache.helper';
 import { Logger } from '../helpers/Log.helper';
 import { createHash } from 'crypto';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('Connector');
 const lCache = new LocalCache();
@@ -69,5 +70,23 @@ export class Connector {
             });
         }
         return this._readyPromise;
+    }
+
+    public requester(candidate: AccessCandidate): any {
+        return null;
+    }
+
+    public user(candidate: AccessCandidate | string): any {
+        if (typeof candidate === 'string') {
+            return this.requester(AccessCandidate.user(candidate));
+        }
+        return this.requester(candidate);
+    }
+
+    public team(teamId: string): any {
+        return this.requester(AccessCandidate.team(teamId));
+    }
+    public agent(agentId: string): any {
+        return this.requester(AccessCandidate.agent(agentId));
     }
 }

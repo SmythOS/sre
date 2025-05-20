@@ -12,7 +12,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
 
     public abstract getModels(acRequest: AccessRequest): Promise<any>;
 
-    public user(candidate: AccessCandidate): IModelsProvider {
+    public requester(candidate: AccessCandidate): IModelsProvider {
         return {
             getModels: async () => this.getModels(candidate.readRequest),
         };
