@@ -6,6 +6,7 @@ import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
 import typescriptPaths from 'rollup-plugin-typescript-paths';
 import { execSync } from 'child_process';
+import { overArgs } from 'lodash';
 //import copy from 'rollup-plugin-copy';
 // //import typescript from 'rollup-plugin-typescript2';
 
@@ -13,13 +14,11 @@ const isProduction = process.env.BUILD === 'prod';
 
 // Function to automatically mark all non-local imports as external
 // avoids warning message about external dependencies
-const isExternal = (id) => {
-    // Don't mark @sre imports as external
-    if (id.startsWith('@sre/')) {
-        return false;
-    }
-    // Only mark node_modules as external
-    return id.includes('node_modules');
+const isExternal = (id, ...overArgs) => {
+    const _isExternal = !id.startsWith('.') && !path.isAbsolute(id) && !id.startsWith('@sre/');
+    //console.log('isExternal', _isExternal, id, ...overArgs);
+
+    return _isExternal;
 };
 
 const projectRootDir = __dirname;
