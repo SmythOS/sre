@@ -9,7 +9,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import Component from './Component.class';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 // import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 

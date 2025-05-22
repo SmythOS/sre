@@ -3,7 +3,6 @@
 import 'source-map-support/register.js';
 export { version } from '../package.json';
 
-
 export * from './config';
 export * from './constants';
 export * from './Core/AgentProcess.helper';
@@ -75,7 +74,7 @@ export * from './subsystems/IO/Storage.service/SmythFS.class';
 export * from './subsystems/IO/Storage.service/StorageConnector';
 export * from './subsystems/IO/VectorDB.service/index';
 export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
-export * from './subsystems/IO/VectorDB.service/Vectors.helper';
+export * from './helpers/Vectors.helper';
 export * from './subsystems/LLMManager/LLM.service/index';
 export * from './subsystems/LLMManager/LLM.service/LLMConnector';
 export * from './subsystems/LLMManager/ModelsProvider.service/index';

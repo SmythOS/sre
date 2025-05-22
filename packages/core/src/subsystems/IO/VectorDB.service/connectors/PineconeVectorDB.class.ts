@@ -1,9 +1,6 @@
 //==[ SRE: S3Storage ]======================
-
-import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
-
+import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -16,12 +13,11 @@ import {
     IVectorDataSourceDto,
     PineconeConfig,
     QueryOptions,
-    StorageVectorNamespaceMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '../Vectors.helper';
+import { VectorsHelper } from '../../../../helpers/Vectors.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';

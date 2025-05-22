@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import DataSourceIndexer from '@sre/Components/DataSourceIndexer.class';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import config from '@sre/config';
 import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
@@ -109,7 +109,7 @@ describe('DataSourceIndexer Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
@@ -164,7 +164,7 @@ describe('DataSourceIndexer Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
@@ -219,7 +219,7 @@ describe('DataSourceIndexer Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
