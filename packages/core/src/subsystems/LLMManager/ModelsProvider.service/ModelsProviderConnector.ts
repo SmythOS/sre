@@ -132,9 +132,9 @@ export abstract class ModelsProviderConnector extends SecureConnector {
 
         const modelInfo = models?.[model];
 
-        const aliasKeyOptions = aliasModelInfo && hasAPIKey ? aliasModelInfo.keyOptions : null;
+        const aliasKeyOptions = aliasModelInfo && hasAPIKey ? aliasModelInfo?.keyOptions : null;
 
-        const modelKeyOptions = modelInfo.keyOptions || aliasKeyOptions;
+        const modelKeyOptions = modelInfo?.keyOptions || aliasKeyOptions;
 
         return { ...aliasModelInfo, ...modelInfo, ...aliasKeyOptions, ...modelKeyOptions, modelId };
     }

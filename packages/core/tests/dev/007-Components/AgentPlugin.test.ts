@@ -6,37 +6,8 @@ import { CLIAgentDataConnector, ConnectorService, SmythRuntime, AgentSettings } 
 import { TConnectorService } from '@sre/types/SRE.types';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { AgentPlugin } from '@sre/Components/AgentPlugin.class';
-
-const sre = SmythRuntime.Instance.init({
-    Storage: {
-        Connector: 'Local',
-    },
-    Cache: {
-        Connector: 'RAM',
-    },
-    AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Account: {
-        Connector: 'JSONFileAccount',
-        Settings: {
-            file: './tests/data/account.json',
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
-
-//ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-//ConnectorService.init(TConnectorService.AgentData, 'CLI');
+import { PrepareSRETestEnvironment } from './common';
+const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
 
 // TODO [Forhad]: Need to add more test cases for AgentPlugin
 

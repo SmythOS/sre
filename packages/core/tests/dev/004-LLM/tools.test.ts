@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SmythRuntime } from '@sre/index';
+import { AccessCandidate, SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
@@ -159,7 +159,7 @@ let agent = new Agent();
 const TIMEOUT = 30000;
 
 async function runToolTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         'should execute a simple tool request',
@@ -264,7 +264,7 @@ async function runToolTestCases(model: string) {
 }
 
 async function runStreamRequestTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         'should stream a simple request',
@@ -366,7 +366,7 @@ async function runStreamRequestTestCases(model: string) {
 }
 
 async function runMultipleToolRequestTestCases(model: string, provider?: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
     let toolDefinitions;
     let toolsConfig;
     let params;

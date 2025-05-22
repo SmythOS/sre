@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { AccessCandidate, SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
@@ -135,7 +135,7 @@ async function runTestCases(model: string) {
         };
     });
 
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         `runs a simple prompt with Model: ${model}`,

@@ -6,44 +6,9 @@ import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRun
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
+import { PrepareSRETestEnvironment } from './common';
 
-const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
-        },
-    },
-    AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
-ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-ConnectorService.init(TConnectorService.AgentData, 'CLI');
+const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
 
 describe('Async and Await Components', () => {
     it('should not wait for a job to be done without await', async () => {

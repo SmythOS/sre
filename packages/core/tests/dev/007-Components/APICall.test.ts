@@ -6,52 +6,30 @@ import { Agent } from '@sre/AgentManager/Agent.class';
 import { ConnectorService, ModelsProviderConnector, SmythRuntime, TConnectorService } from '@sre/index';
 import { APICall } from '@sre/Components/APICall/APICall.class';
 import config from '@sre/config';
+import { PrepareSRETestEnvironment } from './common';
+
+const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
+
+// Mock Agent class to keep the test isolated from the actual Agent implementation
+vi.mock('@sre/AgentManager/Agent.class', () => {
+    const MockedAgent = vi.fn().mockImplementation(() => MockAgentData);
+
+    return { Agent: MockedAgent };
+});
 
 const app = express();
 const BASE_URL = `http://agents-server.smyth.stage`;
 
-const sre = SmythRuntime.Instance.init({
-    Storage: {
-        Connector: 'Local',
+const RouterConfig = {
+    Connector: 'ExpressRouter',
+    Settings: {
+        router: app,
+        baseUrl: BASE_URL,
     },
-    Cache: {
-        Connector: 'RAM',
-    },
-    AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Account: {
-        Connector: 'JSONFileAccount',
-        Settings: {
-            file: './tests/data/account.json',
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
+};
 
-ConnectorService.init(TConnectorService.Router, 'ExpressRouter');
+ConnectorService.init(TConnectorService.Router, RouterConfig.Connector, '', RouterConfig.Settings, true);
 
-const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-// Mock Agent class to keep the test isolated from the actual Agent implementation
-vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'agent-123456',
-        teamId: 'default',
-        agentRuntime: { debug: true }, // used inside createComponentLogger()
-        isKilled: () => false,
-        modelsProvider: modelsProvider.agent('agent-123456'),
-    }));
-    return { Agent: MockedAgent };
-});
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
 const agent = new Agent();
 const apiCall = new APICall();

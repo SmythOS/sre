@@ -13,8 +13,7 @@ import { PrepareSRETestEnvironment } from './common';
 
 const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
 
-//const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-// // Mock Agent class to keep the test isolated from the actual Agent implementation
+// Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => MockAgentData);
 
