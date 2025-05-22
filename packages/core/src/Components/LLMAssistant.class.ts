@@ -10,8 +10,6 @@ import { encode } from 'gpt-tokenizer';
 import { Component } from './Component.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-//import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import path from 'path';
@@ -156,7 +154,6 @@ export class LLMAssistant extends Component {
                 };
             }
 
-            //const isStandardLLM = LLMRegistry.isStandardLLM(model);
             const modelId = await agent.modelsProvider.getModelId(model);
             logger.debug(` Model : ${modelId || model}`);
 
@@ -172,8 +169,8 @@ export class LLMAssistant extends Component {
 
             const isStandardLLM = await agent.modelsProvider.isStandardLLM(model);
             const hasKey = true; //TODO : check if the user has a key
-            const modelInfo = await agent.modelsProvider.getModelInfo(model, hasKey);
-            maxTokens = modelInfo?.completionTokens || modelInfo?.tokens;
+            //const modelInfo = await agent.modelsProvider.getModelInfo(model, hasKey);
+            maxTokens = await agent.modelsProvider.getMaxCompletionTokens(model, hasKey);
 
             // if (isStandardLLM) {
             //     const provider = LLMRegistry.getProvider(model);

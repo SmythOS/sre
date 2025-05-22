@@ -1,7 +1,7 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, ModelsProviderConnector, SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
@@ -9,56 +9,15 @@ import util from 'util';
 import path from 'path';
 import Classifier from '@sre/Components/Classifier.class';
 import config from '@sre/config';
+import { PrepareSRETestEnvironment } from './common';
 
-const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
-        },
-    },
-    AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Account: {
-        Connector: 'JSONFileAccount',
-        Settings: {
-            file: './tests/data/account.json',
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
+const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
 
-// Mock Agent class to keep the test isolated from the actual Agent implementation
+//const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
+// // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
-    const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'agent-123456',
-        agentRuntime: { debug: true }, // used inside createComponentLogger()
-        isKilled: () => false,
-    }));
+    const MockedAgent = vi.fn().mockImplementation(() => MockAgentData);
+
     return { Agent: MockedAgent };
 });
 

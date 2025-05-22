@@ -7,8 +7,6 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
 import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
-//import { LLMRegistry } from './LLMRegistry.class';
-//import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 import _ from 'lodash';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';

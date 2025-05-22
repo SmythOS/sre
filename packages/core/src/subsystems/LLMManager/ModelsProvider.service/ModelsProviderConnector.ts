@@ -6,7 +6,6 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TCustomLLMModel, TLLMCredentials, TLLMModel, TLLMModelsList, TLLMProvider } from '@sre/types/LLM.types';
 import { customModels } from '../custom-models';
-import { LLMRegistry } from '../LLMRegistry.class';
 import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
@@ -17,6 +16,19 @@ export interface IModelsProviderRequest {
     isStandardLLM(model: string): Promise<boolean>;
     adjustMaxCompletionTokens(model: string, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
     adjustMaxThinkingTokens(maxTokens: number, maxThinkingTokens: number, hasAPIKey?: boolean): Promise<number>;
+    getMaxContextTokens(model: string, hasAPIKey?: boolean): Promise<number>;
+    getMaxCompletionTokens(model: string, hasAPIKey?: boolean): Promise<number>;
+    validateTokensLimit({
+        model,
+        promptTokens,
+        completionTokens,
+        hasAPIKey,
+    }: {
+        model: string;
+        promptTokens: number;
+        completionTokens: number;
+        hasAPIKey?: boolean;
+    }): Promise<void>;
 }
 
 export abstract class ModelsProviderConnector extends SecureConnector {
@@ -78,6 +90,36 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 const validMaxThinkingTokens = Math.min(maxTokens * 0.8, maxThinkingTokens);
                 return Math.min(validMaxThinkingTokens, maxThinkingTokens);
             },
+            getMaxContextTokens: async (model: string, hasAPIKey: boolean = false) => {
+                const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
+                return modelInfo?.tokens;
+            },
+            getMaxCompletionTokens: async (model: string, hasAPIKey: boolean = false) => {
+                const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
+                return modelInfo?.completionTokens || modelInfo?.tokens;
+            },
+            validateTokensLimit: async ({
+                model,
+                promptTokens,
+                completionTokens,
+                hasAPIKey,
+            }: {
+                model: string;
+                promptTokens: number;
+                completionTokens: number;
+                hasAPIKey: boolean;
+            }) => {
+                const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
+                const allowedContextTokens = modelInfo?.tokens;
+                const totalTokens = promptTokens + completionTokens;
+
+                const teamAPIKeyExceededMessage = `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`;
+                const noAPIKeyExceededMessage = `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`;
+
+                if (totalTokens > allowedContextTokens) {
+                    throw new Error(hasAPIKey ? teamAPIKeyExceededMessage : noAPIKeyExceededMessage);
+                }
+            },
         };
         ModelsProviderConnector.localCache.set(cacheKey, instance, 60 * 60 * 1000); // cache for 1 hour
         return instance;
@@ -107,6 +149,29 @@ export abstract class ModelsProviderConnector extends SecureConnector {
 
         return modelId;
     }
+
+    // public static async validateTokensLimit({
+    //     model,
+    //     promptTokens,
+    //     completionTokens,
+    //     hasAPIKey = false,
+    // }: {
+    //     model: string;
+    //     promptTokens: number;
+    //     completionTokens: number;
+    //     hasAPIKey?: boolean;
+    // }): Promise<void> {
+
+    //     const allowedContextTokens = this.getMaxContextTokens(model, hasAPIKey);
+    //     const totalTokens = promptTokens + completionTokens;
+
+    //     const teamAPIKeyExceededMessage = `This models' maximum content length is ${allowedContextTokens} tokens. (This is the sum of your prompt with all variables and the maximum output tokens you've set in Advanced Settings) However, you requested approx ${totalTokens} tokens (${promptTokens} in the prompt, ${completionTokens} in the output). Please reduce the length of either the input prompt or the Maximum output tokens.`;
+    //     const noAPIKeyExceededMessage = `Input exceeds max tokens limit of ${allowedContextTokens}. Please add your API key to unlock full length.`;
+
+    //     if (totalTokens > allowedContextTokens) {
+    //         throw new Error(hasAPIKey ? teamAPIKeyExceededMessage : noAPIKeyExceededMessage);
+    //     }
+    // }
 
     protected async getProvider(acRequest: AccessRequest, models: TLLMModelsList, model: string): Promise<string> {
         const modelId = await this.getModelId(acRequest, models, model);

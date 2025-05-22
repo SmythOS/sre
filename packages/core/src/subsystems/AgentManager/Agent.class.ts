@@ -57,7 +57,8 @@ export class Agent {
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
-        this.data = json.data;
+        this.data = json.connections && json.components ? json : json.data;
+        if (!this.data) this.data = { name: '', connections: [], components: [] };
         //this.agentVariables = json.data.variables || {};
 
         this.name = this.data.name;
@@ -145,6 +146,11 @@ export class Agent {
         }
     }
 
+    /**
+     * Add a SSE connection to the agent
+     * @param sseSource - The SSE source to add
+     * @param monitorId - The monitor ID to add
+     */
     public addSSE(sseSource: Response | AgentSSE, monitorId?: string) {
         if (sseSource instanceof AgentSSE) {
             for (const [monitorId, res] of sseSource) {

@@ -3,7 +3,7 @@ import express from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import { SmythRuntime } from '@sre/index';
+import { ConnectorService, ModelsProviderConnector, SmythRuntime, TConnectorService } from '@sre/index';
 import { APICall } from '@sre/Components/APICall/APICall.class';
 import config from '@sre/config';
 
@@ -11,25 +11,11 @@ const app = express();
 const BASE_URL = `http://agents-server.smyth.stage`;
 
 const sre = SmythRuntime.Instance.init({
-    CLI: {
-        Connector: 'CLI',
-    },
     Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: config.env.AWS_S3_BUCKET_NAME || '',
-            region: config.env.AWS_S3_REGION || '',
-            accessKeyId: config.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: config.env.AWS_SECRET_ACCESS_KEY || '',
-        },
+        Connector: 'Local',
     },
     Cache: {
-        Connector: 'Redis',
-        Settings: {
-            hosts: config.env.REDIS_SENTINEL_HOSTS,
-            name: config.env.REDIS_MASTER_NAME || '',
-            password: config.env.REDIS_PASSWORD || '',
-        },
+        Connector: 'RAM',
     },
     AgentData: {
         Connector: 'Local',
@@ -39,59 +25,33 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'SmythAccount',
+        Connector: 'JSONFileAccount',
         Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            file: './tests/data/account.json',
         },
     },
     Vault: {
-        Connector: 'SmythVault',
+        Connector: 'JSONFileVault',
         Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
-        },
-    },
-    ManagedVault: {
-        Connector: 'SmythManagedVault',
-        Id: 'oauth',
-        Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-            vaultName: 'oauth',
-        },
-    },
-    Router: {
-        Connector: 'ExpressRouter',
-        Settings: {
-            router: app,
-            baseUrl: BASE_URL,
+            file: './tests/data/vault.json',
         },
     },
 });
 
+ConnectorService.init(TConnectorService.Router, 'ExpressRouter');
+
+const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
-        id: 'cm1f646cw1x4xp7xuughsh4md',
+        id: 'agent-123456',
+        teamId: 'default',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
-        teamId: 'cloilcrl9001v9tkguilsu8dx',
+        isKilled: () => false,
+        modelsProvider: modelsProvider.agent('agent-123456'),
     }));
     return { Agent: MockedAgent };
 });
-
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
 const agent = new Agent();
 const apiCall = new APICall();

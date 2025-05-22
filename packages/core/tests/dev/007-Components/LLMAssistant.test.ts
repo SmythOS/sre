@@ -6,7 +6,7 @@ import { SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+
 import { type LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
 
 //We need SRE to be loaded because LLMAssistant uses internal SRE functions
@@ -170,9 +170,9 @@ const models = [
     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
     { provider: 'Groq', id: 'gemma2-9b-it' },
     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
-    { provider: 'Bedrock', id: 'SRE - Bedrock with AI21 Labs - Jamba-Instruct' },
-    { provider: 'Bedrock', id: 'SRE - Bedrock does not support System Prompt' },
-    { provider: 'VertexAI', id: 'SRE - Vertex AI with Gemini Flash' },
+    { provider: 'Bedrock', id: 'SRE - Bedrock with AI21 Labs - Jamba-Instruct', isCustom: true },
+    { provider: 'Bedrock', id: 'SRE - Bedrock does not support System Prompt', isCustom: true },
+    { provider: 'VertexAI', id: 'SRE - Vertex AI with Gemini Flash', isCustom: true },
 ];
 
 models.forEach((model, index) => {
@@ -254,7 +254,7 @@ describe('LLMAssistant: test getConsistentMessages()', () => {
     for (const model of models) {
         let llmConnector: LLMConnector;
 
-        const isStandardLLM = LLMRegistry.isStandardLLM(model.id);
+        const isStandardLLM = !model.isCustom;
 
         if (isStandardLLM) {
             llmConnector = ConnectorService.getLLMConnector(model.provider);

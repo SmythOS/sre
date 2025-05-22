@@ -59,7 +59,6 @@ export class GenAILLM extends Component {
                 };
             }
 
-            //const isStandardLLM = LLMRegistry.isStandardLLM(model);
             //const team = AccessCandidate.team(teamId);
             //const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
             const modelId = await agent.modelsProvider.getModelId(model);

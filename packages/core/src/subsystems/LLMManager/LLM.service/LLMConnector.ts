@@ -20,8 +20,6 @@ import {
 import EventEmitter from 'events';
 import { Readable } from 'stream';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-//import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-//import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { TCustomLLMModel } from '@sre/types/LLM.types';
 import config from '@sre/config';

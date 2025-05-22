@@ -7,7 +7,7 @@ import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
@@ -16,6 +16,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './Image/imageSettings.config';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 enum DALL_E_MODELS {
     DALL_E_2 = 'dall-e-2',
@@ -100,7 +101,7 @@ export class ImageGenerator extends Component {
 
         logger.debug(`Prompt: \n`, prompt);
 
-        const modelFamily = getModelFamily(model);
+        const modelFamily = await getModelFamily(model, agent);
 
         if (typeof imageGenerator[modelFamily] !== 'function') {
             return { _error: `The model '${model}' is not available. Please try a different one.`, _debug: logger.output };
@@ -363,23 +364,24 @@ enum PROVIDERS {
  * @param model The model identifier
  * @returns The model family or null if not recognized
  */
-function getModelFamily(model: string): string | null {
-    if (isGPTModel(model)) return MODEL_FAMILY.GPT;
-    if (isRunwareModel(model)) return MODEL_FAMILY.RUNWARE;
-    if (isDallEModel(model)) return MODEL_FAMILY.DALL_E;
+async function getModelFamily(model: string, agent: Agent): Promise<string | null> {
+    if (await isGPTModel(model)) return MODEL_FAMILY.GPT;
+    if (await isRunwareModel(model, agent)) return MODEL_FAMILY.RUNWARE;
+    if (await isDallEModel(model)) return MODEL_FAMILY.DALL_E;
 
     return null;
 }
 
-function isGPTModel(model: string) {
+async function isGPTModel(model: string): Promise<boolean> {
     return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.GPT);
 }
 
-function isRunwareModel(model: string): boolean {
-    return LLMRegistry.getModelInfo(model)?.provider === PROVIDERS.RUNWARE;
+async function isRunwareModel(model: string, agent: Agent): Promise<boolean> {
+    const provider = await agent.modelsProvider.getProvider(model);
+    return provider === PROVIDERS.RUNWARE || provider.toLowerCase() === PROVIDERS.RUNWARE.toLowerCase();
 }
 
-function isDallEModel(model: string) {
+async function isDallEModel(model: string) {
     return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.DALL_E);
 }
 

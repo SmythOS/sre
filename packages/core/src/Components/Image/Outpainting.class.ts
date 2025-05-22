@@ -5,7 +5,6 @@ import { Component } from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './imageSettings.config';
@@ -53,7 +52,7 @@ export class Outpainting extends Component {
 
         logger.debug(`Positive Prompt: \n`, positivePrompt);
 
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const provider = (await agent.modelsProvider.getProvider(model))?.toLowerCase();
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
@@ -61,7 +60,7 @@ export class Outpainting extends Component {
         seedImage = await normalizeImageInput(seedImage);
 
         const imageRequestArgs: IRequestImage = {
-            model: LLMRegistry.getModelId(model),
+            model: await agent.modelsProvider.getModelId(model),
             seedImage,
             positivePrompt,
             width: +config?.data?.width || 1024,

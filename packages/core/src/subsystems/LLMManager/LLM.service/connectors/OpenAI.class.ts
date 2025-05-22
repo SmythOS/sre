@@ -11,7 +11,6 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
@@ -27,6 +26,7 @@ import {
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('OpenAIConnector');
 
@@ -124,7 +124,10 @@ export class OpenAIConnector extends LLMConnector {
             // Validate token limit
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
 
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model: params?.model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -214,7 +217,10 @@ export class OpenAIConnector extends LLMConnector {
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
 
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model: params?.model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -342,7 +348,10 @@ export class OpenAIConnector extends LLMConnector {
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
 
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model: params?.model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -846,7 +855,10 @@ export class OpenAIConnector extends LLMConnector {
         // Validate token limit
         const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
 
-        await LLMRegistry.validateTokensLimit({
+        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+        await modelsProvider.validateTokensLimit({
             model: params?.model,
             promptTokens,
             completionTokens: params?.maxTokens,
