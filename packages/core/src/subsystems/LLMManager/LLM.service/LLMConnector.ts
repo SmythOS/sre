@@ -55,6 +55,7 @@ export type ImagesResponse = {
 };
 
 const SMYTHOS_API_KEYS = {
+    echo: '',
     openai: config.env.OPENAI_API_KEY,
     anthropic: config.env.ANTHROPIC_API_KEY,
     googleai: config.env.GOOGLE_AI_API_KEY,
@@ -241,7 +242,10 @@ export abstract class LLMConnector extends Connector {
     }
 
     private async getCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
-        const credentialsList: any[] = typeof modelInfo.credentials === 'string' ? [modelInfo.credentials] : modelInfo.credentials;
+        //create a credentials list that we can iterate over
+        //if the credentials are not provided, we will use None as a default in order to return empty credentials
+        const credentialsList: any[] =
+            typeof modelInfo.credentials === 'string' ? [modelInfo.credentials] : modelInfo.credentials || [TLLMCredentials.None];
 
         for (let credentialsMode of credentialsList) {
             if (typeof credentialsMode === 'object') {
@@ -250,6 +254,9 @@ export abstract class LLMConnector extends Connector {
             }
 
             switch (credentialsMode) {
+                case TLLMCredentials.None: {
+                    return { apiKey: '' };
+                }
                 case TLLMCredentials.Internal: {
                     const credentials = await this.getEnvCredentials(candidate, modelInfo as TLLMModel);
                     if (credentials) return credentials;

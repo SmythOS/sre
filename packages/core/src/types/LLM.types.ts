@@ -71,6 +71,7 @@ export enum TLLMCredentials {
     Internal = 'internal',
     BedrockVault = 'bedrock_vault',
     VertexAIVault = 'vertexai_vault',
+    None = 'none',
 }
 export type TLLMModel = {
     llm: string;

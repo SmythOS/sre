@@ -819,6 +819,23 @@ export const models = {
     // #endregion OpenAI Models ==========================
 
     // #region Anthropic Models ==========================
+    'claude-sonnet-4': {
+        llm: 'Anthropic',
+        alias: 'claude-3-7-sonnet-20250219',
+        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GenAILLM'],
+
+        label: 'Claude Sonnet 4.0',
+        modelId: 'claude-sonnet-4-20250514',
+        provider: 'Anthropic',
+        features: ['text', 'tools', 'image'],
+        tags: ['New', 'Personal'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
+
+        credentials: 'vault',
+    },
     'claude-3.7-sonnet': {
         llm: 'Anthropic',
         alias: 'claude-3-7-sonnet-20250219',
