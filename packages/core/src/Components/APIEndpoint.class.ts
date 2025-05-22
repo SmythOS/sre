@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 
 import { jsonrepair } from 'jsonrepair';
 import { AgentRequest } from '@sre/AgentManager/AgentRequest.class';

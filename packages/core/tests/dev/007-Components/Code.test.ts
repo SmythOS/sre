@@ -31,7 +31,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             teamId: { value: 'default' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 describe('Code Component', () => {
@@ -55,7 +55,7 @@ describe('Code Component', () => {
                     code_vars: '',
                 },
             },
-            agent
+            agent,
         );
 
         const result = output.Output;
@@ -97,7 +97,7 @@ describe('Code Component', () => {
                     code_vars: codeVars,
                 },
             },
-            agent
+            agent,
         );
 
         const result = output.Output;
@@ -128,7 +128,7 @@ describe('Code Component', () => {
                     code_vars: '',
                 },
             },
-            agent
+            agent,
         );
 
         const result = output.Output;
@@ -154,7 +154,7 @@ describe('Code Component', () => {
                     code_vars: '',
                 },
             },
-            agent
+            agent,
         );
 
         const result = output.Output;

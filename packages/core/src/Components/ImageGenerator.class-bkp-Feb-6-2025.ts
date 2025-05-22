@@ -1,9 +1,10 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
@@ -118,7 +119,7 @@ export class ImageGenerator extends Component {
             } */
 
             // let response = await OpenAI.generateImage(args);
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {

@@ -4,12 +4,19 @@ import { createHash } from 'crypto';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('Connector');
-const lCache = new LocalCache();
+//const lCache = new LocalCache();
 
 export class Connector {
     public name: string;
     public started = false;
     private _readyPromise: Promise<boolean>;
+    private static lCache = new LocalCache();
+
+    //this flag is used to check if the connector is valid
+    //when a connector fails to load, it is replaced by a DummyConnector instance which returns false for this flag
+    public get valid() {
+        return true;
+    }
 
     constructor(config: any = {}) {}
 
@@ -25,16 +32,20 @@ export class Connector {
         const configHash = createHash('sha256').update(JSON.stringify(config)).digest('hex');
         const key = `${this.name}-${configHash}`;
 
-        if (lCache.has(key)) {
-            return lCache.get(key) as this;
+        if (Connector.lCache.has(key)) {
+            return Connector.lCache.get(key) as this;
         }
 
         // if not in cache, create a new instance from the concrete class
         const constructor = this.constructor as { new (config: any): any };
         const instance = new constructor(config);
-        lCache.set(key, instance, 60 * 60 * 1000); // cache for 1 hour
+        Connector.lCache.set(key, instance, 60 * 60 * 1000); // cache for 1 hour
 
         return instance;
+    }
+
+    static isValid(connector: Connector): boolean {
+        return connector.name !== undefined && connector.name !== null && connector.name !== '';
     }
 
     public async start() {

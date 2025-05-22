@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 
 export class JSONFilter extends Component {
     protected configSchema = Joi.object({

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import Joi from 'joi';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';

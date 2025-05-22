@@ -7,6 +7,11 @@ export const DummyConnector: any = new Proxy(
     {},
     {
         get: function (target, prop, receiver) {
+            //check if we are accessing the valid property
+            if (prop === 'valid') {
+                return false; //when DummyConnector is used it means that the main connector failed to load
+            }
+
             // Check if the property being accessed is a function
             if (typeof target[prop] === 'function') {
                 return target[prop];
@@ -17,5 +22,5 @@ export const DummyConnector: any = new Proxy(
                 };
             }
         },
-    }
+    },
 );

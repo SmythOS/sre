@@ -5,15 +5,27 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { TLLMParams, TLLMMessageBlock, TLLMToolResultMessageBlock, ToolData, TLLMProvider, APIKeySource } from '@sre/types/LLM.types';
+import {
+    TLLMParams,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    ToolData,
+    TLLMProvider,
+    APIKeySource,
+    TLLMModel,
+    TLLMCredentials,
+    TBedrockSettings,
+    TVertexAISettings,
+} from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+//import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+//import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
-import { TBedrockModel, TVertexAIModel } from '@sre/types/LLM.types';
+import { TCustomLLMModel } from '@sre/types/LLM.types';
 import config from '@sre/config';
+import { ModelsProviderConnector } from '@sre/index';
 
 const console = Logger('LLMConnector');
 
@@ -112,11 +124,13 @@ export abstract class LLMConnector extends Connector {
     private vaultConnector: VaultConnector;
 
     public requester(candidate: AccessCandidate): ILLMConnectorRequest {
-        if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
+        //if (candidate.role !== 'agent') throw new Error('Only agents can use LLM connector');
 
         this.vaultConnector = ConnectorService.getVaultConnector();
 
-        if (!this.vaultConnector) throw new Error('Vault Connector unavailable, cannot proceed');
+        if (!this.vaultConnector || !this.vaultConnector.valid) {
+            console.warn(`Vault Connector unavailable for ${candidate.id} `);
+        }
 
         const request: ILLMConnectorRequest = {
             chatRequest: async (params: any) => {
@@ -228,7 +242,43 @@ export abstract class LLMConnector extends Connector {
         return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
-    public async prepareParams(candidate: AccessCandidate, params: any) {
+    private async getCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
+        const credentialsList: any[] = typeof modelInfo.credentials === 'string' ? [modelInfo.credentials] : modelInfo.credentials;
+
+        for (let credentialsMode of credentialsList) {
+            if (typeof credentialsMode === 'object') {
+                //credentials passed directly
+                return credentialsMode;
+            }
+
+            switch (credentialsMode) {
+                case TLLMCredentials.Internal: {
+                    const credentials = await this.getEnvCredentials(candidate, modelInfo as TLLMModel);
+                    if (credentials) return credentials;
+                    break;
+                }
+                case TLLMCredentials.Vault: {
+                    const credentials = await this.getStandardLLMCredentials(candidate, modelInfo as TLLMModel);
+                    if (credentials) return credentials;
+                    break;
+                }
+                case TLLMCredentials.BedrockVault: {
+                    const credentials = await this.getBedrockCredentials(candidate, modelInfo as TCustomLLMModel);
+                    if (credentials) return credentials;
+                    break;
+                }
+                case TLLMCredentials.VertexAIVault: {
+                    const credentials = await this.getVertexAICredentials(candidate, modelInfo as TCustomLLMModel);
+                    if (credentials) return credentials;
+                    break;
+                }
+            }
+        }
+
+        return {};
+    }
+    private async prepareParams(candidate: AccessCandidate, params: any) {
+        const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
         // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const fileSources = params?.fileSources;
         delete params?.fileSources; // need to remove fileSources to avoid any issues during JSON.stringify() especially when we have large files
@@ -236,7 +286,7 @@ export abstract class LLMConnector extends Connector {
         const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
-        const _params = this.formatParamValues(clonedParams);
+        const _params: TLLMParams = this.formatParamValues(clonedParams);
 
         const model = _params.model;
         const teamId = await this.getTeamId(candidate);
@@ -245,84 +295,92 @@ export abstract class LLMConnector extends Connector {
         _params.modelEntryName = model;
         _params.teamId = teamId;
 
-        const isStandardLLM = LLMRegistry.isStandardLLM(model);
+        const modelProviderCandidate = modelsProvider.requester(candidate);
+        const modelInfo: TLLMModel | TCustomLLMModel = await modelProviderCandidate.getModelInfo(model);
 
-        if (isStandardLLM) {
-            const llmProvider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const isStandardLLM = await modelProviderCandidate.isStandardLLM(model);
 
-            if (LLMRegistry.isSmythOSModel(model)) {
-                _params.credentials = {
-                    apiKey: SMYTHOS_API_KEYS?.[llmProvider] || '',
-                };
-            } else {
-                _params.credentials = await this.getStandardLLMCredentials(candidate, llmProvider);
+        const llmProvider = await modelProviderCandidate.getProvider(model);
 
-                // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
-                if (!_params.credentials?.apiKey && llmProvider === 'openai') {
-                    const modelInfo = LLMRegistry.getModelInfo(model);
-                    const isImageGenerationModel = modelInfo?.features?.includes('image-generation');
+        _params.credentials = await this.getCredentials(candidate, modelInfo);
 
-                    // We will not provide Smyth OS key for image generation models
-                    if (!isImageGenerationModel) {
-                        _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
-                    }
-                } else {
-                    _params.credentials.isUserKey = true;
-                }
-            }
+        //_params.model = (await modelProviderCandidate.getModelId(model)) || model;
 
-            if (_params.maxTokens) {
-                _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+        _params.baseURL = modelInfo?.baseURL;
+        if (!isStandardLLM) _params.modelInfo = modelInfo as TCustomLLMModel; //only if custom LLM ?
 
-                // Set default max output tokens to 2048 for OpenAI models to maintain backwards compatibility with existing components that use built-in models
-                if (_params.maxTokens === 0 && llmProvider === 'openai') {
-                    _params.maxTokens = 2048;
-                }
-            }
-
-            if (_params.maxThinkingTokens) {
-                _params.maxThinkingTokens = LLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
-            }
-
-            const baseUrl = LLMRegistry.getBaseURL(params.model);
-
-            if (baseUrl) {
-                _params.baseURL = baseUrl;
-            }
-
-            _params.model = LLMRegistry.getModelId(model) || model;
-        } else {
-            const team = AccessCandidate.team(teamId);
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
-
-            const modelInfo = customLLMRegistry.getModelInfo(model);
-
-            _params.modelInfo = modelInfo;
-
-            const llmProvider = customLLMRegistry.getProvider(model);
-
-            if (llmProvider === TLLMProvider.Bedrock) {
-                _params.credentials = await this.getBedrockCredentials(candidate, modelInfo as TBedrockModel);
-            } else if (llmProvider === TLLMProvider.VertexAI) {
-                _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TVertexAIModel);
-            }
-
-            // User key is always true for custom LLMs
-            _params.credentials.isUserKey = true;
-
-            if (_params.maxTokens) {
-                _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
-            }
-
-            if (_params.maxThinkingTokens) {
-                _params.maxThinkingTokens = customLLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
-            }
-
-            _params.model = customLLMRegistry.getModelId(model) || model;
+        if (_params.maxTokens) {
+            _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(
+                _params.model,
+                _params.maxTokens,
+                _params?.credentials?.isUserKey as boolean,
+            );
         }
 
+        if (_params.maxThinkingTokens) {
+            _params.maxThinkingTokens = await modelProviderCandidate.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
+        }
+
+        _params.model = await modelProviderCandidate.getModelId(model);
         // Attach the fileSources again after formatting the parameters
         _params.fileSources = fileSources;
+
+        //if (isStandardLLM) {
+        //const modelInfo = LLMRegistry.getModelInfo(model) as TLLMModel;
+
+        // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
+        // if (!_params.credentials?.apiKey && llmProvider.toLowerCase() === 'openai') {
+        //     //const modelInfo = LLMRegistry.getModelInfo(model);
+        //     const isImageGenerationModel = modelInfo?.features?.includes('image-generation');
+
+        //     // We will not provide Smyth OS key for image generation models
+        //     if (!isImageGenerationModel) {
+        //         _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
+        //     }
+        // } else {
+        //     _params.credentials.isUserKey = true;
+        // }
+        //}
+
+        // if (_params.maxTokens) {
+        //     _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
+        // }
+
+        // if (_params.maxThinkingTokens) {
+        //     _params.maxThinkingTokens = LLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
+        // }
+
+        // const baseUrl = LLMRegistry.getBaseURL(params.model);
+
+        // if (baseUrl) {
+        //     _params.baseURL = baseUrl;
+        // }
+
+        //_params.model = LLMRegistry.getModelId(model) || model;
+        //} else {
+        //const team = AccessCandidate.team(teamId);
+        //const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
+        //const modelInfo = customLLMRegistry.getModelInfo(model);
+        //_params.modelInfo = modelInfo;
+        //const llmProvider = customLLMRegistry.getProvider(model);
+        // if (llmProvider === TLLMProvider.Bedrock) {
+        //     _params.credentials = await this.getBedrockCredentials(candidate, modelInfo as TCustomLLMModel);
+        // } else if (llmProvider === TLLMProvider.VertexAI) {
+        //     _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TCustomLLMModel);
+        // }
+        // User key is always true for custom LLMs
+        //_params.credentials.isUserKey = true;
+        // if (_params.maxTokens) {
+        //     _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
+        // }
+        // if (_params.maxThinkingTokens) {
+        //     _params.maxThinkingTokens = customLLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
+        // }
+        //_params.model = customLLMRegistry.getModelId(model) || model;
+        //}
+
+        // // Attach the fileSources again after formatting the parameters
+        // _params.fileSources = fileSources;
 
         return _params;
     }
@@ -355,6 +413,13 @@ export abstract class LLMConnector extends Connector {
         return _params;
     }
 
+    private async getEnvCredentials(candidate: AccessCandidate, modelInfo: TLLMModel): Promise<{ apiKey: string }> {
+        const provider = (modelInfo.provider || modelInfo.llm)?.toLowerCase();
+        const apiKey = SMYTHOS_API_KEYS?.[provider] || '';
+        if (!apiKey) return null;
+        return { apiKey };
+    }
+
     /**
      * Retrieves API key credentials for standard LLM providers from the vault
      * @param candidate - The access candidate requesting the credentials
@@ -364,13 +429,15 @@ export abstract class LLMConnector extends Connector {
      * @remarks Returns an empty string as API key if vault access fails
      * @private
      */
-    private async getStandardLLMCredentials(candidate: AccessCandidate, provider: string): Promise<{ apiKey: string }> {
+    private async getStandardLLMCredentials(candidate: AccessCandidate, modelInfo: TLLMModel): Promise<{ apiKey: string; isUserKey: boolean }> {
+        const provider = (modelInfo.provider || modelInfo.llm)?.toLowerCase();
         const apiKey = await this.vaultConnector
             .user(candidate)
             .get(provider)
             .catch(() => '');
 
-        return { apiKey };
+        if (!apiKey) return null;
+        return { apiKey, isUserKey: true };
     }
 
     /**
@@ -387,11 +454,11 @@ export abstract class LLMConnector extends Connector {
      */
     private async getBedrockCredentials(
         candidate: AccessCandidate,
-        modelInfo: TBedrockModel,
-    ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string }> {
-        const keyIdName = modelInfo.settings?.keyIDName;
-        const secretKeyName = modelInfo.settings?.secretKeyName;
-        const sessionKeyName = modelInfo.settings?.sessionKeyName;
+        modelInfo: TCustomLLMModel,
+    ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string; isUserKey: boolean }> {
+        const keyIdName = (modelInfo.settings as TBedrockSettings)?.keyIDName;
+        const secretKeyName = (modelInfo.settings as TBedrockSettings)?.secretKeyName;
+        const sessionKeyName = (modelInfo.settings as TBedrockSettings)?.sessionKeyName;
 
         const [accessKeyId, secretAccessKey, sessionToken] = await Promise.all([
             this.vaultConnector
@@ -412,15 +479,18 @@ export abstract class LLMConnector extends Connector {
             accessKeyId: string;
             secretAccessKey: string;
             sessionToken?: string;
+            isUserKey: boolean;
         } = {
             accessKeyId,
             secretAccessKey,
+            isUserKey: true,
         };
 
         if (sessionToken) {
             credentials.sessionToken = sessionToken;
         }
 
+        if (!accessKeyId || !secretAccessKey) return null;
         return credentials;
     }
 
@@ -434,8 +504,8 @@ export abstract class LLMConnector extends Connector {
      * @remarks Returns empty credentials if vault access fails
      * @private
      */
-    private async getVertexAICredentials(candidate: AccessCandidate, modelInfo: TVertexAIModel): Promise<Record<string, string>> {
-        const jsonCredentialsName = modelInfo.settings?.jsonCredentialsName;
+    private async getVertexAICredentials(candidate: AccessCandidate, modelInfo: TCustomLLMModel): Promise<any> {
+        const jsonCredentialsName = (modelInfo.settings as TVertexAISettings)?.jsonCredentialsName;
 
         let jsonCredentials = await this.vaultConnector
             .user(candidate)
@@ -444,7 +514,8 @@ export abstract class LLMConnector extends Connector {
 
         const credentials = JSON.parse(jsonCredentials);
 
-        return credentials;
+        if (!credentials) return null;
+        return { ...credentials, isUserKey: true };
     }
 
     /**

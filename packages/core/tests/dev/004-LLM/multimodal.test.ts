@@ -15,6 +15,22 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     return { Agent: MockedAgent };
 });
 
+const models = {
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
+
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -36,6 +52,13 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './tests/data/vault.json',
+        },
+    },
+
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models,
         },
     },
     Account: {
@@ -188,10 +211,10 @@ async function runMultimodalTestCases(model: string) {
     );
 }
 
-const models = [{ provider: 'GoogleAI', id: 'gemini-1.5-flash' }];
+//const models = [{ provider: 'GoogleAI', id: 'gemini-1.5-flash' }];
 
-for (const model of models) {
-    describe(`LLM Multimodal Tests: ${model.provider} (${model.id})`, async () => {
-        await runMultimodalTestCases(model.id);
+for (const model of Object.keys(models)) {
+    describe(`LLM Multimodal Tests: ${model}`, async () => {
+        await runMultimodalTestCases(model);
     });
 }

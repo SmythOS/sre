@@ -1,5 +1,5 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import axios from 'axios';
 import Joi from 'joi';
 import _config from '@sre/config';

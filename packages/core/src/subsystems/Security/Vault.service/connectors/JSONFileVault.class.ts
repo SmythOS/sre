@@ -85,7 +85,7 @@ export class JSONFileVault extends VaultConnector {
 
         const acl = new ACL();
 
-        if (typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') {
+        if (resourceId && typeof this.vaultData?.[teamId]?.[resourceId] !== 'string') {
             if (this.sharedVault && typeof this.vaultData?.['shared']?.[resourceId] === 'string') {
                 acl.addAccess(candidate.role, candidate.id, TAccessLevel.Read);
             }

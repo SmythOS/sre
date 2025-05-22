@@ -10,6 +10,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { LocalStorageConfig } from '@sre/types/LocalStorage.types';
 import fs, { existsSync } from 'fs';
+import os from 'os';
 import path from 'path';
 
 const console = Logger('LocalStorage');
@@ -21,14 +22,17 @@ export class LocalStorage extends StorageConnector {
     private metadataPrefix = '.smyth.metadata';
     private isInitialized = false;
 
-    constructor(config: LocalStorageConfig) {
+    constructor(settings: LocalStorageConfig) {
         super();
         if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        if (!fs.existsSync(config.folder)) {
-            throw new Error('Invalid folder provided');
-        }
-        this.folder = config.folder;
+
+        this.folder = settings.folder || `${os.tmpdir()}/.smyth/storage`;
         this.initialize();
+        if (!fs.existsSync(this.folder)) {
+            //throw new Error('Invalid folder provided');
+            console.error(`Invalid folder provided: ${this.folder}`);
+        }
+        this.folder = settings.folder;
     }
 
     /**
@@ -237,11 +241,11 @@ export class LocalStorage extends StorageConnector {
     private async initialize() {
         const storageFolderPath = path.join(this.folder, this.storagePrefix);
         if (!existsSync(storageFolderPath)) {
-            fs.mkdirSync(storageFolderPath);
+            fs.mkdirSync(storageFolderPath, { recursive: true });
         }
         const metadataFolderPath = path.join(this.folder, this.metadataPrefix);
         if (!existsSync(metadataFolderPath)) {
-            fs.mkdirSync(metadataFolderPath);
+            fs.mkdirSync(metadataFolderPath, { recursive: true });
             fs.writeFileSync(
                 path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
                 'This folder is used for smythOS metadata, do not delete it, it will break SmythOS filesystem',

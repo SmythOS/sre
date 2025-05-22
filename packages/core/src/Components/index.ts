@@ -1,4 +1,4 @@
-import Component from './Component.class';
+import { Component } from './Component.class';
 import APIEndpoint from './APIEndpoint.class';
 import APIOutput from './APIOutput.class';
 import PromptGenerator from './PromptGenerator.class';
@@ -17,7 +17,7 @@ import LogicOR from './LogicOR.class';
 import LogicXOR from './LogicXOR.class';
 import LogicAtLeast from './LogicAtLeast.class';
 import LogicAtMost from './LogicAtMost.class';
-import AgentPlugin from './AgentPlugin.class';
+import { AgentPlugin } from './AgentPlugin.class';
 import LLMAssistant from './LLMAssistant.class';
 import Async from './Async.class';
 import Await from './Await.class';

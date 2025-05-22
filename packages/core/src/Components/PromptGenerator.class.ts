@@ -4,7 +4,8 @@ import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 
-import Component from './Component.class';
+import { Component } from './Component.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 //TODO : better handling of context window exceeding max length
 
@@ -38,7 +39,7 @@ export class PromptGenerator extends Component {
 
             const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data.model || 'echo';
-            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
@@ -121,12 +122,6 @@ export class PromptGenerator extends Component {
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }
-    }
-
-    public async streamPrompt(prompt: string, config: any, agent: Agent) {
-        const model: string = config.data.model || 'echo';
-        const llmInference: LLMInference = await LLMInference.getInstance(model, agent?.teamId);
-        return llmInference.streamRequest(prompt, agent);
     }
 }
 

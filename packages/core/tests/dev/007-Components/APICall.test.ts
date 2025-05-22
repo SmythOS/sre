@@ -3,8 +3,9 @@ import express from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import { config, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/index';
 import { APICall } from '@sre/Components/APICall/APICall.class';
+import config from '@sre/config';
 
 const app = express();
 const BASE_URL = `http://agents-server.smyth.stage`;
@@ -88,7 +89,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         agentRuntime: { debug: true }, // used inside createComponentLogger()
         teamId: 'cloilcrl9001v9tkguilsu8dx',
     }));
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)

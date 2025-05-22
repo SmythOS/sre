@@ -1,5 +1,5 @@
 import { HfInference } from '@huggingface/inference';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import hfParams from '../data/hugging-face.params.json';
 import Joi from 'joi';

@@ -1,8 +1,9 @@
 import Joi from 'joi';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class MultimodalLLM extends Component {
     protected configSchema = Joi.object({
@@ -28,7 +29,7 @@ export class MultimodalLLM extends Component {
         try {
             const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data.model || 'gpt-4o-mini';
-            const llmInference: LLMInference = await LLMInference.getInstance(model, agent.teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             if (!llmInference.connector) {
                 return {

@@ -1,7 +1,7 @@
 import { encode, encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+//import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+//import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { ILLMContextStore } from '@sre/types/LLM.types';
 import { LLMCache } from './LLMCache';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -39,7 +39,11 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(private llmInference, _systemPrompt: string = '', /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore) {
+    constructor(
+        private llmInference,
+        _systemPrompt: string = '',
+        /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore,
+    ) {
         this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;

@@ -2,7 +2,7 @@ import { OpenAI } from 'openai';
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
@@ -142,7 +142,7 @@ const imageGenerator = {
         };
 
         try {
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
@@ -152,7 +152,7 @@ const imageGenerator = {
                 };
             }
 
-            const provider = LLMRegistry.getProvider(model);
+            const provider = await agent.modelsProvider.getProvider(model);
 
             const fileSources: any[] = parseFiles(input, config);
             const validFileSources = fileSources.filter((file) => imageGenerator.isValidImageFile(provider, file.mimetype));
@@ -232,7 +232,7 @@ const imageGenerator = {
             cost = IMAGE_GEN_COST_MAP[model][size];
         }
 
-        const llmInference: LLMInference = await LLMInference.getInstance(model);
+        const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
         // if the llm is undefined, then it means we removed the model from our system
         if (!llmInference.connector) {
@@ -266,8 +266,9 @@ const imageGenerator = {
         let seedImage = Array.isArray(fileSources) ? fileSources[0] : fileSources;
         seedImage = await normalizeImageInput(seedImage);
 
+        const modelId = await agent.modelsProvider.getModelId(model);
         const imageRequestArgs: IRequestImage = {
-            model: LLMRegistry.getModelId(model),
+            model: modelId,
             positivePrompt: prompt,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,

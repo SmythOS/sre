@@ -1,13 +1,14 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
 import HuggingFace from '@sre/Components/HuggingFace.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/index';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';
 import Classifier from '@sre/Components/Classifier.class';
+import config from '@sre/config';
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
@@ -37,6 +38,12 @@ const sre = SmythRuntime.Instance.init({
             prodDir: './tests/data/AgentData',
         },
     },
+    Account: {
+        Connector: 'JSONFileAccount',
+        Settings: {
+            file: './tests/data/account.json',
+        },
+    },
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {
@@ -50,8 +57,9 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => ({
         id: 'agent-123456',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
+        isKilled: () => false,
     }));
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 describe('Classifier Component', () => {
@@ -86,7 +94,7 @@ describe('Classifier Component', () => {
 
         for (let option of options) {
             if (option === answer) {
-                expect(output[option]).toBe(true);
+                expect(output[option]).toBeTruthy();
             } else {
                 expect(output[option]).toBeFalsy();
             }

@@ -7,7 +7,7 @@ import { TAccessRole } from '@sre/types/ACL.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { SmythModelsProviderConfig, TLLMModelsList } from '@sre/types/LLM.types';
+import { SmythModelsProviderConfig, TLLMModel, TLLMModelsList } from '@sre/types/LLM.types';
 import { Logger } from '@sre/helpers/Log.helper';
 
 const console = Logger('SmythModelsProvider');
@@ -17,18 +17,18 @@ export class SmythModelsProvider extends ModelsProviderConnector {
 
     private models: TLLMModelsList;
 
-    constructor(private config?: SmythModelsProviderConfig) {
+    constructor(private settings?: SmythModelsProviderConfig) {
         super();
 
         this.models = JSON.parse(JSON.stringify(models));
-        if (typeof this.config.models === 'function') {
-            const modelsLoaderFunction = this.config.models as (models: TLLMModelsList) => Promise<TLLMModelsList>;
+        if (typeof this.settings.models === 'function') {
+            const modelsLoaderFunction = this.settings.models as (models: TLLMModelsList) => Promise<TLLMModelsList>;
             modelsLoaderFunction(models as unknown as TLLMModelsList).then((models) => {
                 this.models = models;
                 this.started = true;
             });
-        } else if (typeof this.config.models === 'object') {
-            this.models = this.config.models as TLLMModelsList;
+        } else if (typeof this.settings.models === 'object') {
+            this.models = this.settings.models as TLLMModelsList;
             this.started = true;
         } else {
             this.started = true;
@@ -39,7 +39,7 @@ export class SmythModelsProvider extends ModelsProviderConnector {
     }
 
     @SecureConnector.AccessControl
-    public async getModels(): Promise<any> {
+    public async getModels(acRequest: AccessRequest): Promise<any> {
         await this.ready();
 
         return this.models;
