@@ -423,24 +423,6 @@ export const models = {
 
         credentials: 'vault',
     },
-    // keep the gpt-4o-mini as default model for now
-    'legacy/gpt-4o-mini': {
-        llm: 'OpenAI',
-        alias: 'gpt-4o-mini-2024-07-18',
-        components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
-
-        label: 'GPT 4o Mini',
-        modelId: 'gpt-4o-mini-2024-07-18',
-        provider: 'OpenAI',
-        features: ['text', 'tools', 'image'],
-        tags: ['Personal'],
-        tokens: 0,
-        completionTokens: 0,
-        enabled: false,
-        keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
-
-        credentials: ['vault', 'internal'],
-    },
 
     // #region GPT 4.1
     'gpt-4.1-nano': {
@@ -815,6 +797,236 @@ export const models = {
         credentials: 'vault',
     },
     // #endregion GPT-3.5
+
+    // #region GPT models for legacy plans
+    // keep the gpt-4o-mini as default model for now
+    'legacy/gpt-4o-mini': {
+        label: 'GPT 4o Mini',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+
+    // #region GPT 4.1
+    'legacy/gpt-4.1-nano': {
+        label: 'GPT 4.1 Nano',
+        modelId: 'gpt-4.1-nano',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/gpt-4.1-mini': {
+        label: 'GPT 4.1 Mini',
+        modelId: 'gpt-4.1-mini',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/gpt-4.1': {
+        label: 'GPT 4.1',
+        modelId: 'gpt-4.1',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    // #endregion
+
+    // #region GPT 4o
+    'legacy/gpt-4.5-preview': {
+        label: 'GPT 4.5 Preview',
+        modelId: 'gpt-4.5-preview',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited', 'Deprecated'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/gpt-4o': {
+        label: 'GPT 4o',
+        modelId: 'gpt-4o-2024-08-06',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    // #endregion GPT 4o
+
+    // #region o3 models
+    'legacy/o4-mini': {
+        label: 'GPT o4 mini',
+        modelId: 'o4-mini-2025-04-16',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/o3': {
+        label: 'GPT o3',
+        modelId: 'o3-2025-04-16',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/o3-mini': {
+        label: 'GPT o3 mini',
+        modelId: 'o3-mini-2025-01-31',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    // #endregion o3 models
+
+    // #region o1 models
+    'legacy/o1': {
+        label: 'GPT o1',
+        modelId: 'o1-2024-12-17',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/o1-mini': {
+        label: 'GPT o1 mini',
+        modelId: 'o1-mini-2024-09-12',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    'legacy/o1-preview': {
+        label: 'GPT o1 Preview',
+        modelId: 'o1-preview-2024-09-12',
+        provider: 'OpenAI',
+        features: ['text'],
+        tags: ['Limited'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+    },
+    // #endregion o1 models
+
+    // #region GPT-4-turbo
+    'legacy/gpt-4-turbo-latest': {
+        label: 'GPT 4 Turbo Latest',
+        modelId: 'gpt-4-turbo-2024-04-09',
+        provider: 'OpenAI',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'legacy'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    'legacy/gpt-4-turbo': {
+        label: 'GPT 4 Turbo',
+        modelId: 'gpt-4-turbo-2024-04-09',
+        provider: 'OpenAI',
+        features: ['text', 'tools', 'image'],
+        tags: ['Personal', 'legacy'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    // #endregion GPT-4-turbo
+
+    // #region GPT-4
+    'legacy/gpt-4-latest': {
+        label: 'GPT 4 Latest',
+        modelId: 'gpt-4-0613',
+        provider: 'OpenAI',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'legacy'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    'legacy/gpt-4': {
+        label: 'GPT 4',
+        modelId: 'gpt-4o-2024-08-06',
+        provider: 'OpenAI',
+        features: ['text', 'tools'],
+        tags: ['Personal', 'deprecated'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    // #endregion GPT-4
+
+    // #region GPT-3.5
+    'legacy/gpt-3.5-turbo-latest': {
+        label: 'GPT 3.5 Turbo Latest',
+        modelId: 'gpt-3.5-turbo-0125',
+        provider: 'OpenAI',
+        features: ['text', 'tools'],
+        tags: ['Limited', 'legacy'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    'legacy/gpt-3.5-turbo': {
+        label: 'GPT 3.5 Turbo',
+        modelId: 'gpt-3.5-turbo-0125',
+        provider: 'OpenAI',
+        features: ['text', 'tools'],
+        tags: ['Limited', 'legacy'],
+        tokens: 2048,
+        completionTokens: 2048,
+        enabled: true,
+        credentials: ['vault', 'internal'],
+        hidden: true,
+    },
+    // #endregion GPT-3.5
+    // #endregion GPT models for legacy plans
 
     // #endregion OpenAI Models ==========================
 
