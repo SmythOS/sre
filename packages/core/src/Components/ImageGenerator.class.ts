@@ -51,7 +51,7 @@ export class ImageGenerator extends Component {
         // #region OpenAI (DALL·E)
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
-        quality: Joi.string().valid('standard', 'hd', 'auto', 'high', 'medium', 'low').optional(),
+        quality: Joi.string().valid('standard', 'hd', 'auto', 'high', 'medium', 'low').allow('').optional(),
         style: Joi.string().valid('vivid', 'natural').optional(),
         isRawInputPrompt: Joi.boolean().strict().optional(),
         // #endregion
