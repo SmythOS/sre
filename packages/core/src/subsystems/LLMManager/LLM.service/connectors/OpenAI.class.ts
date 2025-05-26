@@ -123,16 +123,7 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // Validate token limit
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
-
-            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-            await modelsProvider.validateTokensLimit({
-                model: params?.model,
-                promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
-            });
+            await this.validateTokenLimit({ acRequest, promptTokens, params });
 
             const response = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -185,46 +176,41 @@ export class OpenAIConnector extends LLMConnector {
 
         messages.push({ role: 'user', content: promptData });
 
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+
+        const openai = new OpenAI({
+            apiKey: apiKey,
+            baseURL: params.baseURL,
+        });
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: params.model,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
         try {
-            // Check if the team has their own API key, then use it
-            const apiKey = params?.credentials?.apiKey;
-
-            if (!apiKey) {
-                throw new Error('An API key is required to use this model.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params.baseURL,
-            });
-
-            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-                model: params.model,
-                messages,
-            };
-
-            if (params?.maxTokens !== undefined) {
-                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-                chatCompletionArgs[maxTokensKey] = params.maxTokens;
-            }
-            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-            await modelsProvider.validateTokensLimit({
-                model: params?.model,
+            await this.validateTokenLimit({
+                acRequest,
+                params,
                 promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
             });
 
             const response: any = await openai.chat.completions.create(chatCompletionArgs);
@@ -316,47 +302,38 @@ export class OpenAIConnector extends LLMConnector {
 
         messages.push({ role: 'user', content: promptData });
 
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+
+        const openai = new OpenAI({
+            apiKey: apiKey,
+            baseURL: params.baseURL,
+        });
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: params.model,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
         try {
-            // Check if the team has their own API key, then use it
-            const apiKey = params?.credentials?.apiKey;
-
-            if (!apiKey) {
-                throw new Error('An API key is required to use this model.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params.baseURL,
-            });
-
-            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-                model: params.model,
-                messages,
-            };
-
-            if (params?.maxTokens !== undefined) {
-                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-                chatCompletionArgs[maxTokensKey] = params.maxTokens;
-            }
-            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-            await modelsProvider.validateTokensLimit({
-                model: params?.model,
-                promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
-            });
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
 
             const response = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -512,6 +489,10 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         try {
+            // Validate token limit
+            const promptTokens = encodeChat(messages, 'gpt-4')?.length;
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
@@ -701,6 +682,10 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         try {
+            // Validate token limit
+            const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             let finishReason = 'stop';
             const stream = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -852,20 +837,11 @@ export class OpenAIConnector extends LLMConnector {
         if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
         if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
-        // Validate token limit
-        const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-        await modelsProvider.validateTokensLimit({
-            model: params?.model,
-            promptTokens,
-            completionTokens: params?.maxTokens,
-            hasAPIKey: !!apiKey,
-        });
-
         try {
+            // Validate token limit
+            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             let finishReason = 'stop';
             const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -1116,5 +1092,25 @@ export class OpenAIConnector extends LLMConnector {
         SystemEvents.emit('USAGE:LLM', usageData);
 
         return usageData;
+    }
+
+    private async validateTokenLimit({
+        acRequest,
+        params,
+        promptTokens,
+    }: {
+        acRequest: AccessRequest;
+        params: TLLMParams;
+        promptTokens: number;
+    }): Promise<void> {
+        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+        await modelsProvider.validateTokensLimit({
+            model: params?.modelEntryName,
+            promptTokens,
+            completionTokens: params?.maxTokens,
+            hasAPIKey: params.credentials.isUserKey as boolean,
+        });
     }
 }
