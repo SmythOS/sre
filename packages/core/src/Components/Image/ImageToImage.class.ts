@@ -1,11 +1,10 @@
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
@@ -50,7 +49,7 @@ export class ImageToImage extends Component {
 
         logger.debug(`Prompt: \n`, positivePrompt);
 
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const provider = (await agent.modelsProvider.getProvider(model))?.toLowerCase();
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
@@ -58,7 +57,7 @@ export class ImageToImage extends Component {
         seedImage = await normalizeImageInput(seedImage);
 
         const imageRequestArgs: IRequestImage = {
-            model: LLMRegistry.getModelId(model),
+            model: await agent.modelsProvider.getModelId(model),
             positivePrompt,
             seedImage,
             width: +config?.data?.width || 1024,

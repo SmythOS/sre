@@ -78,5 +78,3 @@ export class Component {
         return false;
     }
 }
-
-export default Component;

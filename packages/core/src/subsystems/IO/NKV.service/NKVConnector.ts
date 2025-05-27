@@ -18,7 +18,7 @@ export interface INKVRequest {
  * NKV = Namespace-Key-Value Connector
  */
 export abstract class NKVConnector extends SecureConnector {
-    public user(candidate: AccessCandidate): INKVRequest {
+    public requester(candidate: AccessCandidate): INKVRequest {
         return {
             get: async (namespace: string, key: string) => this.get(candidate.readRequest, namespace, key),
             set: async (namespace: string, key: string, value: StorageData) => this.set(candidate.writeRequest, namespace, key, value),

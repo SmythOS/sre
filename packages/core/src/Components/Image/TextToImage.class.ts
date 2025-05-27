@@ -1,11 +1,10 @@
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
 import appConfig from '@sre/config';
@@ -49,12 +48,12 @@ export class TextToImage extends Component {
 
         logger.debug(`Positive Prompt: \n`, positivePrompt);
 
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const provider = (await agent.modelsProvider.getProvider(model))?.toLowerCase();
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
         const imageRequestArgs: IRequestImage = {
-            model: LLMRegistry.getModelId(model),
+            model: await agent.modelsProvider.getModelId(model),
             positivePrompt: positivePrompt,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,

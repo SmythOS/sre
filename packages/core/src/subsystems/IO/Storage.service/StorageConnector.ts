@@ -32,7 +32,7 @@ export abstract class StorageConnector extends SecureConnector {
     protected abstract setACL(acRequest: AccessRequest, resourceId: string, acl: IACL): Promise<void>;
     protected abstract expire(acRequest: AccessRequest, resourceId: string, ttl: number): Promise<void>;
 
-    public user(candidate: AccessCandidate): IStorageRequest {
+    public requester(candidate: AccessCandidate): IStorageRequest {
         return {
             write: async (resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata) => {
                 return await this.write(candidate.writeRequest, resourceId, value, acl, metadata);
@@ -60,7 +60,7 @@ export abstract class StorageConnector extends SecureConnector {
             },
             expire: async (resourceId: string, ttl: number) => {
                 return await this.expire(candidate.writeRequest, resourceId, ttl);
-            }
+            },
         } as IStorageRequest;
     }
 }

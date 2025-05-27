@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { AccessCandidate, SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
@@ -15,8 +15,57 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             teamId: { value: 'cloilcrl9001v9tkguilsu8dx' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
+
+// const models = [
+//     { provider: 'OpenAI', id: 'gpt-4o-mini-2024-07-18' },
+//     { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
+//     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+//     { provider: 'Groq', id: 'gemma2-9b-it' },
+//     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite' },
+//     { provider: 'xAI', id: 'grok-beta' },
+// ];
+
+const models = {
+    'gpt-4o-mini': {
+        provider: 'OpenAI',
+
+        llm: 'OpenAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        tokens: 128_000,
+        completionTokens: 16_383,
+        enabled: true,
+        credentials: 'internal',
+    },
+    'claude-3-haiku': {
+        provider: 'Anthropic',
+
+        llm: 'Anthropic',
+
+        label: 'Claude 3 Haiku',
+        modelId: 'claude-3-haiku-20240307',
+
+        tokens: 200_000,
+        completionTokens: 4096,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -39,6 +88,12 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './tests/data/vault.json',
+        },
+    },
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models,
         },
     },
     Account: {
@@ -80,7 +135,7 @@ async function runTestCases(model: string) {
         };
     });
 
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         `runs a simple prompt with Model: ${model}`,
@@ -100,7 +155,7 @@ async function runTestCases(model: string) {
         async () => {
             const prompt = 'What can you do?' + WORD_INCLUSION_PROMPT;
 
-            const consistentMessages = llmInference.getConsistentMessages([
+            const consistentMessages = llmInference.connector.getConsistentMessages([
                 { role: TLLMMessageRole.System, content: 'You are a helpful assistant' },
                 { role: TLLMMessageRole.User, content: prompt },
             ]);
@@ -176,17 +231,8 @@ async function runTestCases(model: string) {
     );
 }
 
-const models = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini-2024-07-18' },
-    { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
-    { provider: 'Groq', id: 'gemma2-9b-it' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite' },
-    { provider: 'xAI', id: 'grok-beta' },
-];
-
-for (const model of models) {
-    describe(`LLM Prompt Tests: ${model.provider} (${model.id})`, async () => {
-        await runTestCases(model.id);
+for (const model of Object.keys(models)) {
+    describe(`LLM Prompt Tests: ${model}`, async () => {
+        await runTestCases(model);
     });
 }

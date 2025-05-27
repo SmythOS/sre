@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { Conversation } from '@sre/helpers/Conversation.helper';
+import * as path from 'path';
 
+const TEST_DATA_PATH = process.env.DATA_DIR;
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -26,6 +28,21 @@ const sre = SmythRuntime.Instance.init({
             smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
         },
     },
+
+    Account: {
+        Connector: 'JSONFileAccount',
+        Settings: {
+            file: path.join(TEST_DATA_PATH, 'account.json'),
+        },
+    },
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: path.join(TEST_DATA_PATH, 'vault.json'),
+        },
+    },
+
+    /*
     Account: {
         Connector: 'SmythAccount',
         Settings: {
@@ -48,6 +65,7 @@ const sre = SmythRuntime.Instance.init({
             vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
+    */
 });
 
 const TIMEOUT = 30000;
@@ -73,7 +91,7 @@ function runTestCases(model: string) {
             expect(result).toBeTruthy();
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -107,7 +125,7 @@ function runTestCases(model: string) {
             expect(streamResult).toBeTruthy();
             expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     it(
@@ -141,23 +159,26 @@ function runTestCases(model: string) {
             expect(streamResult).toBeTruthy();
             expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 3
+        TIMEOUT * 3,
     );
 
-    it('handles follow-up questions correctly', async () => {
-        const conv = new Conversation(model, AGENT_ID);
+    it(
+        'handles follow-up questions correctly',
+        async () => {
+            const conv = new Conversation(model, AGENT_ID);
 
-        const prompt = 'Publish post with title "Impact of AI in Software development?' + WORD_INCLUSION_PROMPT;
+            const prompt = 'Publish post with title "Impact of AI in Software development?' + WORD_INCLUSION_PROMPT;
 
-        await conv.prompt(prompt);
+            await conv.prompt(prompt);
 
-        const followUpPrompt = 'Give me the published post details with one more latest post?' + WORD_INCLUSION_PROMPT;
-        const followUpResult = await conv.prompt(followUpPrompt);
+            const followUpPrompt = 'Give me the published post details with one more latest post?' + WORD_INCLUSION_PROMPT;
+            const followUpResult = await conv.prompt(followUpPrompt);
 
-        expect(followUpResult).toBeTruthy();
-        expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
-    });
-    TIMEOUT * 5;
+            expect(followUpResult).toBeTruthy();
+            expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
+        },
+        TIMEOUT * 5,
+    );
 }
 
 const models = [{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use' }];

@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import Joi from 'joi';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from '../Component.class';
+import { Component } from '../Component.class';
 import { parseHeaders } from './parseHeaders';
 import { parseUrl, parseSmythFsUrl, destroyPublicUrls } from './parseUrl';
 import { parseData } from './parseData';

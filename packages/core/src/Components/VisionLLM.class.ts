@@ -1,9 +1,9 @@
 import Joi from 'joi';
 
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class VisionLLM extends Component {
     protected configSchema = Joi.object({
@@ -29,7 +29,7 @@ export class VisionLLM extends Component {
             const passThrough: boolean = config.data.passthrough || false;
             const model: string = config.data?.model;
 
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
                 return {
@@ -37,9 +37,9 @@ export class VisionLLM extends Component {
                     _debug: logger.output,
                 };
             }
-            const isStandardLLM = LLMRegistry.isStandardLLM(model);
 
-            logger.debug(` Model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
+            const modelId = await agent.modelsProvider.getModelId(model);
+            logger.debug(` Model : ${modelId || model}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 

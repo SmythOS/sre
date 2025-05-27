@@ -1,4 +1,4 @@
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import builtinComponents from '@sre/Components/index';
 import { AgentLogger } from './AgentLogger.class';
 import { AgentRequest } from './AgentRequest.class';
@@ -11,7 +11,7 @@ import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { AgentSSE } from './AgentSSE.class';
-import { AccessCandidate, ConnectorService } from '@sre/index';
+import { AccessCandidate, ConnectorService, IModelsProviderRequest, ModelsProviderConnector } from '@sre/index';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
@@ -46,6 +46,7 @@ export class Agent {
 
     public agentRequest: AgentRequest;
     public sse: AgentSSE;
+    public modelsProvider: IModelsProviderRequest;
 
     private _componentInstance = { ...builtinComponents };
     constructor(
@@ -56,7 +57,8 @@ export class Agent {
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
-        this.data = json.data;
+        this.data = json.connections && json.components ? json : json.data;
+        if (!this.data) this.data = { name: '', connections: [], components: [] };
         //this.agentVariables = json.data.variables || {};
 
         this.name = this.data.name;
@@ -137,8 +139,18 @@ export class Agent {
         } catch (error) {
             console.warn('Could not load custom components');
         }
+
+        const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        if (modelsProvider.valid) {
+            this.modelsProvider = modelsProvider.agent(id);
+        }
     }
 
+    /**
+     * Add a SSE connection to the agent
+     * @param sseSource - The SSE source to add
+     * @param monitorId - The monitor ID to add
+     */
     public addSSE(sseSource: Response | AgentSSE, monitorId?: string) {
         if (sseSource instanceof AgentSSE) {
             for (const [monitorId, res] of sseSource) {

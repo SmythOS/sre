@@ -1,12 +1,13 @@
 import { io, Socket } from 'socket.io-client';
 import Joi from 'joi';
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ControlledPromise } from '../utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 interface AgentProgressPayload {
     status: 'iteration' | 'completion' | 'error';
@@ -85,7 +86,7 @@ export class ComputerUse extends Component {
 
         // TODO: once we have multiple models supporting Comp Use, we can use the model from the config to dynamically load the appropriate model
         const model: string = '';
-        const llmInference: LLMInference = await LLMInference.getInstance('gpt-4o-mini');
+        const llmInference: LLMInference = await LLMInference.getInstance('gpt-4o-mini', AccessCandidate.agent(agent.id));
 
         let prompt = config.data?.prompt || input?.Prompt;
         prompt = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);

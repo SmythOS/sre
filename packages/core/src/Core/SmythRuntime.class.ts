@@ -62,6 +62,19 @@ export class SmythRuntime {
      * @param config
      */
     private autoConf(config: SREConfig) {
+        // default config for missing connectors
+        const defaultConfig = {
+            ModelsProvider: {
+                Connector: 'SmythModelsProvider',
+            },
+        };
+
+        for (let connectorType in defaultConfig) {
+            if (!config[connectorType]) {
+                config[connectorType] = defaultConfig[connectorType];
+            }
+        }
+
         const newConfig: SREConfig = {};
         for (let connectorType in config) {
             newConfig[connectorType] = [];

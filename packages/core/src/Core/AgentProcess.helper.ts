@@ -1,3 +1,4 @@
+import { SmythRuntime } from '@sre/index';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { AgentRequest } from '@sre/AgentManager/AgentRequest.class';
 import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
@@ -10,6 +11,7 @@ import fs from 'fs';
 import mime from 'mime';
 import path from 'path';
 import { ConnectorService } from './ConnectorsService';
+
 export class AgentProcess {
     public agent: Agent;
 
@@ -22,6 +24,7 @@ export class AgentProcess {
         this.initAgent(agentData, agentVersion);
     }
     private async initAgent(agentData: any, agentVersion?: string) {
+        await SmythRuntime.Instance.ready();
         let data;
         let agentId;
 

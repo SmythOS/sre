@@ -124,14 +124,9 @@ const sre = SmythRuntime.Instance.init({
         },
     },
     Account: {
-        Connector: 'DummyAccount',
+        Connector: 'JSONFileAccount',
         Settings: {
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
+            file: path.join(TEST_DATA_PATH, 'account.json'),
         },
     },
     Vault: {
@@ -148,36 +143,7 @@ const sre = SmythRuntime.Instance.init({
     },
 });
 
-const testModels = [
-    {
-        provider: 'OpenAI',
-        id: 'gpt-4o-mini',
-        supportedMethods: [
-            'chatRequest',
-            'visionRequest',
-            'multimodalRequest',
-            'toolRequest',
-            'streamRequest',
-            'multimodalStreamRequest',
-            'imageGenRequest',
-        ],
-    },
-    {
-        provider: 'Anthropic',
-        id: 'claude-3.5-sonnet',
-        supportedMethods: ['chatRequest', 'visionRequest', 'multimodalRequest', 'toolRequest', 'streamRequest', 'multimodalStreamRequest'],
-    },
-    { provider: 'Groq', id: 'gemma2-9b-it', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] },
-    {
-        provider: 'GoogleAI',
-        id: 'gemini-1.5-flash',
-        supportedMethods: ['chatRequest', 'visionRequest', 'multimodalRequest', 'toolRequest', 'streamRequest', 'multimodalStreamRequest'],
-    },
-    //{ provider: 'Bedrock', id: 'm5zlsw6gduo', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] },
-    //{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] },
-    //* disabled for now since we have no valid access to VertexAI
-    // { provider: 'VertexAI', id: 'gemini-1.5-flash', supportedMethods: ['chatRequest'] },
-];
+const testModels = [{ provider: 'Bedrock', id: 'SRE - Bedrock for Tool Use', supportedMethods: ['chatRequest', 'toolRequest', 'streamRequest'] }];
 
 // @ts-ignore (Ignore required arguments, as we are using the mocked Agent)
 let agent = new Agent();
@@ -202,7 +168,7 @@ async function consumeStream(stream) {
     });
 }
 
-describe.each(testModels)('LLM Usage Reporting Tests: $provider ($id)', async ({ provider, id, supportedMethods }) => {
+describe.each(testModels)('CUSTOM LLM Usage Reporting : $provider ($id)', async ({ provider, id, supportedMethods }) => {
     let config;
 
     beforeEach(() => {
@@ -233,13 +199,8 @@ describe.each(testModels)('LLM Usage Reporting Tests: $provider ($id)', async ({
 
     const llmInference: LLMInference = await LLMInference.getInstance(id, AccessCandidate.team('default'));
     const isSupported = (method: string) => supportedMethods.includes(method);
-    const vaultConnector = ConnectorService.getVaultConnector();
-    const apiKey = await vaultConnector
-        .user(AccessCandidate.agent(agent.id))
-        .get(provider.toLowerCase())
-        .catch(() => '');
 
-    let expectedKeySource = apiKey ? APIKeySource.User : APIKeySource.Smyth;
+    let expectedKeySource = APIKeySource.User;
 
     isSupported('chatRequest') &&
         it('should report usage for chatRequest', async () => {

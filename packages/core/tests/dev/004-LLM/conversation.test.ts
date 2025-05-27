@@ -3,6 +3,47 @@ import config from '@sre/config';
 import { SmythRuntime } from '@sre/index';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import fs from 'fs/promises';
+
+const models = {
+    'gpt-4o-mini': {
+        provider: 'OpenAI',
+
+        llm: 'OpenAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        tokens: 128_000,
+        completionTokens: 16_383,
+        enabled: true,
+        credentials: 'internal',
+    },
+    'claude-3-5-haiku-latest': {
+        provider: 'Anthropic',
+
+        llm: 'Anthropic',
+
+        label: 'Claude 3 Haiku',
+        modelId: 'claude-3-5-haiku-latest',
+
+        tokens: 200_000,
+        completionTokens: 4096,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
+
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -26,18 +67,13 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
-    // Account: {
-    //     Connector: 'SmythAccount',
-    //     Settings: {
-    //         oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-    //         oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-    //         oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-    //         oAuthResource: process.env.LOGTO_API_RESOURCE,
-    //         oAuthScope: '',
-    //         smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-    //     },
-    // },
 
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models,
+        },
+    },
     Account: {
         Connector: 'DummyAccount',
         Settings: {},
@@ -52,30 +88,7 @@ const TIMEOUT = 30000;
 const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
 const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
-const models = [
-    {
-        provider: 'OpenAI',
-        id: 'gpt-4o-mini',
-    },
-    {
-        provider: 'Anthropic',
-        id: 'claude-3-haiku-20240307',
-    },
-    {
-        provider: 'GoogleAI',
-        id: 'gemini-1.5-flash',
-    },
-    /* { 
-        provider: 'Groq', 
-        id: 'gemma2-9b-it' 
-    },
-    { 
-        provider: 'TogetherAI', 
-        id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' 
-    }, */
-];
-
-describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) => {
+describe.each(Object.keys(models))('Conversation Tests: %s', (id) => {
     it(
         'runs a conversation with tool use',
         async () => {
@@ -93,7 +106,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
             expect(result).toBeTruthy();
             expect(result).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -124,7 +137,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
             expect(streamResult).toBeTruthy();
             expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 
     it(
@@ -155,7 +168,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
             expect(streamResult).toBeTruthy();
             expect(streamResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     it(
@@ -174,7 +187,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
             expect(followUpResult).toBeTruthy();
             expect(followUpResult).toContain(LLM_OUTPUT_VALIDATOR);
         },
-        TIMEOUT * 2
+        TIMEOUT * 2,
     );
 
     describe('Passthrough Mode', () => {
@@ -208,7 +221,7 @@ describe.each(models)('Conversation Tests: $provider ($id)', ({ provider, id }) 
                 }
                 expect(isResponseEmitted).toBe(true);
             },
-            TIMEOUT * 2
+            TIMEOUT * 2,
         );
     });
 });
