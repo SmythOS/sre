@@ -403,7 +403,7 @@ export class LLMInference {
         //loop through messages from last to first and use encodeChat to calculate token lengths
         //we will use fake chatMessages to calculate the token lengths, these are not used by the LLM, but just for token counting
         let tokensCount = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
-        for (let i = _messages.length - 1; i >= 0; i--) {
+        for (let i = _messages?.length - 1; i >= 0; i--) {
             const curMessage = _messages[i];
             if (curMessage.role === 'system') continue;
 
