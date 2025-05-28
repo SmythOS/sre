@@ -7,6 +7,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import {
     TLLMParams,
+    TLLMConnectorParams,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     ToolData,
@@ -28,15 +29,15 @@ import { ModelsProviderConnector } from '@sre/index';
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
-    chatRequest(params: TLLMParams): Promise<any>;
-    visionRequest(prompt, params: TLLMParams): Promise<any>;
-    multimodalRequest(prompt, params: TLLMParams): Promise<any>;
-    toolRequest(params: TLLMParams): Promise<any>;
-    streamToolRequest(params: TLLMParams): Promise<any>;
-    streamRequest(params: TLLMParams): Promise<EventEmitter>;
-    multimodalStreamRequest(prompt, params: TLLMParams): Promise<any>;
-    imageGenRequest(prompt, params: TLLMParams): Promise<any>;
-    imageEditRequest?(prompt, params: TLLMParams): Promise<any>;
+    chatRequest(params: TLLMConnectorParams): Promise<any>;
+    visionRequest(prompt, params: TLLMConnectorParams): Promise<any>;
+    multimodalRequest(prompt, params: TLLMConnectorParams): Promise<any>;
+    toolRequest(params: TLLMConnectorParams): Promise<any>;
+    streamToolRequest(params: TLLMConnectorParams): Promise<any>;
+    streamRequest(params: TLLMConnectorParams): Promise<EventEmitter>;
+    multimodalStreamRequest(prompt, params: TLLMConnectorParams): Promise<any>;
+    imageGenRequest(prompt, params: TLLMConnectorParams): Promise<any>;
+    imageEditRequest?(prompt, params: TLLMConnectorParams): Promise<any>;
 }
 
 export type LLMChatResponse = {
@@ -104,19 +105,29 @@ export class LLMStream extends Readable {
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
     //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any>;
-    protected abstract streamToolRequest(acRequest: AccessRequest, params: TLLMParams | any, agent: string | Agent): Promise<any>;
-    protected abstract streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter>;
-    protected abstract multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter>;
+    protected abstract chatRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<LLMChatResponse>;
+    protected abstract multimodalRequest(
+        acRequest: AccessRequest,
+        prompt,
+        params: TLLMConnectorParams,
+        agent: string | Agent,
+    ): Promise<LLMChatResponse>;
+    protected abstract toolRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<any>;
+    protected abstract streamToolRequest(acRequest: AccessRequest, params: TLLMConnectorParams | any, agent: string | Agent): Promise<any>;
+    protected abstract streamRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<EventEmitter>;
+    protected abstract multimodalStreamRequest(
+        acRequest: AccessRequest,
+        prompt,
+        params: TLLMConnectorParams,
+        agent: string | Agent,
+    ): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
-    protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<any> {
+    protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<any> {
         return Promise.reject(new Error('Image edit not supported by this model'));
     }
 
@@ -133,47 +144,47 @@ export abstract class LLMConnector extends Connector {
 
         const request: ILLMConnectorRequest = {
             chatRequest: async (params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.chatRequest(candidate.readRequest, _params, candidate.id);
             },
             visionRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             multimodalRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             toolRequest: async (params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.toolRequest(candidate.readRequest, _params, candidate.id);
             },
             streamToolRequest: async (params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.streamToolRequest(candidate.readRequest, _params, candidate.id);
             },
             streamRequest: async (params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.streamRequest(candidate.readRequest, _params, candidate.id);
             },
             multimodalStreamRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.multimodalStreamRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             imageGenRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.imageGenRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
             imageEditRequest: async (prompt, params: any) => {
-                const _params: TLLMParams = await this.prepareParams(candidate, params);
+                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
                 return this.imageEditRequest(candidate.readRequest, prompt, _params, candidate.id);
             },
@@ -282,7 +293,7 @@ export abstract class LLMConnector extends Connector {
 
         return {};
     }
-    private async prepareParams(candidate: AccessCandidate, params: any) {
+    private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMParams> {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
         // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const fileSources = params?.fileSources;
@@ -297,7 +308,7 @@ export abstract class LLMConnector extends Connector {
         const teamId = await this.getTeamId(candidate);
 
         // We need the model entry name for usage reporting
-        _params.modelEntryName = model;
+        _params.modelEntryName = typeof model === 'string' ? model : (model as TLLMModel).modelId;
         _params.teamId = teamId;
 
         const modelProviderCandidate = modelsProvider.requester(candidate);
@@ -316,7 +327,7 @@ export abstract class LLMConnector extends Connector {
 
         if (_params.maxTokens) {
             _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(
-                _params.model,
+                model,
                 _params.maxTokens,
                 _params?.credentials?.isUserKey as boolean,
             );

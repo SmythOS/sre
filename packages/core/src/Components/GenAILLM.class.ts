@@ -12,6 +12,105 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 //TODO : better handling of context window exceeding max length
 
 export class GenAILLM extends Component {
+    protected schema = {
+        name: 'GenAILLM',
+        settings: {
+            model: {
+                type: 'string',
+                max: 200,
+                required: true,
+            },
+            prompt: {
+                type: 'string',
+                max: 8_000_000,
+                label: 'Prompt',
+            },
+            temperature: {
+                type: 'number',
+                min: 0,
+                max: 5,
+                label: 'Temperature',
+            },
+            maxTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Tokens',
+            },
+            maxThinkingTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Thinking Tokens',
+            },
+            stopSequences: {
+                type: 'string',
+                max: 400,
+                label: 'Stop Sequences',
+                allowEmpty: true,
+            },
+            topP: {
+                type: 'number',
+                min: 0,
+                max: 1,
+                label: 'Top P',
+            },
+            topK: {
+                type: 'number',
+                min: 0,
+                max: 500,
+                label: 'Top K',
+            },
+            frequencyPenalty: {
+                type: 'number',
+                min: 0,
+                max: 2,
+                label: 'Frequency Penalty',
+            },
+            presencePenalty: {
+                type: 'number',
+                min: 0,
+                max: 2,
+                label: 'Presence Penalty',
+            },
+            responseFormat: {
+                type: 'string',
+                valid: ['json', 'text'],
+                label: 'Response Format',
+            },
+            passthrough: {
+                type: 'boolean',
+                label: 'Passthrough',
+            },
+            useSystemPrompt: {
+                type: 'boolean',
+                label: 'Use System Prompt',
+            },
+            useContextWindow: {
+                type: 'boolean',
+                label: 'Use Context Window',
+            },
+            maxContextWindowLength: {
+                type: 'number',
+                min: 0,
+                label: 'Maximum Context Window Length',
+            },
+        },
+        inputs: {
+            Input: {
+                type: 'Any',
+                description: 'An input that you can pass to the LLM',
+            },
+            Attachment: {
+                type: 'Binary',
+                description: 'An attachment that you can pass to the LLM',
+                optional: true,
+            },
+        },
+        outputs: {
+            Reply: {
+                default: true,
+            },
+        },
+    };
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters

@@ -18,6 +18,7 @@
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "gen:barrel": "ctix build",
+        "sdk:gen": "node scripts/sdk/generate-components.js",
         "build:dev": "cross-env BUILD=dev rollup -c && tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json && npm link",
         "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",

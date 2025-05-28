@@ -116,3 +116,5 @@ export class SmythRuntime {
         this.started = false;
     }
 }
+
+export const SRE = SmythRuntime.Instance;

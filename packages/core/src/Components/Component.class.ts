@@ -8,6 +8,12 @@ export class Component {
     public hasPostProcess = true;
     public alwaysActive = false; //for components like readable memories
     public exclusive = false; //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
+    protected schema = {
+        name: 'Component',
+        settings: {},
+        inputs: {},
+        //outputs: {},
+    };
     protected configSchema;
     constructor() {}
     init() {}

@@ -12,8 +12,8 @@ export type LLMModelInfo = (typeof models)[LLMModel];
 
 export type TLLMParams = {
     model: string;
-    modelEntryName: string; // for usage reporting
-    credentials:
+    modelEntryName?: string; // for usage reporting
+    credentials?:
         | Record<string, string> // for VertexAI
         | {
               apiKey?: string; // for standard models
@@ -50,6 +50,10 @@ export type TLLMParams = {
         budget_tokens: number;
     };
     maxThinkingTokens?: number;
+};
+
+export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
+    model: string | TLLMModel | TCustomLLMModel;
 };
 
 export type TLLMModelEntry = {
