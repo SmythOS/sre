@@ -15,6 +15,9 @@
  * * We will remove the 'legacy' and 'deprecated' models soon, for now we just hide them.
  */
 
+// * features we support ['text', 'image', 'audio', 'video', 'document', 'tools', 'image-generation', 'text-to-image', 'image-to-image', 'image-inpainting', 'image-outpainting']
+
+
 export const models = {
     Echo: {
         llm: 'Echo',
