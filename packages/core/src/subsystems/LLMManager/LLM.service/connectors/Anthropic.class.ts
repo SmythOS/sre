@@ -23,7 +23,6 @@ const console = Logger('AnthropicConnector');
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
 const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
-const THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
 
 // TODO [Forhad]: implement proper typing
 
@@ -37,8 +36,6 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
-
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt = '';
         const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
@@ -48,7 +45,7 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json' && !isThinkingModel) {
+        if (responseFormat === 'json') {
             systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
 
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
@@ -68,7 +65,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
             messages: messages as Anthropic.MessageParam[],
             max_tokens: maxTokens, // * max token is required
@@ -76,16 +73,19 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.modelEntryName)) {
-            messageCreateArgs.thinking = {
-                type: 'enabled',
-                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
-            };
+        // Models with reasoning capability require special argument preparation since thinking requests
+        // have limited parameter support compared to standard requests
+        const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+        if (hasReasoningCapability) {
+            messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                args: messageCreateArgs,
+                maxThinkingTokens: params.maxThinkingTokens,
+            });
         }
 
         try {
@@ -97,7 +97,7 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
-            if (responseFormat === 'json' && !isThinkingModel) {
+            if (this.hasPrefillTextForJsonResponse(messages)) {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
@@ -120,8 +120,6 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
-
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
@@ -138,8 +136,9 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json' && !isThinkingModel) {
+        if (responseFormat === 'json') {
             systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
+
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
         //#endregion Separate system message and add JSON response instruction if needed
@@ -159,7 +158,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
             messages,
             max_tokens: maxTokens, // * max token is required
@@ -167,16 +166,19 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.modelEntryName)) {
-            messageCreateArgs.thinking = {
-                type: 'enabled',
-                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
-            };
+        // Models with reasoning capability require special argument preparation since thinking requests
+        // have limited parameter support compared to standard requests
+        const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+        if (hasReasoningCapability) {
+            messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                args: messageCreateArgs,
+                maxThinkingTokens: params.maxThinkingTokens,
+            });
         }
 
         try {
@@ -188,7 +190,7 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
-            if (responseFormat === 'json' && !isThinkingModel) {
+            if (this.hasPrefillTextForJsonResponse(messages)) {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
@@ -210,8 +212,6 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
-
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
@@ -228,7 +228,7 @@ export class AnthropicConnector extends LLMConnector {
         messages = otherMessages;
 
         const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json' && !isThinkingModel) {
+        if (responseFormat === 'json') {
             systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
             messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
         }
@@ -249,7 +249,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
             messages,
             max_tokens: maxTokens, // * max token is required
@@ -257,16 +257,19 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (THINKING_MODELS.includes(params.modelEntryName)) {
-            messageCreateArgs.thinking = {
-                type: 'enabled',
-                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
-            };
+        // Models with reasoning capability require special argument preparation since thinking requests
+        // have limited parameter support compared to standard requests
+        const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+        if (hasReasoningCapability) {
+            messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                args: messageCreateArgs,
+                maxThinkingTokens: params.maxThinkingTokens,
+            });
         }
 
         try {
@@ -278,7 +281,7 @@ export class AnthropicConnector extends LLMConnector {
             const finishReason = response?.stop_reason;
             const usage = response?.usage;
 
-            if (responseFormat === 'json' && !isThinkingModel) {
+            if (this.hasPrefillTextForJsonResponse(messages)) {
                 content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
             }
 
@@ -299,8 +302,6 @@ export class AnthropicConnector extends LLMConnector {
         try {
             const agentId = agent instanceof Agent ? agent.id : agent;
 
-            const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
-
             const apiKey = params?.credentials?.apiKey;
             if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
 
@@ -311,7 +312,7 @@ export class AnthropicConnector extends LLMConnector {
 
             const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-            const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
                 model: params?.model,
                 messages: [],
                 max_tokens: maxTokens, // * max token is required
@@ -335,22 +336,15 @@ export class AnthropicConnector extends LLMConnector {
                 messageCreateArgs.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
             }
 
-            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
-            if (toolChoice) {
-                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
-                    messageCreateArgs.tool_choice = {
-                        type: 'auto',
-                    };
-                } else {
-                    messageCreateArgs.tool_choice = toolChoice;
-                }
-            }
-
-            if (isThinkingModel) {
-                messageCreateArgs.thinking = {
-                    type: 'enabled',
-                    budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
-                };
+            // Models with reasoning capability require special argument preparation since thinking requests
+            // have limited parameter support compared to standard requests
+            const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+            if (hasReasoningCapability) {
+                messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                    args: messageCreateArgs,
+                    maxThinkingTokens: params.maxThinkingTokens,
+                    toolChoice: params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice,
+                });
             }
 
             // TODO (Forhad): implement claude specific token counting properly
@@ -434,25 +428,16 @@ export class AnthropicConnector extends LLMConnector {
 
             const anthropic = new Anthropic({ apiKey });
 
-            const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
             const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
             const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
 
             const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-            const messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
+            let messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
                 model: params?.model,
                 messages: [],
                 max_tokens: maxTokens,
             };
-
-            // Add thinking configuration for 3.7 Sonnet
-            if (isThinkingModel) {
-                messageCreateArgs.thinking = {
-                    type: 'enabled',
-                    budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7), // Allocate 70% of max tokens to thinking
-                };
-            }
 
             console.debug('Using Model', params?.model, 'Max Tokens=', params?.maxTokens);
             let messages = params?.messages || [];
@@ -494,15 +479,20 @@ export class AnthropicConnector extends LLMConnector {
                 }
             }
 
-            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
-            if (toolChoice) {
-                if (isThinkingModel && ['any', 'tool'].includes(toolChoice.type)) {
-                    messageCreateArgs.tool_choice = {
-                        type: 'auto',
-                    };
-                } else {
-                    messageCreateArgs.tool_choice = toolChoice;
-                }
+            if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+            if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+            if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
+            if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
+
+            // Models with reasoning capability require special argument preparation since thinking requests
+            // have limited parameter support compared to standard requests
+            const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+            if (hasReasoningCapability) {
+                messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                    args: messageCreateArgs,
+                    maxThinkingTokens: params.maxThinkingTokens,
+                    toolChoice: params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice,
+                });
             }
 
             let stream = anthropic.messages.stream(messageCreateArgs);
@@ -597,8 +587,6 @@ export class AnthropicConnector extends LLMConnector {
 
         const agentId = agent instanceof Agent ? agent.id : agent;
 
-        const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
-
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
         const imageData = await this.getImageData(validSources, agentId);
@@ -630,7 +618,7 @@ export class AnthropicConnector extends LLMConnector {
 
         const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
 
-        const messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
+        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model,
             messages,
             max_tokens: maxTokens, // * max token is required
@@ -638,16 +626,20 @@ export class AnthropicConnector extends LLMConnector {
 
         if (systemPrompt) messageCreateArgs.system = systemPrompt;
 
-        if (params?.temperature !== undefined && !isThinkingModel) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined && !isThinkingModel) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined && !isThinkingModel) messageCreateArgs.top_k = params.topK;
+        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
+        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        if (isThinkingModel) {
-            messageCreateArgs.thinking = {
-                type: 'enabled',
-                budget_tokens: params.maxThinkingTokens || Math.floor(maxTokens * 0.7),
-            };
+        // Models with reasoning capability require special argument preparation since thinking requests
+        // have limited parameter support compared to standard requests
+        const hasReasoningCapability = await this.hasReasoningCapability(acRequest, params.modelEntryName);
+        if (hasReasoningCapability) {
+            messageCreateArgs = await this.prepareArgsForThinkingRequest({
+                args: messageCreateArgs,
+                maxThinkingTokens: params.maxThinkingTokens,
+                toolChoice: params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice,
+            });
         }
 
         try {
@@ -961,5 +953,57 @@ export class AnthropicConnector extends LLMConnector {
         SystemEvents.emit('USAGE:LLM', usageData);
 
         return usageData;
+    }
+
+    private async prepareArgsForThinkingRequest({
+        args,
+        maxThinkingTokens,
+        toolChoice = null,
+    }: {
+        args: Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
+        maxThinkingTokens: number;
+        toolChoice?: Anthropic.ToolChoice;
+    }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+        // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
+        let messages = args.messages.filter(
+            (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE,
+        );
+
+        const newArgs: Anthropic.MessageCreateParamsNonStreaming = {
+            model: args.model,
+            messages,
+            max_tokens: args.max_tokens,
+            thinking: {
+                type: 'enabled',
+                budget_tokens: Math.floor(maxThinkingTokens) || Math.floor(args.max_tokens * 0.7),
+            },
+        };
+
+        if (toolChoice) {
+            // any and tool are not supported with thinking, so we set it to auto
+            if (['any', 'tool'].includes(toolChoice.type)) {
+                newArgs.tool_choice = {
+                    type: 'auto',
+                };
+            } else {
+                newArgs.tool_choice = toolChoice;
+            }
+        }
+
+        return newArgs;
+    }
+
+    private hasPrefillTextForJsonResponse(messages: Anthropic.Messages.MessageParam[]) {
+        return messages.some((message) => message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE);
+    }
+
+    private async hasReasoningCapability(acRequest: AccessRequest, modelEntryName: string) {
+        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+        const modelInfo = await modelsProvider.getModelInfo(modelEntryName);
+        const features = modelInfo?.features || [];
+
+        return features.includes('reasoning');
     }
 }

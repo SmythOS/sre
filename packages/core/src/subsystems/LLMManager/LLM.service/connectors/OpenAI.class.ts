@@ -1537,11 +1537,8 @@ export class OpenAIConnector extends LLMConnector {
         const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
 
         const modelInfo = await modelsProvider.getModelInfo(modelEntryName);
+        const features = modelInfo?.features || [];
 
-        if (modelInfo?.features?.includes('search')) {
-            return true;
-        }
-
-        return false;
+        return features.includes('search');
     }
 }
