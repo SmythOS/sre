@@ -136,7 +136,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-tests/data/vault.json
+tests/data/vault.*
 .DS_Store
 tests/dev/000-experimental
 distibutions

@@ -18,11 +18,12 @@ import { processWithConcurrencyLimit } from '@sre/utils';
 
 import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('GoogleAIConnector');
 
@@ -133,7 +134,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(prompt);
 
             // * the function will throw an error if the token limit is exceeded
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -233,7 +237,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -342,7 +349,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model,
                 promptTokens,
                 completionTokens: params?.maxTokens,
@@ -661,7 +671,10 @@ export class GoogleAIConnector extends LLMConnector {
             const { totalTokens: promptTokens } = await $model.countTokens(promptWithFiles);
 
             // * the function will throw an error if the token limit is exceeded
-            await LLMRegistry.validateTokensLimit({
+            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+            await modelsProvider.validateTokensLimit({
                 model,
                 promptTokens,
                 completionTokens: params?.maxTokens,

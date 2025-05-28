@@ -1,5 +1,5 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import _config from '@sre/config';
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';

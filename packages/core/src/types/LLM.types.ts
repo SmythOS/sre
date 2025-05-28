@@ -4,6 +4,7 @@ import { FunctionCallingMode } from '@google/generative-ai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 export type LLMProvider = Extract<(typeof models)[keyof typeof models], { llm: string }>['llm'] | 'VertexAI' | 'Bedrock';
 export type LLMModel = keyof typeof models;
@@ -19,7 +20,7 @@ export type TLLMParams = {
               keyId?: string; // for Bedrock
               secretKey?: string; // for Bedrock
               sessionKey?: string; // for Bedrock
-              isUserKey?: boolean; // for Bedrock
+              isUserKey?: boolean;
           };
 
     messages?: any[]; // TODO [Forhad]: apply proper typing
@@ -31,7 +32,7 @@ export type TLLMParams = {
     frequencyPenalty?: number;
     presencePenalty?: number;
     responseFormat?: any; // TODO [Forhad]: apply proper typing
-    modelInfo?: TVertexAIModel | TBedrockModel;
+    modelInfo?: TCustomLLMModel;
     fileSources?: BinaryInput[];
     toolsConfig?: {
         tools?: OpenAI.ChatCompletionTool[];
@@ -111,8 +112,16 @@ export type TLLMModelEntry = {
     };
 };
 
+export enum TLLMCredentials {
+    Vault = 'vault',
+    Internal = 'internal',
+    BedrockVault = 'bedrock_vault',
+    VertexAIVault = 'vertexai_vault',
+    None = 'none',
+}
 export type TLLMModel = {
     llm: string;
+    isCustomLLM: boolean;
     modelId?: string;
     tokens?: number;
     completionTokens?: number;
@@ -128,6 +137,27 @@ export type TLLMModel = {
         tokens: number;
         completionTokens: number;
     };
+    credentials?: TLLMCredentials;
+};
+
+export type TBedrockSettings = {
+    keyIDName: string;
+    secretKeyName: string;
+    sessionKeyName: string;
+};
+export type TVertexAISettings = {
+    projectId: string;
+    credentialsName: string;
+    jsonCredentialsName: string;
+};
+
+export type TCustomLLMModel = TLLMModel & {
+    name: string;
+    settings: {
+        foundationModel: string;
+        customModel: string;
+        region: string;
+    } & (TBedrockSettings | TVertexAISettings);
 };
 
 //#region === LLM Tools ===========================
@@ -199,38 +229,6 @@ export type GenerateImageConfig = {
     response_format?: 'url' | 'b64_json';
 };
 
-type TCustomModel = {
-    name: string;
-    label: string;
-    provider: 'Bedrock';
-    components: string[];
-    tags: string[];
-    features: string[];
-    tokens: number;
-    completionTokens: number;
-    settings: {
-        foundationModel: string;
-        customModel: string;
-        region: string;
-    };
-};
-
-export type TBedrockModel = TCustomModel & {
-    settings: {
-        keyIDName: string;
-        secretKeyName: string;
-        sessionKeyName: string;
-    };
-};
-
-export type TVertexAIModel = TCustomModel & {
-    settings: {
-        projectId: string;
-        credentialsName: string;
-        jsonCredentialsName: string;
-    };
-};
-
 // ! Deprecated
 export type TLLMInputMessage = {
     role: string;
@@ -280,7 +278,7 @@ export interface SmythTaskUsage {
 }
 
 export type TLLMModelsList = {
-    [key: string]: TLLMModel;
+    [key: string]: TLLMModel | TCustomLLMModel;
 };
 
 export type SmythModelsProviderConfig = {

@@ -2,12 +2,12 @@ import { OpenAI } from 'openai';
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { GenerateImageConfig, APIKeySource } from '@sre/types/LLM.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
@@ -16,6 +16,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './Image/imageSettings.config';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 enum DALL_E_MODELS {
     DALL_E_2 = 'dall-e-2',
@@ -50,7 +51,7 @@ export class ImageGenerator extends Component {
         // #region OpenAI (DALL·E)
         sizeDalle2: Joi.string().valid('256x256', '512x512', '1024x1024').optional(),
         sizeDalle3: Joi.string().valid('1024x1024', '1792x1024', '1024x1792').optional(),
-        quality: Joi.string().valid('standard', 'hd', 'auto', 'high', 'medium', 'low').optional(),
+        quality: Joi.string().valid('standard', 'hd', 'auto', 'high', 'medium', 'low').allow('').optional(),
         style: Joi.string().valid('vivid', 'natural').optional(),
         isRawInputPrompt: Joi.boolean().strict().optional(),
         // #endregion
@@ -100,7 +101,7 @@ export class ImageGenerator extends Component {
 
         logger.debug(`Prompt: \n`, prompt);
 
-        const modelFamily = getModelFamily(model);
+        const modelFamily = await getModelFamily(model, agent);
 
         if (typeof imageGenerator[modelFamily] !== 'function') {
             return { _error: `The model '${model}' is not available. Please try a different one.`, _debug: logger.output };
@@ -142,7 +143,7 @@ const imageGenerator = {
         };
 
         try {
-            const llmInference: LLMInference = await LLMInference.getInstance(model);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
@@ -152,7 +153,7 @@ const imageGenerator = {
                 };
             }
 
-            const provider = LLMRegistry.getProvider(model);
+            const provider = await agent.modelsProvider.getProvider(model);
 
             const fileSources: any[] = parseFiles(input, config);
             const validFileSources = fileSources.filter((file) => imageGenerator.isValidImageFile(provider, file.mimetype));
@@ -232,7 +233,7 @@ const imageGenerator = {
             cost = IMAGE_GEN_COST_MAP[model][size];
         }
 
-        const llmInference: LLMInference = await LLMInference.getInstance(model);
+        const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
         // if the llm is undefined, then it means we removed the model from our system
         if (!llmInference.connector) {
@@ -266,8 +267,9 @@ const imageGenerator = {
         let seedImage = Array.isArray(fileSources) ? fileSources[0] : fileSources;
         seedImage = await normalizeImageInput(seedImage);
 
+        const modelId = await agent.modelsProvider.getModelId(model);
         const imageRequestArgs: IRequestImage = {
-            model: LLMRegistry.getModelId(model),
+            model: modelId,
             positivePrompt: prompt,
             width: +config?.data?.width || 1024,
             height: +config?.data?.height || 1024,
@@ -358,10 +360,10 @@ enum PROVIDERS {
  * @param model The model identifier
  * @returns The model family or null if not recognized
  */
-function getModelFamily(model: string): string | null {
-    if (isGPTModel(model)) return MODEL_FAMILY.GPT;
-    if (isRunwareModel(model)) return MODEL_FAMILY.RUNWARE;
-    if (isDallEModel(model)) return MODEL_FAMILY.DALL_E;
+async function getModelFamily(model: string, agent: Agent): Promise<string | null> {
+    if (await isGPTModel(model)) return MODEL_FAMILY.GPT;
+    if (await isRunwareModel(model, agent)) return MODEL_FAMILY.RUNWARE;
+    if (await isDallEModel(model)) return MODEL_FAMILY.DALL_E;
 
     return null;
 }
@@ -370,8 +372,9 @@ function isGPTModel(model: string) {
     return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.GPT);
 }
 
-function isRunwareModel(model: string): boolean {
-    return LLMRegistry.getModelInfo(model)?.provider === PROVIDERS.RUNWARE;
+async function isRunwareModel(model: string, agent: Agent): Promise<boolean> {
+    const provider = await agent.modelsProvider.getProvider(model);
+    return provider === PROVIDERS.RUNWARE || provider.toLowerCase() === PROVIDERS.RUNWARE.toLowerCase();
 }
 
 function isDallEModel(model: string) {

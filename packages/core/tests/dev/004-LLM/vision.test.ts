@@ -13,9 +13,54 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
+// const models = [
+//     { provider: 'OpenAI', id: 'gpt-4o-mini' },
+//     { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
+//     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+// ];
+
+const models = {
+    'gpt-4o-mini': {
+        provider: 'OpenAI',
+
+        llm: 'OpenAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        tokens: 128_000,
+        completionTokens: 16_383,
+        enabled: true,
+        credentials: 'internal',
+    },
+    'claude-3-haiku': {
+        provider: 'Anthropic',
+
+        llm: 'Anthropic',
+
+        label: 'Claude 3 Haiku',
+        modelId: 'claude-3-haiku-20240307',
+
+        tokens: 200_000,
+        completionTokens: 4096,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',
@@ -37,6 +82,12 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './tests/data/vault.json',
+        },
+    },
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models,
         },
     },
     Account: {
@@ -176,14 +227,8 @@ async function runVisionTestCases(model: string) {
     );
 }
 
-const models = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'Anthropic', id: 'claude-3-haiku-20240307' },
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
-];
-
-for (const model of models) {
-    describe(`LLM Vision Tests: ${model.provider} (${model.id})`, async () => {
-        await runVisionTestCases(model.id);
+for (const model of Object.keys(models)) {
+    describe(`LLM Vision Tests: ${model}`, async () => {
+        await runVisionTestCases(model);
     });
 }

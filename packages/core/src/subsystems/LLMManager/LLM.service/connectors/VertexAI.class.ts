@@ -5,7 +5,7 @@ import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, TLLMMessageRole, TVertexAIModel, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMParams, TCustomLLMModel, APIKeySource, TVertexAISettings } from '@sre/types/LLM.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -41,7 +41,7 @@ export class VertexAIConnector extends LLMConnector {
         }
         //#endregion Separate system message and add JSON response instruction if needed
 
-        const modelInfo = params.modelInfo as TVertexAIModel;
+        const modelInfo = params.modelInfo as TCustomLLMModel;
 
         const generationConfig: GenerationConfig = {};
         if (params?.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
@@ -64,7 +64,7 @@ export class VertexAIConnector extends LLMConnector {
 
         try {
             const client = new VertexAI({
-                project: modelInfo.settings.projectId,
+                project: (modelInfo.settings as TVertexAISettings).projectId,
                 location: modelInfo?.settings?.region,
                 googleAuthOptions: {
                     credentials: params.credentials as any, // TODO [Forhad]: apply proper typing
@@ -117,7 +117,7 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Streaming is not currently implemented for Vertex AI');
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('VertexAI model does not support passthrough with File(s)');
     }
 

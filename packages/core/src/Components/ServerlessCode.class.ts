@@ -1,5 +1,5 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import _config from '@sre/config';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';

@@ -4,7 +4,7 @@ import { Agent } from '@sre/AgentManager/Agent.class';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 

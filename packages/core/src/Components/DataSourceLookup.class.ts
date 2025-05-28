@@ -1,4 +1,4 @@
-// import Component from './Component.class';
+// import { Component } from './Component.class';
 import Joi from 'joi';
 // import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { validateInteger } from '../utils';
@@ -8,7 +8,7 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 // import { LLMHelper } from '@sre/LLMManager/LLM.helper';

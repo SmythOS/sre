@@ -1,5 +1,5 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Joi from 'joi';
 import { validateCharacterSet } from '../utils';

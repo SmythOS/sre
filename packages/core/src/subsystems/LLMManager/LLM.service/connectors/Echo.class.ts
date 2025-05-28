@@ -4,7 +4,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-import { APIKeySource } from '@sre/types/LLM.types';
+import { APIKeySource, TLLMParams } from '@sre/types/LLM.types';
 import { Agent } from '@sre/AgentManager/Agent.class';
 
 export class EchoConnector extends LLMConnector {
@@ -61,7 +61,7 @@ export class EchoConnector extends LLMConnector {
 
         return emitter;
     }
-    protected async multimodalStreamRequest(acRequest: AccessRequest, params: any, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
         throw new Error('Echo model does not support passthrough with File(s)');
     }
 

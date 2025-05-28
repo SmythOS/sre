@@ -5,48 +5,9 @@ import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { CLIAgentDataConnector, ConnectorService, SmythRuntime, AgentSettings } from '@sre/index';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { Agent } from '@sre/AgentManager/Agent.class';
-import AgentPlugin from '@sre/Components/AgentPlugin.class';
-
-const sre = SmythRuntime.Instance.init({
-    Storage: {
-        Connector: 'S3',
-        Settings: {
-            bucket: process.env.AWS_S3_BUCKET_NAME || '',
-            region: process.env.AWS_S3_REGION || '',
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-        },
-    },
-    /* AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    }, */
-    AgentData: {
-        Connector: 'Smyth',
-        Settings: {
-            agentStageDomain: process.env.AGENT_DOMAIN || '',
-            agentProdDomain: process.env.PROD_AGENT_DOMAIN || '',
-            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-            oAuthResource: process.env.LOGTO_API_RESOURCE,
-            oAuthScope: '',
-            smythAPIBaseUrl: process.env.SMYTH_API_BASE_URL,
-        },
-    },
-    Vault: {
-        Connector: 'JSONFileVault',
-        Settings: {
-            file: './tests/data/vault.json',
-        },
-    },
-});
-
-ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-ConnectorService.init(TConnectorService.AgentData, 'CLI');
+import { AgentPlugin } from '@sre/Components/AgentPlugin.class';
+import { PrepareSRETestEnvironment } from './common';
+const { SREInstance, MockAgentData } = PrepareSRETestEnvironment();
 
 // TODO [Forhad]: Need to add more test cases for AgentPlugin
 
@@ -71,7 +32,7 @@ describe('AgentPlugin Component', () => {
             expect(output).toBeTypeOf('string');
         } catch (e) {
             error = e;
-            console.error(e.message);
+            console.error(e);
         }
         expect(error).toBeUndefined();
     });

@@ -7,10 +7,11 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
 import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
-import { LLMRegistry } from './LLMRegistry.class';
-import { CustomLLMRegistry } from './CustomLLMRegistry.class';
 import _ from 'lodash';
-import { ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
+import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const console = Logger('LLMInference');
 
 // TODO [Forhad]: apply proper typing
 // TODO [Forhad]: Need to merge all the methods with LLMConnector
@@ -18,9 +19,37 @@ import { ModelsProviderConnector } from './ModelsProvider.service/ModelsProvider
 export class LLMInference {
     private model: string;
     private llmConnector: LLMConnector;
+    private modelProviderReq: IModelsProviderRequest;
     public teamId?: string;
 
-    public static async getInstance(model: string, teamId?: string) {
+    public static async getInstance(model: string, candidate: AccessCandidate) {
+        const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        if (!modelsProvider.valid) {
+            throw new Error(`Model provider Not available, cannot create LLM instance`);
+        }
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.requester(candidate).getTeam();
+        //const candidate = teamId ? AccessCandidate.team(teamId) : AccessCandidate.user('smyth');
+
+        const llmInference = new LLMInference();
+        llmInference.teamId = teamId;
+
+        llmInference.modelProviderReq = modelsProvider.requester(candidate);
+
+        const llmProvider = await llmInference.modelProviderReq.getProvider(model);
+        if (llmProvider) {
+            llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        }
+
+        if (!llmInference.llmConnector) {
+            console.error(`Model ${model} unavailable for team ${teamId}`);
+        }
+
+        llmInference.model = model;
+
+        return llmInference;
+
+        /*
         const llmInference = new LLMInference();
         llmInference.teamId = teamId;
 
@@ -42,21 +71,28 @@ export class LLMInference {
             }
         }
 
+        if (!llmInference.llmConnector) {
+            console.error(`Model ${model} unavailable for team ${teamId}`);
+        }
+
         llmInference.model = model;
 
         return llmInference;
+        */
     }
+
+    public static user(candidate: AccessCandidate): any {}
 
     public get connector(): LLMConnector {
         return this.llmConnector;
     }
 
-    public async promptRequest(prompt, config: any = {}, agent: string | Agent, customParams: any = {}) {
-        const clonedConfig = _.cloneDeep(config);
+    public async promptRequest(prompt, settings: any = {}, agent: string | Agent, customParams: any = {}) {
+        const clonedConfig = _.cloneDeep(settings);
         const messages = customParams?.messages || [];
 
         if (prompt) {
-            const _prompt = this.llmConnector.enhancePrompt(prompt, config);
+            const _prompt = this.llmConnector.enhancePrompt(prompt, settings);
             messages.push({ role: TLLMMessageRole.User, content: _prompt });
         }
 
@@ -337,18 +373,20 @@ export class LLMInference {
         // const maxModelContext = this._llmHelper?.modelInfo?.keyOptions?.tokens || this._llmHelper?.modelInfo?.tokens || 256;
 
         //#region get max model context
-        let maxModelContext;
-        let maxModelOutputTokens;
-        const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
 
-        if (isStandardLLM) {
-            maxModelContext = LLMRegistry.getMaxContextTokens(this.model, true); // we just provide true for hasAPIKey to get the original max context
-        } else {
-            const team = AccessCandidate.team(this.teamId);
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
-            maxModelContext = customLLMRegistry.getMaxContextTokens(this.model);
-            maxModelOutputTokens = customLLMRegistry.getMaxCompletionTokens(this.model);
-        }
+        const modelInfo = await this.modelProviderReq.getModelInfo(this.model, true);
+        let maxModelContext = modelInfo?.tokens;
+        let maxModelOutputTokens = modelInfo?.completionTokens || modelInfo?.tokens;
+        // const isStandardLLM = LLMRegistry.isStandardLLM(this.model);
+
+        // if (isStandardLLM) {
+        //     maxModelContext = LLMRegistry.getMaxContextTokens(this.model, true); // we just provide true for hasAPIKey to get the original max context
+        // } else {
+        //     const team = AccessCandidate.team(this.teamId);
+        //     const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
+        //     maxModelContext = customLLMRegistry.getMaxContextTokens(this.model);
+        //     maxModelOutputTokens = customLLMRegistry.getMaxCompletionTokens(this.model);
+        // }
         //#endregion get max model context
 
         let maxInputContext = Math.min(maxTokens, maxModelContext);
@@ -358,11 +396,6 @@ export class LLMInference {
             maxInputContext -= maxInputContext + maxOutputContext - maxModelContext;
         }
 
-        // let systemPrompt = '';
-        // if (_messages[0]?.role === 'system') {
-        //     systemPrompt = _messages[0]?.content;
-        //     _messages.shift();
-        // }
         const systemMessage = { role: 'system', content: systemPrompt };
 
         let smythContextWindow = [];
@@ -420,81 +453,6 @@ export class LLMInference {
         modelContextWindow = this.connector.getConsistentMessages(modelContextWindow);
 
         return modelContextWindow;
-
-        /* // ! DEPRECATED: will be removed in the future
-        let modelMessages = [];
-        let tokens = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
-        for (let i = _messages.length - 1; i >= 0; i--) {
-            // internal_messages are smythOS specific intermediate formats that enable us to store certain data and only convert them when needed
-            let internal_message: any;
-
-            //delete _messages?.[i]?.['__smyth_data__']; //remove smyth data entry, this entry may hold smythOS specific data
-
-            //parse specific tools messages
-            if (_messages[i]?.messageBlock && _messages[i]?.toolsData) {
-                internal_message = this.connector
-                    .transformToolMessageBlocks({
-                        messageBlock: _messages[i]?.messageBlock,
-                        toolsData: _messages[i]?.toolsData,
-                    })
-                    .reverse(); //need to reverse because we are iterating from last to first
-            } else {
-                internal_message = [{ role: _messages[i]?.role, content: _messages[i]?.content, name: _messages[i]?.name } as ChatMessage];
-            }
-
-            let messageTruncated = false;
-
-            for (let message of internal_message) {
-                //skip system messages because we will add our own
-
-                if (message.role === 'system') continue;
-
-                //skip empty messages
-                if (!message.content) {
-                    //FIXME: tool call messages does not have a content but have a tool field do we need to count them as tokens ?
-                    modelMessages.unshift(message);
-                    continue;
-                }
-
-                const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
-                const encoded = encode(textContent);
-                tokens += encoded.length;
-                if (tokens > maxInputContext) {
-                    if (typeof message.content !== 'string') {
-                        //FIXME: handle this case for object contents (used by Anthropic for tool calls for example)
-                        break;
-                    }
-                    //handle context window overflow
-                    //FIXME: the logic here is weak, we need a better one
-                    const diff = tokens - maxInputContext;
-                    const excessPercentage = diff / encoded.length;
-
-                    //truncate message content
-                    //const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
-
-                    message.content = message.content.slice(0, Math.floor(message.content.length * (1 - excessPercentage)) - 200);
-
-                    // We need to find out another way to report this
-                    // message.content += '...\n\nWARNING : The context window has been truncated to fit the maximum token limit.';
-
-                    tokens -= encoded.length;
-                    tokens += encodeChat([message], 'gpt-4').length;
-
-                    messageTruncated = true;
-                    break;
-                }
-                modelMessages.unshift(message);
-            }
-
-            // If the message is truncated, it indicates we've reached the maximum context window. At this point, we need to stop and provide only the messages collected so far.
-            if (messageTruncated) break;
-        }
-        //add system message as first message in the context window
-        modelMessages.unshift(systemMessage);
-
-        return modelMessages;
-
-        */
     }
 }
 

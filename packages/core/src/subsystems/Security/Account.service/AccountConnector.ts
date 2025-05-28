@@ -13,10 +13,11 @@ export interface ISmythAccountRequest {
     getTeamSetting(settingKey: string): Promise<string>;
     getUserSetting(settingKey: string): Promise<string>;
     getAgentSetting(settingKey: string): Promise<string>;
+    getTeam(): Promise<string>;
 }
 
 export abstract class AccountConnector extends Connector {
-    public user(candidate: AccessCandidate): ISmythAccountRequest {
+    public requester(candidate: AccessCandidate): ISmythAccountRequest {
         return {
             getAllUserSettings: async () => this.getAllUserSettings(candidate.readRequest, candidate.id),
             getUserSetting: async (settingKey: string) => this.getUserSetting(candidate.readRequest, candidate.id, settingKey),
@@ -24,6 +25,7 @@ export abstract class AccountConnector extends Connector {
             getTeamSetting: async (settingKey: string) => this.getTeamSetting(candidate.readRequest, candidate.id, settingKey),
             isTeamMember: async (teamId: string) => this.isTeamMember(teamId, candidate),
             getCandidateTeam: async () => this.getCandidateTeam(candidate),
+            getTeam: async () => this.getCandidateTeam(candidate),
             getAgentSetting: async (settingKey: string) => this.getAgentSetting(candidate.readRequest, candidate.id, settingKey),
         };
     }

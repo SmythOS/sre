@@ -20,22 +20,25 @@ export class LocalStorageCache extends CacheConnector {
     private isInitialized: boolean = false;
     constructor(settings: LocalStorageConfig) {
         super();
-        this.folder = settings.folder || `${os.tmpdir()}/.smyth`;
+        this.folder = settings.folder || `${os.tmpdir()}/.smyth/cache`;
         this.initialize();
     }
 
     private async initialize() {
         if (!existsSync(this.folder)) {
-            mkdirSync(this.folder);
+            mkdirSync(this.folder, { recursive: true });
         }
         const cacheFolderPath = path.join(this.folder, this._prefix);
         if (!existsSync(cacheFolderPath)) {
-            mkdirSync(cacheFolderPath)
+            mkdirSync(cacheFolderPath, { recursive: true });
         }
         const metadataFolderPath = path.join(this.folder, this._mdPrefix);
         if (!existsSync(metadataFolderPath)) {
-            mkdirSync(metadataFolderPath);
-            writeFileSync(path.join(metadataFolderPath, 'README_IMPORTANT.txt'), 'This folder is used for smythOS metadata, do not delete it, it will break SmythOS cache functionality');
+            mkdirSync(metadataFolderPath, { recursive: true });
+            writeFileSync(
+                path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
+                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS cache functionality',
+            );
         }
         this.isInitialized = true;
     }
@@ -72,7 +75,8 @@ export class LocalStorageCache extends CacheConnector {
     }
 
     @SecureConnector.AccessControl
-    public async set(acRequest: AccessRequest, key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> { // ttl is in seconds
+    public async set(acRequest: AccessRequest, key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
+        // ttl is in seconds
         if (!this.isInitialized) {
             await this.initialize();
         }
@@ -81,8 +85,8 @@ export class LocalStorageCache extends CacheConnector {
         let amzACL = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         let fileMetadata = {
             ...metadata,
-            'acl': amzACL,
-            ...(ttl ? { 'expiresAt': Date.now() + ttl * 1000 } : {}),
+            acl: amzACL,
+            ...(ttl ? { expiresAt: Date.now() + ttl * 1000 } : {}),
         };
         // To create the directories for the resource we need to know the full path of the resource
         const storageFolderPath = this.getStorageFilePath(acRequest.candidate.id, key, true);
@@ -141,7 +145,6 @@ export class LocalStorageCache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
-
         try {
             let fileMetadata = await this.getMetadata(acRequest, key);
             if (!fileMetadata) fileMetadata = {};
@@ -161,7 +164,8 @@ export class LocalStorageCache extends CacheConnector {
     }
 
     @SecureConnector.AccessControl
-    public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> { // ttl is in seconds
+    public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
+        // ttl is in seconds
         if (ttl) {
             const metadataFilePath = this.getMetadataFilePath(acRequest.candidate.id, key);
             const metadata = readFileSync(metadataFilePath, 'utf-8');
@@ -176,7 +180,9 @@ export class LocalStorageCache extends CacheConnector {
         const metadataFilePath = this.getMetadataFilePath(acRequest.candidate.id, key);
         const metadata = readFileSync(metadataFilePath, 'utf-8');
         const metadataObject = JSON.parse(metadata);
-        return metadataObject['expiresAt'] && metadataObject['expiresAt'] > Date.now() ? Math.floor((metadataObject['expiresAt'] - Date.now()) / 1000) : 0;
+        return metadataObject['expiresAt'] && metadataObject['expiresAt'] > Date.now()
+            ? Math.floor((metadataObject['expiresAt'] - Date.now()) / 1000)
+            : 0;
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -200,7 +206,6 @@ export class LocalStorageCache extends CacheConnector {
             throw error;
         }
     }
-
 
     @SecureConnector.AccessControl
     async getACL(acRequest: AccessRequest, key: string): Promise<IACL> {
@@ -230,10 +235,7 @@ export class LocalStorageCache extends CacheConnector {
         let updatedMetadata = {};
         if (metadata['acl']) {
             if (metadata['acl']) {
-                updatedMetadata['acl'] =
-                    typeof metadata['acl'] == 'string'
-                        ? metadata['acl']
-                        : ACL.from(metadata['acl']).serializedACL;
+                updatedMetadata['acl'] = typeof metadata['acl'] == 'string' ? metadata['acl'] : ACL.from(metadata['acl']).serializedACL;
             }
 
             delete metadata['acl'];
@@ -287,7 +289,7 @@ export class LocalStorageCache extends CacheConnector {
         for (let folder of folders) {
             currentPath = path.join(currentPath, folder);
             if (!existsSync(currentPath)) {
-                mkdirSync(currentPath)
+                mkdirSync(currentPath);
             }
         }
     }

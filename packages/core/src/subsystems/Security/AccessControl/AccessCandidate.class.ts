@@ -12,6 +12,10 @@ export class AccessCandidate implements IAccessCandidate {
         this.id = candidate ? candidate.id : '';
     }
 
+    public toString(): string {
+        return `AC:R[${this.role}]:ID[${this.id}]`;
+    }
+
     public get request(): AccessRequest {
         return new AccessRequest(this);
     }

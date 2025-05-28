@@ -70,7 +70,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             teamId: { value: 'default' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 describe('ComputerUse Component', () => {

@@ -1,11 +1,11 @@
 import Joi from 'joi';
 
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class Classifier extends Component {
     protected configSchema = Joi.object({
@@ -51,9 +51,10 @@ export class Classifier extends Component {
         }
 
         const model: string = config.data.model;
-        const isStandardLLM = LLMRegistry.isStandardLLM(model);
+        const modelId = await agent.modelsProvider.getModelId(model);
+        //const isStandardLLM = await agent.modelsProvider.isStandardLLM(model);
 
-        logger.log(` Selected model : ${isStandardLLM ? LLMRegistry.getModelId(model) : model}`);
+        logger.log(` Selected model : ${modelId || model}`);
 
         let prompt = '';
         const excludedKeys = ['_debug', '_error'];
@@ -81,7 +82,7 @@ ${JSON.stringify(categories, null, 2)}`;
             return { _error: 'Missing information, Cannot run classifier', _debug: logger.output };
         }
 
-        const llmInference: LLMInference = await LLMInference.getInstance(model || 'echo');
+        const llmInference: LLMInference = await LLMInference.getInstance(model || 'echo', AccessCandidate.agent(agent.id));
         if (!llmInference.connector) {
             return {
                 _error: `The model '${model}' is not available. Please try a different one.`,

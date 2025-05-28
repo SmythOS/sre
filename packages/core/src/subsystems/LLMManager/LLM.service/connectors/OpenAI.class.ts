@@ -10,7 +10,6 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
@@ -27,7 +26,7 @@ import {
 import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
-import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('OpenAIConnector');
 
@@ -159,13 +158,7 @@ export class OpenAIConnector extends LLMConnector {
         try {
             // Validate token limit
             const promptTokens = encodeChat(messages, 'gpt-4')?.length;
-
-            await LLMRegistry.validateTokensLimit({
-                model: params?.model,
-                promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
-            });
+            await this.validateTokenLimit({ acRequest, promptTokens, params });
 
             const response = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -218,43 +211,41 @@ export class OpenAIConnector extends LLMConnector {
 
         messages.push({ role: 'user', content: promptData });
 
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+
+        const openai = new OpenAI({
+            apiKey: apiKey,
+            baseURL: params.baseURL,
+        });
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: params.model,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
         try {
-            // Check if the team has their own API key, then use it
-            const apiKey = params?.credentials?.apiKey;
-
-            if (!apiKey) {
-                throw new Error('An API key is required to use this model.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params.baseURL,
-            });
-
-            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-                model: params.model,
-                messages,
-            };
-
-            if (params?.maxTokens !== undefined) {
-                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-                chatCompletionArgs[maxTokensKey] = params.maxTokens;
-            }
-            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-            await LLMRegistry.validateTokensLimit({
-                model: params?.model,
+            await this.validateTokenLimit({
+                acRequest,
+                params,
                 promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
             });
 
             const response: any = await openai.chat.completions.create(chatCompletionArgs);
@@ -346,44 +337,38 @@ export class OpenAIConnector extends LLMConnector {
 
         messages.push({ role: 'user', content: promptData });
 
+        // Check if the team has their own API key, then use it
+        const apiKey = params?.credentials?.apiKey;
+
+        if (!apiKey) {
+            throw new Error('An API key is required to use this model.');
+        }
+
+        const openai = new OpenAI({
+            apiKey: apiKey,
+            baseURL: params.baseURL,
+        });
+
+        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
+            model: params.model,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) {
+            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
+            chatCompletionArgs[maxTokensKey] = params.maxTokens;
+        }
+        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
+        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+
         try {
-            // Check if the team has their own API key, then use it
-            const apiKey = params?.credentials?.apiKey;
-
-            if (!apiKey) {
-                throw new Error('An API key is required to use this model.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params.baseURL,
-            });
-
-            const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-                model: params.model,
-                messages,
-            };
-
-            if (params?.maxTokens !== undefined) {
-                const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-                chatCompletionArgs[maxTokensKey] = params.maxTokens;
-            }
-            if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-            if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-            if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-            if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-            if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-            if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
             // Validate token limit
             const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-            await LLMRegistry.validateTokensLimit({
-                model: params?.model,
-                promptTokens,
-                completionTokens: params?.maxTokens,
-                hasAPIKey: !!apiKey,
-            });
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
 
             const response = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -539,6 +524,10 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         try {
+            // Validate token limit
+            const promptTokens = encodeChat(messages, 'gpt-4')?.length;
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             const result = await openai.chat.completions.create(chatCompletionArgs);
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
@@ -727,6 +716,10 @@ export class OpenAIConnector extends LLMConnector {
         }
 
         try {
+            // Validate token limit
+            const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             let finishReason = 'stop';
             const stream = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -916,12 +909,8 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest(acRequest: AccessRequest, params: TLLMParams & TLLMParamsV2, agent: string | Agent): Promise<EventEmitter> {
-        const team = AccessCandidate.team(params.teamId);
-        let llmRegistry = LLMRegistry.isStandardLLM(params.modelEntryName) ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
-        const modelInfo = llmRegistry.getModelInfo(params.modelEntryName);
-
         // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
-        if (params?.useWebSearch && modelInfo?.features?.includes('search')) {
+        if (params?.useWebSearch && this.hasSearchCapability(acRequest, params.modelEntryName)) {
             const searchTool = this.getWebSearchTool(params);
 
             // TODO: Only support Web Search tool for now, need to implement other tools as well
@@ -1011,17 +1000,11 @@ export class OpenAIConnector extends LLMConnector {
         if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
         if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
 
-        // Validate token limit
-        const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-
-        await LLMRegistry.validateTokensLimit({
-            model: params?.model,
-            promptTokens,
-            completionTokens: params?.maxTokens,
-            hasAPIKey: !!apiKey,
-        });
-
         try {
+            // Validate token limit
+            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+            await this.validateTokenLimit({ acRequest, params, promptTokens });
+
             let finishReason = 'stop';
             const stream: any = await openai.chat.completions.create(chatCompletionArgs);
 
@@ -1250,12 +1233,8 @@ export class OpenAIConnector extends LLMConnector {
         params: TLLMParams & TLLMParamsV2,
         agent: string | Agent,
     ): Promise<EventEmitter> {
-        const team = AccessCandidate.team(params.teamId);
-        let llmRegistry = LLMRegistry.isStandardLLM(params.modelEntryName) ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
-        const modelInfo = llmRegistry.getModelInfo(params.modelEntryName);
-
         // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
-        if (params?.useWebSearch && modelInfo?.features?.includes('search')) {
+        if (params?.useWebSearch && this.hasSearchCapability(acRequest, params.modelEntryName)) {
             const searchTool = this.getWebSearchTool(params);
 
             // TODO: Only support Web Search tool for now, need to implement other tools as well
@@ -1530,5 +1509,39 @@ export class OpenAIConnector extends LLMConnector {
                 );
             }
         }
+    }
+
+    private async validateTokenLimit({
+        acRequest,
+        params,
+        promptTokens,
+    }: {
+        acRequest: AccessRequest;
+        params: TLLMParams;
+        promptTokens: number;
+    }): Promise<void> {
+        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+        await modelsProvider.validateTokensLimit({
+            model: params?.modelEntryName,
+            promptTokens,
+            completionTokens: params?.maxTokens,
+            hasAPIKey: params.credentials.isUserKey as boolean,
+        });
+    }
+
+    // TODO: This is a temporary method for checking search capability. It will be removed once we fully migrate to the new OpenAI SDK across all methods.
+    private async hasSearchCapability(acRequest: AccessRequest, modelEntryName: string) {
+        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
+        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+
+        const modelInfo = await modelsProvider.getModelInfo(modelEntryName);
+
+        if (modelInfo?.features?.includes('search')) {
+            return true;
+        }
+
+        return false;
     }
 }

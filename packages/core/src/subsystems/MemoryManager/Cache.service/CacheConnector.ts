@@ -34,7 +34,7 @@ export interface ICacheRequest {
 
 export abstract class CacheConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
-    public user(candidate: AccessCandidate): ICacheRequest {
+    public requester(candidate: AccessCandidate): ICacheRequest {
         return {
             get: async (key: string) => {
                 return await this.get(candidate.readRequest, key);

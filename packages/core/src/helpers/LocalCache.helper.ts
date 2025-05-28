@@ -31,11 +31,31 @@ export class LocalCache<K, V> {
         this.timeouts.set(key, timeout);
     }
 
-    get(key: K): V | undefined {
+    updateTTL(key: K, ttlMs: number = this.defaultTTL): void {
+        if (!this.has(key)) {
+            return;
+        }
+        const expiry = Date.now() + ttlMs;
+        this.expiryMap.set(key, expiry);
+
+        // Clear existing timeout and set a new one
+        this.clearTimeout(key);
+        const timeout = setTimeout(() => {
+            this.delete(key);
+        }, ttlMs);
+        this.timeouts.set(key, timeout);
+    }
+
+    get(key: K, ttlMs?: number): V | undefined {
         if (!this.has(key)) {
             return undefined;
         }
-        return this.cache.get(key);
+        const value = this.cache.get(key);
+        if (value === undefined) {
+            return undefined;
+        }
+        this.updateTTL(key, ttlMs);
+        return value;
     }
 
     has(key: K): boolean {
