@@ -126,12 +126,6 @@ export class ConnectorService {
         return instance;
     }
 
-    // Storage?: StorageService;
-    // Cache?: CacheService;
-    // LLM?: LLMService;
-    // Vault?: VaultService;
-    // Account?: AccountService;
-
     static getStorageConnector(name?: string): StorageConnector {
         return ConnectorService.getInstance<StorageConnector>(TConnectorService.Storage, name);
     }
@@ -183,8 +177,6 @@ export class ConnectorService {
     static getModelsProviderConnector(name?: string): ModelsProviderConnector {
         return ConnectorService.getInstance<ModelsProviderConnector>(TConnectorService.ModelsProvider, name);
     }
-
-    //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...
 
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorInstances[connectorType]?.[connectorName];

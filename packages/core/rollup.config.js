@@ -32,6 +32,7 @@ const devConfig = {
     external: isExternal, // Use the function to mark non-local imports as external
     plugins: [
         colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
+        SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
         json(),
         typescriptPaths({
@@ -63,8 +64,10 @@ const prodConfig = {
     },
     external: isExternal, // Use the function to mark non-local imports as external
     plugins: [
+        colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
+        SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
-        colorfulLogs('♻️ SmythOS Runtime Builder'), // Add our custom logging plugin
+
         json(),
         typescriptPaths({
             tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
@@ -134,6 +137,7 @@ const colors = {
     black: '\x1b[30m',
     red: '\x1b[31m',
     green: '\x1b[32m',
+    orange: '\x1b[33m',
     yellow: '\x1b[33m',
     blue: '\x1b[34m',
     magenta: '\x1b[35m',
@@ -187,11 +191,13 @@ function colorfulLogs(title = 'Builder') {
     let processedFiles = 0;
     const totalFiles = new Set();
     let currentFile = '';
+    let hasShownFinalMessage = false; // Flag to prevent duplicate final messages
 
     return {
         name: 'colorful-logs',
         buildStart() {
             startTime = Date.now();
+            hasShownFinalMessage = false; // Reset flag on new build
             console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
             console.log(`${colors.bright}${colors.bgGreen}  ${colors.reset}${colors.green} ${title} ${colors.bgGreen}  ${colors.reset}`);
             console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
@@ -239,35 +245,58 @@ function colorfulLogs(title = 'Builder') {
             }
         },
         generateBundle(outputOptions, bundle) {
-            // Clear spinner interval
-            clearInterval(spinnerInterval);
+            // Clear spinner interval only once
+            if (spinnerInterval) {
+                clearInterval(spinnerInterval);
+                spinnerInterval = null;
+            }
 
-            // Show completed progress bar with 100%
-            const progressBar = getProgressBar(1);
-            process.stdout.write(
-                `\r${colors.green}✓ ${colors.reset}[${progressBar}] ${colors.yellow}100% ${colors.dim}${totalFiles.size}/${totalFiles.size} ${colors.bright}Complete!${colors.reset}${''.padEnd(50)}\n`,
-            );
+            // Show completed progress bar with 100% only once
+            if (!hasShownFinalMessage) {
+                const progressBar = getProgressBar(1);
+                process.stdout.write(
+                    `\r${colors.green}✓ ${colors.reset}[${progressBar}] ${colors.yellow}100% ${colors.dim}${totalFiles.size}/${totalFiles.size} ${colors.bright}Complete!${colors.reset}${''.padEnd(50)}\n`,
+                );
 
-            // Calculate and show build duration
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-            console.log(`${colors.green}✓ ${colors.bright}Build complete in ${colors.yellow}${duration}s${colors.reset}!`);
-            console.log(`${colors.magenta}➤ ${colors.white}Processed: ${colors.yellow}${totalFiles.size} files${colors.reset}`);
-            console.log(
-                `${colors.magenta}➤ ${colors.white}Output: ${colors.yellow}${isProduction ? 'dist/index.js' : 'dist/index.dev.js'}${colors.reset}\n`,
-            );
+                // Calculate and show build duration
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+                console.log(`${colors.green}✓ ${colors.bright}Build complete in ${colors.yellow}${duration}s${colors.reset}!`);
+                console.log(`${colors.magenta}➤ ${colors.white}Processed: ${colors.yellow}${totalFiles.size} files${colors.reset}`);
+                console.log(
+                    `${colors.magenta}➤ ${colors.white}Output: ${colors.yellow}${isProduction ? 'dist/index.js' : 'dist/index.dev.js'}${colors.reset}\n`,
+                );
 
-            // Show bundle details
-            console.log(`${colors.magenta}▶ ${colors.bright}Bundle details:${colors.reset}`);
+                // Show bundle details
+                console.log(`${colors.magenta}▶ ${colors.bright}Bundle details:${colors.reset}`);
 
-            Object.keys(bundle).forEach((fileName) => {
-                const file = bundle[fileName];
-                const fileSize = formatBytes(file.code?.length || 0);
-                console.log(`  ${colors.green}• ${colors.yellow}${fileName}: ${colors.cyan}${fileSize}${colors.reset}`);
-            });
-
-            // Show success message at the very end
-            console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset} 🦙 Ride The Llama. 😹 Skip the Drama.\n`);
+                Object.keys(bundle).forEach((fileName) => {
+                    const file = bundle[fileName];
+                    const fileSize = formatBytes(file.code?.length || 0);
+                    console.log(`  ${colors.green}• ${colors.yellow}${fileName}: ${colors.cyan}${fileSize}${colors.reset}`);
+                });
+            }
+        },
+        writeBundle() {
+            // writeBundle hook - success message moved to closeBundle
+        },
+        closeBundle() {
+            // Show the final success message with a delay to ensure it appears after all other processes
+            if (!hasShownFinalMessage) {
+                setTimeout(() => {
+                    console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset}\n\n`);
+                    console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
+                    console.log(
+                        `${colors.white}${colors.bright}║               ${colors.green}S M Y T H   O S${colors.white}               ║${colors.reset}`,
+                    );
+                    console.log(`${colors.white}${colors.bright}╠━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╣${colors.reset}`);
+                    console.log(
+                        `${colors.white}${colors.bright}║    🦙 ${colors.magenta}Ride The Llama. 😹 ${colors.orange}Skip the Drama.${colors.white}    ║${colors.reset}`,
+                    );
+                    console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
+                    hasShownFinalMessage = true;
+                }, 100);
+            }
         },
     };
 }
@@ -283,6 +312,22 @@ function ctixPlugin(options = {}) {
                 console.log(`${colors.green}✅ ${colors.bright}Barrel files generated successfully!${colors.reset}\n`);
             } catch (error) {
                 this.error(`Failed to generate ctix barrel files: ${error.message}`);
+            }
+        },
+    };
+}
+
+function SDKGenPlugin() {
+    return {
+        name: 'sdk-gen-plugin',
+        buildStart(outputOptions, bundle) {
+            try {
+                process.stdout.write(`\n${colors.cyan}⚙️ ${colors.yellow} Generating SDK files...${colors.reset}\n`);
+                const cmd = 'node scripts/sdk/generate-components.js';
+                execSync(cmd, { stdio: 'inherit' });
+                console.log(`${colors.green}✅ ${colors.bright}SDK files generated successfully!${colors.reset}\n`);
+            } catch (error) {
+                this.error(`Failed to generate SDK files: ${error.message}`);
             }
         },
     };

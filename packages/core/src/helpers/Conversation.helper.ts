@@ -389,6 +389,7 @@ export class Conversation extends EventEmitter {
             });
         }
 
+        const passThroughtContinueMessage = 'Continue with the next tool call if there are any, or just inform the user that you are done';
         //let promises = [];
         let _content = '';
         const reqMethods = this._reqMethods;
@@ -454,6 +455,11 @@ export class Conversation extends EventEmitter {
             //     console.log('Passthrough skiped content ', content);
             //     return;
             // }
+            const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
+            const skip = lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal;
+
+            //skip if the content is the last generated message after a passthrough content
+            if (skip) return;
             _content += content;
             this.emit('content', content);
         });
@@ -517,17 +523,17 @@ export class Conversation extends EventEmitter {
                             content = data.content;
 
                             passThroughContent += content;
-                            this.emit('content', content);
+                            eventEmitter.emit('content', content);
                         }
                         if (data.thinking) {
                             thinking = data.thinking;
-                            this.emit('thinking', thinking);
+                            eventEmitter.emit('thinking', thinking);
                         }
                         return;
                     }
                     if (typeof data === 'string') {
                         passThroughContent += data;
-                        this.emit('content', data);
+                        eventEmitter.emit('content', data);
                     }
 
                     //passThroughContent += data;
@@ -595,11 +601,7 @@ export class Conversation extends EventEmitter {
                     this._context.addToolMessage(llmMessage, processedToolsData, message_id);
                     //this should not be stored in the persistent conversation store
                     //it's just a workaround to avoid generating more content after passthrough content
-                    this._context.addUserMessage(
-                        'Continue with the next tool call if there are any, or just inform the user that you are done',
-                        message_id,
-                        { internal: true },
-                    );
+                    this._context.addUserMessage(passThroughtContinueMessage, message_id, { internal: true });
                     //toolHeaders['x-passthrough'] = 'true';
                 }
 
@@ -626,7 +628,12 @@ export class Conversation extends EventEmitter {
                 if (!hasTools || passThroughContent) {
                     //console.log(' ===> resolved content no tool', _content);
                     //this._context.push({ role: 'assistant', content: _content });
-                    this._context.addAssistantMessage(_content, message_id);
+                    const lastMessage = this._context?.messages?.[this._context?.messages?.length - 1];
+                    let metadata;
+                    if (lastMessage?.content?.includes(passThroughtContinueMessage) && lastMessage?.__smyth_data__?.internal) {
+                        metadata = { internal: true };
+                    }
+                    this._context.addAssistantMessage(_content, message_id, metadata);
                     resolve(''); //the content were already emitted through 'content' event
                 }
             });

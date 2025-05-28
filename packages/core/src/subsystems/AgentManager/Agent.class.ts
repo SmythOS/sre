@@ -107,14 +107,30 @@ export class Agent {
         for (let connection of this.data.connections) {
             const sourceComponent = this.components[connection.sourceId];
             const targetComponent = this.components[connection.targetId];
-            const sourceIndex = connection.sourceIndex;
-            const targetIndex = connection.targetIndex;
 
-            if (!sourceComponent.outputs[sourceIndex].next) sourceComponent.outputs[sourceIndex].next = [];
-            sourceComponent.outputs[sourceIndex].next.push(targetComponent.id);
+            //if connections ids passed as names, we convert them to indexes
+            //TODO : harmonize connections formats
+            const sourceIndex =
+                typeof connection.sourceIndex === 'number'
+                    ? connection.sourceIndex
+                    : sourceComponent.outputs.findIndex((o) => o.name == connection.sourceIndex);
+            const targetIndex =
+                typeof connection.targetIndex === 'number'
+                    ? connection.targetIndex
+                    : targetComponent.inputs.findIndex((i) => i.name == connection.targetIndex);
 
-            if (!targetComponent.inputs[targetIndex].prev) targetComponent.inputs[targetIndex].prev = [];
-            targetComponent.inputs[targetIndex].prev.push(sourceComponent.id);
+            connection.sourceIndex = sourceIndex;
+            connection.targetIndex = targetIndex;
+
+            const output = sourceComponent.outputs[sourceIndex];
+
+            const input = targetComponent.inputs[targetIndex];
+
+            if (!output.next) output.next = [];
+            output.next.push(targetComponent.id);
+
+            if (!input.prev) input.prev = [];
+            input.prev.push(sourceComponent.id);
         }
 
         this.tagAsyncComponents();

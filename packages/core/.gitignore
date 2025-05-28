@@ -140,5 +140,4 @@ tests/data/vault.*
 .DS_Store
 tests/dev/000-experimental
 distibutions
-sdk.*
-index.ts.*
+index.ts.bak
