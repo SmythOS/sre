@@ -1,6 +1,5 @@
 import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -394,7 +393,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<OpenAI.ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<any> {
         throw new Error('Image generation request is not supported for Anthropic.');
     }
 
