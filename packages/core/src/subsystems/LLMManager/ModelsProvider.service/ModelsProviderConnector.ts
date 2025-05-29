@@ -10,12 +10,13 @@ import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
-    getModelInfo(model: string, hasAPIKey?: boolean): Promise<TLLMModel>;
-    getModelId(model: string): Promise<string>;
-    getProvider(model: string): Promise<string>;
-    isStandardLLM(model: string): Promise<boolean>;
-    adjustMaxCompletionTokens(model: string, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
     getMaxContextTokens(model: string, hasAPIKey?: boolean): Promise<number>;
+    getModelInfo(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<TLLMModel>;
+    getModelId(model: string | TLLMModel | TCustomLLMModel): Promise<string>;
+    getProvider(model: string | TLLMModel | TCustomLLMModel): Promise<string>;
+    isStandardLLM(model: string | TLLMModel | TCustomLLMModel): Promise<boolean>;
+    adjustMaxCompletionTokens(model: string | TLLMModel | TCustomLLMModel, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
+    getMaxContextTokens(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<number>;
     getMaxCompletionTokens(model: string, hasAPIKey?: boolean): Promise<number>;
     validateTokensLimit({
         model,
@@ -23,7 +24,7 @@ export interface IModelsProviderRequest {
         completionTokens,
         hasAPIKey,
     }: {
-        model: string;
+        model: string | TLLMModel | TCustomLLMModel;
         promptTokens: number;
         completionTokens: number;
         hasAPIKey?: boolean;
@@ -59,37 +60,45 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         };
         loadTeamModels();
 
-        const instance = {
+        const instance: IModelsProviderRequest = {
             getModels: async () => {
                 return await loadTeamModels();
             },
-            getModelInfo: async (model: string, hasAPIKey: boolean = false) => {
-                const teamModels = await loadTeamModels();
+            getModelInfo: async (model: string | TLLMModel | TCustomLLMModel, hasAPIKey: boolean = false) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 return modelInfo;
             },
 
-            getModelId: async (model: string) => {
-                const teamModels = await loadTeamModels();
+            getModelId: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 return this.getModelId(candidate.readRequest, teamModels, model);
             },
-            getProvider: async (model: string) => {
-                const teamModels = await loadTeamModels();
+            getProvider: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 return this.getProvider(candidate.readRequest, teamModels, model);
             },
-            isStandardLLM: async (model: string) => {
+            isStandardLLM: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model);
                 return !modelInfo.isCustomLLM;
             },
-            adjustMaxCompletionTokens: async (model: string, maxCompletionTokens: number, hasAPIKey: boolean = false) => {
+            adjustMaxCompletionTokens: async (
+                model: string | TLLMModel | TCustomLLMModel,
+                maxCompletionTokens: number,
+                hasAPIKey: boolean = false,
+            ) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 return Math.min(maxCompletionTokens, modelInfo?.completionTokens || modelInfo?.tokens);
             },
-            getMaxContextTokens: async (model: string, hasAPIKey: boolean = false) => {
+            getMaxContextTokens: async (model: string | TLLMModel | TCustomLLMModel, hasAPIKey: boolean = false) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 return modelInfo?.tokens;
             },
-            getMaxCompletionTokens: async (model: string, hasAPIKey: boolean = false) => {
+            getMaxCompletionTokens: async (model: string | TLLMModel | TCustomLLMModel, hasAPIKey: boolean = false) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 return modelInfo?.completionTokens || modelInfo?.tokens;
             },
@@ -99,11 +108,12 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                 completionTokens,
                 hasAPIKey,
             }: {
-                model: string;
+                model: string | TLLMModel | TCustomLLMModel;
                 promptTokens: number;
                 completionTokens: number;
                 hasAPIKey: boolean;
             }) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 const allowedContextTokens = modelInfo?.tokens;
                 const totalTokens = promptTokens + completionTokens;
@@ -120,12 +130,24 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         return instance;
     }
 
-    protected async getModelInfo(acRequest: AccessRequest, models: TLLMModelsList, model: string, hasAPIKey: boolean = false): Promise<TLLMModel> {
+    protected async getModelInfo(
+        acRequest: AccessRequest,
+        models: TLLMModelsList,
+        model: string | TLLMModel | TCustomLLMModel,
+        hasAPIKey: boolean = false,
+    ): Promise<TLLMModel> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && model.modelId) {
+            return model;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+
         const modelId = await this.getModelId(acRequest, models, model);
-        const alias = models?.[model]?.alias;
+        const alias = models?.[model as string]?.alias;
         const aliasModelInfo = models?.[alias];
 
-        const modelInfo = models?.[model];
+        const modelInfo = models?.[model as string];
 
         const aliasKeyOptions = aliasModelInfo && hasAPIKey ? aliasModelInfo?.keyOptions : null;
 
@@ -134,11 +156,17 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         return { ...aliasModelInfo, ...modelInfo, ...aliasKeyOptions, ...modelKeyOptions, modelId };
     }
 
-    protected async getModelId(acRequest: AccessRequest, models: TLLMModelsList, model: string): Promise<string> {
-        const modelId = models?.[model]?.modelId || model;
-        const alias = models?.[model]?.alias;
+    protected async getModelId(acRequest: AccessRequest, models: TLLMModelsList, model: string | TLLMModel | TCustomLLMModel): Promise<string> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && model.modelId) {
+            return model.modelId;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+        const modelId = models?.[model as string]?.modelId || (model as string);
+        const alias = models?.[model as string]?.alias;
         if (alias) {
-            const aliasModelId = models?.[alias]?.modelId || alias || model;
+            const aliasModelId = models?.[alias]?.modelId || alias || (model as string);
             return aliasModelId;
         }
 
@@ -168,10 +196,17 @@ export abstract class ModelsProviderConnector extends SecureConnector {
     //     }
     // }
 
-    protected async getProvider(acRequest: AccessRequest, models: TLLMModelsList, model: string): Promise<string> {
+    protected async getProvider(acRequest: AccessRequest, models: TLLMModelsList, model: string | TLLMModel | TCustomLLMModel): Promise<string> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && model.provider) {
+            return model.provider;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+
         const modelId = await this.getModelId(acRequest, models, model);
 
-        return models?.[modelId]?.provider || models?.[model]?.provider || models?.[modelId]?.llm || models?.[model]?.llm;
+        return models?.[modelId]?.provider || models?.[model as string]?.provider || models?.[modelId]?.llm || models?.[model as string]?.llm;
     }
     protected async getCustomModels(candidate: IAccessCandidate): Promise<Record<string, any>> {
         const models = {};

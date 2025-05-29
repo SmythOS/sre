@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class JSONFilter extends Component {
@@ -52,5 +52,3 @@ function filterFields(obj, fields) {
 
     return filterObject(obj);
 }
-
-export default JSONFilter;

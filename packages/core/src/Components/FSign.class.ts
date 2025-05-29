@@ -1,5 +1,5 @@
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import crypto from 'crypto';
 import querystring from 'querystring';
@@ -78,5 +78,3 @@ export class FSign extends Component {
         return null;
     }
 }
-
-export default FSign;

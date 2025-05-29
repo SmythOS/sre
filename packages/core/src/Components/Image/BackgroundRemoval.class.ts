@@ -32,7 +32,10 @@ export class BackgroundRemoval extends Component {
 
         const imageRequestArgs: IRemoveImageBackground = {
             inputImage,
-            rgba: config?.data?.backgroundColor || [255, 255, 255, 0],
+            model: 'rembg', //FIXME : use model from component settings
+            settings: {
+                rgba: config?.data?.backgroundColor || [255, 255, 255, 0],
+            },
             outputFormat: config?.data?.outputFormat || 'PNG',
             outputQuality: +config?.data?.outputQuality || 95,
             includeCost: true,

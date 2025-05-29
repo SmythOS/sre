@@ -1,5 +1,5 @@
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 
 export class FEncDec extends Component {
     constructor() {
@@ -27,5 +27,3 @@ export class FEncDec extends Component {
         }
     }
 }
-
-export default FEncDec;

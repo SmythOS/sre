@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicAtLeast extends Component {
@@ -83,5 +83,3 @@ function validateInteger(args: RangeValidationArgs) {
         return value; // Value is valid
     };
 }
-
-export default LogicAtLeast;

@@ -1,5 +1,5 @@
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import config from '@sre/config';
 import { describe, expect, it, beforeAll, vi } from 'vitest';
 import fs from 'fs';

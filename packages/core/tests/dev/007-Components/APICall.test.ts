@@ -3,7 +3,8 @@ import express from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import { ConnectorService, ModelsProviderConnector, SmythRuntime, TConnectorService } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { TConnectorService } from '@sre/types/SRE.types';
 import { APICall } from '@sre/Components/APICall/APICall.class';
 import config from '@sre/config';
 import { PrepareSRETestEnvironment } from './common';

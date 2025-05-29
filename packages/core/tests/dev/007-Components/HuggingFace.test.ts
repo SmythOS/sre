@@ -1,7 +1,9 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import HuggingFace from '@sre/Components/HuggingFace.class';
-import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, ConnectorService, SmythRuntime } from '@sre/index';
+import { HuggingFace } from '@sre/Components/HuggingFace.class';
+import { LLMAssistant } from '@sre/Components/LLMAssistant.class';
+import config from '@sre/config';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';

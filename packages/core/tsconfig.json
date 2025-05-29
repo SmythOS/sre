@@ -14,7 +14,7 @@
         //"ignoreDeprecations": "5.0",
         //"suppressImplicitAnyIndexErrors": true,
         "paths": {
-            "@sre/index": ["index.ts"],
+            //"@sre/index": ["index.ts"],
             "@sre/config": ["config.ts"],
             "@sre/constants": ["constants.ts"],
             "@sre/types/*": ["types/*"],

@@ -8,6 +8,8 @@ import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -16,7 +18,7 @@ import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit } from '@sre/utils';
 
-import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMMessageBlock, ToolData, TLLMMessageRole, TLLMToolResultMessageBlock, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { SystemEvents } from '@sre/Core/SystemEvents';
@@ -60,7 +62,7 @@ export class GoogleAIConnector extends LLMConnector {
         image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    protected async chatRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<LLMChatResponse> {
         let prompt = '';
 
         const model = params?.model || DEFAULT_MODEL;
@@ -69,7 +71,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction = '';
@@ -162,11 +164,11 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent) {
         const model = params?.model || 'gemini-pro-vision';
         const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         let _prompt = prompt;
 
         const validFiles = this.getValidFileSources(fileSources, 'image');
@@ -265,11 +267,11 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent) {
         const model = params?.model || DEFAULT_MODEL;
         const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         let _prompt = prompt;
 
         // If user provide mix of valid and invalid files, we will only process the valid files
@@ -378,8 +380,8 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<any> {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         try {
             let systemInstruction = '';
@@ -466,7 +468,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
@@ -478,7 +480,7 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const apiKey = params?.credentials?.apiKey;
 
@@ -486,7 +488,7 @@ export class GoogleAIConnector extends LLMConnector {
         let formattedMessages;
         const messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
         if (hasSystemMessage) {
@@ -550,7 +552,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 arguments: JSON.stringify(toolCall.functionCall.args),
                                 role: TLLMMessageRole.Assistant,
                             }));
-                            emitter.emit('toolsData', toolsData);
+                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
                     }
 
@@ -586,12 +588,12 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent) {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent) {
         const emitter = new EventEmitter();
         const model = params?.model || DEFAULT_MODEL;
         const apiKey = params?.credentials?.apiKey;
         const fileSources = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         let _prompt = prompt;
 
         // If user provide mix of valid and invalid files, we will only process the valid files
@@ -702,7 +704,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 arguments: JSON.stringify(toolCall.functionCall.args),
                                 role: TLLMMessageRole.Assistant,
                             }));
-                            emitter.emit('toolsData', toolsData);
+                            emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
                     }
 

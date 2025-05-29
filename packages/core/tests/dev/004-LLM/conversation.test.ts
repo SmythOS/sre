@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import fs from 'fs/promises';
 

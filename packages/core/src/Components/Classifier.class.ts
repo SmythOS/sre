@@ -2,12 +2,35 @@ import Joi from 'joi';
 
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class Classifier extends Component {
+    protected schema = {
+        name: 'Classifier',
+        settings: {
+            model: {
+                type: 'string',
+                max: 200,
+                required: true,
+            },
+            prompt: {
+                type: 'string',
+                max: 30000,
+                allow: '',
+                label: 'Prompt',
+            },
+        },
+
+        inputs: {
+            Input: {
+                type: 'Any',
+                default: true,
+            },
+        },
+    };
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().max(30000).allow('').label('Prompt'),
@@ -131,5 +154,3 @@ ${JSON.stringify(categories, null, 2)}`;
         }
     }
 }
-
-export default Classifier;

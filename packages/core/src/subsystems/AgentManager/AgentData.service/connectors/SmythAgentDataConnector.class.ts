@@ -18,7 +18,7 @@ export class SmythAgentDataConnector extends AgentDataConnector {
 
     constructor(private config: SmythConfigs & OAuthConfig & { agentStageDomain: string; agentProdDomain: string }) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.oAuthAppId = config.oAuthAppID;
         this.oAuthAppSecret = config.oAuthAppSecret;
         this.oAuthBaseUrl = config.oAuthBaseUrl;

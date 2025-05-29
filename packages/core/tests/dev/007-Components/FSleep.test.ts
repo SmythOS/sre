@@ -1,7 +1,11 @@
-import FSleep from '@sre/Components/FSleep.class';
+import { FSleep } from '@sre/Components/FSleep.class';
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 

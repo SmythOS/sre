@@ -1,10 +1,14 @@
-import { fa, faker } from '@faker-js/faker';
-import DataSourceLookup from '@sre/Components/DataSourceLookup.class';
+import { faker } from '@faker-js/faker';
+import { DataSourceLookup } from '@sre/Components/DataSourceLookup.class';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import config from '@sre/config';
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
@@ -118,7 +122,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         const results = output.Results;
@@ -163,7 +167,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         const results = output.Results;
@@ -231,7 +235,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         const results = output.Results;
@@ -293,7 +297,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent
+            agent,
         );
 
         const results = output.Results;

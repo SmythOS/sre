@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import Joi from 'joi';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import smythConfig from '@sre/config';
@@ -277,5 +277,3 @@ export class ComputerUse extends Component {
         return duration;
     }
 }
-
-export default ComputerUse;

@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { faker } from '@faker-js/faker';
 import crypto from 'crypto';
@@ -64,7 +65,7 @@ describe('Integration: Smyth Managed VectorDB', () => {
             vectorDB
                 .user(team)
                 .deleteNamespace(ns)
-                .catch((err) => {})
+                .catch((err) => {}),
         );
         await Promise.all(promises);
     });

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AccessCandidate, ConnectorService, SmythRuntime, SystemEvents } from '@sre/index';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';

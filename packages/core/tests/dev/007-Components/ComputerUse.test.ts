@@ -1,7 +1,10 @@
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { describe, expect, it, vi, beforeEach, afterEach, beforeAll } from 'vitest';
-import ComputerUse from '@sre/Components/ComputerUse.class';
+import { ComputerUse } from '@sre/Components/ComputerUse.class';
 import { io } from 'socket.io-client';
 import config from '@sre/config';
 import { AgentSSE } from '@sre/AgentManager/AgentSSE.class';

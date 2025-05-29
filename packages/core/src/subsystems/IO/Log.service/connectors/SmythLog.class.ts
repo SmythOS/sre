@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, TAccessLevel } from '@sre/types/ACL.types';
@@ -26,7 +26,7 @@ export class SmythLog extends LogConnector {
 
     constructor(private config: SmythConfigs & OAuthConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.oAuthAppId = config.oAuthAppID;
         this.oAuthAppSecret = config.oAuthAppSecret;

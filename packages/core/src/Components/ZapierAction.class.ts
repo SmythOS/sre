@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import Joi from 'joi';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
 import { isSmythFileObject } from '../utils';
@@ -125,5 +125,3 @@ export class ZapierAction extends Component {
         }
     }
 }
-
-export default ZapierAction;

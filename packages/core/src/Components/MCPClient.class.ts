@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
@@ -110,5 +110,3 @@ export class MCPClient extends Component {
         }
     }
 }
-
-export default MCPClient;

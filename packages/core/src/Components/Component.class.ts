@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookAsync } from '@sre/Core/HookService';
@@ -8,6 +8,12 @@ export class Component {
     public hasPostProcess = true;
     public alwaysActive = false; //for components like readable memories
     public exclusive = false; //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
+    protected schema = {
+        name: 'Component',
+        settings: {},
+        inputs: {},
+        //outputs: {},
+    };
     protected configSchema;
     constructor() {}
     init() {}
@@ -31,6 +37,7 @@ export class Component {
 
     async validateConfig(config) {
         if (!this.configSchema) return {};
+        console.log(this.configSchema.describe());
         if (config.data._templateVars) {
             //Accept dynamically added template data
             for (let tplVar in config.data._templateVars) {

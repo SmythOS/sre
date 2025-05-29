@@ -1,6 +1,6 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 const sre = SmythRuntime.Instance.init({

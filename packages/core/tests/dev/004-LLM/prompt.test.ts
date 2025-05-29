@@ -1,11 +1,11 @@
 import fs from 'fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import config from '@sre/config';
-import { AccessCandidate, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
-
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {
     const MockedAgent = vi.fn().mockImplementation(() => {

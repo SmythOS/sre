@@ -18,6 +18,7 @@
         "test": "cross-env TEST_ENV=true vitest --reporter verbose",
         "cli-test": "vitest --reporter verbose run cli.test.ts",
         "gen:barrel": "ctix build",
+        "sdk:gen": "node scripts/sdk/generate-components.js",
         "build:dev": "cross-env BUILD=dev rollup -c && tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json && npm link",
         "build:prod": "cross-env BUILD=prod rollup -c",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
@@ -38,7 +39,7 @@
         "@types/express-session": "^1.18.0",
         "@types/lodash": "^4.17.10",
         "@types/node": "^20.14.2",
-        "@vitest/coverage-v8": "^2.0.0",
+        "@vitest/coverage-v8": "^3.1.4",
         "cross-env": "^7.0.3",
         "ctix": "^2.7.1",
         "dependency-cruiser": "^16.3.3",
@@ -55,7 +56,7 @@
         "source-map-support": "^0.5.21",
         "typescript": "^5.4.5",
         "vite-tsconfig-paths": "^4.3.2",
-        "vitest": "^2.0.0"
+        "vitest": "^3.1.4"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
@@ -71,7 +72,7 @@
         "@modelcontextprotocol/sdk": "^1.10.1",
         "@pinecone-database/pinecone": "^3.0.0",
         "@runware/sdk-js": "^1.1.36",
-        "aws-sdk": "^2.1691.0",
+        "aws-sdk": "^2.1692.0",
         "axios": "^1.7.2",
         "chokidar": "^4.0.1",
         "commander": "^11.1.0",
