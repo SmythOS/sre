@@ -17,7 +17,6 @@ export class GenAILLM extends Component {
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
-        maxThinkingTokens: Joi.number().min(1).label('Maximum Thinking Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
         topP: Joi.number().min(0).max(1).label('Top P'),
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
@@ -37,6 +36,9 @@ export class GenAILLM extends Component {
         webSearchRegion: Joi.string().max(100).optional().allow('').label('Search Region'),
         webSearchTimezone: Joi.string().max(100).optional().allow('').label('Search Timezone'),
         // #endregion
+
+        useReasoning: Joi.boolean().optional().label('Use Reasoning'),
+        maxThinkingTokens: Joi.number().min(1).label('Maximum Thinking Tokens'),
     });
     constructor() {
         super();

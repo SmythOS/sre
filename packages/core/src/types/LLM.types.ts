@@ -62,6 +62,8 @@ export type TLLMParams = {
     webSearchRegion?: string;
     webSearchTimezone?: string;
     // #endregion
+
+    useReasoning?: boolean;
 };
 
 export type TLLMParamsV2 = {

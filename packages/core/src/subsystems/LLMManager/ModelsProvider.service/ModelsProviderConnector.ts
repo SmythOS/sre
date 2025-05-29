@@ -15,7 +15,6 @@ export interface IModelsProviderRequest {
     getProvider(model: string): Promise<string>;
     isStandardLLM(model: string): Promise<boolean>;
     adjustMaxCompletionTokens(model: string, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
-    adjustMaxThinkingTokens(maxTokens: number, maxThinkingTokens: number, hasAPIKey?: boolean): Promise<number>;
     getMaxContextTokens(model: string, hasAPIKey?: boolean): Promise<number>;
     getMaxCompletionTokens(model: string, hasAPIKey?: boolean): Promise<number>;
     validateTokensLimit({
@@ -85,10 +84,6 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             adjustMaxCompletionTokens: async (model: string, maxCompletionTokens: number, hasAPIKey: boolean = false) => {
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
                 return Math.min(maxCompletionTokens, modelInfo?.completionTokens || modelInfo?.tokens);
-            },
-            adjustMaxThinkingTokens: async (maxTokens: number, maxThinkingTokens: number, hasAPIKey: boolean = false) => {
-                const validMaxThinkingTokens = Math.min(maxTokens * 0.8, maxThinkingTokens);
-                return Math.min(validMaxThinkingTokens, maxThinkingTokens);
             },
             getMaxContextTokens: async (model: string, hasAPIKey: boolean = false) => {
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);

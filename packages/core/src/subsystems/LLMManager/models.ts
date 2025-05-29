@@ -156,38 +156,15 @@ export const models = {
     // #endregion OpenAI ==========================
 
     // #region Anthropic ==========================
-    'smythos/claude-4-opus-thinking': {
-        label: 'Claude 4 Opus Thinking',
-        modelId: 'claude-opus-4-20250514',
-        provider: 'Anthropic',
-        features: ['text', 'image', 'tools', 'reasoning'],
-        tags: ['New', 'SmythOS'],
-        tokens: 200000,
-        completionTokens: 32000,
-        enabled: true,
-
-        credentials: 'internal',
-    },
-    'smythos/claude-4-sonnet-thinking': {
-        label: 'Claude 4 Sonnet Thinking',
-        modelId: 'claude-sonnet-4-20250514',
-        provider: 'Anthropic',
-        features: ['text', 'image', 'tools', 'reasoning'],
-        tags: ['New', 'SmythOS'],
-        tokens: 200000,
-        completionTokens: 64000,
-        enabled: true,
-
-        credentials: 'internal',
-    },
     'smythos/claude-4-opus': {
         label: 'Claude 4 Opus',
         modelId: 'claude-opus-4-20250514',
         provider: 'Anthropic',
-        features: ['text', 'image', 'tools'],
+        features: ['text', 'image', 'tools', 'reasoning'],
         tags: ['New', 'SmythOS'],
         tokens: 200000,
         completionTokens: 32000,
+        maxReasoningTokens: 32000,
         enabled: true,
 
         credentials: 'internal',
@@ -196,10 +173,11 @@ export const models = {
         label: 'Claude 4 Sonnet',
         modelId: 'claude-sonnet-4-20250514',
         provider: 'Anthropic',
-        features: ['text', 'image', 'tools'],
+        features: ['text', 'image', 'tools', 'reasoning'],
         tags: ['New', 'SmythOS'],
         tokens: 200000,
         completionTokens: 64000,
+        maxReasoningTokens: 32000,
         enabled: true,
 
         credentials: 'internal',
@@ -211,10 +189,11 @@ export const models = {
         label: 'Claude 3.7 Sonnet',
         modelId: 'claude-3-7-sonnet-20250219',
         provider: 'Anthropic',
-        features: ['text', 'image', 'tools'],
+        features: ['text', 'image', 'tools', 'reasoning'],
         tags: ['SmythOS'],
         tokens: 200_000,
         completionTokens: 8_192,
+        maxReasoningTokens: 16384,
         enabled: true,
 
         credentials: 'internal',
@@ -229,7 +208,9 @@ export const models = {
         tags: ['SmythOS'],
         tokens: 200_000,
         completionTokens: 16_384,
+        maxReasoningTokens: 16384,
         enabled: true,
+        hidden: true,
 
         credentials: 'internal',
     },
@@ -1095,40 +1076,16 @@ export const models = {
     // #endregion OpenAI Models ==========================
 
     // #region Anthropic Models ==========================
-    'claude-4-opus-thinking': {
-        label: 'Claude 4 Opus Thinking',
-        modelId: 'claude-opus-4-20250514',
-        provider: 'Anthropic',
-        features: ['text', 'image', 'tools', 'reasoning'],
-        tags: ['New', 'Personal'],
-        tokens: 200000,
-        completionTokens: 32000,
-        enabled: true,
-
-        credentials: 'internal',
-    },
-    'claude-4-sonnet-thinking': {
-        label: 'Claude 4 Sonnet Thinking',
-        modelId: 'claude-sonnet-4-20250514',
-        provider: 'Anthropic',
-        features: ['text', 'tools', 'image', 'reasoning'],
-        tags: ['New', 'Personal'],
-        tokens: 0,
-        completionTokens: 0,
-        enabled: false,
-        keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
-
-        credentials: 'vault',
-    },
     'claude-4-opus': {
         label: 'Claude 4 Opus',
         modelId: 'claude-opus-4-20250514',
         provider: 'Anthropic',
-        features: ['text', 'image', 'tools'],
+        features: ['text', 'image', 'tools', 'reasoning'],
         tags: ['New', 'Personal'],
-        tokens: 200000,
-        completionTokens: 32000,
-        enabled: true,
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        keyOptions: { tokens: 200_000, completionTokens: 32000, maxReasoningTokens: 32000, enabled: true },
 
         credentials: 'internal',
     },
@@ -1136,12 +1093,12 @@ export const models = {
         label: 'Claude 4 Sonnet',
         modelId: 'claude-sonnet-4-20250514',
         provider: 'Anthropic',
-        features: ['text', 'tools', 'image'],
+        features: ['text', 'image', 'tools', 'reasoning'],
         tags: ['New', 'Personal'],
         tokens: 0,
         completionTokens: 0,
         enabled: false,
-        keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
+        keyOptions: { tokens: 200_000, completionTokens: 64000, maxReasoningTokens: 32000, enabled: true },
 
         credentials: 'vault',
     },
@@ -1153,12 +1110,12 @@ export const models = {
         label: 'Claude 3.7 Sonnet',
         modelId: 'claude-3-7-sonnet-20250219',
         provider: 'Anthropic',
-        features: ['text', 'tools', 'image'],
+        features: ['text', 'tools', 'image', 'reasoning'],
         tags: ['Personal'],
         tokens: 0,
         completionTokens: 0,
         enabled: false,
-        keyOptions: { tokens: 200_000, completionTokens: 8192, enabled: true },
+        keyOptions: { tokens: 200_000, completionTokens: 8192, maxReasoningTokens: 16384, enabled: true },
 
         credentials: 'vault',
     },
@@ -1175,7 +1132,8 @@ export const models = {
         tokens: 0,
         completionTokens: 0,
         enabled: false,
-        keyOptions: { tokens: 200_000, completionTokens: 16384, enabled: true },
+        keyOptions: { tokens: 200_000, completionTokens: 16384, maxReasoningTokens: 16384, enabled: true },
+        hidden: true,
 
         credentials: 'vault',
     },

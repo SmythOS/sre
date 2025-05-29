@@ -11,7 +11,6 @@ import {
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     ToolData,
-    TLLMProvider,
     APIKeySource,
     TLLMModel,
     TLLMCredentials,
@@ -313,10 +312,6 @@ export abstract class LLMConnector extends Connector {
                 _params.maxTokens,
                 _params?.credentials?.isUserKey as boolean,
             );
-        }
-
-        if (_params.maxThinkingTokens) {
-            _params.maxThinkingTokens = await modelProviderCandidate.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
         }
 
         _params.model = await modelProviderCandidate.getModelId(model);
