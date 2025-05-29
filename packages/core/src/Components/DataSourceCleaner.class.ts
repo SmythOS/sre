@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import Joi from 'joi';
@@ -9,7 +9,7 @@ import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
-import DataSourceIndexer from './DataSourceIndexer.class';
+import { DataSourceIndexer } from './DataSourceIndexer.class';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
 export class DataSourceCleaner extends Component {
@@ -103,5 +103,3 @@ export class DataSourceCleaner extends Component {
             .validate(data);
     }
 }
-
-export default DataSourceCleaner;

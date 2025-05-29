@@ -1,12 +1,13 @@
 import xxhash from 'xxhashjs';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { S3Cache } from '@sre/MemoryManager/Cache.service/connectors/S3Cache.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 
@@ -54,7 +55,7 @@ const testOriginalACLMetadata = {
 const agentCandidate = AccessCandidate.team('team1');
 const testOriginalMetadata = {
     'Content-Type': 'text/plain',
-    'test': 'test',
+    test: 'test',
 };
 
 let s3Cache: CacheConnector = ConnectorService.getCacheConnector();
@@ -66,10 +67,7 @@ describe('S3Cache Tests', () => {
     it('Reset Test Data', async () => {
         let error;
         try {
-            await Promise.all([
-                s3Cache.user(agentCandidate).delete(s3Key),
-                s3Cache.user(AccessCandidate.team('team1')).delete(s3KeyWithMeta),
-            ]);
+            await Promise.all([s3Cache.user(agentCandidate).delete(s3Key), s3Cache.user(AccessCandidate.team('team1')).delete(s3KeyWithMeta)]);
         } catch (e) {
             console.error(e);
             error = e;
@@ -83,9 +81,7 @@ describe('S3Cache Tests', () => {
             const res1 = await s3Cache.user(agentCandidate).set(s3Key, 'Hello World!');
             expect(res1).toBeTruthy();
 
-            const res2 = await s3Cache
-                .user(agentCandidate)
-                .set(s3KeyWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
+            const res2 = await s3Cache.user(agentCandidate).set(s3KeyWithMeta, 'I have metadata', testOriginalACLMetadata, testOriginalMetadata);
             expect(res2).toBeTruthy();
         } catch (e) {
             console.error(e);
@@ -115,7 +111,11 @@ describe('S3Cache Tests', () => {
 
     it('Are Metadata ACL valid', async () => {
         const accessRights = await s3Cache.user(agentCandidate).getACL(s3Key);
-        expect(JSON.stringify(accessRights?.entries?.team)).toEqual(JSON.stringify(ACL.from(testAdditionalACLMetadata).addAccess(agentCandidate.role, agentCandidate.id, TAccessLevel.Owner).ACL.entries.team));
+        expect(JSON.stringify(accessRights?.entries?.team)).toEqual(
+            JSON.stringify(
+                ACL.from(testAdditionalACLMetadata).addAccess(agentCandidate.role, agentCandidate.id, TAccessLevel.Owner).ACL.entries.team,
+            ),
+        );
     });
 
     it('Check Access Rights => Grant', async () => {
@@ -139,7 +139,6 @@ describe('S3Cache Tests', () => {
                     error,
                 }));
             expect(accessCheck?.error).toBeDefined();
-
         } catch (e) {
             expect(e).toBeUndefined();
         }

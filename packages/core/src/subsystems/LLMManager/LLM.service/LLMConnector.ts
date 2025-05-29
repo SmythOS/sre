@@ -24,7 +24,7 @@ import { AccountConnector } from '@sre/Security/Account.service/AccountConnector
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { TCustomLLMModel } from '@sre/types/LLM.types';
 import config from '@sre/config';
-import { ModelsProviderConnector } from '@sre/index';
+import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 
 const console = Logger('LLMConnector');
 
@@ -49,7 +49,7 @@ export type LLMChatResponse = {
 
 export type ImagesResponse = {
     created: number;
-    data: Array<{
+    data?: Array<{
         b64_json?: string;
         url?: string;
     }>;

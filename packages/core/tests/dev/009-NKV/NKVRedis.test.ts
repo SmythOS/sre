@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
@@ -109,7 +110,7 @@ describe('Integration: Redis NKV', () => {
                     expect.objectContaining({ key: records[0].key, data: records[0].value }),
                     expect.objectContaining({ key: records[1].key, data: records[1].value }),
                     expect.objectContaining({ key: records[2].key, data: records[2].value }),
-                ])
+                ]),
             );
         });
 

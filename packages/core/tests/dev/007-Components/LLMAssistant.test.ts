@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
 import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { TLLMMessageRole } from '@sre/types/LLM.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';

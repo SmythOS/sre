@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 import { jsonrepair } from 'jsonrepair';
@@ -232,5 +232,3 @@ export class APIEndpoint extends Component {
         return { headers, body, query, params, _authInfo, _debug: logger.output };
     }
 }
-
-export default APIEndpoint;

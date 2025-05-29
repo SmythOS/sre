@@ -1,3 +1,4 @@
+import { IAgent } from '@sre/types/Agent.types';
 import { Agent } from './Agent.class';
 import { AgentRequest } from './AgentRequest.class';
 
@@ -10,7 +11,7 @@ const console = Logger('ForkedAgent');
  * We use composition instead of inheritance to avoid circular dependencies between Agent and ForkedAgent
  */
 export class ForkedAgent {
-    public agent: Agent;
+    public agent: IAgent;
     public get agentRequest() {
         return this.agent.agentRequest;
     }
@@ -24,7 +25,7 @@ export class ForkedAgent {
         return this.agent.jobID;
     }
     constructor(
-        private parent: Agent,
+        private parent: IAgent,
         componentId: string, //the component to fork from
     ) {
         const data: any = fork(this.parent.data, componentId);

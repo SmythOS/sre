@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -65,7 +65,7 @@ function runTestCases(endpoint: string) {
             expect(output).toBeTruthy();
             expect(output.length).toBeGreaterThan(20);
         },
-        TIMEOUT
+        TIMEOUT,
     );
 }
 

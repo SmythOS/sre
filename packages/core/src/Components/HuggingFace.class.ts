@@ -1,6 +1,6 @@
 import { HfInference } from '@huggingface/inference';
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import hfParams from '../data/hugging-face.params.json';
 import Joi from 'joi';
 import { TemplateStringHelper } from '@sre/helpers/TemplateString.helper';
@@ -312,5 +312,3 @@ export class HuggingFace extends Component {
         }
     }
 }
-
-export default HuggingFace;

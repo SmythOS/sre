@@ -1,13 +1,9 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import HuggingFace from '@sre/Components/HuggingFace.class';
-import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { ConnectorService, ModelsProviderConnector, SmythRuntime } from '@sre/index';
-import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';
-import Classifier from '@sre/Components/Classifier.class';
+import { Classifier } from '@sre/Components/Classifier.class';
 import config from '@sre/config';
 import { PrepareSRETestEnvironment } from './common';
 

@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { S3Storage } from '@sre/IO/Storage.service/connectors/S3Storage.class';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import config from '@sre/config';
-import { AgentRequest, ConnectorService, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {

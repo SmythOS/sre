@@ -1,6 +1,6 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -25,7 +25,7 @@ export class SmythManagedVault extends ManagedVaultConnector {
 
     constructor(private config: SmythConfigs & OAuthConfig & { vaultName: string }) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.oAuthAppId = config.oAuthAppID;
         this.oAuthAppSecret = config.oAuthAppSecret;

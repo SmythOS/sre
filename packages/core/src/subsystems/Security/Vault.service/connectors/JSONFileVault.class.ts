@@ -20,7 +20,7 @@ export class JSONFileVault extends VaultConnector {
 
     constructor(private config: JSONFileVaultConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.sharedVault = config.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 

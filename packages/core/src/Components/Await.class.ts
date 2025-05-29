@@ -1,8 +1,8 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import axios from 'axios';
 import Joi from 'joi';
-import Async from './Async.class';
+import { Async } from './Async.class';
 
 export class Await extends Component {
     static WAITS = {};
@@ -88,5 +88,3 @@ export class Await extends Component {
         }
     }
 }
-
-export default Await;

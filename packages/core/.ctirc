@@ -23,10 +23,34 @@
                 "node_modules",
                 "tests/**/*",
                 "src/utils/**/*",
-                "src/Components/**/*",
+                "src/sdk/**/*",
                 "**/*.deprecated"
             ],
             "output": "./src",
+            "removeBackup": false,
+            "forceYes": false
+        },
+        {
+            "mode": "bundle",
+            "project": "tsconfig.json",
+            "exportFilename": "sdk.index.ts",
+            "useSemicolon": true,
+            "useBanner": false,
+            "useTimestamp": false,
+            "quote": "'",
+            "directive": "//!!! This is a generated file, do not edit it directly !!!//",
+            "fileExt": "none",
+            "overwrite": false,
+            "backup": true,
+            "generationStyle": "auto",
+            "include": [
+                "src/sdk/**/*.ts"
+            ],
+            "exclude": [
+                "node_modules",
+                "**/*.deprecated"
+            ],
+            "output": "./src/sdk",
             "removeBackup": false,
             "forceYes": false
         }

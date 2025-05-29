@@ -126,5 +126,3 @@ export class MultimodalLLM extends Component {
         }
     }
 }
-
-export default MultimodalLLM;

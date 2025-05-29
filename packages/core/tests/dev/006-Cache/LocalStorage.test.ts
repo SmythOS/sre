@@ -1,9 +1,10 @@
 import xxhash from 'xxhashjs';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LocalStorageCache } from '@sre/MemoryManager/Cache.service/connectors/LocalStorageCache.class';
 
 function xxh3(source) {
@@ -45,7 +46,7 @@ const agentCandidate = AccessCandidate.agent('agent-123456').team('team1');
 const testOriginalMetadata = {
     'Content-Type': 'text/plain',
     'x-amz-meta-test': 'test',
-    'tag': 'test',
+    tag: 'test',
 };
 
 let localStorageCache: CacheConnector = ConnectorService.getCacheConnector();
@@ -123,10 +124,8 @@ describe('LocalStorageCache Tests', () => {
     it('Check Access Rights => Refuse', async () => {
         try {
             const teamNoAccess = AccessCandidate.team('team2');
-            const data = await localStorageCache
-                .user(teamNoAccess)
+            const data = await localStorageCache.user(teamNoAccess);
             expect(data).toBeUndefined();
-
         } catch (e) {
             expect(e).toBeDefined();
         }

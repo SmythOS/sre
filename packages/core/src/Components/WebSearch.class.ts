@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import SREConfig from '@sre/config';
@@ -70,5 +70,3 @@ export class WebSearch extends Component {
         });
     }
 }
-
-export default WebSearch;

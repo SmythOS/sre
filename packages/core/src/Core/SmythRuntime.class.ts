@@ -67,6 +67,9 @@ export class SmythRuntime {
             ModelsProvider: {
                 Connector: 'SmythModelsProvider',
             },
+            Component: {
+                Connector: 'LocalComponent',
+            },
         };
 
         for (let connectorType in defaultConfig) {

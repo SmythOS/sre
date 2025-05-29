@@ -1,5 +1,5 @@
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {

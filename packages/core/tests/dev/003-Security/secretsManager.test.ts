@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { SecretsManager } from '@sre/Security/Vault.service/connectors/SecretsManager.class';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 const SREInstance = SmythRuntime.Instance.init({
@@ -16,7 +17,7 @@ const SREInstance = SmythRuntime.Instance.init({
     },
     Account: {
         Connector: 'SmythAccount',
-    }
+    },
 });
 
 describe('Secret Manager Tests', () => {
@@ -46,10 +47,7 @@ describe('Secret Manager Tests', () => {
         const teamId = 'test';
         const vault: VaultConnector = ConnectorService.getVaultConnector();
         const value = await vault.user(AccessCandidate.team(teamId)).get('secret');
-        const result = await TemplateString(tpl)
-            .parse({ MyVAR: 'Hello', secret: value }).result
+        const result = await TemplateString(tpl).parse({ MyVAR: 'Hello', secret: value }).result;
         expect(result).toEqual('using a vault key : test_value and a simple template variable : Hello');
     });
-
-
 });

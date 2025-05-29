@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent } from '@sre/types/Agent.types';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -21,6 +21,7 @@ import {
     TLLMMessageRole,
     GenerateImageConfig,
     APIKeySource,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { customModels } from '@sre/LLMManager/custom-models';
@@ -29,6 +30,7 @@ import { isJSONString } from '@sre/utils/general.utils';
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 
 const console = Logger('BedrockConnector');
 
@@ -44,10 +46,10 @@ type InferenceConfig = {
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemPrompt;
@@ -123,20 +125,20 @@ export class BedrockConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | Agent,
+        agent: string | IAgent,
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Bedrock');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for Bedrock.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<any> {
         try {
             const customModelInfo = params.modelInfo;
 
@@ -148,7 +150,7 @@ export class BedrockConnector extends LLMConnector {
             let systemPrompt;
             let messages = params?.messages || [];
 
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
             const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
 
@@ -218,14 +220,14 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Bedrock.');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         try {
             const customModelInfo = params.modelInfo;
@@ -331,9 +333,9 @@ export class BedrockConnector extends LLMConnector {
                         // Handle message completion
                         if (chunk.messageStop) {
                             if (currentMessage.toolCalls.length > 0) {
-                                emitter.emit('toolsData', currentMessage.toolCalls);
+                                emitter.emit(TLLMEvent.ToolInfo, currentMessage.toolCalls);
                             }
-                            emitter.emit('end', currentMessage.toolCalls);
+                            emitter.emit(TLLMEvent.End, currentMessage.toolCalls);
                         }
 
                         if (chunk?.metadata?.usage) {
@@ -352,12 +354,12 @@ export class BedrockConnector extends LLMConnector {
             return emitter;
         } catch (error: unknown) {
             const typedError = error as Error;
-            emitter.emit('error', typedError?.['error'] || typedError);
+            emitter.emit(TLLMEvent.Error, typedError?.['error'] || typedError);
             return emitter;
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         throw new Error('Bedrock model does not support passthrough with File(s)');
     }
 

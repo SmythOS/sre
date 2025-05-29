@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import axios from 'axios';
 import Joi from 'joi';
@@ -84,5 +84,3 @@ export class Code extends Component {
         }
     }
 }
-
-export default Code;

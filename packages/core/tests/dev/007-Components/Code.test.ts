@@ -1,11 +1,14 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 import crypto from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
-import Code from '@sre/Components/Code.class';
+import { Code } from '@sre/Components/Code.class';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',

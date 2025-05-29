@@ -18,7 +18,9 @@ export class Connector {
         return true;
     }
 
-    constructor(config: any = {}) {}
+    constructor(config: any = {}) {
+        //TODO : check if smyth runtime is initialized and throw an error if it is not
+    }
 
     /**
      * Creates a new instance of the current class using the provided settings.

@@ -4,7 +4,7 @@ import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/Stora
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -44,7 +44,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(config: PineconeConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         if (!config.pineconeApiKey) throw new Error('Pinecone API key is required');
         if (!config.indexName) throw new Error('Pinecone index name is required');
 

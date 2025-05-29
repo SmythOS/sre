@@ -4,7 +4,8 @@ import express from 'express';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import http, { Server } from 'http';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import axios from 'axios';

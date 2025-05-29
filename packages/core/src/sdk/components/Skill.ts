@@ -1,4 +1,6 @@
-import { AgentMaker, createSafeAccessor, ComponentWrapper } from '../sdk.index';
+import { Agent } from '../Agent.class';
+import { createSafeAccessor } from './utils';
+import { ComponentWrapper } from './ComponentWrapper.class';
 import { InputSettings, ComponentInput } from '../types/SDKTypes';
 
 function normalizeEndpointName(name: string) {
@@ -19,7 +21,7 @@ export type TSkillInputs = {
     [key: string]: any;
 };
 
-export function Skill(settings?: TSkillSettings, agentMaker?: AgentMaker) {
+export function Skill(settings?: TSkillSettings, agent?: Agent) {
     const { name, process, inputs, ...settingsWithoutName } = settings || {};
     const dataObject: any = {
         name: 'APIEndpoint',
@@ -30,10 +32,10 @@ export function Skill(settings?: TSkillSettings, agentMaker?: AgentMaker) {
             method: settings?.method || 'POST',
         },
     };
-    const component = new ComponentWrapper(dataObject, agentMaker);
+    const component = new ComponentWrapper(dataObject, agent);
 
-    if (agentMaker) {
-        agentMaker.structure.components.push(component);
+    if (agent) {
+        agent.structure.components.push(component);
     }
 
     const _out: { headers: any; body: any; query: any; [key: string]: any } = {

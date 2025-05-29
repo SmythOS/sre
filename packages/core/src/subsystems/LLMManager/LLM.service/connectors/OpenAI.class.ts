@@ -4,7 +4,6 @@ import OpenAI, { toFile } from 'openai';
 import { Uploadable } from 'openai/uploads';
 import { encodeChat } from 'gpt-tokenizer';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { TOOL_USE_DEFAULT_MODEL } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -21,12 +20,15 @@ import {
     TLLMMessageRole,
     GenerateImageConfig,
     APIKeySource,
+    TLLMEvent,
 } from '@sre/types/LLM.types';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ImageEditParams } from 'openai/resources/images';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 
 const console = Logger('OpenAIConnector');
 
@@ -52,10 +54,10 @@ export class OpenAIConnector extends LLMConnector {
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -144,7 +146,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent) {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -165,7 +167,7 @@ export class OpenAIConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validSources = this.getValidImageFileSources(fileSources);
@@ -258,7 +260,7 @@ export class OpenAIConnector extends LLMConnector {
         return await this.getDocumentData(validSources, agentId);
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
         //#region Handle JSON response format
@@ -279,7 +281,7 @@ export class OpenAIConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         const fileSources: BinaryInput[] = params?.fileSources || [];
         const validImageFileSources = this.getValidImageFileSources(fileSources);
         const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
@@ -353,7 +355,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     // #region Image Generation, will be moved to a different subsystem
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<ImagesResponse> {
         try {
             const { model, size, quality, n, responseFormat, style } = params;
 
@@ -401,7 +403,7 @@ export class OpenAIConnector extends LLMConnector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
-        agent: string | Agent,
+        agent: string | IAgent,
     ): Promise<ImagesResponse> {
         try {
             const { model, size, n, responseFormat } = params;
@@ -454,7 +456,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
     // #endregion Image Generation
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<any> {
         const apiKey = params?.credentials?.apiKey;
 
         if (!apiKey) {
@@ -468,7 +470,7 @@ export class OpenAIConnector extends LLMConnector {
 
         const messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
             model: params.model,
@@ -642,7 +644,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const reportedUsage = [];
@@ -651,7 +653,7 @@ export class OpenAIConnector extends LLMConnector {
         if (!apiKey) {
             throw new Error('An API key is required to use this model.');
         }
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const openai = new OpenAI({
             apiKey: apiKey, // we provide default API key for OpenAI with limited quota
@@ -734,7 +736,7 @@ export class OpenAIConnector extends LLMConnector {
                             //FIXME: use cleaner method to fix wrong tool call formats
                         }
                     }
-                    emitter.emit('toolsData', toolsData);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
                 usage_data.forEach((usage) => {
@@ -762,7 +764,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         const messages = params?.messages || [];
         const emitter = new EventEmitter();
         const usage_data = [];
@@ -785,7 +787,7 @@ export class OpenAIConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
         const validImageFileSources = this.getValidImageFileSources(fileSources);
@@ -884,7 +886,7 @@ export class OpenAIConnector extends LLMConnector {
                     }
                 }
                 if (toolsData?.length > 0) {
-                    emitter.emit('toolsData', toolsData);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
                 usage_data.forEach((usage) => {

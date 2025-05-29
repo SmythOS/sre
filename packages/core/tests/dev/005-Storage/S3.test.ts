@@ -11,7 +11,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { TestAccountConnector } from '../../utils/TestConnectors';
