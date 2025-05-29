@@ -1,15 +1,19 @@
 import { faker } from '@faker-js/faker';
-import DataSourceIndexer from '@sre/Components/DataSourceIndexer.class';
+import { DataSourceIndexer } from '@sre/Components/DataSourceIndexer.class';
 import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import config from '@sre/config';
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 import crypto from 'crypto';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
-import DataSourceCleaner from '@sre/Components/DataSourceCleaner.class';
+import { DataSourceCleaner } from '@sre/Components/DataSourceCleaner.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TestAccountConnector } from '../../utils/TestConnectors';
@@ -110,7 +114,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent
+                agent,
             );
 
             // expect that the datasource file exists now
@@ -136,7 +140,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent
+                agent,
             );
 
             // expect that the datasource file does not exist now
@@ -157,6 +161,6 @@ describe('DataSourceCleaner Component', () => {
         },
         {
             timeout: 35_000,
-        }
+        },
     );
 });

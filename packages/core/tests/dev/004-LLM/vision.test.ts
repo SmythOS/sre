@@ -1,7 +1,6 @@
 import fs from 'fs';
 import { describe, expect, it, vi } from 'vitest';
-import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 

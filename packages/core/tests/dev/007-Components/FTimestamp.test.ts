@@ -1,6 +1,8 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
-import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 

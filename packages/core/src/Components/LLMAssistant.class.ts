@@ -1,6 +1,6 @@
 import Joi from 'joi';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -261,5 +261,3 @@ export class LLMAssistant extends Component {
         }
     }
 }
-
-export default LLMAssistant;

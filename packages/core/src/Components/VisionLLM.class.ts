@@ -102,5 +102,3 @@ export class VisionLLM extends Component {
         }
     }
 }
-
-export default VisionLLM;

@@ -1,13 +1,13 @@
 import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent } from '@sre/types/Agent.types';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
@@ -17,6 +17,7 @@ import { TextBlockParam } from '@anthropic-ai/sdk/resources';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 
 const console = Logger('AnthropicConnector');
 
@@ -32,10 +33,10 @@ export class AnthropicConnector extends LLMConnector {
 
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.Anthropic.image;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
@@ -115,10 +116,10 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent) {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent) {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
@@ -205,10 +206,10 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
@@ -295,9 +296,9 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<any> {
         try {
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
             const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
@@ -410,7 +411,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Anthropic.');
     }
 
@@ -422,12 +423,12 @@ export class AnthropicConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         try {
             const emitter = new EventEmitter();
             const usage_data = [];
 
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
             const apiKey = params?.credentials?.apiKey;
             if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
@@ -550,7 +551,7 @@ export class AnthropicConnector extends LLMConnector {
                         });
                     });
 
-                    emitter.emit('toolsData', toolsData, thinkingBlocks);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData, thinkingBlocks);
                 } else {
                     finishReason = finalMessage.stop_reason;
                 }
@@ -590,12 +591,12 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const isThinkingModel = THINKING_MODELS.includes(params.modelEntryName);
 
@@ -692,7 +693,7 @@ export class AnthropicConnector extends LLMConnector {
                         });
                     });
 
-                    emitter.emit('toolsData', toolsData, thinkingBlocks);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData, thinkingBlocks);
                 } else {
                     finishReason = finalMessage.stop_reason;
                 }

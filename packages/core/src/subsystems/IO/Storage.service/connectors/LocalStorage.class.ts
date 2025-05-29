@@ -5,7 +5,7 @@ import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { LocalStorageConfig } from '@sre/types/LocalStorage.types';
@@ -24,7 +24,7 @@ export class LocalStorage extends StorageConnector {
 
     constructor(settings: LocalStorageConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.folder = settings.folder || `${os.tmpdir()}/.smyth/storage`;
         this.initialize();

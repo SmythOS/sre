@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it, beforeAll } from 'vitest';
 import express from 'express';
 import config from '@sre/config';
-import { AgentProcess, ConnectorService, Conversation, SmythRuntime } from '@sre/index';
-import http, { Server } from 'http';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { promisify } from 'util';
 import fs from 'fs/promises'; // for promise-based file reading

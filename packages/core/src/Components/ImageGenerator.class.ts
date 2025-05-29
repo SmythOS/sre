@@ -1,7 +1,7 @@
 import { OpenAI } from 'openai';
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
@@ -183,7 +183,7 @@ const imageGenerator = {
             let output = response?.data?.[0]?.b64_json;
 
             const binaryInput = BinaryInput.from(output);
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = typeof agent == 'object' && agent.id ? agent.id : agent;
             const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
 
             return { output: smythFile };
@@ -405,5 +405,3 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
-
-export default ImageGenerator;

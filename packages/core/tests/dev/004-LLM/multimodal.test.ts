@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
-import { AccessCandidate, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {

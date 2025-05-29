@@ -1,12 +1,13 @@
 import xxhash from 'xxhashjs';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { RedisCache } from '@sre/MemoryManager/Cache.service/connectors/RedisCache.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { describe, expect, it } from 'vitest';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 
 function xxh3(source) {
     const h64 = xxhash.h64(); // Use xxhashjs's h64 function

@@ -813,6 +813,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 128_000, completionTokens: 16_383, enabled: true },
     },
 
     // #region GPT 4.1
@@ -826,6 +827,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
     },
     'legacy/gpt-4.1-mini': {
         label: 'GPT 4.1 Mini',
@@ -837,6 +839,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
     },
     'legacy/gpt-4.1': {
         label: 'GPT 4.1',
@@ -848,6 +851,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 1_047_576, completionTokens: 32_768, enabled: true },
     },
     // #endregion
 
@@ -862,6 +866,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
     },
     'legacy/gpt-4o': {
         label: 'GPT 4o',
@@ -873,6 +878,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 128_000, completionTokens: 16_384, enabled: true },
     },
     // #endregion GPT 4o
 
@@ -887,6 +893,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
     },
     'legacy/o3': {
         label: 'GPT o3',
@@ -898,6 +905,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
     },
     'legacy/o3-mini': {
         label: 'GPT o3 mini',
@@ -910,6 +918,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
     },
     // #endregion o3 models
 
@@ -924,6 +933,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 200_000, completionTokens: 100_000, enabled: true },
     },
     'legacy/o1-mini': {
         label: 'GPT o1 mini',
@@ -935,6 +945,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 128_000, completionTokens: 65_536, enabled: true },
     },
     'legacy/o1-preview': {
         label: 'GPT o1 Preview',
@@ -946,6 +957,7 @@ export const models = {
         completionTokens: 2048,
         enabled: true,
         credentials: ['vault', 'internal'],
+        keyOptions: { tokens: 128_000, completionTokens: 32_768, enabled: true },
     },
     // #endregion o1 models
 
@@ -961,6 +973,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
     },
     'legacy/gpt-4-turbo': {
         label: 'GPT 4 Turbo',
@@ -973,6 +986,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 128_000, completionTokens: 4096, enabled: true },
     },
     // #endregion GPT-4-turbo
 
@@ -988,6 +1002,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
     'legacy/gpt-4': {
         label: 'GPT 4',
@@ -1000,6 +1015,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 8192, completionTokens: 8192, enabled: true },
     },
     // #endregion GPT-4
 
@@ -1015,6 +1031,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
     },
     'legacy/gpt-3.5-turbo': {
         label: 'GPT 3.5 Turbo',
@@ -1027,6 +1044,7 @@ export const models = {
         enabled: true,
         credentials: ['vault', 'internal'],
         hidden: true,
+        keyOptions: { tokens: 16385, completionTokens: 4096, enabled: true },
     },
     // #endregion GPT-3.5
     // #endregion GPT models for legacy plans

@@ -15,14 +15,6 @@ const console = Logger('AgentLogger.class');
 //TODO : for performance optimization we should handle a non blocking logs queue
 // in the current implementation, the initial log line write is blocking, log update is non blocking
 
-//setup cleanup interval
-setInterval(
-    () => {
-        AgentLogger.cleanup();
-    },
-    1000 * 60 * 1,
-); //every 1 minute
-
 const transactionQueue: LogTransaction[] = [];
 
 function processTransactionQueue() {
@@ -257,7 +249,18 @@ class LogTransaction {
 }
 export class AgentLogger {
     private static transactions: any = {};
+    private static cleanupInterval: NodeJS.Timeout;
     constructor(private agent: Agent) {}
+
+    private static setupCleanupInterval() {
+        if (this.cleanupInterval) return;
+        this.cleanupInterval = setInterval(
+            () => {
+                this.cleanup();
+            },
+            1000 * 60 * 1,
+        ); //every 1 minute
+    }
     public static async cleanup() {
         const logConnector = ConnectorService.getLogConnector();
         if (!logConnector.valid) return;
@@ -278,6 +281,9 @@ export class AgentLogger {
             this.transactions[trId] = new LogTransaction(agent, trId);
         }
         this.transactions[trId].push(logData);
+
+        //ensure that a cleanup interval is running
+        this.setupCleanupInterval();
         return trId;
     }
     public static async logTask(agent: Agent, tasks) {
@@ -300,5 +306,8 @@ export class AgentLogger {
             // only report if on a non test domain
             await logConnector.user(AccessCandidate.agent(agent.id)).logTask(tasks, agent.usingTestDomain);
         }
+
+        //ensure that a cleanup interval is running
+        this.setupCleanupInterval();
     }
 }

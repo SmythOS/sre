@@ -242,3 +242,24 @@ export type TLLMModelsList = {
 export type SmythModelsProviderConfig = {
     models: (models: TLLMModelsList) => Promise<TLLMModelsList> | TLLMModelsList;
 };
+
+export enum TLLMEvent {
+    /** Generated response chunks */
+    Content = 'content',
+    /** Thinking blocks/chunks */
+    Thinking = 'thinking',
+    /** End of the response */
+    End = 'end',
+    /** Error */
+    Error = 'error',
+    /** Tool information : emitted by the LLM determines the next tool call */
+    ToolInfo = 'toolInfo',
+    /** Tool call : emitted before the tool call */
+    ToolCall = 'toolCall',
+    /** Tool result : emitted after the tool call */
+    ToolResult = 'toolResult',
+    /** Tokens usage information */
+    Usage = 'usage',
+    /** Interrupted : emitted when the response is interrupted before completion */
+    Interrupted = 'interrupted',
+}

@@ -1,22 +1,24 @@
 import { Component } from '@sre/Components/Component.class';
-import builtinComponents from '@sre/Components/index';
 import { AgentLogger } from './AgentLogger.class';
 import { AgentRequest } from './AgentRequest.class';
 import { AgentRuntime } from './AgentRuntime.class';
 import { AgentSettings } from './AgentSettings.class';
 import { OSResourceMonitor } from './OSResourceMonitor';
 import config from '@sre/config';
-import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
+import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { AgentSSE } from './AgentSSE.class';
-import { AccessCandidate, ConnectorService, IModelsProviderRequest, ModelsProviderConnector } from '@sre/index';
+import { IAgent } from '@sre/types/Agent.types';
+import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
 
-export class Agent {
+export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
@@ -48,7 +50,14 @@ export class Agent {
     public sse: AgentSSE;
     public modelsProvider: IModelsProviderRequest;
 
-    private _componentInstance = { ...builtinComponents };
+    private _componentInstance = {};
+
+    public get ComponentInstances() {
+        return this._componentInstance;
+    }
+
+    private _componentInstancesLoader = new ControlledPromise(() => {});
+
     constructor(
         public id,
         agentData,
@@ -151,9 +160,11 @@ export class Agent {
                 .getAll()
                 .then((customComponents) => {
                     this._componentInstance = { ...this._componentInstance, ...customComponents };
+                    this._componentInstancesLoader.resolve(true);
                 });
         } catch (error) {
             console.warn('Could not load custom components');
+            this._componentInstancesLoader.reject('Could not load custom components');
         }
 
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();

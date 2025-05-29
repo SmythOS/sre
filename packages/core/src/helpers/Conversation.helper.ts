@@ -4,7 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
-import { ILLMContextStore, ToolData } from '@sre/types/LLM.types';
+import { ILLMContextStore, TLLMEvent, ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit, uid } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -444,12 +444,12 @@ export class Conversation extends EventEmitter {
             this.emit('data', data);
         });
 
-        eventEmitter.on('thinking', (thinking) => {
+        eventEmitter.on(TLLMEvent.Thinking, (thinking) => {
             if (this.stop) return;
-            this.emit('thinking', thinking);
+            this.emit(TLLMEvent.Thinking, thinking);
         });
 
-        eventEmitter.on('content', (content) => {
+        eventEmitter.on(TLLMEvent.Content, (content) => {
             if (this.stop) return;
             // if (toolHeaders['x-passthrough']) {
             //     console.log('Passthrough skiped content ', content);
@@ -461,7 +461,7 @@ export class Conversation extends EventEmitter {
             //skip if the content is the last generated message after a passthrough content
             if (skip) return;
             _content += content;
-            this.emit('content', content);
+            this.emit(TLLMEvent.Content, content);
         });
 
         let finishReason = 'stop';
@@ -471,12 +471,12 @@ export class Conversation extends EventEmitter {
             let hasError = false;
             let passThroughContent = '';
 
-            eventEmitter.on('error', (error) => {
+            eventEmitter.on(TLLMEvent.Error, (error) => {
                 hasError = true;
                 reject(error);
             });
 
-            eventEmitter.on('toolsData', async (toolsData, thinkingBlocks = []) => {
+            eventEmitter.on(TLLMEvent.ToolInfo, async (toolsData, thinkingBlocks = []) => {
                 if (this.stop) return;
                 hasTools = true;
                 let llmMessage: any = {
@@ -510,7 +510,7 @@ export class Conversation extends EventEmitter {
 
                 //if (llmMessage.tool_calls?.length <= 0) return;
 
-                this.emit('toolInfo', toolsData); // replaces onFunctionCallResponse in legacy code
+                this.emit(TLLMEvent.ToolInfo, toolsData);
 
                 //initialize the agent callback logic
                 const _agentCallback = (data) => {
@@ -523,17 +523,17 @@ export class Conversation extends EventEmitter {
                             content = data.content;
 
                             passThroughContent += content;
-                            eventEmitter.emit('content', content);
+                            eventEmitter.emit(TLLMEvent.Content, content);
                         }
                         if (data.thinking) {
                             thinking = data.thinking;
-                            eventEmitter.emit('thinking', thinking);
+                            eventEmitter.emit(TLLMEvent.Thinking, thinking);
                         }
                         return;
                     }
                     if (typeof data === 'string') {
                         passThroughContent += data;
-                        eventEmitter.emit('content', data);
+                        eventEmitter.emit(TLLMEvent.Content, data);
                     }
 
                     //passThroughContent += data;
@@ -558,7 +558,8 @@ export class Conversation extends EventEmitter {
 
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                         // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
-                        this.emit('beforeToolCall', { tool, args }, llmMessage);
+                        this.emit('beforeToolCall', { tool, args }, llmMessage); //deprecated
+                        this.emit(TLLMEvent.ToolCall, { tool, args }, llmMessage);
 
                         const toolArgs = {
                             type: tool?.type,
@@ -582,7 +583,8 @@ export class Conversation extends EventEmitter {
                                 : functionResponse;
 
                         //await afterFunctionCall(functionResponse, toolsData[tool.index]);
-                        this.emit('afterToolCall', { tool, args }, functionResponse);
+                        this.emit('afterToolCall', { tool, args }, functionResponse); // Deprecated
+                        this.emit(TLLMEvent.ToolResult, { tool, args }, functionResponse);
 
                         return { ...tool, result: functionResponse };
                     },
@@ -617,11 +619,11 @@ export class Conversation extends EventEmitter {
                 //console.log('Result after tool call: ', result);
             });
 
-            eventEmitter.on('end', async (toolsData, usage_data, _finishReason) => {
+            eventEmitter.on(TLLMEvent.End, async (toolsData, usage_data, _finishReason) => {
                 if (_finishReason) finishReason = _finishReason;
                 if (usage_data) {
                     //FIXME : normalize the usage data format
-                    this.emit('usage', usage_data);
+                    this.emit(TLLMEvent.Usage, usage_data);
                 }
                 if (hasError) return;
 
@@ -642,7 +644,7 @@ export class Conversation extends EventEmitter {
         const toolsContent = await toolsPromise.catch((error) => {
             console.error('Error in toolsPromise: ', error);
             //this.emit('error', error);
-            this.emit('error', error);
+            this.emit(TLLMEvent.Error, error);
             return '';
         });
         _content += toolsContent;
@@ -667,9 +669,9 @@ export class Conversation extends EventEmitter {
             //this._context.push({ role: 'assistant', content: content });
 
             if (finishReason !== 'stop') {
-                this.emit('interrupted', finishReason);
+                this.emit(TLLMEvent.Interrupted, finishReason);
             }
-            this.emit('end');
+            this.emit(TLLMEvent.End);
         } else {
             //console.log('tool content', content);
         }

@@ -1,7 +1,8 @@
 import { VertexAI, type ModelParams, type GenerationConfig, type Content, UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -10,7 +11,7 @@ import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
-import { SystemEvents } from '@sre/index';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 const console = Logger('VertexAIConnector');
 
@@ -20,10 +21,10 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
@@ -92,16 +93,16 @@ export class VertexAIConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | Agent,
+        agent: string | IAgent,
     ): Promise<any> {
         throw new Error('streamToolRequest() is not supported by Vertex AI');
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not currently implemented for Vertex AI');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not currently implemented for Vertex AI');
     }
 
@@ -109,15 +110,15 @@ export class VertexAIConnector extends LLMConnector {
         throw new Error('Tool requests are not currently implemented for Vertex AI');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not currently implemented for Vertex AI');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
         throw new Error('Streaming is not currently implemented for Vertex AI');
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         throw new Error('VertexAI model does not support passthrough with File(s)');
     }
 

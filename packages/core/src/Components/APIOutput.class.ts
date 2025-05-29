@@ -1,5 +1,5 @@
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import Joi from 'joi';
 
 export class APIOutput extends Component {
@@ -56,5 +56,3 @@ export class APIOutput extends Component {
         return output;
     }
 }
-
-export default APIOutput;

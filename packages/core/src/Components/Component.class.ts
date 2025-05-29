@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookAsync } from '@sre/Core/HookService';
@@ -37,6 +37,7 @@ export class Component {
 
     async validateConfig(config) {
         if (!this.configSchema) return {};
+        console.log(this.configSchema.describe());
         if (config.data._templateVars) {
             //Accept dynamically added template data
             for (let tplVar in config.data._templateVars) {

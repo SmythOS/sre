@@ -1,13 +1,15 @@
-import FHash from '@sre/Components/FHash.class';
-import FSleep from '@sre/Components/FSleep.class';
-import { AgentProcess } from '@sre/Core/AgentProcess.helper';
+import { FHash } from '@sre/Components/FHash.class';
 import config from '@sre/config';
-import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 import crypto from 'crypto';
 
 import { describe, expect, it } from 'vitest';
+import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';
 const sre = SmythRuntime.Instance.init({
     Storage: {
         Connector: 'S3',

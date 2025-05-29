@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import { validateCharacterSet } from '@sre/utils/validation.utils';
@@ -184,5 +184,3 @@ export class DataSourceIndexer extends Component {
         throw new Error('URLs are not supported yet');
     }
 }
-
-export default DataSourceIndexer;

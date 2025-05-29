@@ -3,7 +3,7 @@ import Joi from 'joi';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { Component } from './Component.class';
 

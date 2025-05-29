@@ -8,7 +8,7 @@ import { AgentRuntime } from '@sre/AgentManager/AgentRuntime.class';
 import { Logger } from '@sre/helpers/Log.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { CacheConnector } from '@sre/index';
+import { CacheConnector } from './Cache.service/CacheConnector';
 
 const console = Logger('RuntimeContext');
 

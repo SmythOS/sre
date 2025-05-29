@@ -1,11 +1,12 @@
 import Groq from 'groq-sdk';
 import EventEmitter from 'events';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, APIKeySource } from '@sre/types/LLM.types';
+import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
@@ -37,10 +38,10 @@ type ToolRequestParams = {
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         let messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Handle JSON response format
         const responseFormat = params?.responseFormat || '';
@@ -97,15 +98,15 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Groq');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for Groq.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<any> {
         try {
             const apiKey = params?.credentials?.apiKey;
 
@@ -113,7 +114,7 @@ export class GroqConnector extends LLMConnector {
 
             const messages = params?.messages || [];
 
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
             let chatCompletionArgs: ChatCompletionCreateParams = {
                 model: params.model,
@@ -159,7 +160,7 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Groq.');
     }
 
@@ -171,7 +172,7 @@ export class GroqConnector extends LLMConnector {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
         const apiKey = params?.credentials?.apiKey;
@@ -180,7 +181,7 @@ export class GroqConnector extends LLMConnector {
 
         const messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         let chatCompletionArgs: {
             model: string;
@@ -240,7 +241,7 @@ export class GroqConnector extends LLMConnector {
                 }
 
                 if (toolsData.length > 0) {
-                    emitter.emit('toolsData', toolsData);
+                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
                 }
 
                 usage_data.forEach((usage) => {

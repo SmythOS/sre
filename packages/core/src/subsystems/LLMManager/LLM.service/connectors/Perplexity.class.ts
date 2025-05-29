@@ -2,7 +2,8 @@ import EventEmitter from 'events';
 
 import axios from 'axios';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -47,10 +48,10 @@ type TUsage = {
 export class PerplexityConnector extends LLMConnector {
     public name = 'LLM:Perplexity';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
         const messages = params?.messages || [];
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         //#region Handle JSON response format
         // TODO: For now attach JSON response instruction, Perplexity has option to provide response_format as parameter. We'll check it later
@@ -116,28 +117,28 @@ export class PerplexityConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | Agent,
+        agent: string | IAgent,
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Vision requests are not supported by Perplexity');
     }
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<LLMChatResponse> {
+    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
         throw new Error('Multimodal request is not supported for Perplexity.');
     }
 
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<any> {
+    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<any> {
         throw new Error('Tool request is not supported for Perplexity.');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<ImagesResponse> {
         throw new Error('Image generation request is not supported for Perplexity.');
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | Agent): Promise<EventEmitter> {
+    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest
         const emitter = new EventEmitter();
@@ -165,7 +166,7 @@ export class PerplexityConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | Agent): Promise<EventEmitter> {
+    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         throw new Error('Perplexity model does not support passthrough with File(s)');
     }
 

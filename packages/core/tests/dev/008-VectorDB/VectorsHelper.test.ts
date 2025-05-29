@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
@@ -109,7 +110,7 @@ describe('Integration: VectorDB Helper', () => {
                 vi.mock('@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class', async () => {
                     const originalPinecone = (
                         await vi.importActual<typeof import('@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class')>(
-                            '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class'
+                            '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class',
                         )
                     ).PineconeVectorDB;
                     return {

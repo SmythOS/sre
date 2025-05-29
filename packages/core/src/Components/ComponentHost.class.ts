@@ -1,5 +1,5 @@
 import { Component } from './Component.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
@@ -36,5 +36,3 @@ export class ComponentHost extends Component {
         }
     }
 }
-
-export default ComponentHost;

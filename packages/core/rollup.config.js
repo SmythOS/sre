@@ -192,12 +192,14 @@ function colorfulLogs(title = 'Builder') {
     const totalFiles = new Set();
     let currentFile = '';
     let hasShownFinalMessage = false; // Flag to prevent duplicate final messages
+    let hasBuildErrors = false; // Flag to track if there were build errors
 
     return {
         name: 'colorful-logs',
         buildStart() {
             startTime = Date.now();
             hasShownFinalMessage = false; // Reset flag on new build
+            hasBuildErrors = false; // Reset error flag on new build
             console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
             console.log(`${colors.bright}${colors.bgGreen}  ${colors.reset}${colors.green} ${title} ${colors.bgGreen}  ${colors.reset}`);
             console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
@@ -240,6 +242,7 @@ function colorfulLogs(title = 'Builder') {
             }
 
             if (error) {
+                hasBuildErrors = true; // Set error flag
                 console.log(`\n${colors.red}✗ ${colors.bright}Build failed with error:${colors.reset}`);
                 console.log(`  ${colors.red}${error.message}${colors.reset}\n`);
             }
@@ -282,7 +285,7 @@ function colorfulLogs(title = 'Builder') {
         },
         closeBundle() {
             // Show the final success message with a delay to ensure it appears after all other processes
-            if (!hasShownFinalMessage) {
+            if (!hasShownFinalMessage && !hasBuildErrors) {
                 setTimeout(() => {
                     console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset}\n\n`);
                     console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);

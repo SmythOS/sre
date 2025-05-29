@@ -1,6 +1,5 @@
-import { EventEmitter } from 'events';
 import Joi from 'joi';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
@@ -396,5 +395,3 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
-
-export default GenAILLM;

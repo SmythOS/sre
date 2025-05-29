@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { Agent } from './Agent.class';
 import { Component } from '@sre/Components/Component.class';
-import componentInstance from '@sre/Components/index';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { uid } from '@sre/utils';
@@ -146,7 +145,7 @@ export class AgentRuntime {
             this.alwaysActiveComponents = {};
             this.exclusiveComponents = {};
             for (let component of this.agent.data.components) {
-                const cpt: Component = componentInstance[component.name];
+                const cpt: Component = this.agent.ComponentInstances[component.name];
                 if (!cpt) {
                     console.warn(`Component ${component.name} Exists in agent but has no implementation`);
                     continue;

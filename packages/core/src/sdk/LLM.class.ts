@@ -3,7 +3,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TLLMConnectorParams } from '@sre/types/LLM.types';
 import { EventEmitter } from 'events';
-class PromptBuilder {
+class LLMCommand {
     constructor(
         private prompt: string,
         private llm: LLM,
@@ -28,7 +28,7 @@ class PromptBuilder {
         return await this.llm._llmRequester.streamRequest(params);
     }
 
-    temperature(temp: number): PromptBuilder {
+    temperature(temp: number): LLMCommand {
         this.llm._modelParams.temperature = temp;
         return this;
     }
@@ -52,7 +52,7 @@ export class LLM extends EventEmitter {
         this._modelParams = modelParams;
     }
 
-    public prompt(prompt: string): PromptBuilder {
-        return new PromptBuilder(prompt, this);
+    public prompt(prompt: string): LLMCommand {
+        return new LLMCommand(prompt, this);
     }
 }
