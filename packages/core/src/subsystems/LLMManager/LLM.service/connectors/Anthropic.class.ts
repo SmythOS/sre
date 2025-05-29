@@ -170,7 +170,11 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        messageCreateArgs = (await this.prepareMessageArgs({ acRequest, params, args: messageCreateArgs })) as Anthropic.MessageCreateParamsNonStreaming;
+        messageCreateArgs = (await this.prepareMessageArgs({
+            acRequest,
+            params,
+            args: messageCreateArgs,
+        })) as Anthropic.MessageCreateParamsNonStreaming;
 
         try {
             const response = await anthropic.messages.create(messageCreateArgs);
@@ -253,7 +257,11 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        messageCreateArgs = (await this.prepareMessageArgs({ acRequest, params, args: messageCreateArgs })) as Anthropic.MessageCreateParamsNonStreaming;
+        messageCreateArgs = (await this.prepareMessageArgs({
+            acRequest,
+            params,
+            args: messageCreateArgs,
+        })) as Anthropic.MessageCreateParamsNonStreaming;
 
         try {
             const response = await anthropic.messages.create(messageCreateArgs);
@@ -604,7 +612,11 @@ export class AnthropicConnector extends LLMConnector {
         if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
         if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
 
-        messageCreateArgs = (await this.prepareMessageArgs({ acRequest, params, args: messageCreateArgs })) as Anthropic.MessageCreateParamsNonStreaming;
+        messageCreateArgs = (await this.prepareMessageArgs({
+            acRequest,
+            params,
+            args: messageCreateArgs,
+        })) as Anthropic.MessageCreateParamsNonStreaming;
 
         try {
             let stream = anthropic.messages.stream(messageCreateArgs);
@@ -988,7 +1000,17 @@ export class AnthropicConnector extends LLMConnector {
 
         let budget_tokens = Math.min(maxThinkingTokens, args.max_tokens);
 
-        // If budget_tokens is equal to max_tokens, we set it to 80% of max_tokens to avoid the error "budget_tokens must be less than max_tokens"
+        // If budget_tokens is equal to max_tokens, we set it to 80% of max_tokens
+        // to avoid the error: "budget_tokens must be less than max_tokens".
+        //
+        // Another way to ensure valid budget_tokens is to add max_tokens and budget_tokens together - max_tokens = max_tokens + budget_tokens,
+        // then take the minimum, like: Math.min(max_tokens, allowedMaxTokens).
+        // However, this approach requires additional information such as model details,
+        // which would mean adding more arguments like acRequest and modelEntryName to get allowedMaxTokens.
+        //
+        // So for now, to keep it simple, if max_tokens equals budget_tokens,
+        // just use 80% of max_tokens.
+
         if (budget_tokens === args.max_tokens) {
             budget_tokens = Math.floor(budget_tokens * 0.8);
         }
