@@ -1,10 +1,9 @@
 import mysql from 'mysql2/promise';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
+import { DEFAULT_TEAM_ID, IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
 import { AccountConnector } from '../AccountConnector';
 import { KeyValueObject } from '@sre/types/Common.types';
-
 
 export class AWSAccount extends AccountConnector {
     public name = 'AWSAccount';
@@ -19,7 +18,7 @@ export class AWSAccount extends AccountConnector {
             database: config.database || 'app',
             user: config.user || 'app',
             password: config.password,
-            connectionLimit: 10
+            connectionLimit: 10,
         });
     }
 
@@ -32,13 +31,12 @@ export class AWSAccount extends AccountConnector {
             return Promise.resolve(candidate.id);
         }
 
-        return Promise.resolve('default');
+        return Promise.resolve(DEFAULT_TEAM_ID);
     }
-
 
     public async getAllTeamSettings(acRequest: AccessRequest, teamId: string): Promise<KeyValueObject[]> {
         try {
-            const [rows] = await this.pool.execute("SELECT `key`, `value` FROM TeamSettings");
+            const [rows] = await this.pool.execute('SELECT `key`, `value` FROM TeamSettings');
             const settings: KeyValueObject[] = [];
             if (Array.isArray(rows) && rows.length > 0) {
                 settings.push(...rows.map((row) => ({ key: row.key, value: row.value })));
@@ -52,7 +50,7 @@ export class AWSAccount extends AccountConnector {
 
     public async getTeamSetting(acRequest: AccessRequest, teamId: string, settingKey: string): Promise<string> {
         try {
-            const [rows] = await this.pool.execute("SELECT `value` FROM TeamSettings WHERE `key` = ? LIMIT 1", [settingKey]);
+            const [rows] = await this.pool.execute('SELECT `value` FROM TeamSettings WHERE `key` = ? LIMIT 1', [settingKey]);
             if (Array.isArray(rows) && rows.length > 0 && 'value' in rows[0]) return rows[0].value;
             return '';
         } catch (error) {

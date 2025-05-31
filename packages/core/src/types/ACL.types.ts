@@ -1,4 +1,5 @@
 //==[ SRE: ACL Types ]======================
+export const DEFAULT_TEAM_ID = 'default';
 
 export enum TAccessLevel {
     None = 'none',

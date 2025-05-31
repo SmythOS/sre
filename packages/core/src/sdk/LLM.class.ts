@@ -3,6 +3,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TLLMConnectorParams } from '@sre/types/LLM.types';
 import { EventEmitter } from 'events';
+import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
 class LLMCommand {
     constructor(
         private prompt: string,
@@ -47,7 +48,7 @@ export class LLM extends EventEmitter {
     constructor(providerId: string, modelParams: TLLMConnectorParams, candidate?: AccessCandidate) {
         super();
         const llmConnector = ConnectorService.getLLMConnector(providerId);
-        this._candidate = candidate || AccessCandidate.team('default');
+        this._candidate = candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
         this._llmRequester = llmConnector.user(this._candidate);
         this._modelParams = modelParams;
     }
