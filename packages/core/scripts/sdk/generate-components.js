@@ -89,65 +89,223 @@ function parseObjectString(objStr) {
 }
 
 /**
+ * Extract Joi configSchema from a component class file and convert to settings format
+ */
+function extractJoiConfigSchema(filePath) {
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+
+        // Look for protected configSchema = Joi.object({ ... }) pattern
+        const configSchemaStartMatch = content.match(/protected\s+configSchema\s*=\s*Joi\.object\s*\(\s*\{/);
+
+        if (!configSchemaStartMatch) {
+            return null;
+        }
+
+        const configSchemaStartIndex = configSchemaStartMatch.index + configSchemaStartMatch[0].length - 1;
+        const configSchemaEndIndex = findMatchingBrace(content, configSchemaStartIndex);
+
+        if (configSchemaEndIndex === -1) {
+            console.warn('Could not find matching closing brace for configSchema');
+            return null;
+        }
+
+        const configSchemaContent = content.substring(configSchemaStartIndex + 1, configSchemaEndIndex);
+
+        // Parse the Joi schema content and convert to settings format
+        const settings = parseJoiSchemaContentForSettings(configSchemaContent);
+
+        return settings;
+    } catch (error) {
+        console.error(`Error extracting Joi configSchema from ${filePath}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Parse Joi schema content and convert to settings format
+ */
+function parseJoiSchemaContentForSettings(schemaContent) {
+    const settings = {};
+
+    const lines = schemaContent.split('\n');
+    let currentField = '';
+    let inMultilineField = false;
+    let braceCount = 0;
+
+    for (let line of lines) {
+        line = line.trim();
+        if (!line || line.startsWith('//')) continue;
+
+        braceCount += (line.match(/\{/g) || []).length;
+        braceCount -= (line.match(/\}/g) || []).length;
+
+        if (inMultilineField) {
+            currentField += ' ' + line;
+            if (braceCount === 0 && (line.endsWith(',') || line.endsWith('}'))) {
+                parseJoiFieldDefinitionForSettings(currentField, settings);
+                currentField = '';
+                inMultilineField = false;
+            }
+        } else {
+            const fieldMatch = line.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*Joi\./);
+            if (fieldMatch) {
+                const fieldName = fieldMatch[1];
+                if (fieldName.startsWith('_')) continue; // Skip internal fields
+
+                if (braceCount > 0 || (!line.endsWith(',') && !line.endsWith('}'))) {
+                    currentField = line;
+                    inMultilineField = true;
+                } else {
+                    parseJoiFieldDefinitionForSettings(line, settings);
+                }
+            }
+        }
+    }
+
+    return settings;
+}
+
+/**
+ * Parse a single Joi field definition and convert to settings format
+ */
+function parseJoiFieldDefinitionForSettings(fieldDef, settings) {
+    try {
+        const fieldMatch = fieldDef.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*Joi\./);
+        if (!fieldMatch) return;
+
+        const fieldName = fieldMatch[1];
+
+        const typeMatch = fieldDef.match(/Joi\.(\w+)/);
+        const joiType = typeMatch ? typeMatch[1] : 'any';
+
+        const isRequired = fieldDef.includes('.required()');
+
+        const labelMatch = fieldDef.match(/\.label\(['"`]([^'"`]+)['"`]\)/);
+        const label = labelMatch ? labelMatch[1] : undefined;
+
+        const validMatch = fieldDef.match(/\.valid\(['"`]?([^)]+)['"`]?\)/);
+        let validValues = null;
+        if (validMatch) {
+            validValues = validMatch[1].split(',').map((v) => v.trim().replace(/['"`]/g, ''));
+        }
+
+        settings[fieldName] = {
+            type: mapJoiTypeToSchemaType(joiType),
+            required: isRequired,
+            description: label,
+            label: label,
+            valid: validValues,
+        };
+    } catch (error) {
+        console.warn('Failed to parse Joi field definition:', fieldDef.substring(0, 100));
+    }
+}
+
+/**
+ * Map Joi types to our schema types
+ */
+function mapJoiTypeToSchemaType(joiType) {
+    switch (joiType) {
+        case 'string':
+            return 'Text';
+        case 'number':
+            return 'Number';
+        case 'boolean':
+            return 'Boolean';
+        case 'object':
+            return 'Object';
+        case 'array':
+            return 'Array';
+        case 'binary':
+            return 'Binary';
+        case 'any':
+            return 'Any';
+        default:
+            return 'Any';
+    }
+}
+
+/**
  * Extract schema from a component class file using improved parsing
+ * Flow: Extract legacy schema (inputs + settings), then override settings with Joi configSchema
  */
 function extractSchemaFromFile(filePath) {
     try {
         const content = fs.readFileSync(filePath, 'utf-8');
+        const fileName = path.basename(filePath, '.class.ts');
 
-        // Look for protected schema = { ... } pattern
+        let componentName = fileName;
+        let inputs = {};
+        let outputs = {};
+        let settings = {};
+
+        // First, try to extract legacy schema field
         const schemaStartMatch = content.match(/protected\s+schema\s*=\s*\{/);
 
-        if (!schemaStartMatch) {
-            return null;
-        }
+        if (schemaStartMatch) {
+            // Use existing logic for legacy schema
+            const schemaStartIndex = schemaStartMatch.index + schemaStartMatch[0].length - 1;
+            const schemaEndIndex = findMatchingBrace(content, schemaStartIndex);
 
-        const schemaStartIndex = schemaStartMatch.index + schemaStartMatch[0].length - 1;
-        const schemaEndIndex = findMatchingBrace(content, schemaStartIndex);
+            if (schemaEndIndex !== -1) {
+                const schemaContent = content.substring(schemaStartIndex + 1, schemaEndIndex);
+                const schemaObj = parseObjectString(schemaContent);
 
-        if (schemaEndIndex === -1) {
-            console.warn('Could not find matching closing brace for schema');
-            return null;
-        }
+                if (schemaObj.name) {
+                    componentName = schemaObj.name;
 
-        const schemaContent = content.substring(schemaStartIndex + 1, schemaEndIndex);
+                    // Extract and normalize inputs from legacy schema
+                    if (schemaObj.inputs) {
+                        for (const [inputName, inputDef] of Object.entries(schemaObj.inputs)) {
+                            inputs[inputName] = {
+                                type: inputDef.type || 'Any',
+                                optional: inputDef.optional || false,
+                                default: inputDef.default || false,
+                                description: inputDef.description,
+                            };
+                        }
+                    }
 
-        // Parse the schema object
-        const schemaObj = parseObjectString(schemaContent);
+                    // Extract and normalize outputs from legacy schema
+                    if (schemaObj.outputs) {
+                        for (const [outputName, outputDef] of Object.entries(schemaObj.outputs)) {
+                            outputs[outputName] = {
+                                ...outputDef,
+                            };
+                        }
+                    }
 
-        if (!schemaObj.name) {
-            return null;
-        }
-
-        // Extract and normalize inputs
-        const inputs = {};
-        if (schemaObj.inputs) {
-            for (const [inputName, inputDef] of Object.entries(schemaObj.inputs)) {
-                inputs[inputName] = {
-                    type: inputDef.type || 'Any',
-                    optional: inputDef.optional || false,
-                    default: inputDef.default || false,
-                    description: inputDef.description,
-                };
+                    // Extract settings from legacy schema
+                    if (schemaObj.settings) {
+                        settings = { ...schemaObj.settings };
+                    }
+                }
             }
         }
 
-        // Extract and normalize outputs
-        const outputs = {};
-        if (schemaObj.outputs) {
-            for (const [outputName, outputDef] of Object.entries(schemaObj.outputs)) {
-                outputs[outputName] = {
-                    ...outputDef,
-                };
-            }
+        // Then, try to extract Joi configSchema to override settings
+        const joiSettings = extractJoiConfigSchema(filePath);
+        if (joiSettings) {
+            // Override settings with Joi configSchema
+            settings = { ...settings, ...joiSettings };
         }
 
-        return {
-            name: schemaObj.name,
-            inputs,
-            outputs,
-            settings: schemaObj.settings || {},
-        };
+        // Only return a schema if we have either inputs, outputs, or meaningful settings
+        const hasInputsOrOutputs = (inputs && Object.keys(inputs).length > 0) || (outputs && Object.keys(outputs).length > 0);
+
+        const hasMeaningfulSettings = joiSettings && Object.keys(joiSettings).length > 0;
+
+        if (hasInputsOrOutputs || hasMeaningfulSettings) {
+            return {
+                name: componentName,
+                inputs,
+                outputs,
+                settings,
+            };
+        }
+
+        return null;
     } catch (error) {
         console.error(`Error extracting schema from ${filePath}:`, error);
         return null;
@@ -159,16 +317,26 @@ function extractSchemaFromFile(filePath) {
  */
 function mapSchemaTypeToTS(schemaType) {
     switch (schemaType) {
+        case 'Text':
         case 'string':
             return 'string';
+        case 'Number':
         case 'number':
             return 'number';
+        case 'Boolean':
         case 'boolean':
             return 'boolean';
+        case 'Object':
         case 'object':
             return 'object';
+        case 'Array':
         case 'array':
             return 'any[]';
+        case 'Binary':
+        case 'binary':
+            return 'ArrayBuffer | Uint8Array | string';
+        case 'Any':
+        case 'any':
         default:
             return 'any';
     }
@@ -236,9 +404,12 @@ function generateSettingsType(componentName, settings) {
         return `${jsDocComment}    ${settingName}${optional}: ${finalType};`;
     });
 
+    // Only add default name field if there's no 'name' field in the settings
+    const hasNameField = settings.hasOwnProperty('name');
+    const defaultNameField = hasNameField ? '' : '    name?: string;\n';
+
     return `export interface T${componentName}Settings {
-    name?: string;
-${properties.join('\n')}
+${defaultNameField}${properties.join('\n')}
 }`;
 }
 
@@ -317,6 +488,49 @@ function generateIndexFile(componentNames, template) {
 }
 
 /**
+ * Recursively find all component files in a directory
+ */
+function findComponentFilesRecursively(dir) {
+    const componentFiles = [];
+    let totalFiles = 0;
+    let skippedFiles = 0;
+
+    function searchDirectory(currentDir) {
+        const items = fs.readdirSync(currentDir, { withFileTypes: true });
+
+        for (const item of items) {
+            const fullPath = path.join(currentDir, item.name);
+
+            if (item.isDirectory()) {
+                // Recursively search subdirectories
+                searchDirectory(fullPath);
+            } else if (item.isFile() && item.name.endsWith('.class.ts') && item.name !== 'Component.class.ts') {
+                totalFiles++;
+                // Check if the file actually extends Component
+                try {
+                    const fileContent = fs.readFileSync(fullPath, 'utf-8');
+                    if (fileContent.includes('extends Component')) {
+                        componentFiles.push(fullPath);
+                    } else {
+                        skippedFiles++;
+                    }
+                } catch (error) {
+                    // If we can't read the file, skip it gracefully
+                    skippedFiles++;
+                    console.warn(`Could not read file ${fullPath}: ${error.message}`);
+                }
+            }
+        }
+    }
+
+    searchDirectory(dir);
+    if (skippedFiles > 0) {
+        console.log(`📊 Found ${componentFiles.length} components, skipped ${skippedFiles} non-component .class.ts files`);
+    }
+    return componentFiles;
+}
+
+/**
  * Main generation function
  */
 async function generateSDKComponents() {
@@ -334,25 +548,20 @@ async function generateSDKComponents() {
     }
 
     // Get all component files
-    const componentFiles = fs
-        .readdirSync(COMPONENTS_DIR)
-        .filter((file) => file.endsWith('.class.ts') && file !== 'Component.class.ts')
-        .map((file) => path.join(COMPONENTS_DIR, file));
+    const componentFiles = findComponentFilesRecursively(COMPONENTS_DIR);
 
     const generatedComponents = [];
-    const skippedComponents = [];
+    const skippedComponents = new Set();
 
     const schemas = [];
     process.stdout.write(`\n📝 Reading Schemas `);
     for (const filePath of componentFiles) {
         const fileName = path.basename(filePath, '.class.ts');
-        //console.log(`📝 Extracting schema for ${fileName}...`);
 
         const schema = extractSchemaFromFile(filePath);
         if (!schema || !schema.name) {
             process.stdout.write(`!`);
-            //console.log(`⚠️  No schema found in ${fileName}, skipping...`);
-            skippedComponents.push(fileName);
+            skippedComponents.add(fileName);
             continue;
         } else {
             process.stdout.write(`.`);
@@ -360,21 +569,19 @@ async function generateSDKComponents() {
         schemas.push(schema);
     }
 
-    //process.stdout.write(`\n📝 Processing schemas `);
+    process.stdout.write(`\n📝 Processing schemas `);
     for (const schema of schemas) {
         process.stdout.write(`.`);
-        // console.log(`📋 Processing schema for ${schema.name}:`);
-        // console.log(`   - Inputs: ${Object.keys(schema.inputs || {}).join(', ') || 'none'}`);
-        // console.log(`   - Outputs: ${Object.keys(schema.outputs || {}).join(', ') || 'none'}`);
-        // console.log(`   - Settings: ${Object.keys(schema.settings || {}).join(', ') || 'none'}`);
 
         const hasInputsOrOutputs =
             (schema.inputs && Object.keys(schema.inputs).length > 0) || (schema.outputs && Object.keys(schema.outputs).length > 0);
 
-        if (!hasInputsOrOutputs) {
+        const hasMeaningfulSettings = schema.settings && Object.keys(schema.settings).length > 0;
+
+        // Generate component if it has inputs/outputs OR meaningful settings (from Joi configSchema)
+        if (!hasInputsOrOutputs && !hasMeaningfulSettings) {
             process.stdout.write(`!`);
-            //console.log(`⚠️  No inputs or outputs found in ${fileName}, skipping...`);
-            skippedComponents.push(fileName);
+            skippedComponents.add(schema.name);
             continue;
         }
 
@@ -386,11 +593,9 @@ async function generateSDKComponents() {
             generatedComponents.push(schema.name);
 
             process.stdout.write(`.`);
-            //console.log(`✅ Generated ${schema.name}.ts`);
         } catch (error) {
             process.stdout.write(`!`);
-            //console.error(`❌ Error generating ${schema.name}:`, error);
-            skippedComponents.push(fileName);
+            skippedComponents.add(schema.name);
         }
     }
 
@@ -409,8 +614,10 @@ async function generateSDKComponents() {
         process.stdout.write(`✅ Generated ${generatedComponents.length} components `);
     }
 
-    if (skippedComponents.length > 0) {
-        process.stdout.write(`⚠️ Skipped ${skippedComponents.length} components (missing schema)`);
+    if (skippedComponents.size > 0) {
+        process.stdout.write(`⚠️ Skipped ${skippedComponents.size} components (missing schema)`);
+        const skippedList = Array.from(skippedComponents).sort();
+        process.stdout.write(`\n📝 Skipped components (${skippedList.length}): ${skippedList.join(', ')}`);
     }
 
     process.stdout.write(`\n`);

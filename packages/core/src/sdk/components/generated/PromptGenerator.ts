@@ -5,51 +5,33 @@ import { createSafeAccessor } from '../utils';
 import { ComponentWrapper } from '../ComponentWrapper.class';
 import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
-export interface TGenAILLMSettings {
+export interface TPromptGeneratorSettings {
     name?: string;
     model: string;
     /** Prompt */
     prompt: string;
-    /** Temperature */
-    temperature?: number;
-    /** Maximum Tokens */
-    maxTokens?: number;
-    /** Maximum Thinking Tokens */
-    maxThinkingTokens?: number;
     /** Stop Sequences */
     stopSequences?: string;
     /** Top P */
     topP?: number;
     /** Top K */
     topK?: number;
-    /** Frequency Penalty */
-    frequencyPenalty?: number;
     /** Presence Penalty */
     presencePenalty?: number;
     /** Response Format */
     responseFormat?: 'json' | 'text';
     /** Passthrough */
     passthrough?: boolean;
-    /** Use System Prompt */
-    useSystemPrompt?: boolean;
-    /** Use Context Window */
-    useContextWindow?: boolean;
-    /** Maximum Context Window Length */
-    maxContextWindowLength?: number;
 }
 
-export type TGenAILLMInputs = {
-    /** An input that you can pass to the LLM */
-    Input?: any;
-    /** An attachment that you can pass to the LLM */
-    Attachment?: ArrayBuffer | Uint8Array | string;
+export type TPromptGeneratorInputs = {
     [key: string]: any;
 };
 
-export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
+export function PromptGenerator(settings?: TPromptGeneratorSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'GenAILLM', 
+        name: settings?.name || 'PromptGenerator', 
         settings: {
             ...settingsWithoutName 
         }
@@ -60,23 +42,12 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { Reply: any; [key: string]: any } = {
-        Reply: createSafeAccessor({}, component, 'Reply', {"default":true}),
+    const _out: { [key: string]: any } = {
+        // No outputs defined
     };
 
     const _in: { [key: string]: ComponentInput } = {
-        Input: {
-            component,
-            type: 'Any',
-            optional: false,
-            default: false,
-        },
-        Attachment: {
-            component,
-            type: 'Binary',
-            optional: true,
-            default: false,
-        },
+        // No inputs defined
     };
 
     dataObject.outputs = _out;
@@ -95,7 +66,7 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
          *    - component.in({ Input: source.out.data })
          *    - component.in({ Input: { type: 'string', source:source.out.data } })
          */        
-        in: component.inputs.bind(component) as (inputs: TGenAILLMInputs) => void,
+        in: component.inputs.bind(component) as (inputs: TPromptGeneratorInputs) => void,
     };
 
     return wrapper;

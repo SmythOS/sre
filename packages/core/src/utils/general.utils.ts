@@ -141,3 +141,40 @@ export class ControlledPromise<T> extends Promise<T> {
         executor(this.resolve, this.reject, this.isSettled);
     }
 }
+
+/**
+ * This function ensures that a function is called at most once per wait time.
+ * @param func - The function to debounce
+ * @param wait - The wait time in milliseconds
+ * @param options - The options object
+ * @returns
+ */
+export function debounce(func: Function, wait: number, options: { leading: boolean; trailing: boolean; maxWait?: number }) {
+    let timeout: NodeJS.Timeout | null = null;
+    let lastCall = 0;
+
+    return function (this: any, ...args: any[]) {
+        const now = Date.now();
+        const later = () => {
+            timeout = null;
+            lastCall = now;
+            func.apply(this, args);
+        };
+
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+
+        if (options.leading && !timeout) {
+            func.apply(this, args);
+            lastCall = now;
+        }
+
+        if (options.maxWait && now - lastCall >= options.maxWait) {
+            func.apply(this, args);
+            lastCall = now;
+        }
+
+        timeout = setTimeout(later, wait);
+    };
+}

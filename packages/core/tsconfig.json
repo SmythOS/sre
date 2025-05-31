@@ -21,6 +21,7 @@
 
             "@sre/Core/*": ["Core/*"],
 
+            "@sre/sdk": ["sdk/sdk.index.ts"],
             "@sre/sdk/*": ["sdk/*"],
 
             "@sre/utils/*": ["utils/*"],

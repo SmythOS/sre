@@ -6,6 +6,13 @@ export type OAuthConfig = {
     oAuthScope?: string;
 };
 
+export type EncryptionSettings = {
+    encryption?: {
+        key?: string;
+        algorithm?: string;
+    };
+};
+
 export type JSONFileVaultConfig = {
     file: string;
     fileKey?: string;
