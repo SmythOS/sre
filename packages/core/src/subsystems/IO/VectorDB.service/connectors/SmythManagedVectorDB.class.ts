@@ -18,12 +18,8 @@ import {
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '../../../../helpers/Vectors.helper';
-import { isUrl } from '@sre/utils/data.utils';
 import { Logger } from '@sre/helpers/Log.helper';
-import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { OAuthConfig, SmythConfigs } from '@sre/types/Security.types';
 import axios, { AxiosError } from 'axios';

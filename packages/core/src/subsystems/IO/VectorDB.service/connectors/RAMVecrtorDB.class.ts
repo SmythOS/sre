@@ -15,7 +15,7 @@ import {
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '../Vectors.helper';
+import { VectorsHelper } from '../../../../helpers/Vectors.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
