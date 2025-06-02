@@ -864,7 +864,7 @@ export class Conversation extends EventEmitter {
     public async addTool(tool: {
         name: string;
         description: string;
-        arguments: Record<string, any>;
+        arguments: Record<string, any> | string[];
         handler: (args: Record<string, any>) => Promise<any>;
     }) {
         const requiredFields = Object.values(tool.arguments)
@@ -875,6 +875,7 @@ export class Conversation extends EventEmitter {
         for (let entry in tool.arguments) {
             properties[entry] = {
                 type: tool.arguments[entry].type || 'string',
+                properties: tool.arguments[entry].properties,
                 description: tool.arguments[entry].description,
                 ...(tool.arguments[entry].type === 'array' ? { items: { type: tool.arguments[entry].items?.type || 'string' } } : {}),
             };

@@ -224,7 +224,7 @@ export class LocalStorage extends StorageConnector {
 
     @SecureConnector.AccessControl
     async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
-        throw new Error('Not implemented');
+        console.warn(`LocalStorage.expire is not implemented, request will be ignored for resource ${resourceId} and ttl ${ttl}`);
     }
 
     private createDirectories(basePath: string, resourceId: string) {

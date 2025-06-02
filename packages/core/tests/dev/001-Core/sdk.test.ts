@@ -1,16 +1,16 @@
 // prettier-ignore-file
 import { SmythRuntime, SRE } from '@sre/Core/SmythRuntime.class';
 import { LLM } from '@sre/sdk/LLM.class';
-import { Agent, LLMProviderMap } from '@sre/sdk/sdk.index';
+import { Agent } from '@sre/sdk/sdk.index';
 import { Component } from '@sre/sdk/components/components.index';
 import { expect, describe, it } from 'vitest';
 
 // User file can merge:
-declare module '@sre/sdk/sdk.index' {
-    interface LLMProviderMap {
-        groq?: any;
-    }
-}
+// declare module '@sre/sdk' {
+//     interface LLMProviderMap {
+//         groq?: any;
+//     }
+// }
 
 SRE.init({
     Storage: {
@@ -104,63 +104,40 @@ describe('SDK Tests', () => {
         const openaiCpt = Component.GenAILLM({
             model: 'gpt-4o',
             prompt: 'Answer the following question: {{question}}\n\n Start your answer by "Yohohohohoooo"',
-            passthrough: true,
         });
         //connect llm question input to skill question output
         openaiCpt.in({ question: skill.out.body.question });
 
-        // const claudeCpt = Component.GenAILLM({ model: 'claude-sonnet-4', prompt: '{{question}}' });
-        // claudeCpt.in({ question: skill.out.body.question });
-
-        // const geminiCpt = Component.GenAILLM({ model: 'gemini-flash-2.5', prompt: '{{question}}' });
-        // geminiCpt.in({ question: skill.out.body.question });
-
-        // const deepSeekEvalCpt = Component.GenAILLM({ model: 'deepseek-coder', prompt: '... eval prompt ...' });
-
-        // //connect all outputs to the eval LLM
-        // deepSeekEvalCpt.in({
-        //     question: skill.out.body.question,
-        //     openai: openaiCpt.out.Reply,
-        //     claude: claudeCpt.out.Reply,
-        //     gemini: geminiCpt.out.Reply,
-        // });
-
         const result = await agent.prompt('Hello, what is the capital of France');
+
+        const result2 = await agent.prompt('do you remember my name?');
+
+        // const chat = agent.chat();
+        // const result = await chat.prompt('Hello, my name is Aladdin what is the capital of France');
+
+        // const result2 = await chat.prompt('do you remember my name?');
+
         console.log(result);
+        console.log(result2);
     });
 
     it('SDK procedural', async () => {
-        const agent: any = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
+        const agent = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
 
         agent.addSkill({
-            behavior: 'Use this tool to evaluate an answer',
-            process: async (input: any) => {
-                const openai = agent.llm.openai('gpt-4o');
-                const claude = agent.llm.anthropic('sonnet-4');
-                const gemini = agent.llm.gemini('flash-2.5');
-                const deepseek = agent.llm.deepseek('coder');
-
-                const [gptResponse, claudeResponse, geminiResponse] = await Promise.all([
-                    openai.prompt(input),
-                    claude.prompt(input),
-                    gemini.prompt(input),
-                    deepseek.prompt(input),
-                ]);
-
-                const result = deepseek.prompt('... eval prompt ...', {
-                    openai: gptResponse,
-                    claude: claudeResponse,
-                    gemini: geminiResponse,
-                });
-
-                return result;
+            name: 'GetSecret',
+            description: 'Use this tool to provide a secret based on user info',
+            process: async ({ userName, userNumber }) => {
+                const secret = `${userNumber * 10}_${userName.substring(0, 3)}`;
+                console.log('calculating secret...', secret);
+                return { secret };
             },
         });
 
-        const result = await agent.run({ question: 'What is the capital of France?' });
+        const result = await agent.prompt('What is my secret number ? My name is John and my number is 001425');
         console.log(result);
 
-        console.log(agent.data);
+        //console.log(agent.data);
         expect(agent.data).toBeDefined();
     });
 });

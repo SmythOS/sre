@@ -6,7 +6,6 @@ import { SystemEvents } from './SystemEvents';
 import { Logger } from '../helpers/Log.helper';
 
 const logger = Logger('SRE');
-const CInstance = ConnectorService;
 
 export class SmythRuntime {
     public started = false;
@@ -45,7 +44,13 @@ export class SmythRuntime {
 
         for (let connectorType in config) {
             for (let configEntry of config[connectorType]) {
-                CInstance.init(connectorType as TConnectorService, configEntry.Connector, configEntry.Id, configEntry.Settings, configEntry.Default);
+                ConnectorService.init(
+                    connectorType as TConnectorService,
+                    configEntry.Connector,
+                    configEntry.Id,
+                    configEntry.Settings,
+                    configEntry.Default,
+                );
             }
         }
 
@@ -114,7 +119,7 @@ export class SmythRuntime {
 
     public async _stop() {
         logger.info('Shutting Down SmythRuntime ...');
-        CInstance._stop();
+        ConnectorService._stop();
         SmythRuntime.instance = undefined;
         this.started = false;
     }

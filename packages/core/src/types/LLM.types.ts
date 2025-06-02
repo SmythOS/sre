@@ -287,10 +287,6 @@ export type TLLMModelsList = {
     [key: string]: TLLMModel | TCustomLLMModel;
 };
 
-export type SmythModelsProviderConfig = {
-    models: (models: TLLMModelsList) => Promise<TLLMModelsList> | TLLMModelsList;
-};
-
 export enum TLLMEvent {
     /** Generated response chunks */
     Content = 'content',

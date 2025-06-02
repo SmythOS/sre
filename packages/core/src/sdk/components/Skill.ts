@@ -25,6 +25,7 @@ export function Skill(settings?: TSkillSettings, agent?: Agent) {
     const { name, process, inputs, ...settingsWithoutName } = settings || {};
     const dataObject: any = {
         name: 'APIEndpoint',
+        process,
         settings: {
             ...settingsWithoutName,
             endpoint: normalizeEndpointName(settings?.endpoint || settings?.name),
