@@ -8,7 +8,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { JSONContent, JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { DataSourceIndexer } from './DataSourceIndexer.class';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 

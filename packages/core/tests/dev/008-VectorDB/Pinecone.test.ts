@@ -6,8 +6,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
 import crypto from 'crypto';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
-//ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', TestAccountConnector);
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 
 const SREInstance = SmythRuntime.Instance.init({
     Account: {

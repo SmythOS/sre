@@ -6,8 +6,6 @@ export { version } from '../package.json';
 // SDK namespace export to avoid conflicts
 import * as _SDK from './sdk/sdk.index';
 export { _SDK as SDK };
-
-
 export * from './config';
 export * from './constants';
 export * from './Components/AgentPlugin.class';
@@ -137,7 +135,7 @@ export * from './subsystems/IO/Storage.service/SmythFS.class';
 export * from './subsystems/IO/Storage.service/StorageConnector';
 export * from './subsystems/IO/VectorDB.service/index';
 export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
-export * from './subsystems/IO/VectorDB.service/Vectors.helper';
+export * from './helpers/Vectors.helper';
 export * from './subsystems/LLMManager/LLM.service/index';
 export * from './subsystems/LLMManager/LLM.service/LLMConnector';
 export * from './subsystems/LLMManager/ModelsProvider.service/index';

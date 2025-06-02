@@ -5,7 +5,7 @@ import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { faker } from '@faker-js/faker';
 import crypto from 'crypto';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 //ConnectorService.register(TConnectorService.Account, 'MyCustomAccountConnector', TestAccountConnector);
 
 const SREInstance = SmythRuntime.Instance.init({
