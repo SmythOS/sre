@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AccessCandidate, ConnectorService, SmythRuntime, SystemEvents } from '@sre/index';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
@@ -7,6 +9,7 @@ import { delay } from '@sre/utils/index';
 import { APIKeySource, SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import path from 'path';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {

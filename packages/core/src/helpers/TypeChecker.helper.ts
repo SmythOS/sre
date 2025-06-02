@@ -1,7 +1,7 @@
 import { isBase64, isBase64DataUrl } from '@sre/utils/base64.utils';
 import dayjs from 'dayjs';
 import { isPlainObject, isSmythFileObject, isSmythFsUrl, isUrl, uid } from '../utils';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import { BinaryInput } from './BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';

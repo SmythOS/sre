@@ -1,18 +1,15 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import HuggingFace from '@sre/Components/HuggingFace.class';
-import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, SmythRuntime } from '@sre/index';
+import config from '@sre/config';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import util from 'util';
 import path from 'path';
-import ZapierAction from '@sre/Components/ZapierAction.class';
+import { ZapierAction } from '@sre/Components/ZapierAction.class';
 import { ConnectorService, ConnectorServiceProvider } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { IAccessCandidate } from '@sre/types/ACL.types';
-import { TConnectorService } from '@sre/types/SRE.types';
+
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import axios from 'axios';
 import http from 'http';

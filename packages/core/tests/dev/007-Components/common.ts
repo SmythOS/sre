@@ -1,4 +1,7 @@
-import { ConnectorService, ModelsProviderConnector, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { vi } from 'vitest';
 
 export function PrepareSRETestEnvironment() {

@@ -1,7 +1,7 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { Connector } from '@sre/Core/Connector.class';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import fs from 'fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { faker } from '@faker-js/faker';
@@ -89,7 +89,7 @@ describe('Connector Tests', () => {
 
         vi.advanceTimersByTime(TTL / 2);
         expect(cacheInstance.instanceId, 'instance was expired after TTL ** was supposed to be refreshed upon the first instance call').toEqual(
-            instance.instanceId
+            instance.instanceId,
         );
 
         vi.advanceTimersByTime(TTL);

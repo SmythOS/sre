@@ -6,10 +6,11 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { JSONFileVaultConfig } from '@sre/types/Security.types';
+import { JSONFileVaultConfig, EncryptionSettings } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
 import crypto from 'crypto';
 import fs from 'fs';
+import * as readlineSync from 'readline-sync';
 
 const console = Logger('JSONFileVault');
 export class JSONFileVault extends VaultConnector {
@@ -18,18 +19,18 @@ export class JSONFileVault extends VaultConnector {
     private index: any;
     private sharedVault: boolean;
 
-    constructor(private config: JSONFileVaultConfig) {
+    constructor(private settings: JSONFileVaultConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.sharedVault = config.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
+        this.sharedVault = settings.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
-        if (fs.existsSync(config.file)) {
+        if (fs.existsSync(settings.file)) {
             try {
-                if (config.fileKey && fs.existsSync(config.fileKey)) {
+                if (settings.fileKey && fs.existsSync(settings.fileKey)) {
                     try {
-                        const privateKey = fs.readFileSync(config.fileKey, 'utf8');
-                        const encryptedVault = fs.readFileSync(config.file, 'utf8').toString();
+                        const privateKey = fs.readFileSync(settings.fileKey, 'utf8');
+                        const encryptedVault = fs.readFileSync(settings.file, 'utf8').toString();
                         const decryptedBuffer = crypto.privateDecrypt(
                             {
                                 key: privateKey,
@@ -42,10 +43,15 @@ export class JSONFileVault extends VaultConnector {
                         throw new Error('Failed to decrypt vault');
                     }
                 } else {
-                    this.vaultData = JSON.parse(fs.readFileSync(config.file).toString());
+                    this.vaultData = JSON.parse(fs.readFileSync(settings.file).toString());
                 }
             } catch (e) {
                 this.vaultData = {};
+            }
+
+            if (this.vaultData?.encrypted && this.vaultData?.algorithm && this.vaultData?.data) {
+                //this is an encrypted vault we need to request the master key
+                this.setInteraction(this.getMasterKeyInteractive.bind(this));
             }
 
             for (let teamId in this.vaultData) {
@@ -57,6 +63,18 @@ export class JSONFileVault extends VaultConnector {
                 }
             }
         }
+    }
+
+    private getMasterKeyInteractive(): string {
+        //read master key using readline-sync (blocking)
+
+        process.stdout.write('\x1b[1;37m===[ Encrypted Vault Detected ]=================================\x1b[0m\n');
+        const masterKey = readlineSync.question('Enter master key: ', {
+            hideEchoBack: true,
+            mask: '*',
+        });
+        console.info('Master key entered');
+        return masterKey;
     }
 
     @SecureConnector.AccessControl

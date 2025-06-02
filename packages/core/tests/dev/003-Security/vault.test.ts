@@ -6,7 +6,8 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { JSONFileVault } from '@sre/Security/Vault.service/connectors/JSONFileVault.class';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { Match, TemplateString, TPLProcessor } from '@sre/helpers/TemplateString.helper';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 

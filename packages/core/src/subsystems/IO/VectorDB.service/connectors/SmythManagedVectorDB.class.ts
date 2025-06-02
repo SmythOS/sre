@@ -2,7 +2,7 @@
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -51,7 +51,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
 
     constructor(private config: SmythConfigs & OAuthConfig & { openaiApiKey?: string; isCustomStorageInstance?: boolean }) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.oAuthAppId = config.oAuthAppID;
         this.oAuthAppSecret = config.oAuthAppSecret;
         this.oAuthBaseUrl = config.oAuthBaseUrl;

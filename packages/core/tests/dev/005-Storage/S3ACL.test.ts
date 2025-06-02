@@ -10,7 +10,8 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 const SREInstance = SmythRuntime.Instance.init({
     Account: {
         Connector: 'DummyAccount',

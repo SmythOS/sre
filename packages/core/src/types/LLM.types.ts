@@ -12,8 +12,8 @@ export type LLMModelInfo = (typeof models)[LLMModel];
 
 export type TLLMParams = {
     model: string;
-    modelEntryName: string; // for usage reporting
-    credentials:
+    modelEntryName?: string; // for usage reporting
+    credentials?:
         | Record<string, string> // for VertexAI
         | {
               apiKey?: string; // for standard models
@@ -34,7 +34,10 @@ export type TLLMParams = {
     responseFormat?: any; // TODO [Forhad]: apply proper typing
     modelInfo?: TCustomLLMModel;
     fileSources?: BinaryInput[];
-    toolsConfig?: ToolsConfig;
+    toolsConfig?: {
+        tools?: OpenAI.ChatCompletionTool[];
+        tool_choice?: OpenAI.ChatCompletionToolChoiceOption;
+    };
     baseURL?: string;
 
     size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'; // for image generation
@@ -50,6 +53,55 @@ export type TLLMParams = {
         budget_tokens: number;
     };
     maxThinkingTokens?: number;
+
+    // #region Search
+    useWebSearch?: boolean;
+    webSearchContextSize?: 'high' | 'medium' | 'low';
+    webSearchCity?: string;
+    webSearchCountry?: string;
+    webSearchRegion?: string;
+    webSearchTimezone?: string;
+    // #endregion
+
+    useReasoning?: boolean;
+};
+
+export type TLLMParamsV2 = {
+    model: string;
+    modelEntryName: string;
+    messages: any[];
+    toolsConfig?: {
+        tools?: OpenAI.Responses.Tool[];
+        tool_choice?: OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
+    };
+    baseURL?: string;
+    stream?: boolean;
+    responseFormat?: any;
+    credentials?: {
+        apiKey?: string;
+        isUserKey?: boolean;
+    };
+    max_output_tokens?: number;
+    temperature?: number;
+    top_p?: number;
+    top_k?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    teamId?: string;
+    fileSources?: BinaryInput[];
+
+    // #region Search
+    useWebSearch?: boolean;
+    webSearchContextSize?: 'high' | 'medium' | 'low';
+    webSearchCity?: string;
+    webSearchCountry?: string;
+    webSearchRegion?: string;
+    webSearchTimezone?: string;
+    // #endregion
+};
+
+export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
+    model: string | TLLMModel | TCustomLLMModel;
 };
 
 export type TLLMModelEntry = {
@@ -93,6 +145,33 @@ export type TLLMModel = {
     };
     credentials?: TLLMCredentials;
 };
+
+// #region [ Handle extendable LLM Providers ] ================================================
+export const BuiltinLLMProviders = {
+    Echo: 'Echo',
+    OpenAI: 'OpenAI',
+    DeepSeek: 'DeepSeek',
+    GoogleAI: 'GoogleAI',
+    Anthropic: 'Anthropic',
+    Groq: 'Groq',
+    TogetherAI: 'TogetherAI',
+    Bedrock: 'Bedrock',
+    VertexAI: 'VertexAI',
+    xAI: 'xAI',
+    Perplexity: 'Perplexity',
+} as const;
+// Base provider type
+export type TBuiltinLLMProvider = (typeof BuiltinLLMProviders)[keyof typeof BuiltinLLMProviders];
+
+// Extensible interface for custom providers
+export interface ILLMProviders {}
+// Combined provider type that can be extended
+export type TLLMProvider = TBuiltinLLMProvider | keyof ILLMProviders;
+
+// For backward compatibility, export the built-in providers as enum-like object
+export const TLLMProvider = BuiltinLLMProviders;
+
+// #endregion
 
 export type TBedrockSettings = {
     keyIDName: string;
@@ -190,16 +269,6 @@ export type TLLMInputMessage = {
     parts?: { text: string }[]; // * 'part' is for Google Vertex AI
 };
 
-export enum TLLMProvider {
-    OpenAI = 'OpenAI',
-    Anthropic = 'Anthropic',
-    GoogleAI = 'GoogleAI',
-    Groq = 'Groq',
-    TogetherAI = 'TogetherAI',
-    Bedrock = 'Bedrock',
-    VertexAI = 'VertexAI',
-}
-
 export interface ILLMContextStore {
     save(messages: any[]): Promise<void>;
     load(count?: number): Promise<any[]>;
@@ -235,6 +304,23 @@ export type TLLMModelsList = {
     [key: string]: TLLMModel | TCustomLLMModel;
 };
 
-export type SmythModelsProviderConfig = {
-    models: (models: TLLMModelsList) => Promise<TLLMModelsList> | TLLMModelsList;
-};
+export enum TLLMEvent {
+    /** Generated response chunks */
+    Content = 'content',
+    /** Thinking blocks/chunks */
+    Thinking = 'thinking',
+    /** End of the response */
+    End = 'end',
+    /** Error */
+    Error = 'error',
+    /** Tool information : emitted by the LLM determines the next tool call */
+    ToolInfo = 'toolInfo',
+    /** Tool call : emitted before the tool call */
+    ToolCall = 'toolCall',
+    /** Tool result : emitted after the tool call */
+    ToolResult = 'toolResult',
+    /** Tokens usage information */
+    Usage = 'usage',
+    /** Interrupted : emitted when the response is interrupted before completion */
+    Interrupted = 'interrupted',
+}

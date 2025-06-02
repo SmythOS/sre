@@ -7,14 +7,26 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 
 import { ComponentConnector } from '../ComponentConnector';
+import { ComponentInstances } from '@sre/Components/index';
 
 const console = Logger('LocalComponentConnector');
+
+//TODO : future : Candidate specific components access : we can rely on the ACL to isolate the components per user/agent/team
 export class LocalComponentConnector extends ComponentConnector {
     public name: string = 'LocalComponentConnector';
     private components: any = {};
 
     constructor() {
         super();
+
+        this.init();
+    }
+
+    async init() {
+        for (const component in ComponentInstances) {
+            this.components[component] = ComponentInstances[component];
+        }
+        console.debug('Registering Components :', Object.keys(this.components).join(', '));
     }
 
     @SecureConnector.AccessControl

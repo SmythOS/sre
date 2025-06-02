@@ -6,7 +6,7 @@ import { CLIAgentDataConnector } from './connectors/CLIAgentDataConnector.class'
 import { AgentDataConnector } from './AgentDataConnector';
 import { LocalAgentDataConnector } from './connectors/LocalAgentDataConnector.class';
 import { SmythAgentDataConnector } from './connectors/SmythAgentDataConnector.class';
-
+import { NullAgentData } from './connectors/NullAgentData.class';
 export class AgentDataService extends ConnectorServiceProvider {
     public register() {
         //FIXME : register an actual account connector, not the abstract one
@@ -14,5 +14,6 @@ export class AgentDataService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
         ConnectorService.register(TConnectorService.AgentData, 'Local', LocalAgentDataConnector);
         ConnectorService.register(TConnectorService.AgentData, 'Smyth', SmythAgentDataConnector);
+        ConnectorService.register(TConnectorService.AgentData, 'NullAgentData', NullAgentData);
     }
 }

@@ -2,24 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
 import { SmythVault } from '@sre/Security/Vault.service/connectors/SmythVault.class';
-import { ConnectorService, SmythRuntime } from '@sre/index';
-import {  TemplateString } from '@sre/helpers/TemplateString.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 const SREInstance = SmythRuntime.Instance.init({
     Vault: {
         Connector: 'SmythVault',
         Settings: {
-          oAuthAppID: process.env.LOGTO_M2M_APP_ID,
-          oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
-          oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
-          oAuthResource: process.env.LOGTO_API_RESOURCE,
-          oAuthScope: '',
-          vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
+            oAuthAppID: process.env.LOGTO_M2M_APP_ID,
+            oAuthAppSecret: process.env.LOGTO_M2M_APP_SECRET,
+            oAuthBaseUrl: `${process.env.LOGTO_SERVER}/oidc/token`,
+            oAuthResource: process.env.LOGTO_API_RESOURCE,
+            oAuthScope: '',
+            vaultAPIBaseUrl: process.env.SMYTH_VAULT_API_BASE_URL,
         },
     },
     Account: {
         Connector: 'SmythAccount',
-    }
+    },
 });
 
 describe('Vault Tests', () => {
@@ -64,6 +65,4 @@ describe('Vault Tests', () => {
             .parse({ MyVAR: 'Hello', secret: value }).result
         expect(result).toEqual('using a vault key : test_value and a simple template variable : Hello');
     });
-
-
 });

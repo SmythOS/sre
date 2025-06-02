@@ -23,7 +23,7 @@ export class BinaryInput {
         data: BinaryInput | Buffer | ArrayBuffer | Blob | string | Record<string, any>,
         private _name?: string,
         public mimetype?: string,
-        private candidate?: IAccessCandidate
+        private candidate?: IAccessCandidate,
     ) {
         if (!_name) _name = uid();
         this._name = _name;

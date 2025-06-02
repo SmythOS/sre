@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicXOR extends Component {
@@ -32,5 +32,3 @@ export class LogicXOR extends Component {
         return result;
     }
 }
-
-export default LogicXOR;

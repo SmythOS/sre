@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import _config from '@sre/config';
@@ -73,5 +73,3 @@ export class FileStore extends Component {
         return `${uniqueId}${customName ? `.${customName}` : ''}.${extension}`;
     }
 }
-
-export default FileStore;

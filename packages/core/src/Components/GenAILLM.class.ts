@@ -1,6 +1,5 @@
-import { EventEmitter } from 'events';
 import Joi from 'joi';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
@@ -12,12 +11,110 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 //TODO : better handling of context window exceeding max length
 
 export class GenAILLM extends Component {
+    protected schema = {
+        name: 'GenAILLM',
+        settings: {
+            model: {
+                type: 'string',
+                max: 200,
+                required: true,
+            },
+            prompt: {
+                type: 'string',
+                max: 8_000_000,
+                label: 'Prompt',
+            },
+            temperature: {
+                type: 'number',
+                min: 0,
+                max: 5,
+                label: 'Temperature',
+            },
+            maxTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Tokens',
+            },
+            maxThinkingTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Thinking Tokens',
+            },
+            stopSequences: {
+                type: 'string',
+                max: 400,
+                label: 'Stop Sequences',
+                allowEmpty: true,
+            },
+            topP: {
+                type: 'number',
+                min: 0,
+                max: 1,
+                label: 'Top P',
+            },
+            topK: {
+                type: 'number',
+                min: 0,
+                max: 500,
+                label: 'Top K',
+            },
+            frequencyPenalty: {
+                type: 'number',
+                min: 0,
+                max: 2,
+                label: 'Frequency Penalty',
+            },
+            presencePenalty: {
+                type: 'number',
+                min: 0,
+                max: 2,
+                label: 'Presence Penalty',
+            },
+            responseFormat: {
+                type: 'string',
+                valid: ['json', 'text'],
+                label: 'Response Format',
+            },
+            passthrough: {
+                type: 'boolean',
+                label: 'Passthrough',
+            },
+            useSystemPrompt: {
+                type: 'boolean',
+                label: 'Use System Prompt',
+            },
+            useContextWindow: {
+                type: 'boolean',
+                label: 'Use Context Window',
+            },
+            maxContextWindowLength: {
+                type: 'number',
+                min: 0,
+                label: 'Maximum Context Window Length',
+            },
+        },
+        inputs: {
+            Input: {
+                type: 'Any',
+                description: 'An input that you can pass to the LLM',
+            },
+            Attachment: {
+                type: 'Binary',
+                description: 'An attachment that you can pass to the LLM',
+                optional: true,
+            },
+        },
+        outputs: {
+            Reply: {
+                default: true,
+            },
+        },
+    };
     protected configSchema = Joi.object({
         model: Joi.string().max(200).required(),
         prompt: Joi.string().required().max(8_000_000).label('Prompt'), // 2M tokens is around 8M characters
         temperature: Joi.number().min(0).max(5).label('Temperature'), // max temperature is 2 for OpenAI and togetherAI but 5 for cohere
         maxTokens: Joi.number().min(1).label('Maximum Tokens'),
-        maxThinkingTokens: Joi.number().min(1).label('Maximum Thinking Tokens'),
         stopSequences: Joi.string().allow('').max(400).label('Stop Sequences'),
         topP: Joi.number().min(0).max(1).label('Top P'),
         topK: Joi.number().min(0).max(500).label('Top K'), // max top_k is 100 for togetherAI but 500 for cohere
@@ -28,6 +125,18 @@ export class GenAILLM extends Component {
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
+
+        // #region Search
+        useWebSearch: Joi.boolean().optional().label('Use Search'),
+        webSearchContextSize: Joi.string().valid('high', 'medium', 'low').optional().label('Search Content Size'),
+        webSearchCity: Joi.string().max(100).optional().allow('').label('Search City'),
+        webSearchCountry: Joi.string().max(100).optional().allow('').label('Search Country'),
+        webSearchRegion: Joi.string().max(100).optional().allow('').label('Search Region'),
+        webSearchTimezone: Joi.string().max(100).optional().allow('').label('Search Timezone'),
+        // #endregion
+
+        useReasoning: Joi.boolean().optional().label('Use Reasoning'),
+        maxThinkingTokens: Joi.number().min(1).label('Maximum Thinking Tokens'),
     });
     constructor() {
         super();
@@ -297,5 +406,3 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
-
-export default GenAILLM;

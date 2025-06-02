@@ -5,6 +5,7 @@ import { identifyMimeTypeFromBase64DataUrl, isBase64FileUrl, isBase64, identifyM
 import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { identifyMimetypeFromString } from './string.utils';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -170,7 +171,7 @@ export async function getMimeType(data: any): Promise<string> {
         smythFile: () => data.mimetype,
         base64DataUrl: () => identifyMimeTypeFromBase64DataUrl(data),
         base64: () => identifyMimetypeFromBase64(data),
-        string: () => '',
+        string: () => identifyMimetypeFromString(data),
     };
 
     const typeChecks = {

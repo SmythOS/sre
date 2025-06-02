@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { SmythAccount } from '@sre/Security/Account.service/connectors/SmythAccount.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 

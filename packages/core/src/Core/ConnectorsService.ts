@@ -2,7 +2,7 @@ import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/ty
 import { DummyConnector } from './DummyConnector';
 import { Logger } from '../helpers/Log.helper';
 import { Connector } from './Connector.class';
-import { isSubclassOf } from '@sre/utils';
+import { getFormattedStackTrace, isSubclassOf, printStackTrace } from '@sre/utils';
 import { SystemEvents } from './SystemEvents';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
@@ -20,9 +20,6 @@ import { ComponentConnector } from '@sre/AgentManager/Component.service/Componen
 import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 const console = Logger('ConnectorService');
 
-const Connectors = {};
-
-const ConnectorInstances: any = {};
 let ServiceRegistry: TServiceRegistry = {};
 let _ready = false;
 SystemEvents.on('SRE:Booted', (services) => {
@@ -30,19 +27,9 @@ SystemEvents.on('SRE:Booted', (services) => {
     _ready = true;
 });
 export class ConnectorService {
-    //Singleton
-    // private constructor() {
-    //     SystemEvents.on('SRE:Booted', (services) => {
-    //         ServiceRegistry = services;
-    //     });
-    // }
-    // private static instance: ConnectorService;
-    // public static get Instance(): ConnectorService {
-    //     if (!ConnectorService.instance) {
-    //         ConnectorService.instance = new ConnectorService();
-    //     }
-    //     return ConnectorService.instance;
-    // }
+    public static Connectors = {};
+
+    public static ConnectorInstances: any = {};
     public static get ready() {
         return _ready;
     }
@@ -62,10 +49,10 @@ export class ConnectorService {
             console.error(`Invalid Connector ${connectorType}:${connectorName}`);
             return;
         }
-        if (!Connectors[connectorType]) {
-            Connectors[connectorType] = {};
+        if (!ConnectorService.Connectors[connectorType]) {
+            ConnectorService.Connectors[connectorType] = {};
         }
-        Connectors[connectorType][connectorName] = connectorConstructor;
+        ConnectorService.Connectors[connectorType][connectorName] = connectorConstructor;
     }
 
     /**
@@ -80,30 +67,33 @@ export class ConnectorService {
      * @returns
      */
     static init(connectorType: TConnectorService, connectorName: string, connectorId?: string, settings: any = {}, isDefault = false) {
-        if (ConnectorInstances[connectorType]?.[connectorName]) {
+        if (ConnectorService.ConnectorInstances[connectorType]?.[connectorName]) {
             throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
         }
 
-        const entry = Connectors[connectorType];
+        const entry = ConnectorService.Connectors[connectorType];
         if (!entry) return;
         const connectorConstructor = entry[connectorName];
 
         if (connectorConstructor) {
             const connector: Connector = new connectorConstructor(settings);
+            if (connector.interactionHandler) {
+                connector.interactionHandler();
+            }
 
             connector.start();
-            if (!ConnectorInstances[connectorType]) ConnectorInstances[connectorType] = {};
+            if (!ConnectorService.ConnectorInstances[connectorType]) ConnectorService.ConnectorInstances[connectorType] = {};
             const id = connectorId || connectorName;
-            ConnectorInstances[connectorType][id] = connector;
+            ConnectorService.ConnectorInstances[connectorType][id] = connector;
 
-            if (!ConnectorInstances[connectorType].default && isDefault) {
-                ConnectorInstances[connectorType].default = connector;
+            if (!ConnectorService.ConnectorInstances[connectorType].default && isDefault) {
+                ConnectorService.ConnectorInstances[connectorType].default = connector;
             }
         }
     }
     static async _stop() {
-        for (let connectorName in ConnectorInstances) {
-            let allConnectors: Connector[] = Object.values(ConnectorInstances[connectorName]);
+        for (let connectorName in ConnectorService.ConnectorInstances) {
+            let allConnectors: Connector[] = Object.values(ConnectorService.ConnectorInstances[connectorName]);
             //deduplicate
             allConnectors = allConnectors.filter((value, index, self) => self.indexOf(value) === index);
             for (let connector of allConnectors) {
@@ -112,25 +102,21 @@ export class ConnectorService {
         }
     }
     static getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
-        const instance = ConnectorInstances[connectorType]?.[connectorName] as T;
+        const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName] as T;
         if (!instance) {
-            if (ConnectorInstances[connectorType] && Object.keys(ConnectorInstances[connectorType]).length > 0) {
+            if (ConnectorService.ConnectorInstances[connectorType] && Object.keys(ConnectorService.ConnectorInstances[connectorType]).length > 0) {
                 //return the first instance
-                return ConnectorInstances[connectorType][Object.keys(ConnectorInstances[connectorType])[0]] as T;
+                return ConnectorService.ConnectorInstances[connectorType][Object.keys(ConnectorService.ConnectorInstances[connectorType])[0]] as T;
             }
             console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
             //print stack trace
-            console.debug(new Error().stack);
-            return DummyConnector as T;
+
+            printStackTrace(console, 5);
+
+            return DummyConnector(connectorType) as T;
         }
         return instance;
     }
-
-    // Storage?: StorageService;
-    // Cache?: CacheService;
-    // LLM?: LLMService;
-    // Vault?: VaultService;
-    // Account?: AccountService;
 
     static getStorageConnector(name?: string): StorageConnector {
         return ConnectorService.getInstance<StorageConnector>(TConnectorService.Storage, name);
@@ -184,11 +170,9 @@ export class ConnectorService {
         return ConnectorService.getInstance<ModelsProviderConnector>(TConnectorService.ModelsProvider, name);
     }
 
-    //TODO: add missing get<Connector> functions : e.g getAgentData(), getCache() etc ...
-
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
-        const instance = ConnectorInstances[connectorType]?.[connectorName];
-        return instance && instance !== DummyConnector;
+        const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName];
+        return instance && instance.valid;
     }
 
     static getRouterConnector(name?: string): RouterConnector {

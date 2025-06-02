@@ -1,7 +1,6 @@
 //==[ SRE: S3Storage ]======================
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -38,23 +37,23 @@ export class PineconeVectorDB extends VectorDBConnector {
     private nkvConnector: NKVConnector;
     private isCustomStorageInstance: boolean;
 
-    constructor(config: PineconeConfig) {
+    constructor(settings: PineconeConfig) {
         super();
-        if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        if (!config.pineconeApiKey) throw new Error('Pinecone API key is required');
-        if (!config.indexName) throw new Error('Pinecone index name is required');
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+        if (!settings.pineconeApiKey) throw new Error('Pinecone API key is required');
+        if (!settings.indexName) throw new Error('Pinecone index name is required');
 
         this.client = new Pinecone({
-            apiKey: config.pineconeApiKey,
+            apiKey: settings.pineconeApiKey,
         });
         console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', config.indexName);
-        this.indexName = config.indexName;
+        console.info('Pinecone index name:', settings.indexName);
+        this.indexName = settings.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.redisCache = ConnectorService.getCacheConnector('Redis');
         this.nkvConnector = ConnectorService.getNKVConnector();
-        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.isCustomStorageInstance = config.isCustomStorageInstance || false;
+        this.openaiApiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
+        this.isCustomStorageInstance = settings.isCustomStorageInstance || false;
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {

@@ -1,7 +1,7 @@
 import { OpenAI } from 'openai';
 import { IRequestImage, Runware } from '@runware/sdk-js';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
@@ -13,7 +13,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 
 import appConfig from '@sre/config';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { SUPPORTED_MIME_TYPES_MAP, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './Image/imageSettings.config';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -174,7 +174,7 @@ const imageGenerator = {
             if (response?.usage) {
                 imageGenerator.reportTokenUsage(response.usage, {
                     modelEntryName: model,
-                    keySource: model.startsWith('smythos/') ? APIKeySource.Smyth : APIKeySource.User,
+                    keySource: model.startsWith(BUILT_IN_MODEL_PREFIX) ? APIKeySource.Smyth : APIKeySource.User,
                     agentId: agent.id,
                     teamId: agent.teamId,
                 });
@@ -183,7 +183,7 @@ const imageGenerator = {
             let output = response?.data?.[0]?.b64_json;
 
             const binaryInput = BinaryInput.from(output);
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = typeof agent == 'object' && agent.id ? agent.id : agent;
             const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
 
             return { output: smythFile };
@@ -312,12 +312,8 @@ const imageGenerator = {
         }
     },
     reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
-        let modelName = metadata.modelEntryName;
-
-        // SmythOS models have a prefix, so we need to remove it
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `api:imagegen.${modelName}`,
@@ -372,8 +368,8 @@ async function getModelFamily(model: string, agent: Agent): Promise<string | nul
     return null;
 }
 
-async function isGPTModel(model: string): Promise<boolean> {
-    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.GPT);
+function isGPTModel(model: string) {
+    return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.GPT);
 }
 
 async function isRunwareModel(model: string, agent: Agent): Promise<boolean> {
@@ -381,8 +377,8 @@ async function isRunwareModel(model: string, agent: Agent): Promise<boolean> {
     return provider === PROVIDERS.RUNWARE || provider.toLowerCase() === PROVIDERS.RUNWARE.toLowerCase();
 }
 
-async function isDallEModel(model: string) {
-    return model?.replace('smythos/', '')?.startsWith(MODEL_FAMILY.DALL_E);
+function isDallEModel(model: string) {
+    return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.DALL_E);
 }
 
 function parseFiles(input: any, config: any) {
@@ -405,5 +401,3 @@ function parseFiles(input: any, config: any) {
 
     return inputFiles;
 }
-
-export default ImageGenerator;

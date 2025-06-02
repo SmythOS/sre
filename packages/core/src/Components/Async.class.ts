@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { ForkedAgent } from '@sre/AgentManager/ForkedAgent.class';
 import { Component } from './Component.class';
 import Joi from 'joi';
@@ -153,5 +153,3 @@ export class Async extends Component {
         this.removeOrphanedBranches(agent);
     }
 }
-
-export default Async;

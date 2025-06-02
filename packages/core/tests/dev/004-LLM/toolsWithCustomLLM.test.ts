@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { AccessCandidate, SmythRuntime } from '@sre/index';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
+import { TLLMEvent } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { delay } from '@sre/utils/index';
 
@@ -229,7 +231,7 @@ async function runStreamRequestTestCases(model: string) {
             let toolsData;
 
             const streamComplete = new Promise<void>((resolve) => {
-                stream.on('toolsData', (data) => {
+                stream.on(TLLMEvent.ToolInfo, (data) => {
                     toolsData = data;
                     resolve();
                 });
@@ -343,11 +345,11 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
             let toolsData: any[] = [];
 
             const streamComplete = new Promise<void>((resolve) => {
-                stream.on('toolsData', (data) => {
+                stream.on(TLLMEvent.ToolInfo, (data) => {
                     toolsData = toolsData.concat(data);
                 });
 
-                stream.on('end', resolve);
+                stream.on(TLLMEvent.End, resolve);
             });
 
             await streamComplete;

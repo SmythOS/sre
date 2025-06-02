@@ -7,7 +7,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
@@ -153,5 +153,3 @@ export class DataSourceLookup extends Component {
         }
     }
 }
-
-export default DataSourceLookup;

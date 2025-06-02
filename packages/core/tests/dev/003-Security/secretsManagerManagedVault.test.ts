@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecretManagerManagedVault } from '@sre/Security/ManagedVault.service/connectors/SecretManagerManagedVault';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
 
@@ -16,7 +17,7 @@ const SREInstance = SmythRuntime.Instance.init({
     },
     Account: {
         Connector: 'SmythAccount',
-    }
+    },
 });
 
 describe('Secret Manager Tests', () => {
@@ -52,10 +53,7 @@ describe('Secret Manager Tests', () => {
         const teamId = 'test';
         const vault: ManagedVaultConnector = ConnectorService.getManagedVaultConnector('SecretManagerManagedVault');
         const value = await vault.user(AccessCandidate.team(teamId)).get('secret_key');
-        const result = await TemplateString(tpl)
-            .parse({ MyVAR: 'Hello', secret: value }).result
+        const result = await TemplateString(tpl).parse({ MyVAR: 'Hello', secret: value }).result;
         expect(result).toEqual('using a vault key : secret_value and a simple template variable : Hello');
     });
-
-
 });

@@ -1,6 +1,5 @@
 import { encode, encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -10,11 +9,9 @@ import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/typ
 import _ from 'lodash';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
-
+import { IAgent } from '@sre/types/Agent.types';
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 const console = Logger('LLMInference');
-
-// TODO [Forhad]: apply proper typing
-// TODO [Forhad]: Need to merge all the methods with LLMConnector
 
 export class LLMInference {
     private model: string;
@@ -87,7 +84,7 @@ export class LLMInference {
         return this.llmConnector;
     }
 
-    public async promptRequest(prompt, settings: any = {}, agent: string | Agent, customParams: any = {}) {
+    public async promptRequest(prompt, settings: any = {}, agent: string | IAgent, customParams: any = {}) {
         const clonedConfig = _.cloneDeep(settings);
         const messages = customParams?.messages || [];
 
@@ -103,7 +100,7 @@ export class LLMInference {
         // override params with customParams
         let params: any = Object.assign(clonedConfig.data, { ...customParams, messages });
 
-        const agentId = agent instanceof Agent ? agent.id : agent;
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         if (!this.llmConnector) {
             throw new Error(`Model ${params.model} not supported`);
@@ -134,8 +131,8 @@ export class LLMInference {
         }
     }
 
-    public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
         const _fileSources = [];
@@ -180,8 +177,8 @@ export class LLMInference {
     }
 
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
-    public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
         const _fileSources = [];
@@ -226,19 +223,19 @@ export class LLMInference {
         }
     }
 
-    public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
     }
 
-    public async imageEditRequest(prompt: string, params: GenerateImageConfig, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async imageEditRequest(prompt: string, params: GenerateImageConfig, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         return this.llmConnector.user(AccessCandidate.agent(agentId)).imageEditRequest(prompt, params);
     }
 
-    public async toolRequest(params: any, agent: string | Agent) {
+    public async toolRequest(params: any, agent: string | IAgent) {
         if (!params.messages || !params.messages?.length) {
             throw new Error('Input messages are required.');
         }
@@ -246,7 +243,7 @@ export class LLMInference {
         const model = params.model || this.model;
 
         try {
-            const agentId = agent instanceof Agent ? agent.id : agent;
+            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
             return this.llmConnector.user(AccessCandidate.agent(agentId)).toolRequest({ ...params, model });
         } catch (error: any) {
@@ -256,14 +253,14 @@ export class LLMInference {
         }
     }
 
-    public async streamToolRequest(params: any, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async streamToolRequest(params: any, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
 
-    public async streamRequest(params: any, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async streamRequest(params: any, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         try {
             if (!params.messages || !params.messages?.length) {
                 throw new Error('Input messages are required.');
@@ -284,8 +281,8 @@ export class LLMInference {
         }
     }
 
-    public async multimodalStreamRequest(params: any, fileSources, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async multimodalStreamRequest(params: any, fileSources, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
         const _fileSources = [];
@@ -315,8 +312,8 @@ export class LLMInference {
         }
     }
 
-    public async multimodalStreamRequestLegacy(prompt, fileSources: string[], config: any = {}, agent: string | Agent) {
-        const agentId = agent instanceof Agent ? agent.id : agent;
+    public async multimodalStreamRequestLegacy(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
         const _fileSources = [];
@@ -403,7 +400,7 @@ export class LLMInference {
         //loop through messages from last to first and use encodeChat to calculate token lengths
         //we will use fake chatMessages to calculate the token lengths, these are not used by the LLM, but just for token counting
         let tokensCount = encodeChat([systemMessage as ChatMessage], 'gpt-4o').length;
-        for (let i = _messages.length - 1; i >= 0; i--) {
+        for (let i = _messages?.length - 1; i >= 0; i--) {
             const curMessage = _messages[i];
             if (curMessage.role === 'system') continue;
 

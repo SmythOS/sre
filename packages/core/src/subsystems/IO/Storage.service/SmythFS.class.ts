@@ -1,7 +1,7 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
+import { DEFAULT_TEAM_ID, IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { getMimeType } from '@sre/utils';
 import mime from 'mime';
@@ -40,39 +40,41 @@ export class SmythFS {
         return this.instance;
     }
 
-    private constructor() {
+    private constructor(storageProvider: string = '', cacheProvider: string = '') {
         //SmythFS cannot be used without SRE
         if (!ConnectorService.ready) {
             throw new Error('SRE not available');
         }
-        this.storage = ConnectorService.getStorageConnector();
-        this.cache = ConnectorService.getCacheConnector();
+        this.storage = ConnectorService.getStorageConnector(storageProvider);
+        this.cache = ConnectorService.getCacheConnector(cacheProvider);
     }
 
-    private URIParser(uri: string) {
-        const parts = uri.split('://');
-        if (parts.length !== 2) return undefined;
-        if (parts[0].toLowerCase() !== 'smythfs') return undefined;
-        const parsed = new URL(`http://${parts[1]}`);
-        const tld = parsed.hostname.split('.').pop();
-        if (tld !== 'team') throw new Error('Invalid Resource URI');
-        const team = parsed.hostname.replace(`.${tld}`, '');
-        //TODO: check if team exists
+    // public getStoragePath(uri: string) {
+    //     const smythURI = this.URIParser(uri);
+    //     if (!smythURI) throw new Error('Invalid Resource URI');
+    //     return `teams/${smythURI.team}${smythURI.path}`;
+    // }
 
-        return {
-            hash: parsed.hash,
-            team,
-            path: parsed.pathname,
-        };
+    public getBaseUri(candidate: IAccessCandidate) {
+        const uri = `smythfs://${candidate.id}.${candidate.role}`;
+
+        return uri;
     }
-    public getStoragePath(uri: string) {
-        const smythURI = this.URIParser(uri);
+
+    /**
+     * Reads a resource from smyth file system
+     * @param uri smythfs:// uri
+     * @param candidate
+     * @returns
+     */
+    public async read(uri: string, candidate?: IAccessCandidate): Promise<Buffer> {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
-        return `teams/${smythURI.team}${smythURI.path}`;
-    }
-    public async read(uri: string, candidate: IAccessCandidate): Promise<Buffer> {
-        const smythURI = this.URIParser(uri);
-        if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
 
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
@@ -83,34 +85,11 @@ export class SmythFS {
         return this.toBuffer(data);
     }
 
-    private async toBuffer(data: StorageData): Promise<Buffer> {
-        if (Buffer.isBuffer(data)) {
-            return data;
-        } else if (typeof data === 'string') {
-            return Buffer.from(data, 'utf-8');
-        } else if (data instanceof Uint8Array) {
-            return Buffer.from(data);
-        } else if (data instanceof Readable) {
-            return new Promise<Buffer>((resolve, reject) => {
-                const chunks: Buffer[] = [];
-                data.on('data', (chunk) => {
-                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-                });
-                data.on('end', () => {
-                    resolve(Buffer.concat(chunks));
-                });
-                data.on('error', (err) => {
-                    reject(err);
-                });
-            });
-        } else {
-            throw new Error('Unsupported data type');
-        }
-    }
-
-    public async write(uri: string, data: any, candidate: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
-        const smythURI = this.URIParser(uri);
+    public async write(uri: string, data: any, candidate?: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
         const accountConnector = ConnectorService.getAccountConnector();
         const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
         if (!isMember) throw new Error('Access Denied');
@@ -120,9 +99,16 @@ export class SmythFS {
 
         const _candidate = candidate instanceof AccessCandidate ? candidate : new AccessCandidate(candidate);
 
-        const acl = new ACL()
-            //.addAccess(candidate.role, candidate.id, TAccessLevel.Owner) // creator is owner
-            .addAccess(TAccessRole.Team, smythURI.team, TAccessLevel.Read).ACL; // team has read access
+        let acl: ACL;
+
+        //give team read access if this is a team resource and not the default team
+        //because the default team is a fallback used when no team is specified or account connector is not available
+        //in that case we need to only allow the creator to access the resource
+        if (smythURI.team && smythURI.team !== DEFAULT_TEAM_ID) {
+            acl = new ACL()
+                //.addAccess(candidate.role, candidate.id, TAccessLevel.Owner) // creator is owner
+                .addAccess(TAccessRole.Team, smythURI.team, TAccessLevel.Read).ACL as ACL; // team has read access
+        }
 
         if (!metadata) metadata = {};
         if (!metadata?.ContentType) {
@@ -141,9 +127,14 @@ export class SmythFS {
         }
     }
 
-    public async delete(uri: string, candidate: IAccessCandidate) {
-        const smythURI = this.URIParser(uri);
+    public async delete(uri: string, candidate?: IAccessCandidate) {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
 
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
@@ -153,9 +144,14 @@ export class SmythFS {
     }
 
     //TODO: should we require access token here ?
-    public async exists(uri: string, candidate: IAccessCandidate) {
-        const smythURI = this.URIParser(uri);
+    public async exists(uri: string, candidate?: IAccessCandidate) {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
 
         const resourceId = `teams/${smythURI.team}${smythURI.path}`;
 
@@ -166,9 +162,14 @@ export class SmythFS {
     }
 
     //#region Temp URL (mainly used for returning agent output to user for temporary access)
-    public async genTempUrl(uri: string, candidate: IAccessCandidate, ttlSeconds: number = 3600) {
-        const smythURI = this.URIParser(uri);
+    public async genTempUrl(uri: string, candidate?: IAccessCandidate, ttlSeconds: number = 3600) {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
 
         const exists = await this.exists(uri, candidate);
         if (!exists) throw new Error('Resource does not exist');
@@ -240,9 +241,21 @@ export class SmythFS {
     //#endregion
 
     //#region Resource Serving
-    public async genResourceUrl(uri: string, candidate: IAccessCandidate) {
-        const smythURI = this.URIParser(uri);
+
+    /**
+     * Generates a public url for the resource
+     * @param uri
+     * @param candidate
+     * @returns
+     */
+    public async genResourceUrl(uri: string, candidate?: IAccessCandidate) {
+        const smythURI = await this.URIParser(uri);
         if (!smythURI) throw new Error('Invalid Resource URI');
+        candidate = candidate || smythURI.defaultCandidate; //fallback to default candidate if not provided
+
+        const accountConnector = ConnectorService.getAccountConnector();
+        const isMember = await accountConnector.isTeamMember(smythURI.team, candidate);
+        if (!isMember) throw new Error('Access Denied');
 
         const exists = await this.exists(uri, candidate);
         if (!exists) throw new Error('Resource does not exist');
@@ -315,4 +328,75 @@ export class SmythFS {
         }
     }
     //#endregion
+
+    private async URIParser(uri: string) {
+        const parts = uri.split('://');
+        if (parts.length !== 2) return undefined;
+        if (parts[0].toLowerCase() !== 'smythfs') return undefined;
+        const parsed = new URL(`http://${parts[1]}`);
+        const tld = parsed.hostname.split('.').pop();
+        if (tld !== 'team' && tld !== 'user' && tld !== 'agent' && tld !== 'smyth') throw new Error('Invalid Resource URI');
+        let team = tld === 'team' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
+        const user = tld === 'user' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
+        const agent = tld === 'agent' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
+        const smyth = tld === 'smyth' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
+
+        if (!team) {
+            let candidate: IAccessCandidate;
+            if (user) {
+                candidate = AccessCandidate.user(user);
+            } else if (agent) {
+                candidate = AccessCandidate.agent(agent);
+            }
+
+            if (candidate) {
+                team = await ConnectorService.getAccountConnector().getCandidateTeam(candidate);
+            }
+        }
+
+        // create a default candidate based on the uri
+        let defaultCandidate: IAccessCandidate;
+        if (team) {
+            defaultCandidate = AccessCandidate.team(team);
+        } else if (user) {
+            defaultCandidate = AccessCandidate.user(user);
+        } else if (agent) {
+            defaultCandidate = AccessCandidate.agent(agent);
+        }
+
+        return {
+            hash: parsed.hash,
+            team,
+            user,
+            agent,
+            smyth,
+            defaultCandidate,
+            path: parsed.pathname,
+        };
+    }
+
+    private async toBuffer(data: StorageData): Promise<Buffer> {
+        if (Buffer.isBuffer(data)) {
+            return data;
+        } else if (typeof data === 'string') {
+            return Buffer.from(data, 'utf-8');
+        } else if (data instanceof Uint8Array) {
+            return Buffer.from(data);
+        } else if (data instanceof Readable) {
+            return new Promise<Buffer>((resolve, reject) => {
+                const chunks: Buffer[] = [];
+                data.on('data', (chunk) => {
+                    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+                });
+                data.on('end', () => {
+                    resolve(Buffer.concat(chunks));
+                });
+                data.on('error', (err) => {
+                    reject(err);
+                });
+            });
+        } else {
+            throw new Error('Unsupported data type');
+        }
+    }
 }

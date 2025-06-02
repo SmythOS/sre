@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 
 export class LogicAND extends Component {
@@ -26,5 +26,3 @@ export class LogicAND extends Component {
         return result;
     }
 }
-
-export default LogicAND;

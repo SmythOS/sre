@@ -1,22 +1,24 @@
 import { Component } from '@sre/Components/Component.class';
-import builtinComponents from '@sre/Components/index';
 import { AgentLogger } from './AgentLogger.class';
 import { AgentRequest } from './AgentRequest.class';
 import { AgentRuntime } from './AgentRuntime.class';
 import { AgentSettings } from './AgentSettings.class';
 import { OSResourceMonitor } from './OSResourceMonitor';
 import config from '@sre/config';
-import { delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
+import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { AgentSSE } from './AgentSSE.class';
-import { AccessCandidate, ConnectorService, IModelsProviderRequest, ModelsProviderConnector } from '@sre/index';
+import { IAgent } from '@sre/types/Agent.types';
+import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
 
-export class Agent {
+export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
@@ -48,7 +50,14 @@ export class Agent {
     public sse: AgentSSE;
     public modelsProvider: IModelsProviderRequest;
 
-    private _componentInstance = { ...builtinComponents };
+    private _componentInstance = {};
+
+    public get ComponentInstances() {
+        return this._componentInstance;
+    }
+
+    private _componentInstancesLoader = new ControlledPromise(() => {});
+
     constructor(
         public id,
         agentData,
@@ -70,24 +79,6 @@ export class Agent {
 
         this.agentVariables = this.data.variables || {};
 
-        //parse vault agent variables
-        // if (typeof json.data.variables === 'object') {
-        //     for (let key in json.data.variables) {
-        //         const value = json.data.variables[key];
-        //         if (value.startsWith('{{') && value.endsWith('}}')) {
-        //             utils.parseKey(value, this.teamId).then((result) => {
-        //                 this.agentVariables[key] = result;
-        //             });
-        //         } else {
-        //             this.agentVariables[key] = value;
-        //         }
-        //     }
-        // }
-
-        // Base URL required to serve binary data
-        //this.baseUrl = `https://${id}.${config.env.AGENT_DOMAIN}`;
-        //if (config.env.AGENT_DOMAIN_PORT) this.baseUrl += `:${config.env.AGENT_DOMAIN_PORT}`;
-
         const endpoints = this.data.components.filter((c) => c.name == 'APIEndpoint');
         for (let endpoint of endpoints) {
             let method = endpoint.data.method || 'POST';
@@ -107,14 +98,30 @@ export class Agent {
         for (let connection of this.data.connections) {
             const sourceComponent = this.components[connection.sourceId];
             const targetComponent = this.components[connection.targetId];
-            const sourceIndex = connection.sourceIndex;
-            const targetIndex = connection.targetIndex;
 
-            if (!sourceComponent.outputs[sourceIndex].next) sourceComponent.outputs[sourceIndex].next = [];
-            sourceComponent.outputs[sourceIndex].next.push(targetComponent.id);
+            //if connections ids passed as names, we convert them to indexes
+            //TODO : harmonize connections formats
+            const sourceIndex =
+                typeof connection.sourceIndex === 'number'
+                    ? connection.sourceIndex
+                    : sourceComponent.outputs.findIndex((o) => o.name == connection.sourceIndex);
+            const targetIndex =
+                typeof connection.targetIndex === 'number'
+                    ? connection.targetIndex
+                    : targetComponent.inputs.findIndex((i) => i.name == connection.targetIndex);
 
-            if (!targetComponent.inputs[targetIndex].prev) targetComponent.inputs[targetIndex].prev = [];
-            targetComponent.inputs[targetIndex].prev.push(sourceComponent.id);
+            connection.sourceIndex = sourceIndex;
+            connection.targetIndex = targetIndex;
+
+            const output = sourceComponent.outputs[sourceIndex];
+
+            const input = targetComponent.inputs[targetIndex];
+
+            if (!output.next) output.next = [];
+            output.next.push(targetComponent.id);
+
+            if (!input.prev) input.prev = [];
+            input.prev.push(sourceComponent.id);
         }
 
         this.tagAsyncComponents();
@@ -135,9 +142,11 @@ export class Agent {
                 .getAll()
                 .then((customComponents) => {
                     this._componentInstance = { ...this._componentInstance, ...customComponents };
+                    this._componentInstancesLoader.resolve(true);
                 });
         } catch (error) {
             console.warn('Could not load custom components');
+            this._componentInstancesLoader.reject('Could not load custom components');
         }
 
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();

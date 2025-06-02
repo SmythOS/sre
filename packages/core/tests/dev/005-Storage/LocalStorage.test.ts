@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { LocalStorage } from '@sre/IO/Storage.service/connectors/LocalStorage.class';
 
 function xxh3(source) {

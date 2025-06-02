@@ -1,12 +1,13 @@
 import { afterAll, describe, expect, it, beforeAll } from 'vitest';
 import express from 'express';
 import config from '@sre/config';
-import { AgentProcess, ConnectorService, Conversation, SmythRuntime } from '@sre/index';
-import http, { Server } from 'http';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { promisify } from 'util';
 import fs from 'fs/promises'; // for promise-based file reading
 import fsSync from 'fs';
+import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 
 export const createRegressionTestSuite = async (base_dir: string, { server, port }: { server?: Server; port?: number }) => {
     let agentFiles = fsSync.readdirSync(base_dir);
@@ -99,7 +100,7 @@ export const createRegressionTestSuite = async (base_dir: string, { server, port
                         `,
                         {
                             'X-AGENT-ID': agentProcess.agent.data.id,
-                        }
+                        },
                     );
 
                     const evaluatorAgent = await fs.readFile('./tests/data/regression-tests-evalator.smyth', 'utf-8');
@@ -118,7 +119,7 @@ export const createRegressionTestSuite = async (base_dir: string, { server, port
 
                     expect(evaluatorResult?.data?.result?.valid, `Evaluator result for ${path} is not valid`).toEqual('true');
                 },
-                100_000
+                100_000,
             );
         });
     });

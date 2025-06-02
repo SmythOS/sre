@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { RouterConnector, GenericRequestHandler } from '../RouterConnector';
-import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 
 export class ExpressRouter extends RouterConnector {
     private router: Router;

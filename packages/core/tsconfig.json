@@ -14,13 +14,14 @@
         //"ignoreDeprecations": "5.0",
         //"suppressImplicitAnyIndexErrors": true,
         "paths": {
-            "@sre/index": ["index.ts"],
+            //"@sre/index": ["index.ts"],
             "@sre/config": ["config.ts"],
             "@sre/constants": ["constants.ts"],
             "@sre/types/*": ["types/*"],
 
             "@sre/Core/*": ["Core/*"],
 
+            "@sre/sdk": ["sdk/sdk.index.ts"],
             "@sre/sdk/*": ["sdk/*"],
 
             "@sre/utils/*": ["utils/*"],
@@ -53,7 +54,13 @@
         "types": ["node"],
         "allowSyntheticDefaultImports": true
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts", "tests/dev/008-VectorDB/Pinecone.test.bak", "src/helpers/ToolExecutor.class.ts.deprecated"],
+    "include": [
+        "src/**/*.ts",
+        "tests/**/*.ts",
+        "tests/dev/008-VectorDB/Pinecone.test.bak",
+        "src/helpers/ToolExecutor.class.ts.deprecated",
+        "src/subsystems/AgentManager/AgentData.service/connectors/NullAgentData.classts"
+    ],
 
     "exclude": ["node_modules"]
 }

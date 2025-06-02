@@ -68,5 +68,3 @@ export class GPTPlugin extends Component {
         }
     }
 }
-
-export default GPTPlugin;

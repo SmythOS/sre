@@ -19,12 +19,14 @@
         //"suppressImplicitAnyIndexErrors": true,
 
         "paths": {
-            "@sre/index": ["index.ts"],
+            //"@sre/index": ["index.ts"],
             "@sre/config": ["config.ts"],
             "@sre/constants": ["constants.ts"],
             "@sre/types/*": ["types/*"],
 
             "@sre/Core/*": ["Core/*"],
+
+            "@sre/sdk/*": ["sdk/*"],
 
             "@sre/utils/*": ["utils/*"],
             "@sre/utils": ["utils/index"],

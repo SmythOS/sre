@@ -1,4 +1,4 @@
-import { Agent } from '@sre/AgentManager/Agent.class';
+import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
 import Joi from 'joi';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
@@ -95,5 +95,3 @@ function cleanupResult(result) {
     if (result._in_progress) delete result._in_progress;
     return result;
 }
-
-export default ForEach;

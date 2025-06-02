@@ -4,7 +4,8 @@ import express from 'express';
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 
 import config from '@sre/config';
-import { ConnectorService, SmythRuntime } from '@sre/index';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import http, { Server } from 'http';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import axios from 'axios';
@@ -124,7 +125,7 @@ describe('Smyth FileSystem Tests', () => {
         expect(error).toBeUndefined();
     });
 
-    it('Does not allow Read to a different agent ', async () => {
+    it('Does not allow Read to a different agent when the candidate is part of default team', async () => {
         const smythFS = SmythFS.Instance;
         let error;
         try {
@@ -174,7 +175,7 @@ describe('Smyth FileSystem Tests', () => {
         try {
             const candidate: IAccessCandidate = AccessCandidate.team('team-123456');
 
-            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile`;
+            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile01`;
 
             // write the file
             let _preparedContent;
@@ -215,7 +216,7 @@ describe('Smyth FileSystem Tests', () => {
         let error;
         try {
             const candidate: IAccessCandidate = AccessCandidate.team('team-123456');
-            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile_unqiue`;
+            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile01`;
 
             // write the file
             await smythFS.write(uri, 'Hello World!', candidate);
@@ -245,7 +246,7 @@ describe('Smyth FileSystem Tests', () => {
         let error;
         try {
             const candidate: IAccessCandidate = AccessCandidate.team('team-123456');
-            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile_unqiue`;
+            const uri = `smythfs://${candidate.id}.team/myTestAgent/myTestFile01`;
 
             // write the file
             await smythFS.write(uri, 'Hello World!', candidate);

@@ -2,7 +2,7 @@ import fs from 'fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
-import { SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -74,7 +74,7 @@ function runTestCases(endpoint: string) {
             }
             expect(error).toBeUndefined();
         },
-        TIMEOUT * 20 // 10 mins
+        TIMEOUT * 20, // 10 mins
     );
 }
 

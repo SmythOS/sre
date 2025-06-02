@@ -1,15 +1,10 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
-import HuggingFace from '@sre/Components/HuggingFace.class';
-import LLMAssistant from '@sre/Components/LLMAssistant.class';
-import { config, SmythRuntime } from '@sre/index';
+import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { delay } from '@sre/utils/date-time.utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import fs from 'fs';
-import util from 'util';
-import path from 'path';
-import Classifier from '@sre/Components/Classifier.class';
-import ImageGenerator from '@sre/Components/ImageGenerator.class';
+import { ImageGenerator } from '@sre/Components/ImageGenerator.class';
 import { GenerateImageConfig } from '@sre/types/LLM.types';
+import config from '@sre/config';
 
 const sre = SmythRuntime.Instance.init({
     CLI: {
