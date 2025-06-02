@@ -95,7 +95,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         teamId: 'default',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
     }));
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 describe('ZapierAction Component', () => {

@@ -1,6 +1,6 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { ForkedAgent } from '@sre/AgentManager/ForkedAgent.class';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import Joi from 'joi';
 import { delay } from '../utils';
 

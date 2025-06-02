@@ -36,7 +36,7 @@ export abstract class VectorDBConnector extends SecureConnector {
     public abstract id: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
 
-    public user(candidate: AccessCandidate): IVectorDBRequest {
+    public requester(candidate: AccessCandidate): IVectorDBRequest {
         return {
             search: async (namespace: string, query: string | number[], options: QueryOptions) => {
                 return await this.search(candidate.readRequest, namespace, query, options);
@@ -77,7 +77,7 @@ export abstract class VectorDBConnector extends SecureConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions
+        options: QueryOptions,
     ): Promise<VectorsResultData>;
 
     protected abstract insert(acRequest: AccessRequest, namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
@@ -87,7 +87,7 @@ export abstract class VectorDBConnector extends SecureConnector {
     protected abstract createDatasource(
         acRequest: AccessRequest,
         namespace: string,
-        datasource: DatasourceDto
+        datasource: DatasourceDto,
     ): Promise<{ id: string; vectorIds: string[] }>;
 
     protected abstract deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void>;
@@ -100,7 +100,7 @@ export abstract class VectorDBConnector extends SecureConnector {
         acRequest: AccessRequest,
         namespace: string,
 
-        metadata?: { [key: string]: any }
+        metadata?: { [key: string]: any },
     ): Promise<void>;
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void>;

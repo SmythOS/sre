@@ -64,7 +64,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
         id: 'agent-123456',
         agentRuntime: { debug: true }, // used inside createComponentLogger()
     }));
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 const TIMEOUT = 30000;

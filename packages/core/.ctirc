@@ -1,34 +1,34 @@
 {
-  "spinnerStream": "stdout",
-  "progressStream": "stdout",
-  "reasonerStream": "stderr",
-  "options": [
-    {
-      "mode": "bundle",
-      "project": "tsconfig.json",
-      "exportFilename": "index.ts",
-      "useSemicolon": true,
-      "useBanner": false,
-      "useTimestamp": false,
-      "quote": "'",
-      "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nimport 'source-map-support/register.js';\nexport { version } from '../package.json';",
-      "fileExt": "none",
-      "overwrite": false,
-      "backup": true,
-      "generationStyle": "auto",
-      "include": [
-        "src/**/*.ts"
-      ],
-      "exclude": [
-        "node_modules",
-        "tests/**/*",
-        "src/utils/**/*",
-        "src/Components/**/*",
-        "**/*.deprecated"
-      ],
-      "output": "./src",
-      "removeBackup": false,
-      "forceYes": false
-    }
-  ]
+    "spinnerStream": "stdout",
+    "progressStream": "stdout",
+    "reasonerStream": "stderr",
+    "options": [
+        {
+            "mode": "bundle",
+            "project": "tsconfig.json",
+            "exportFilename": "index.ts",
+            "useSemicolon": true,
+            "useBanner": false,
+            "useTimestamp": false,
+            "quote": "'",
+            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nimport 'source-map-support/register.js';\nexport { version } from '../package.json';",
+            "fileExt": "none",
+            "overwrite": false,
+            "backup": true,
+            "generationStyle": "auto",
+            "include": [
+                "src/**/*.ts"
+            ],
+            "exclude": [
+                "node_modules",
+                "tests/**/*",
+                "src/utils/**/*",
+                "src/Components/**/*",
+                "**/*.deprecated"
+            ],
+            "output": "./src",
+            "removeBackup": false,
+            "forceYes": false
+        }
+    ]
 }

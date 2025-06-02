@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Agent } from './Agent.class';
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import componentInstance from '@sre/Components/index';
 
 import { Logger } from '@sre/helpers/Log.helper';

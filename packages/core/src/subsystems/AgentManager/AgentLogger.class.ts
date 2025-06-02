@@ -54,6 +54,10 @@ class LogTransaction {
     }
 
     public push(logData: AgentCallLog) {
+        const logConnector = ConnectorService.getLogConnector();
+
+        if (!logConnector.valid) return;
+
         this.queue.push(logData);
         this._lastPush = Date.now();
         this.processQueue();
@@ -156,6 +160,9 @@ class LogTransaction {
     }
 
     private async storeLogData(filePath: string, content: any) {
+        const logConnector = ConnectorService.getLogConnector();
+        if (!logConnector.valid) return;
+
         if (!filePath) return;
         try {
             const body = typeof content == 'string' ? content : JSON.stringify(content);
@@ -171,7 +178,7 @@ class LogTransaction {
 
     public async processQueue() {
         const logConnector = ConnectorService.getLogConnector();
-        if (this.queue.length <= 0 || this._isProcessing) return;
+        if (!logConnector.valid || this.queue.length <= 0 || this._isProcessing) return;
         this._isProcessing = true;
 
         try {
@@ -252,6 +259,8 @@ export class AgentLogger {
     private static transactions: any = {};
     constructor(private agent: Agent) {}
     public static async cleanup() {
+        const logConnector = ConnectorService.getLogConnector();
+        if (!logConnector.valid) return;
         const trIds = Object.keys(AgentLogger.transactions);
         for (const trId of trIds) {
             const transaction = AgentLogger.transactions[trId];
@@ -261,6 +270,8 @@ export class AgentLogger {
         }
     }
     public static log(agent, trId, logData: AgentCallLog) {
+        const logConnector = ConnectorService.getLogConnector();
+        if (!logConnector.valid) return;
         if (agent.agentRuntime.debug) logData.tags = 'DEBUG ';
         if (!trId) trId = 'log-' + uid();
         if (!this.transactions[trId]) {
@@ -283,6 +294,7 @@ export class AgentLogger {
         //     });
         // }
         const logConnector = ConnectorService.getLogConnector();
+        if (!logConnector.valid) return;
 
         if (!agent.usingTestDomain) {
             // only report if on a non test domain

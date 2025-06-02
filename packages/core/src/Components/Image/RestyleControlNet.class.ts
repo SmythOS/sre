@@ -1,7 +1,7 @@
 import { IControlNetPreprocess, IRemoveImageBackground, IRequestImage, Runware } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
 import { SystemEvents } from '@sre/Core/SystemEvents';

@@ -11,7 +11,7 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             agentRuntime: { value: { debug: true } }, // used inside createComponentLogger()
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
 
 describe('LogicOR: process function', () => {

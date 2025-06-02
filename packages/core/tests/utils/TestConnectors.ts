@@ -5,7 +5,7 @@ import { AccountConnector, ISmythAccountRequest } from '@sre/Security/Account.se
 import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 
 export class TestAccountConnector extends AccountConnector {
-    public user(candidate: AccessCandidate): ISmythAccountRequest {
+    public requester(candidate: AccessCandidate): ISmythAccountRequest {
         throw new Error('Method not implemented.');
     }
     public getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {

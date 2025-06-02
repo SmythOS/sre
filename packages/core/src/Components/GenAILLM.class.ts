@@ -3,11 +3,9 @@ import Joi from 'joi';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
-import { CustomLLMRegistry } from '@sre/LLMManager/CustomLLMRegistry.class';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { getMimeType } from '@sre/utils/data.utils';
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
@@ -51,7 +49,7 @@ export class GenAILLM extends Component {
             const maxTokens: number = parseInt(config.data.maxTokens) || 1024;
             const maxContextWindowLength: number = parseInt(config.data.maxContextWindowLength) || 1024;
             const model: string = config.data.model || 'echo';
-            const llmInference: LLMInference = await LLMInference.getInstance(model, teamId);
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
             // if the llm is undefined, then it means we removed the model from our system
             if (!llmInference.connector) {
@@ -61,24 +59,25 @@ export class GenAILLM extends Component {
                 };
             }
 
-            const isStandardLLM = LLMRegistry.isStandardLLM(model);
-            const team = AccessCandidate.team(teamId);
-            const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
+            //const team = AccessCandidate.team(teamId);
+            //const llmRegistry = isStandardLLM ? LLMRegistry : await CustomLLMRegistry.getInstance(team);
+            const modelId = await agent.modelsProvider.getModelId(model);
 
-            logger.debug(` Model : ${llmRegistry.getModelId(model)}`);
+            logger.debug(` Model : ${modelId || model}`);
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
             let fileSources: any[] = parseFiles(input, config);
             let isMultimodalRequest = false;
-            const provider = llmRegistry.getProvider(model);
+            const provider = await agent.modelsProvider.getProvider(model);
             const isEcho = provider === 'Echo';
 
             // Ignore files for Echo model
             if (fileSources?.length > 0 && !isEcho) {
                 // TODO: simplify the valid files checking logic
                 const supportedFileTypes = SUPPORTED_MIME_TYPES_MAP?.[provider] || {};
-                const features = llmRegistry.getModelFeatures(model);
+                const modelInfo = await agent.modelsProvider.getModelInfo(model);
+                const features = modelInfo?.features || [];
                 const fileTypes = new Set(); // Set to avoid duplicates
 
                 const validFiles = await Promise.all(
@@ -275,12 +274,6 @@ export class GenAILLM extends Component {
         } catch (error) {
             return { _error: error.message, _debug: logger.output };
         }
-    }
-
-    public async streamPrompt(prompt: string, config: any, agent: Agent) {
-        const model: string = config.data.model || 'echo';
-        const llmInference: LLMInference = await LLMInference.getInstance(model, agent?.teamId);
-        return llmInference.streamRequest(prompt, agent);
     }
 }
 

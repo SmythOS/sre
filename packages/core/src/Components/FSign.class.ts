@@ -1,4 +1,4 @@
-import Component from './Component.class';
+import { Component } from './Component.class';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import crypto from 'crypto';

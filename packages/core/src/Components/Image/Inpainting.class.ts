@@ -1,11 +1,9 @@
 import { IRemoveImageBackground, IRequestImage, Runware, TImageMasking } from '@runware/sdk-js';
 
 import { Agent } from '@sre/AgentManager/Agent.class';
-import Component from '@sre/Components/Component.class';
+import { Component } from '@sre/Components/Component.class';
 import Joi from 'joi';
 import { APIKeySource } from '@sre/types/LLM.types';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { LLMRegistry } from '@sre/LLMManager/LLMRegistry.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { normalizeImageInput } from '@sre/utils/data.utils';
 import { ImageSettingsConfig } from './imageSettings.config';
@@ -42,13 +40,13 @@ export class Inpainting extends Component {
 
         logger.debug(`Model: ${model}`);
 
-        const provider = LLMRegistry.getProvider(model)?.toLowerCase();
+        const provider = (await agent.modelsProvider.getProvider(model))?.toLowerCase();
 
         let inputImage = Array.isArray(input?.InputImage) ? input?.InputImage[0] : input?.InputImage;
         inputImage = await normalizeImageInput(inputImage);
 
         const imageRequestArgs: TImageMasking = {
-            model: LLMRegistry.getModelId(model),
+            model: await agent.modelsProvider.getModelId(model),
             inputImage,
             outputFormat: config?.data?.outputFormat || 'PNG',
             outputQuality: +config?.data?.outputQuality || 95,

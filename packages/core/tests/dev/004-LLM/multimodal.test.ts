@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import config from '@sre/config';
-import { SmythRuntime } from '@sre/index';
+import { AccessCandidate, SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 
@@ -12,8 +12,24 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             id: { value: 'cm0zjhkzx0dfvhxf81u76taiz' },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
+
+const models = {
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -36,6 +52,13 @@ const sre = SmythRuntime.Instance.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './tests/data/vault.json',
+        },
+    },
+
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models,
         },
     },
     Account: {
@@ -65,7 +88,7 @@ async function runMultimodalTestCases(model: string) {
             maxTokens: 200,
         },
     };
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     const imageUrl1 = 'https://images.unsplash.com/photo-1721332155637-8b339526cf4c?q=10&w=300';
     const imageUrl2 = 'https://plus.unsplash.com/premium_photo-1732410903106-3379bbe6e9db?q=10&w=300';
@@ -188,10 +211,10 @@ async function runMultimodalTestCases(model: string) {
     );
 }
 
-const models = [{ provider: 'GoogleAI', id: 'gemini-1.5-flash' }];
+//const models = [{ provider: 'GoogleAI', id: 'gemini-1.5-flash' }];
 
-for (const model of models) {
-    describe(`LLM Multimodal Tests: ${model.provider} (${model.id})`, async () => {
-        await runMultimodalTestCases(model.id);
+for (const model of Object.keys(models)) {
+    describe(`LLM Multimodal Tests: ${model}`, async () => {
+        await runMultimodalTestCases(model);
     });
 }

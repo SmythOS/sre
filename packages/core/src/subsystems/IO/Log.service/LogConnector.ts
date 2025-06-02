@@ -14,7 +14,7 @@ export abstract class LogConnector extends SecureConnector {
     public abstract id: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
 
-    public user(candidate: AccessCandidate): ILogRequest {
+    public requester(candidate: AccessCandidate): ILogRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use Log connector');
 
         return {

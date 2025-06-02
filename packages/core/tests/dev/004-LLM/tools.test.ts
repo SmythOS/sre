@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SmythRuntime } from '@sre/index';
+import { AccessCandidate, SmythRuntime } from '@sre/index';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import EventEmitter from 'events';
@@ -19,8 +19,97 @@ vi.mock('@sre/AgentManager/Agent.class', () => {
             id: { value: 1 },
         });
     });
-    return { default: MockedAgent };
+    return { Agent: MockedAgent };
 });
+
+/*
+ * Google AI and Groq do not return multiple tool data in a single response.
+ * Therefore, the expectation "(result.data.toolsData.length).toBe(2)" does not apply to them.
+ * They may provide additional tool data in subsequent requests.
+ * Tests for the sequence of tool responses are available in conversation.test.ts.
+ */
+// const modelsWithMultipleToolsResponse = [
+//     { provider: 'OpenAI', id: 'gpt-4o-mini' },
+//     { provider: 'Anthropic', id: 'claude-3-5-haiku-latest' },
+//     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
+//     /* { provider: 'xAI', id: 'grok-beta' }, */ // xAI is not able to handle multiple tools use properly
+// ];
+
+const modelsWithMultipleToolsResponse = {
+    'gpt-4o-mini': {
+        provider: 'OpenAI',
+
+        llm: 'OpenAI',
+        modelId: 'gpt-4o-mini',
+        tokens: 128_000,
+        completionTokens: 16_383,
+        enabled: true,
+        credentials: 'internal',
+    },
+    'claude-3-haiku': {
+        provider: 'Anthropic',
+
+        llm: 'Anthropic',
+
+        label: 'Claude 3 Haiku',
+        modelId: 'claude-3-5-haiku-latest',
+
+        tokens: 200_000,
+        completionTokens: 4096,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
+
+// const models = [
+//     { provider: 'OpenAI', id: 'gpt-4o-mini' },
+//     { provider: 'Anthropic', id: 'claude-3-5-haiku-latest' },
+//     { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
+//     { provider: 'Groq', id: 'gemma2-9b-it' },
+//     { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
+//     { provider: 'xAI', id: 'grok-beta' },
+// ];
+
+const models = {
+    'gpt-4o-mini': {
+        provider: 'OpenAI',
+
+        llm: 'OpenAI',
+        modelId: 'gpt-4o-mini-2024-07-18',
+        tokens: 128_000,
+        completionTokens: 16_383,
+        enabled: true,
+        credentials: 'internal',
+    },
+    'claude-3-haiku': {
+        provider: 'Anthropic',
+
+        llm: 'Anthropic',
+
+        label: 'Claude 3 Haiku',
+        modelId: 'claude-3-haiku-20240307',
+
+        tokens: 200_000,
+        completionTokens: 4096,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+    'gemini-1.5-flash': {
+        provider: 'GoogleAI',
+
+        llm: 'GoogleAI',
+
+        modelId: 'gemini-1.5-flash-latest',
+
+        tokens: 1_048_576,
+        completionTokens: 8192,
+        enabled: true,
+
+        credentials: 'internal',
+    },
+};
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -45,6 +134,12 @@ const sre = SmythRuntime.Instance.init({
             file: './tests/data/vault.json',
         },
     },
+    ModelsProvider: {
+        Connector: 'SmythModelsProvider',
+        Settings: {
+            models: { ...modelsWithMultipleToolsResponse, ...models },
+        },
+    },
     Account: {
         Connector: 'DummyAccount',
         Settings: {
@@ -64,7 +159,7 @@ let agent = new Agent();
 const TIMEOUT = 30000;
 
 async function runToolTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         'should execute a simple tool request',
@@ -169,7 +264,7 @@ async function runToolTestCases(model: string) {
 }
 
 async function runStreamRequestTestCases(model: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
 
     it(
         'should stream a simple request',
@@ -271,7 +366,7 @@ async function runStreamRequestTestCases(model: string) {
 }
 
 async function runMultipleToolRequestTestCases(model: string, provider?: string) {
-    const llmInference: LLMInference = await LLMInference.getInstance(model);
+    const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
     let toolDefinitions;
     let toolsConfig;
     let params;
@@ -361,39 +456,18 @@ async function runMultipleToolRequestTestCases(model: string, provider?: string)
     );
 }
 
-const models = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'Anthropic', id: 'claude-3-5-haiku-latest' },
-    { provider: 'GoogleAI', id: 'gemini-1.5-flash' },
-    { provider: 'Groq', id: 'gemma2-9b-it' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
-    { provider: 'xAI', id: 'grok-beta' },
-];
-
-for (const model of models) {
-    describe(`Tool Request Tests: ${model.provider} (${model.id})`, async () => {
-        await runToolTestCases(model.id);
+for (const model of Object.keys(models)) {
+    describe(`Tool Request Tests: ${models[model].provider} (${model})`, async () => {
+        await runToolTestCases(model);
     });
 
-    describe(`Stream Request Tests: ${model.provider} (${model.id})`, async () => {
-        await runStreamRequestTestCases(model.id);
+    describe(`Stream Request Tests: ${models[model].provider} (${model})`, async () => {
+        await runStreamRequestTestCases(model);
     });
 }
 
-/*
- * Google AI and Groq do not return multiple tool data in a single response.
- * Therefore, the expectation "(result.data.toolsData.length).toBe(2)" does not apply to them.
- * They may provide additional tool data in subsequent requests.
- * Tests for the sequence of tool responses are available in conversation.test.ts.
- */
-const modelsWithMultipleToolsResponse = [
-    { provider: 'OpenAI', id: 'gpt-4o-mini' },
-    { provider: 'Anthropic', id: 'claude-3-5-haiku-latest' },
-    { provider: 'TogetherAI', id: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo' },
-    /* { provider: 'xAI', id: 'grok-beta' }, */ // xAI is not able to handle multiple tools use properly
-];
-for (const model of modelsWithMultipleToolsResponse) {
-    describe(`Multiple Tools Request Tests: ${model.provider} (${model.id})`, async () => {
-        await runMultipleToolRequestTestCases(model.id, model.provider);
+for (const model of Object.keys(modelsWithMultipleToolsResponse)) {
+    describe(`Multiple Tools Request Tests: ${model}`, async () => {
+        await runMultipleToolRequestTestCases(model, modelsWithMultipleToolsResponse[model].provider);
     });
 }

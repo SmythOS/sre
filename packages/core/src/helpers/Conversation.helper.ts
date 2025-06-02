@@ -119,7 +119,7 @@ export class Conversation extends EventEmitter {
             toolsStrategy?: (toolsConfig) => any;
             agentId?: string;
             agentVersion?: string;
-        }
+        },
     ) {
         //TODO: handle loading previous session (messages)
         super();
@@ -233,7 +233,7 @@ export class Conversation extends EventEmitter {
             toolsConfig,
         });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
 
         if (!this._context) {
             console.error('Conversation context is not initialized!');
@@ -253,7 +253,7 @@ export class Conversation extends EventEmitter {
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                 },
-                this._agentId
+                this._agentId,
             )
             .catch((error: any) => {
                 throw new Error(
@@ -261,7 +261,7 @@ export class Conversation extends EventEmitter {
                         JSON.stringify({
                             code: error?.name || 'LLMRequestFailed',
                             message: error?.message || 'Something went wrong while calling LLM.',
-                        })
+                        }),
                 );
             });
 
@@ -405,7 +405,7 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -421,7 +421,7 @@ export class Conversation extends EventEmitter {
                     cache: this._settings?.experimentalCache,
                     abortSignal,
                 },
-                this._agentId
+                this._agentId,
             )
             .catch((error) => {
                 console.error('Error on streamRequest: ', error);
@@ -485,7 +485,7 @@ export class Conversation extends EventEmitter {
                         thinkingBlocks
                             .filter((block) => block.type === 'thinking')
                             .map((block) => block.thinking || '')
-                            .join('\n')
+                            .join('\n'),
                     );
 
                     llmMessage.thinkingBlocks = thinkingBlocks;
@@ -579,7 +579,7 @@ export class Conversation extends EventEmitter {
                         this.emit('afterToolCall', { tool, args }, functionResponse);
 
                         return { ...tool, result: functionResponse };
-                    }
+                    },
                 );
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
@@ -598,7 +598,7 @@ export class Conversation extends EventEmitter {
                     this._context.addUserMessage(
                         'Continue with the next tool call if there are any, or just inform the user that you are done',
                         message_id,
-                        { internal: true }
+                        { internal: true },
                     );
                     //toolHeaders['x-passthrough'] = 'true';
                 }
@@ -698,7 +698,7 @@ export class Conversation extends EventEmitter {
 
     private async useTool(
         params: ToolParams,
-        abortSignal?: AbortSignal
+        abortSignal?: AbortSignal,
     ): Promise<{
         data: any;
         error;
@@ -772,7 +772,7 @@ export class Conversation extends EventEmitter {
                         //the agent was loaded from a spec
                         agentProcess = AgentProcess.load(
                             reqConfig.headers['X-AGENT-ID'] || this._agentId,
-                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
+                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion,
                         );
                     }
                     //if it's a local agent, invoke it directly
@@ -879,7 +879,7 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, this._teamId);
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: [toolDefinition],
@@ -905,7 +905,7 @@ export class Conversation extends EventEmitter {
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 functionDeclarations.push(...this._customToolsDeclarations);
-                const llmInference: LLMInference = await LLMInference.getInstance(this._model, this._teamId);
+                const llmInference: LLMInference = await LLMInference.getInstance(this._model, AccessCandidate.team(this._teamId));
                 if (!llmInference.connector) {
                     this.emit('error', 'No connector found for model: ' + this._model);
                     return;
