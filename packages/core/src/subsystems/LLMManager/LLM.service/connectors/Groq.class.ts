@@ -1,15 +1,16 @@
 import Groq from 'groq-sdk';
 import EventEmitter from 'events';
 
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { IAgent } from '@sre/types/Agent.types';
 import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { TLLMParams, TLLMMessageBlock, ToolData, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
 const console = Logger('GroqConnector');
@@ -160,7 +161,7 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<any> {
         throw new Error('Image generation request is not supported for Groq.');
     }
 
@@ -319,11 +320,8 @@ export class GroqConnector extends LLMConnector {
         usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
     ) {
-        let modelName = metadata.modelEntryName;
-        // SmythOS models have a prefix, so we need to remove it to get the model name
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `llm:${modelName}`,

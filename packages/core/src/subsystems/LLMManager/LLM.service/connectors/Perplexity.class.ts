@@ -2,9 +2,10 @@ import EventEmitter from 'events';
 
 import axios from 'axios';
 
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { IAgent } from '@sre/types/Agent.types';
 import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import {
@@ -18,7 +19,7 @@ import {
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
@@ -134,7 +135,7 @@ export class PerplexityConnector extends LLMConnector {
         throw new Error('Tool request is not supported for Perplexity.');
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
         throw new Error('Image generation request is not supported for Perplexity.');
     }
 
@@ -250,11 +251,8 @@ export class PerplexityConnector extends LLMConnector {
     }
 
     protected reportUsage(usage: TUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
-        let modelName = metadata.modelEntryName;
-        // SmythOS models have a prefix, so we need to remove it to get the model name
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `llm:${modelName}`,

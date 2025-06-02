@@ -6,9 +6,10 @@ import fs from 'fs';
 import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
 
+import { Agent } from '@sre/AgentManager/Agent.class';
+import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { IAgent } from '@sre/types/Agent.types';
 import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { TOOL_USE_DEFAULT_MODEL, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -23,7 +24,7 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
-import { ImagesResponse, LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMChatResponse, LLMConnector } from '../LLMConnector';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('GoogleAIConnector');
@@ -467,7 +468,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<ImagesResponse> {
+    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
         throw new Error('Image generation request is not supported for GoogleAI.');
     }
 
@@ -1021,11 +1022,8 @@ export class GoogleAIConnector extends LLMConnector {
 
         // #endregion
 
-        let modelName = metadata.modelEntryName;
-        // SmythOS models have a prefix, so we need to remove it to get the model name
-        if (metadata.modelEntryName.startsWith('smythos/')) {
-            modelName = metadata.modelEntryName.split('/').pop();
-        }
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
         const usageData = {
             sourceId: `llm:${modelName}`,

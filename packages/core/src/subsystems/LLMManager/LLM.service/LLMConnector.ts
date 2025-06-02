@@ -1,3 +1,4 @@
+import { type OpenAI } from 'openai';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -11,7 +12,6 @@ import {
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     ToolData,
-    TLLMProvider,
     APIKeySource,
     TLLMModel,
     TLLMCredentials,
@@ -45,14 +45,6 @@ export type LLMChatResponse = {
     finishReason: string;
     thinkingContent?: string;
     usage?: any;
-};
-
-export type ImagesResponse = {
-    created: number;
-    data?: Array<{
-        b64_json?: string;
-        url?: string;
-    }>;
 };
 
 const SMYTHOS_API_KEYS = {
@@ -124,7 +116,7 @@ export abstract class LLMConnector extends Connector {
     ): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<ImagesResponse>;
+    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<OpenAI.ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
     protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<any> {
@@ -331,10 +323,6 @@ export abstract class LLMConnector extends Connector {
                 _params.maxTokens,
                 _params?.credentials?.isUserKey as boolean,
             );
-        }
-
-        if (_params.maxThinkingTokens) {
-            _params.maxThinkingTokens = await modelProviderCandidate.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
         }
 
         _params.model = await modelProviderCandidate.getModelId(model);
