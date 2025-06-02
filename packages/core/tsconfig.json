@@ -36,6 +36,9 @@
             "@sre/IO/*": ["subsystems/IO/*"],
             "@sre/IO": ["subsystems/IO/index"],
 
+            "@sre/ComputeManager/*": ["subsystems/ComputeManager/*"],
+            "@sre/ComputeManager": ["subsystems/ComputeManager/index"],
+
             "@sre/AgentManager/*": ["subsystems/AgentManager/*"],
             "@sre/AgentManager": ["subsystems/AgentManager/index"],
 
