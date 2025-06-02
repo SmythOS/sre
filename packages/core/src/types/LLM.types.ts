@@ -146,6 +146,33 @@ export type TLLMModel = {
     credentials?: TLLMCredentials;
 };
 
+// #region [ Handle extendable LLM Providers ] ================================================
+export const BuiltinLLMProviders = {
+    Echo: 'Echo',
+    OpenAI: 'OpenAI',
+    DeepSeek: 'DeepSeek',
+    GoogleAI: 'GoogleAI',
+    Anthropic: 'Anthropic',
+    Groq: 'Groq',
+    TogetherAI: 'TogetherAI',
+    Bedrock: 'Bedrock',
+    VertexAI: 'VertexAI',
+    xAI: 'xAI',
+    Perplexity: 'Perplexity',
+} as const;
+// Base provider type
+export type TBuiltinLLMProvider = (typeof BuiltinLLMProviders)[keyof typeof BuiltinLLMProviders];
+
+// Extensible interface for custom providers
+export interface ILLMProviders {}
+// Combined provider type that can be extended
+export type TLLMProvider = TBuiltinLLMProvider | keyof ILLMProviders;
+
+// For backward compatibility, export the built-in providers as enum-like object
+export const TLLMProvider = BuiltinLLMProviders;
+
+// #endregion
+
 export type TBedrockSettings = {
     keyIDName: string;
     secretKeyName: string;
@@ -242,16 +269,6 @@ export type TLLMInputMessage = {
     parts?: { text: string }[]; // * 'part' is for Google Vertex AI
 };
 
-export enum TLLMProvider {
-    OpenAI = 'OpenAI',
-    Anthropic = 'Anthropic',
-    GoogleAI = 'GoogleAI',
-    Groq = 'Groq',
-    TogetherAI = 'TogetherAI',
-    Bedrock = 'Bedrock',
-    VertexAI = 'VertexAI',
-}
-
 export interface ILLMContextStore {
     save(messages: any[]): Promise<void>;
     load(count?: number): Promise<any[]>;
@@ -285,10 +302,6 @@ export interface SmythTaskUsage {
 
 export type TLLMModelsList = {
     [key: string]: TLLMModel | TCustomLLMModel;
-};
-
-export type SmythModelsProviderConfig = {
-    models: (models: TLLMModelsList) => Promise<TLLMModelsList> | TLLMModelsList;
 };
 
 export enum TLLMEvent {

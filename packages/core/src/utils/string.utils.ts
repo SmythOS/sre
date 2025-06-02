@@ -19,7 +19,7 @@ export async function asyncReplace(str, regex, asyncFn) {
         matches.map(async (match) => {
             // Call the async function with all match groups
             return asyncFn(...match);
-        })
+        }),
     );
 
     // Reassemble the string with replacements
@@ -99,4 +99,125 @@ export const kebabToCapitalize = (input) => {
         .split('-')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+};
+
+/**
+ * This function reads a string and tries to identify the mimetype (e.g. text/plain, application/json, application/xml ...)
+ * @param input
+ */
+export const identifyMimetypeFromString = (input: string) => {
+    // Return null if input is not a string
+    if (typeof input !== 'string') {
+        return '';
+    }
+
+    // Return null for empty strings
+    if (!input.trim()) {
+        return '';
+    }
+
+    const trimmedInput = input.trim();
+
+    // Check for JSON
+    if ((trimmedInput.startsWith('{') && trimmedInput.endsWith('}')) || (trimmedInput.startsWith('[') && trimmedInput.endsWith(']'))) {
+        try {
+            JSON.parse(trimmedInput);
+            return 'application/json';
+        } catch {
+            // Not valid JSON, continue checking
+        }
+    }
+
+    // Check for XML
+    if (trimmedInput.startsWith('<') && trimmedInput.endsWith('>')) {
+        // More specific XML patterns
+        if (trimmedInput.match(/^<\?xml\s/i) || trimmedInput.match(/^<[a-zA-Z][^>]*>.*<\/[a-zA-Z][^>]*>$/s)) {
+            return 'application/xml';
+        }
+
+        // Check for HTML
+        if (
+            trimmedInput.match(/^<!DOCTYPE\s+html/i) ||
+            trimmedInput.match(/<html[^>]*>/i) ||
+            trimmedInput.match(/<head[^>]*>/i) ||
+            trimmedInput.match(/<body[^>]*>/i) ||
+            trimmedInput.match(/<div[^>]*>/i) ||
+            trimmedInput.match(/<p[^>]*>/i)
+        ) {
+            return 'text/html';
+        }
+
+        // Check for SVG
+        if (trimmedInput.match(/<svg[^>]*>/i)) {
+            return 'image/svg+xml';
+        }
+
+        // Generic XML if it has XML structure
+        return 'application/xml';
+    }
+
+    // Check for CSS
+    if (trimmedInput.match(/^[^{]*\{[^}]*\}/s) || trimmedInput.match(/@(import|media|charset|keyframes|font-face)/i)) {
+        return 'text/css';
+    }
+
+    // Check for JavaScript
+    if (
+        trimmedInput.match(/^(function\s+\w+|var\s+\w+|let\s+\w+|const\s+\w+|class\s+\w+)/i) ||
+        trimmedInput.match(/(console\.log|document\.|window\.|require\(|import\s+)/i) ||
+        trimmedInput.match(/=>\s*{|function\s*\(/)
+    ) {
+        return 'application/javascript';
+    }
+
+    // Check for YAML
+    if (trimmedInput.match(/^---\s*$/m) || trimmedInput.match(/^[a-zA-Z_][a-zA-Z0-9_]*:\s*[^\n]+$/m) || trimmedInput.match(/^\s*-\s+[^\n]+$/m)) {
+        return 'application/yaml';
+    }
+
+    // Check for CSV
+    const lines = trimmedInput.split('\n');
+    if (lines.length > 1) {
+        const firstLine = lines[0];
+        const hasCommas = firstLine.includes(',');
+        const hasSemicolons = firstLine.includes(';');
+        const hasTabs = firstLine.includes('\t');
+
+        if (hasCommas || hasSemicolons || hasTabs) {
+            // Check if multiple lines have similar delimiter patterns
+            const delimiter = hasCommas ? ',' : hasSemicolons ? ';' : '\t';
+            const firstLineFields = firstLine.split(delimiter).length;
+
+            let csvLikeLines = 0;
+            for (let i = 0; i < Math.min(lines.length, 5); i++) {
+                const fieldsCount = lines[i].split(delimiter).length;
+                if (fieldsCount === firstLineFields && fieldsCount > 1) {
+                    csvLikeLines++;
+                }
+            }
+
+            if (csvLikeLines >= Math.min(lines.length, 3)) {
+                return 'text/csv';
+            }
+        }
+    }
+
+    // Check for Markdown
+    if (
+        trimmedInput.match(/^#+\s+/m) ||
+        trimmedInput.match(/^\*\s+/m) ||
+        trimmedInput.match(/^-\s+/m) ||
+        trimmedInput.match(/\*\*[^*]+\*\*/g) ||
+        trimmedInput.match(/\[[^\]]+\]\([^)]+\)/g)
+    ) {
+        return 'text/markdown';
+    }
+
+    // Check for SQL
+    if (trimmedInput.match(/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|GRANT|REVOKE)\s+/i)) {
+        return 'application/sql';
+    }
+
+    // Default to plain text
+    return 'text/plain';
 };

@@ -18,7 +18,6 @@ export async function getM2MToken(configs: {
         };
         axios({
             method: 'post',
-            // url: `${config.env.LOGTO_SERVER}/oidc/token`,
             url: configs.baseUrl,
             headers: {
                 Authorization: 'Basic ' + base64Credentials,

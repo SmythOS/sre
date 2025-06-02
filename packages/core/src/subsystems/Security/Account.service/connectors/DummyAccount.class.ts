@@ -3,10 +3,13 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
+import { DEFAULT_TEAM_ID, IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { AccountConnector } from '../AccountConnector';
 import { KeyValueObject } from '@sre/types/Common.types';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const console = Logger('DummyAccount');
 
 export class DummyAccount extends AccountConnector {
     public name = 'DummyAccount';
@@ -18,7 +21,7 @@ export class DummyAccount extends AccountConnector {
             return Promise.resolve(candidate.id);
         }
 
-        return Promise.resolve('default');
+        return Promise.resolve(DEFAULT_TEAM_ID);
     }
 
     public getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {

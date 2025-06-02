@@ -5,6 +5,10 @@ import { Agent } from '../Agent.class';
 export class ComponentWrapper {
     private _id: string;
 
+    public get internalData() {
+        return this._internalData;
+    }
+
     public get id() {
         return this._id;
     }
@@ -22,6 +26,7 @@ export class ComponentWrapper {
             displayName: this._name,
             title: this._name,
             id: this._id,
+            process: typeof this._internalData.process === 'function',
             left: '0px',
             top: '0px',
             inputs: Object.keys(this._inputs).map((key) => ({
@@ -40,20 +45,20 @@ export class ComponentWrapper {
         return data;
     }
     private get _name() {
-        return this.dataObject.name;
+        return this._internalData.name;
     }
     private get _settings() {
-        return this.dataObject.settings;
+        return this._internalData.settings;
     }
     private get _inputs() {
-        return this.dataObject.inputs;
+        return this._internalData.inputs;
     }
     private get _outputs() {
-        return this.dataObject.outputs;
+        return this._internalData.outputs;
     }
 
     constructor(
-        private dataObject: any,
+        private _internalData: any,
         private _agentMaker?: Agent,
     ) {
         this._id = 'C' + uid();

@@ -9,6 +9,7 @@ import { delay } from '@sre/utils/index';
 import { APIKeySource, SmythLLMUsage, TLLMParams } from '@sre/types/LLM.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import path from 'path';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 
 // Mock Agent class to keep the test isolated from the actual Agent implementation
 vi.mock('@sre/AgentManager/Agent.class', () => {

@@ -6,13 +6,53 @@ import { SystemEvents } from './SystemEvents';
 import { Logger } from '../helpers/Log.helper';
 
 const logger = Logger('SRE');
-const CInstance = ConnectorService;
 
 export class SmythRuntime {
     public started = false;
 
     private _readyPromise: Promise<boolean>;
     private _readyResolve: (value: boolean) => void;
+
+    private defaultConfig: SREConfig = {
+        Vault: {
+            Connector: 'NullVault',
+        },
+        Account: {
+            Connector: 'DummyAccount',
+        },
+        Cache: {
+            Connector: 'RAM',
+        },
+        Storage: {
+            Connector: 'LocalStorage',
+        },
+
+        //NKV should be loaded before VectorDB
+        NKV: {
+            Connector: 'RAM',
+        },
+        VectorDB: {
+            Connector: 'RAM',
+        },
+        ModelsProvider: {
+            Connector: 'SmythModelsProvider',
+        },
+        AgentData: {
+            Connector: 'NullAgentData',
+        },
+        Component: {
+            Connector: 'LocalComponent',
+        },
+        ManagedVault: {
+            Connector: 'NullManagedVault',
+        },
+        Log: {
+            Connector: 'ConsoleLog',
+        },
+        Router: {
+            Connector: 'NullRouter',
+        },
+    };
 
     protected constructor() {
         this.started = true;
@@ -45,7 +85,13 @@ export class SmythRuntime {
 
         for (let connectorType in config) {
             for (let configEntry of config[connectorType]) {
-                CInstance.init(connectorType as TConnectorService, configEntry.Connector, configEntry.Id, configEntry.Settings, configEntry.Default);
+                ConnectorService.init(
+                    connectorType as TConnectorService,
+                    configEntry.Connector,
+                    configEntry.Id,
+                    configEntry.Settings,
+                    configEntry.Default,
+                );
             }
         }
 
@@ -63,37 +109,32 @@ export class SmythRuntime {
      */
     private autoConf(config: SREConfig) {
         // default config for missing connectors
-        const defaultConfig = {
-            ModelsProvider: {
-                Connector: 'SmythModelsProvider',
-            },
-            Component: {
-                Connector: 'LocalComponent',
-            },
-        };
+        const defaultConfig = JSON.parse(JSON.stringify(this.defaultConfig));
 
-        for (let connectorType in defaultConfig) {
-            if (!config[connectorType]) {
-                config[connectorType] = defaultConfig[connectorType];
-            }
-        }
+        // for (let connectorType in defaultConfig) {
+        //     if (!config[connectorType]) {
+        //         config[connectorType] = defaultConfig[connectorType];
+        //     }
+        // }
 
         const newConfig: SREConfig = {};
-        for (let connectorType in config) {
+        for (let connectorType in defaultConfig) {
             newConfig[connectorType] = [];
-            if (!Array.isArray(config[connectorType])) {
-                config[connectorType] = [config[connectorType]];
+
+            let entry = config[connectorType] || defaultConfig[connectorType];
+            if (!Array.isArray(entry)) {
+                entry = [entry];
             }
 
             let hasDefault = false;
-            for (let connector of config[connectorType]) {
+            for (let connector of entry) {
                 if (!connector.Connector) {
-                    console.warn(`Missing Connector Name in ${connectorType} entry ... it will be ignored`);
+                    logger.warn(`Missing Connector Name in ${connectorType} entry ... it will be ignored`);
                     continue;
                 }
                 if (connector.Default) {
                     if (hasDefault) {
-                        console.warn(`Entry ${connectorType} has more than one default Connector ... only the first one will be used`);
+                        logger.warn(`Entry ${connectorType} has more than one default Connector ... only the first one will be used`);
                     }
                     hasDefault = true;
                 }
@@ -114,7 +155,7 @@ export class SmythRuntime {
 
     public async _stop() {
         logger.info('Shutting Down SmythRuntime ...');
-        CInstance._stop();
+        ConnectorService._stop();
         SmythRuntime.instance = undefined;
         this.started = false;
     }

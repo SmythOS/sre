@@ -83,17 +83,6 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
         if (!description) description = agentData.data.description; //data.description is deprecated, we just use it as a fallback for now
 
         const _version = agentData.data.version || '1.0.0';
-        //replace all non printable characters with spaces
-        //description = description.replace(/[^\x20-\x7E]+/g, ' ');
-        //const version = '1.0.0';
-
-        // const server_url_scheme =
-        //     config.env.NODE_ENV === 'DEV' && config.env.AGENT_DOMAIN_PORT && domain.includes(config.env.AGENT_DOMAIN) ? 'http' : 'https';
-        // const server_url_port =
-        //     config.env.NODE_ENV === 'DEV' && config.env.AGENT_DOMAIN_PORT && domain.includes(config.env.AGENT_DOMAIN)
-        //         ? `:${config.env.AGENT_DOMAIN_PORT}`
-        //         : '';
-        // const server_url = `${server_url_scheme}://${domain}${server_url_port}`;
 
         const openAPITpl = TemplateString(openapiTemplate)
             .parse({
@@ -118,7 +107,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
                         summary: summary?.replace(/"/g, '\\"'),
                         operationId: component?.data?.endpoint,
                     })
-                    .clean().result
+                    .clean().result,
             ).tryParse();
 
             if (typeof openAPIEntry !== 'object') {

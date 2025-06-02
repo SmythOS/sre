@@ -9,8 +9,13 @@ const console = Logger('Connector');
 export class Connector {
     public name: string;
     public started = false;
+    private _interactionHandler: () => void;
     private _readyPromise: Promise<boolean>;
     private static lCache = new LocalCache();
+
+    public get interactionHandler() {
+        return this._interactionHandler;
+    }
 
     //this flag is used to check if the connector is valid
     //when a connector fails to load, it is replaced by a DummyConnector instance which returns false for this flag
@@ -22,6 +27,12 @@ export class Connector {
         //TODO : check if smyth runtime is initialized and throw an error if it is not
     }
 
+    /**
+     * If the connector is interactive, The connector initializer will wait for start() method to complete before loading the next connector
+     */
+    protected setInteraction(handler: () => void) {
+        this._interactionHandler = handler;
+    }
     /**
      * Creates a new instance of the current class using the provided settings.
      * This method can be called on both Connector instances and its subclasses.

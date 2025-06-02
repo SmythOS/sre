@@ -11,3 +11,5 @@ export type InputSettings = {
 export type ComponentInput = { source?: any; component?: ComponentWrapper } & InputSettings;
 
 export type LLMEvent = TLLMEvent;
+
+export { TLLMProvider } from '@sre/types/LLM.types';

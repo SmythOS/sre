@@ -1,8 +1,4 @@
 import EventEmitter from 'events';
-//import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import config from '@sre/config';
 import { delay, uid } from '@sre/utils';
 import { AgentRuntime } from '@sre/AgentManager/AgentRuntime.class';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -43,15 +39,12 @@ export class RuntimeContext extends EventEmitter {
     constructor(private runtime: AgentRuntime) {
         super();
         const agent = runtime.agent;
-        //const dbgFolder = path.join(<string>config.env.DATA_PATH || path.join(os.tmpdir(), '.smyth'), `/debug/${agent.id}/`);
+
         this._cacheConnector = ConnectorService.getCacheConnector();
-        // if (!fs.existsSync(dbgFolder)) {
-        //     fs.mkdirSync(dbgFolder, { recursive: true });
-        // }
 
         const processRootID = runtime.processID?.split(':')[0] || '';
         const reqId = processRootID == runtime.xDebugId ? '' : '.' + uid() + runtime.reqTag;
-        //this.ctxFile = path.join(dbgFolder, `${runtime.xDebugId}${reqId}${agent.jobID ? `-job-${agent.jobID}` : ''}.json`);
+
         this.ctxFile = `${runtime.xDebugId}${reqId}${agent.jobID ? `-job-${agent.jobID}` : ''}`;
 
         this._readyPromise = new Promise((resolve, reject) => {

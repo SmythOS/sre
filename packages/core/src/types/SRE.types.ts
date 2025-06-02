@@ -57,5 +57,5 @@ export type SREConnectorConfig = {
 };
 
 export type SREConfig = {
-    [key in TConnectorService]?: SREConnectorConfig[] | SREConnectorConfig;
+    [key in TConnectorService]?: SREConnectorConfig[] | SREConnectorConfig | {};
 };

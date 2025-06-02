@@ -16,6 +16,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
 import { hookAsyncWithContext } from '@sre/Core/HookService';
+import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -156,6 +157,7 @@ export class Conversation extends EventEmitter {
                         this._spec = spec;
 
                         if (!this._agentId && _settings?.agentId) this._agentId = _settings.agentId;
+                        if (!this._agentId) this._agentId = 'FAKE_AGENT_ID'; //We use a fake agent ID to avoid ACL check errors
 
                         // teamId is required to load custom LLMs, we must assign it before updateModel()
                         await this.assignTeamIdFromAgentId(this._agentId);
@@ -864,7 +866,7 @@ export class Conversation extends EventEmitter {
     public async addTool(tool: {
         name: string;
         description: string;
-        arguments: Record<string, any>;
+        arguments: Record<string, any> | string[];
         handler: (args: Record<string, any>) => Promise<any>;
     }) {
         const requiredFields = Object.values(tool.arguments)
@@ -875,6 +877,7 @@ export class Conversation extends EventEmitter {
         for (let entry in tool.arguments) {
             properties[entry] = {
                 type: tool.arguments[entry].type || 'string',
+                properties: tool.arguments[entry].properties,
                 description: tool.arguments[entry].description,
                 ...(tool.arguments[entry].type === 'array' ? { items: { type: tool.arguments[entry].items?.type || 'string' } } : {}),
             };

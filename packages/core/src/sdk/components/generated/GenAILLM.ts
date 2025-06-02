@@ -9,7 +9,7 @@ export interface TGenAILLMSettings {
     name?: string;
     model: string;
     /** Prompt */
-    prompt?: string;
+    prompt: string;
     /** Temperature */
     temperature?: number;
     /** Maximum Tokens */
@@ -42,7 +42,7 @@ export type TGenAILLMInputs = {
     /** An input that you can pass to the LLM */
     Input?: any;
     /** An attachment that you can pass to the LLM */
-    Attachment?: any;
+    Attachment?: ArrayBuffer | Uint8Array | string;
     [key: string]: any;
 };
 
