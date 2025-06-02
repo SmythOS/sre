@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import DataSourceIndexer from '@sre/Components/DataSourceIndexer.class';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import config from '@sre/config';
 import { Agent, AgentSettings, CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
@@ -110,7 +110,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent
+                agent,
             );
 
             // expect that the datasource file exists now
@@ -136,7 +136,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent
+                agent,
             );
 
             // expect that the datasource file does not exist now
@@ -157,6 +157,6 @@ describe('DataSourceCleaner Component', () => {
         },
         {
             timeout: 35_000,
-        }
+        },
     );
 });

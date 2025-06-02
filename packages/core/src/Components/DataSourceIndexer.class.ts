@@ -6,7 +6,7 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { isUrl, detectURLSourceType } from '../utils';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
 import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';

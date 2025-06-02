@@ -4,7 +4,7 @@ import { ConnectorService, SmythRuntime } from '@sre/index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { PineconeVectorDB } from '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 import { faker } from '@faker-js/faker';
-import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { IVectorDataSourceDto, SourceTypes } from '@sre/types/VectorDB.types';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { IAccessCandidate } from '@sre/types/ACL.types';
@@ -109,7 +109,7 @@ describe('Integration: Redis NKV', () => {
                     expect.objectContaining({ key: records[0].key, data: records[0].value }),
                     expect.objectContaining({ key: records[1].key, data: records[1].value }),
                     expect.objectContaining({ key: records[2].key, data: records[2].value }),
-                ])
+                ]),
             );
         });
 

@@ -1,23 +1,20 @@
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorDBConnector } from './VectorDBConnector';
+import { VectorDBConnector } from '../../subsystems/IO/VectorDB.service/VectorDBConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import crypto from 'crypto';
-import { IStorageVectorDataSource, IStorageVectorNamespace, IVectorDataSourceDto, QueryOptions, Source } from '@sre/types/VectorDB.types';
+import { IVectorDataSourceDto, Source } from '@sre/types/VectorDB.types';
 import { jsonrepair } from 'jsonrepair';
-import { NKVConnector } from '../NKV.service/NKVConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
-//import { PineconeVectorDB } from './connectors/PineconeVectorDB.class';
 import { isUrl } from '@sre/utils/data.utils';
-import { SmythManagedVectorDB } from './connectors/SmythManagedVectorDB.class';
+import { SmythManagedVectorDB } from '../../subsystems/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
+import { RecursiveTextSplitter } from './TextSplitter';
+import { OpenAIEmbeds } from './OpenAIEmbeds';
 
 type SupportedSources = 'text' | 'vector' | 'url';
 
 export class VectorsHelper {
     private _vectorDBconnector: VectorDBConnector;
-    private embeddingsProvider: OpenAIEmbeddings;
+    private embeddingsProvider: OpenAIEmbeds;
     private _vectorDimention: number;
     private _vaultConnector: VaultConnector;
     public cusStorageKeyName: string;
@@ -26,7 +23,7 @@ export class VectorsHelper {
     constructor(connectorName?: string, options: { openaiApiKey?: string } = {}) {
         this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
         this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.embeddingsProvider = new OpenAIEmbeddings({ apiKey: this.openaiApiKey });
+        this.embeddingsProvider = new OpenAIEmbeds({ apiKey: this.openaiApiKey });
         if (this._vectorDimention && !isNaN(this._vectorDimention)) {
             this.embeddingsProvider.dimensions = this._vectorDimention;
         }
@@ -59,7 +56,7 @@ export class VectorsHelper {
             chunkOverlap?: number;
         } = {},
     ): Promise<string[]> {
-        const textSplitter = new RecursiveCharacterTextSplitter({
+        const textSplitter = new RecursiveTextSplitter({
             chunkSize,
             chunkOverlap,
         });
@@ -73,11 +70,11 @@ export class VectorsHelper {
     }
 
     public async embedText(text: string) {
-        return this.embeddingsProvider.embedQuery(text);
+        return this.embeddingsProvider.embedText(text);
     }
 
     public async embedTexts(texts: string[]) {
-        return this.embeddingsProvider.embedDocuments(texts);
+        return this.embeddingsProvider.embedTexts(texts);
     }
 
     public static stringifyMetadata(metadata: any) {
