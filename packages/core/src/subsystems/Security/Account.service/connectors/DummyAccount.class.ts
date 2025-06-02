@@ -7,6 +7,9 @@ import { DEFAULT_TEAM_ID, IAccessCandidate, IACL, TAccessRole } from '@sre/types
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { AccountConnector } from '../AccountConnector';
 import { KeyValueObject } from '@sre/types/Common.types';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const console = Logger('DummyAccount');
 
 export class DummyAccount extends AccountConnector {
     public name = 'DummyAccount';

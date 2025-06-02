@@ -1,10 +1,7 @@
-//==[ SRE: S3Storage ]======================
+//==[ SRE: RAMVectorDB ]======================
 
-import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
-
-//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
+import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -14,12 +11,9 @@ import {
     IStorageVectorDataSource,
     IStorageVectorNamespace,
     IVectorDataSourceDto,
-    PineconeConfig,
     QueryOptions,
-    StorageVectorNamespaceMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
-import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { VectorsHelper } from '../Vectors.helper';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -29,36 +23,51 @@ import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import crypto from 'crypto';
 
-const console = Logger('Pinecone VectorDB');
+const console = Logger('RAM VectorDB');
 
-export class PineconeVectorDB extends VectorDBConnector {
-    public name = 'PineconeVectorDB';
-    public id = 'pinecone';
-    private client: Pinecone;
-    private indexName: string;
+interface RAMVectorConfig {
+    openaiApiKey?: string;
+    isCustomStorageInstance?: boolean;
+}
+
+interface StoredVector {
+    id: string;
+    values: number[];
+    metadata?: { [key: string]: any };
+    namespace: string;
+}
+
+interface SimilarityResult {
+    id: string;
+    values: number[];
+    metadata?: { [key: string]: any };
+    score: number;
+}
+
+export class RAMVectorDB extends VectorDBConnector {
+    public name = 'RAMVectorDB';
+    public id = 'ram';
+    private vectors: Map<string, StoredVector> = new Map();
+    private namespaceVectors: Map<string, Set<string>> = new Map();
     private redisCache: CacheConnector;
     private accountConnector: AccountConnector;
     private openaiApiKey: string;
     private nkvConnector: NKVConnector;
     private isCustomStorageInstance: boolean;
 
-    constructor(settings: PineconeConfig) {
+    constructor(config: RAMVectorConfig = {}) {
         super();
-        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        if (!settings.pineconeApiKey) throw new Error('Pinecone API key is required');
-        if (!settings.indexName) throw new Error('Pinecone index name is required');
+        console.info('RAM VectorDB initialized');
 
-        this.client = new Pinecone({
-            apiKey: settings.pineconeApiKey,
-        });
-        console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', settings.indexName);
-        this.indexName = settings.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.redisCache = ConnectorService.getCacheConnector('Redis');
         this.nkvConnector = ConnectorService.getNKVConnector();
-        this.openaiApiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.isCustomStorageInstance = settings.isCustomStorageInstance || false;
+        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+        this.isCustomStorageInstance = config.isCustomStorageInstance || false;
+
+        if (!this.openaiApiKey) {
+            console.warn('OpenAI API key not provided - text embedding will not work');
+        }
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -76,7 +85,6 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async createNamespace(acRequest: AccessRequest, namespace: string, metadata?: { [key: string]: any }): Promise<void> {
-        //* Pinecone does not need explicit namespace creation, instead, it creates the namespace when the first vector is inserted
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
@@ -91,10 +99,15 @@ export class PineconeVectorDB extends VectorDBConnector {
                 metadata: {
                     ...metadata,
                     isOnCustomStorage: this.isCustomStorageInstance,
-                    indexName: this.indexName,
+                    storageType: 'RAM',
                 },
             };
             await this.nkvConnector.user(candidate).set(`vectorDB:${this.id}:namespaces`, preparedNs, JSON.stringify(nsData));
+
+            // Initialize namespace in memory
+            if (!this.namespaceVectors.has(preparedNs)) {
+                this.namespaceVectors.set(preparedNs, new Set());
+            }
         }
 
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
@@ -133,21 +146,17 @@ export class PineconeVectorDB extends VectorDBConnector {
         const candidate = AccessCandidate.team(teamId);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        await this.client
-            .Index(this.indexName)
-            .namespace(VectorDBConnector.constructNsName(teamId, namespace))
-            .deleteAll()
-            .catch((e) => {
-                if (e?.name == 'PineconeNotFoundError') {
-                    console.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
-                    return;
-                }
-                throw e;
-            });
+        // Delete all vectors in this namespace from memory
+        const vectorIds = this.namespaceVectors.get(preparedNs);
+        if (vectorIds) {
+            for (const vectorId of vectorIds) {
+                this.vectors.delete(vectorId);
+            }
+            this.namespaceVectors.delete(preparedNs);
+        }
 
         await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
-
-        await this.nkvConnector.user(candidate).delete('vectorDB:pinecone:namespaces', preparedNs);
+        await this.nkvConnector.user(candidate).delete(`vectorDB:${this.id}:namespaces`, preparedNs);
     }
 
     @SecureConnector.AccessControl
@@ -158,9 +167,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         options: QueryOptions = {},
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        let ns = await this.nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .get(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
+        let ns = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, preparedNs);
 
         if (!ns) {
             throw new Error('Namespace does not exist');
@@ -173,27 +182,45 @@ export class PineconeVectorDB extends VectorDBConnector {
             throw new Error('Tried to access namespace that is not on custom storage.');
         }
 
-        const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
-        let _vector = query;
+        let queryVector: number[];
         if (typeof query === 'string') {
-            _vector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
+            if (!this.openaiApiKey) {
+                throw new Error('OpenAI API key is required for text queries');
+            }
+            queryVector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
+        } else {
+            queryVector = query;
         }
 
-        const results = await pineconeIndex.query({
-            topK: options?.topK || 10,
-            vector: _vector as number[],
-            includeMetadata: true,
-            includeValues: true,
-        });
+        // Get all vectors in this namespace
+        const vectorIds = this.namespaceVectors.get(preparedNs) || new Set();
+        const results: SimilarityResult[] = [];
 
-        return results.matches.map((match) => {
-            if (match.metadata?.user) {
-                match.metadata.user = VectorsHelper.parseMetadata(match.metadata.user);
+        for (const vectorId of vectorIds) {
+            const vector = this.vectors.get(vectorId);
+            if (vector) {
+                const similarity = this.cosineSimilarity(queryVector, vector.values);
+                results.push({
+                    id: vector.id,
+                    values: vector.values,
+                    metadata: vector.metadata,
+                    score: similarity,
+                });
+            }
+        }
+
+        // Sort by similarity score (highest first) and take top K
+        const topK = options?.topK || 10;
+        const sortedResults = results.sort((a, b) => b.score - a.score).slice(0, topK);
+
+        return sortedResults.map((result) => {
+            if (result.metadata?.user) {
+                result.metadata.user = VectorsHelper.parseMetadata(result.metadata.user);
             }
             return {
-                id: match.id,
-                values: match.values,
-                metadata: match.metadata,
+                id: result.id,
+                values: result.values,
+                metadata: result.metadata,
             };
         });
     }
@@ -205,6 +232,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
 
@@ -216,32 +244,54 @@ export class PineconeVectorDB extends VectorDBConnector {
         const sourceType = helper.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
         const transformedSource = await helper.transformSource(sourceWrapper, sourceType);
-        const preparedSource = transformedSource.map((s) => ({
-            id: s.id,
-            values: s.source as number[],
-            metadata: s.metadata,
-        }));
 
-        // await pineconeStore.addDocuments(chunks, ids);
-        await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).upsert(preparedSource);
+        // Store vectors in memory
+        const insertedIds: string[] = [];
+        for (const source of transformedSource) {
+            const vector: StoredVector = {
+                id: source.id,
+                values: source.source as number[],
+                metadata: source.metadata,
+                namespace: preparedNs,
+            };
+
+            this.vectors.set(source.id, vector);
+
+            // Add to namespace index
+            if (!this.namespaceVectors.has(preparedNs)) {
+                this.namespaceVectors.set(preparedNs, new Set());
+            }
+            this.namespaceVectors.get(preparedNs)!.add(source.id);
+
+            insertedIds.push(source.id);
+        }
 
         const accessCandidate = acRequest.candidate;
-
         const isNewNs = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
         if (isNewNs) {
             let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
             await this.setACL(acRequest, namespace, acl);
         }
 
-        return preparedSource.map((s) => s.id);
+        return insertedIds;
     }
 
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
         const _ids = Array.isArray(id) ? id : [id];
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        const res = await this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace)).deleteMany(_ids);
+        // Remove vectors from memory
+        for (const vectorId of _ids) {
+            this.vectors.delete(vectorId);
+
+            // Remove from namespace index
+            const nsVectors = this.namespaceVectors.get(preparedNs);
+            if (nsVectors) {
+                nsVectors.delete(vectorId);
+            }
+        }
     }
 
     @SecureConnector.AccessControl
@@ -262,10 +312,11 @@ export class PineconeVectorDB extends VectorDBConnector {
                 id: ids[i],
                 source: doc,
                 metadata: {
-                    user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-speficied metadata
+                    user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-specified metadata
                 },
             };
         });
+
         const nsExists = await this.nkvConnector
             .user(AccessCandidate.team(teamId))
             .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
@@ -285,8 +336,7 @@ export class PineconeVectorDB extends VectorDBConnector {
             text: datasource.text,
             embeddingIds: _vIds,
         };
-        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-        // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
+
         await this.nkvConnector
             .user(AccessCandidate.team(teamId))
             .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
@@ -297,8 +347,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
-        // await SmythFS.Instance.delete(url, AccessCandidate.team(teamId));
+
         let ds: IStorageVectorDataSource = JSONContentHelper.create(
             (
                 await this.nkvConnector
@@ -350,19 +399,47 @@ export class PineconeVectorDB extends VectorDBConnector {
         ).tryParse() as IStorageVectorDataSource;
     }
 
+    /**
+     * Calculate cosine similarity between two vectors
+     */
+    private cosineSimilarity(vecA: number[], vecB: number[]): number {
+        if (vecA.length !== vecB.length) {
+            throw new Error('Vectors must have the same length');
+        }
+
+        let dotProduct = 0;
+        let normA = 0;
+        let normB = 0;
+
+        for (let i = 0; i < vecA.length; i++) {
+            dotProduct += vecA[i] * vecB[i];
+            normA += vecA[i] * vecA[i];
+            normB += vecB[i] * vecB[i];
+        }
+
+        normA = Math.sqrt(normA);
+        normB = Math.sqrt(normB);
+
+        if (normA === 0 || normB === 0) {
+            return 0;
+        }
+
+        return dotProduct / (normA * normB);
+    }
+
     private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
         await this.redisCache
             .user(AccessCandidate.clone(acRequest.candidate))
-            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
+            .set(`vectorDB:${this.id}:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
     private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        let aclRes = await this.redisCache.user(ac).get(`vectorDB:${this.id}:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
 
     private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
-        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:${this.id}:namespace:${preparedNs}:acl`);
     }
 }

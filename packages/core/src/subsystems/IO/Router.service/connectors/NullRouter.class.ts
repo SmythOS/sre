@@ -1,48 +1,40 @@
-import { Router } from 'express';
+import { Logger } from '@sre/helpers/Log.helper';
 import { RouterConnector, GenericRequestHandler } from '../RouterConnector';
 
-export class ExpressRouter extends RouterConnector {
-    private router: Router;
+const console = Logger('NullRouter');
+export class NullRouter extends RouterConnector {
     public baseUrl: string;
-
-    constructor(config: { router: Router; baseUrl: string }) {
-        super(config);
-        this.name = 'ExpressRouter';
-        this.router = config.router;
-        this.baseUrl = config.baseUrl;
+    constructor() {
+        super();
+        this.baseUrl = 'http://nullrouter.local';
     }
 
     get(path: string, ...handlers: GenericRequestHandler[]): this {
-        this.router.get(path, ...handlers);
+        console.debug(`Ignored operation:NullRouter.get: ${path}`);
         return this;
     }
 
     post(path: string, ...handlers: GenericRequestHandler[]): this {
-        this.router.post(path, ...handlers);
+        console.debug(`Ignored operation:NullRouter.post: ${path}`);
         return this;
     }
 
     put(path: string, ...handlers: GenericRequestHandler[]): this {
-        this.router.put(path, ...handlers);
+        console.debug(`Ignored operation:NullRouter.put: ${path}`);
         return this;
     }
 
     delete(path: string, ...handlers: GenericRequestHandler[]): this {
-        this.router.delete(path, ...handlers);
+        console.debug(`Ignored operation:NullRouter.delete: ${path}`);
         return this;
     }
 
     useFn(...handlers: GenericRequestHandler[]): this {
-        this.router.use(...handlers);
+        console.debug(`Ignored operation:NullRouter.useFn`);
         return this;
     }
 
     use(path: string, ...handlers: GenericRequestHandler[]): this {
-        this.router.use(path, ...handlers);
         return this;
-    }
-
-    getRouter(): Router {
-        return this.router;
     }
 }

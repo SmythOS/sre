@@ -2,7 +2,6 @@
 
 import { AgentPlugin } from './AgentPlugin';
 import { APICall } from './APICall';
-import { APIEndpoint } from './APIEndpoint';
 import { APIOutput } from './APIOutput';
 import { Await } from './Await';
 import { Classifier } from './Classifier';
@@ -40,5 +39,5 @@ import { ZapierAction } from './ZapierAction';
 
 
 
-const Components = { AgentPlugin, APICall, APIEndpoint, APIOutput, Await, Classifier, Code, ComputerUse, DataSourceCleaner, DataSourceIndexer, DataSourceLookup, FileStore, GenAILLM, GPTPlugin, HuggingFace, BackgroundRemoval, ImageToImage, ImageToText, ImageUpscaling, Inpainting, Outpainting, RestyleControlNet, RestyleIPAdapter, TextToImage, ImageGenerator, JSONFilter, LLMAssistant, LogicAtLeast, LogicAtMost, MCPClient, MultimodalLLM, PromptGenerator, ServerlessCode, VisionLLM, WebScrape, WebSearch, ZapierAction, };
+const Components = { AgentPlugin, APICall, APIOutput, Await, Classifier, Code, ComputerUse, DataSourceCleaner, DataSourceIndexer, DataSourceLookup, FileStore, GenAILLM, GPTPlugin, HuggingFace, BackgroundRemoval, ImageToImage, ImageToText, ImageUpscaling, Inpainting, Outpainting, RestyleControlNet, RestyleIPAdapter, TextToImage, ImageGenerator, JSONFilter, LLMAssistant, LogicAtLeast, LogicAtMost, MCPClient, MultimodalLLM, PromptGenerator, ServerlessCode, VisionLLM, WebScrape, WebSearch, ZapierAction, };
  export default Components; 

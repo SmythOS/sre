@@ -7,7 +7,7 @@ const ACLHashAlgo = {
     //xxh3: (source) => xxh3.xxh64(source.toString()).toString(16),
     xxh3: (source) => {
         const h64 = xxhash.h64(); // Use xxhashjs's h64 function
-        return h64.update(source.toString()).digest().toString(16);
+        return source ? h64.update(source.toString()).digest().toString(16) : null;
     },
 };
 
@@ -113,6 +113,10 @@ export class ACL implements IACL {
             throw new Error(`Hash algorithm ${this.hashAlgorithm} not supported`);
         }
         const hashedOwner = ACLHashAlgo[this.hashAlgorithm](ownerId);
+
+        if (!hashedOwner) {
+            throw new Error(`Invalid ownerId: ${role}:${ownerId}`);
+        }
 
         if (!this?.entries[role]![hashedOwner]) this.entries[role]![hashedOwner] = [];
         //acl[role]![ownerId]!.push(level);

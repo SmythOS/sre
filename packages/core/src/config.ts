@@ -19,11 +19,6 @@ const config = {
 
         NODE_ENV: process.env?.NODE_ENV,
 
-        AGENT_DOMAIN: process.env?.AGENT_DOMAIN,
-
-        PROD_AGENT_DOMAIN: process.env?.PROD_AGENT_DOMAIN,
-
-        AGENT_DOMAIN_PORT: process.env?.AGENT_DOMAIN_PORT,
         CODE_SANDBOX_URL: process.env?.CODE_SANDBOX_URL,
         COMPUTER_USE_API_URL: process.env?.COMPUTER_USE_API_URL,
         TOGETHER_AI_API_URL: process.env?.TOGETHER_AI_API_URL,
@@ -36,12 +31,6 @@ const config = {
         AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
         AWS_S3_REGION: process.env.AWS_S3_REGION,
         AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
-
-        PINECONE_API_KEY: process.env.PINECONE_API_KEY,
-        PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
-
-        LOGTO_SERVER: process.env.LOGTO_SERVER,
-        SMYTH_VAULT_API_BASE_URL: process.env.SMYTH_VAULT_API_BASE_URL,
 
         TAVILY_API_KEY: process.env.TAVILY_API_KEY,
 

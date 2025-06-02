@@ -23,12 +23,10 @@ export class LocalComponentConnector extends ComponentConnector {
     }
 
     async init() {
-        console.debug('Registering components');
-        //register all components
         for (const component in ComponentInstances) {
-            console.debug('  + ', component);
             this.components[component] = ComponentInstances[component];
         }
+        console.debug('Registering Components :', Object.keys(this.components).join(', '));
     }
 
     @SecureConnector.AccessControl
