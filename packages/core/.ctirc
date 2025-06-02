@@ -14,7 +14,7 @@
             "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nimport 'source-map-support/register.js';\nexport { version } from '../package.json';\n\n// SDK namespace export to avoid conflicts\nimport * as _SDK from './sdk/sdk.index';\nexport { _SDK as SDK };",
             "fileExt": "none",
             "overwrite": false,
-            "backup": false,
+            "backup": true,
             "generationStyle": "auto",
             "include": [
                 "src/**/*.ts"
@@ -41,7 +41,7 @@
             "directive": "//!!! This is a generated file, do not edit it directly !!!//",
             "fileExt": "none",
             "overwrite": false,
-            "backup": false,
+            "backup": true,
             "generationStyle": "auto",
             "include": [
                 "src/sdk/**/*.ts"

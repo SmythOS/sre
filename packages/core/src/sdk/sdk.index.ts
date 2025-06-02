@@ -2,6 +2,7 @@
 
 
 export * from './Agent.class';
+export * from './Chat.class';
 export * from './LLM.class';
 export * from './components/components.index';
 export * from './components/ComponentWrapper.class';

@@ -1,37 +1,19 @@
 // prettier-ignore-file
 import { SmythRuntime, SRE } from '@sre/Core/SmythRuntime.class';
-import { LLM } from '@sre/sdk/LLM.class';
+import { LLM, LLMInstance } from '@sre/sdk/LLM.class';
 import { Agent } from '@sre/sdk/sdk.index';
 import { Component } from '@sre/sdk/components/components.index';
 import { expect, describe, it } from 'vitest';
 
-// User file can merge:
-// declare module '@sre/sdk' {
-//     interface LLMProviderMap {
-//         groq?: any;
-//     }
-// }
+import { TLLMProvider } from '@sre/types/LLM.types';
 
+declare module '@sre/types/LLM.types' {
+    interface ILLMProviders {
+        MyCustomProvider: 'MyCustomProvider';
+        AnotherProvider: 'AnotherProvider';
+    }
+}
 SRE.init({
-    Storage: {
-        Connector: 'Local',
-    },
-    Cache: {
-        Connector: 'RAM',
-    },
-    AgentData: {
-        Connector: 'Local',
-        Settings: {
-            devDir: './tests/data/AgentData',
-            prodDir: './tests/data/AgentData',
-        },
-    },
-    Account: {
-        Connector: 'JSONFileAccount',
-        Settings: {
-            file: './tests/data/account.json',
-        },
-    },
     Vault: {
         Connector: 'JSONFileVault',
         Settings: {
@@ -43,11 +25,19 @@ SRE.init({
 describe('SDK Tests', () => {
     it('LLMProxy - prompt', async () => {
         //initialize the LLM
-        const llm: any = new LLM('OpenAI', { model: 'gpt-4o' });
+        const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
+        const llm2 = LLM.OpenAI({ model: 'gpt-4o' });
 
         // ## Syntax 1 ================================================
         //direct prompt
         const result = await llm.prompt('What is the capital of France?');
+
+        const chat = llm.chat();
+        const result2 = await chat.prompt('What is the capital of France?');
+        console.log(result2);
+
+        const result3 = await chat.prompt('What was my previous question?');
+        console.log(result3);
 
         //const convContext = llm.conversation('123456');
         //convContext.prompt('What is the capital of France?').stream();
@@ -57,7 +47,7 @@ describe('SDK Tests', () => {
 
     it('LLMProxy - streamPrompt', async () => {
         //initialize the LLM
-        const llm = new LLM('OpenAI', { model: 'gpt-4o' });
+        const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
 
         // ## Syntax 1 ================================================
         //prompt and stream the result

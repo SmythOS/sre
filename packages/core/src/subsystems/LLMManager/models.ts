@@ -18,6 +18,7 @@
 export const models = {
     Echo: {
         llm: 'Echo',
+        provider: 'Echo',
     },
 
     // #region [SmythOS Models] ==============================================================

@@ -6,6 +6,10 @@ import EventEmitter from 'events';
 import { ComponentWrapper } from './components/ComponentWrapper.class';
 import * as acorn from 'acorn';
 import { Chat } from './Chat.class';
+import { TLLMConnectorParams, TLLMModel, TLLMProvider } from '@sre/types/LLM.types';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { LLM, LLMInstance, TLLMProviderInstances } from './LLM.class';
+import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
 
 export type AgentData = {
     id: string;
@@ -15,6 +19,7 @@ export type AgentData = {
     components: any[];
     connections: any[];
     defaultModel: string;
+    teamId: string;
 };
 
 class AgentCommand {
@@ -90,7 +95,16 @@ class AgentCommand {
 }
 
 export class Agent {
-    public structure: AgentData = { version: '1.0.0', name: '', behavior: '', components: [], connections: [], defaultModel: '', id: '' };
+    public structure: AgentData = {
+        version: '1.0.0',
+        name: '',
+        behavior: '',
+        components: [],
+        connections: [],
+        defaultModel: '',
+        id: '',
+        teamId: DEFAULT_TEAM_ID,
+    };
 
     public get data(): AgentData {
         //console.log(this.structure);
@@ -101,9 +115,20 @@ export class Agent {
         };
     }
 
-    constructor({ name, model, behavior }: { name: string; model: string; behavior?: string }) {
+    private _llmProviders: TLLMProviderInstances;
+    public get llm() {
+        if (!this._llmProviders) {
+            for (const provider of Object.values(TLLMProvider)) {
+                this._llmProviders[provider] = (modelParams: TLLMConnectorParams) =>
+                    new LLMInstance(provider, modelParams, AccessCandidate.agent(this.structure.id));
+            }
+        }
+        return this._llmProviders;
+    }
+
+    constructor({ name, model, behavior }: { name: string; model: string | TLLMModel; behavior?: string }) {
         this.structure.name = name;
-        this.structure.defaultModel = model;
+        this.structure.defaultModel = model as string;
         this.structure.behavior = behavior || '';
         this.structure.id = uid() + '_' + uid();
     }

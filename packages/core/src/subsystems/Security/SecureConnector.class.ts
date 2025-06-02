@@ -26,7 +26,12 @@ export abstract class SecureConnector extends Connector {
     }
 
     protected async hasAccess(acRequest: AccessRequest) {
-        const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate);
+        const aclHelper = await this.getResourceACL(acRequest.resourceId, acRequest.candidate).catch((error) => {
+            console.error(`Error getting ACL for ${acRequest.resourceId}: ${error}`);
+            return null;
+        });
+
+        if (!aclHelper) return false;
 
         //const aclHelper = ACLHelper.from(acl);
 

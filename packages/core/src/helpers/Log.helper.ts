@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import winston from 'winston';
 import Transport from 'winston-transport';
-import { parseCLIArgs } from '../utils';
+import { getFormattedStackTrace, parseCLIArgs } from '../utils';
 import config from '@sre/config';
 import { EventEmitter } from 'events';
 winston.addColors({
@@ -64,7 +64,11 @@ export class LogHelper extends EventEmitter {
     public get elapsedTime() {
         return Date.now() - this.startTime;
     }
-    constructor(private _logger: winston.Logger, public data, private labels: { [key: string]: any }) {
+    constructor(
+        private _logger: winston.Logger,
+        public data,
+        private labels: { [key: string]: any },
+    ) {
         super();
     }
 
@@ -90,9 +94,10 @@ export class LogHelper extends EventEmitter {
     }
 
     public error(...args) {
-        const stack = new Error().stack;
+        const stack = '\nCall Stack:\n' + getFormattedStackTrace(10).join('\n');
 
         this._logger.log('error', formatLogMessage(...args), { ...this.labels, stack });
+
         this.emit('logged', { level: 'error', message: formatLogMessage(...args) });
     }
 
@@ -149,7 +154,7 @@ function createBaseLogger(memoryStore?: any[]) {
                 stack: true,
             }),
             winston.format.splat(),
-            winston.format.json()
+            winston.format.json(),
         ),
 
         transports: [
@@ -161,7 +166,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         let message = info.message;
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
                         return `${info.level}:${info.module || ''} ${message} ${info.stack || ''}`;
-                    })
+                    }),
                 ),
                 stderrLevels: ['error'], // Define levels that should be logged to stderr
             }),
@@ -177,7 +182,7 @@ function createBaseLogger(memoryStore?: any[]) {
                         message = message?.length > MAX_LOG_MESSAGE_LENGTH ? message.substring(0, MAX_LOG_MESSAGE_LENGTH) + '...' : message;
 
                         return `${ns} - ${message}`;
-                    })
+                    }),
                 ),
 
                 //handleExceptions: true,
@@ -190,7 +195,7 @@ function createBaseLogger(memoryStore?: any[]) {
             new ArrayTransport({
                 level: 'debug',
                 logs: memoryStore,
-            })
+            }),
         );
     }
 

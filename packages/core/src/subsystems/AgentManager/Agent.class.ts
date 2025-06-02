@@ -79,24 +79,6 @@ export class Agent implements IAgent {
 
         this.agentVariables = this.data.variables || {};
 
-        //parse vault agent variables
-        // if (typeof json.data.variables === 'object') {
-        //     for (let key in json.data.variables) {
-        //         const value = json.data.variables[key];
-        //         if (value.startsWith('{{') && value.endsWith('}}')) {
-        //             utils.parseKey(value, this.teamId).then((result) => {
-        //                 this.agentVariables[key] = result;
-        //             });
-        //         } else {
-        //             this.agentVariables[key] = value;
-        //         }
-        //     }
-        // }
-
-        // Base URL required to serve binary data
-        //this.baseUrl = `https://${id}.${config.env.AGENT_DOMAIN}`;
-        //if (config.env.AGENT_DOMAIN_PORT) this.baseUrl += `:${config.env.AGENT_DOMAIN_PORT}`;
-
         const endpoints = this.data.components.filter((c) => c.name == 'APIEndpoint');
         for (let endpoint of endpoints) {
             let method = endpoint.data.method || 'POST';

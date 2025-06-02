@@ -11,6 +11,9 @@ const SDK_OUTPUT_DIR = path.join(__dirname, '../../src/sdk/components/generated'
 const COMPONENT_TEMPLATE_PATH = path.join(__dirname, './templates/Component.ts.tpl');
 const INDEX_TEMPLATE_PATH = path.join(__dirname, './templates/index.ts.tpl');
 
+// Components to exclude from SDK generation
+const EXCLUDED_COMPONENTS = ['APIEndpoint', 'ComponentHost'];
+
 /**
  * Simple template engine that replaces {{variable}} with values
  */
@@ -572,6 +575,13 @@ async function generateSDKComponents() {
     process.stdout.write(`\n📝 Processing schemas `);
     for (const schema of schemas) {
         process.stdout.write(`.`);
+
+        // Skip excluded components
+        if (EXCLUDED_COMPONENTS.includes(schema.name)) {
+            process.stdout.write(`!`);
+            skippedComponents.add(schema.name);
+            continue;
+        }
 
         const hasInputsOrOutputs =
             (schema.inputs && Object.keys(schema.inputs).length > 0) || (schema.outputs && Object.keys(schema.outputs).length > 0);

@@ -8,6 +8,6 @@ import { LocalStorage } from './connectors/LocalStorage.class';
 export class StorageService extends ConnectorServiceProvider {
     public register() {
         ConnectorService.register(TConnectorService.Storage, 'S3', S3Storage);
-        ConnectorService.register(TConnectorService.Storage, 'Local', LocalStorage);
+        ConnectorService.register(TConnectorService.Storage, 'LocalStorage', LocalStorage);
     }
 }

@@ -1,3 +1,4 @@
+import { LogHelper } from '@sre/helpers/Log.helper';
 import pLimit from 'p-limit';
 export function uid() {
     return (Date.now() + Math.random()).toString(36).replace('.', '').toUpperCase();
@@ -177,4 +178,58 @@ export function debounce(func: Function, wait: number, options: { leading: boole
 
         timeout = setTimeout(later, wait);
     };
+}
+
+/**
+ * Extracts and formats the last N calls from the stack trace in a user-friendly way
+ */
+export function getFormattedStackTrace(limit: number = 3, skip: number = 0): string[] {
+    const stack = new Error().stack;
+    if (!stack) return [];
+
+    const stackLines = stack.split('\n');
+    // Skip the first few lines (Error message, this function, and the caller)
+    const relevantLines = stackLines.slice(3 + skip);
+
+    const formattedCalls: string[] = [];
+
+    const length = Math.min(limit, relevantLines.length);
+    for (let i = 0; i < length; i++) {
+        const line = relevantLines[i].trim();
+        if (!line) continue;
+
+        // Parse different stack trace formats
+        let match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/); // at functionName (file:line:col)
+        if (!match) {
+            match = line.match(/at\s+(.+?):(\d+):(\d+)/); // at file:line:col
+            if (match) {
+                const [, filePath, lineNum] = match;
+                const fileName = filePath.split(/[/\\]/).pop() || filePath;
+                formattedCalls.push(` ${fileName}:${lineNum}`);
+            }
+        } else {
+            const [, functionName, filePath, lineNum] = match;
+            const fileName = filePath.split(/[/\\]/).pop() || filePath;
+            const cleanFunctionName = functionName.includes('.') ? functionName.split('.').pop() : functionName;
+            formattedCalls.push(`${i < length - 1 ? '├' : '└'} ${cleanFunctionName}() in ${fileName}  (${filePath}:${lineNum})`);
+        }
+
+        // Fallback for other formats
+        if (!match && line.includes('at ')) {
+            const cleanLine = line.replace('at ', '').trim();
+            formattedCalls.push(` ${cleanLine}`);
+        }
+    }
+
+    return formattedCalls;
+}
+
+export function printStackTrace(logger: LogHelper, limit: number = 3, skip: number = 0) {
+    const stackTrace = getFormattedStackTrace(limit, skip);
+    if (stackTrace.length > 0) {
+        logger.debug('Call trace:');
+        stackTrace.forEach((call, index) => {
+            logger.debug(`   ${call}`);
+        });
+    }
 }

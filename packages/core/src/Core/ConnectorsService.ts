@@ -2,7 +2,7 @@ import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/ty
 import { DummyConnector } from './DummyConnector';
 import { Logger } from '../helpers/Log.helper';
 import { Connector } from './Connector.class';
-import { isSubclassOf } from '@sre/utils';
+import { getFormattedStackTrace, isSubclassOf, printStackTrace } from '@sre/utils';
 import { SystemEvents } from './SystemEvents';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
@@ -110,8 +110,10 @@ export class ConnectorService {
             }
             console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
             //print stack trace
-            console.debug(new Error(`Connector ${connectorType} not initialized`).stack);
-            return DummyConnector as T;
+
+            printStackTrace(console, 5);
+
+            return DummyConnector(connectorType) as T;
         }
         return instance;
     }
@@ -170,7 +172,7 @@ export class ConnectorService {
 
     static hasInstance(connectorType: TConnectorService, connectorName: string = 'default') {
         const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName];
-        return instance && instance !== DummyConnector;
+        return instance && instance.valid;
     }
 
     static getRouterConnector(name?: string): RouterConnector {

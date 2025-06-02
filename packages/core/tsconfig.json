@@ -54,7 +54,13 @@
         "types": ["node"],
         "allowSyntheticDefaultImports": true
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts", "tests/dev/008-VectorDB/Pinecone.test.bak", "src/helpers/ToolExecutor.class.ts.deprecated"],
+    "include": [
+        "src/**/*.ts",
+        "tests/**/*.ts",
+        "tests/dev/008-VectorDB/Pinecone.test.bak",
+        "src/helpers/ToolExecutor.class.ts.deprecated",
+        "src/subsystems/AgentManager/AgentData.service/connectors/NullAgentData.classts"
+    ],
 
     "exclude": ["node_modules"]
 }

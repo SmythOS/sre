@@ -455,14 +455,6 @@ const agent = new Agent(agentData, settings);
 const result = await agent.process('/start', inputData);
 ```
 
-**Boot Sequence:**
-
-1. 🔧 Core services initialization
-2. 📋 Subsystem registration
-3. 🔌 Connector setup & validation
-4. 🏃 Agent runtime preparation
-5. ✅ System ready signal
-
 ## 💡 Developer Experience
 
 ### 🎨 Dual Creation Modes
