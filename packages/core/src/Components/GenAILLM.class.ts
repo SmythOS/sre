@@ -149,7 +149,7 @@ export class GenAILLM extends Component {
         const logger = this.createComponentLogger(agent, config);
 
         try {
-            logger.debug(`=== LLM Prompt Log ===`);
+            logger.debug(`=== GenAILLM Log ===`);
             let teamId = agent?.teamId;
 
             const passThrough: boolean = config.data.passthrough || false;
