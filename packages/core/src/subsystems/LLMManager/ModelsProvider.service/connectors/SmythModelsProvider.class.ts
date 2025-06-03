@@ -99,6 +99,8 @@ export class SmythModelsProvider extends ModelsProviderConnector {
                 this.models = scannedModels;
             }
 
+            SmythModelsProvider.localCache.clear();
+
             console.debug(`Successfully reindexed models. Total models: ${Object.keys(this.models).length}`);
         } catch (error) {
             console.error(`Error reindexing models from directory "${dir}":`, error);

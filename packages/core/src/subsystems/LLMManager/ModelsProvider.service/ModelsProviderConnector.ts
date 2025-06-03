@@ -33,7 +33,7 @@ export interface IModelsProviderRequest {
 }
 
 export abstract class ModelsProviderConnector extends SecureConnector {
-    private static localCache = new LocalCache();
+    protected static localCache = new LocalCache();
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract getModels(acRequest: AccessRequest): Promise<TLLMModelsList>;
     public abstract addModels(acRequest: AccessRequest, models: TLLMModelsList): Promise<void>;
