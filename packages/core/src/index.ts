@@ -6,6 +6,8 @@ export { version } from '../package.json';
 // SDK namespace export to avoid conflicts
 import * as _SDK from './sdk/sdk.index';
 export { _SDK as SDK };
+
+
 export * from './config';
 export * from './constants';
 export * from './Components/AgentPlugin.class';
@@ -98,6 +100,9 @@ export * from './Components/Image/Outpainting.class';
 export * from './Components/Image/RestyleControlNet.class';
 export * from './Components/Image/RestyleIPAdapter.class';
 export * from './Components/Image/TextToImage.class';
+export * from './helpers/Vectors.helper/index';
+export * from './helpers/Vectors.helper/OpenAIEmbeds';
+export * from './helpers/Vectors.helper/TextSplitter';
 export * from './subsystems/AgentManager/Agent.class';
 export * from './subsystems/AgentManager/Agent.helper';
 export * from './subsystems/AgentManager/AgentLogger.class';
@@ -136,7 +141,6 @@ export * from './subsystems/IO/Storage.service/SmythFS.class';
 export * from './subsystems/IO/Storage.service/StorageConnector';
 export * from './subsystems/IO/VectorDB.service/index';
 export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
-export * from './helpers/Vectors.helper';
 export * from './subsystems/LLMManager/LLM.service/index';
 export * from './subsystems/LLMManager/LLM.service/LLMConnector';
 export * from './subsystems/LLMManager/ModelsProvider.service/index';
