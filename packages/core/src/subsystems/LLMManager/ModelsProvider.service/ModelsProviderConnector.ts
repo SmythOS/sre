@@ -10,6 +10,7 @@ import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
+    getMaxContextTokens(model: string, hasAPIKey?: boolean): Promise<number>;
     addModels(models: TLLMModelsList): Promise<void>;
     getModelInfo(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<TLLMModel>;
     getModelId(model: string | TLLMModel | TCustomLLMModel): Promise<string>;
@@ -32,7 +33,7 @@ export interface IModelsProviderRequest {
 }
 
 export abstract class ModelsProviderConnector extends SecureConnector {
-    private static localCache = new LocalCache();
+    protected static localCache = new LocalCache();
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     public abstract getModels(acRequest: AccessRequest): Promise<TLLMModelsList>;
     public abstract addModels(acRequest: AccessRequest, models: TLLMModelsList): Promise<void>;
