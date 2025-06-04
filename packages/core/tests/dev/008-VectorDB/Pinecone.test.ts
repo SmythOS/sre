@@ -29,9 +29,9 @@ const SREInstance = SmythRuntime.Instance.init({
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
-            pineconeApiKey: config.env.PINECONE_API_KEY || '',
+            pineconeApiKey: process.env.PINECONE_API_KEY || '',
             openaiApiKey: config.env.OPENAI_API_KEY || '',
-            indexName: config.env.PINECONE_INDEX_NAME || '',
+            indexName: process.env.PINECONE_INDEX_NAME || '',
         },
     },
 });
@@ -266,7 +266,7 @@ describe('Integration: Pinecone VectorDB', () => {
 
                 idsToClean.push({ id: dsId, namespace });
 
-                await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY));
+                await new Promise((resolve) => setTimeout(resolve, EVENTUAL_CONSISTENCY_DELAY * 2));
 
                 const searchResult = await vectorDB.user(team).search(namespace, v, { topK: 10, includeMetadata: true });
                 expect(searchResult).toHaveLength(1);
