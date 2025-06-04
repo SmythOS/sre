@@ -36,6 +36,20 @@ export interface TGenAILLMSettings {
     useContextWindow?: boolean;
     /** Maximum Context Window Length */
     maxContextWindowLength?: number;
+    /** Use Search */
+    useWebSearch?: boolean;
+    /** Search Content Size */
+    webSearchContextSize?: 'high' | 'medium' | 'low';
+    /** Search City */
+    webSearchCity?: string;
+    /** Search Country */
+    webSearchCountry?: string;
+    /** Search Region */
+    webSearchRegion?: string;
+    /** Search Timezone */
+    webSearchTimezone?: string;
+    /** Use Reasoning */
+    useReasoning?: boolean;
 }
 
 export type TGenAILLMInputs = {

@@ -12,6 +12,7 @@ import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
+import { CodeService } from '@sre/ComputeManager/Code.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -28,6 +29,7 @@ export type TServiceRegistry = {
     Log?: LogService;
     Component?: ComponentService;
     ModelsProvider?: ModelsProviderService;
+    Code?: CodeService;
 };
 
 export enum TConnectorService {
@@ -45,6 +47,7 @@ export enum TConnectorService {
     Log = 'Log',
     Component = 'Component',
     ModelsProvider = 'ModelsProvider',
+    Code = 'Code',
 }
 
 export type SREConnectorConfig = {
