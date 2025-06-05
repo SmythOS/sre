@@ -124,7 +124,7 @@ describe('Integration: Pinecone VectorDB', () => {
                     .search(
                         namespace,
                         Array.from({ length: 1536 }, () => Math.random()),
-                        { topK: expectedVectorsSize },
+                        { topK: expectedVectorsSize }
                     );
 
                 expect(results).toHaveLength(expectedVectorsSize);

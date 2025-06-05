@@ -110,7 +110,7 @@ describe('Integration: VectorDB Helper', () => {
                 vi.mock('@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class', async () => {
                     const originalPinecone = (
                         await vi.importActual<typeof import('@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class')>(
-                            '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class',
+                            '@sre/IO/VectorDB.service/connectors/PineconeVectorDB.class'
                         )
                     ).PineconeVectorDB;
                     return {

@@ -51,9 +51,9 @@ const SREInstance = SmythRuntime.Instance.init({
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
-            pineconeApiKey: config.env.PINECONE_API_KEY || '',
+            pineconeApiKey: process.env.PINECONE_API_KEY || '',
             openaiApiKey: config.env.OPENAI_API_KEY || '',
-            indexName: config.env.PINECONE_INDEX_NAME || '',
+            indexName: process.env.PINECONE_INDEX_NAME || '',
         },
     },
     Storage: {
@@ -114,7 +114,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent,
+                agent
             );
 
             // expect that the datasource file exists now
@@ -140,7 +140,7 @@ describe('DataSourceCleaner Component', () => {
                     },
                     outputs: [],
                 },
-                agent,
+                agent
             );
 
             // expect that the datasource file does not exist now
@@ -161,6 +161,6 @@ describe('DataSourceCleaner Component', () => {
         },
         {
             timeout: 35_000,
-        },
+        }
     );
 });

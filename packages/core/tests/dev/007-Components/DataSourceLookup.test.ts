@@ -1,4 +1,3 @@
-
 import { faker } from '@faker-js/faker';
 import { DataSourceLookup } from '@sre/Components/DataSourceLookup.class';
 import { VectorsHelper } from '@sre/helpers/Vectors.helper';
@@ -49,9 +48,9 @@ const SREInstance = SmythRuntime.Instance.init({
     VectorDB: {
         Connector: 'Pinecone',
         Settings: {
-            pineconeApiKey: config.env.PINECONE_API_KEY || '',
+            pineconeApiKey: process.env.PINECONE_API_KEY || '',
             openaiApiKey: config.env.OPENAI_API_KEY || '',
-            indexName: config.env.PINECONE_INDEX_NAME || '',
+            indexName: process.env.PINECONE_INDEX_NAME || '',
         },
     },
     Storage: {
@@ -123,7 +122,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent,
+            agent
         );
 
         const results = output.Results;
@@ -168,7 +167,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent,
+            agent
         );
 
         const results = output.Results;
@@ -236,7 +235,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent,
+            agent
         );
 
         const results = output.Results;
@@ -298,7 +297,7 @@ describe('DataSourceLookup Component', () => {
                 },
                 outputs: [],
             },
-            agent,
+            agent
         );
 
         const results = output.Results;
