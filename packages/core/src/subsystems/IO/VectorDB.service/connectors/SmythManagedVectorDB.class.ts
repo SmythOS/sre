@@ -28,6 +28,7 @@ import { getM2MToken } from '@sre/utils/oauth.utils';
 import { jsonrepair } from 'jsonrepair';
 import crypto from 'crypto';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 
 const console = Logger('Smyth Managed VectorDB');
 
@@ -67,15 +68,30 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         try {
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+            const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            const dsId = datasource.id || crypto.randomUUID();
             const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
+            // append the smyth-specific metadata
+            const smyth_metadata = {
+                acl: VectorsHelper.stringifyMetadata(acl),
+                datasourceId: dsId,
+                namespaceId: preparedNs,
+            };
+
+            const metadata = {
+                ...(datasource.metadata || {}),
+                smyth_metadata,
+            };
+
             const res = await this.smythAPI.post<{ dataSourceId: string }>(
                 '/v1/vectors/datasources/text',
                 {
-                    id: datasource.id || crypto.randomUUID(),
+                    id: dsId,
                     name: datasource.label || 'Indexer Datasource',
                     text: datasource.text,
                     namespaceId: preparedNs,
-                    metadata: datasource.metadata ? JSON.stringify(datasource.metadata) : null,
+                    metadata: JSON.stringify(metadata),
                     teamId,
                 },
                 { headers: await this.getSmythRequestHeaders() },

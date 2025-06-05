@@ -242,6 +242,9 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+        const dsId = datasource.id || crypto.randomUUID();
+
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         const chunkedText = await VectorsHelper.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
@@ -253,6 +256,9 @@ export class PineconeVectorDB extends VectorDBConnector {
                 id: ids[i],
                 source: doc,
                 metadata: {
+                    acl: VectorsHelper.stringifyMetadata(acl),
+                    namespaceId: formattedNs,
+                    datasourceId: dsId,
                     user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-speficied metadata
                 },
             };
@@ -265,8 +271,6 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
 
         const _vIds = await this.insert(acRequest, namespace, source);
-
-        const dsId = datasource.id || crypto.randomUUID();
 
         const dsData: IStorageVectorDataSource = {
             namespaceId: formattedNs,

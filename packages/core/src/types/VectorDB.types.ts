@@ -75,7 +75,7 @@ export interface PineconeNamespaceMetadata {
 
 export interface DatasourceDto {
     text: string;
-    metadata?: Record<string, string>;
+    metadata?: Record<string, string> & { smyth_metadata?: Record<string, string> };
     chunkSize?: number;
     chunkOverlap?: number;
     label?: string;
