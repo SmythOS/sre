@@ -334,7 +334,7 @@ export class RAMVectorDB extends VectorDBConnector {
             name: datasource.label || 'Untitled',
             metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
             text: datasource.text,
-            embeddingIds: _vIds,
+            vectorIds: _vIds,
         };
 
         await this.nkvConnector
@@ -367,7 +367,7 @@ export class RAMVectorDB extends VectorDBConnector {
             throw new Error('Namespace does not exist');
         }
 
-        await this.delete(acRequest, namespace, ds.embeddingIds || []);
+        await this.delete(acRequest, namespace, ds.vectorIds || []);
 
         await this.nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
     }

@@ -57,7 +57,8 @@ export interface IStorageVectorDataSource {
     name: string;
     metadata: string;
     text: string;
-    embeddingIds: string[];
+    vectorIds: string[];
+    id: string;
 }
 
 export interface IStorageVectorNamespace {

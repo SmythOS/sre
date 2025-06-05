@@ -240,11 +240,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async createDatasource(
-        acRequest: AccessRequest,
-        namespace: string,
-        datasource: DatasourceDto,
-    ): Promise<{ id: string; vectorIds: string[] }> {
+    protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         const chunkedText = await VectorsHelper.chunkText(datasource.text, {
@@ -278,14 +274,16 @@ export class PineconeVectorDB extends VectorDBConnector {
             name: datasource.label || 'Untitled',
             metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
             text: datasource.text,
-            embeddingIds: _vIds,
+            vectorIds: _vIds,
+            id: dsId,
         };
         // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
         // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
         await this.nkvConnector
             .user(AccessCandidate.team(teamId))
             .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
-        return { id: dsId, vectorIds: _vIds };
+        // return { id: dsId, vectorIds: _vIds };
+        return dsData;
     }
 
     @SecureConnector.AccessControl
@@ -313,21 +311,18 @@ export class PineconeVectorDB extends VectorDBConnector {
             throw new Error('Namespace does not exist');
         }
 
-        await this.delete(acRequest, namespace, ds.embeddingIds || []);
+        await this.delete(acRequest, namespace, ds.vectorIds || []);
 
         await this.nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
     }
 
     @SecureConnector.AccessControl
-    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]> {
+    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
         return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
             (ds) => {
-                return {
-                    id: ds.key,
-                    data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
-                };
+                return JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource;
             },
         );
     }

@@ -8,8 +8,6 @@ import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { IStorageVectorDataSource } from '@sre/types/VectorDB.types';
-import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
 export class DataSourceIndexer extends Component {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;

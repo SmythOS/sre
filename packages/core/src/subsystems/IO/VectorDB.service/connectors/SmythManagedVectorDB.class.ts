@@ -27,6 +27,7 @@ import { AxiosInstance } from 'axios';
 import { getM2MToken } from '@sre/utils/oauth.utils';
 import { jsonrepair } from 'jsonrepair';
 import crypto from 'crypto';
+import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 
 const console = Logger('Smyth Managed VectorDB');
 
@@ -63,11 +64,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async createDatasource(
-        acRequest: AccessRequest,
-        namespace: string,
-        datasource: DatasourceDto,
-    ): Promise<{ id: string; vectorIds: string[] }> {
+    protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         try {
             const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
             const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
@@ -87,6 +84,11 @@ export class SmythManagedVectorDB extends VectorDBConnector {
             return {
                 id: res.data.dataSourceId,
                 vectorIds: [],
+                namespaceId: preparedNs,
+                teamId,
+                name: datasource.label || 'Indexer Datasource',
+                metadata: datasource.metadata ? JSON.stringify(datasource.metadata) : null,
+                text: datasource.text,
             };
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
@@ -110,7 +112,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]> {
+    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
         try {
@@ -119,15 +121,13 @@ export class SmythManagedVectorDB extends VectorDBConnector {
             });
             return res.data.datasources.map((d) => {
                 return {
+                    name: d.name,
+                    namespaceId: d.namespaceId,
+                    teamId,
+                    vectorIds: null,
+                    text: null,
+                    metadata: JSON.stringify({}),
                     id: d.id,
-                    data: {
-                        name: d.name,
-                        namespaceId: d.namespaceId,
-                        teamId,
-                        embeddingIds: null,
-                        text: null,
-                        metadata: JSON.stringify({}),
-                    },
                 };
             });
         } catch (err: any) {
@@ -155,11 +155,12 @@ export class SmythManagedVectorDB extends VectorDBConnector {
             return ds
                 ? {
                       name: ds.name,
-                      embeddingIds: null,
+                      vectorIds: null,
                       metadata: JSON.stringify({}),
                       namespaceId: ds.namespaceId,
                       teamId,
                       text: null,
+                      id: ds.id,
                   }
                 : undefined;
         } catch (err: any) {

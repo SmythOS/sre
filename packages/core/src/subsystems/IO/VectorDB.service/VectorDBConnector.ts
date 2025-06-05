@@ -20,9 +20,9 @@ export interface IVectorDBRequest {
     // insert(namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
     // delete(namespace: string, id: string | string[]): Promise<void>;
 
-    createDatasource(namespace: string, datasource: DatasourceDto): Promise<{ id: string; vectorIds: string[] }>;
+    createDatasource(namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource>;
     deleteDatasource(namespace: string, datasourceId: string): Promise<void>;
-    listDatasources(namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]>;
+    listDatasources(namespace: string): Promise<IStorageVectorDataSource[]>;
     getDatasource(namespace: string, datasourceId: string): Promise<IStorageVectorDataSource>;
 
     createNamespace(namespace: string, metadata?: { [key: string]: any }): Promise<void>;
@@ -84,15 +84,11 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void>;
 
-    protected abstract createDatasource(
-        acRequest: AccessRequest,
-        namespace: string,
-        datasource: DatasourceDto,
-    ): Promise<{ id: string; vectorIds: string[] }>;
+    protected abstract createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource>;
 
     protected abstract deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void>;
 
-    protected abstract listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]>;
+    protected abstract listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]>;
 
     protected abstract getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource>;
 
