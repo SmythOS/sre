@@ -18,6 +18,10 @@ export type TLLMAssistantInputs = {
     [key: string]: any;
 };
 
+export type TLLMAssistantOutputs = {
+    [key: string]: any;
+};
+
 export function LLMAssistant(settings?: TLLMAssistantSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -32,7 +36,7 @@ export function LLMAssistant(settings?: TLLMAssistantSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TLLMAssistantOutputs = {
         // No outputs defined
     };
 

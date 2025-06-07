@@ -27,7 +27,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
-import { S3Config } from '@sre/types/AWS.types';
+import { AWSRegionConfig, AWSCredentials } from '@sre/types/AWS.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { streamToBuffer } from '@sre/utils';
 import type { Readable } from 'stream';
@@ -37,8 +37,11 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('S3Storage');
+
+export type S3Config = AWSCredentials & AWSRegionConfig & { bucket: string };
 
 export class S3Storage extends StorageConnector {
     public name = 'S3Storage';
@@ -46,16 +49,16 @@ export class S3Storage extends StorageConnector {
     private bucket: string;
     private isInitialized: boolean = false;
 
-    constructor(config: S3Config & { bucket: string }) {
+    constructor(settings: S3Config) {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        this.bucket = config.bucket;
+        this.bucket = settings.bucket;
         const clientConfig: S3ClientConfig = {};
-        if (config.region) clientConfig.region = config.region;
-        if (config.accessKeyId && config.secretAccessKey) {
+        if (settings.region) clientConfig.region = settings.region;
+        if (settings.accessKeyId && settings.secretAccessKey) {
             clientConfig.credentials = {
-                accessKeyId: config.accessKeyId,
-                secretAccessKey: config.secretAccessKey,
+                accessKeyId: settings.accessKeyId,
+                secretAccessKey: settings.secretAccessKey,
             };
         }
 

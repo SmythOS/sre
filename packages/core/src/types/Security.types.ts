@@ -14,7 +14,7 @@ export type EncryptionSettings = {
 };
 
 export type JSONFileVaultConfig = {
-    file: string;
+    file?: string;
     fileKey?: string;
     shared?: boolean;
 };

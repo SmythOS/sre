@@ -14,6 +14,10 @@ export type TBackgroundRemovalInputs = {
     [key: string]: any;
 };
 
+export type TBackgroundRemovalOutputs = {
+    [key: string]: any;
+};
+
 export function BackgroundRemoval(settings?: TBackgroundRemovalSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function BackgroundRemoval(settings?: TBackgroundRemovalSettings, agent?:
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TBackgroundRemovalOutputs = {
         // No outputs defined
     };
 

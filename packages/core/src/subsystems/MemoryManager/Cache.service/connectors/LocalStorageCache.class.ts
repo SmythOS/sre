@@ -6,9 +6,10 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import os from 'os';
-import { LocalStorageConfig } from '@sre/types/LocalStorage.types';
+
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import path from 'path';
+import { LocalStorageConfig } from '@sre/IO/Storage.service/connectors/LocalStorage.class';
 
 const console = Logger('LocalStorageCache');
 

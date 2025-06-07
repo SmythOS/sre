@@ -8,9 +8,11 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { JSONFileVaultConfig, EncryptionSettings } from '@sre/types/Security.types';
 import { IVaultRequest, VaultConnector } from '../VaultConnector';
+import os from 'os';
 import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
+import path from 'path';
 
 const console = Logger('JSONFileVault');
 export class JSONFileVault extends VaultConnector {
@@ -25,12 +27,14 @@ export class JSONFileVault extends VaultConnector {
 
         this.sharedVault = settings.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
-        if (fs.existsSync(settings.file)) {
+        let vaultFile = this.findVaultFile(settings.file);
+        this.vaultData = {};
+        if (fs.existsSync(vaultFile)) {
             try {
                 if (settings.fileKey && fs.existsSync(settings.fileKey)) {
                     try {
                         const privateKey = fs.readFileSync(settings.fileKey, 'utf8');
-                        const encryptedVault = fs.readFileSync(settings.file, 'utf8').toString();
+                        const encryptedVault = fs.readFileSync(vaultFile, 'utf8').toString();
                         const decryptedBuffer = crypto.privateDecrypt(
                             {
                                 key: privateKey,
@@ -43,7 +47,7 @@ export class JSONFileVault extends VaultConnector {
                         throw new Error('Failed to decrypt vault');
                     }
                 } else {
-                    this.vaultData = JSON.parse(fs.readFileSync(settings.file).toString());
+                    this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
                 }
             } catch (e) {
                 this.vaultData = {};
@@ -63,6 +67,38 @@ export class JSONFileVault extends VaultConnector {
                 }
             }
         }
+    }
+
+    private findVaultFile(vaultFile) {
+        let _vaultFile = vaultFile;
+
+        if (fs.existsSync(_vaultFile)) {
+            return _vaultFile;
+        }
+        console.warn('Vault file not found in:', _vaultFile, 'trying to find in .smyth directory');
+
+        //try to find the vault file in the .smyth directory
+        _vaultFile = path.join(os.homedir(), '.smyth', '.sre', 'vault.json');
+        if (fs.existsSync(_vaultFile)) {
+            console.warn('Using alternative vault file found in : ', _vaultFile);
+            return _vaultFile;
+        }
+
+        console.warn('Vault file not found in:', _vaultFile, 'trying to find in local directory');
+
+        //try local directory
+        _vaultFile = path.join(process.cwd(), '.smyth', '.sre', 'vault.json');
+        if (fs.existsSync(_vaultFile)) {
+            console.warn('Using alternative vault file found in : ', _vaultFile);
+            return _vaultFile;
+        }
+
+        console.warn('Vault file not found in:', _vaultFile);
+        console.warn('!!! All attempts to find the vault file failed !!!');
+        console.warn('!!! Will continue without vault !!!');
+        console.warn('!!! Many features might not work !!!');
+
+        return null;
     }
 
     private getMasterKeyInteractive(): string {

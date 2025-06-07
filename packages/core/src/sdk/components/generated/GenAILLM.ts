@@ -60,6 +60,11 @@ export type TGenAILLMInputs = {
     [key: string]: any;
 };
 
+export type TGenAILLMOutputs = {
+    Reply: any;
+    [key: string]: any;
+};
+
 export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -74,7 +79,7 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { Reply: any; [key: string]: any } = {
+    const _out: TGenAILLMOutputs = {
         Reply: createSafeAccessor({}, component, 'Reply', {"default":true}),
     };
 

@@ -17,6 +17,10 @@ export type TAwaitInputs = {
     [key: string]: any;
 };
 
+export type TAwaitOutputs = {
+    [key: string]: any;
+};
+
 export function Await(settings?: TAwaitSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -31,7 +35,7 @@ export function Await(settings?: TAwaitSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TAwaitOutputs = {
         // No outputs defined
     };
 

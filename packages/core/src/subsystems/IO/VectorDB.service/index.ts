@@ -9,6 +9,6 @@ export class VectorDBService extends ConnectorServiceProvider {
     public register() {
         ConnectorService.register(TConnectorService.VectorDB, 'Pinecone', PineconeVectorDB);
         ConnectorService.register(TConnectorService.VectorDB, 'SmythManaged', SmythManagedVectorDB);
-        ConnectorService.register(TConnectorService.VectorDB, 'RAM', RAMVectorDB);
+        ConnectorService.register(TConnectorService.VectorDB, 'RAMVec', RAMVectorDB);
     }
 }

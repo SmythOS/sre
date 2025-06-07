@@ -14,6 +14,10 @@ export type TInpaintingInputs = {
     [key: string]: any;
 };
 
+export type TInpaintingOutputs = {
+    [key: string]: any;
+};
+
 export function Inpainting(settings?: TInpaintingSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function Inpainting(settings?: TInpaintingSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TInpaintingOutputs = {
         // No outputs defined
     };
 

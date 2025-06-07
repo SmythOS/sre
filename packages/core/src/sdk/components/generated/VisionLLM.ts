@@ -18,6 +18,10 @@ export type TVisionLLMInputs = {
     [key: string]: any;
 };
 
+export type TVisionLLMOutputs = {
+    [key: string]: any;
+};
+
 export function VisionLLM(settings?: TVisionLLMSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -32,7 +36,7 @@ export function VisionLLM(settings?: TVisionLLMSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TVisionLLMOutputs = {
         // No outputs defined
     };
 

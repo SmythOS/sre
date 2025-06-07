@@ -1,4 +1,5 @@
 import { Conversation } from '@sre/helpers/Conversation.helper';
+import { TLLMModel } from '@sre/types/LLM.types';
 import { uid } from '@sre/utils/general.utils';
 import { EventEmitter } from 'events';
 
@@ -35,7 +36,7 @@ export class Chat {
         agentId: uid(),
     };
     constructor(
-        private _model: string,
+        private _model: string | TLLMModel,
         _data?: any,
         private _options?: any,
     ) {

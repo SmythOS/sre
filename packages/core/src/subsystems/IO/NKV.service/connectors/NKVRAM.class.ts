@@ -20,7 +20,7 @@ export class NKVRAM extends NKVConnector {
     constructor() {
         super();
         this.accountConnector = ConnectorService.getAccountConnector();
-        this.cacheConnector = ConnectorService.getCacheConnector('Redis'); // Still use Redis for ACLs
+        this.cacheConnector = ConnectorService.getCacheConnector('RAM');
     }
 
     public key(...parts: string[]) {

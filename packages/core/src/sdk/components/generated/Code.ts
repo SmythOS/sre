@@ -17,6 +17,10 @@ export type TCodeInputs = {
     [key: string]: any;
 };
 
+export type TCodeOutputs = {
+    [key: string]: any;
+};
+
 export function Code(settings?: TCodeSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -31,7 +35,7 @@ export function Code(settings?: TCodeSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TCodeOutputs = {
         // No outputs defined
     };
 

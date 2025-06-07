@@ -42,7 +42,9 @@ export class Connector {
      * @returns A new instance of the current class.
      */
     public instance(config: any): this {
-        const configHash = createHash('sha256').update(JSON.stringify(config)).digest('hex');
+        const configHash = createHash('sha256')
+            .update(JSON.stringify(config || {}))
+            .digest('hex');
         const key = `${this.name}-${configHash}`;
 
         if (Connector.lCache.has(key)) {

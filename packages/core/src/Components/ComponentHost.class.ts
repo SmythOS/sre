@@ -21,7 +21,7 @@ export class ComponentHost extends Component {
 
         try {
             const componentName = config.data._component;
-            const componentConnector = ConnectorService.getComponentConnector(componentName);
+            const componentConnector = ConnectorService.getComponentConnector();
 
             const component = await componentConnector.user(AccessCandidate.agent(agent.id)).get(componentName);
 

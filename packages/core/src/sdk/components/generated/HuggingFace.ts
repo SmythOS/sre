@@ -23,6 +23,10 @@ export type THuggingFaceInputs = {
     [key: string]: any;
 };
 
+export type THuggingFaceOutputs = {
+    [key: string]: any;
+};
+
 export function HuggingFace(settings?: THuggingFaceSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -37,7 +41,7 @@ export function HuggingFace(settings?: THuggingFaceSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: THuggingFaceOutputs = {
         // No outputs defined
     };
 

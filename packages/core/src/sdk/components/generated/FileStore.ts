@@ -16,6 +16,10 @@ export type TFileStoreInputs = {
     [key: string]: any;
 };
 
+export type TFileStoreOutputs = {
+    [key: string]: any;
+};
+
 export function FileStore(settings?: TFileStoreSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -30,7 +34,7 @@ export function FileStore(settings?: TFileStoreSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TFileStoreOutputs = {
         // No outputs defined
     };
 

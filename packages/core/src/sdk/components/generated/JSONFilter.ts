@@ -15,6 +15,10 @@ export type TJSONFilterInputs = {
     [key: string]: any;
 };
 
+export type TJSONFilterOutputs = {
+    [key: string]: any;
+};
+
 export function JSONFilter(settings?: TJSONFilterSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -29,7 +33,7 @@ export function JSONFilter(settings?: TJSONFilterSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TJSONFilterOutputs = {
         // No outputs defined
     };
 

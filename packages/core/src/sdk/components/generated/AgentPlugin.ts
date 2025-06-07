@@ -23,6 +23,10 @@ export type TAgentPluginInputs = {
     [key: string]: any;
 };
 
+export type TAgentPluginOutputs = {
+    [key: string]: any;
+};
+
 export function AgentPlugin(settings?: TAgentPluginSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -37,7 +41,7 @@ export function AgentPlugin(settings?: TAgentPluginSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TAgentPluginOutputs = {
         // No outputs defined
     };
 

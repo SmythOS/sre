@@ -27,6 +27,10 @@ export type TWebSearchInputs = {
     [key: string]: any;
 };
 
+export type TWebSearchOutputs = {
+    [key: string]: any;
+};
+
 export function WebSearch(settings?: TWebSearchSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -41,7 +45,7 @@ export function WebSearch(settings?: TWebSearchSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TWebSearchOutputs = {
         // No outputs defined
     };
 

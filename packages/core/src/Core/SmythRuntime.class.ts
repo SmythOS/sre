@@ -15,7 +15,7 @@ export class SmythRuntime {
 
     private defaultConfig: SREConfig = {
         Vault: {
-            Connector: 'NullVault',
+            Connector: 'JSONFileVault',
         },
         Account: {
             Connector: 'DummyAccount',
@@ -26,13 +26,15 @@ export class SmythRuntime {
         Storage: {
             Connector: 'LocalStorage',
         },
-
+        Code: {
+            Connector: 'DummyConnector',
+        },
         //NKV should be loaded before VectorDB
         NKV: {
             Connector: 'RAM',
         },
         VectorDB: {
-            Connector: 'RAM',
+            Connector: 'RAMVec',
         },
         ModelsProvider: {
             Connector: 'SmythModelsProvider',
@@ -69,17 +71,27 @@ export class SmythRuntime {
         return SmythRuntime.instance;
     }
 
-    private initialized = false;
+    private _initializing = false;
+
+    public get initializing() {
+        return this._initializing;
+    }
+
+    private _initialized = false;
+
     public init(_config: SREConfig): SmythRuntime {
-        if (this.initialized) {
+        if (this._initializing) {
+            console.warn('You tried to initialize SRE while it is already initializing ... skipping');
+            return;
+        }
+        if (this._initialized) {
             throw new Error('SRE already initialized');
         }
+        this._initializing = true;
         SystemEvents.on('SRE:Booted', () => {
             this._readyResolve(true);
         });
         boot();
-
-        this.initialized = true;
 
         const config = this.autoConf(_config);
 
@@ -95,6 +107,7 @@ export class SmythRuntime {
             }
         }
 
+        this._initialized = true;
         SystemEvents.emit('SRE:Initialized');
 
         return SmythRuntime.Instance as SmythRuntime;
@@ -117,8 +130,10 @@ export class SmythRuntime {
         //     }
         // }
 
+        const keys = Object.keys({ ...defaultConfig, ...config });
+
         const newConfig: SREConfig = {};
-        for (let connectorType in defaultConfig) {
+        for (let connectorType of keys) {
             newConfig[connectorType] = [];
 
             let entry = config[connectorType] || defaultConfig[connectorType];

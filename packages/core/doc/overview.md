@@ -455,6 +455,29 @@ const agent = new Agent(agentData, settings);
 const result = await agent.process('/start', inputData);
 ```
 
+**SRE Boot Sequence:**
+
+1. 🚀 **Boot sequence initialization**
+2. 🔐 **Security & Core Infrastructure Setup**
+    - Vault connector (credential storage)
+    - Account connector (authentication)
+    - Cache connector (memory management)
+    - Storage connector (file persistence)
+3. 🧠 **AI Infrastructure Initialization**
+    - VectorDB connector (embeddings storage)
+    - Models provider connector (AI model access)
+4. 📊 **Agent Management Setup**
+    - Agent data connector (agent persistence)
+    - Component registration (40+ components loaded)
+5. ✅ **SRE Core Initialized**
+6. 🤖 **LLM Provider Connections**
+    - Multiple LLM connectors based on configuration
+    - Provider-specific authentication and setup
+7. 🌐 **API & Routing Setup**
+    - HTTP router configuration
+    - Endpoint registration
+8. 🎯 **Boot sequence completed** - System ready for agents
+
 ## 💡 Developer Experience
 
 ### 🎨 Dual Creation Modes

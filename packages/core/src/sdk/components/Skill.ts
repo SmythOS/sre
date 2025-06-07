@@ -13,7 +13,7 @@ export type TSkillSettings = {
     ai_exposed?: boolean;
     description?: string;
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    process?: (input: any) => Promise<any>;
+    process?: (input?: any) => Promise<any>;
     inputs?: Record<string, { source: any } & InputSettings>;
 };
 

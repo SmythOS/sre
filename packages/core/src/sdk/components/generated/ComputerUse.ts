@@ -17,6 +17,10 @@ export type TComputerUseInputs = {
     [key: string]: any;
 };
 
+export type TComputerUseOutputs = {
+    [key: string]: any;
+};
+
 export function ComputerUse(settings?: TComputerUseSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -31,7 +35,7 @@ export function ComputerUse(settings?: TComputerUseSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TComputerUseOutputs = {
         // No outputs defined
     };
 

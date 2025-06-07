@@ -116,7 +116,12 @@ export abstract class LLMConnector extends Connector {
     ): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<OpenAI.ImagesResponse>;
+    protected abstract imageGenRequest(
+        acRequest: AccessRequest,
+        prompt,
+        params: TLLMConnectorParams,
+        agent: string | Agent,
+    ): Promise<OpenAI.ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
     protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<any> {
@@ -247,8 +252,9 @@ export abstract class LLMConnector extends Connector {
     private async getCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
         //create a credentials list that we can iterate over
         //if the credentials are not provided, we will use None as a default in order to return empty credentials
-        const credentialsList: any[] =
-            typeof modelInfo.credentials === 'string' ? [modelInfo.credentials] : modelInfo.credentials || [TLLMCredentials.None];
+        const credentialsList: any[] = !Array.isArray(modelInfo.credentials)
+            ? [modelInfo.credentials]
+            : modelInfo.credentials || [TLLMCredentials.None];
 
         for (let credentialsMode of credentialsList) {
             if (typeof credentialsMode === 'object') {
@@ -305,6 +311,15 @@ export abstract class LLMConnector extends Connector {
 
         const modelProviderCandidate = modelsProvider.requester(candidate);
         const modelInfo: TLLMModel | TCustomLLMModel = await modelProviderCandidate.getModelInfo(model);
+
+        //if the model has default params make sure to set them if they are not present
+        if (modelInfo.params) {
+            for (let key in modelInfo.params) {
+                if (typeof _params[key] === 'undefined') {
+                    _params[key] = modelInfo.params[key];
+                }
+            }
+        }
 
         const isStandardLLM = await modelProviderCandidate.isStandardLLM(model);
 

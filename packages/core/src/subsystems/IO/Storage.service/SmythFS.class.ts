@@ -19,34 +19,65 @@ export type TSmythFSURI = {
     path: string;
 };
 
-SystemEvents.on('SRE:Booted', () => {
-    const router = ConnectorService.getRouterConnector();
-    if (router && router?.get instanceof Function) {
-        router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
-        router.get('/storage/:file_id', SmythFS.Instance.serveResource.bind(SmythFS.Instance));
-    }
-});
+// SystemEvents.on('SRE:Booted', () => {
+//     const router = ConnectorService.getRouterConnector();
+//     if (router && router?.get instanceof Function) {
+//         router.get('/_temp/:uid', SmythFS.Instance.serveTempContent.bind(SmythFS.Instance));
+//         router.get('/storage/:file_id', SmythFS.Instance.serveResource.bind(SmythFS.Instance));
+//     }
+// });
 
 export class SmythFS {
-    private storage: StorageConnector;
-    private cache: CacheConnector;
+    private hash: string; // Store the instance hash for URL generation
 
-    //singleton
-    private static instance: SmythFS;
-    public static get Instance() {
-        if (!this.instance) {
-            this.instance = new SmythFS();
-        }
-        return this.instance;
+    static instances: any = {};
+
+    // Centralized hash generation to ensure consistency
+    private static generateInstanceHash(storageName: string, cacheName: string): string {
+        const instanceProps = `${storageName}:${cacheName}`;
+        return crypto.createHash('sha256').update(instanceProps).digest('hex').substring(0, 6);
     }
 
-    private constructor(storageProvider: string = '', cacheProvider: string = '') {
+    // Default singleton instance (most common use case)
+    public static get Instance(): SmythFS {
+        return SmythFS.getInstance(); // Uses default empty string providers
+    }
+
+    // Multiton pattern - get instance based on storage and cache provider combination
+    public static getInstance(storageProvider: string | StorageConnector = '', cacheProvider: string | CacheConnector = ''): SmythFS {
+        // First get the actual connector names to calculate the correct hash
+        const storage = storageProvider instanceof StorageConnector ? storageProvider : ConnectorService.getStorageConnector(storageProvider);
+        const cache = cacheProvider instanceof CacheConnector ? cacheProvider : ConnectorService.getCacheConnector(cacheProvider);
+        const hash = SmythFS.generateInstanceHash(storage.name, cache.name);
+
+        if (SmythFS.instances[hash]) {
+            return SmythFS.instances[hash];
+        }
+
+        const instance = new SmythFS(storage, cache);
+
+        //register routes
+        const router = ConnectorService.getRouterConnector();
+        if (router && router?.get instanceof Function) {
+            router.get(`/_temp/${hash}/:uid`, instance.serveTempContent.bind(instance));
+            router.get(`/storage/${hash}/:file_id`, instance.serveResource.bind(instance));
+        }
+
+        SmythFS.instances[hash] = instance;
+        return instance;
+    }
+
+    private constructor(
+        private storage: StorageConnector,
+        private cache: CacheConnector,
+    ) {
         //SmythFS cannot be used without SRE
         if (!ConnectorService.ready) {
             throw new Error('SRE not available');
         }
-        this.storage = ConnectorService.getStorageConnector(storageProvider);
-        this.cache = ConnectorService.getCacheConnector(cacheProvider);
+
+        // Use centralized hash generation method
+        this.hash = SmythFS.generateInstanceHash(this.storage.name, this.cache.name);
     }
 
     // public getStoragePath(uri: string) {
@@ -195,11 +226,17 @@ export class SmythFS {
         ); // 1 hour
 
         const baseUrl = ConnectorService.getRouterConnector().baseUrl;
-        return `${baseUrl}/_temp/${uid}`;
+        return `${baseUrl}/_temp/${this.hash}/${uid}`;
     }
 
     public async destroyTempUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {
-        const uid = url.split('/_temp/')[1].split('?')[0]; // remove any query params
+        // Parse URL with new format: /_temp/{hash}/{uid}
+        const tempPath = url.split('/_temp/')[1];
+        if (!tempPath) throw new Error('Invalid Temp URL format');
+
+        const uid = tempPath.split('/')[1]?.split('?')[0]; // get uid and remove query params
+        if (!uid) throw new Error('Invalid Temp URL format');
+
         let cacheVal = await this.cache.user(AccessCandidate.user(`system:${uid}`)).get(`pub_url:${uid}`);
         if (!cacheVal) throw new Error('Invalid Temp URL');
         cacheVal = JSONContentHelper.create(cacheVal).tryParse();
@@ -294,7 +331,7 @@ export class SmythFS {
             ? `https://${agentDataConnector.getAgentConfig(agentId).agentStageDomain}`
             : baseUrl;
 
-        return `${domain}/storage/${uid}${ext ? `.${ext}` : ''}`;
+        return `${domain}/storage/${this.hash}/${uid}${ext ? `.${ext}` : ''}`;
     }
     public async destroyResourceUrl(url: string, { delResource }: { delResource: boolean } = { delResource: false }) {}
     public async serveResource(req: any, res: any) {
@@ -333,7 +370,7 @@ export class SmythFS {
         const parts = uri.split('://');
         if (parts.length !== 2) return undefined;
         if (parts[0].toLowerCase() !== 'smythfs') return undefined;
-        const parsed = new URL(`http://${parts[1]}`);
+        const parsed = this.CaseSensitiveURL(`http://${parts[1]}`);
         const tld = parsed.hostname.split('.').pop();
         if (tld !== 'team' && tld !== 'user' && tld !== 'agent' && tld !== 'smyth') throw new Error('Invalid Resource URI');
         let team = tld === 'team' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
@@ -341,12 +378,15 @@ export class SmythFS {
         const agent = tld === 'agent' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
         const smyth = tld === 'smyth' ? parsed.hostname.replace(`.${tld}`, '') : undefined;
 
+        let basePath = '';
         if (!team) {
             let candidate: IAccessCandidate;
             if (user) {
                 candidate = AccessCandidate.user(user);
+                basePath = '/' + user;
             } else if (agent) {
                 candidate = AccessCandidate.agent(agent);
+                basePath = '/' + agent;
             }
 
             if (candidate) {
@@ -356,6 +396,7 @@ export class SmythFS {
 
         // create a default candidate based on the uri
         let defaultCandidate: IAccessCandidate;
+
         if (team) {
             defaultCandidate = AccessCandidate.team(team);
         } else if (user) {
@@ -371,7 +412,39 @@ export class SmythFS {
             agent,
             smyth,
             defaultCandidate,
-            path: parsed.pathname,
+            path: basePath + parsed.pathname,
+        };
+    }
+
+    private CaseSensitiveURL(urlString: string) {
+        // First, extract the original hostname for case preservation
+        const parts = urlString.split('://');
+        if (parts.length !== 2) return null;
+
+        const afterProtocol = parts[1];
+        const hostnameEnd = Math.min(
+            ...[afterProtocol.indexOf('/'), afterProtocol.indexOf('?'), afterProtocol.indexOf('#'), afterProtocol.length].filter((i) => i >= 0),
+        );
+
+        const originalHostnamePart = afterProtocol.substring(0, hostnameEnd);
+        const [originalHostname, originalPort] = originalHostnamePart.split(':');
+
+        // Use URL constructor for robust parsing of everything else
+        const parsed = new URL(urlString);
+
+        // Explicitly copy URL properties since they're not enumerable
+        return {
+            protocol: parsed.protocol,
+            hostname: originalHostname, // Case-sensitive hostname
+            port: parsed.port,
+            pathname: parsed.pathname,
+            search: parsed.search,
+            searchParams: parsed.searchParams,
+            hash: parsed.hash,
+            href: parsed.href,
+            origin: parsed.origin,
+            host: originalHostname + (parsed.port ? `:${parsed.port}` : ''),
+            originalPort: originalPort || null,
         };
     }
 

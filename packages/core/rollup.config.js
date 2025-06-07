@@ -326,7 +326,7 @@ function SDKGenPlugin() {
         buildStart(outputOptions, bundle) {
             try {
                 process.stdout.write(`\n${colors.cyan}⚙️ ${colors.yellow} Generating SDK files...${colors.reset}\n`);
-                const cmd = 'node scripts/sdk/generate-components.js';
+                const cmd = 'node scripts/sdk/generate.js';
                 execSync(cmd, { stdio: 'inherit' });
                 console.log(`${colors.green}✅ ${colors.bright}SDK files generated successfully!${colors.reset}\n`);
             } catch (error) {

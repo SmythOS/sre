@@ -14,6 +14,10 @@ export type TOutpaintingInputs = {
     [key: string]: any;
 };
 
+export type TOutpaintingOutputs = {
+    [key: string]: any;
+};
+
 export function Outpainting(settings?: TOutpaintingSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function Outpainting(settings?: TOutpaintingSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TOutpaintingOutputs = {
         // No outputs defined
     };
 

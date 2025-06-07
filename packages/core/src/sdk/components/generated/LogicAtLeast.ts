@@ -15,6 +15,10 @@ export type TLogicAtLeastInputs = {
     [key: string]: any;
 };
 
+export type TLogicAtLeastOutputs = {
+    [key: string]: any;
+};
+
 export function LogicAtLeast(settings?: TLogicAtLeastSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -29,7 +33,7 @@ export function LogicAtLeast(settings?: TLogicAtLeastSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TLogicAtLeastOutputs = {
         // No outputs defined
     };
 

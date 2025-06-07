@@ -17,6 +17,10 @@ export type TDataSourceCleanerInputs = {
     [key: string]: any;
 };
 
+export type TDataSourceCleanerOutputs = {
+    [key: string]: any;
+};
+
 export function DataSourceCleaner(settings?: TDataSourceCleanerSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -31,7 +35,7 @@ export function DataSourceCleaner(settings?: TDataSourceCleanerSettings, agent?:
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TDataSourceCleanerOutputs = {
         // No outputs defined
     };
 

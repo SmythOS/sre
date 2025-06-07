@@ -14,6 +14,10 @@ export type TImageUpscalingInputs = {
     [key: string]: any;
 };
 
+export type TImageUpscalingOutputs = {
+    [key: string]: any;
+};
+
 export function ImageUpscaling(settings?: TImageUpscalingSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function ImageUpscaling(settings?: TImageUpscalingSettings, agent?: Agent
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TImageUpscalingOutputs = {
         // No outputs defined
     };
 

@@ -40,14 +40,18 @@ JSONAccount format
 
 */
 
+export type TJSONFileAccountSettings = {
+    file: string;
+};
+
 export class JSONFileAccount extends AccountConnector {
     public name = 'JSONFileAccount';
     private data: any = {};
     private file: string;
 
-    constructor(private config: { file: string }) {
+    constructor(private settings: TJSONFileAccountSettings) {
         super();
-        this.file = config.file;
+        this.file = settings.file;
         this.loadData();
     }
 

@@ -53,6 +53,10 @@ export type TAPICallInputs = {
     [key: string]: any;
 };
 
+export type TAPICallOutputs = {
+    [key: string]: any;
+};
+
 export function APICall(settings?: TAPICallSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -67,7 +71,7 @@ export function APICall(settings?: TAPICallSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TAPICallOutputs = {
         // No outputs defined
     };
 

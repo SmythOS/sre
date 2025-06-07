@@ -89,6 +89,8 @@ export class ConnectorService {
             if (!ConnectorService.ConnectorInstances[connectorType].default && isDefault) {
                 ConnectorService.ConnectorInstances[connectorType].default = connector;
             }
+
+            return connector;
         }
     }
     static async _stop() {
@@ -104,10 +106,11 @@ export class ConnectorService {
     static getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
         const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName] as T;
         if (!instance) {
-            if (ConnectorService.ConnectorInstances[connectorType] && Object.keys(ConnectorService.ConnectorInstances[connectorType]).length > 0) {
-                //return the first instance
-                return ConnectorService.ConnectorInstances[connectorType][Object.keys(ConnectorService.ConnectorInstances[connectorType])[0]] as T;
-            }
+            //TODO only apply the fallback below if resilient mode is enabled
+            // if (ConnectorService.ConnectorInstances[connectorType] && Object.keys(ConnectorService.ConnectorInstances[connectorType]).length > 0) {
+            //     //return the first instance
+            //     return ConnectorService.ConnectorInstances[connectorType][Object.keys(ConnectorService.ConnectorInstances[connectorType])[0]] as T;
+            // }
             console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
             //print stack trace
 

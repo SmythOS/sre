@@ -7,13 +7,6 @@ export type VectorsResultData = {
     metadata?: ({ text?: string; user?: Record<string, string> } & Record<string, any>) | undefined;
 }[];
 
-export type PineconeConfig = {
-    pineconeApiKey: string;
-    openaiApiKey: string;
-    indexName: string;
-    isCustomStorageInstance?: boolean;
-};
-
 export interface NsKnownMetadata {
     isOnCustomStorage?: boolean;
     [key: string]: any;

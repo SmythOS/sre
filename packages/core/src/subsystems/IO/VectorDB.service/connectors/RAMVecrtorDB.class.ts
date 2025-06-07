@@ -15,55 +15,57 @@ import {
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '../../../../helpers/Vectors.helper';
 import { Logger } from '@sre/helpers/Log.helper';
-import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
+import { OpenAIEmbeds } from '@sre/helpers/Vectors.helper/OpenAIEmbeds';
 import crypto from 'crypto';
 
 const console = Logger('RAM VectorDB');
 
-interface RAMVectorConfig {
+interface VectorData {
+    id: string;
+    values: number[];
+    datasource: string;
+    metadata?: { [key: string]: any };
+}
+
+export type RAMVectorDBConfig = {
     openaiApiKey?: string;
-    isCustomStorageInstance?: boolean;
-}
+};
 
-interface StoredVector {
-    id: string;
-    values: number[];
-    metadata?: { [key: string]: any };
-    namespace: string;
-}
-
-interface SimilarityResult {
-    id: string;
-    values: number[];
-    metadata?: { [key: string]: any };
-    score: number;
-}
+/**
+ * RAM Vector Database - stores everything in memory
+ * Data structure:
+ * - vectors: namespace -> VectorData[]
+ * - namespaces: namespace -> IStorageVectorNamespace
+ * - datasources: namespace -> datasourceId -> IStorageVectorDataSource
+ * - acls: resourceId -> IACL
+ */
 
 export class RAMVectorDB extends VectorDBConnector {
-    public name = 'RAMVectorDB';
+    public name = 'RAMVec';
     public id = 'ram';
-    private vectors: Map<string, StoredVector> = new Map();
-    private namespaceVectors: Map<string, Set<string>> = new Map();
-    private redisCache: CacheConnector;
-    private accountConnector: AccountConnector;
     private openaiApiKey: string;
-    private nkvConnector: NKVConnector;
-    private isCustomStorageInstance: boolean;
+    private accountConnector: AccountConnector;
+    private embeddingsProvider: OpenAIEmbeds;
 
-    constructor(config: RAMVectorConfig = {}) {
+    // In-memory storage
+    private vectors: Record<string, VectorData[]> = {};
+    private namespaces: Record<string, IStorageVectorNamespace> = {};
+    private datasources: Record<string, Record<string, IStorageVectorDataSource>> = {};
+    private acls: Record<string, IACL> = {};
+
+    constructor(config: RAMVectorDBConfig) {
         super();
-        console.info('RAM VectorDB initialized');
-
+        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY || '';
         this.accountConnector = ConnectorService.getAccountConnector();
-        this.redisCache = ConnectorService.getCacheConnector('Redis');
-        this.nkvConnector = ConnectorService.getNKVConnector();
-        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.isCustomStorageInstance = config.isCustomStorageInstance || false;
+
+        // Initialize OpenAI embeddings provider directly
+        this.embeddingsProvider = new OpenAIEmbeds({
+            apiKey: this.openaiApiKey,
+        });
+
+        console.info('RAM VectorDB initialized');
 
         if (!this.openaiApiKey) {
             console.warn('OpenAI API key not provided - text embedding will not work');
@@ -73,7 +75,7 @@ export class RAMVectorDB extends VectorDBConnector {
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
         const preparedNs = VectorDBConnector.constructNsName(teamId, resourceId);
-        const acl = await this.getACL(AccessCandidate.clone(candidate), preparedNs);
+        const acl = this.acls[preparedNs];
         const exists = !!acl;
 
         if (!exists) {
@@ -88,30 +90,30 @@ export class RAMVectorDB extends VectorDBConnector {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        const candidate = AccessCandidate.team(teamId);
-        const nsExists = await this.nkvConnector.user(candidate).exists(`vectorDB:${this.id}`, `namespace:${preparedNs}`);
-
-        if (!nsExists) {
+        if (!this.namespaces[preparedNs]) {
             const nsData: IStorageVectorNamespace = {
                 namespace: preparedNs,
                 displayName: namespace,
                 teamId,
                 metadata: {
                     ...metadata,
-                    isOnCustomStorage: this.isCustomStorageInstance,
                     storageType: 'RAM',
                 },
             };
-            await this.nkvConnector.user(candidate).set(`vectorDB:${this.id}:namespaces`, preparedNs, JSON.stringify(nsData));
 
-            // Initialize namespace in memory
-            if (!this.namespaceVectors.has(preparedNs)) {
-                this.namespaceVectors.set(preparedNs, new Set());
-            }
+            // Store namespace metadata in memory
+            this.namespaces[preparedNs] = nsData;
+
+            // Initialize namespace vectors storage
+            this.vectors[preparedNs] = [];
+
+            // Initialize datasources storage for this namespace
+            this.datasources[preparedNs] = {};
         }
 
+        // Store ACL in memory
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
-        await this.setACL(acRequest, preparedNs, acl);
+        this.acls[preparedNs] = acl;
 
         return new Promise<void>((resolve) => resolve());
     }
@@ -119,44 +121,39 @@ export class RAMVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        return await this.nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        return !!this.namespaces[preparedNs];
     }
 
     @SecureConnector.AccessControl
-    protected async getNamespace(acRequest: AccessRequest, namespace: string): Promise<any> {
+    protected async getNamespace(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorNamespace> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        const nsData = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, preparedNs);
-        return JSONContentHelper.create(nsData?.toString()).tryParse() as IStorageVectorNamespace;
+        const nsData = this.namespaces[preparedNs];
+        if (!nsData) {
+            throw new Error(`Namespace ${namespace} not found`);
+        }
+        return nsData;
     }
 
     @SecureConnector.AccessControl
-    protected async listNamespaces(acRequest: AccessRequest): Promise<any[]> {
+    protected async listNamespaces(acRequest: AccessRequest): Promise<IStorageVectorNamespace[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const candidate = AccessCandidate.team(teamId);
-        const nsKeys = await this.nkvConnector.user(candidate).list(`vectorDB:${this.id}:namespaces`);
-        return nsKeys.map((k) => JSONContentHelper.create(k.data?.toString()).tryParse() as IStorageVectorNamespace);
+
+        // Filter namespaces by team
+        return Object.values(this.namespaces).filter((ns) => ns.teamId === teamId);
     }
 
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const candidate = AccessCandidate.team(teamId);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        // Delete all vectors in this namespace from memory
-        const vectorIds = this.namespaceVectors.get(preparedNs);
-        if (vectorIds) {
-            for (const vectorId of vectorIds) {
-                this.vectors.delete(vectorId);
-            }
-            this.namespaceVectors.delete(preparedNs);
-        }
-
-        await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
-        await this.nkvConnector.user(candidate).delete(`vectorDB:${this.id}:namespaces`, preparedNs);
+        // Delete from memory
+        delete this.vectors[preparedNs];
+        delete this.namespaces[preparedNs];
+        delete this.datasources[preparedNs];
+        delete this.acls[preparedNs];
     }
 
     @SecureConnector.AccessControl
@@ -169,60 +166,38 @@ export class RAMVectorDB extends VectorDBConnector {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        let ns = await this.nkvConnector.user(AccessCandidate.team(teamId)).get(`vectorDB:${this.id}:namespaces`, preparedNs);
-
-        if (!ns) {
+        if (!this.namespaces[preparedNs]) {
             throw new Error('Namespace does not exist');
         }
 
-        const nsData = JSONContentHelper.create(ns.toString()).tryParse() as IStorageVectorNamespace;
-        if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace on custom storage.');
-        } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace that is not on custom storage.');
-        }
-
-        let queryVector: number[];
+        // Get query vector
+        let queryVector = query;
         if (typeof query === 'string') {
             if (!this.openaiApiKey) {
-                throw new Error('OpenAI API key is required for text queries');
+                throw new Error('OpenAI API key is required for text embedding');
             }
-            queryVector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
-        } else {
-            queryVector = query;
+            queryVector = await this.embeddingsProvider.embedText(query);
         }
 
-        // Get all vectors in this namespace
-        const vectorIds = this.namespaceVectors.get(preparedNs) || new Set();
-        const results: SimilarityResult[] = [];
+        // Search in namespace data
+        const namespaceData = this.vectors[preparedNs] || [];
+        const results: Array<{ id: string; score: number; values: number[]; metadata?: any }> = [];
 
-        for (const vectorId of vectorIds) {
-            const vector = this.vectors.get(vectorId);
-            if (vector) {
-                const similarity = this.cosineSimilarity(queryVector, vector.values);
-                results.push({
-                    id: vector.id,
-                    values: vector.values,
-                    metadata: vector.metadata,
-                    score: similarity,
-                });
-            }
+        for (const vector of namespaceData) {
+            const similarity = this.cosineSimilarity(queryVector as number[], vector.values);
+            results.push({
+                id: vector.id,
+                score: similarity,
+                values: vector.values,
+                metadata: options.includeMetadata ? vector.metadata : undefined,
+            });
         }
 
-        // Sort by similarity score (highest first) and take top K
-        const topK = options?.topK || 10;
+        // Sort by similarity (highest first) and limit results
+        const topK = options.topK || 10;
         const sortedResults = results.sort((a, b) => b.score - a.score).slice(0, topK);
 
-        return sortedResults.map((result) => {
-            if (result.metadata?.user) {
-                result.metadata.user = VectorsHelper.parseMetadata(result.metadata.user);
-            }
-            return {
-                id: result.id,
-                values: result.values,
-                metadata: result.metadata,
-            };
-        });
+        return sortedResults;
     }
 
     @SecureConnector.AccessControl
@@ -233,44 +208,44 @@ export class RAMVectorDB extends VectorDBConnector {
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
-        const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
 
-        // make sure that all sources are of the same type (source.source)
-        if (sourceWrapper.some((s) => helper.detectSourceType(s.source) !== helper.detectSourceType(sourceWrapper[0].source))) {
-            throw new Error('All sources must be of the same type');
+        const sources = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
+        const insertedIds: string[] = [];
+
+        if (!this.vectors[preparedNs]) {
+            this.vectors[preparedNs] = [];
         }
 
-        const sourceType = helper.detectSourceType(sourceWrapper[0].source);
-        if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
-        const transformedSource = await helper.transformSource(sourceWrapper, sourceType);
+        for (const source of sources) {
+            let vector: number[] = [];
 
-        // Store vectors in memory
-        const insertedIds: string[] = [];
-        for (const source of transformedSource) {
-            const vector: StoredVector = {
+            if (typeof source.source === 'string') {
+                // Text embedding
+                if (!this.openaiApiKey) {
+                    throw new Error('OpenAI API key is required for text embedding');
+                }
+                vector = await this.embeddingsProvider.embedText(source.source);
+            } else {
+                // Direct vector
+                vector = source.source;
+            }
+
+            const vectorData: VectorData = {
                 id: source.id,
-                values: source.source as number[],
+                values: vector,
+                datasource: source.metadata?.datasource || 'unknown',
                 metadata: source.metadata,
-                namespace: preparedNs,
             };
 
-            this.vectors.set(source.id, vector);
-
-            // Add to namespace index
-            if (!this.namespaceVectors.has(preparedNs)) {
-                this.namespaceVectors.set(preparedNs, new Set());
+            // Check if vector with this ID already exists and update it
+            const existingIndex = this.vectors[preparedNs].findIndex((v) => v.id === source.id);
+            if (existingIndex >= 0) {
+                this.vectors[preparedNs][existingIndex] = vectorData;
+            } else {
+                this.vectors[preparedNs].push(vectorData);
             }
-            this.namespaceVectors.get(preparedNs)!.add(source.id);
 
             insertedIds.push(source.id);
-        }
-
-        const accessCandidate = acRequest.candidate;
-        const isNewNs = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
-        if (isNewNs) {
-            let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
-            await this.setACL(acRequest, namespace, acl);
         }
 
         return insertedIds;
@@ -278,125 +253,127 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
-        const _ids = Array.isArray(id) ? id : [id];
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        // Remove vectors from memory
-        for (const vectorId of _ids) {
-            this.vectors.delete(vectorId);
+        const ids = Array.isArray(id) ? id : [id];
 
-            // Remove from namespace index
-            const nsVectors = this.namespaceVectors.get(preparedNs);
-            if (nsVectors) {
-                nsVectors.delete(vectorId);
-            }
+        if (this.vectors[preparedNs]) {
+            this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => !ids.includes(vector.id));
         }
     }
 
     @SecureConnector.AccessControl
-    protected async createDatasource(
-        acRequest: AccessRequest,
-        namespace: string,
-        datasource: DatasourceDto,
-    ): Promise<{ id: string; vectorIds: string[] }> {
+    protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        const chunkedText = await VectorsHelper.chunkText(datasource.text, {
-            chunkSize: datasource.chunkSize,
-            chunkOverlap: datasource.chunkOverlap,
-        });
-        const ids = Array.from({ length: chunkedText.length }, (_, i) => crypto.randomUUID());
-        const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
-            return {
-                id: ids[i],
-                source: doc,
-                metadata: {
-                    user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-specified metadata
-                },
-            };
-        });
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        const datasourceId = datasource.id || crypto.randomUUID();
 
-        const nsExists = await this.nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-        if (!nsExists) {
-            throw new Error('Namespace does not exist');
+        // Ensure namespace exists
+        if (!this.namespaces[preparedNs]) {
+            throw new Error(`Namespace ${namespace} does not exist. Please create the namespace first.`);
         }
 
-        const _vIds = await this.insert(acRequest, namespace, source);
+        // Process text and create vectors
+        const vectorIds: string[] = [];
 
-        const dsId = datasource.id || crypto.randomUUID();
+        if (!this.openaiApiKey) {
+            throw new Error('OpenAI API key is required for text processing');
+        }
 
-        const dsData: IStorageVectorDataSource = {
-            namespaceId: formattedNs,
+        // Split text into chunks if needed
+        const chunkSize = datasource.chunkSize || 1000;
+        const chunkOverlap = datasource.chunkOverlap || 200;
+        const chunks = this.splitTextIntoChunks(datasource.text, chunkSize, chunkOverlap);
+
+        // Initialize namespace vectors if not exists (should already exist if namespace was created properly)
+        if (!this.vectors[preparedNs]) {
+            this.vectors[preparedNs] = [];
+        }
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunkId = `${datasourceId}_chunk_${i}`;
+            const vector = await this.embeddingsProvider.embedText(chunks[i]);
+
+            const vectorData: VectorData = {
+                id: chunkId,
+                values: vector,
+                datasource: datasourceId,
+                metadata: {
+                    ...datasource.metadata,
+                    text: chunks[i],
+                    chunkIndex: i,
+                    totalChunks: chunks.length,
+                },
+            };
+
+            this.vectors[preparedNs].push(vectorData);
+            vectorIds.push(chunkId);
+        }
+
+        const storageDataSource: IStorageVectorDataSource = {
+            namespaceId: preparedNs,
             teamId,
-            name: datasource.label || 'Untitled',
-            metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
+            name: datasource.label || `Datasource ${datasourceId}`,
+            metadata: JSON.stringify(datasource.metadata || {}),
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds,
+            id: datasourceId,
         };
 
-        await this.nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .set(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, dsId, JSON.stringify(dsData));
-        return { id: dsId, vectorIds: _vIds };
+        // Store datasource metadata in memory
+        if (!this.datasources[preparedNs]) {
+            this.datasources[preparedNs] = {};
+        }
+        this.datasources[preparedNs][datasourceId] = storageDataSource;
+
+        return storageDataSource;
     }
 
     @SecureConnector.AccessControl
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
 
-        let ds: IStorageVectorDataSource = JSONContentHelper.create(
-            (
-                await this.nkvConnector
-                    .user(AccessCandidate.team(teamId))
-                    .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
-        ).tryParse();
-
-        if (!ds || typeof ds !== 'object') {
-            throw new Error(`Data source not found with id: ${datasourceId}`);
-        }
-
-        const nsExists = await this.nkvConnector
-            .user(AccessCandidate.team(teamId))
-            .exists(`vectorDB:${this.id}:namespaces`, VectorDBConnector.constructNsName(teamId, namespace));
-        if (!nsExists) {
+        // Ensure namespace exists
+        if (!this.namespaces[preparedNs]) {
             throw new Error('Namespace does not exist');
         }
 
-        await this.delete(acRequest, namespace, ds.vectorIds || []);
+        // Get datasource info
+        const datasource = this.datasources[preparedNs]?.[datasourceId];
+        if (datasource) {
+            // Delete all vectors belonging to this datasource
+            if (this.vectors[preparedNs]) {
+                this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => vector.datasource !== datasourceId);
+            }
+        }
 
-        await this.nkvConnector.user(AccessCandidate.team(teamId)).delete(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId);
+        // Delete datasource metadata
+        if (this.datasources[preparedNs]) {
+            delete this.datasources[preparedNs][datasourceId];
+        }
     }
 
     @SecureConnector.AccessControl
-    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<{ id: string; data: IStorageVectorDataSource }[]> {
+    protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
-            (ds) => {
-                return {
-                    id: ds.key,
-                    data: JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource,
-                };
-            },
-        );
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
+        const namespaceDatasources = this.datasources[preparedNs] || {};
+        return Object.values(namespaceDatasources);
     }
 
     @SecureConnector.AccessControl
     protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        return JSONContentHelper.create(
-            (
-                await this.nkvConnector
-                    .user(AccessCandidate.team(teamId))
-                    .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
-        ).tryParse() as IStorageVectorDataSource;
+        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+
+        const datasource = this.datasources[preparedNs]?.[datasourceId];
+        if (!datasource) {
+            throw new Error(`Datasource ${datasourceId} not found`);
+        }
+        return datasource;
     }
 
     /**
@@ -427,19 +404,21 @@ export class RAMVectorDB extends VectorDBConnector {
         return dotProduct / (normA * normB);
     }
 
-    private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
-        await this.redisCache
-            .user(AccessCandidate.clone(acRequest.candidate))
-            .set(`vectorDB:${this.id}:namespace:${preparedNs}:acl`, JSON.stringify(acl));
-    }
+    /**
+     * Split text into chunks with overlap
+     */
+    private splitTextIntoChunks(text: string, chunkSize: number, overlap: number): string[] {
+        const chunks: string[] = [];
+        let start = 0;
 
-    private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.redisCache.user(ac).get(`vectorDB:${this.id}:namespace:${preparedNs}:acl`);
-        const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
-        return acl;
-    }
+        while (start < text.length) {
+            const end = Math.min(start + chunkSize, text.length);
+            chunks.push(text.slice(start, end));
 
-    private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
-        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:${this.id}:namespace:${preparedNs}:acl`);
+            if (end === text.length) break;
+            start = end - overlap;
+        }
+
+        return chunks;
     }
 }

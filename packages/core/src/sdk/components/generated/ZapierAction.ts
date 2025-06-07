@@ -18,6 +18,10 @@ export type TZapierActionInputs = {
     [key: string]: any;
 };
 
+export type TZapierActionOutputs = {
+    [key: string]: any;
+};
+
 export function ZapierAction(settings?: TZapierActionSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -32,7 +36,7 @@ export function ZapierAction(settings?: TZapierActionSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TZapierActionOutputs = {
         // No outputs defined
     };
 

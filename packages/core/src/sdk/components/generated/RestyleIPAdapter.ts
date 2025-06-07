@@ -14,6 +14,10 @@ export type TRestyleIPAdapterInputs = {
     [key: string]: any;
 };
 
+export type TRestyleIPAdapterOutputs = {
+    [key: string]: any;
+};
+
 export function RestyleIPAdapter(settings?: TRestyleIPAdapterSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function RestyleIPAdapter(settings?: TRestyleIPAdapterSettings, agent?: A
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TRestyleIPAdapterOutputs = {
         // No outputs defined
     };
 

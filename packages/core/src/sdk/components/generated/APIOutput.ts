@@ -17,6 +17,10 @@ export type TAPIOutputInputs = {
     [key: string]: any;
 };
 
+export type TAPIOutputOutputs = {
+    [key: string]: any;
+};
+
 export function APIOutput(settings?: TAPIOutputSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -31,7 +35,7 @@ export function APIOutput(settings?: TAPIOutputSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TAPIOutputOutputs = {
         // No outputs defined
     };
 

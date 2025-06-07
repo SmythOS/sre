@@ -4,7 +4,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
 import { LLMContext } from '@sre/MemoryManager/LLMContext';
 import { TAgentProcessParams } from '@sre/types/Agent.types';
-import { ILLMContextStore, TLLMEvent, ToolData } from '@sre/types/LLM.types';
+import { ILLMContextStore, TLLMEvent, TLLMModel, ToolData } from '@sre/types/LLM.types';
 import { isUrl } from '@sre/utils/data.utils';
 import { processWithConcurrencyLimit, uid } from '@sre/utils/general.utils';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -96,7 +96,7 @@ export class Conversation extends EventEmitter {
         });
     }
 
-    public set model(model: string) {
+    public set model(model: string | TLLMModel) {
         this.ready.then(async () => {
             this._status = '';
             await this.updateModel(model);
@@ -108,7 +108,7 @@ export class Conversation extends EventEmitter {
     }
 
     constructor(
-        private _model: string,
+        private _model: string | TLLMModel,
         private _specSource?: string | Record<string, any>,
         private _settings?: {
             maxContextSize?: number;
@@ -414,13 +414,18 @@ export class Conversation extends EventEmitter {
 
         const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
 
+        let maxTokens = this._maxOutputTokens;
+        if (typeof this.model === 'object' && this.model?.params?.maxTokens) {
+            maxTokens = this.model.params.maxTokens;
+        }
+
         const eventEmitter: any = await llmInference
             .streamRequest(
                 {
                     model: this.model,
                     messages: contextWindow,
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
-                    maxTokens: this._maxOutputTokens,
+                    maxTokens,
                     cache: this._settings?.experimentalCache,
                     abortSignal,
                 },
@@ -428,6 +433,7 @@ export class Conversation extends EventEmitter {
             )
             .catch((error) => {
                 console.error('Error on streamRequest: ', error);
+                this.emit(TLLMEvent.Error, error);
             });
 
         // remove listeners from llm event emitter to stop receiving stream data
@@ -906,7 +912,7 @@ export class Conversation extends EventEmitter {
      * @param model
      */
     // TODO [Forhad]: For now updateModel does not required await, but when we will have tools implementation in custom model then we need to await for it
-    private async updateModel(model: string) {
+    private async updateModel(model: string | TLLMModel) {
         try {
             this._model = model;
 

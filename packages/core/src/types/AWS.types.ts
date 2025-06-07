@@ -7,5 +7,3 @@ export type AWSCredentials = {
 export type AWSRegionConfig = {
     region: string;
 };
-
-export type S3Config = AWSCredentials & AWSRegionConfig;

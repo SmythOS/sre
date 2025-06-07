@@ -18,6 +18,10 @@ export type TMultimodalLLMInputs = {
     [key: string]: any;
 };
 
+export type TMultimodalLLMOutputs = {
+    [key: string]: any;
+};
+
 export function MultimodalLLM(settings?: TMultimodalLLMSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -32,7 +36,7 @@ export function MultimodalLLM(settings?: TMultimodalLLMSettings, agent?: Agent) 
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TMultimodalLLMOutputs = {
         // No outputs defined
     };
 

@@ -33,6 +33,10 @@ export type TServerlessCodeInputs = {
     [key: string]: any;
 };
 
+export type TServerlessCodeOutputs = {
+    [key: string]: any;
+};
+
 export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -47,7 +51,7 @@ export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TServerlessCodeOutputs = {
         // No outputs defined
     };
 

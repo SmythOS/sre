@@ -10,7 +10,6 @@ import {
     IStorageVectorDataSource,
     IStorageVectorNamespace,
     IVectorDataSourceDto,
-    PineconeConfig,
     QueryOptions,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
@@ -26,16 +25,27 @@ import crypto from 'crypto';
 
 const console = Logger('Pinecone VectorDB');
 
+export type PineconeConfig = {
+    pineconeApiKey: string;
+    openaiApiKey: string;
+    indexName: string;
+    isCustomStorageInstance?: boolean;
+    vectorDimention?: number;
+    openaiModel?: string;
+};
+
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
     public id = 'pinecone';
     private client: Pinecone;
     private indexName: string;
-    private redisCache: CacheConnector;
+    private cache: CacheConnector;
     private accountConnector: AccountConnector;
     private openaiApiKey: string;
     private nkvConnector: NKVConnector;
     private isCustomStorageInstance: boolean;
+    private vectorDimention: number;
+    private openaiModel: string;
 
     constructor(settings: PineconeConfig) {
         super();
@@ -50,10 +60,12 @@ export class PineconeVectorDB extends VectorDBConnector {
         console.info('Pinecone index name:', settings.indexName);
         this.indexName = settings.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
-        this.redisCache = ConnectorService.getCacheConnector('Redis');
+        this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
         this.openaiApiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
         this.isCustomStorageInstance = settings.isCustomStorageInstance || false;
+        this.vectorDimention = settings.vectorDimention || 1024;
+        this.openaiModel = settings.openaiModel || 'text-embedding-ada-002';
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -171,7 +183,11 @@ export class PineconeVectorDB extends VectorDBConnector {
         const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
         if (typeof query === 'string') {
-            _vector = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).embedText(query);
+            _vector = await VectorsHelper.load({
+                openaiApiKey: this.openaiApiKey,
+                vectorDimention: this.vectorDimention,
+                openaiModel: this.openaiModel,
+            }).embedText(query);
         }
 
         const results = await pineconeIndex.query({
@@ -201,7 +217,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
-        const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey });
+        const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey, vectorDimention: this.vectorDimention, openaiModel: this.openaiModel });
 
         // make sure that all sources are of the same type (source.source)
         if (sourceWrapper.some((s) => helper.detectSourceType(s.source) !== helper.detectSourceType(sourceWrapper[0].source))) {
@@ -222,7 +238,11 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const accessCandidate = acRequest.candidate;
 
-        const isNewNs = await VectorsHelper.load({ openaiApiKey: this.openaiApiKey }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
+        const isNewNs = await VectorsHelper.load({
+            openaiApiKey: this.openaiApiKey,
+            vectorDimention: this.vectorDimention,
+            openaiModel: this.openaiModel,
+        }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
         if (isNewNs) {
             let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
             await this.setACL(acRequest, namespace, acl);
@@ -345,18 +365,16 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
-        await this.redisCache
-            .user(AccessCandidate.clone(acRequest.candidate))
-            .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
+        await this.cache.user(AccessCandidate.clone(acRequest.candidate)).set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
     private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
-        let aclRes = await this.redisCache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        let aclRes = await this.cache.user(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
     }
 
     private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
-        this.redisCache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
+        this.cache.user(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 }

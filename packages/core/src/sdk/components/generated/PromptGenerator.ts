@@ -28,6 +28,10 @@ export type TPromptGeneratorInputs = {
     [key: string]: any;
 };
 
+export type TPromptGeneratorOutputs = {
+    [key: string]: any;
+};
+
 export function PromptGenerator(settings?: TPromptGeneratorSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -42,7 +46,7 @@ export function PromptGenerator(settings?: TPromptGeneratorSettings, agent?: Age
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TPromptGeneratorOutputs = {
         // No outputs defined
     };
 

@@ -7,6 +7,8 @@ import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
 {{inputsType}}
 
+{{outputsType}}
+
 export function {{componentName}}(settings?: T{{componentName}}Settings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -21,7 +23,7 @@ export function {{componentName}}(settings?: T{{componentName}}Settings, agent?:
         agent.structure.components.push(component);
     }
     
-    const _out: {{outputsType}} = {
+    const _out: T{{componentName}}Outputs = {
 {{outputsCode}}
     };
 

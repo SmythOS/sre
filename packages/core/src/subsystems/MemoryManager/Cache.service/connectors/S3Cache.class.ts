@@ -6,12 +6,27 @@ import { CacheConnector } from '../CacheConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { S3CacheConfig } from '@sre/types/S3Cache.types';
-import { S3Client, GetObjectCommand, PutObjectCommand, PutObjectCommandInput, DeleteObjectCommand, HeadObjectCommand, CopyObjectCommand, GetObjectTaggingCommand, PutObjectTaggingCommand } from '@aws-sdk/client-s3';
+
+import {
+    S3Client,
+    GetObjectCommand,
+    PutObjectCommand,
+    PutObjectCommandInput,
+    DeleteObjectCommand,
+    HeadObjectCommand,
+    CopyObjectCommand,
+    GetObjectTaggingCommand,
+    PutObjectTaggingCommand,
+} from '@aws-sdk/client-s3';
 import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
 
-
 const console = Logger('S3Cache');
+export type S3CacheConfig = {
+    bucketName: string;
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+};
 
 export class S3Cache extends CacheConnector {
     public name: string = 'S3Cache';
@@ -36,7 +51,6 @@ export class S3Cache extends CacheConnector {
         return this.s3Client;
     }
 
-
     @SecureConnector.AccessControl
     public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
         const candidateId = acRequest.candidate.id;
@@ -46,7 +60,7 @@ export class S3Cache extends CacheConnector {
         try {
             const params = {
                 Bucket: this.bucketName,
-                Key: `${this.cachePrefix}/${candidateId}/${key}`
+                Key: `${this.cachePrefix}/${candidateId}/${key}`,
             };
 
             const s3HeadCommand = new HeadObjectCommand(params);
@@ -71,7 +85,6 @@ export class S3Cache extends CacheConnector {
             const s3GetCommand = new GetObjectCommand(params);
             const objectData = await this.s3Client.send(s3GetCommand);
             return objectData.Body.transformToString();
-
         } catch (error) {
             console.error(`Error reading object ${key}:`, error);
             throw null;
@@ -92,7 +105,7 @@ export class S3Cache extends CacheConnector {
             Key: `${this.cachePrefix}/${candidateId}/${key}`,
             Body: data,
             Metadata: serializedMetadata,
-        }
+        };
         if (ttl) {
             const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
             s3PutCommandConfig.Tagging = `${expiryMetadata.Key}=${expiryMetadata.Value}`;
@@ -122,7 +135,7 @@ export class S3Cache extends CacheConnector {
         try {
             const params = {
                 Bucket: this.bucketName,
-                Key: `${this.cachePrefix}/${candidateId}/${key}`
+                Key: `${this.cachePrefix}/${candidateId}/${key}`,
             };
             const s3HeadCommand = new HeadObjectCommand(params);
             const headData = await this.s3Client.send(s3HeadCommand);
@@ -143,7 +156,6 @@ export class S3Cache extends CacheConnector {
             }
 
             return true;
-
         } catch (error) {
             console.error(`Error reading object ${key}:`, error);
             return false;
@@ -177,12 +189,10 @@ export class S3Cache extends CacheConnector {
             console.error(`Error setting access rights in S3`, error);
             throw error;
         }
-
     }
 
     @SecureConnector.AccessControl
     public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
-
         if (ttl) {
             const candidateId = acRequest.candidate.id;
             const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
@@ -194,7 +204,6 @@ export class S3Cache extends CacheConnector {
             await this.s3Client.send(s3PutObjectTaggingCommand);
         }
     }
-
 
     @SecureConnector.AccessControl
     public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
@@ -211,7 +220,7 @@ export class S3Cache extends CacheConnector {
                 return Math.floor(timeDifference / (1000 * 60 * 60 * 24)); // Convert to days
             }
         }
-        return -1; // Return -1 if no expiration date is found  
+        return -1; // Return -1 if no expiration date is found
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -296,31 +305,25 @@ export class S3Cache extends CacheConnector {
                 Key: resourceId,
                 Metadata: serializedMetadata,
                 MetadataDirective: 'REPLACE',
-                Tagging: objectTagging.TagSet.map(tag => `${tag.Key}=${tag.Value}`).join('&'),
+                Tagging: objectTagging.TagSet.map((tag) => `${tag.Key}=${tag.Value}`).join('&'),
             });
 
             await this.client.send(copyObjectCommand);
-
         } catch (error) {
             console.error(`Error setting object metadata in S3`, error.name, error.message);
             throw error;
         }
     }
 
-
     private async initialize() {
         await checkAndInstallLifecycleRules(this.bucketName, this.s3Client);
         this.isInitialized = true;
     }
 
-
     private serializeS3Metadata(s3Metadata: Record<string, any>): Record<string, string> {
         let amzMetadata = {};
         if (s3Metadata['acl']) {
-            amzMetadata['acl'] =
-                typeof s3Metadata['acl'] == 'string'
-                    ? s3Metadata['acl']
-                    : ACL.from(s3Metadata['acl']).serializedACL;
+            amzMetadata['acl'] = typeof s3Metadata['acl'] == 'string' ? s3Metadata['acl'] : ACL.from(s3Metadata['acl']).serializedACL;
             delete s3Metadata['acl'];
         }
 
@@ -351,7 +354,6 @@ export class S3Cache extends CacheConnector {
         return metadata;
     }
 
-
     // async hasAccess(request: IAccessRequest): Promise<boolean> {
     //     try {
     //         const metadata = await this.getMetadata(request.resourceId);
@@ -365,5 +367,4 @@ export class S3Cache extends CacheConnector {
     //         throw error;
     //     }
     // }
-
 }

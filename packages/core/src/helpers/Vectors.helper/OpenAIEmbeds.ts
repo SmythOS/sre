@@ -24,7 +24,7 @@ const createOpenAIError = (statusCode: number, error: any) => {
 };
 
 export class OpenAIEmbeds implements Partial<OpenAIEmbeddingsParams> {
-    model = 'text-embedding-ada-002';
+    model = 'text-embedding-ada-002'; //text-embedding-3-large
     modelName: string;
     chunkSize = 512;
     stripNewLines = true;
@@ -37,6 +37,7 @@ export class OpenAIEmbeds implements Partial<OpenAIEmbeddingsParams> {
         fields?: Partial<OpenAIEmbeddingsParams> & {
             verbose?: boolean;
             openAIApiKey?: string;
+            model?: string;
             apiKey?: string;
             configuration?: ClientOptions;
         },

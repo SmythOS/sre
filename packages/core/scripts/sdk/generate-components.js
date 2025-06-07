@@ -376,6 +376,34 @@ ${properties.join('\n')}
 }
 
 /**
+ * Generate TypeScript interface for outputs
+ */
+function generateOutputsType(componentName, outputs) {
+    if (!outputs || Object.keys(outputs).length === 0) {
+        return `export type T${componentName}Outputs = {
+    [key: string]: any;
+};`;
+    }
+
+    const outputsEntries = Object.entries(outputs);
+    const properties = outputsEntries.map(([outputName, outputDef]) => {
+        // Add JSDoc comment if description exists
+        let jsDocComment = '';
+        if (outputDef.description) {
+            jsDocComment = `    /** ${outputDef.description} */\n`;
+        }
+
+        // All outputs are typed as any for now, but can be extended later
+        return `${jsDocComment}    ${outputName}: any;`;
+    });
+
+    return `export type T${componentName}Outputs = {
+${properties.join('\n')}
+    [key: string]: any;
+};`;
+}
+
+/**
  * Generate TypeScript interface for settings
  */
 function generateSettingsType(componentName, settings) {
@@ -428,6 +456,9 @@ function generateTemplateVariables(schema) {
     // Generate inputs type
     const inputsType = generateInputsType(name, inputs);
 
+    // Generate outputs type
+    const outputsType = generateOutputsType(name, outputs);
+
     // Generate outputs object
     const outputEntries = Object.keys(outputs);
     const outputsCode =
@@ -439,10 +470,6 @@ function generateTemplateVariables(schema) {
                   )
                   .join('\n')
             : '        // No outputs defined';
-
-    // Generate outputs type
-    const outputsType =
-        outputEntries.length > 0 ? `{ ${outputEntries.map((name) => `${name}: any`).join('; ')}; [key: string]: any }` : '{ [key: string]: any }';
 
     // Generate inputs object
     const inputEntries = Object.keys(inputs);
@@ -550,6 +577,15 @@ async function generateSDKComponents() {
         fs.mkdirSync(SDK_OUTPUT_DIR, { recursive: true });
     }
 
+    // Clear existing generated files
+    const existingFiles = fs.readdirSync(SDK_OUTPUT_DIR);
+    for (const file of existingFiles) {
+        const filePath = path.join(SDK_OUTPUT_DIR, file);
+        if (fs.statSync(filePath).isFile()) {
+            fs.unlinkSync(filePath);
+        }
+    }
+
     // Get all component files
     const componentFiles = findComponentFilesRecursively(COMPONENTS_DIR);
 
@@ -557,7 +593,7 @@ async function generateSDKComponents() {
     const skippedComponents = new Set();
 
     const schemas = [];
-    process.stdout.write(`\n📝 Reading Schemas `);
+    process.stdout.write(`📝 Reading Schemas `);
     for (const filePath of componentFiles) {
         const fileName = path.basename(filePath, '.class.ts');
 

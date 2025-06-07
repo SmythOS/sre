@@ -28,6 +28,10 @@ export type TImageGeneratorInputs = {
     [key: string]: any;
 };
 
+export type TImageGeneratorOutputs = {
+    [key: string]: any;
+};
+
 export function ImageGenerator(settings?: TImageGeneratorSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -42,7 +46,7 @@ export function ImageGenerator(settings?: TImageGeneratorSettings, agent?: Agent
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TImageGeneratorOutputs = {
         // No outputs defined
     };
 

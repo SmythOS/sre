@@ -20,6 +20,7 @@
 export const models = {
     Echo: {
         llm: 'Echo',
+        provider: 'Echo',
     },
 
     // #region [User Models] ==============================================================

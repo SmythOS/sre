@@ -224,7 +224,7 @@ export function getFormattedStackTrace(limit: number = 3, skip: number = 0): str
     return formattedCalls;
 }
 
-export function printStackTrace(logger: LogHelper, limit: number = 3, skip: number = 0) {
+export function printStackTrace(logger: LogHelper | Console, limit: number = 3, skip: number = 0) {
     const stackTrace = getFormattedStackTrace(limit, skip);
     if (stackTrace.length > 0) {
         logger.debug('Call trace:');

@@ -25,6 +25,10 @@ export type TMCPClientInputs = {
     [key: string]: any;
 };
 
+export type TMCPClientOutputs = {
+    [key: string]: any;
+};
+
 export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -39,7 +43,7 @@ export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TMCPClientOutputs = {
         // No outputs defined
     };
 

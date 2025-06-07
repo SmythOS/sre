@@ -19,6 +19,10 @@ export type TDataSourceIndexerInputs = {
     [key: string]: any;
 };
 
+export type TDataSourceIndexerOutputs = {
+    [key: string]: any;
+};
+
 export function DataSourceIndexer(settings?: TDataSourceIndexerSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -33,7 +37,7 @@ export function DataSourceIndexer(settings?: TDataSourceIndexerSettings, agent?:
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TDataSourceIndexerOutputs = {
         // No outputs defined
     };
 

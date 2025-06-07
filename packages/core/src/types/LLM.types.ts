@@ -101,6 +101,7 @@ export type TLLMParamsV2 = {
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
+    //the LLMConnector accepts a model object that we extract the model info from instead of relying on the internal models list
     model: string | TLLMModel | TCustomLLMModel;
 };
 
@@ -126,8 +127,8 @@ export enum TLLMCredentials {
     None = 'none',
 }
 export type TLLMModel = {
-    llm: string;
-    isCustomLLM: boolean;
+    llm?: string;
+    isCustomLLM?: boolean;
     modelId?: string;
     tokens?: number;
     completionTokens?: number;
@@ -144,6 +145,10 @@ export type TLLMModel = {
         completionTokens: number;
     };
     credentials?: TLLMCredentials;
+
+    //models can come with predefined params
+    //this can also be used to pass a preconfigured model object
+    params?: TLLMParams;
 };
 
 // #region [ Handle extendable LLM Providers ] ================================================

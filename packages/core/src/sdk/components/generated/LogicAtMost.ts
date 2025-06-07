@@ -15,6 +15,10 @@ export type TLogicAtMostInputs = {
     [key: string]: any;
 };
 
+export type TLogicAtMostOutputs = {
+    [key: string]: any;
+};
+
 export function LogicAtMost(settings?: TLogicAtMostSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -29,7 +33,7 @@ export function LogicAtMost(settings?: TLogicAtMostSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TLogicAtMostOutputs = {
         // No outputs defined
     };
 

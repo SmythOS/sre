@@ -20,10 +20,10 @@ export class VectorsHelper {
     public cusStorageKeyName: string;
     private isCustomStorageInstance: boolean = false;
     private openaiApiKey: string;
-    constructor(connectorName?: string, options: { openaiApiKey?: string } = {}) {
+    constructor(connectorName?: string, options: { openaiApiKey?: string; openaiModel?: string } = {}) {
         this._vectorDBconnector = ConnectorService.getVectorDBConnector(connectorName);
         this.openaiApiKey = options.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.embeddingsProvider = new OpenAIEmbeds({ apiKey: this.openaiApiKey });
+        this.embeddingsProvider = new OpenAIEmbeds({ apiKey: this.openaiApiKey, model: options.openaiModel });
         if (this._vectorDimention && !isNaN(this._vectorDimention)) {
             this.embeddingsProvider.dimensions = this._vectorDimention;
         }
@@ -31,8 +31,8 @@ export class VectorsHelper {
         this.cusStorageKeyName = `vectorDB:customStorage:${this._vectorDBconnector.id}`;
     }
 
-    public static load(options: { vectorDimention?: number; connectorName?: string; openaiApiKey?: string } = {}) {
-        const instance = new VectorsHelper(options.connectorName, { openaiApiKey: options.openaiApiKey });
+    public static load(options: { vectorDimention?: number; connectorName?: string; openaiApiKey?: string; openaiModel?: string } = {}) {
+        const instance = new VectorsHelper(options.connectorName, { openaiApiKey: options.openaiApiKey, openaiModel: options.openaiModel });
         options.vectorDimention && instance.setVectorDimention(options.vectorDimention);
 
         return instance;
@@ -40,6 +40,9 @@ export class VectorsHelper {
 
     public setVectorDimention(vectorDimention: number) {
         this._vectorDimention = vectorDimention;
+        if (this._vectorDimention && !isNaN(this._vectorDimention)) {
+            this.embeddingsProvider.dimensions = this._vectorDimention;
+        }
     }
 
     public get shouldCreateNsImplicitly() {
@@ -131,7 +134,11 @@ export class VectorsHelper {
             case 'text': {
                 const texts = source.map((s) => s.source as string);
 
-                return VectorsHelper.load({ openaiApiKey: this.openaiApiKey })
+                return VectorsHelper.load({
+                    openaiApiKey: this.openaiApiKey,
+                    vectorDimention: this._vectorDimention,
+                    openaiModel: this.embeddingsProvider.model,
+                })
                     .embedTexts(texts)
                     .then((vectors) => {
                         return source.map((s, i) => ({

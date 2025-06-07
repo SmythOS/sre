@@ -8,31 +8,33 @@ import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 //import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { LocalStorageConfig } from '@sre/types/LocalStorage.types';
 import fs, { existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
 
 const console = Logger('LocalStorage');
 
+export type LocalStorageConfig = {
+    folder?: string;
+};
+
 export class LocalStorage extends StorageConnector {
     public name = 'LocalStorage';
     private folder: string;
-    private storagePrefix = 'smyth';
-    private metadataPrefix = '.smyth.metadata';
+    private storagePrefix = 'local';
+    private metadataPrefix = '.local.metadata';
     private isInitialized = false;
 
     constructor(settings: LocalStorageConfig) {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.folder = settings.folder || `${os.tmpdir()}/.smyth/storage`;
+        this.folder = settings.folder || path.join(os.homedir(), '.smyth/storage');
         this.initialize();
         if (!fs.existsSync(this.folder)) {
             //throw new Error('Invalid folder provided');
             console.error(`Invalid folder provided: ${this.folder}`);
         }
-        this.folder = settings.folder;
     }
 
     /**
@@ -86,11 +88,9 @@ export class LocalStorage extends StorageConnector {
             if (!fileMetadata) fileMetadata = {};
 
             fileMetadata = { ...fileMetadata, ...metadata };
-            // To create the directories for the resource we need to know the full path of the resource
-            const metadataFolderPath = this.getMetadataFilePath(acRequest.candidate.id, resourceId, true);
-            this.createDirectories(metadataFolderPath, resourceId);
+
             //now we can write the metadata
-            const metadataFilePath = this.getMetadataFilePath(acRequest.candidate.id, resourceId);
+            const metadataFilePath = this.getMetadataFilePath(acRequest.candidate.id, resourceId, true);
             const serializedMetadata = this.serializeMetadata(fileMetadata);
             fs.writeFileSync(metadataFilePath, JSON.stringify(serializedMetadata));
         } catch (error) {
@@ -120,11 +120,9 @@ export class LocalStorage extends StorageConnector {
             ...metadata,
             acl: amzACL,
         };
-        // To create the directories for the resource we need to know the full path of the resource
-        const storageFolderPath = this.getStorageFilePath(acRequest.candidate.id, resourceId, true);
-        this.createDirectories(storageFolderPath, resourceId);
+
         //now we can write the file
-        const filePath = this.getStorageFilePath(acRequest.candidate.id, resourceId);
+        const filePath = this.getStorageFilePath(acRequest.candidate.id, resourceId, true);
         fs.writeFileSync(filePath, value as Buffer);
         //now we can write the metadata
         await this.setMetadata(acRequest, resourceId, fileMetadata);
@@ -143,11 +141,10 @@ export class LocalStorage extends StorageConnector {
 
         try {
             const filePath = this.getStorageFilePath(acRequest.candidate.id, resourceId);
-            if (!fs.existsSync(filePath)) return;
-            fs.unlinkSync(filePath);
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
             const metadataFilePath = this.getMetadataFilePath(acRequest.candidate.id, resourceId);
-            fs.unlinkSync(metadataFilePath);
+            if (fs.existsSync(metadataFilePath)) fs.unlinkSync(metadataFilePath);
         } catch (error) {
             console.error(`Error deleting object from local storage`, error.name, error.message);
             throw error;
@@ -174,7 +171,9 @@ export class LocalStorage extends StorageConnector {
             await this.initialize();
         }
         const metadataFilePath = this.getMetadataFilePath(candidate.id, resourceId);
+
         if (!fs.existsSync(metadataFilePath)) return new ACL().addAccess(candidate.role, candidate.id, TAccessLevel.Owner);
+
         const metadata = fs.readFileSync(metadataFilePath, 'utf-8');
         const exists = metadata !== undefined; //undefined metadata means the resource does not exist
 
@@ -227,17 +226,6 @@ export class LocalStorage extends StorageConnector {
         console.warn(`LocalStorage.expire is not implemented, request will be ignored for resource ${resourceId} and ttl ${ttl}`);
     }
 
-    private createDirectories(basePath: string, resourceId: string) {
-        const folders = resourceId.split('/').slice(0, -1);
-        let currentPath = basePath;
-        for (let folder of folders) {
-            currentPath = path.join(currentPath, folder);
-            if (!existsSync(currentPath)) {
-                fs.mkdirSync(currentPath);
-            }
-        }
-    }
-
     private async initialize() {
         const storageFolderPath = path.join(this.folder, this.storagePrefix);
         if (!existsSync(storageFolderPath)) {
@@ -248,26 +236,30 @@ export class LocalStorage extends StorageConnector {
             fs.mkdirSync(metadataFolderPath, { recursive: true });
             fs.writeFileSync(
                 path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
-                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS filesystem',
+                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS local filesystem',
             );
         }
         this.isInitialized = true;
     }
 
-    private getStorageFilePath(teamId: string, resourceId: string, returnBasePath: boolean = false) {
-        if (!fs.existsSync(path.join(this.folder, this.storagePrefix, teamId))) {
-            fs.mkdirSync(path.join(this.folder, this.storagePrefix, teamId));
+    private getStorageFilePath(candidateId: string, resourceId: string, createFoldersIfNotExists: boolean = false) {
+        const fullPath = path.join(this.folder, this.storagePrefix, resourceId);
+        const folder = path.dirname(fullPath);
+        if (createFoldersIfNotExists && !fs.existsSync(folder)) {
+            fs.mkdirSync(folder, { recursive: true });
         }
-        if (returnBasePath) return path.join(this.folder, this.storagePrefix, teamId);
-        return path.join(this.folder, this.storagePrefix, teamId, resourceId);
+
+        return fullPath;
     }
 
-    private getMetadataFilePath(teamId: string, resourceId: string, returnBasePath: boolean = false) {
-        if (!fs.existsSync(path.join(this.folder, this.metadataPrefix, teamId))) {
-            fs.mkdirSync(path.join(this.folder, this.metadataPrefix, teamId));
+    private getMetadataFilePath(candidateId: string, resourceId: string, createFoldersIfNotExists: boolean = false) {
+        const fullPath = path.join(this.folder, this.metadataPrefix, resourceId);
+        const folder = path.dirname(fullPath);
+        if (createFoldersIfNotExists && !fs.existsSync(folder)) {
+            fs.mkdirSync(folder, { recursive: true });
         }
-        if (returnBasePath) return path.join(this.folder, this.metadataPrefix, teamId);
-        return path.join(this.folder, this.metadataPrefix, teamId, resourceId);
+
+        return fullPath;
     }
 
     private serializeMetadata(metadata: Record<string, any>): Record<string, string> {
@@ -281,7 +273,6 @@ export class LocalStorage extends StorageConnector {
         }
 
         for (let key in metadata) {
-            if (key == 'ContentType') continue; //skip ContentType as it can only be set when writing the object
             updatedMetadata[key] = typeof metadata[key] === 'string' ? metadata[key] : JSON.stringify(metadata[key]);
         }
 

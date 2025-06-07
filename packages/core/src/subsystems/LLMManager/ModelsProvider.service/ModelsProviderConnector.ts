@@ -95,17 +95,17 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             ) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
-                return Math.min(maxCompletionTokens, modelInfo?.completionTokens || modelInfo?.tokens);
+                return Math.min(maxCompletionTokens || 512, modelInfo?.completionTokens || modelInfo?.tokens || maxCompletionTokens || 512);
             },
             getMaxContextTokens: async (model: string | TLLMModel | TCustomLLMModel, hasAPIKey: boolean = false) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
-                return modelInfo?.tokens;
+                return modelInfo?.tokens || 1024;
             },
             getMaxCompletionTokens: async (model: string | TLLMModel | TCustomLLMModel, hasAPIKey: boolean = false) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
-                return modelInfo?.completionTokens || modelInfo?.tokens;
+                return modelInfo?.completionTokens || modelInfo?.tokens || 512;
             },
             validateTokensLimit: async ({
                 model,

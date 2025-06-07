@@ -21,6 +21,10 @@ export type TWebScrapeInputs = {
     [key: string]: any;
 };
 
+export type TWebScrapeOutputs = {
+    [key: string]: any;
+};
+
 export function WebScrape(settings?: TWebScrapeSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -35,7 +39,7 @@ export function WebScrape(settings?: TWebScrapeSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TWebScrapeOutputs = {
         // No outputs defined
     };
 

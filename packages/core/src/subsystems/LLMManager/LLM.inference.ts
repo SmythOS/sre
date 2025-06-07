@@ -5,7 +5,7 @@ import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole } from '@sre/types/LLM.types';
+import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole, TLLMModel } from '@sre/types/LLM.types';
 import _ from 'lodash';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -14,12 +14,12 @@ import { isAgent } from '@sre/AgentManager/Agent.helper';
 const console = Logger('LLMInference');
 
 export class LLMInference {
-    private model: string;
+    private model: string | TLLMModel;
     private llmConnector: LLMConnector;
     private modelProviderReq: IModelsProviderRequest;
     public teamId?: string;
 
-    public static async getInstance(model: string, candidate: AccessCandidate) {
+    public static async getInstance(model: string | TLLMModel, candidate: AccessCandidate) {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
         if (!modelsProvider.valid) {
             throw new Error(`Model provider Not available, cannot create LLM instance`);

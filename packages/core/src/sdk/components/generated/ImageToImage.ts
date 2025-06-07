@@ -14,6 +14,10 @@ export type TImageToImageInputs = {
     [key: string]: any;
 };
 
+export type TImageToImageOutputs = {
+    [key: string]: any;
+};
+
 export function ImageToImage(settings?: TImageToImageSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function ImageToImage(settings?: TImageToImageSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TImageToImageOutputs = {
         // No outputs defined
     };
 

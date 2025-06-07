@@ -10,7 +10,7 @@ const console = Logger('AccessTokenManager');
 let managedVault: any;
 
 SystemEvents.on('SRE:Booted', () => {
-    managedVault = ConnectorService.getManagedVaultConnector('oauth');
+    managedVault = ConnectorService.getManagedVaultConnector();
 });
 class AccessTokenManager {
     private clientId: string;

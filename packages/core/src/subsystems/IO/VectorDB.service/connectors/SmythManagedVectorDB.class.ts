@@ -32,6 +32,8 @@ import { VectorsHelper } from '@sre/helpers/Vectors.helper';
 
 const console = Logger('Smyth Managed VectorDB');
 
+export type SmythManagedVectorDBConfig = SmythConfigs & OAuthConfig & { openaiApiKey?: string; isCustomStorageInstance?: boolean };
+
 export class SmythManagedVectorDB extends VectorDBConnector {
     public name = 'SmythManagedVectorDB';
     public id = 'smyth-managed';
@@ -47,7 +49,7 @@ export class SmythManagedVectorDB extends VectorDBConnector {
 
     private isCustomStorageInstance: boolean;
 
-    constructor(private config: SmythConfigs & OAuthConfig & { openaiApiKey?: string; isCustomStorageInstance?: boolean }) {
+    constructor(private config: SmythManagedVectorDBConfig) {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.oAuthAppId = config.oAuthAppID;

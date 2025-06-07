@@ -15,7 +15,7 @@ let managedVault: any;
 
 SystemEvents.on('SRE:Booted', () => {
     try {
-        managedVault = ConnectorService.getManagedVaultConnector('oauth');
+        managedVault = ConnectorService.getManagedVaultConnector();
     } catch (error) {
         console.warn('Could not find a compatible ManagedVault connector, OAuth APICalls will not work');
     }

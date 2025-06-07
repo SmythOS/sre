@@ -15,6 +15,7 @@ import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
 import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
+import { CodeService } from '@sre/ComputeManager/Code.service';
 const console = Logger('Boot');
 let _booted = false;
 export function boot() {
@@ -39,6 +40,7 @@ export function boot() {
     service.Router = new RouterService();
     service.Log = new LogService();
     service.Component = new ComponentService();
+    service.Code = new CodeService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');

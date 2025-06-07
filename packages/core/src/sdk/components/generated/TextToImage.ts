@@ -14,6 +14,10 @@ export type TTextToImageInputs = {
     [key: string]: any;
 };
 
+export type TTextToImageOutputs = {
+    [key: string]: any;
+};
+
 export function TextToImage(settings?: TTextToImageSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -28,7 +32,7 @@ export function TextToImage(settings?: TTextToImageSettings, agent?: Agent) {
         agent.structure.components.push(component);
     }
     
-    const _out: { [key: string]: any } = {
+    const _out: TTextToImageOutputs = {
         // No outputs defined
     };
 

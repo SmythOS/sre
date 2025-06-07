@@ -3,15 +3,20 @@
 
 export * from './Agent.class';
 export * from './Chat.class';
+export * from './DummyAccount.helper';
 export * from './LLM.class';
+export * from './SDKObject.class';
+export * from './Storage.class';
+export * from './Team.class';
+export * from './VectorDB.class';
 export * from './components/components.index';
 export * from './components/ComponentWrapper.class';
 export * from './components/Skill';
 export * from './components/utils';
 export * from './types/SDKTypes';
+export * from './utils/console.utils';
 export * from './components/generated/AgentPlugin';
 export * from './components/generated/APICall';
-export * from './components/generated/APIEndpoint';
 export * from './components/generated/APIOutput';
 export * from './components/generated/Await';
 export * from './components/generated/BackgroundRemoval';
@@ -47,3 +52,5 @@ export * from './components/generated/VisionLLM';
 export * from './components/generated/WebScrape';
 export * from './components/generated/WebSearch';
 export * from './components/generated/ZapierAction';
+export * from './types/generated/Storage.types';
+export * from './types/generated/VectorDB.types';

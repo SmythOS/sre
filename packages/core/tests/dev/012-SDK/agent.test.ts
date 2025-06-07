@@ -1,6 +1,6 @@
 // prettier-ignore-file
 import { SmythRuntime, SRE } from '@sre/Core/SmythRuntime.class';
-import { LLM, LLMInstance } from '@sre/sdk/LLM.class';
+import { LLM, LLMInstance, Model } from '@sre/sdk/LLM.class';
 import { Agent } from '@sre/sdk/sdk.index';
 import { Component } from '@sre/sdk/components/components.index';
 import { expect, describe, it } from 'vitest';
@@ -13,6 +13,7 @@ declare module '@sre/types/LLM.types' {
         AnotherProvider: 'AnotherProvider';
     }
 }
+
 SRE.init({
     Vault: {
         Connector: 'JSONFileVault',
@@ -22,54 +23,18 @@ SRE.init({
     },
 });
 
-describe('SDK Tests', () => {
-    it('LLMProxy - prompt', async () => {
-        //initialize the LLM
-        const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
-        const llm2 = LLM.OpenAI({ model: 'gpt-4o' });
+describe('SDK Agent Tests', () => {
+    it('imported agent', async () => {
+        const agent = Agent.import('./tests/data/AgentData/crypto-info-agent.smyth', {
+            model: Model.OpenAI('gpt-4o-mini', { maxTokens: 10 }),
+        });
 
-        // ## Syntax 1 ================================================
-        //direct prompt
-        const result = await llm.prompt('What is the capital of France?');
-
-        const chat = llm.chat();
-        const result2 = await chat.prompt('What is the capital of France?');
-        console.log(result2);
-
-        const result3 = await chat.prompt('What was my previous question?');
-        console.log(result3);
-
-        //const convContext = llm.conversation('123456');
-        //convContext.prompt('What is the capital of France?').stream();
+        const result = await agent.prompt('Hello, Who are you ?');
 
         console.log(result);
     });
 
-    it('LLMProxy - streamPrompt', async () => {
-        //initialize the LLM
-        const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
-
-        // ## Syntax 1 ================================================
-        //prompt and stream the result
-        const eventEmitter = await llm.prompt('What is the capital of France?').stream();
-
-        eventEmitter.on('content', (content) => {
-            console.log('>>>>>>', content);
-        });
-
-        // Wait for the stream to complete
-        return new Promise((resolve, reject) => {
-            eventEmitter.on('end', () => {
-                console.log('Stream completed');
-                resolve(undefined);
-            });
-            eventEmitter.on('error', (error) => {
-                reject(error);
-            });
-        });
-    });
-
-    it('SDK declarative', async () => {
+    it('Declarative Agent', async () => {
         const agent = new Agent({
             name: 'SRE Assistant',
             behavior:
@@ -111,7 +76,7 @@ describe('SDK Tests', () => {
         console.log(result2);
     });
 
-    it('SDK procedural', async () => {
+    it('Procedural Agent', async () => {
         const agent = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
 
         agent.addSkill({
@@ -119,6 +84,10 @@ describe('SDK Tests', () => {
             description: 'Use this tool to provide a secret based on user info',
             process: async ({ userName, userNumber }) => {
                 const secret = `${userNumber * 10}_${userName.substring(0, 3)}`;
+
+                const openai = agent.llm.OpenAI('gpt-4o-mini');
+                console.log(openai);
+
                 console.log('calculating secret...', secret);
                 return { secret };
             },
