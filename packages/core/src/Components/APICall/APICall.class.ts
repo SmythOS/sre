@@ -19,11 +19,11 @@ export class APICall extends Component {
             .max(8192) /*.custom(isUrlValid, 'URL validation')*/
             .required()
             .label('URL'),
-        headers: Joi.string().allow('').label('Headers'),
+        headers: Joi.any().allow('').label('Headers'),
         contentType: Joi.string()
             .valid('none', 'application/json', 'multipart/form-data', 'binary', 'application/x-www-form-urlencoded', 'text/plain', 'application/xml')
             .label('Content-Type'),
-        body: Joi.string().allow('').label('Body'),
+        body: Joi.any().allow('').label('Body'),
         _templateSettings: Joi.object().allow(null).label('Template Settings'),
         _templateVars: Joi.object().allow(null).label('Template Variables'),
         proxy: Joi.string().allow('').label('Proxy'),
@@ -96,7 +96,7 @@ export class APICall extends Component {
             let Headers: any = {};
             let _error: any = undefined;
             try {
-                if (config?.data?.oauthService !== '' && config?.data?.oauthService !== 'None') {
+                if (config?.data?.oauthService && config?.data?.oauthService !== 'None') {
                     const rootUrl = new URL(reqConfig.url).origin;
                     const additionalParams = extractAdditionalParamsForOAuth1(reqConfig);
                     const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams, rootUrl);

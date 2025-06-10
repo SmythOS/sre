@@ -11,6 +11,11 @@ const SDK_OUTPUT_DIR = path.join(__dirname, '../../src/sdk/components/generated'
 const COMPONENT_TEMPLATE_PATH = path.join(__dirname, './templates/Component.ts.tpl');
 const INDEX_TEMPLATE_PATH = path.join(__dirname, './templates/index.ts.tpl');
 
+console.log(COMPONENTS_DIR);
+console.log(SDK_OUTPUT_DIR);
+console.log(COMPONENT_TEMPLATE_PATH);
+console.log(INDEX_TEMPLATE_PATH);
+
 // Components to exclude from SDK generation
 const EXCLUDED_COMPONENTS = ['APIEndpoint', 'ComponentHost'];
 
@@ -466,7 +471,7 @@ function generateTemplateVariables(schema) {
             ? outputEntries
                   .map(
                       (outputName) =>
-                          `        ${outputName}: createSafeAccessor({}, component, '${outputName}', ${JSON.stringify(outputs[outputName])}),`,
+                          `        ${outputName}: createSafeAccessor({}, component, '${outputName}', ${JSON.stringify(outputs[outputName])}),`
                   )
                   .join('\n')
             : '        // No outputs defined';

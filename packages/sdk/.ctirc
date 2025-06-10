@@ -1,0 +1,38 @@
+{
+    "spinnerStream": "stdout",
+    "progressStream": "stdout",
+    "reasonerStream": "stderr",
+    "options": [
+        {
+            "mode": "bundle",
+            "project": "tsconfig.json",
+            "exportFilename": "index.ts",
+            "useSemicolon": true,
+            "useBanner": false,
+            "useTimestamp": false,
+            "quote": "'",
+            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nexport { version } from '../package.json';",
+            "fileExt": "none",
+            "overwrite": false,
+            "backup": true,
+            "generationStyle": "auto",
+            "include": [
+                "src/**/*.ts"
+            ],
+            "exclude": [
+                "node_modules",
+                "**/*.test.ts",
+                "**/*.spec.ts",
+                "src/components/generated/**/*",
+                "src/types/generated/**/*",
+                "src/utils/console.utils.ts",
+                "src/utils/general.utils.ts",
+                "**/*.deprecated",
+                "**/*.bak"
+            ],
+            "output": "./src",
+            "removeBackup": false,
+            "forceYes": false
+        }
+    ]
+}

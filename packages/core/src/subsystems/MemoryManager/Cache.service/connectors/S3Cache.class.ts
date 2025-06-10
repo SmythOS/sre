@@ -17,6 +17,9 @@ import {
     CopyObjectCommand,
     GetObjectTaggingCommand,
     PutObjectTaggingCommand,
+    HeadObjectCommandOutput,
+    GetObjectTaggingCommandOutput,
+    GetObjectCommandOutput,
 } from '@aws-sdk/client-s3';
 import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
 
@@ -64,7 +67,7 @@ export class S3Cache extends CacheConnector {
             };
 
             const s3HeadCommand = new HeadObjectCommand(params);
-            const headData = await this.s3Client.send(s3HeadCommand);
+            const headData: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const expirationHeader = headData?.Expiration;
             if (expirationHeader) {
@@ -83,7 +86,7 @@ export class S3Cache extends CacheConnector {
             }
 
             const s3GetCommand = new GetObjectCommand(params);
-            const objectData = await this.s3Client.send(s3GetCommand);
+            const objectData: GetObjectCommandOutput = await this.s3Client.send(s3GetCommand);
             return objectData.Body.transformToString();
         } catch (error) {
             console.error(`Error reading object ${key}:`, error);
@@ -138,7 +141,7 @@ export class S3Cache extends CacheConnector {
                 Key: `${this.cachePrefix}/${candidateId}/${key}`,
             };
             const s3HeadCommand = new HeadObjectCommand(params);
-            const headData = await this.s3Client.send(s3HeadCommand);
+            const headData: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const expirationHeader = headData?.Expiration;
             if (expirationHeader) {
@@ -209,7 +212,7 @@ export class S3Cache extends CacheConnector {
     public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
         const candidateId = acRequest.candidate.id;
         const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidateId}/${key}` });
-        const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
+        const s3HeadObjectResponse: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
         const expirationHeader = s3HeadObjectResponse?.Expiration;
         if (expirationHeader) {
             const expirationDateMatch = expirationHeader.match(/expiry-date="([^"]+)"/);
@@ -226,7 +229,7 @@ export class S3Cache extends CacheConnector {
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
         try {
             const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidate.id}/${resourceId}` });
-            const s3HeadObjectResponse = await this.s3Client.send(s3HeadCommand);
+            const s3HeadObjectResponse: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const metadata = s3HeadObjectResponse.Metadata;
             if (!metadata.acl) {
@@ -273,7 +276,7 @@ export class S3Cache extends CacheConnector {
                 Bucket: this.bucketName,
                 Key: resourceId,
             });
-            const response = await this.client.send(command);
+            const response: HeadObjectCommandOutput = await this.client.send(command);
             const s3RawMetadata = response.Metadata;
             if (!s3RawMetadata || Object.keys(s3RawMetadata).length === 0) return {};
 
@@ -297,7 +300,7 @@ export class S3Cache extends CacheConnector {
                 Bucket: this.bucketName,
                 Key: resourceId,
             });
-            const objectTagging = await this.client.send(getObjectTaggingCommand);
+            const objectTagging: GetObjectTaggingCommandOutput = await this.client.send(getObjectTaggingCommand);
             const serializedMetadata = this.serializeS3Metadata(metadata);
             const copyObjectCommand = new CopyObjectCommand({
                 Bucket: this.bucketName,

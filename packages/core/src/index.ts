@@ -1,11 +1,8 @@
 //!!! This is a generated file, do not edit it directly !!!//
 
-import 'source-map-support/register.js';
 export { version } from '../package.json';
 
-// SDK namespace export to avoid conflicts
-import * as _SDK from './sdk/sdk.index';
-export { _SDK as SDK };
+
 
 
 export * from './config';

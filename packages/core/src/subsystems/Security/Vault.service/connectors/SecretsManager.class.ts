@@ -8,7 +8,13 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { SecretsManagerConfig } from '@sre/types/Security.types';
 import { VaultConnector } from '../VaultConnector';
-import { SecretsManagerClient, GetSecretValueCommand, ListSecretsCommand } from '@aws-sdk/client-secrets-manager';
+import {
+    SecretsManagerClient,
+    GetSecretValueCommand,
+    ListSecretsCommand,
+    ListSecretsCommandOutput,
+    GetSecretValueCommandOutput,
+} from '@aws-sdk/client-secrets-manager';
 
 const console = Logger('SecretsManager');
 export class SecretsManager extends VaultConnector {
@@ -71,8 +77,8 @@ export class SecretsManager extends VaultConnector {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(
-                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] }),
+                const listResponse: ListSecretsCommandOutput = await this.secretsManager.send(
+                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] })
                 );
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
@@ -104,7 +110,7 @@ export class SecretsManager extends VaultConnector {
         }
 
         async function getSpecificSecret(secret, secretsManager: SecretsManagerClient) {
-            const data = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
+            const data: GetSecretValueCommandOutput = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
             let secretString = data.SecretString;
             let secretName = secret.Name;
 

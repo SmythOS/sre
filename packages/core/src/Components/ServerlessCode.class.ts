@@ -3,12 +3,21 @@ import { Component } from './Component.class';
 import Joi from 'joi';
 import _config from '@sre/config';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
-import { CreateFunctionCommand, GetFunctionCommand, InvokeCommand, LambdaClient, Runtime, UpdateFunctionCodeCommand } from '@aws-sdk/client-lambda';
+import {
+    CreateFunctionCommand,
+    GetFunctionCommand,
+    GetFunctionCommandOutput,
+    InvokeCommand,
+    InvokeCommandOutput,
+    LambdaClient,
+    Runtime,
+    UpdateFunctionCodeCommand,
+} from '@aws-sdk/client-lambda';
 import SREConfig from '@sre/config';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { CreateRoleCommand, GetRoleCommand, IAMClient } from '@aws-sdk/client-iam';
+import { CreateRoleCommand, CreateRoleCommandOutput, GetRoleCommand, GetRoleCommandOutput, IAMClient } from '@aws-sdk/client-iam';
 import zl from 'zip-lib';
 import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -117,7 +126,7 @@ export class ServerlessCode extends Component {
                 logger.debug(
                     `Code result:\n ${
                         typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
-                    }\n`,
+                    }\n`
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
                 const cost = this.calculateExecutionCost(executionTime);
@@ -153,7 +162,7 @@ export class ServerlessCode extends Component {
     async invokeLambdaFunction(
         functionName: string,
         inputs: { [key: string]: any },
-        awsCredentials: { accessKeyId: string; secretAccessKey: string; region: string },
+        awsCredentials: { accessKeyId: string; secretAccessKey: string; region: string }
     ): Promise<any> {
         try {
             const client = new LambdaClient({
@@ -172,7 +181,7 @@ export class ServerlessCode extends Component {
                 InvocationType: 'RequestResponse',
             });
 
-            const response = await client.send(invokeCommand);
+            const response: InvokeCommandOutput = await client.send(invokeCommand);
             if (response.FunctionError) {
                 throw new Error(new TextDecoder().decode(response.Payload));
             }
@@ -192,7 +201,7 @@ export class ServerlessCode extends Component {
                 },
             });
             const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
-            const lambdaResponse = await client.send(getFunctionCommand);
+            const lambdaResponse: GetFunctionCommandOutput = await client.send(getFunctionCommand);
             return {
                 status: lambdaResponse.Configuration.LastUpdateStatus,
                 functionName: lambdaResponse.Configuration.FunctionName,
@@ -322,7 +331,7 @@ export class ServerlessCode extends Component {
                 },
                 function (err) {
                     reject(err);
-                },
+                }
             );
         });
     }
@@ -364,7 +373,7 @@ export class ServerlessCode extends Component {
                         credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
                     });
                     const getRoleCommand = new GetRoleCommand({ RoleName: `smyth-${functionName}-role` });
-                    const roleResponse = await iamClient.send(getRoleCommand);
+                    const roleResponse: GetRoleCommandOutput = await iamClient.send(getRoleCommand);
                     roleArn = roleResponse.Role.Arn;
                 } catch (error) {
                     if (error.name === 'NoSuchEntityException') {
@@ -377,7 +386,7 @@ export class ServerlessCode extends Component {
                             RoleName: `smyth-${functionName}-role`,
                             AssumeRolePolicyDocument: this.getLambdaRolePolicy(),
                         });
-                        const roleResponse = await iamClient.send(createRoleCommand);
+                        const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
                         await this.waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                         roleArn = roleResponse.Role.Arn;
                     } else {

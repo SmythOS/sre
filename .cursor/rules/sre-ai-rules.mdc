@@ -1,0 +1,110 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# SmythOS SRE Monorepo - Cursor AI Rules
+
+## Project Overview
+
+This is the **SmythOS SRE (Smyth Runtime Environment)** monorepo - an advanced agentic AI platform that provides a comprehensive runtime environment for building and managing AI agents. The system includes LLM management, vector databases, storage, security, and agent orchestration capabilities.
+
+## Monorepo Structure & Package Manager
+
+-   **Package Manager**: PNPM (required) - use `pnpm` commands for all package management
+-   **Workspace Structure**:
+    -   `packages/core` - Main runtime library (@smythos/sre)
+    -   `packages/sdk` - Developer SDK (@smythos/sdk)
+    -   `packages/cli` - Command line interface
+    -   `examples/` - Example implementations and demos
+
+## Core Architecture & Subsystems
+
+The core package is organized into key subsystems:
+
+### Main Subsystems (`packages/core/src/subsystems/`)
+
+-   **AgentManager** - Handles agent data, settings, and runtime (AgentData.service, Component.service)
+-   **LLMManager** - LLM providers and model management (LLM.service, ModelsProvider.service)
+-   **MemoryManager** - Context and caching (Cache.service)
+-   **IO** - Input/Output operations (CLI, Log, Storage, VectorDB, NKV, Router services)
+-   **ComputeManager** - Code execution (Code.service)
+-   **Security** - Authentication and access control (Account, Vault, ManagedVault, AccessControl)
+
+### Key Directories
+
+-   `src/Components/` - Reusable agent components (APICall, Image, etc.)
+-   `src/helpers/` - Task-specific helper objects with function collections
+-   `src/utils/` - General-purpose utility functions (no external deps)
+-   `src/types/` - SmythOS-specific type declarations
+-   `tests/` - Comprehensive test suites and test data
+
+## Naming Conventions & Standards
+
+### File Extensions
+
+-   `.service.ts` - Top-level subsystem services
+-   `.class.ts` - Classes and connectors/managers
+-   `.utils.ts` - Utility function collections
+-   `.helper.ts` - Task-specific helper objects
+-   `.handler.ts` - Event handlers
+-   `.mw.ts` - Middleware
+
+### Declaration Naming
+
+-   **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_RETRIES`, `API_ENDPOINT`)
+-   **Types & Enums**: Prefix with `T` (e.g., `TAccessLevel`, `TRole`)
+-   **Interfaces**: Prefix with `I` (e.g., `IStorageConnector`)
+-   **Classes**: CamelCase without prefix
+-   All non-constants use CamelCase
+
+## Key Dependencies & Integrations
+
+-   **LLM Providers**: OpenAI, Anthropic, AWS Bedrock, Google Vertex AI, Groq, Hugging Face
+-   **Vector DBs**: Pinecone integration
+-   **Storage**: AWS S3, local file system
+-   **Databases**: MySQL, Redis
+-   **Security**: JWT, OAuth, JWKS
+-   **Utilities**: Lodash, Winston logging, Express.js
+
+## Code Style Guidelines
+
+-   **Always use PNPM** - This is a pnpm workspace, not npm/yarn
+-   **SDK Namespace** - Use `SDK.ClassName` to access user-facing components (avoids internal conflicts)
+-   **Service Architecture** - Services use pluggable connector patterns
+-   **TypeScript First** - Strict typing with established naming conventions
+-   **Modular Design** - Each subsystem is self-contained with clear interfaces
+
+## Critical Reminders
+
+⚠️ **ALWAYS USE PNPM** - This is a pnpm workspace. Never suggest npm or yarn commands.
+⚠️ **MONOREPO STRUCTURE** - Always consider workspace context when suggesting changes or running commands.
+
+## Important Context for AI Assistance
+
+### Working with this codebase:
+
+1. **Follow subsystem architecture** - Each major feature is organized as a service with connectors
+2. **Respect naming conventions** - File extensions and declaration prefixes are critical
+3. **Maintain SDK vs Core separation** - SDK is user-facing, Core is internal runtime
+4. **Use connector patterns** - Services implement pluggable backends
+5. **Distinguish helpers from utils** - Helpers are task-specific, utils are general-purpose
+6. **Prioritize type safety** - Follow established TypeScript naming patterns
+
+### Where to find information:
+
+-   **Architecture & Standards**: `packages/core/README.md`
+-   **Workspace Configuration**: `pnpm-workspace.yaml`
+-   **Core System Design**: `packages/core/src/subsystems/`
+-   **Usage Examples**: `examples/` directory and test files in `tests/`
+-   **Implementation Patterns**: Existing connectors in service directories
+
+### Development Approach:
+
+-   **New connectors**: Follow existing patterns in `/connectors/` subdirectories
+-   **New components**: Place in `src/Components/` with proper exports
+-   **Service integration**: Use well-defined interfaces between subsystems
+-   **Testing**: Reference existing test patterns for comprehensive coverage
+
+This is a sophisticated AI agent platform - consider the full context of agent orchestration, LLM management, and modular service architecture when making suggestions.
+

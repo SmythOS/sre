@@ -14,7 +14,9 @@ import { ManagedVaultConnector } from '../ManagedVaultConnector';
 import {
     CreateSecretCommand,
     DeleteSecretCommand,
+    GetSecretValueCommandOutput,
     ListSecretsCommand,
+    ListSecretsCommandOutput,
     PutSecretValueCommand,
     SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
@@ -59,7 +61,7 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
                     Name: `smyth/${randomUUID()}`,
                     SecretString: JSON.stringify({ [secretName]: value }),
                     Tags: [{ Key: this.scope, Value: 'true' }],
-                }),
+                })
             );
         }
     }
@@ -96,8 +98,8 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse = await this.secretsManager.send(
-                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: [this.scope] }] }),
+                const listResponse: ListSecretsCommandOutput = await this.secretsManager.send(
+                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: [this.scope] }] })
                 );
                 if (listResponse.SecretList) {
                     for (const secret of listResponse.SecretList) {
@@ -129,7 +131,7 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
         }
 
         async function getSpecificSecret(secret, secretsManager: SecretsManagerClient) {
-            const data = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
+            const data: GetSecretValueCommandOutput = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
             let secretString = data.SecretString;
             let secretName = secret.Name;
 

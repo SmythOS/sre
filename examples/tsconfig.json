@@ -1,0 +1,27 @@
+{
+    "extends": "../packages/sdk/tsconfig.json",
+    "compilerOptions": {
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "inlineSourceMap": false,
+        "inlineSources": true,
+        "declaration": false,
+        "removeComments": false,
+        "preserveConstEnums": true,
+        "mapRoot": "./",
+        "sourceRoot": "./"
+    },
+    "include": ["**/*.ts"],
+    "exclude": ["node_modules"],
+    "ts-node": {
+        "esm": true,
+        "compilerOptions": {
+            "sourceMap": true,
+            "inlineSources": true,
+            "mapRoot": "./",
+            "sourceRoot": "./"
+        }
+    }
+}

@@ -6,6 +6,7 @@ import {
     ConverseStreamCommand,
     ConverseStreamCommandOutput,
     TokenUsage,
+    ConverseCommandOutput,
 } from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
@@ -97,7 +98,7 @@ export class BedrockConnector extends LLMConnector {
                 credentials: params?.credentials as any,
             });
 
-            const response = await client.send(command);
+            const response: ConverseCommandOutput = await client.send(command);
             const content = response.output?.message?.content?.[0]?.text;
             const usage = response.usage;
 
@@ -117,7 +118,7 @@ export class BedrockConnector extends LLMConnector {
     protected async streamToolRequest(
         acRequest: AccessRequest,
         { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | IAgent,
+        agent: string | IAgent
     ): Promise<any> {
         throw new Error('streamToolRequest() is Deprecated!');
     }
@@ -169,7 +170,7 @@ export class BedrockConnector extends LLMConnector {
             }
 
             const command = new ConverseCommand(converseCommandInput);
-            const response = await client.send(command);
+            const response: ConverseCommandOutput = await client.send(command);
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
@@ -488,7 +489,7 @@ export class BedrockConnector extends LLMConnector {
 
     protected reportUsage(
         usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');

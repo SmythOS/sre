@@ -4,9 +4,9 @@ import path from 'path';
 import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
-import typescriptPaths from 'rollup-plugin-typescript-paths';
+import { typescriptPaths } from 'rollup-plugin-typescript-paths';
 import { execSync } from 'child_process';
-import { overArgs } from 'lodash';
+
 //import copy from 'rollup-plugin-copy';
 // //import typescript from 'rollup-plugin-typescript2';
 
@@ -21,7 +21,6 @@ const isExternal = (id, ...overArgs) => {
     return _isExternal;
 };
 
-const projectRootDir = __dirname;
 const devConfig = {
     input: 'src/index.ts',
     output: {
@@ -32,7 +31,7 @@ const devConfig = {
     external: isExternal, // Use the function to mark non-local imports as external
     plugins: [
         colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
-        SDKGenPlugin(),
+        //SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
         json(),
         typescriptPaths({
@@ -51,7 +50,7 @@ const devConfig = {
         //     clean: true,
         // }),
         filenameReplacePlugin(),
-        sourcemaps(),
+        //sourcemaps(),
     ],
 };
 
@@ -65,7 +64,7 @@ const prodConfig = {
     external: isExternal, // Use the function to mark non-local imports as external
     plugins: [
         colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
-        SDKGenPlugin(),
+        //SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
 
         json(),
@@ -216,7 +215,9 @@ function colorfulLogs(title = 'Builder') {
                     const percentText = `${Math.round(percent * 100)}%`;
 
                     process.stdout.write(
-                        `\r${colors.cyan}${spinner} ${colors.reset}[${progressBar}] ${colors.yellow}${percentText} ${colors.dim}${processedFiles}/${totalFiles.size} ${colors.reset}${currentFile.padEnd(50)}`,
+                        `\r${colors.cyan}${spinner} ${colors.reset}[${progressBar}] ${colors.yellow}${percentText} ${colors.dim}${processedFiles}/${
+                            totalFiles.size
+                        } ${colors.reset}${currentFile.padEnd(50)}`
                     );
                 }
             }, 80);
@@ -258,7 +259,9 @@ function colorfulLogs(title = 'Builder') {
             if (!hasShownFinalMessage) {
                 const progressBar = getProgressBar(1);
                 process.stdout.write(
-                    `\r${colors.green}✓ ${colors.reset}[${progressBar}] ${colors.yellow}100% ${colors.dim}${totalFiles.size}/${totalFiles.size} ${colors.bright}Complete!${colors.reset}${''.padEnd(50)}\n`,
+                    `\r${colors.green}✓ ${colors.reset}[${progressBar}] ${colors.yellow}100% ${colors.dim}${totalFiles.size}/${totalFiles.size} ${
+                        colors.bright
+                    }Complete!${colors.reset}${''.padEnd(50)}\n`
                 );
 
                 // Calculate and show build duration
@@ -267,7 +270,9 @@ function colorfulLogs(title = 'Builder') {
                 console.log(`${colors.green}✓ ${colors.bright}Build complete in ${colors.yellow}${duration}s${colors.reset}!`);
                 console.log(`${colors.magenta}➤ ${colors.white}Processed: ${colors.yellow}${totalFiles.size} files${colors.reset}`);
                 console.log(
-                    `${colors.magenta}➤ ${colors.white}Output: ${colors.yellow}${isProduction ? 'dist/index.js' : 'dist/index.dev.js'}${colors.reset}\n`,
+                    `${colors.magenta}➤ ${colors.white}Output: ${colors.yellow}${isProduction ? 'dist/index.js' : 'dist/index.dev.js'}${
+                        colors.reset
+                    }\n`
                 );
 
                 // Show bundle details
@@ -290,11 +295,11 @@ function colorfulLogs(title = 'Builder') {
                     console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset}\n\n`);
                     console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
                     console.log(
-                        `${colors.white}${colors.bright}║               ${colors.green}S M Y T H   O S${colors.white}               ║${colors.reset}`,
+                        `${colors.white}${colors.bright}║               ${colors.green}S M Y T H   O S${colors.white}               ║${colors.reset}`
                     );
                     console.log(`${colors.white}${colors.bright}╠━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╣${colors.reset}`);
                     console.log(
-                        `${colors.white}${colors.bright}║    🦙 ${colors.magenta}Ride The Llama. 😹 ${colors.orange}Skip the Drama.${colors.white}    ║${colors.reset}`,
+                        `${colors.white}${colors.bright}║    🦙 ${colors.magenta}Ride The Llama. 😹 ${colors.orange}Skip the Drama.${colors.white}    ║${colors.reset}`
                     );
                     console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
                     hasShownFinalMessage = true;
@@ -311,7 +316,7 @@ function ctixPlugin(options = {}) {
         buildStart() {
             try {
                 process.stdout.write(`\n${colors.cyan}⚙️ ${colors.yellow} Generating barrel files...${colors.reset}\n`);
-                execSync('npx ctix build', { stdio: 'inherit' });
+                execSync('pnpm exec ctix build', { stdio: 'inherit' });
                 console.log(`${colors.green}✅ ${colors.bright}Barrel files generated successfully!${colors.reset}\n`);
             } catch (error) {
                 this.error(`Failed to generate ctix barrel files: ${error.message}`);

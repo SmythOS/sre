@@ -1,0 +1,65 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Vitest Tests",
+            "runtimeExecutable": "node",
+            "runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
+            "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+            "args": ["run", "--reporter=verbose"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "cwd": "${workspaceFolder}/../../",
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "smartStep": false,
+            "justMyCode": false,
+            "resolveSourceMapLocations": ["${workspaceFolder}/../../packages/**/*", "!**/node_modules/**"],
+            "env": {
+                "NODE_ENV": "test"
+            }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Current Vitest Test File",
+            "runtimeExecutable": "node",
+            "runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
+            "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+            "args": ["run", "${relativeFile}", "--reporter=verbose"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "cwd": "${workspaceFolder}/../../",
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "smartStep": false,
+            "justMyCode": false,
+            "resolveSourceMapLocations": ["${workspaceFolder}/../../packages/**/*", "!**/node_modules/**"],
+            "env": {
+                "NODE_ENV": "test"
+            }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Vitest Tests (Watch Mode)",
+            "runtimeExecutable": "node",
+            "runtimeArgs": ["--experimental-strip-types", "--enable-source-maps"],
+            "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+            "args": ["--reporter=verbose"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "cwd": "${workspaceFolder}/../../",
+            "outputCapture": "std",
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "smartStep": false,
+            "justMyCode": false,
+            "resolveSourceMapLocations": ["${workspaceFolder}/../../packages/**/*", "!**/node_modules/**"],
+            "env": {
+                "NODE_ENV": "test"
+            }
+        }
+    ]
+}

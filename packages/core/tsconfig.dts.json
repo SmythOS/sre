@@ -58,10 +58,9 @@
             "@sre/Components/*": ["Components/*"],
             "@sre/Components": ["Components/index"]
         },
-        "types": ["node"],
         "allowSyntheticDefaultImports": true,
-
         "skipLibCheck": true,
+        "esModuleInterop": true,
         "typeRoots": ["./node_modules/@types"]
     },
     "include": ["src"],

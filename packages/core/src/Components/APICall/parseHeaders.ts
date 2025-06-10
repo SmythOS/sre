@@ -8,7 +8,7 @@ export async function parseHeaders(input, config, agent: Agent) {
     const teamId = agent ? agent.teamId : null;
     const templateSettings = config?.template?.settings || {};
     const contentType = config?.data?.contentType || REQUEST_CONTENT_TYPES.none;
-    let headers = config?.data?.headers || '{}';
+    let headers = typeof config?.data?.headers == 'object' ? JSON.stringify(config?.data?.headers) : config?.data?.headers || '{}';
 
     //parse component template vars
     if (config.data._templateVars && templateSettings) {

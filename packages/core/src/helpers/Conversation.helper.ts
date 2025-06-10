@@ -17,6 +17,7 @@ import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
 import { hookAsyncWithContext } from '@sre/Core/HookService';
 import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
+import * as acorn from 'acorn';
 
 const console = Logger('ConversationHelper');
 type FunctionDeclaration = {
@@ -120,7 +121,7 @@ export class Conversation extends EventEmitter {
             toolsStrategy?: (toolsConfig) => any;
             agentId?: string;
             agentVersion?: string;
-        },
+        }
     ) {
         //TODO: handle loading previous session (messages)
         super();
@@ -255,7 +256,7 @@ export class Conversation extends EventEmitter {
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens: this._maxOutputTokens,
                 },
-                this._agentId,
+                this._agentId
             )
             .catch((error: any) => {
                 throw new Error(
@@ -263,7 +264,7 @@ export class Conversation extends EventEmitter {
                         JSON.stringify({
                             code: error?.name || 'LLMRequestFailed',
                             message: error?.message || 'Something went wrong while calling LLM.',
-                        }),
+                        })
                 );
             });
 
@@ -429,7 +430,7 @@ export class Conversation extends EventEmitter {
                     cache: this._settings?.experimentalCache,
                     abortSignal,
                 },
-                this._agentId,
+                this._agentId
             )
             .catch((error) => {
                 console.error('Error on streamRequest: ', error);
@@ -499,7 +500,7 @@ export class Conversation extends EventEmitter {
                         thinkingBlocks
                             .filter((block) => block.type === 'thinking')
                             .map((block) => block.thinking || '')
-                            .join('\n'),
+                            .join('\n')
                     );
 
                     llmMessage.thinkingBlocks = thinkingBlocks;
@@ -595,7 +596,7 @@ export class Conversation extends EventEmitter {
                         this.emit(TLLMEvent.ToolResult, { tool, args }, functionResponse);
 
                         return { ...tool, result: functionResponse };
-                    },
+                    }
                 );
 
                 const processedToolsData = await processWithConcurrencyLimit<ToolData>(toolProcessingTasks, concurrentToolCalls);
@@ -715,7 +716,7 @@ export class Conversation extends EventEmitter {
 
     private async useTool(
         params: ToolParams,
-        abortSignal?: AbortSignal,
+        abortSignal?: AbortSignal
     ): Promise<{
         data: any;
         error;
@@ -789,7 +790,7 @@ export class Conversation extends EventEmitter {
                         //the agent was loaded from a spec
                         agentProcess = AgentProcess.load(
                             reqConfig.headers['X-AGENT-ID'] || this._agentId,
-                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion,
+                            reqConfig.headers['X-AGENT-VERSION'] || this._agentVersion
                         );
                     }
                     //if it's a local agent, invoke it directly
@@ -872,9 +873,26 @@ export class Conversation extends EventEmitter {
     public async addTool(tool: {
         name: string;
         description: string;
-        arguments: Record<string, any> | string[];
+        arguments?: Record<string, any> | string[];
         handler: (args: Record<string, any>) => Promise<any>;
     }) {
+        if (!tool.arguments) {
+            //if no arguments are provided, we need to extract them from the function
+            const toolFunction = tool.handler as Function;
+            const openApiArgs = this.extractArgsAsOpenAPI(toolFunction);
+            const _arguments: any = {};
+            for (let arg of openApiArgs) {
+                _arguments[arg.name] = arg.schema;
+            }
+
+            tool.arguments = _arguments;
+            tool.handler = async (argsObj: any) => {
+                const args = Object.values(argsObj);
+                const result = await toolFunction(...args);
+                return result;
+            };
+        }
+
         const requiredFields = Object.values(tool.arguments)
             .map((arg) => (arg.required ? arg.name : null))
             .filter((arg) => arg);
@@ -1124,5 +1142,67 @@ export class Conversation extends EventEmitter {
             const teamId = await accountConnector.getCandidateTeam(AccessCandidate.agent(agentId))?.catch(() => '');
             this._teamId = teamId || '';
         }
+    }
+
+    private extractArgsAsOpenAPI(fn) {
+        const ast = acorn.parse(`(${fn.toString()})`, { ecmaVersion: 'latest' });
+        const params = (ast.body[0] as any).expression.params;
+
+        let counter = 0;
+        function handleParam(param) {
+            if (param.type === 'Identifier') {
+                return {
+                    name: param.name,
+                    in: 'query',
+                    required: true,
+                    schema: { type: 'string' },
+                };
+            }
+
+            if (param.type === 'AssignmentPattern' && param.left.type === 'Identifier') {
+                return {
+                    name: param.left.name,
+                    in: 'query',
+                    required: false,
+                    schema: { type: 'string' },
+                };
+            }
+
+            if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
+                return {
+                    name: param.argument.name,
+                    in: 'query',
+                    required: false,
+                    schema: { type: 'array', items: { type: 'string' } },
+                };
+            }
+
+            if (param.type === 'ObjectPattern') {
+                // For destructured objects, output as a single parameter with nested fields
+                return {
+                    name: `[object_${counter++}]`,
+                    in: 'query',
+                    required: true,
+                    schema: {
+                        type: 'object',
+                        properties: Object.fromEntries(
+                            param.properties.map((prop) => {
+                                const keyName = prop.key.name || '[unknown]';
+                                return [keyName, { type: 'string' }]; // default to string
+                            })
+                        ),
+                    },
+                };
+            }
+
+            return {
+                name: `[unknown_${counter++}]`,
+                in: 'query',
+                required: true,
+                schema: { type: 'string' },
+            };
+        }
+
+        return params.map(handleParam);
     }
 }

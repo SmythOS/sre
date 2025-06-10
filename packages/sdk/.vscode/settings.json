@@ -1,0 +1,19 @@
+{
+    "vitest.enable": true,
+    "vitest.rootConfig": "./vitest.config.ts",
+    "vitest.commandLine": "pnpm exec vitest",
+    "vitest.include": ["tests/**/*.test.ts"],
+    "vitest.exclude": ["node_modules/**/*"],
+    "vitest.debuggerPort": 9229,
+    "vitest.env": {
+        "NODE_ENV": "test"
+    },
+    "vitest.debugExclude": ["<node_internals>/**", "**/node_modules/**"],
+    "vitest.nodeEnv": {
+        "NODE_OPTIONS": "--enable-source-maps --experimental-strip-types"
+    },
+    "vitest.workspaceRoot": "../../",
+    "vitest.debuggerAutoAttach": "off",
+    "typescript.preferences.includePackageJsonAutoImports": "auto",
+    "typescript.tsc.autoDetect": "off"
+}

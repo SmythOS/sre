@@ -1,8 +1,8 @@
-import { PutBucketLifecycleConfigurationCommand } from "@aws-sdk/client-s3";
+import { GetBucketLifecycleConfigurationCommandOutput, PutBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
 
-import { GetBucketLifecycleConfigurationCommand } from "@aws-sdk/client-s3";
+import { GetBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
 
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from '@aws-sdk/client-s3';
 
 export function generateLifecycleRules() {
     const rules = [];
@@ -15,11 +15,11 @@ export function generateLifecycleRules() {
                 // Prefix: '',
                 Tag: {
                     Key: 'Expiry',
-                    Value: 'ExpireAfter' + i + 'Days'
-                }
+                    Value: 'ExpireAfter' + i + 'Days',
+                },
             },
             Status: 'Enabled',
-            Expiration: { Days: i }
+            Expiration: { Days: i },
         });
     }
 
@@ -31,11 +31,11 @@ export function generateLifecycleRules() {
                 // Prefix: '',
                 Tag: {
                     Key: 'Expiry',
-                    Value: 'ExpireAfter' + i + 'Days'
-                }
+                    Value: 'ExpireAfter' + i + 'Days',
+                },
             },
             Status: 'Enabled',
-            Expiration: { Days: i }
+            Expiration: { Days: i },
         });
     }
 
@@ -47,17 +47,16 @@ export function generateLifecycleRules() {
                 // Prefix: '',
                 Tag: {
                     Key: 'Expiry',
-                    Value: 'ExpireAfter' + i + 'Days'
-                }
+                    Value: 'ExpireAfter' + i + 'Days',
+                },
             },
             Status: 'Enabled',
-            Expiration: { Days: i }
+            Expiration: { Days: i },
         });
     }
 
     return rules;
 }
-
 
 export function generateExpiryMetadata(expiryDays) {
     let metadataValue;
@@ -76,15 +75,16 @@ export function generateExpiryMetadata(expiryDays) {
 
     return {
         Key: 'Expiry',
-        Value: metadataValue
+        Value: metadataValue,
     };
 }
 
 export function getNonExistingRules(existingRules: any[], newRules: any[]) {
-    return newRules.filter(rule => !existingRules.some(existingRule => existingRule.ID === rule.ID));
+    return newRules.filter((rule) => !existingRules.some((existingRule) => existingRule.ID === rule.ID));
 }
 
-export function ttlToExpiryDays(ttl: number) { // seconds
+export function ttlToExpiryDays(ttl: number) {
+    // seconds
     return Math.ceil(ttl / (60 * 60 * 24));
 }
 
@@ -92,7 +92,7 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
     try {
         // Check existing lifecycle configuration
         const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: bucketName });
-        const existingLifecycle = await s3Client.send(getLifecycleCommand);
+        const existingLifecycle: GetBucketLifecycleConfigurationCommandOutput = await s3Client.send(getLifecycleCommand);
         const existingRules = existingLifecycle.Rules;
         const newRules = generateLifecycleRules();
         const nonExistingNewRules = getNonExistingRules(existingRules, newRules);
@@ -115,7 +115,7 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
 
             const params = {
                 Bucket: bucketName,
-                LifecycleConfiguration: { Rules: lifecycleRules }
+                LifecycleConfiguration: { Rules: lifecycleRules },
             };
             const putLifecycleCommand = new PutBucketLifecycleConfigurationCommand(params);
             // Put the new lifecycle configuration

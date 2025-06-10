@@ -1,0 +1,32 @@
+{
+    "default": {
+        "echo": "",
+        "openai": "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",
+        "anthropic": "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",
+        "googleai": "AIzaSyCAN3qs1d3ZxaMihLuC61KCpfQDiZhyMyg",
+        "groq": "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",
+        "togetherai": "ec83919b00845cb0b5eb808a94460fe6395e5bec395ffae4bc37953212535319",
+
+        "ZAPIER_API_KEY": "",
+        "HUGGINGFACE_API_KEY": "",
+        "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY",
+        "Template_API_KEY_1": "THIS_IS_A_FAKE_TEMPLATE_API_KEY_1",
+
+        "AWS Key ID (m3iws4lisbh)": "AKIAV5GS7UPHQ4RYOHI5",
+        "AWS Secret Key (m3iws4lisbh)": "E1RG+5D/NG75e2JM9LwZN7+43l0oqIrik//jnMBB",
+
+        "keyIDName": "BEDROCK_TESINTG_AWS_KEY_ID",
+        "secretKeyName": "BEDROCK_TESINTG_AWS_SECRET_KEY",
+        "SRE TEST KEY": "sdl7k8lsd93ko4iu39"
+    },
+    "shared": {
+        "echo": ""
+    },
+    "9": {
+        "Google_Gmail_Client_ID": "",
+        "Google_Gmail_ClientSecret": ""
+    },
+    "Team1": {
+        "Team1_API": "THIS_IS_A_FAKE_TEAM1_API_KEY"
+    }
+}

@@ -23,7 +23,7 @@ export class NullManagedVault extends ManagedVaultConnector {
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, keyId: string) {
         console.debug(`Ignored operation:NullManagedVault.get: ${keyId}`);
-        return 'NULLKEY';
+        return undefined;
     }
 
     @SecureConnector.AccessControl

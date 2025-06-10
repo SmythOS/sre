@@ -16,7 +16,9 @@ Object.defineProperty(global, 'crypto', {
 import {
     DeleteObjectCommand,
     GetObjectCommand,
+    GetObjectCommandOutput,
     HeadObjectCommand,
+    HeadObjectCommandOutput,
     PutObjectCommand,
     PutObjectTaggingCommand,
     S3Client,
@@ -53,7 +55,7 @@ export class S3Storage extends StorageConnector {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
         this.bucket = settings.bucket;
-        const clientConfig: S3ClientConfig = {};
+        const clientConfig: any = {};
         if (settings.region) clientConfig.region = settings.region;
         if (settings.accessKeyId && settings.secretAccessKey) {
             clientConfig.credentials = {
@@ -88,7 +90,7 @@ export class S3Storage extends StorageConnector {
         };
 
         const s3HeadCommand = new HeadObjectCommand(params);
-        const s3HeadData = await this.client.send(s3HeadCommand);
+        const s3HeadData: HeadObjectCommandOutput = await this.client.send(s3HeadCommand);
 
         const expirationHeader = s3HeadData?.Expiration;
         if (expirationHeader) {
@@ -109,7 +111,7 @@ export class S3Storage extends StorageConnector {
         const command = new GetObjectCommand(params);
 
         try {
-            const response = await this.client.send(command);
+            const response: GetObjectCommandOutput = await this.client.send(command);
             //const metadata = response.Metadata;
             return await streamToBuffer(response.Body as Readable);
         } catch (error) {
@@ -369,7 +371,7 @@ export class S3Storage extends StorageConnector {
                 Bucket: this.bucket,
                 Key: resourceId,
             });
-            const response = await this.client.send(command);
+            const response: HeadObjectCommandOutput = await this.client.send(command);
             const s3RawMetadata = response.Metadata;
             if (!s3RawMetadata || Object.keys(s3RawMetadata).length === 0) return {};
 
@@ -393,7 +395,7 @@ export class S3Storage extends StorageConnector {
                 Bucket: this.bucket,
                 Key: resourceId,
             });
-            const objectData = await this.client.send(getObjectCommand);
+            const objectData: GetObjectCommandOutput = await this.client.send(getObjectCommand);
 
             // Read the object's content
             const bufferBody = await streamToBuffer(objectData.Body as Readable);

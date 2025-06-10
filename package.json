@@ -1,0 +1,19 @@
+{
+    "name": "sre",
+    "version": "1.0.0",
+    "description": "",
+    "author": "Alaa-eddine KADDOURI",
+    "license": "MIT",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "build": "pnpm -r run build",
+        "dev": "pnpm -r run dev",
+        "lint": "pnpm -r run lint"
+    },
+    "keywords": [],
+    "packageManager": "pnpm@10.12.1",
+    "workspaces": [
+        "packages/*"
+    ]
+}

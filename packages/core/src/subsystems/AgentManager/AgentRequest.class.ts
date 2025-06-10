@@ -24,7 +24,9 @@ export class AgentRequest {
 
         if (req?.url) {
             try {
-                this.path = new URL(req.url).pathname;
+                const url = new URL(req.url);
+                this.path = url.pathname;
+                this.query = { ...this.query, ...Object.fromEntries(url.searchParams) };
             } catch {
                 // Ignore invalid or relative paths
             }

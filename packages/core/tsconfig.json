@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "outDir": "./dist",
+
         "module": "ESNext",
         "target": "ESNext",
         "moduleResolution": "node",
@@ -54,16 +55,13 @@
             "@sre/Components/*": ["Components/*"],
             "@sre/Components": ["Components/index"]
         },
-        "types": ["node"],
-        "allowSyntheticDefaultImports": true
+        //"types": ["node"],
+        "allowSyntheticDefaultImports": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "typeRoots": ["./node_modules/@types"]
     },
-    "include": [
-        "src/**/*.ts",
-        "tests/**/*.ts",
-        "tests/dev/008-VectorDB/Pinecone.test.bak",
-        "src/helpers/ToolExecutor.class.ts.deprecated",
-        "src/subsystems/AgentManager/AgentData.service/connectors/NullAgentData.classts"
-    ],
+    "include": ["src/**/*.ts", "tests/**/*.ts"],
 
     "exclude": ["node_modules"]
 }

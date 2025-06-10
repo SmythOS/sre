@@ -1,0 +1,24 @@
+{
+  "name": "@sre/cli",
+  "version": "1.0.0",
+  "description": "SRE CLI Tool",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "sre": "dist/index.js"
+  },
+  "scripts": {
+    "build": "echo 'Build script not implemented'",
+    "dev": "echo 'Dev script not implemented'",
+    "lint": "echo 'Lint script not implemented'"
+  },
+  "keywords": [
+    "sre",
+    "cli"
+  ],
+  "author": "Alaa-eddine KADDOURI",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

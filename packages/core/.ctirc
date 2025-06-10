@@ -11,7 +11,7 @@
             "useBanner": false,
             "useTimestamp": false,
             "quote": "'",
-            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nimport 'source-map-support/register.js';\nexport { version } from '../package.json';\n\n// SDK namespace export to avoid conflicts\nimport * as _SDK from './sdk/sdk.index';\nexport { _SDK as SDK };",
+            "directive": "//!!! This is a generated file, do not edit it directly !!!//\n\nexport { version } from '../package.json';\n\n",
             "fileExt": "none",
             "overwrite": false,
             "backup": true,
@@ -23,34 +23,9 @@
                 "node_modules",
                 "tests/**/*",
                 "src/utils/**/*",
-                "src/sdk/**/*",
                 "**/*.deprecated"
             ],
             "output": "./src",
-            "removeBackup": false,
-            "forceYes": false
-        },
-        {
-            "mode": "bundle",
-            "project": "tsconfig.json",
-            "exportFilename": "sdk.index.ts",
-            "useSemicolon": true,
-            "useBanner": false,
-            "useTimestamp": false,
-            "quote": "'",
-            "directive": "//!!! This is a generated file, do not edit it directly !!!//",
-            "fileExt": "none",
-            "overwrite": false,
-            "backup": true,
-            "generationStyle": "auto",
-            "include": [
-                "src/sdk/**/*.ts"
-            ],
-            "exclude": [
-                "node_modules",
-                "**/*.deprecated"
-            ],
-            "output": "./src/sdk",
             "removeBackup": false,
             "forceYes": false
         }
