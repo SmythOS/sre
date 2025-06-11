@@ -23,6 +23,9 @@ importers:
       '@smythos/sdk':
         specifier: workspace:*
         version: link:../packages/sdk
+      dotenv:
+        specifier: ^16.5.0
+        version: 16.5.0
     devDependencies:
       '@types/node':
         specifier: ^20.19.0

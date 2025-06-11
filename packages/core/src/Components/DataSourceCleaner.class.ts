@@ -5,8 +5,9 @@ import Joi from 'joi';
 import { validateCharacterSet } from '../utils';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { VectorsHelper } from '@sre/helpers/Vectors.helper';
+
 import { DataSourceIndexer } from './DataSourceIndexer.class';
+//import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
 export class DataSourceCleaner extends Component {
     protected configSchema = Joi.object({
@@ -41,16 +42,17 @@ export class DataSourceCleaner extends Component {
             }
 
             const namespaceId = configSchema.value.namespaceId.split('_')?.slice(1).join('_') || configSchema.value.namespaceId;
-            let vectorDBHelper = VectorsHelper.load();
 
-            const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
-            let vectorDbConnector = customStorageConnector || ConnectorService.getVectorDBConnector();
+            // const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
+            let vectorDbConnector =
+                //  customStorageConnector ||
+                ConnectorService.getVectorDBConnector();
 
             let existingnamespace = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespaceId);
             if (!existingnamespace) {
-                if (!vectorDBHelper.shouldCreateNsImplicitly) {
-                    throw new Error(`Namespace ${namespaceId} does not exist`);
-                }
+                // if (!(vectorDbConnector instanceof SmythManagedVectorDB)) {
+                //     throw new Error(`Namespace ${namespaceId} does not exist`);
+                // }
                 await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${namespaceId}\n\n`;
             } else if (!existingnamespace.metadata.isOnCustomStorage) {

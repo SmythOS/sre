@@ -6,7 +6,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 const console = Logger('Connector');
 //const lCache = new LocalCache();
 
-export class Connector {
+export class Connector<TRequest = any> {
     public name: string;
     public started = false;
     private _interactionHandler: () => void;
@@ -98,21 +98,22 @@ export class Connector {
         return this._readyPromise;
     }
 
-    public requester(candidate: AccessCandidate): any {
-        return null;
+    public requester(candidate: AccessCandidate): TRequest {
+        return null as TRequest;
     }
 
-    public user(candidate: AccessCandidate | string): any {
+    public user(candidate: AccessCandidate | string): TRequest {
         if (typeof candidate === 'string') {
             return this.requester(AccessCandidate.user(candidate));
         }
         return this.requester(candidate);
     }
 
-    public team(teamId: string): any {
+    public team(teamId: string): TRequest {
         return this.requester(AccessCandidate.team(teamId));
     }
-    public agent(agentId: string): any {
+
+    public agent(agentId: string): TRequest {
         return this.requester(AccessCandidate.agent(agentId));
     }
 }

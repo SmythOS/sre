@@ -5,7 +5,7 @@ import { Component } from './components/components.index';
 import { ComponentWrapper } from './components/ComponentWrapper.class';
 import { TSkillSettings } from './components/Skill';
 import { DummyAccountHelper } from './DummyAccount.helper';
-import { LLMInstance, TLLMInstanceFactory, TLLMInstanceParams, TLLMProviderInstances } from './LLM.class';
+
 import { StorageInstance } from './Storage.class';
 import { TStorageProvider, TStorageProviderInstances } from './types/generated/Storage.types';
 import { uid } from './utils/general.utils';
@@ -14,6 +14,10 @@ import fs from 'fs';
 import { SDKLog } from './utils/console.utils';
 import { help } from './help';
 import { Team } from './Team.class';
+import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
+import { VectorDBInstance } from './VectorDB.class';
+import { TLLMInstanceFactory, TLLMProviderInstances } from './LLM/LLM.class';
+import { LLMInstance, TLLMInstanceParams } from './LLM/LLMInstance.class';
 
 const console = SDKLog;
 
@@ -422,6 +426,27 @@ export class Agent extends SDKObject {
             );
         }
         return this._storageProviders;
+    }
+
+    /**
+     * Access to vectorDB instances from the agent for direct vectorDB interactions.
+     *
+     * When using vectorDB from the agent, the agent id will be used as data owner
+     *
+     * **Supported providers and calling patterns:**
+     * - `agent.vectorDB.RAMVec()` - A local RAM vectorDB
+     * - `agent.vectorDB.Pinecone()` - Pinecone vectorDB
+     */
+    private _vectorDBProviders: TVectorDBProviderInstances;
+    public get vectorDB() {
+        if (!this._vectorDBProviders) {
+            this._vectorDBProviders = {} as TVectorDBProviderInstances;
+            for (const provider of Object.values(TVectorDBProvider)) {
+                this._vectorDBProviders[provider] = (vectorDBSettings?: any) =>
+                    new VectorDBInstance(provider as TVectorDBProvider, vectorDBSettings, AccessCandidate.agent(this._data.id));
+            }
+        }
+        return this._vectorDBProviders;
     }
 
     /**

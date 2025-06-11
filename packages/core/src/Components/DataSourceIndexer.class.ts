@@ -6,8 +6,9 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { isUrl, detectURLSourceType } from '../utils';
 import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '@sre/helpers/Vectors.helper';
+
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+//import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
 
 export class DataSourceIndexer extends Component {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
@@ -44,14 +45,15 @@ export class DataSourceIndexer extends Component {
             const namespaceId = _config.namespace.split('_').slice(1).join('_') || _config.namespace;
             debugOutput += `[Selected namespace id] \n${namespaceId}\n\n`;
 
-            const vectorDBHelper = VectorsHelper.load();
-            const vectorDbConnector = (await vectorDBHelper.getTeamConnector(teamId)) || ConnectorService.getVectorDBConnector();
+            const vectorDbConnector =
+                // (await vectorDBHelper.getTeamConnector(teamId)) ||
+                ConnectorService.getVectorDBConnector();
             const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
 
             if (!nsExists) {
-                if (!vectorDBHelper.shouldCreateNsImplicitly) {
-                    throw new Error(`Namespace ${namespaceId} does not exist`);
-                }
+                // if (!(vectorDbConnector instanceof SmythManagedVectorDB)) {
+                //     throw new Error(`Namespace ${namespaceId} does not exist`);
+                // }
                 const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${newNs}\n\n`;
             }
@@ -155,15 +157,14 @@ export class DataSourceIndexer extends Component {
     }
 
     private async addDSFromText({ teamId, sourceId, namespaceId, text, name, metadata }) {
-        let vectorDBHelper = VectorsHelper.load();
         let vectorDbConnector = ConnectorService.getVectorDBConnector();
-        const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
-        if (isOnCustomStorage) {
-            const customTeamConnector = await vectorDBHelper.getTeamConnector(teamId);
-            if (customTeamConnector) {
-                vectorDbConnector = customTeamConnector;
-            }
-        }
+        // const isOnCustomStorage = await vectorDBHelper.isNamespaceOnCustomStorage(teamId, namespaceId);
+        // if (isOnCustomStorage) {
+        // const customTeamConnector = await vectorDBHelper.getTeamConnector(teamId);
+        // if (customTeamConnector) {
+        // vectorDbConnector = customTeamConnector;
+        // }
+        // }
         const id = await vectorDbConnector.user(AccessCandidate.team(teamId)).createDatasource(namespaceId, {
             text,
             metadata,

@@ -2,14 +2,12 @@
 
 import { PineconeConfig } from '@smythos/sre';
 import { RAMVectorDBConfig } from '@smythos/sre';
-import { SmythManagedVectorDBConfig } from '@smythos/sre';
 import { VectorDBInstance } from '../../VectorDB.class';
 
 // Define VectorDB provider settings mapping
 export type TVectorDBProviderSettings = {
     Pinecone: PineconeConfig;
     RAMVec: RAMVectorDBConfig;
-    SmythManaged: SmythManagedVectorDBConfig;
 };
 
 // #region [ Handle extendable VectorDB Providers ] ================================================
@@ -25,7 +23,6 @@ export type TVectorDBProvider = TBuiltinVectorDBProvider | keyof IVectorDBProvid
 export const TVectorDBProvider: Record<TBuiltinVectorDBProvider, TBuiltinVectorDBProvider> = {
     Pinecone: 'Pinecone',
     RAMVec: 'RAMVec',
-    SmythManaged: 'SmythManaged',
 } as const;
 
 // #endregion

@@ -35,9 +35,9 @@ export function APIOutput(settings?: TAPIOutputSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TAPIOutputOutputs = {
+    const _out: TAPIOutputOutputs = createSafeAccessor({
         // No outputs defined
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         // No inputs defined

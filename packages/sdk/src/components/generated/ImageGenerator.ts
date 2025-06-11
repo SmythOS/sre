@@ -46,9 +46,9 @@ export function ImageGenerator(settings?: TImageGeneratorSettings, agent?: Agent
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TImageGeneratorOutputs = {
+    const _out: TImageGeneratorOutputs = createSafeAccessor({
         // No outputs defined
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         // No inputs defined

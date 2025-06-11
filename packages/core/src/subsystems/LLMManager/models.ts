@@ -468,6 +468,29 @@ export const models = {
     },
     // #endregion GPT-3.5
 
+    // # region OpenAI embeddings
+
+    'text-embedding-ada-002': {
+        label: 'OpenAI Embeddings Ada 002',
+        modelId: 'text-embedding-ada-002',
+        provider: 'OpenAI',
+        features: ['embeddings'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        credentials: ['internal', 'vault'],
+    },
+    'text-embedding-3-large': {
+        label: 'OpenAI Embeddings 3 Large',
+        modelId: 'text-embedding-3-large',
+        provider: 'OpenAI',
+        features: ['embeddings'],
+        tokens: 0,
+        completionTokens: 0,
+        enabled: false,
+        credentials: ['internal', 'vault'],
+    },
+
     // #endregion OpenAI Models ==========================
 
     // #region Anthropic Models ==========================

@@ -82,9 +82,9 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TGenAILLMOutputs = {
+    const _out: TGenAILLMOutputs = createSafeAccessor({
         Reply: createSafeAccessor({}, component, 'Reply', {"default":true}),
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         Input: {

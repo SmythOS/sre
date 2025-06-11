@@ -2,7 +2,6 @@ import { Agent, TLLMEvent } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function main() {
     const agent = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
 

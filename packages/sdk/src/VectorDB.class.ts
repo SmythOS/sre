@@ -1,39 +1,50 @@
 import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, IVectorDBRequest, TConnectorService } from '@smythos/sre';
-import { EventEmitter } from 'events';
+
 import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
+import { SDKObject } from './SDKObject.class';
 //import { TVectorDBProviderInstances } from './types/generated/VectorDB.types';
 
-export class VectorDBInstance extends EventEmitter {
+export class VectorDBInstance extends SDKObject {
     private _candidate: AccessCandidate;
     private _VectorDBRequest: IVectorDBRequest;
     private _namespace: string;
     private _teamId: string;
 
-    constructor(providerId: TVectorDBProvider, VectorDBSettings?: any, candidate?: AccessCandidate) {
+    constructor(private providerId: TVectorDBProvider, private VectorDBSettings?: any, candidate?: AccessCandidate) {
         super();
         this._candidate = candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
-        let connector = ConnectorService.getVectorDBConnector(providerId);
+    }
+
+    protected async init() {
+        await super.init();
+
+        let connector = ConnectorService.getVectorDBConnector(this.providerId);
 
         if (!connector?.valid) {
             //no valid default connector, we just create a dummy one
-            connector = ConnectorService.init(TConnectorService.VectorDB, providerId, providerId, {});
+            connector = ConnectorService.init(TConnectorService.VectorDB, this.providerId, this.providerId, {});
 
             if (!connector.valid) {
-                console.error(`VectorDB connector ${providerId} is not available`);
+                console.error(`VectorDB connector ${this.providerId} is not available`);
 
-                throw new Error(`VectorDB connector ${providerId} is not available`);
+                throw new Error(`VectorDB connector ${this.providerId} is not available`);
             }
         }
 
-        const instance = connector.instance(VectorDBSettings);
+        const instance = connector.instance(this.VectorDBSettings);
         this._VectorDBRequest = instance.requester(this._candidate);
 
-        this._namespace = VectorDBSettings.namespace;
+        this._namespace = this.VectorDBSettings.namespace;
     }
+
     private async namespaceExists() {
+        await this.ready;
+
         return await this._VectorDBRequest.namespaceExists(this._namespace);
     }
     private async ensureNamespaceExists() {
+        await this.ready;
+
         const namespaceExists = await this._VectorDBRequest.namespaceExists(this._namespace);
         if (!namespaceExists) {
             await this._VectorDBRequest.createNamespace(this._namespace);
@@ -44,17 +55,20 @@ export class VectorDBInstance extends EventEmitter {
     }
 
     public async insertDoc(name: string, data: string, metadata?: Record<string, string>) {
+        await this.ready;
         await this.ensureNamespaceExists();
         return await this._VectorDBRequest.createDatasource(this._namespace, { text: data, id: this._normalizeName(name), label: name });
     }
 
     public async updateDoc(name: string, data: string, metadata?: Record<string, string>) {
+        await this.ready;
         await this.ensureNamespaceExists();
         await this.deleteDoc(name);
         return await this.insertDoc(name, data, metadata);
     }
 
     public async deleteDoc(name: string) {
+        await this.ready;
         if (!(await this.namespaceExists())) {
             return false;
         }
@@ -62,6 +76,8 @@ export class VectorDBInstance extends EventEmitter {
         return true;
     }
     public async search(query: string, { topK = 10, includeMetadata = true }: { topK?: number; includeMetadata?: boolean }) {
+        await this.ready;
+
         if (!(await this.namespaceExists())) {
             return [];
         }

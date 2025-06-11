@@ -35,9 +35,9 @@ export function Await(settings?: TAwaitSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TAwaitOutputs = {
+    const _out: TAwaitOutputs = createSafeAccessor({
         // No outputs defined
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         // No inputs defined

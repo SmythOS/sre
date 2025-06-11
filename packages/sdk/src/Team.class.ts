@@ -2,6 +2,8 @@ import { TStorageProvider, TStorageProviderInstances } from './types/generated/S
 import { Agent, TAgentSettings } from './Agent.class';
 import { StorageInstance } from './Storage.class';
 import { AccessCandidate } from '@smythos/sre';
+import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
+import { VectorDBInstance } from './VectorDB.class';
 
 export class Team {
     constructor(public id: string) {}
@@ -37,5 +39,17 @@ export class Team {
             }
         }
         return this._storageProviders;
+    }
+
+    private _vectorDBProviders: TVectorDBProviderInstances;
+    public get vectorDB() {
+        if (!this._vectorDBProviders) {
+            this._vectorDBProviders = {} as TVectorDBProviderInstances;
+            for (const provider of Object.values(TVectorDBProvider)) {
+                this._vectorDBProviders[provider] = (vectorDBSettings?: any) =>
+                    new VectorDBInstance(provider as TVectorDBProvider, vectorDBSettings, AccessCandidate.team(this.id));
+            }
+        }
+        return this._vectorDBProviders;
     }
 }

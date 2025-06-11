@@ -41,9 +41,9 @@ export function HuggingFace(settings?: THuggingFaceSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: THuggingFaceOutputs = {
+    const _out: THuggingFaceOutputs = createSafeAccessor({
         // No outputs defined
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         // No inputs defined

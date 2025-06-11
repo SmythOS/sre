@@ -61,6 +61,9 @@ export type TAPICallOutputs = {
     [key: string]: any;
 };
 
+/**
+ * Use this component to make an API call
+ */
 export function APICall(settings?: TAPICallSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
@@ -75,10 +78,10 @@ export function APICall(settings?: TAPICallSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TAPICallOutputs = {
+    const _out: TAPICallOutputs = createSafeAccessor({
         Headers: createSafeAccessor({}, component, 'Headers', {"description":"The headers of the API call response","default":true}),
         Response: createSafeAccessor({}, component, 'Response', {"description":"The response of the API call","default":true}),
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
         // No inputs defined

@@ -1,12 +1,8 @@
 import OpenAI, { type ClientOptions, OpenAI as OpenAIClient } from 'openai';
+import { BaseEmbedding, type BaseEmbeddingParams } from './BaseEmbedding';
 
-export interface OpenAIEmbeddingsParams {
-    modelName: string;
-    model: string;
-    dimensions?: number;
-    timeout?: number;
-    chunkSize?: number;
-    stripNewLines?: boolean;
+export interface OpenAIEmbeddingsParams extends BaseEmbeddingParams {
+    // OpenAI-specific parameters can be added here if needed
 }
 
 // Helper function to create OpenAI API errors
@@ -23,45 +19,33 @@ const createOpenAIError = (statusCode: number, error: any) => {
     );
 };
 
-export class OpenAIEmbeds implements Partial<OpenAIEmbeddingsParams> {
-    model = 'text-embedding-ada-002'; //text-embedding-3-large
-    modelName: string;
-    chunkSize = 512;
-    stripNewLines = true;
-    dimensions?: number;
-    timeout?: number;
+const DEFAULT_MODEL = 'text-embedding-ada-002';
+
+export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddingsParams> {
     protected client: OpenAIClient;
     protected clientConfig: ClientOptions;
+
+    public static models = ['text-embedding-ada-002', 'text-embedding-3-large'];
 
     constructor(
         fields?: Partial<OpenAIEmbeddingsParams> & {
             verbose?: boolean;
-            openAIApiKey?: string;
             model?: string;
             apiKey?: string;
             configuration?: ClientOptions;
         },
     ) {
-        const fieldsWithDefaults = { maxConcurrency: 2, ...fields };
-
-        const apiKey = fieldsWithDefaults?.apiKey ?? fieldsWithDefaults?.openAIApiKey;
-
-        this.model = fieldsWithDefaults?.model ?? fieldsWithDefaults?.modelName ?? this.model;
-        this.modelName = this.model;
-        this.chunkSize = fieldsWithDefaults?.chunkSize ?? this.chunkSize;
-        this.stripNewLines = fieldsWithDefaults?.stripNewLines ?? this.stripNewLines;
-        this.timeout = fieldsWithDefaults?.timeout;
-        this.dimensions = fieldsWithDefaults?.dimensions;
+        super({ maxConcurrency: 2, model: fields?.model ?? DEFAULT_MODEL, ...fields });
 
         this.clientConfig = {
-            apiKey,
+            apiKey: fields?.apiKey || process.env.OPENAI_API_KEY || '',
             dangerouslyAllowBrowser: true,
             ...fields?.configuration,
         };
     }
 
     async embedTexts(texts: string[]): Promise<number[][]> {
-        const batches = this.chunkArr(this.stripNewLines ? texts.map((t) => t.replace(/\n/g, ' ')) : texts, this.chunkSize);
+        const batches = this.chunkArr(this.processTexts(texts), this.chunkSize);
 
         const batchRequests = batches.map((batch) => {
             const params: OpenAIClient.EmbeddingCreateParams = {
@@ -89,7 +73,7 @@ export class OpenAIEmbeds implements Partial<OpenAIEmbeddingsParams> {
     async embedText(text: string): Promise<number[]> {
         const params: OpenAIClient.EmbeddingCreateParams = {
             model: this.model,
-            input: this.stripNewLines ? text.replace(/\n/g, ' ') : text,
+            input: this.processTexts([text])[0],
         };
         if (this.dimensions) {
             params.dimensions = this.dimensions;
@@ -117,14 +101,5 @@ export class OpenAIEmbeds implements Partial<OpenAIEmbeddingsParams> {
             const error = createOpenAIError(e.statusCode, e);
             throw error;
         }
-    }
-
-    private chunkArr<T>(arr: T[], sizePerChunk: number) {
-        return arr.reduce((chunks, elem, index) => {
-            const chunkIndex = Math.floor(index / sizePerChunk);
-            const chunk = chunks[chunkIndex] || [];
-            chunks[chunkIndex] = chunk.concat([elem]);
-            return chunks;
-        }, [] as T[][]);
     }
 }

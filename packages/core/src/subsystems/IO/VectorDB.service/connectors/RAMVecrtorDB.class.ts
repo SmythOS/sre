@@ -17,8 +17,10 @@ import {
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { OpenAIEmbeds } from '@sre/helpers/Vectors.helper/OpenAIEmbeds';
+import { OpenAIEmbeds } from '@sre/IO/VectorDB.service/embed/OpenAIEmbedding';
 import crypto from 'crypto';
+import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
+import { EmbeddingsFactory } from '../embed';
 
 const console = Logger('RAM VectorDB');
 
@@ -30,7 +32,7 @@ interface VectorData {
 }
 
 export type RAMVectorDBConfig = {
-    openaiApiKey?: string;
+    embeddings: TEmbeddings;
 };
 
 /**
@@ -45,31 +47,24 @@ export type RAMVectorDBConfig = {
 export class RAMVectorDB extends VectorDBConnector {
     public name = 'RAMVec';
     public id = 'ram';
-    private openaiApiKey: string;
+    //private openaiApiKey: string;
     private accountConnector: AccountConnector;
-    private embeddingsProvider: OpenAIEmbeds;
+    //private embeddingsProvider: OpenAIEmbeds;
 
     // In-memory storage
     private vectors: Record<string, VectorData[]> = {};
     private namespaces: Record<string, IStorageVectorNamespace> = {};
     private datasources: Record<string, Record<string, IStorageVectorDataSource>> = {};
     private acls: Record<string, IACL> = {};
+    public embedder: BaseEmbedding;
 
-    constructor(config: RAMVectorDBConfig) {
+    constructor(settings: RAMVectorDBConfig) {
         super();
-        this.openaiApiKey = config.openaiApiKey || process.env.OPENAI_API_KEY || '';
         this.accountConnector = ConnectorService.getAccountConnector();
 
-        // Initialize OpenAI embeddings provider directly
-        this.embeddingsProvider = new OpenAIEmbeds({
-            apiKey: this.openaiApiKey,
-        });
+        if (!settings.embeddings.dimensions) settings.embeddings.dimensions = 1024;
 
-        console.info('RAM VectorDB initialized');
-
-        if (!this.openaiApiKey) {
-            console.warn('OpenAI API key not provided - text embedding will not work');
-        }
+        this.embedder = EmbeddingsFactory.create(settings.embeddings.provider, settings.embeddings);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -161,7 +156,7 @@ export class RAMVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions = {},
+        options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
@@ -173,10 +168,7 @@ export class RAMVectorDB extends VectorDBConnector {
         // Get query vector
         let queryVector = query;
         if (typeof query === 'string') {
-            if (!this.openaiApiKey) {
-                throw new Error('OpenAI API key is required for text embedding');
-            }
-            queryVector = await this.embeddingsProvider.embedText(query);
+            queryVector = await this.embedder.embedText(query);
         }
 
         // Search in namespace data
@@ -204,7 +196,7 @@ export class RAMVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
@@ -221,10 +213,8 @@ export class RAMVectorDB extends VectorDBConnector {
 
             if (typeof source.source === 'string') {
                 // Text embedding
-                if (!this.openaiApiKey) {
-                    throw new Error('OpenAI API key is required for text embedding');
-                }
-                vector = await this.embeddingsProvider.embedText(source.source);
+
+                vector = await this.embedder.embedText(source.source);
             } else {
                 // Direct vector
                 vector = source.source;
@@ -277,10 +267,6 @@ export class RAMVectorDB extends VectorDBConnector {
         // Process text and create vectors
         const vectorIds: string[] = [];
 
-        if (!this.openaiApiKey) {
-            throw new Error('OpenAI API key is required for text processing');
-        }
-
         // Split text into chunks if needed
         const chunkSize = datasource.chunkSize || 1000;
         const chunkOverlap = datasource.chunkOverlap || 200;
@@ -293,7 +279,7 @@ export class RAMVectorDB extends VectorDBConnector {
 
         for (let i = 0; i < chunks.length; i++) {
             const chunkId = `${datasourceId}_chunk_${i}`;
-            const vector = await this.embeddingsProvider.embedText(chunks[i]);
+            const vector = await this.embedder.embedText(chunks[i]);
 
             const vectorData: VectorData = {
                 id: chunkId,

@@ -10,7 +10,8 @@
         "try": "tsx"
     },
     "dependencies": {
-        "@smythos/sdk": "workspace:*"
+        "@smythos/sdk": "workspace:*",
+        "dotenv": "^16.5.0"
     },
     "devDependencies": {
         "@types/node": "^20.19.0",

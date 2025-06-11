@@ -15,7 +15,9 @@
             "sourceMaps": true,
             "smartStep": false,
             "justMyCode": false,
-            "resolveSourceMapLocations": ["${workspaceFolder}/../packages/**/*", "!**/node_modules/**"]
+            "resolveSourceMapLocations": ["${workspaceFolder}/../packages/**/*", "!**/node_modules/**"],
+            "envFile": "${workspaceFolder}/.env",
+            "env": {}
         },
 
         {
@@ -33,7 +35,8 @@
                 "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
             },
             "sourceMaps": true,
-            "resolveSourceMapLocations": ["${workspaceFolder}/../packages/**/*", "!**/node_modules/**"]
+            "resolveSourceMapLocations": ["${workspaceFolder}/../packages/**/*", "!**/node_modules/**"],
+            "envFile": "${workspaceFolder}/../.env"
         }
     ]
 }

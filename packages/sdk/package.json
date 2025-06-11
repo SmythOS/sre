@@ -53,7 +53,7 @@
         "gen:all": "pnpm run gen:types && pnpm run gen:components && pnpm run gen:barrel",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:jsbundle": "cross-env BUILD=dev rollup -c",
-        "build": "pnpm run build:jsbundle && pnpm run build:types",
+        "build": "pnpm run gen:all && pnpm run build:jsbundle && pnpm run build:types",
         "lint": "echo 'Lint script not implemented'"
     },
     "dependencies": {

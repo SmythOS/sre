@@ -1,6 +1,6 @@
 //==[ SRE: S3Storage ]======================
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
+import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -15,25 +15,24 @@ import {
 } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { VectorsHelper } from '../../../../helpers/Vectors.helper';
 import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import crypto from 'crypto';
+import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
+import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
+import { chunkText } from '@sre/utils/string.utils';
+import { jsonrepair } from 'jsonrepair';
 
 const console = Logger('Pinecone VectorDB');
 
 export type PineconeConfig = {
     pineconeApiKey: string;
-    openaiApiKey: string;
     indexName: string;
-    isCustomStorageInstance?: boolean;
-    vectorDimention?: number;
-    openaiModel?: string;
+    embeddings: TEmbeddings;
 };
-
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
     public id = 'pinecone';
@@ -41,17 +40,20 @@ export class PineconeVectorDB extends VectorDBConnector {
     private indexName: string;
     private cache: CacheConnector;
     private accountConnector: AccountConnector;
-    private openaiApiKey: string;
     private nkvConnector: NKVConnector;
-    private isCustomStorageInstance: boolean;
-    private vectorDimention: number;
-    private openaiModel: string;
+    public embedder: BaseEmbedding;
 
     constructor(settings: PineconeConfig) {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        if (!settings.pineconeApiKey) throw new Error('Pinecone API key is required');
-        if (!settings.indexName) throw new Error('Pinecone index name is required');
+        if (!settings.pineconeApiKey) {
+            console.warn('Missing Pinecone API key : returning empty Pinecone connector');
+            return;
+        }
+        if (!settings.indexName) {
+            console.warn('Missing Pinecone index name : returning empty Pinecone connector');
+            return;
+        }
 
         this.client = new Pinecone({
             apiKey: settings.pineconeApiKey,
@@ -62,10 +64,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
-        this.openaiApiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
-        this.isCustomStorageInstance = settings.isCustomStorageInstance || false;
-        this.vectorDimention = settings.vectorDimention || 1024;
-        this.openaiModel = settings.openaiModel || 'text-embedding-ada-002';
+        if (!settings.embeddings.dimensions) settings.embeddings.dimensions = 1024;
+
+        this.embedder = EmbeddingsFactory.create(settings.embeddings.provider, settings.embeddings);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -97,7 +98,6 @@ export class PineconeVectorDB extends VectorDBConnector {
                 teamId,
                 metadata: {
                     ...metadata,
-                    isOnCustomStorage: this.isCustomStorageInstance,
                     indexName: this.indexName,
                 },
             };
@@ -162,7 +162,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions = {},
+        options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         let ns = await this.nkvConnector
@@ -174,20 +174,11 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
 
         const nsData = JSONContentHelper.create(ns.toString()).tryParse() as IStorageVectorNamespace;
-        if (nsData.metadata?.isOnCustomStorage && !this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace on custom storage.');
-        } else if (!nsData.metadata?.isOnCustomStorage && this.isCustomStorageInstance) {
-            throw new Error('Tried to access namespace that is not on custom storage.');
-        }
 
         const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
         if (typeof query === 'string') {
-            _vector = await VectorsHelper.load({
-                openaiApiKey: this.openaiApiKey,
-                vectorDimention: this.vectorDimention,
-                openaiModel: this.openaiModel,
-            }).embedText(query);
+            _vector = await this.embedder.embedText(query);
         }
 
         const results = await pineconeIndex.query({
@@ -199,7 +190,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         return results.matches.map((match) => {
             if (match.metadata?.user) {
-                match.metadata.user = VectorsHelper.parseMetadata(match.metadata.user);
+                match.metadata.user = JSONContentHelper.create(match.metadata.user.toString()).tryParse();
             }
             return {
                 id: match.id,
@@ -213,20 +204,19 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
-        const helper = VectorsHelper.load({ openaiApiKey: this.openaiApiKey, vectorDimention: this.vectorDimention, openaiModel: this.openaiModel });
 
         // make sure that all sources are of the same type (source.source)
-        if (sourceWrapper.some((s) => helper.detectSourceType(s.source) !== helper.detectSourceType(sourceWrapper[0].source))) {
+        if (sourceWrapper.some((s) => this.embedder.detectSourceType(s.source) !== this.embedder.detectSourceType(sourceWrapper[0].source))) {
             throw new Error('All sources must be of the same type');
         }
 
-        const sourceType = helper.detectSourceType(sourceWrapper[0].source);
+        const sourceType = this.embedder.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
-        const transformedSource = await helper.transformSource(sourceWrapper, sourceType);
+        const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType);
         const preparedSource = transformedSource.map((s) => ({
             id: s.id,
             values: s.source as number[],
@@ -238,11 +228,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const accessCandidate = acRequest.candidate;
 
-        const isNewNs = await VectorsHelper.load({
-            openaiApiKey: this.openaiApiKey,
-            vectorDimention: this.vectorDimention,
-            openaiModel: this.openaiModel,
-        }).isNewNs(AccessCandidate.clone(accessCandidate), namespace);
+        const isNewNs = !(await this.user(AccessCandidate.clone(accessCandidate)).namespaceExists(namespace));
         if (isNewNs) {
             let acl = new ACL().addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
             await this.setACL(acRequest, namespace, acl);
@@ -262,11 +248,11 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+        const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner);
         const dsId = datasource.id || crypto.randomUUID();
 
         const formattedNs = VectorDBConnector.constructNsName(teamId, namespace);
-        const chunkedText = await VectorsHelper.chunkText(datasource.text, {
+        const chunkedText = chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });
@@ -276,10 +262,10 @@ export class PineconeVectorDB extends VectorDBConnector {
                 id: ids[i],
                 source: doc,
                 metadata: {
-                    acl: VectorsHelper.stringifyMetadata(acl),
+                    acl: acl.serializedACL,
                     namespaceId: formattedNs,
                     datasourceId: dsId,
-                    user: VectorsHelper.stringifyMetadata(datasource.metadata), // user-speficied metadata
+                    user: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
                 },
             };
         });
@@ -296,7 +282,7 @@ export class PineconeVectorDB extends VectorDBConnector {
             namespaceId: formattedNs,
             teamId,
             name: datasource.label || 'Untitled',
-            metadata: VectorsHelper.stringifyMetadata(datasource.metadata),
+            metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
             vectorIds: _vIds,
             id: dsId,
@@ -321,7 +307,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
+            )?.toString()
         ).tryParse();
 
         if (!ds || typeof ds !== 'object') {
@@ -347,7 +333,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
             (ds) => {
                 return JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource;
-            },
+            }
         );
     }
 
@@ -360,7 +346,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
+            )?.toString()
         ).tryParse() as IStorageVectorDataSource;
     }
 
