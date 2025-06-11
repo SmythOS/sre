@@ -102,7 +102,7 @@ export class SmythRuntime {
                     configEntry.Connector,
                     configEntry.Id,
                     configEntry.Settings,
-                    configEntry.Default,
+                    configEntry.Default
                 );
             }
         }
@@ -168,12 +168,51 @@ export class SmythRuntime {
         return this._readyPromise;
     }
 
+    private _stopping = false;
     public async _stop() {
-        logger.info('Shutting Down SmythRuntime ...');
-        ConnectorService._stop();
+        if (this._stopping) {
+            return;
+        }
+        this._stopping = true;
+        logger.info('Sending Shutdown Signals To All Subsystems...');
+        await ConnectorService._stop();
         SmythRuntime.instance = undefined;
         this.started = false;
     }
 }
 
 export const SRE = SmythRuntime.Instance;
+let shuttingDown = false;
+
+async function shutdown(reason) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    logger.info(`Caught ${reason} ... Attempting graceful shutdown`);
+    if (SmythRuntime.Instance) {
+        try {
+            await SmythRuntime.Instance._stop();
+        } catch (err) {
+            logger.error('Shutdown error:', err);
+        }
+    }
+}
+
+['SIGINT', 'SIGTERM'].forEach((signal) => {
+    process.on(signal, async () => {
+        await shutdown(signal);
+        process.exit(0); // Required after async
+    });
+});
+
+process.on('beforeExit', (code) => {
+    shutdown('beforeExit');
+});
+
+process.on('exit', (code) => {
+    logger.info(`Goodbye!`);
+});
+
+// process.on('uncaughtException', (err) => {
+
+// });

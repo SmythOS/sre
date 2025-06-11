@@ -15,6 +15,12 @@ import path from 'path';
 const console = Logger('LocalStorage');
 
 export type LocalStorageConfig = {
+    /**
+     * The folder to use for the local storage.
+     *
+     * If not provided, the default folder will be used.
+     * The default folder is ~/.smyth/storage
+     */
     folder?: string;
 };
 
@@ -29,7 +35,7 @@ export class LocalStorage extends StorageConnector {
         super();
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.folder = settings.folder || path.join(os.homedir(), '.smyth/storage');
+        this.folder = settings?.folder || path.join(os.homedir(), '.smyth/storage');
         this.initialize();
         if (!fs.existsSync(this.folder)) {
             //throw new Error('Invalid folder provided');
@@ -236,7 +242,7 @@ export class LocalStorage extends StorageConnector {
             fs.mkdirSync(metadataFolderPath, { recursive: true });
             fs.writeFileSync(
                 path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
-                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS local filesystem',
+                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS local filesystem'
             );
         }
         this.isInitialized = true;

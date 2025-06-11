@@ -12,6 +12,8 @@ import { uid } from './utils/general.utils';
 import { SDKObject } from './SDKObject.class';
 import fs from 'fs';
 import { SDKLog } from './utils/console.utils';
+import { help } from './help';
+import { Team } from './Team.class';
 
 const console = SDKLog;
 
@@ -200,6 +202,7 @@ export type TAgentSettings = {
  * ```
  */
 export class Agent extends SDKObject {
+    private _hasExplicitId: boolean = false;
     private _data: AgentData = {
         version: '1.0.0',
         name: '',
@@ -214,6 +217,14 @@ export class Agent extends SDKObject {
         components: [],
         connections: [],
     };
+
+    private _team: Team;
+    public get team() {
+        if (!this._team) {
+            this._team = new Team(this._data.teamId);
+        }
+        return this._team;
+    }
 
     public get data(): AgentData {
         //console.log(this.structure);
@@ -250,10 +261,6 @@ export class Agent extends SDKObject {
      */
     constructor(private _settings: TAgentSettings) {
         super();
-    }
-
-    protected async init() {
-        await super.init();
 
         const { model, ...rest } = this._settings;
         this._data.defaultModel = model as string;
@@ -265,7 +272,9 @@ export class Agent extends SDKObject {
         //when creating a new agent, we make sure to create new unique id
         if (!this._data.id) {
             console.warn('No id provided for the agent, generating a new one');
-            this._data.id = uid();
+            this._data.id = `${this._data.name ? this._data.name + '_' : ''}${uid()}`;
+        } else {
+            this._hasExplicitId = true;
         }
 
         //use default team id for the SDK
@@ -321,8 +330,8 @@ export class Agent extends SDKObject {
             data = JSON.parse(fs.readFileSync(data, 'utf8')) as TAgentSettings;
 
             //when importing a .smyth file we need to override the id and teamId
-            data.id = uid();
-            data.teamId = DEFAULT_TEAM_ID;
+            delete data.id;
+            delete data.teamId;
         }
 
         const _data = {
@@ -341,7 +350,6 @@ export class Agent extends SDKObject {
      * **Supported providers and calling patterns:**
      * - `agent.llm.openai(modelId, params)` - OpenAI models
      * - `agent.llm.anthropic(modelId, params)` - Anthropic models
-     * - `agent.llm.provider({ model: modelId, ...params })` - Configuration object
      *
      * @example
      * ```typescript
@@ -382,6 +390,22 @@ export class Agent extends SDKObject {
         return this._llmProviders;
     }
 
+    /**
+     * Access to storage instances from the agent for direct storage interactions.
+     *
+     * When using storage from the agent, the agent id will be used as data owner
+     *
+     * **Supported providers and calling patterns:**
+     * - `agent.storage.LocalStorage()` - Local storage
+     * - `agent.storage.S3()` - S3 storage
+     *
+     * @example
+     * ```typescript
+     * // Direct storage access
+     * const local = agent.storage.LocalStorage();
+     * const s3 = agent.storage.S3();
+     * ```
+     */
     private _storageProviders: TStorageProviderInstances;
 
     public get storage() {
@@ -391,6 +415,11 @@ export class Agent extends SDKObject {
                 this._storageProviders[provider] = (storageSettings?: any) =>
                     new StorageInstance(provider as TStorageProvider, storageSettings, AccessCandidate.agent(this._data.id));
             }
+        }
+        if (!this._hasExplicitId) {
+            console.warn(
+                `You are performing storage operations with an unidentified agent.\nAn ID is required if you want to persist data accross multiple sessions.\nLearn more about the storage access model here: ${help.SDK.AGENT_STORAGE_ACCESS}`
+            );
         }
         return this._storageProviders;
     }

@@ -7,13 +7,21 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "build": "pnpm -r run build",
+        "build": "pnpm -r run build && node scripts/success-banner.js",
         "dev": "pnpm -r run dev",
-        "lint": "pnpm -r run lint"
+        "lint": "pnpm -r run lint",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:coverage": "vitest run --coverage"
     },
     "keywords": [],
     "packageManager": "pnpm@10.12.1",
     "workspaces": [
         "packages/*"
-    ]
+    ],
+    "devDependencies": {
+        "@vitest/coverage-v8": "^3.1.4",
+        "vite-tsconfig-paths": "^4.3.2",
+        "vitest": "^3.2.3"
+    }
 }

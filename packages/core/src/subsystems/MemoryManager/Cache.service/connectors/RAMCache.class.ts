@@ -5,6 +5,7 @@ import { CacheConnector } from '../CacheConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
+import { debounce } from '@sre/utils/general.utils';
 
 const console = Logger('RAMCache');
 
@@ -24,7 +25,9 @@ export class RAMCache extends CacheConnector {
     constructor() {
         super();
         // Set up cleanup interval to remove expired entries
+
         this.cleanupInterval = setInterval(() => this.cleanupExpiredEntries(), 60000); // Clean up every minute
+        this.cleanupInterval.unref();
     }
 
     public get prefix() {

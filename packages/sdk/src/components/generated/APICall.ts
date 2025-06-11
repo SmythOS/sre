@@ -54,6 +54,10 @@ export type TAPICallInputs = {
 };
 
 export type TAPICallOutputs = {
+    /** The headers of the API call response */
+    Headers: any;
+    /** The response of the API call */
+    Response: any;
     [key: string]: any;
 };
 
@@ -72,7 +76,8 @@ export function APICall(settings?: TAPICallSettings, agent?: Agent) {
     }
     
     const _out: TAPICallOutputs = {
-        // No outputs defined
+        Headers: createSafeAccessor({}, component, 'Headers', {"description":"The headers of the API call response","default":true}),
+        Response: createSafeAccessor({}, component, 'Response', {"description":"The response of the API call","default":true}),
     };
 
     const _in: { [key: string]: ComponentInput } = {

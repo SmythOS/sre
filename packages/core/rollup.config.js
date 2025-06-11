@@ -21,7 +21,7 @@ const isExternal = (id, ...overArgs) => {
     return _isExternal;
 };
 
-const devConfig = {
+const config = {
     input: 'src/index.ts',
     output: {
         file: 'dist/index.dev.js',
@@ -39,90 +39,25 @@ const devConfig = {
             preserveExtensions: true,
             nonRelative: false,
         }),
-        esbuild({
-            sourceMap: true,
-            minify: false, //do not enable minify here, it will break the sourcemap (minification is done by terser plugin below)
-            treeShaking: false,
-        }),
-
-        // typescript({
-        //     tsconfig: 'tsconfig.json',
-        //     clean: true,
-        // }),
-        filenameReplacePlugin(),
-        //sourcemaps(),
-    ],
-};
-
-const prodConfig = {
-    input: 'src/index.ts',
-    output: {
-        file: 'dist/index.js',
-        format: 'es',
-        sourcemap: true,
-    },
-    external: isExternal, // Use the function to mark non-local imports as external
-    plugins: [
-        colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
-        //SDKGenPlugin(),
-        ctixPlugin(), // Add ctix plugin as first plugin
-
-        json(),
-        typescriptPaths({
-            tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
-            preserveExtensions: true,
-            nonRelative: false,
-        }),
-        esbuild({
-            sourceMap: true,
-            minify: true,
-            treeShaking: true,
-        }),
-        // typescript({
-        //     tsconfig: 'tsconfig.json',
-        //     clean: true,
-        // }),
-        filenameReplacePlugin(),
         sourcemaps(),
-        terser(),
+        esbuild({
+            sourceMap: true,
+            minify: false,
+            treeShaking: false,
+            sourcesContent: true,
+        }),
+
+        // typescript({
+        //     tsconfig: 'tsconfig.json',
+        //     clean: true,
+        // }),
+        //terser(),
     ],
 };
-
-let config = isProduction ? prodConfig : devConfig;
 
 export default config;
 
 //#region [Custom Plugins] =====================================================
-
-// this is used to replace the ___FILENAME___ placeholder with source filename
-//it's used by the logger to set the appropriate module name
-function filenameReplacePlugin() {
-    const filter = createFilter('**/*.ts', 'node_modules/**');
-
-    return {
-        name: 'filename-replace',
-        transform(code, id) {
-            if (!filter(id)) return null;
-
-            // Normalize the path for different environments
-            const normalizedId = path.normalize(id);
-
-            // Extract the part of the path after '/src' and remove the file extension
-            const relativePath = path.relative(path.resolve('src'), normalizedId);
-            const filenameWithoutExtension = relativePath.replace(path.extname(relativePath), '');
-
-            // Replace backslashes with forward slashes if on Windows
-            const unixStylePath = filenameWithoutExtension.replace(/\\/g, '/');
-
-            const modifiedCode = code.replace(/___FILENAME___/g, unixStylePath);
-
-            return {
-                code: modifiedCode,
-                map: null, // Handle source maps if necessary
-            };
-        },
-    };
-}
 
 const colors = {
     reset: '\x1b[0m',
@@ -293,15 +228,12 @@ function colorfulLogs(title = 'Builder') {
             if (!hasShownFinalMessage && !hasBuildErrors) {
                 setTimeout(() => {
                     console.log(`\n${colors.green}✅ ${colors.bright}Build completed successfully!${colors.reset}\n\n`);
-                    console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
+                    console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
                     console.log(
-                        `${colors.white}${colors.bright}║               ${colors.green}S M Y T H   O S${colors.white}               ║${colors.reset}`
+                        `${colors.white}${colors.bright}║    ${colors.green}Smyth Runtime Environment Successfully Built${colors.white}    ║${colors.reset}`
                     );
-                    console.log(`${colors.white}${colors.bright}╠━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╣${colors.reset}`);
-                    console.log(
-                        `${colors.white}${colors.bright}║    🦙 ${colors.magenta}Ride The Llama. 😹 ${colors.orange}Skip the Drama.${colors.white}    ║${colors.reset}`
-                    );
-                    console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
+                    console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
+
                     hasShownFinalMessage = true;
                 }, 100);
             }

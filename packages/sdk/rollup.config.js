@@ -42,13 +42,13 @@ const config = {
         //     //     return path.resolve(path.dirname(sourcemapPath), relativeSourcePath);
         //     // },
         // }),
+        sourcemaps(),
         esbuild({
             sourceMap: true,
             minify: false,
             treeShaking: false,
             sourcesContent: true,
         }),
-        //sourcemaps(),
         //terser(),
     ],
 };
@@ -214,16 +214,11 @@ function colorfulLogs(title = 'SDK Builder') {
             if (!hasShownFinalMessage && !hasBuildErrors) {
                 setTimeout(() => {
                     console.log(`\n${colors.green}✅ ${colors.bright}SDK Build completed successfully!${colors.reset}\n\n`);
-                    console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
+                    console.log(`${colors.white}${colors.bright}╔━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╗${colors.reset}`);
                     console.log(
-                        `${colors.white}${colors.bright}║          ${colors.green}S M Y T H  O S  /  S D K${colors.white}           ║${colors.reset}`
+                        `${colors.white}${colors.bright}║            ${colors.green}Smyth SDK Successfully Built${colors.white}            ║${colors.reset}`
                     );
-                    console.log(`${colors.white}${colors.bright}╠━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╣${colors.reset}`);
-                    console.log(
-                        `${colors.white}${colors.bright}║    🦙 ${colors.magenta}Ride The Llama. 😹 ${colors.orange}Skip the Drama.${colors.white}    ║${colors.reset}`
-                    );
-
-                    console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
+                    console.log(`${colors.white}${colors.bright}╚━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╝${colors.reset}`);
                     hasShownFinalMessage = true;
                 }, 100);
             }

@@ -53,14 +53,12 @@ export class RuntimeContext extends EventEmitter {
                 resolved = true;
                 resolve(true);
             });
-            setTimeout(
-                () => {
-                    if (!resolved) {
-                        reject(new Error('Agent Runtime context initialization timeout'));
-                    }
-                },
-                5 * 60 * 1000,
-            );
+            const timer = setTimeout(() => {
+                if (!resolved) {
+                    reject(new Error('Agent Runtime context initialization timeout'));
+                }
+            }, 5 * 60 * 1000);
+            timer.unref(); //unblock the event loop
         });
 
         this.initRuntimeContext();

@@ -28,13 +28,13 @@ export interface TGenAILLMSettings {
     presencePenalty?: number;
     /** Response Format */
     responseFormat?: 'json' | 'text';
-    /** Passthrough */
+    /** If true, the LLM response will be returned as is by the agent */
     passthrough?: boolean;
-    /** Use System Prompt */
+    /** If true, the component will use parent agent system prompt */
     useSystemPrompt?: boolean;
-    /** Use Context Window */
+    /** If true, the component will use parent agent context window */
     useContextWindow?: boolean;
-    /** Maximum Context Window Length */
+    /** The maximum number of messages to use from this component context window (if useContextWindow is true) */
     maxContextWindowLength?: number;
     /** Use Search */
     useWebSearch?: boolean;
@@ -65,6 +65,9 @@ export type TGenAILLMOutputs = {
     [key: string]: any;
 };
 
+/**
+ * Use this component to generate a responses from an LLM
+ */
 export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 

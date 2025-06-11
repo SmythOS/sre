@@ -23,7 +23,7 @@ SRE.init({
 
 describe('SDK Agent Tests', () => {
     it('imported agent', async () => {
-        const agent = Agent.import('./tests/data/AgentData/crypto-info-agent.smyth', {
+        const agent = Agent.import('./packages/sdk/tests/data/AgentData/crypto-info-agent.smyth', {
             model: Model.OpenAI('gpt-4o-mini', { maxTokens: 10 }),
         });
 

@@ -1,0 +1,21 @@
+{
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    "typescript.suggest.autoImports": true,
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "debug.allowBreakpointsEverywhere": true,
+    "debug.javascript.usePreview": true,
+    "debug.node.autoAttach": "on",
+    "debug.javascript.codelens.npmScripts": "all",
+    "debug.javascript.breakOnConditionalError": true,
+    "debug.javascript.unmapMissingSources": true,
+    "debug.javascript.resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"],
+    "debug.javascript.pathMappings": {
+        "packages/sdk/src/*": "${workspaceFolder}/packages/sdk/src/*"
+    },
+    "debug.javascript.sourceMapPathOverrides": {
+        "../src/*": "${workspaceFolder}/../packages/sdk/src/*"
+    },
+    "debug.node.sourceMapPathOverrides": {
+        "../src/*": "${workspaceFolder}/../packages/sdk/src/*"
+    }
+}

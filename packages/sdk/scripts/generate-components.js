@@ -19,6 +19,24 @@ console.log(INDEX_TEMPLATE_PATH);
 // Components to exclude from SDK generation
 const EXCLUDED_COMPONENTS = ['APIEndpoint', 'ComponentHost'];
 
+// Components to include in SDK generation (empty array means include all non-excluded components)
+// During transition phase, you can specify only the components you want to generate
+const INCLUDED_COMPONENTS = [
+    'APICall',
+    'GenAILLM',
+    'Classifier',
+    'APIOutput',
+    'HuggingFace',
+    'Async',
+    'Await',
+    'ForEach',
+    'FEncDec',
+    'FHash',
+    'FSign',
+    'FTimestamp',
+    'ImageGenerator',
+]; // Example: ['APICall', 'GenAILLM', 'Image']
+
 /**
  * Simple template engine that replaces {{variable}} with values
  */
@@ -247,6 +265,7 @@ function extractSchemaFromFile(filePath) {
         let inputs = {};
         let outputs = {};
         let settings = {};
+        let description = '';
 
         // First, try to extract legacy schema field
         const schemaStartMatch = content.match(/protected\s+schema\s*=\s*\{/);
@@ -263,6 +282,11 @@ function extractSchemaFromFile(filePath) {
                 if (schemaObj.name) {
                     componentName = schemaObj.name;
 
+                    // Extract top-level description from legacy schema
+                    if (schemaObj.description) {
+                        description = schemaObj.description;
+                    }
+
                     // Extract and normalize inputs from legacy schema
                     if (schemaObj.inputs) {
                         for (const [inputName, inputDef] of Object.entries(schemaObj.inputs)) {
@@ -271,6 +295,7 @@ function extractSchemaFromFile(filePath) {
                                 optional: inputDef.optional || false,
                                 default: inputDef.default || false,
                                 description: inputDef.description,
+                                label: inputDef.label,
                             };
                         }
                     }
@@ -295,18 +320,30 @@ function extractSchemaFromFile(filePath) {
         // Then, try to extract Joi configSchema to override settings
         const joiSettings = extractJoiConfigSchema(filePath);
         if (joiSettings) {
-            // Override settings with Joi configSchema
-            settings = { ...settings, ...joiSettings };
+            // Merge settings with Joi configSchema, preserving descriptions from legacy schema
+            for (const [key, joiSetting] of Object.entries(joiSettings)) {
+                if (settings[key]) {
+                    // Preserve description from legacy schema if it exists
+                    settings[key] = {
+                        ...joiSetting,
+                        description: settings[key].description || joiSetting.description,
+                        label: joiSetting.label || settings[key].label,
+                    };
+                } else {
+                    settings[key] = joiSetting;
+                }
+            }
         }
 
         // Only return a schema if we have either inputs, outputs, or meaningful settings
         const hasInputsOrOutputs = (inputs && Object.keys(inputs).length > 0) || (outputs && Object.keys(outputs).length > 0);
 
-        const hasMeaningfulSettings = joiSettings && Object.keys(joiSettings).length > 0;
+        const hasMeaningfulSettings = settings && Object.keys(settings).length > 0;
 
         if (hasInputsOrOutputs || hasMeaningfulSettings) {
             return {
                 name: componentName,
+                description,
                 inputs,
                 outputs,
                 settings,
@@ -364,10 +401,11 @@ function generateInputsType(componentName, inputs) {
     const properties = inputsEntries.map(([inputName, inputDef]) => {
         const tsType = mapSchemaTypeToTS(inputDef.type);
 
-        // Add JSDoc comment if description exists
+        // Add JSDoc comment if description or label exists
         let jsDocComment = '';
-        if (inputDef.description) {
-            jsDocComment = `    /** ${inputDef.description} */\n`;
+        const description = inputDef.description || inputDef.label;
+        if (description) {
+            jsDocComment = `    /** ${description} */\n`;
         }
 
         // All inputs are optional in the type
@@ -392,10 +430,11 @@ function generateOutputsType(componentName, outputs) {
 
     const outputsEntries = Object.entries(outputs);
     const properties = outputsEntries.map(([outputName, outputDef]) => {
-        // Add JSDoc comment if description exists
+        // Add JSDoc comment if description or label exists
         let jsDocComment = '';
-        if (outputDef.description) {
-            jsDocComment = `    /** ${outputDef.description} */\n`;
+        const description = outputDef.description || outputDef.label;
+        if (description) {
+            jsDocComment = `    /** ${description} */\n`;
         }
 
         // All outputs are typed as any for now, but can be extended later
@@ -453,7 +492,7 @@ ${defaultNameField}${properties.join('\n')}
  * Generate template variables for a component schema
  */
 function generateTemplateVariables(schema) {
-    const { name, inputs = {}, outputs = {}, settings = {} } = schema;
+    const { name, description = '', inputs = {}, outputs = {}, settings = {} } = schema;
 
     // Generate settings type
     const settingsType = generateSettingsType(name, settings);
@@ -493,8 +532,13 @@ function generateTemplateVariables(schema) {
                   .join('\n')
             : '        // No inputs defined';
 
+    // Generate JSDoc for component function if description exists
+    const componentJSDoc = description ? `/**\n * ${description}\n */\n` : '';
+
     return {
         componentName: name,
+        componentDescription: description,
+        componentJSDoc,
         settingsType,
         inputsType,
         outputsType,
@@ -619,6 +663,13 @@ async function generateSDKComponents() {
 
         // Skip excluded components
         if (EXCLUDED_COMPONENTS.includes(schema.name)) {
+            process.stdout.write(`!`);
+            skippedComponents.add(schema.name);
+            continue;
+        }
+
+        // Skip components not in the included list (if INCLUDED_COMPONENTS is not empty)
+        if (INCLUDED_COMPONENTS.length > 0 && !INCLUDED_COMPONENTS.includes(schema.name)) {
             process.stdout.write(`!`);
             skippedComponents.add(schema.name);
             continue;

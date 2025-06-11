@@ -13,7 +13,7 @@ export class ConsoleLog extends LogConnector {
         return Promise.resolve(new ACL());
     }
     protected log(acRequest: AccessRequest, logData: AgentCallLog, callId?: string): Promise<any> {
-        console.debug(`Log for agent ${acRequest.candidate.id}: ${logData}`);
+        console.debug(`Log for agent ${acRequest.candidate.id}: ${typeof logData === 'string' ? logData : JSON.stringify(logData)}`);
 
         return Promise.resolve();
     }

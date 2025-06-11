@@ -13,6 +13,22 @@ import { SocksProxyAgent } from 'socks-proxy-agent';
 import { formatDataForDebug } from '@sre/utils/data.utils';
 
 export class APICall extends Component {
+    protected schema = {
+        name: 'APICall',
+        description: 'Use this component to make an API call',
+        inputs: {},
+        outputs: {
+            Headers: {
+                description: 'The headers of the API call response',
+                default: true,
+            },
+            Response: {
+                description: 'The response of the API call',
+                default: true,
+            },
+        },
+    };
+
     protected configSchema = Joi.object({
         method: Joi.string().valid('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS').required().label('Method'),
         url: Joi.string()

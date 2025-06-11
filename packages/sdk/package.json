@@ -52,11 +52,8 @@
         "gen:barrel": "ctix build",
         "gen:all": "pnpm run gen:types && pnpm run gen:components && pnpm run gen:barrel",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
-        "build:js": "cross-env BUILD=dev rollup -c",
-        "build": "pnpm run build:js && pnpm run build:types",
-        "test": "vitest",
-        "test:run": "vitest run",
-        "test:coverage": "vitest run --coverage",
+        "build:jsbundle": "cross-env BUILD=dev rollup -c",
+        "build": "pnpm run build:jsbundle && pnpm run build:types",
         "lint": "echo 'Lint script not implemented'"
     },
     "dependencies": {
@@ -67,7 +64,6 @@
     "devDependencies": {
         "@rollup/plugin-json": "^6.1.0",
         "@rollup/pluginutils": "^5.1.0",
-        "@vitest/coverage-v8": "^3.1.4",
         "cross-env": "^7.0.3",
         "ctix": "^2.7.1",
         "esbuild": "^0.25.0",
@@ -75,8 +71,6 @@
         "rollup-plugin-sourcemaps": "^0.6.3",
         "rollup-plugin-terser": "^7.0.2",
         "rollup-plugin-typescript-paths": "^1.5.0",
-        "typescript": "^5.4.5",
-        "vite-tsconfig-paths": "^4.3.2",
-        "vitest": "^3.2.2"
+        "typescript": "^5.4.5"
     }
 }

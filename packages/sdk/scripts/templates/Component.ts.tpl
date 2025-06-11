@@ -9,7 +9,7 @@ import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
 {{outputsType}}
 
-export function {{componentName}}(settings?: T{{componentName}}Settings, agent?: Agent) {    
+{{componentJSDoc}}export function {{componentName}}(settings?: T{{componentName}}Settings, agent?: Agent) {    
     const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
         name: settings?.name || '{{componentName}}', 
@@ -23,9 +23,9 @@ export function {{componentName}}(settings?: T{{componentName}}Settings, agent?:
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: T{{componentName}}Outputs = {
+    const _out: T{{componentName}}Outputs = createSafeAccessor({
 {{outputsCode}}
-    };
+    }, component, '');
 
     const _in: { [key: string]: ComponentInput } = {
 {{inputsCode}}

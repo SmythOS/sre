@@ -1,15 +1,15 @@
 export const SDKLog = {
     warn: (...args: any[]) => {
-        console.warn(...args);
+        console.warn('[WARN]', ...args);
     },
     error: (...args: any[]) => {
-        console.error(...args);
+        console.error('[ERR]', ...args);
     },
     info: (...args: any[]) => {
-        console.info(...args);
+        console.info('[INFO]', ...args);
     },
     debug: (...args: any[]) => {
-        console.debug(...args);
+        console.debug('[DBG]', ...args);
     },
     log: (...args: any[]) => {
         console.log(...args);

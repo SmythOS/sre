@@ -7,11 +7,10 @@
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
     "scripts": {
-        "run": "tsx"
+        "try": "tsx"
     },
     "dependencies": {
-        "@smythos/sdk": "workspace:*",
-        "source-map-support": "^0.5.21"
+        "@smythos/sdk": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "^20.19.0",

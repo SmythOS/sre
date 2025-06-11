@@ -1,7 +1,7 @@
 import { Agent } from './Agent.class';
 
 import { encode } from 'gpt-tokenizer';
-
+import { debounce } from '@sre/utils/general.utils';
 import { AgentCallLog } from '@sre/types/AgentLogger.types';
 import { delay, getDayFormattedDate, uid } from '@sre/utils';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -15,18 +15,6 @@ const console = Logger('AgentLogger.class');
 //TODO : for performance optimization we should handle a non blocking logs queue
 // in the current implementation, the initial log line write is blocking, log update is non blocking
 
-const transactionQueue: LogTransaction[] = [];
-
-function processTransactionQueue() {
-    if (transactionQueue.length <= 0) return;
-    const transaction = transactionQueue.shift();
-    if (!transaction) return;
-    transaction.processQueue();
-    setTimeout(() => {
-        processTransactionQueue();
-    }, 1000);
-}
-
 class LogTransaction {
     private _callId: string = '';
     private queue: any[] = [];
@@ -34,10 +22,7 @@ class LogTransaction {
     private _lastPush: number = 0;
     private storage: StorageConnector;
 
-    constructor(
-        private agent: Agent,
-        private trId: string,
-    ) {
+    constructor(private agent: Agent, private trId: string) {
         this.storage = ConnectorService.getStorageConnector();
     }
 
@@ -235,6 +220,8 @@ class LogTransaction {
         }
 
         this._isProcessing = false;
+        debounce(this.processQueue.bind(this), 1000, { leading: true, trailing: true, maxWait: 10000 });
+
         await delay(1000);
         this.processQueue();
     }
@@ -252,15 +239,15 @@ export class AgentLogger {
     private static cleanupInterval: NodeJS.Timeout;
     constructor(private agent: Agent) {}
 
-    private static setupCleanupInterval() {
-        if (this.cleanupInterval) return;
-        this.cleanupInterval = setInterval(
-            () => {
-                this.cleanup();
-            },
-            1000 * 60 * 1,
-        ); //every 1 minute
-    }
+    // private static setupCleanupInterval() {
+    //     if (this.cleanupInterval) return;
+    //     this.cleanupInterval = setInterval(
+    //         () => {
+    //             this.cleanup();
+    //         },
+    //         1000 * 60 * 1,
+    //     ); //every 1 minute
+    // }
     public static async cleanup() {
         const logConnector = ConnectorService.getLogConnector();
         if (!logConnector.valid) return;
@@ -283,7 +270,8 @@ export class AgentLogger {
         this.transactions[trId].push(logData);
 
         //ensure that a cleanup interval is running
-        this.setupCleanupInterval();
+        //this.setupCleanupInterval();
+        debounce(this.cleanup.bind(this), 1000, { leading: true, trailing: true, maxWait: 10000 * 1 });
         return trId;
     }
     public static async logTask(agent: Agent, tasks) {
@@ -308,6 +296,7 @@ export class AgentLogger {
         }
 
         //ensure that a cleanup interval is running
-        this.setupCleanupInterval();
+        //this.setupCleanupInterval();
+        debounce(this.cleanup.bind(this), 1000, { leading: true, trailing: true, maxWait: 10000 * 1 });
     }
 }

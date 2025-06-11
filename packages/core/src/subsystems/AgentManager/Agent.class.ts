@@ -62,7 +62,7 @@ export class Agent implements IAgent {
         public id,
         agentData,
         public agentSettings: AgentSettings,
-        agentRequest?: AgentRequest | any, //private req: express.Request,
+        agentRequest?: AgentRequest | any //private req: express.Request,
     ) {
         //this.agentRequest = new AgentRequest(req);
         const json = typeof agentData === 'string' ? JSON.parse(agentData) : agentData;
@@ -114,8 +114,10 @@ export class Agent implements IAgent {
             connection.targetIndex = targetIndex;
 
             const output = sourceComponent.outputs[sourceIndex];
+            output.index = sourceIndex; // legacy ids (numbers)
 
             const input = targetComponent.inputs[targetIndex];
+            input.index = targetIndex;
 
             if (!output.next) output.next = [];
             output.next.push(targetComponent.id);

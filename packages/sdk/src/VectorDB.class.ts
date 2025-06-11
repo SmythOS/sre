@@ -15,7 +15,8 @@ export class VectorDBInstance extends EventEmitter {
         let connector = ConnectorService.getVectorDBConnector(providerId);
 
         if (!connector?.valid) {
-            connector = ConnectorService.init(TConnectorService.VectorDB, providerId, providerId, VectorDBSettings);
+            //no valid default connector, we just create a dummy one
+            connector = ConnectorService.init(TConnectorService.VectorDB, providerId, providerId, {});
 
             if (!connector.valid) {
                 console.error(`VectorDB connector ${providerId} is not available`);
@@ -25,8 +26,6 @@ export class VectorDBInstance extends EventEmitter {
         }
 
         const instance = connector.instance(VectorDBSettings);
-        console.log('instance', instance);
-
         this._VectorDBRequest = instance.requester(this._candidate);
 
         this._namespace = VectorDBSettings.namespace;

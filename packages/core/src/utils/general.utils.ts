@@ -147,7 +147,10 @@ export class ControlledPromise<T> extends Promise<T> {
  * This function ensures that a function is called at most once per wait time.
  * @param func - The function to debounce
  * @param wait - The wait time in milliseconds
- * @param options - The options object
+ * @param options - The options object : leading means the function will be called immediately if it's called within the wait time,
+ * trailing means the function will be called after the wait time has passed. maxWait is the maximum time to wait before calling the function.
+ * if maxWait is provided, the function will be called after the maxWait time has passed.
+ *
  * @returns
  */
 export function debounce(func: Function, wait: number, options: { leading: boolean; trailing: boolean; maxWait?: number }) {

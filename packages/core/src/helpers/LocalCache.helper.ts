@@ -29,6 +29,7 @@ export class LocalCache<K, V> {
             this.delete(key);
         }, ttlMs);
         this.timeouts.set(key, timeout);
+        timeout.unref(); //unblock the event loop
     }
 
     updateTTL(key: K, ttlMs: number = this.defaultTTL): void {
@@ -44,6 +45,7 @@ export class LocalCache<K, V> {
             this.delete(key);
         }, ttlMs);
         this.timeouts.set(key, timeout);
+        timeout.unref(); //unblock the event loop
     }
 
     get(key: K, ttlMs?: number): V | undefined {

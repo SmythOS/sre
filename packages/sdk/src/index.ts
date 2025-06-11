@@ -6,6 +6,7 @@ export { version } from '../package.json';
 export * from './Agent.class';
 export * from './Chat.class';
 export * from './DummyAccount.helper';
+export * from './help';
 export * from './LLM.class';
 export * from './SDKObject.class';
 export * from './Storage.class';

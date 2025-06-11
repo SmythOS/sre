@@ -17,17 +17,12 @@
     ],
     "type": "module",
     "scripts": {
-        "test": "cross-env TEST_ENV=true vitest --reporter verbose",
-        "cli-test": "vitest --reporter verbose run cli.test.ts",
         "gen:barrel": "ctix build",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
-        "build:dev": "cross-env BUILD=dev rollup -c && tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json && pnpm link --global",
-        "build:prod": "cross-env BUILD=prod rollup -c",
+        "build:jsbundle": "cross-env rollup -c",
+        "build": "pnpm run build:jsbundle && pnpm run build:types",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
-        "doc:hgen": "node ./scripts/hgen.js > ./doc/hierarchy.txt",
-        "knip": "knip",
-        "build:web": "pnpm run build:dev && cp -r dist/*.js dist/*.js.map tests/build/web/sre/",
-        "start:web": "node ./tests/build/web/index.js --model claude-3-5-haiku-latest"
+        "knip": "knip"
     },
     "devDependencies": {
         "@faker-js/faker": "^8.4.1",
@@ -40,7 +35,6 @@
         "@types/express-session": "^1.18.0",
         "@types/lodash": "^4.17.10",
         "@types/node": "^20.19.0",
-        "@vitest/coverage-v8": "^3.1.4",
         "cross-env": "^7.0.3",
         "ctix": "^2.7.1",
         "dependency-cruiser": "^16.3.3",
@@ -55,9 +49,7 @@
         "rollup-plugin-typescript-paths": "^1.5.0",
         "rollup-plugin-typescript2": "^0.36.0",
         "source-map-support": "^0.5.21",
-        "typescript": "^5.4.5",
-        "vite-tsconfig-paths": "^4.3.2",
-        "vitest": "^3.1.4"
+        "typescript": "^5.4.5"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
@@ -112,7 +104,6 @@
         "readline-sync": "^1.4.10",
         "socket.io-client": "^4.8.1",
         "socks-proxy-agent": "^8.0.4",
-        "source-map-support": "^0.5.21",
         "uuid": "^10.0.0",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0",

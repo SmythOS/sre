@@ -13,6 +13,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 export class GenAILLM extends Component {
     protected schema = {
         name: 'GenAILLM',
+        description: 'Use this component to generate a responses from an LLM',
         settings: {
             model: {
                 type: 'string',
@@ -77,19 +78,23 @@ export class GenAILLM extends Component {
             },
             passthrough: {
                 type: 'boolean',
+                description: 'If true, the LLM response will be returned as is by the agent',
                 label: 'Passthrough',
             },
             useSystemPrompt: {
                 type: 'boolean',
+                description: 'If true, the component will use parent agent system prompt',
                 label: 'Use System Prompt',
             },
             useContextWindow: {
                 type: 'boolean',
+                description: 'If true, the component will use parent agent context window',
                 label: 'Use Context Window',
             },
             maxContextWindowLength: {
                 type: 'number',
                 min: 0,
+                description: 'The maximum number of messages to use from this component context window (if useContextWindow is true)',
                 label: 'Maximum Context Window Length',
             },
         },
@@ -200,7 +205,7 @@ export class GenAILLM extends Component {
                         }
 
                         return features?.includes(requestFeature) ? file : null;
-                    }),
+                    })
                 );
 
                 fileSources = validFiles.filter(Boolean);
@@ -286,7 +291,7 @@ export class GenAILLM extends Component {
                                 messages,
                             },
                             fileSources,
-                            agent,
+                            agent
                         )
                         .catch((error) => {
                             console.error('Error on multimodalStreamRequest: ', error);
@@ -300,7 +305,7 @@ export class GenAILLM extends Component {
                                 model,
                                 messages,
                             },
-                            agent.id,
+                            agent.id
                         )
                         .catch((error) => {
                             console.error('Error on streamRequest: ', error);

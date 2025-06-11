@@ -22,10 +22,13 @@ export class SDKObject {
 
     constructor() {
         this._eventEmitter = new EventEmitter();
+
+        //init the SRE instance and wait for it to be ready
         this._readyPromise = new ControlledPromise<any>(this.init.bind(this));
     }
 
     protected async init() {
+        //if the SRE instance is not initializing, initialize it with default settings
         if (!SRE.initializing) SRE.init({});
         await SRE.ready();
         this._readyPromise.resolve(true);

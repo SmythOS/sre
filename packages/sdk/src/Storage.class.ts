@@ -22,19 +22,14 @@ export class StorageInstance extends EventEmitter {
     public get fs() {
         return this._fs;
     }
-    // public get requester() {
-    //     return this._storageRequest;
-    // }
 
-    constructor(providerId: TStorageProvider, storageSettings?: any, candidate?: AccessCandidate) {
+    constructor(providerId: TStorageProvider, storageSettings: any = {}, candidate?: AccessCandidate) {
         super();
         this._candidate = candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
         let connector = ConnectorService.getStorageConnector(providerId);
 
         if (!connector?.valid) {
-            connector = ConnectorService.init(TConnectorService.Storage, providerId, providerId, storageSettings);
-            const instance = connector.instance(storageSettings);
-            console.log('instance', instance);
+            connector = ConnectorService.init(TConnectorService.Storage, providerId, providerId, {});
 
             if (!connector?.valid) {
                 console.error(`Storage connector ${providerId} is not available`);
@@ -43,8 +38,10 @@ export class StorageInstance extends EventEmitter {
             }
         }
 
+        const instance: StorageConnector = connector.instance(storageSettings);
+
         //this._storageRequest = connector.user(this._candidate);
-        this._fs = SmythFS.getInstance(connector);
+        this._fs = SmythFS.getInstance(instance);
     }
     private async getResourceId(resourceName: string) {
         if (!this._teamId) {

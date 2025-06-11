@@ -6,16 +6,15 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        include: ['tests/**/*.test.ts'],
-        exclude: ['node_modules'],
+        include: ['packages/*/tests/**/*.test.ts'],
+        exclude: ['node_modules', 'dist'],
         coverage: {
             reporter: ['text', 'text-summary', 'html'],
             reportsDirectory: './coverage',
-            include: ['src/**/*.{ts,tsx}'],
-            exclude: ['node_modules'],
+            include: ['packages/*/src/**/*.{ts,tsx}'],
+            exclude: ['node_modules', 'packages/*/dist/**', 'packages/*/tests/**', 'packages/cli/**'],
         },
-        testTimeout: 30_000,
-        // Pool options for better debugging
+        testTimeout: 30000,
         pool: 'forks',
         poolOptions: {
             forks: {
@@ -23,12 +22,9 @@ export default defineConfig({
             },
         },
     },
-
     build: {
-        sourcemap: true,
+        sourcemap: 'inline',
     },
-
-    // Ensure sourcemaps work properly
     esbuild: {
         sourcemap: true,
     },

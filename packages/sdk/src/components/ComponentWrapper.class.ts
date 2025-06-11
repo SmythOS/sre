@@ -97,7 +97,7 @@ export class ComponentWrapper {
                     outputPath = sourceComponent.outputPathRewrite(outputPath);
                     //const sourceOutput = sourceComponent?._outputs[outputPath];
                     const sourceOutputKeys = Object.keys(sourceComponent?._outputs);
-                    console.log('sourceOutputKeys', sourceOutputKeys);
+
                     if (!sourceOutputKeys.includes(outputPath)) {
                         sourceComponent._outputs[outputPath] = createSafeAccessor({}, sourceComponent, outputPath);
                     }
