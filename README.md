@@ -336,5 +336,6 @@ This project is licensed under the [MIT License](LICENSE).
 - Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
 
 ---
+/smɪθ oʊ ɛs/
 
 Ride the llama.🦙 Skip the drama. 😹
