@@ -2,7 +2,7 @@
 
 ## Welcome to the SmythOS Community 💫
 
-Thank you for being part of the SmythOS community! We’re building more than just software — we’re creating a space where contributors, users, and curious explorers feel welcomed, heard, and empowered. Whether you’re filing an issue, contributing code, asking a question, or just observing, we expect everyone to treat others with kindness and respect.
+Thank you for being part of the SmythOS community! We’re contributing to more than just the internet of agents, we’re creating a space where contributors, users, and curious explorers feel welcomed, heard, and empowered. Whether you’re filing an issue, contributing code, asking a question, or just observing, we expect everyone to treat others with kindness and respect.
 
 This Code of Conduct exists to help us build a healthy, constructive, and inclusive environment together. Please take a moment to read it. 💙
 
@@ -10,7 +10,7 @@ This Code of Conduct exists to help us build a healthy, constructive, and inclus
 
 ## Our Pledge
 
-In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to make participation in our project and our community a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+In the interest of fostering an open and welcoming environment, we as contributors and maintainers pledge to make participation in our project and our community a harassment-free experience for everyone.
 
 ---
 
