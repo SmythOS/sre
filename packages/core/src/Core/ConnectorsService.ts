@@ -104,7 +104,7 @@ export class ConnectorService {
         }
     }
     static getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
-        const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName] as T;
+        const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName || 'default'] as T;
         if (!instance) {
             //TODO only apply the fallback below if resilient mode is enabled
             // if (ConnectorService.ConnectorInstances[connectorType] && Object.keys(ConnectorService.ConnectorInstances[connectorType]).length > 0) {

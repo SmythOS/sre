@@ -1,10 +1,54 @@
 # SmythOS - The Operating System for Agentic AI
 
-Welcome to **SmythOS**, a comprehensive platform designed to be the operating system for Agentic AI. This monorepo contains the complete SmythOS ecosystem, providing everything you need to build, deploy, and manage intelligent AI agents at scale.
+Welcome to **SmythOS**, a framework designed to be the operating system for Agentic AI. This monorepo contains the SmythOS ecosystem, providing the tools you need to build, deploy, and manage intelligent AI agents at scale.
 
-## What is SmythOS?
+## Why SmythOS exists
 
-SmythOS is revolutionizing how you build and deploy AI agents by providing a complete **Operating System for Agentic AI**. Just as traditional operating systems manage resources and provide APIs and abstractions for applications, SmythOS manages resources for AI Agents, and provides developers an easy but powerful SDK to build and deploy agents.
+Building production-ready AI agents is harder than it should be. You end up wrestling with infrastructure instead of focusing on intelligence. Different providers have different APIs, security becomes an afterthought, and scaling from prototype to production means rewriting everything.
+
+SmythOS solves this by providing a complete **Operating System for Agentic AI**. Just as traditional operating systems manage resources and provide APIs for applications, SmythOS manages AI resources and provides a unified SDK that works from development to production.
+
+## Design Principles
+
+SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
+
+![SRE Diagram](./docs/images/sre-diagram.png)
+
+### Unified Resource Abstraction
+
+SmythOS provides a **unified interface for all resources**, ensuring consistency and simplicity across your entire AI platform. Whether you're storing a file locally, on S3, or any other storage provider, you don't need to worry about the underlying implementation details. SmythOS offers a powerful abstraction layer where all providers expose the same functions and APIs.
+
+This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs (OpenAI, Anthropic), or any other resource, the interface remains consistent across providers.
+
+This approach makes your AI platform **easy to scale** and incredibly flexible. You can seamlessly swap between different providers to test performance, optimize costs, or meet specific requirements without changing a single line of your business logic.
+
+### Core Design Principles
+
+### Why Switch to SmythOS?
+
+The current landscape of AI agent development is fragmented and complex. Here's how SmythOS solves the pain points developers face daily:
+
+| **Challenge**             | **Typical Approach**                                                                                        | **SmythOS Solution**                                                                                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider Integration**  | Install separate packages for each provider<br/>(`npm install openai anthropic google-cloud-aiplatform...`) | **9+ LLM providers built-in**<br/>180+ models ready out-of-the-box<br/>No additional installations needed, just bring your API keys and you're ready to go |
+| **API Consistency**       | Each provider has different APIs<br/>Constant refactoring when switching                                    | **Unified interface for all resources**<br/>Same code works across OpenAI, Anthropic, Google AI, Groq, etc.                                                |
+| **Vector Database**       | Manual setup and integration<br/>Different SDKs for each database                                           | **Built-in VectorDB support**<br/>Pinecone, RAMVec, Milvus ... with unified API                                                                            |
+| **Data Storage**          | Manual file system handling<br/>Cloud provider-specific code                                                | **Universal storage abstraction**<br/>Local, S3... with same interface                                                                                     |
+| **Caching**               | Implement your own caching layer<br/>Redis setup and management                                             | **Built-in cache providers**<br/>RAM, Redis... with automatic management                                                                                   |
+| **Security & Access**     | Custom authentication logic<br/>Manual permission systems                                                   | **Enterprise-grade security built-in**<br/>Candidate/ACL system for resource access control                                                                |
+| **Credential Management** | Environment variables and manual key handling<br/>Security risks and complexity                             | **Integrated vault system**<br/>HashiCorp Vault, AWS Secrets Manager, local file with/out encryption ... Store your secrets in a secure way                |
+| **Data Isolation**        | Manual agent scoping<br/>Risk of data leakage between agents                                                | **Agent-scoped data isolation**<br/>Automatic agent/team-level data boundaries                                                                             |
+| **Development Workflow**  | Code-only development<br/>No visual workflow tools                                                          | **Visual + Code workflows**<br/>Build agents visually (.smyth) or pure code                                                                                |
+| **Production Scaling**    | Rewrite code for production<br/>Different configurations                                                    | **Dev-to-prod consistency**<br/>Same code, different connectors automatically                                                                              |
+| **Account Management**    | Build custom user systems<br/>Authentication from scratch                                                   | **Built-in account management**<br/>Ready integration with existing auth systems                                                                           |
+
+**Key Benefits:**
+
+-   🤖 **Agent-First Design**: Built specifically for AI agent workloads
+-   🔧 **Developer-Friendly**: Simple SDK that scales from development to production
+-   🧩 **Modular Architecture**: Extensible connector system for any infrastructure
+-   ⚡ **Production-Ready**: Scalable, observable, and battle-tested
+-   🔒 **Enterprise Security**: Built-in access control and secure credential management
 
 ## 🚀 Quick Start
 
@@ -17,7 +61,7 @@ npm i -g @smythos/cli
 sre create
 ```
 
-The CLI will guide you step-by-step to create your SDK project with the perfect configuration for your needs.
+The CLI will guide you step-by-step to create your SDK project with the right configuration for your needs.
 
 ### Method 2: Direct SDK Installation
 
@@ -30,24 +74,6 @@ npm install @smythos/sdk
 Check the [Examples](packages/examples) and documentation to get started.
 
 ---
-
-## Design Principles
-
-SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
-
-![SRE Diagram](./docs/images/sre-diagram.png)
-
-### Security-First Design
-
-Security is a core tenant of SRE. Every operation requires proper authorization through the **Candidate/ACL system**, ensuring that agents only access resources they are permitted to.
-
-**Key Benefits:**
-
--   🤖 **Agent-First Design**: Built specifically for AI agent workloads
--   🔒 **Enterprise Security**: Built-in access control, data isolation, and secure credential management
--   ⚡ **Production-Ready**: Scalable, observable, and battle-tested
--   🧩 **Modular Architecture**: Extensible connector system for any infrastructure
--   🎨 **Developer-Friendly**: Simple SDK that scales from development to production
 
 ## Repository Structure
 
@@ -113,6 +139,9 @@ async function main() {
 
 Want stream mode ? easy
 
+<details>
+<summary>👆 <strong>Click to expand:</strong> Stream Mode Example - Real-time response streaming with events</summary>
+
 ```typescript
     const events = await agent.prompt('Hello, how are you ?').stream();
     events.on('content', (text) => {
@@ -127,7 +156,12 @@ Want stream mode ? easy
 
 ```
 
+</details>
+
 Want chat mode ? easy
+
+<details>
+<summary>👆 <strong>Click to expand:</strong> Chat Mode Example - Conversational agent with memory</summary>
 
 ```typescript
     const chat = agent.chat();
@@ -144,9 +178,14 @@ Want chat mode ? easy
     //the difference between agent.prompt() and chat.prompt() is that the later remembers the conversation
 ```
 
+</details>
+
 ## Example 2 : Article Writer Agent
 
 In this example we are coding the agent logic with the help of the SDK elements.
+
+<details>
+<summary>👆 <strong>Click to expand:</strong> Complete Article Writer Agent - Full example using LLM + VectorDB + Storage</summary>
 
 ```typescript
 import { Agent, Model } from '@smythos/sdk';
@@ -199,11 +238,14 @@ async function main() {
 main().catch(console.error);
 ```
 
+</details>
+
 ## 🏗️ Architecture Highlights
 
-### 🔒 Security-First Design
+### 🔒 Built-in Security
 
-Every operation requires proper authorization through the Candidate/ACL system:
+Security is a core tenant of SRE. Every operation requires proper authorization through the **Candidate/ACL system**, ensuring that agents only
+access resources they are permitted to.
 
 ```typescript
 const candidate = AccessCandidate.agent(agentId);
@@ -215,6 +257,9 @@ await storage.write('data.json', content);
 
 Your business logic stays identical while infrastructure scales:
 When you use the SDK, SmythOS Runtime Environment will be implicitly initialized with general connectors that covers standard agent use cases.
+
+<details>
+<summary>👆 <strong>Click to expand:</strong> Basic SRE Setup - Default development configuration</summary>
 
 ```typescript
 // you don't need to explicitly initialize SRE
@@ -232,6 +277,8 @@ async function main() {
 main();
 ```
 
+</details>
+
 But you can explicitly initialize SRE with other built-in connectors, or make your own
 Use cases :
 
@@ -239,6 +286,9 @@ Use cases :
 -   You want to store your API keys and other credentials in a more secure vault
 -   You need enterprise grade security and data isolation
 -   ...
+
+<details>
+<summary>👆 <strong>Click to expand:</strong> Production SRE Setup - Enterprise-grade configuration with custom connectors</summary>
 
 ```typescript
 const sre = SRE.init({
@@ -258,6 +308,8 @@ async function main() {
 main();
 
 ```
+
+</details>
 
 ### 🧩 Component System
 

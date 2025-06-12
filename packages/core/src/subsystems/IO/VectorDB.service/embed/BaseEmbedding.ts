@@ -1,7 +1,6 @@
 import { IVectorDataSourceDto, Source } from '@sre/types/VectorDB.types';
 import { isUrl } from '@sre/utils/index';
-import { SupportedProviders } from 'index';
-import { SupportedModels } from 'index';
+import { SupportedProviders, SupportedModels } from './index';
 
 export interface BaseEmbeddingParams {
     modelName: string;
@@ -99,5 +98,11 @@ export abstract class BaseEmbedding implements Partial<BaseEmbeddingParams> {
                 return source;
             }
         }
+    }
+
+    public get dummyVector(): number[] {
+        return Array(this.dimensions - 1)
+            .fill(0)
+            .concat([1]);
     }
 }

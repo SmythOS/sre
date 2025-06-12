@@ -1,6 +1,16 @@
 import { Agent, Model } from '@smythos/sdk';
+import { SRE } from '@smythos/sre';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+SRE.init({
+    Vault: {
+        Connector: 'JSONFileVault',
+        Settings: {
+            file: './tests/data/vault.json',
+        },
+    },
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function main() {

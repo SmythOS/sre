@@ -1,24 +1,74 @@
 {
-  "name": "@sre/cli",
-  "version": "1.0.0",
-  "description": "SRE CLI Tool",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "type": "module",
-  "bin": {
-    "sre": "dist/index.js"
-  },
-  "scripts": {
-    "build": "echo 'Build script not implemented'",
-    "dev": "echo 'Dev script not implemented'",
-    "lint": "echo 'Lint script not implemented'"
-  },
-  "keywords": [
-    "sre",
-    "cli"
-  ],
-  "author": "Alaa-eddine KADDOURI",
-  "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {}
+    "name": "@smythos/cli",
+    "version": "1.0.0",
+    "description": "SmythOS SRE Command Line Interface",
+    "keywords": [
+        "smythos",
+        "sre",
+        "cli",
+        "agentic AI",
+        "AI",
+        "LLM"
+    ],
+    "author": "Alaa-eddine KADDOURI",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "types": "dist/types/index.d.ts",
+    "bin": {
+        "sre": "dist/index.js"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/types/index.d.ts"
+        }
+    },
+    "files": [
+        "dist",
+        "src",
+        "README.md",
+        "CHANGELOG.md"
+    ],
+    "type": "module",
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=8.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/smythos/sre.git",
+        "directory": "packages/cli"
+    },
+    "bugs": {
+        "url": "https://github.com/smythos/sre/issues"
+    },
+    "homepage": "https://github.com/smythos/sre#readme",
+    "scripts": {
+        "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
+        "build:bundle": "cross-env BUILD=dev rollup -c",
+        "build": "pnpm run build:bundle && pnpm run build:types",
+        "dev": "rollup -c -w",
+        "lint": "echo 'Lint script not implemented'",
+        "test": "echo 'Test script not implemented'"
+    },
+    "dependencies": {
+        "@smythos/sre": "workspace:*",
+        "commander": "^12.0.0",
+        "chalk": "^5.3.0",
+        "inquirer": "^9.2.15",
+        "update-notifier": "^7.0.0"
+    },
+    "devDependencies": {
+        "@rollup/plugin-json": "^6.1.0",
+        "@rollup/pluginutils": "^5.1.0",
+        "@types/inquirer": "^9.0.7",
+        "@types/update-notifier": "^6.0.8",
+        "cross-env": "^7.0.3",
+        "esbuild": "^0.25.0",
+        "rollup-plugin-esbuild": "^6.1.1",
+        "rollup-plugin-sourcemaps": "^0.6.3",
+        "rollup-plugin-terser": "^7.0.2",
+        "rollup-plugin-typescript-paths": "^1.5.0",
+        "typescript": "^5.4.5"
+    }
 }

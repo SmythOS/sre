@@ -8,7 +8,7 @@ import { AccessRequest } from './AccessControl/AccessRequest.class';
 
 const console = Logger('SecureConnector');
 
-export abstract class SecureConnector extends Connector {
+export abstract class SecureConnector<TRequest = any> extends Connector<TRequest> {
     public abstract name: string;
 
     //this determines the access rights for the requested resource

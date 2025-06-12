@@ -7,7 +7,7 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
-//import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
+
 
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
@@ -57,21 +57,11 @@ export class DataSourceLookup extends Component {
 
         const topK = Math.max(config.data?.topK || 50, 50);
 
-        // const customStorageConnector = await vectorDBHelper.getTeamConnector(teamId);
-        let vectorDbConnector =
-            // customStorageConnector ||
-            ConnectorService.getVectorDBConnector();
-        let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).getNamespace(namespace);
+        let vectorDbConnector = ConnectorService.getVectorDBConnector();
+        let existingNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespace);
 
         if (!existingNs) {
-            // if (!(vectorDbConnector instanceof SmythManagedVectorDB)) {
-            //     throw new Error(`Namespace ${namespace} does not exist`);
-            // }
-            await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespace);
-            debugOutput += `[Created namespace] \n${namespace}\n\n`;
-        } else if (!existingNs.metadata.isOnCustomStorage) {
-            // If the namespace exists but is not on custom storage, switch to the default connector.
-            vectorDbConnector = ConnectorService.getVectorDBConnector();
+            throw new Error(`Namespace ${namespace} does not exist`);
         }
 
         let results: string[] | { content: string; metadata: any }[];
@@ -88,7 +78,7 @@ export class DataSourceLookup extends Component {
                 results = results.map((result) => ({
                     content: result.content,
                     metadata: this.parseMetadata(
-                        result.metadata?.user || result.metadata?.metadata //* legacy user-specific metadata key [result.metadata?.metadata]
+                        result.metadata?.user || result.metadata?.metadata, //* legacy user-specific metadata key [result.metadata?.metadata]
                     ),
                 }));
             } else {

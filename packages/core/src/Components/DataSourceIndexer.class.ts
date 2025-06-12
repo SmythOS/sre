@@ -8,7 +8,7 @@ import { SmythFS } from '@sre/IO/Storage.service/SmythFS.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-//import { SmythManagedVectorDB } from '@sre/IO/VectorDB.service/connectors/SmythManagedVectorDB.class';
+
 
 export class DataSourceIndexer extends Component {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
@@ -51,9 +51,7 @@ export class DataSourceIndexer extends Component {
             const nsExists = await vectorDbConnector.user(AccessCandidate.team(teamId)).namespaceExists(namespaceId);
 
             if (!nsExists) {
-                // if (!(vectorDbConnector instanceof SmythManagedVectorDB)) {
-                //     throw new Error(`Namespace ${namespaceId} does not exist`);
-                // }
+
                 const newNs = await vectorDbConnector.user(AccessCandidate.team(teamId)).createNamespace(namespaceId);
                 debugOutput += `[Created namespace] \n${newNs}\n\n`;
             }

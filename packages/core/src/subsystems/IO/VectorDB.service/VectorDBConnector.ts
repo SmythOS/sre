@@ -2,18 +2,20 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IAccessCandidate, IACL } from '@sre/types/ACL.types';
+import { IAccessCandidate } from '@sre/types/ACL.types';
 import {
     DatasourceDto,
     IStorageVectorDataSource,
     IStorageVectorNamespace,
     IVectorDataSourceDto,
     QueryOptions,
-    Source,
-    StorageVectorNamespaceMetadata,
-    VectorDBMetadata,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
+import { OpenAIEmbeds } from './embed/OpenAIEmbedding';
+
+const embedders = {
+    OpenAI: OpenAIEmbeds,
+};
 
 export interface IVectorDBRequest {
     search(namespace: string, query: string | number[], options?: QueryOptions): Promise<VectorsResultData>;
@@ -28,11 +30,9 @@ export interface IVectorDBRequest {
     createNamespace(namespace: string, metadata?: { [key: string]: any }): Promise<void>;
     deleteNamespace(namespace: string): Promise<void>;
     namespaceExists(namespace: string): Promise<boolean>;
-    listNamespaces(): Promise<IStorageVectorNamespace[]>;
-    getNamespace(namespace: string): Promise<IStorageVectorNamespace>;
 }
 
-export abstract class VectorDBConnector extends SecureConnector {
+export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest> {
     public abstract id: string;
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
 
@@ -61,14 +61,8 @@ export abstract class VectorDBConnector extends SecureConnector {
             deleteNamespace: async (namespace: string) => {
                 await this.deleteNamespace(candidate.writeRequest, namespace);
             },
-            listNamespaces: async () => {
-                return await this.listNamespaces(candidate.readRequest);
-            },
             namespaceExists: async (namespace: string) => {
                 return await this.namespaceExists(candidate.readRequest, namespace);
-            },
-            getNamespace: async (namespace: string) => {
-                return await this.getNamespace(candidate.readRequest, namespace);
             },
         };
     }
@@ -101,11 +95,7 @@ export abstract class VectorDBConnector extends SecureConnector {
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void>;
 
-    protected abstract listNamespaces(acRequest: AccessRequest): Promise<IStorageVectorNamespace[]>;
-
     protected abstract namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean>;
-
-    protected abstract getNamespace(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorNamespace>;
 
     public static constructNsName(teamId: string, name: string) {
         const joinedName = name.trim().replace(/\s/g, '_').toLowerCase();

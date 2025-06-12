@@ -26,11 +26,12 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
     protected clientConfig: ClientOptions;
 
     public static models = ['text-embedding-ada-002', 'text-embedding-3-large'];
+    public canSpecifyDimensions = true;
 
     constructor(
         fields?: Partial<OpenAIEmbeddingsParams> & {
             verbose?: boolean;
-            model?: string;
+            model?: (typeof OpenAIEmbeds.models)[number];
             apiKey?: string;
             configuration?: ClientOptions;
         },
@@ -42,6 +43,10 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
             dangerouslyAllowBrowser: true,
             ...fields?.configuration,
         };
+
+        if (this.model === 'text-embedding-ada-002') {
+            this.canSpecifyDimensions = false; // special case for ada-002, it doesn't support dimensions passing
+        }
     }
 
     async embedTexts(texts: string[]): Promise<number[][]> {
@@ -52,7 +57,7 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
                 model: this.model,
                 input: batch,
             };
-            if (this.dimensions) {
+            if (this.dimensions && this.canSpecifyDimensions) {
                 params.dimensions = this.dimensions;
             }
             return this.embed(params);
@@ -75,7 +80,7 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
             model: this.model,
             input: this.processTexts([text])[0],
         };
-        if (this.dimensions) {
+        if (this.dimensions && this.canSpecifyDimensions) {
             params.dimensions = this.dimensions;
         }
         const { data } = await this.embed(params);

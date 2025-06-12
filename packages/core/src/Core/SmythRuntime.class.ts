@@ -102,7 +102,7 @@ export class SmythRuntime {
                     configEntry.Connector,
                     configEntry.Id,
                     configEntry.Settings,
-                    configEntry.Default
+                    configEntry.Default,
                 );
             }
         }

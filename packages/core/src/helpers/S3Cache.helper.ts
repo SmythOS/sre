@@ -58,6 +58,7 @@ export function generateLifecycleRules() {
     return rules;
 }
 
+
 export function generateExpiryMetadata(expiryDays) {
     let metadataValue;
 
