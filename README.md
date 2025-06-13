@@ -1,16 +1,17 @@
 # SmythOS - The Operating System for Agentic AI
 
-Welcome to **SmythOS**, a framework designed to be the operating system for Agentic AI. This monorepo contains the SmythOS ecosystem, providing the tools you need to build, deploy, and manage intelligent AI agents at scale.
+Everything you need to build, deploy, and manage intelligent AI agents at scale. SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
 
 ## Why SmythOS exists
 
-Building production-ready AI agents is harder than it should be. You end up wrestling with infrastructure instead of focusing on intelligence. Different providers have different APIs, security becomes an afterthought, and scaling from prototype to production means rewriting everything.
-
-SmythOS solves this by providing a complete **Operating System for Agentic AI**. Just as traditional operating systems manage resources and provide APIs for applications, SmythOS manages AI resources and provides a unified SDK that works from development to production.
+1. Shipping production-ready AI agents shouldn’t feel like rocket science.
+2. Autonomy and control can, and must, coexist.
+3. Security isn’t an add-on; it’s built-in.
+4. The coming Internet of Agents must stay open and accessible to everyone.
 
 ## Design Principles
 
-SmythOS is designed with a philosophy inspired by operating system kernels, ensuring a robust and scalable foundation for AI agents.
+SmythOS provides a complete **Operating System for Agentic AI**. Just as traditional operating systems manage resources and provide APIs for applications, SmythOS manages AI resources and provides a unified SDK that works from development to production.
 
 ![SRE Diagram](./docs/images/sre-diagram.png)
 
@@ -21,26 +22,6 @@ SmythOS provides a **unified interface for all resources**, ensuring consistency
 This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs (OpenAI, Anthropic), or any other resource, the interface remains consistent across providers.
 
 This approach makes your AI platform **easy to scale** and incredibly flexible. You can seamlessly swap between different providers to test performance, optimize costs, or meet specific requirements without changing a single line of your business logic.
-
-### Core Design Principles
-
-### Why Switch to SmythOS?
-
-The current landscape of AI agent development is fragmented and complex. Here's how SmythOS solves the pain points developers face daily:
-
-| **Challenge**             | **Typical Approach**                                                                                        | **SmythOS Solution**                                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Provider Integration**  | Install separate packages for each provider<br/>(`npm install openai anthropic google-cloud-aiplatform...`) | **9+ LLM providers built-in**<br/>180+ models ready out-of-the-box<br/>No additional installations needed, just bring your API keys and you're ready to go |
-| **API Consistency**       | Each provider has different APIs<br/>Constant refactoring when switching                                    | **Unified interface for all resources**<br/>Same code works across OpenAI, Anthropic, Google AI, Groq, etc.                                                |
-| **Vector Database**       | Manual setup and integration<br/>Different SDKs for each database                                           | **Built-in VectorDB support**<br/>Pinecone, RAMVec, Milvus ... with unified API                                                                            |
-| **Data Storage**          | Manual file system handling<br/>Cloud provider-specific code                                                | **Universal storage abstraction**<br/>Local, S3... with same interface                                                                                     |
-| **Caching**               | Implement your own caching layer<br/>Redis setup and management                                             | **Built-in cache providers**<br/>RAM, Redis... with automatic management                                                                                   |
-| **Security & Access**     | Custom authentication logic<br/>Manual permission systems                                                   | **Enterprise-grade security built-in**<br/>Candidate/ACL system for resource access control                                                                |
-| **Credential Management** | Environment variables and manual key handling<br/>Security risks and complexity                             | **Integrated vault system**<br/>HashiCorp Vault, AWS Secrets Manager, local file with/out encryption ... Store your secrets in a secure way                |
-| **Data Isolation**        | Manual agent scoping<br/>Risk of data leakage between agents                                                | **Agent-scoped data isolation**<br/>Automatic agent/team-level data boundaries                                                                             |
-| **Development Workflow**  | Code-only development<br/>No visual workflow tools                                                          | **Visual + Code workflows**<br/>Build agents visually (.smyth) or pure code                                                                                |
-| **Production Scaling**    | Rewrite code for production<br/>Different configurations                                                    | **Dev-to-prod consistency**<br/>Same code, different connectors automatically                                                                              |
-| **Account Management**    | Build custom user systems<br/>Authentication from scratch                                                   | **Built-in account management**<br/>Ready integration with existing auth systems                                                                           |
 
 **Key Benefits:**
 
@@ -350,8 +331,11 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## 🔮 What's Next?
 
-Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
+- We will release an open source visual agent IDE later this year.
+- Support us at [SmythOS](https://smythos.com)
+- Join our [community](https://discord.gg/smythos) to stay updated on new features, connectors, and capabilities.
 
 ---
+/smɪθ oʊ ɛs/
 
-**Ready to build the next generation of AI agents?** Start with SmythOS and focus on what matters - the intelligence, not the infrastructure.
+Ride the llama.🦙 Skip the drama. 😹

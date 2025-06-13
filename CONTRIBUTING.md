@@ -37,6 +37,9 @@ If you encounter a bug or want to request a new feature, please open an issue in
 -   If you're reporting a bug:
     -   Provide steps to reproduce the issue.
     -   Include logs, error messages, screenshots, or code snippets when relevant.
+-   If you're reporting a security vulnerability:
+    -   Avoid posting an issue in the GitHub repo to avoid exploits
+    -   Email `security@smythos.com` directly, instead.
 
 ### 📝 A Good Bug Report Includes:
 
@@ -62,6 +65,17 @@ We love contributions from the community! Here's how to get started:
 
 ---
 
+## 📜 Developer Certificate of Origin (DCO)
+
+SmythOS uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/) to ensure that every
+contribution is made with clear provenance and permission.
+
+- **What you do:** add the `-s` flag to each `git commit`  
+  ```bash
+  git commit -s -m "Fix: correct off-by-one in vector index"
+
+---
+
 ## 🧑‍💻 Developer Notes
 
 -   All contributions must follow the **fork → branch → pull request** workflow.
@@ -79,6 +93,7 @@ We love contributions from the community! Here's how to get started:
 -   [ ] Wrote clear and concise commit messages
 -   [ ] Ensured your code passes all tests and checks
 -   [ ] Documented any new behavior or configuration
+-   [ ] I'm signing off all commits (git commit -s)
 
 ---
 
