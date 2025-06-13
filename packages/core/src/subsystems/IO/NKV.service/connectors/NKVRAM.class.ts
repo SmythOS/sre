@@ -17,8 +17,8 @@ export class NKVRAM extends NKVConnector {
     private accountConnector: AccountConnector;
     private cacheConnector: CacheConnector;
 
-    constructor() {
-        super();
+    constructor(protected _settings?: any) {
+        super(_settings);
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cacheConnector = ConnectorService.getCacheConnector('RAM');
     }

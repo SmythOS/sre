@@ -14,6 +14,8 @@ import { EventEmitter } from 'events';
 import { Chat } from '../Chat.class';
 import { SDKObject } from '../SDKObject.class';
 import { adaptModelParams } from './utils';
+import { uid } from '../utils/general.utils';
+import { ChatOptions } from '../types/SDKTypes';
 
 class LLMCommand {
     constructor(private _llm: LLMInstance, private _params: any) {}
@@ -144,10 +146,18 @@ export class LLMInstance extends SDKObject {
         return new LLMCommand(this, { ...this._modelSettings, messages: [{ role: 'user', content: prompt }] });
     }
 
-    public chat() {
+    public chat(options?: ChatOptions | string) {
         const model = this._modelSettings.model;
 
-        //const modelName = typeof model === 'string' ? model : (model as TLLMModel).modelId;
-        return new Chat(model);
+        if (typeof options === 'string') {
+            options = { id: options, persist: true };
+        }
+
+        const chatOptions = {
+            ...options,
+            candidate: this._candidate,
+        };
+
+        return new Chat(chatOptions, model);
     }
 }

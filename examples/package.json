@@ -10,8 +10,9 @@
         "try": "tsx"
     },
     "dependencies": {
-        "@smythos/sre": "workspace:*",
         "@smythos/sdk": "workspace:*",
+        "@smythos/sre": "workspace:*",
+        "chalk": "^5.4.1",
         "dotenv": "^16.5.0"
     },
     "devDependencies": {

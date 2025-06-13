@@ -51,16 +51,16 @@ export class S3Storage extends StorageConnector {
     private bucket: string;
     private isInitialized: boolean = false;
 
-    constructor(settings: S3Config) {
-        super();
+    constructor(protected _settings: S3Config) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-        this.bucket = settings.bucket;
+        this.bucket = _settings.bucket;
         const clientConfig: any = {};
-        if (settings.region) clientConfig.region = settings.region;
-        if (settings.accessKeyId && settings.secretAccessKey) {
+        if (_settings.region) clientConfig.region = _settings.region;
+        if (_settings.accessKeyId && _settings.secretAccessKey) {
             clientConfig.credentials = {
-                accessKeyId: settings.accessKeyId,
-                secretAccessKey: settings.secretAccessKey,
+                accessKeyId: _settings.accessKeyId,
+                secretAccessKey: _settings.secretAccessKey,
             };
         }
 

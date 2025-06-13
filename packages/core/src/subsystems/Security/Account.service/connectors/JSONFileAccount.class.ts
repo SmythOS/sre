@@ -49,9 +49,9 @@ export class JSONFileAccount extends AccountConnector {
     private data: any = {};
     private file: string;
 
-    constructor(private settings: TJSONFileAccountSettings) {
-        super();
-        this.file = settings.file;
+    constructor(protected _settings: TJSONFileAccountSettings) {
+        super(_settings);
+        this.file = _settings.file;
         this.loadData();
     }
 

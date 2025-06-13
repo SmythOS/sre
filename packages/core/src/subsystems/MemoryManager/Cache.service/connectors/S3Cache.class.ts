@@ -38,16 +38,16 @@ export class S3Cache extends CacheConnector {
     private isInitialized: boolean = false;
     private cachePrefix: string = '_smyth_cache';
 
-    constructor(settings: S3CacheConfig) {
-        super();
+    constructor(protected _settings: S3CacheConfig) {
+        super(_settings);
         this.s3Client = new S3Client({
-            region: settings.region,
+            region: _settings.region,
             credentials: {
-                accessKeyId: settings.accessKeyId,
-                secretAccessKey: settings.secretAccessKey,
+                accessKeyId: _settings.accessKeyId,
+                secretAccessKey: _settings.secretAccessKey,
             },
         });
-        this.bucketName = settings.bucketName;
+        this.bucketName = _settings.bucketName;
     }
 
     public get client() {

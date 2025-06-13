@@ -1,21 +1,16 @@
 import { IVectorDataSourceDto, Source } from '@sre/types/VectorDB.types';
 import { isUrl } from '@sre/utils/index';
 import { SupportedProviders, SupportedModels } from './index';
-
-export interface BaseEmbeddingParams {
-    modelName: string;
-    model: string;
-    dimensions?: number;
-    timeout?: number;
-    chunkSize?: number;
-    stripNewLines?: boolean;
-    maxConcurrency?: number;
-}
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export type TEmbeddings = {
     provider: SupportedProviders;
     model: SupportedModels[SupportedProviders];
     dimensions?: number;
+    timeout?: number;
+    chunkSize?: number;
+    stripNewLines?: boolean;
+    maxConcurrency?: number;
     credentials?: {
         apiKey: string;
     };
@@ -23,7 +18,7 @@ export type TEmbeddings = {
 
 type SupportedSources = 'text' | 'vector' | 'url';
 
-export abstract class BaseEmbedding implements Partial<BaseEmbeddingParams> {
+export abstract class BaseEmbedding {
     model: string;
     modelName: string;
     chunkSize = 512;
@@ -32,9 +27,8 @@ export abstract class BaseEmbedding implements Partial<BaseEmbeddingParams> {
     timeout?: number;
     maxConcurrency?: number;
 
-    constructor(fields?: Partial<BaseEmbeddingParams>) {
-        this.model = fields?.model ?? fields?.modelName ?? this.model;
-        this.modelName = this.model;
+    constructor(fields?: Partial<TEmbeddings>) {
+        this.model = fields?.model ?? this.model;
         this.chunkSize = fields?.chunkSize ?? this.chunkSize;
         this.stripNewLines = fields?.stripNewLines ?? this.stripNewLines;
         this.timeout = fields?.timeout;
@@ -44,12 +38,12 @@ export abstract class BaseEmbedding implements Partial<BaseEmbeddingParams> {
     /**
      * Embed multiple texts and return their vector representations
      */
-    abstract embedTexts(texts: string[]): Promise<number[][]>;
+    abstract embedTexts(texts: string[], candidate: AccessCandidate): Promise<number[][]>;
 
     /**
      * Embed a single text and return its vector representation
      */
-    abstract embedText(text: string): Promise<number[]>;
+    abstract embedText(text: string, candidate: AccessCandidate): Promise<number[]>;
 
     /**
      * Utility method to chunk arrays into smaller batches
@@ -80,13 +74,13 @@ export abstract class BaseEmbedding implements Partial<BaseEmbeddingParams> {
         }
     }
 
-    public transformSource(source: IVectorDataSourceDto[], sourceType: SupportedSources) {
+    public transformSource(source: IVectorDataSourceDto[], sourceType: SupportedSources, candidate: AccessCandidate) {
         //* as the accepted sources increases, you will need to implement the strategy pattern instead of a switch case
         switch (sourceType) {
             case 'text': {
                 const texts = source.map((s) => s.source as string);
 
-                return this.embedTexts(texts).then((vectors) => {
+                return this.embedTexts(texts, candidate).then((vectors) => {
                     return source.map((s, i) => ({
                         ...s,
                         source: vectors[i],

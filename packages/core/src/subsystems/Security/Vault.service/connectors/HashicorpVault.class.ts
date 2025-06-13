@@ -11,8 +11,8 @@ const console = Logger('HashicorpVault');
 export class HashicorpVault extends VaultConnector {
     public name: string = 'HashicorpVault';
 
-    constructor(private config: any) {
-        super();
+    constructor(protected _settings: any) {
+        super(_settings);
         //hashicorp client/api
     }
 

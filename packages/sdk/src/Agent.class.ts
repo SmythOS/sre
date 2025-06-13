@@ -1,6 +1,6 @@
-import { AccessCandidate, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
+import { AccessCandidate, AgentProcess, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
 import EventEmitter from 'events';
-import { Chat } from './Chat.class';
+import { Chat, prepareConversation } from './Chat.class';
 import { Component } from './components/components.index';
 import { ComponentWrapper } from './components/ComponentWrapper.class';
 import { TSkillSettings } from './components/Skill';
@@ -12,25 +12,15 @@ import { uid } from './utils/general.utils';
 import { SDKObject } from './SDKObject.class';
 import fs from 'fs';
 import { SDKLog } from './utils/console.utils';
-import { help } from './help';
+import { HELP, showHelp } from './help';
 import { Team } from './Team.class';
 import { TVectorDBProvider, TVectorDBProviderInstances } from './types/generated/VectorDB.types';
 import { VectorDBInstance } from './VectorDB.class';
 import { TLLMInstanceFactory, TLLMProviderInstances } from './LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from './LLM/LLMInstance.class';
+import { AgentData, ChatOptions } from './types/SDKTypes';
 
 const console = SDKLog;
-
-export type AgentData = {
-    id: string;
-    version: string;
-    name: string;
-    behavior: string;
-    components: any[];
-    connections: any[];
-    defaultModel: string;
-    teamId: string;
-};
 
 /**
  * Represents a command that can be executed by an agent.
@@ -80,21 +70,7 @@ class AgentCommand {
      */
     async run(): Promise<string> {
         await this.agent.ready;
-
-        const filteredAgentData = {
-            ...this.agent.data,
-            components: this.agent.data.components.filter((c) => !c.process),
-        };
-        const conversation = new Conversation(this.agent.data.defaultModel, filteredAgentData, {
-            agentId: this.agent.data.id,
-        });
-
-        conversation.on(TLLMEvent.Error, (error) => {
-            console.error('An error occurred while running the agent: ', error.message);
-        });
-
-        // Register process skills as custom tools
-        await this.registerProcessSkills(conversation);
+        const conversation = await prepareConversation(this.agent.data);
 
         const result = await conversation.streamPrompt(this.prompt).catch((error) => {
             console.error('Error on streamPrompt: ', error);
@@ -102,22 +78,6 @@ class AgentCommand {
         });
 
         return result;
-    }
-
-    private async registerProcessSkills(conversation: Conversation) {
-        await this.agent.ready;
-
-        // Find all skills with process functions and register them as tools
-        const processSkills: ComponentWrapper[] = this.agent.structure.components.filter((c: ComponentWrapper) => c.internalData.process);
-
-        for (const skill of processSkills) {
-            await conversation.addTool({
-                name: skill.data.data.endpoint,
-                description: skill.data.data.description,
-                //arguments: _arguments,
-                handler: skill.internalData.process,
-            });
-        }
     }
 
     /**
@@ -140,9 +100,8 @@ class AgentCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this.agent.ready;
-        const conversation = new Conversation(this.agent.data.defaultModel, this.agent.data, {
-            agentId: this.agent.data.id,
-        });
+        const conversation = await prepareConversation(this.agent.data);
+
         conversation.streamPrompt(this.prompt);
 
         return conversation;
@@ -207,8 +166,8 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
-    private _data: AgentData = {
-        version: '1.0.0',
+    private _data: AgentData & { version: string } = {
+        version: '1.0.0', //schema version
         name: '',
         behavior: '',
         defaultModel: '',
@@ -275,7 +234,7 @@ export class Agent extends SDKObject {
 
         //when creating a new agent, we make sure to create new unique id
         if (!this._data.id) {
-            console.warn('No id provided for the agent, generating a new one');
+            //console.warn('No id provided for the agent, generating a new one');
             this._data.id = `${this._data.name ? this._data.name + '_' : ''}${uid()}`;
         } else {
             this._hasExplicitId = true;
@@ -283,7 +242,7 @@ export class Agent extends SDKObject {
 
         //use default team id for the SDK
         if (!this._data.teamId) {
-            console.warn('No team id provided for the agent, using default team id');
+            //console.warn('No team id provided for the agent, using default team id');
             this._data.teamId = DEFAULT_TEAM_ID;
         }
 
@@ -422,7 +381,7 @@ export class Agent extends SDKObject {
         }
         if (!this._hasExplicitId) {
             console.warn(
-                `You are performing storage operations with an unidentified agent.\nAn ID is required if you want to persist data accross multiple sessions.\nLearn more about the storage access model here: ${help.SDK.AGENT_STORAGE_ACCESS}`
+                `You are performing storage operations with an unidentified agent.\nAn ID is required if you want to persist data accross multiple sessions.\nLearn more about the storage access model here: ${HELP.SDK.AGENT_STORAGE_ACCESS}`
             );
         }
         return this._storageProviders;
@@ -488,6 +447,55 @@ export class Agent extends SDKObject {
         return component;
     }
 
+    async call(skillName: string, ...args: (Record<string, any> | any)[]) {
+        try {
+            const _agentData = this.data;
+            const skill = _agentData.components.find((c) => c.data.endpoint === skillName);
+            if (skill?.process) {
+                const processSkill: ComponentWrapper = this.structure.components.find(
+                    (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
+                );
+
+                const handler = processSkill?.internalData?.process || (() => null);
+
+                const result = await handler(...args);
+
+                return result;
+            }
+
+            const filteredAgentData = {
+                ..._agentData,
+                components: _agentData.components.filter((c) => !c.process),
+            };
+
+            const method = skill.data.method.toUpperCase();
+            const path = `/api/${skillName}`;
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            const input = args[0];
+            const body =
+                method === 'POST'
+                    ? {
+                          ...input,
+                      }
+                    : undefined;
+            const query =
+                method === 'GET'
+                    ? {
+                          ...input,
+                      }
+                    : undefined;
+
+            const agent = AgentProcess.load(filteredAgentData);
+            return await agent.run({ method, path, body, query, headers });
+        } catch (error) {
+            console.error(`Error executing skill '${skillName}':`, error.message);
+            throw error;
+        }
+    }
+
     /**
      * Send a prompt to the agent and get a response.
      *
@@ -523,6 +531,11 @@ export class Agent extends SDKObject {
      * Chat sessions maintain conversation context and allow for back-and-forth
      * interactions with the agent, preserving message history.
      *
+     * @param options - The options for the chat session if you provide a string it'll be used as the chat ID and persistence will be enabled by default
+     * @param options.id - The ID of the chat session
+     * @param options.persist - Whether to persist the chat session
+     * @param options.candidate - The candidate for the chat session
+     *
      * @returns Chat instance for interactive conversations
      *
      * @example
@@ -538,8 +551,30 @@ export class Agent extends SDKObject {
      * const history = chat.getHistory();
      * ```
      */
-    public chat() {
-        return new Chat(this._data.defaultModel, this.data, {
+    public chat(options?: ChatOptions | string) {
+        //TODO/FUTURE: add the possibility to customize the chat persistence system
+        //Currently we are persisting the chat messages in the default storage provider of the agent
+
+        if (typeof options === 'string') {
+            options = { id: options, persist: true };
+        }
+
+        const chatOptions = {
+            ...options,
+            candidate: this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId),
+        };
+
+        if (!this._hasExplicitId && !options?.shared) {
+            console.warn(
+                '!! Persistance is disabled !! Reason: You are creating a chat session with an unidentified agent.',
+                '\nSet an explicit agent ID or set the shared option to true'
+            );
+            showHelp(HELP.SDK.CHAT_PERSISTENCE);
+
+            chatOptions.persist = false;
+        }
+
+        return new Chat(chatOptions, this._data.defaultModel, this.data, {
             agentId: this._data.id,
         });
     }

@@ -17,6 +17,7 @@ import { delay } from '@sre/utils/date-time.utils';
 import { EventSource, FetchLike } from 'eventsource';
 import { hookAsyncWithContext } from '@sre/Core/HookService';
 import { DEFAULT_TEAM_ID } from '@sre/types/ACL.types';
+import { randomUUID } from 'crypto';
 import * as acorn from 'acorn';
 
 const console = Logger('ConversationHelper');
@@ -227,7 +228,7 @@ export class Conversation extends EventEmitter {
         const toolsConfig = this._toolsConfig;
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
-        const message_id = 'msg_' + uid();
+        const message_id = 'msg_' + randomUUID();
 
         /* ==================== STEP ENTRY ==================== */
         console.debug('Request to LLM with the given model, messages and functions properties.', {
@@ -399,7 +400,7 @@ export class Conversation extends EventEmitter {
         const toolsConfig = this._toolsConfig;
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
-        const message_id = 'msg_' + uid();
+        const message_id = 'msg_' + randomUUID();
         const isDebugSession = toolHeaders['X-DEBUG'];
 
         /* ==================== STEP ENTRY ==================== */
@@ -568,7 +569,7 @@ export class Conversation extends EventEmitter {
                         //await beforeFunctionCall(llmMessage, toolsData[tool.index]);
                         // TODO [Forhad]: Make sure toolsData[tool.index] and tool do the same thing
                         this.emit('beforeToolCall', { tool, args }, llmMessage); //deprecated
-                        this.emit(TLLMEvent.ToolCall, { tool, args }, llmMessage);
+                        this.emit(TLLMEvent.ToolCall, { tool, _llmRequest: llmMessage });
 
                         const toolArgs = {
                             type: tool?.type,
@@ -586,6 +587,8 @@ export class Conversation extends EventEmitter {
                             functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
                         }
 
+                        const result = functionResponse;
+
                         functionResponse =
                             typeof functionResponse === 'object' && typeof functionResponse !== null
                                 ? JSON.stringify(functionResponse)
@@ -593,7 +596,7 @@ export class Conversation extends EventEmitter {
 
                         //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse); // Deprecated
-                        this.emit(TLLMEvent.ToolResult, { tool, args }, functionResponse);
+                        this.emit(TLLMEvent.ToolResult, { tool, result });
 
                         return { ...tool, result: functionResponse };
                     }

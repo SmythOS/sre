@@ -58,6 +58,7 @@
     },
     "dependencies": {
         "@smythos/sre": "workspace:*",
+        "chalk": "^5.4.1",
         "events": "^3.3.0",
         "source-map-support": "^0.5.21"
     },

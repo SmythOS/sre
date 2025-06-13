@@ -31,11 +31,11 @@ export class LocalStorage extends StorageConnector {
     private metadataPrefix = '.local.metadata';
     private isInitialized = false;
 
-    constructor(settings: LocalStorageConfig) {
-        super();
+    constructor(protected _settings?: LocalStorageConfig) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.folder = settings?.folder || path.join(os.homedir(), '.smyth/storage');
+        this.folder = _settings?.folder || path.join(os.homedir(), '.smyth/storage');
         this.initialize();
         if (!fs.existsSync(this.folder)) {
             //throw new Error('Invalid folder provided');

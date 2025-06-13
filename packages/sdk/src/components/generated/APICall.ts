@@ -50,7 +50,7 @@ export interface TAPICallSettings {
 }
 
 export type TAPICallInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export type TAPICallOutputs = {

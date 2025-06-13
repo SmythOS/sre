@@ -1,6 +1,7 @@
 import { uid } from '../utils/general.utils';
 import { createSafeAccessor } from './utils';
 import { Agent } from '../Agent.class';
+import { InputSettings } from '../types/SDKTypes';
 
 export class ComponentWrapper {
     private _id: string;
@@ -28,7 +29,7 @@ export class ComponentWrapper {
             displayName: this._name,
             title: this._name,
             id: this._id,
-            process: typeof this._internalData.process === 'function',
+            process: typeof this._internalData.process === 'function' ? this._internalData.process : undefined,
             left: '0px',
             top: '0px',
             inputs: Object.keys(this._inputs).map((key) => ({
@@ -52,7 +53,7 @@ export class ComponentWrapper {
     private get _settings() {
         return this._internalData.settings;
     }
-    private get _inputs() {
+    private get _inputs(): Record<string, { source: any; component: ComponentWrapper } & InputSettings> {
         return this._internalData.inputs;
     }
     private get _outputs() {

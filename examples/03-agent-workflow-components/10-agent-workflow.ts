@@ -4,37 +4,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function main() {
-    //#region
-    /*
-    In this example we will create a the following workflow that uses a skill to get the market data of a coin.
-
-    == MARKET DATA WORKFLOW 
-
-    +--[ mdSkill ]--+               +---[ mdAPICall ]--+    (Resp.market_data)   +---[ mdOutput ]---+
-    |               |               |                  | ----------------------->|                  |
-    |               |               |                  |                         |                  |
-    | Input:        |               | URL: coingecko   |                         | Output:          |
-    | * coin_id     |   (coin_id)   | /coins/{coin_id} |                         | * MarketData     |
-    |               |---+---------->| ?market_data=true|                         | * coin_id        |
-    +---------------+   |           +------------------+                         +------------------+
-                        |                                                             ^
-                        +-------------------------------------------------------------+
-                                                    (coin_id)
-
-
-    */
-    //#endregion
-
     const agent = new Agent({
-        name: 'SRE Assistant',
+        name: 'CryptoMarket Assistant',
         behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
         model: 'gpt-4o',
     });
 
     //#region [ Market Data Skill ] ================
-    //this skill is used to get comprehensive market data of a coin including price, market cap, volume, etc.
 
-    //Creating a market data skill entry
+    //Declaring a market data skill entry
     const mdSkill = agent.addSkill({
         name: 'MarketData',
         description: 'Use this skill to get comprehensive market data and statistics for a cryptocurrency',
@@ -43,9 +21,7 @@ async function main() {
     //Defining the inputs of the skill
     mdSkill.in({
         coin_id: {
-            type: 'string',
             description: 'The coin id to get the comprehensive market data of',
-            required: true,
         },
     });
 
@@ -75,17 +51,32 @@ async function main() {
 
     //#endregion
 
-    const result = await agent.prompt('Hello, what is the price of bitcoin in USD');
+    //const result = await agent.prompt('Hello, what is the price of bitcoin in USD');
 
-    //const result2 = await agent.prompt('Give me a summary of bitcoin market data');
-
-    // const chat = agent.chat();
-    // const result = await chat.prompt('Hello, my name is Aladdin what is the capital of France');
-
-    // const result2 = await chat.prompt('do you remember my name?');
+    const result = await agent.call('MarketData', { coin_id: 'bitcoin' });
 
     console.log(result);
-    //console.log(result2);
 }
+
+//#region [ Market Data Workflow ] ================
+/*
+This is the workflow that we created in the previous example.
+
+== MARKET DATA WORKFLOW 
+
++--[ mdSkill ]--+             +---[ mdAPICall ]--+                         +---[ mdOutput ]---+
+|               |             | URL:             |                         |                  |
+*coin_id        |             | coingecko        |                         |                  |
+|               |             | ?market_data     |                         |         [Outputs]|
+|               |  (coin_id)  |                  |   (Resp.market_data)    |        MarketData|
+|        coin_id|>-+--------->|          Response|>----------------------->|           coin_id|
++---------------+  |          +------------------+                         +------------------+
+                   |                                                             ^
+                   +-------------------------------------------------------------+
+                                                (coin_id)
+
+
+*/
+//#endregion
 
 main();

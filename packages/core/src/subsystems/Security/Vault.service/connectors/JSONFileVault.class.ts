@@ -21,26 +21,26 @@ export class JSONFileVault extends VaultConnector {
     private index: any;
     private sharedVault: boolean;
 
-    constructor(private settings: JSONFileVaultConfig) {
-        super();
+    constructor(protected _settings: JSONFileVaultConfig) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.sharedVault = settings.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
+        this.sharedVault = _settings.shared || false; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
-        let vaultFile = this.findVaultFile(settings.file);
+        let vaultFile = this.findVaultFile(_settings.file);
         this.vaultData = {};
         if (fs.existsSync(vaultFile)) {
             try {
-                if (settings.fileKey && fs.existsSync(settings.fileKey)) {
+                if (_settings.fileKey && fs.existsSync(_settings.fileKey)) {
                     try {
-                        const privateKey = fs.readFileSync(settings.fileKey, 'utf8');
+                        const privateKey = fs.readFileSync(_settings.fileKey, 'utf8');
                         const encryptedVault = fs.readFileSync(vaultFile, 'utf8').toString();
                         const decryptedBuffer = crypto.privateDecrypt(
                             {
                                 key: privateKey,
                                 padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
                             },
-                            Buffer.from(encryptedVault, 'base64'),
+                            Buffer.from(encryptedVault, 'base64')
                         );
                         this.vaultData = JSON.parse(decryptedBuffer.toString('utf8'));
                     } catch (error) {

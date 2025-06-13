@@ -37,11 +37,7 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(
-        private llmInference,
-        _systemPrompt: string = '',
-        /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore,
-    ) {
+    constructor(private llmInference, _systemPrompt: string = '', /*private _messages: any[] = [],*/ llmContextStore?: ILLMContextStore) {
         this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;
@@ -65,13 +61,51 @@ export class LLMContext {
         this._llmCache.set('messages', this._messages);
     }
     public addUserMessage(content: string, message_id: string, metadata?: any) {
-        this.push({ role: 'user', content, __smyth_data__: { message_id, ...metadata } });
+        //in the current implementation, we do not support forked conversations
+        //we always attatch to the last message in the queue
+
+        //TODO: implement forked conversations ==> might require updating the interfaces in order to support passing previous message_id explicitly
+        const lastMessage = this._messages[this._messages.length - 1];
+
+        if (lastMessage) {
+            if (!lastMessage.__smyth_data__?.next) {
+                lastMessage.__smyth_data__.next = [];
+            }
+            lastMessage.__smyth_data__.next.push(message_id);
+        }
+
+        const prev = lastMessage?.__smyth_data__?.message_id;
+        const next = [];
+
+        this.push({ role: 'user', content, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
     public addAssistantMessage(content: string, message_id: string, metadata?: any) {
-        this.push({ role: 'assistant', content, __smyth_data__: { message_id, ...metadata } });
+        const lastMessage = this._messages[this._messages.length - 1];
+
+        if (lastMessage) {
+            if (!lastMessage.__smyth_data__?.next) {
+                lastMessage.__smyth_data__.next = [];
+            }
+            lastMessage.__smyth_data__.next.push(message_id);
+        }
+
+        const prev = lastMessage?.__smyth_data__?.message_id;
+        const next = [];
+        this.push({ role: 'assistant', content, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
     public addToolMessage(messageBlock: any, toolsData: any, message_id: string, metadata?: any) {
-        this.push({ messageBlock, toolsData, __smyth_data__: { message_id, ...metadata } });
+        const lastMessage = this._messages[this._messages.length - 1];
+
+        if (lastMessage) {
+            if (!lastMessage.__smyth_data__?.next) {
+                lastMessage.__smyth_data__.next = [];
+            }
+            lastMessage.__smyth_data__.next.push(message_id);
+        }
+
+        const prev = lastMessage?.__smyth_data__?.message_id;
+        const next = [];
+        this.push({ messageBlock, toolsData, __smyth_data__: { message_id, ...metadata, prev, next } });
     }
 
     public async getContextWindow(maxTokens: number, maxOutputTokens: number = 1024): Promise<any[]> {

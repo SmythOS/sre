@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smyth CLI Agent</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #e6e7e8;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 50px);
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #2d2d2d;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            max-width: 800px;
+            padding: 8px;
+            border-radius: 12px;
+            margin: 4px 0;
+            white-space: pre-wrap;
+        }
+
+        .message.user {
+            background-color: #0066cc;
+            color: white;
+            align-self: flex-end;
+        }
+
+        .message.bot {
+            background-color: #404040;
+            color: #e6e7e8;
+            align-self: flex-start;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .input-container {
+            display: flex;
+            margin-top: 8px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 8px;
+            background-color: #2d2d2d;
+            color: #e6e7e8;
+            border: 1px solid #4d4d4d;
+            border-radius: 8px 0 0 8px;
+            outline: none;
+        }
+
+        .send-button {
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+        }
+
+        .send-button:hover {
+            background-color: #0052a3;
+        }
+
+        /* Dark theme scrollbar */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container" id="chat-container"></div>
+    <div class="status" id="status">Status: </div>
+    <div class="input-container">
+        <input type="text" id="input-field" class="input-field" placeholder="Type your message...">
+        <button id="send-button" class="send-button">Send</button>
+    </div>
+
+    <script>
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function refreshConversation() {
+            fetch('/refresh')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Conversation refreshed:', data);
+                });
+        }
+
+        function sendChatMessage(message) {
+
+            const emitter = new EventTarget();
+            // Assuming your endpoint URL is '/api/v1/chat/stream'
+            const eventSource = new EventSource('/api/v1/chat/stream?message=' + message);
+
+            // Function to handle incoming messages based on event type
+            function handleEvent(event) {
+                const data = JSON.parse(event.data);
+                console.log('Received event:', event.type);
+                console.log('Data:', data);
+                emitter.dispatchEvent(new CustomEvent(event.type, { detail: data?.content }));
+            }
+
+
+            // Add event listeners for specific event types
+            eventSource.addEventListener('status', handleEvent);
+            eventSource.addEventListener('end', () => {
+                eventSource.close();
+                emitter.dispatchEvent(new CustomEvent('end', { detail: 'end' }));
+            });
+
+
+
+            eventSource.addEventListener('message', handleEvent); // replace 'anotherEventType' with your actual event type
+
+            // Listen to the generic 'message' event (no event type specified by the server)
+            eventSource.onmessage = (event) => {
+                // This will handle any messages that don't have a specific event type assigned
+                console.log('Received generic message:', event.data);
+            };
+
+            // Handle any errors that occur
+            eventSource.onerror = (error) => {
+                console.error('EventSource failed:', error);
+            };
+
+            /*
+
+            (async function processMessage() {
+                const fullMessage = `User sent me ${message}`;
+                const words = fullMessage.split(' ');
+
+                emitter.dispatchEvent(new CustomEvent('status', { detail: 'preparing' }));
+                await delay(200);
+
+                emitter.dispatchEvent(new CustomEvent('status', { detail: 'thinking' }));
+                await delay(200);
+
+                emitter.dispatchEvent(new CustomEvent('status', { detail: 'writing' }));
+                await delay(200);
+
+                for (const word of words) {
+                    emitter.dispatchEvent(new CustomEvent('message', { detail: word }));
+                    await delay(50);
+                }
+            })();
+
+            */
+            return emitter;
+        }
+
+        const chatContainer = document.getElementById('chat-container');
+        const statusLabel = document.getElementById('status');
+        const inputField = document.getElementById('input-field');
+        const sendButton = document.getElementById('send-button');
+
+        let newMessage = true;
+        function appendMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.innerHTML = marked.parse(text);
+            chatContainer.appendChild(messageDiv);
+            scrollToBottom();
+            return messageDiv;
+        }
+
+        // Add new scroll helper function
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function handleSend() {
+            const input = inputField.value.trim();
+            if (input === '') return;
+
+            appendMessage(input, 'user');
+            statusLabel.textContent = `Status: Reading user message ...`;
+            inputField.value = '';
+
+            const emitter = sendChatMessage(input);
+            let botMessage = '';
+            let currentBotMessage = null;
+
+            emitter.addEventListener('status', (e) => {
+                statusLabel.textContent = `Status: ${e.detail}`;
+            });
+
+            emitter.addEventListener('message', (e) => {
+                statusLabel.textContent = `Status: Writing ....`;
+                botMessage += `${e.detail}`;
+                if (!currentBotMessage) {
+                    currentBotMessage = appendMessage('', 'bot');
+                }
+                currentBotMessage.innerHTML = marked.parse(botMessage.trim());
+                scrollToBottom(); // Add scroll after content update
+            });
+
+            emitter.addEventListener('end', () => {
+                currentBotMessage = null;
+                botMessage = '';
+                statusLabel.textContent = `Status: `;
+                console.log('end');
+            });
+        }
+
+        sendButton.addEventListener('click', handleSend);
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
+    </script>
+</body>
+
+</html>

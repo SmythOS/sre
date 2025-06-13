@@ -22,8 +22,8 @@ export class RAMCache extends CacheConnector {
     private cache: Map<string, CacheEntry> = new Map();
     private cleanupInterval: NodeJS.Timeout;
 
-    constructor() {
-        super();
+    constructor(protected _settings: any) {
+        super(_settings);
         // Set up cleanup interval to remove expired entries
 
         this.cleanupInterval = setInterval(() => this.cleanupExpiredEntries(), 60000); // Clean up every minute

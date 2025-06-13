@@ -15,8 +15,8 @@ export class NKVRedis extends NKVConnector {
     public name = 'Redis';
     private redisCacheConnector: RedisCache;
     private accountConnector: AccountConnector;
-    constructor() {
-        super();
+    constructor(protected _settings?: any) {
+        super(_settings);
         this.redisCacheConnector = ConnectorService.getCacheConnector('Redis') as RedisCache;
         this.accountConnector = ConnectorService.getAccountConnector();
     }

@@ -25,7 +25,7 @@ export interface TImageGeneratorSettings {
 }
 
 export type TImageGeneratorInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export type TImageGeneratorOutputs = {

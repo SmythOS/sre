@@ -133,6 +133,7 @@ export * from './subsystems/IO/Storage.service/SmythFS.class';
 export * from './subsystems/IO/Storage.service/StorageConnector';
 export * from './subsystems/IO/VectorDB.service/index';
 export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
+export * from './subsystems/LLMManager/LLM.service/Credentials.helper';
 export * from './subsystems/LLMManager/LLM.service/index';
 export * from './subsystems/LLMManager/LLM.service/LLMConnector';
 export * from './subsystems/LLMManager/ModelsProvider.service/index';

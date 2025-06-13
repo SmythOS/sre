@@ -23,10 +23,10 @@ export class StorageInstance extends EventEmitter {
         return this._fs;
     }
 
-    constructor(providerId: TStorageProvider, storageSettings: any = {}, candidate?: AccessCandidate) {
+    constructor(providerId?: TStorageProvider, storageSettings: any = {}, candidate?: AccessCandidate) {
         super();
         this._candidate = candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
-        let connector = ConnectorService.getStorageConnector(providerId);
+        let connector = ConnectorService.getStorageConnector(providerId || '');
 
         if (!connector?.valid) {
             connector = ConnectorService.init(TConnectorService.Storage, providerId, providerId, {});
@@ -38,7 +38,7 @@ export class StorageInstance extends EventEmitter {
             }
         }
 
-        const instance: StorageConnector = connector.instance(storageSettings);
+        const instance: StorageConnector = connector.instance(storageSettings || connector.settings);
 
         //this._storageRequest = connector.user(this._candidate);
         this._fs = SmythFS.getInstance(instance);

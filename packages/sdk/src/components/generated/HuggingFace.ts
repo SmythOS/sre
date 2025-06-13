@@ -20,7 +20,7 @@ export interface THuggingFaceSettings {
 }
 
 export type THuggingFaceInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export type THuggingFaceOutputs = {

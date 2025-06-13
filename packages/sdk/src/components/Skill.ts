@@ -18,7 +18,7 @@ export type TSkillSettings = {
 };
 
 export type TSkillInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export function Skill(settings?: TSkillSettings, agent?: Agent) {

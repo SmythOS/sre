@@ -4,8 +4,8 @@ import { getMainArgs, parseCLIArgs } from '@sre/utils/cli.utils';
 export class CLIConnector extends Connector {
     public name = 'CLI';
     public params: any;
-    constructor() {
-        super();
+    constructor(protected _settings?: any) {
+        super(_settings);
         this.params = this.parse(process.argv);
     }
 

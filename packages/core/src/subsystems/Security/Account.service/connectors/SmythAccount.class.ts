@@ -21,17 +21,17 @@ export class SmythAccount extends AccountConnector {
     private oAuthScope?: string;
     private smythAPI: AxiosInstance;
 
-    constructor(private config: SmythConfigs & OAuthConfig) {
-        super();
+    constructor(protected _settings: SmythConfigs & OAuthConfig) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.oAuthAppId = config.oAuthAppID;
-        this.oAuthAppSecret = config.oAuthAppSecret;
-        this.oAuthBaseUrl = config.oAuthBaseUrl;
-        this.oAuthResource = config.oAuthResource || '';
-        this.oAuthScope = config.oAuthScope || '';
+        this.oAuthAppId = _settings.oAuthAppID;
+        this.oAuthAppSecret = _settings.oAuthAppSecret;
+        this.oAuthBaseUrl = _settings.oAuthBaseUrl;
+        this.oAuthResource = _settings.oAuthResource || '';
+        this.oAuthScope = _settings.oAuthScope || '';
         this.smythAPI = axios.create({
-            baseURL: `${config.smythAPIBaseUrl}`,
+            baseURL: `${_settings.smythAPIBaseUrl}`,
         });
     }
 

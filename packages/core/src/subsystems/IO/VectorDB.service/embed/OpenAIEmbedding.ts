@@ -1,9 +1,8 @@
 import OpenAI, { type ClientOptions, OpenAI as OpenAIClient } from 'openai';
-import { BaseEmbedding, type BaseEmbeddingParams } from './BaseEmbedding';
-
-export interface OpenAIEmbeddingsParams extends BaseEmbeddingParams {
-    // OpenAI-specific parameters can be added here if needed
-}
+import { BaseEmbedding, TEmbeddings } from './BaseEmbedding';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { getLLMCredentials } from '@sre/LLMManager/LLM.service/Credentials.helper';
+import { TLLMCredentials, TLLMModel } from '@sre/types/LLM.types';
 
 // Helper function to create OpenAI API errors
 const createOpenAIError = (statusCode: number, error: any) => {
@@ -15,33 +14,25 @@ const createOpenAIError = (statusCode: number, error: any) => {
             type: error?.name,
         },
         error?.message,
-        null,
+        null
     );
 };
 
 const DEFAULT_MODEL = 'text-embedding-ada-002';
 
-export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddingsParams> {
+export class OpenAIEmbeds extends BaseEmbedding {
     protected client: OpenAIClient;
     protected clientConfig: ClientOptions;
 
     public static models = ['text-embedding-ada-002', 'text-embedding-3-large'];
     public canSpecifyDimensions = true;
 
-    constructor(
-        fields?: Partial<OpenAIEmbeddingsParams> & {
-            verbose?: boolean;
-            model?: (typeof OpenAIEmbeds.models)[number];
-            apiKey?: string;
-            configuration?: ClientOptions;
-        },
-    ) {
-        super({ maxConcurrency: 2, model: fields?.model ?? DEFAULT_MODEL, ...fields });
+    constructor(private settings?: Partial<TEmbeddings>) {
+        super({ maxConcurrency: 2, model: settings?.model ?? DEFAULT_MODEL, ...settings });
 
         this.clientConfig = {
-            apiKey: fields?.apiKey || process.env.OPENAI_API_KEY || '',
+            //apiKey: fields?.credentials?.apiKey || process.env.OPENAI_API_KEY || '',
             dangerouslyAllowBrowser: true,
-            ...fields?.configuration,
         };
 
         if (this.model === 'text-embedding-ada-002') {
@@ -49,7 +40,7 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
         }
     }
 
-    async embedTexts(texts: string[]): Promise<number[][]> {
+    async embedTexts(texts: string[], candidate: AccessCandidate): Promise<number[][]> {
         const batches = this.chunkArr(this.processTexts(texts), this.chunkSize);
 
         const batchRequests = batches.map((batch) => {
@@ -60,7 +51,7 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
             if (this.dimensions && this.canSpecifyDimensions) {
                 params.dimensions = this.dimensions;
             }
-            return this.embed(params);
+            return this.embed(params, candidate);
         });
         const batchResponses = await Promise.all(batchRequests);
 
@@ -75,7 +66,7 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
         return embeddings;
     }
 
-    async embedText(text: string): Promise<number[]> {
+    async embedText(text: string, candidate: AccessCandidate): Promise<number[]> {
         const params: OpenAIClient.EmbeddingCreateParams = {
             model: this.model,
             input: this.processTexts([text])[0],
@@ -83,14 +74,22 @@ export class OpenAIEmbeds extends BaseEmbedding implements Partial<OpenAIEmbeddi
         if (this.dimensions && this.canSpecifyDimensions) {
             params.dimensions = this.dimensions;
         }
-        const { data } = await this.embed(params);
+        const { data } = await this.embed(params, candidate);
         return data[0].embedding;
     }
 
-    protected async embed(request: OpenAIClient.EmbeddingCreateParams) {
+    protected async embed(request: OpenAIClient.EmbeddingCreateParams, candidate: AccessCandidate) {
+        const modelInfo: TLLMModel = {
+            provider: 'OpenAI',
+            modelId: this.model,
+            credentials: this.settings?.credentials as unknown as TLLMCredentials,
+        };
+        const credentials = await getLLMCredentials(candidate, modelInfo);
+
         if (!this.client) {
             const params: ClientOptions = {
                 ...this.clientConfig,
+                apiKey: credentials.apiKey,
                 timeout: this.timeout,
                 maxRetries: 0,
             };

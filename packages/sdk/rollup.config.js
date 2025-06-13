@@ -130,9 +130,12 @@ function colorfulLogs(title = 'SDK Builder') {
             startTime = Date.now();
             hasShownFinalMessage = false;
             hasBuildErrors = false;
-            console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-            console.log(`${colors.bright}${colors.bgBlue}  ${colors.reset}${colors.blue} ${title} ${colors.bgBlue}  ${colors.reset}`);
-            console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+            console.log(
+                `\n${colors.bright}${colors.magenta}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`
+            );
+            console.log(`${colors.bright} ${colors.green}    ${title}`);
+
+            console.log(`\n\n`);
             console.log(`${colors.yellow}⚡ ${colors.green}Building ${isProduction ? 'production' : 'development'} SDK bundle...${colors.reset}\n`);
 
             // Start spinner animation

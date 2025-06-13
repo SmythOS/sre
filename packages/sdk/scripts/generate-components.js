@@ -393,7 +393,7 @@ function mapSchemaTypeToTS(schemaType) {
 function generateInputsType(componentName, inputs) {
     if (!inputs || Object.keys(inputs).length === 0) {
         return `export type T${componentName}Inputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };`;
     }
 

@@ -58,16 +58,17 @@ export class RAMVectorDB extends VectorDBConnector {
     private acls: Record<string, IACL> = {};
     public embedder: BaseEmbedding;
 
-    constructor(settings: RAMVectorDBConfig) {
-        super();
+    constructor(protected _settings: RAMVectorDBConfig) {
+        super(_settings);
+
         this.accountConnector = ConnectorService.getAccountConnector();
 
-        if (!settings.embeddings) {
-            settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large' };
+        if (!_settings.embeddings) {
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large' };
         }
-        if (!settings.embeddings.dimensions) settings.embeddings.dimensions = 1024;
+        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
 
-        this.embedder = EmbeddingsFactory.create(settings.embeddings.provider, settings.embeddings);
+        this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -171,7 +172,7 @@ export class RAMVectorDB extends VectorDBConnector {
         // Get query vector
         let queryVector = query;
         if (typeof query === 'string') {
-            queryVector = await this.embedder.embedText(query);
+            queryVector = await this.embedder.embedText(query, acRequest.candidate as AccessCandidate);
         }
 
         // Search in namespace data
@@ -217,7 +218,7 @@ export class RAMVectorDB extends VectorDBConnector {
             if (typeof source.source === 'string') {
                 // Text embedding
 
-                vector = await this.embedder.embedText(source.source);
+                vector = await this.embedder.embedText(source.source, acRequest.candidate as AccessCandidate);
             } else {
                 // Direct vector
                 vector = source.source;
@@ -282,7 +283,7 @@ export class RAMVectorDB extends VectorDBConnector {
 
         for (let i = 0; i < chunks.length; i++) {
             const chunkId = `${datasourceId}_chunk_${i}`;
-            const vector = await this.embedder.embedText(chunks[i]);
+            const vector = await this.embedder.embedText(chunks[i], acRequest.candidate as AccessCandidate);
 
             const vectorData: VectorData = {
                 id: chunkId,

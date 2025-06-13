@@ -21,17 +21,17 @@ export class SmythVault extends VaultConnector {
     private oAuthScope?: string;
     private vaultAPI: AxiosInstance;
 
-    constructor(private config: SmythVaultConfig & OAuthConfig) {
-        super();
+    constructor(protected _settings: SmythVaultConfig & OAuthConfig) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.oAuthAppId = config.oAuthAppID;
-        this.oAuthAppSecret = config.oAuthAppSecret;
-        this.oAuthBaseUrl = config.oAuthBaseUrl;
-        this.oAuthResource = config.oAuthResource || '';
-        this.oAuthScope = config.oAuthScope || '';
+        this.oAuthAppId = _settings.oAuthAppID;
+        this.oAuthAppSecret = _settings.oAuthAppSecret;
+        this.oAuthBaseUrl = _settings.oAuthBaseUrl;
+        this.oAuthResource = _settings.oAuthResource || '';
+        this.oAuthScope = _settings.oAuthScope || '';
         this.vaultAPI = axios.create({
-            baseURL: `${config.vaultAPIBaseUrl}/v1/api`,
+            baseURL: `${_settings.vaultAPIBaseUrl}/v1/api`,
         });
     }
 

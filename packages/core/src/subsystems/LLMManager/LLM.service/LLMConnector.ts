@@ -103,7 +103,7 @@ export abstract class LLMConnector extends Connector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMConnectorParams,
-        agent: string | Agent,
+        agent: string | Agent
     ): Promise<LLMChatResponse>;
     protected abstract toolRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<any>;
     protected abstract streamToolRequest(acRequest: AccessRequest, params: TLLMConnectorParams | any, agent: string | Agent): Promise<any>;
@@ -112,7 +112,7 @@ export abstract class LLMConnector extends Connector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMConnectorParams,
-        agent: string | Agent,
+        agent: string | Agent
     ): Promise<EventEmitter>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
@@ -120,7 +120,7 @@ export abstract class LLMConnector extends Connector {
         acRequest: AccessRequest,
         prompt,
         params: TLLMConnectorParams,
-        agent: string | Agent,
+        agent: string | Agent
     ): Promise<OpenAI.ImagesResponse>;
 
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
@@ -249,6 +249,7 @@ export abstract class LLMConnector extends Connector {
         return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
+    //TODO : use getLLMCredentials from Credentials.helper.ts
     private async getCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
         //create a credentials list that we can iterate over
         //if the credentials are not provided, we will use None as a default in order to return empty credentials
@@ -336,7 +337,7 @@ export abstract class LLMConnector extends Connector {
             _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(
                 model,
                 _params.maxTokens,
-                _params?.credentials?.isUserKey as boolean,
+                _params?.credentials?.isUserKey as boolean
             );
         }
 
@@ -473,7 +474,7 @@ export abstract class LLMConnector extends Connector {
      */
     private async getBedrockCredentials(
         candidate: AccessCandidate,
-        modelInfo: TCustomLLMModel,
+        modelInfo: TCustomLLMModel
     ): Promise<{ accessKeyId: string; secretAccessKey: string; sessionToken?: string; isUserKey: boolean }> {
         const keyIdName = (modelInfo.settings as TBedrockSettings)?.keyIDName;
         const secretKeyName = (modelInfo.settings as TBedrockSettings)?.secretKeyName;

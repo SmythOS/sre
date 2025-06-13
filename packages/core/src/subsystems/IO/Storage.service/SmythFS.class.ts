@@ -67,10 +67,7 @@ export class SmythFS {
         return instance;
     }
 
-    private constructor(
-        private storage: StorageConnector,
-        private cache: CacheConnector,
-    ) {
+    private constructor(private storage: StorageConnector, private cache: CacheConnector) {
         //SmythFS cannot be used without SRE
         if (!ConnectorService.ready) {
             throw new Error('SRE not available');
@@ -113,7 +110,7 @@ export class SmythFS {
 
         const data = await this.storage.user(_candidate).read(resourceId);
 
-        return this.toBuffer(data);
+        return data ? this.toBuffer(data) : null;
     }
 
     public async write(uri: string, data: any, candidate?: IAccessCandidate, metadata?: StorageMetadata, ttl?: number) {
@@ -222,7 +219,7 @@ export class SmythFS {
             }),
             undefined,
             undefined,
-            ttlSeconds,
+            ttlSeconds
         ); // 1 hour
 
         const baseUrl = ConnectorService.getRouterConnector().baseUrl;
@@ -317,7 +314,7 @@ export class SmythFS {
                 contentType: resourceMetadata?.ContentType,
             }),
             undefined,
-            undefined,
+            undefined
             // 3600 // 1 hour
         );
 
@@ -423,7 +420,7 @@ export class SmythFS {
 
         const afterProtocol = parts[1];
         const hostnameEnd = Math.min(
-            ...[afterProtocol.indexOf('/'), afterProtocol.indexOf('?'), afterProtocol.indexOf('#'), afterProtocol.length].filter((i) => i >= 0),
+            ...[afterProtocol.indexOf('/'), afterProtocol.indexOf('?'), afterProtocol.indexOf('#'), afterProtocol.length].filter((i) => i >= 0)
         );
 
         const originalHostnamePart = afterProtocol.substring(0, hostnameEnd);

@@ -134,9 +134,13 @@ function colorfulLogs(title = 'Builder') {
             startTime = Date.now();
             hasShownFinalMessage = false; // Reset flag on new build
             hasBuildErrors = false; // Reset error flag on new build
-            console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-            console.log(`${colors.bright}${colors.bgGreen}  ${colors.reset}${colors.green} ${title} ${colors.bgGreen}  ${colors.reset}`);
-            console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+            console.log(
+                `\n${colors.bright}${colors.magenta}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`
+            );
+            console.log(`${colors.bright} ${colors.green}    ${title}`);
+
+            console.log(`\n\n`);
+
             console.log(`${colors.yellow}⚡ ${colors.green}Building ${isProduction ? 'production' : 'development'} bundle...${colors.reset}\n`);
 
             // Start spinner animation

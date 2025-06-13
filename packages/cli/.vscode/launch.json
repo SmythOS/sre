@@ -1,0 +1,132 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug CLI - Agent Help",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": ["--enable-source-maps"],
+            "program": "${workspaceFolder}/dist/index.js",
+            "cwd": "${workspaceFolder}/../../", // Set to monorepo root
+            "args": ["agent", "./packages/cli/test.smyth", "--skill", "get_price", "--input", "coin_id=bitcoin", "param2=hello world"],
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "name": "Debug CLI - Agent Chat",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": ["--enable-source-maps"],
+            "program": "${workspaceFolder}/dist/cli.cjs",
+            "cwd": "${workspaceFolder}/../../", // Set to monorepo root
+            "args": ["agent", "./packages/cli/test-agent.smyth", "--chat", "claude-3.7-sonnet"],
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "name": "Debug CLI - Agent Skill",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": ["--enable-source-maps"],
+            "program": "${workspaceFolder}/dist/cli.cjs",
+            "cwd": "${workspaceFolder}/../../", // Set to monorepo root
+            "args": ["agent", "./packages/cli/test-agent.json", "--skill", "testSkill", "--params", "param1", "param2"],
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "name": "Debug CLI - TypeScript Source",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/index.ts",
+            "cwd": "${workspaceFolder}/../../", // Set to monorepo root
+            "args": ["agent", "./packages/cli/test-agent.json", "--chat"],
+            "console": "integratedTerminal",
+            "runtimeArgs": ["-r", "ts-node/register", "--enable-source-maps"],
+            "sourceMaps": true,
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "env": {
+                "NODE_ENV": "development",
+                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            }
+        },
+        {
+            "name": "Debug CLI - Custom Args",
+            "type": "node",
+            "request": "launch",
+            "runtimeArgs": ["--enable-source-maps"],
+            "program": "${workspaceFolder}/dist/cli.cjs",
+            "cwd": "${workspaceFolder}/../../", // Set to monorepo root
+            "args": [], // You can modify these args before debugging
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "name": "Attach to CLI Process",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "address": "127.0.0.1",
+            "localRoot": "${workspaceFolder}/../../", // Set to monorepo root
+            "remoteRoot": "${workspaceFolder}/../../", // Set to monorepo root
+            "sourceMaps": true,
+            "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/../core/**",
+                "${workspaceFolder}/../sdk/**",
+                "!**/node_modules/**"
+            ],
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+        }
+    ]
+}

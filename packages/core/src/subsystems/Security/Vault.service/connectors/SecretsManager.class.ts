@@ -21,16 +21,16 @@ export class SecretsManager extends VaultConnector {
     public name: string = 'SecretsManager';
     private secretsManager: SecretsManagerClient;
 
-    constructor(private config: SecretsManagerConfig) {
-        super();
+    constructor(protected _settings: SecretsManagerConfig) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.secretsManager = new SecretsManagerClient({
-            region: config.region,
-            ...(config.awsAccessKeyId && config.awsSecretAccessKey
+            region: _settings.region,
+            ...(_settings.awsAccessKeyId && _settings.awsSecretAccessKey
                 ? {
-                      accessKeyId: config.awsAccessKeyId,
-                      secretAccessKey: config.awsSecretAccessKey,
+                      accessKeyId: _settings.awsAccessKeyId,
+                      secretAccessKey: _settings.awsSecretAccessKey,
                   }
                 : {}),
         });

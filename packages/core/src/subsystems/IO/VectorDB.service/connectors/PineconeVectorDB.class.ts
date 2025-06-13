@@ -43,29 +43,29 @@ export class PineconeVectorDB extends VectorDBConnector {
     private nkvConnector: NKVConnector;
     public embedder: BaseEmbedding;
 
-    constructor(settings: PineconeConfig) {
-        super();
-        if (!settings.pineconeApiKey) {
+    constructor(protected _settings: PineconeConfig) {
+        super(_settings);
+        if (!_settings.pineconeApiKey) {
             console.warn('Missing Pinecone API key : returning empty Pinecone connector');
             return;
         }
-        if (!settings.indexName) {
+        if (!_settings.indexName) {
             console.warn('Missing Pinecone index name : returning empty Pinecone connector');
             return;
         }
 
         this.client = new Pinecone({
-            apiKey: settings.pineconeApiKey,
+            apiKey: _settings.pineconeApiKey,
         });
         console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', settings.indexName);
-        this.indexName = settings.indexName;
+        console.info('Pinecone index name:', _settings.indexName);
+        this.indexName = _settings.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
-        if (!settings.embeddings.dimensions) settings.embeddings.dimensions = 1024;
+        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
 
-        this.embedder = EmbeddingsFactory.create(settings.embeddings.provider, settings.embeddings);
+        this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -141,14 +141,14 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions = {},
+        options: QueryOptions = {}
     ): Promise<VectorsResultData> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
         const pineconeIndex = this.client.Index(this.indexName).namespace(VectorDBConnector.constructNsName(teamId, namespace));
         let _vector = query;
         if (typeof query === 'string') {
-            _vector = await this.embedder.embedText(query);
+            _vector = await this.embedder.embedText(query, acRequest.candidate as AccessCandidate);
         }
 
         const topK = (options.topK || 10) + 1; //* we increment one in case it included the skeleton vector
@@ -183,7 +183,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async insert(
         acRequest: AccessRequest,
         namespace: string,
-        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[],
+        sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
@@ -195,7 +195,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const sourceType = this.embedder.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
-        const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType);
+        const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType, acRequest.candidate as AccessCandidate);
         const preparedSource = transformedSource.map((s) => ({
             id: s.id,
             values: s.source as number[],
@@ -280,7 +280,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
+            )?.toString()
         ).tryParse();
 
         if (!ds || typeof ds !== 'object') {
@@ -299,7 +299,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         return (await this.nkvConnector.user(AccessCandidate.team(teamId)).list(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`)).map(
             (ds) => {
                 return JSONContentHelper.create(ds.data?.toString()).tryParse() as IStorageVectorDataSource;
-            },
+            }
         );
     }
 
@@ -312,7 +312,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                 await this.nkvConnector
                     .user(AccessCandidate.team(teamId))
                     .get(`vectorDB:${this.id}:namespaces:${formattedNs}:datasources`, datasourceId)
-            )?.toString(),
+            )?.toString()
         ).tryParse() as IStorageVectorDataSource;
     }
 

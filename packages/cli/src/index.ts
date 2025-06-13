@@ -1,97 +1,50 @@
 /**
- * SRE CLI Tool
- * Command line interface for SmythOS SRE (Smyth Runtime Environment)
+ * SRE CLI Entry Point
+ * Oclif CLI runner with better error handling
  */
 
-import { program } from 'commander';
-import { version } from '../package.json';
-import updateNotifier from 'update-notifier';
+import { run } from '@oclif/core';
 import chalk from 'chalk';
 
-// Check for updates
-const notifier = updateNotifier({
-    pkg: { name: '@smythos/cli', version },
-    updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
-    shouldNotifyInNpmScript: false,
-});
-
-// Show update notification
-notifier.notify({
-    isGlobal: true,
-    boxenOptions: {
-        padding: 1,
-        margin: 1,
-        textAlignment: 'center',
-        borderColor: 'yellow',
-        borderStyle: 'round',
-    },
-});
-
-// Set up the main program
-program.name('sre').description('SmythOS SRE Command Line Interface').version(version);
-
-// Add basic commands
-program
-    .command('init')
-    .description('Initialize a new SRE project')
-    .action(() => {
-        console.log('🚀 Initializing new SRE project...');
-        // TODO: Implement project initialization
-    });
-
-program
-    .command('build')
-    .description('Build the current SRE project')
-    .action(() => {
-        console.log('🔨 Building SRE project...');
-        // TODO: Implement project build
-    });
-
-program
-    .command('dev')
-    .description('Start development server')
-    .action(() => {
-        console.log('🔧 Starting development server...');
-        // TODO: Implement development server
-    });
-
-program
-    .command('deploy')
-    .description('Deploy the SRE project')
-    .action(() => {
-        console.log('🚀 Deploying SRE project...');
-        // TODO: Implement deployment
-    });
-
-// Update management commands
-program
-    .command('update')
-    .description('Check for and install updates')
-    .option('--check', 'Only check for updates without installing')
-    .action(async (options) => {
-        if (options.check) {
-            console.log(chalk.blue('🔍 Checking for updates...'));
-            const updateInfo = await notifier.fetchInfo();
-
-            if (updateInfo && updateInfo.current !== updateInfo.latest) {
-                console.log(chalk.yellow(`📦 Update available! ${updateInfo.current} → ${updateInfo.latest}`));
-                console.log(chalk.gray(`Run: ${chalk.white('npm install -g @smythos/cli@latest')} to update`));
-            } else {
-                console.log(chalk.green('✅ You are running the latest version!'));
+// Run the Oclif CLI with better error handling
+(async () => {
+    try {
+        await run(process.argv.slice(2), import.meta.url);
+    } catch (error: any) {
+        // Handle different types of errors gracefully
+        if (error.oclif?.exit !== undefined) {
+            // This is an Oclif error (like missing args, invalid commands, etc.)
+            if (error.message) {
+                console.error(chalk.red('❌ Error:'), chalk.gray(error.message));
             }
+
+            // Show helpful guidance based on error type
+            if (error.message?.includes('Missing') && error.message?.includes('required arg')) {
+                console.error('');
+                console.error(chalk.yellow('💡 Tip:'), chalk.gray('Make sure to provide all required arguments'));
+                console.error(chalk.blue('   Example:'), chalk.cyan('sre agent ./myagent.smyth --chat'));
+            } else if (error.message?.includes('not found')) {
+                console.error('');
+                console.error(chalk.yellow('💡 Available commands:'));
+                console.error(chalk.cyan('   sre agent <path> <mode>'));
+                console.error(chalk.cyan('   sre create'));
+                console.error(chalk.cyan('   sre update'));
+            }
+
+            console.error('');
+            console.error(chalk.blue('📖 For detailed help, run:'));
+            console.error(chalk.cyan('   sre --help'));
+            console.error(chalk.cyan('   sre <command> --help'));
+
+            process.exit(error.oclif.exit);
         } else {
-            console.log(chalk.blue('🔄 Auto-update not implemented. Please run:'));
-            console.log(chalk.white('npm install -g @smythos/cli@latest'));
+            // This is an unexpected error
+            console.error(chalk.red('❌ Unexpected error:'));
+            console.error(chalk.gray(error.message || String(error)));
+            console.error('');
+            console.error(chalk.blue('💡 For help, run:'));
+            console.error(chalk.cyan('   sre --help'));
+            process.exit(1);
         }
-    });
-
-program
-    .command('version')
-    .description('Show version information')
-    .action(() => {
-        console.log(chalk.blue(`SRE CLI v${version}`));
-        console.log(chalk.gray('SmythOS SRE Command Line Interface'));
-    });
-
-// Parse command line arguments
-program.parse();
+    }
+})();

@@ -19,8 +19,8 @@ export class NullVault extends VaultConnector {
     private index: any;
     private sharedVault: boolean;
 
-    constructor(private settings: JSONFileVaultConfig) {
-        super();
+    constructor(protected _settings: JSONFileVaultConfig) {
+        super(_settings);
         console.warn('NullVault is used : Vault features will not be available');
     }
 

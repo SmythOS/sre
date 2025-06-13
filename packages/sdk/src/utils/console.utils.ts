@@ -1,6 +1,8 @@
+import chalk from 'chalk';
+
 export const SDKLog = {
     warn: (...args: any[]) => {
-        console.warn('[WARN]', ...args);
+        console.warn(chalk.gray('[WARN]', ...args));
     },
     error: (...args: any[]) => {
         console.error('[ERR]', ...args);

@@ -10,14 +10,14 @@ export class AWSAccount extends AccountConnector {
 
     private pool: mysql.Pool;
 
-    constructor(private config: any) {
-        super();
+    constructor(protected _settings: any) {
+        super(_settings);
 
         this.pool = mysql.createPool({
-            host: config.host,
-            database: config.database || 'app',
-            user: config.user || 'app',
-            password: config.password,
+            host: _settings.host,
+            database: _settings.database || 'app',
+            user: _settings.user || 'app',
+            password: _settings.password,
             connectionLimit: 10,
         });
     }

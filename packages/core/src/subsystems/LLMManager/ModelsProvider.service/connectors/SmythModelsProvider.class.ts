@@ -40,15 +40,15 @@ export class SmythModelsProvider extends ModelsProviderConnector {
 
     private models: TLLMModelsList;
 
-    constructor(private settings?: SmythModelsProviderConfig) {
-        super();
+    constructor(protected _settings?: SmythModelsProviderConfig) {
+        super(_settings);
 
         this.models = JSON.parse(JSON.stringify(models));
-        if (typeof this.settings.models === 'string') {
-            this.initDirWatcher(this.settings.models);
-        } else if (typeof this.settings.models === 'object') {
-            if (this.settings.mode === 'merge') this.models = { ...this.models, ...(this.settings.models as TLLMModelsList) };
-            else this.models = this.settings.models as TLLMModelsList;
+        if (typeof this._settings.models === 'string') {
+            this.initDirWatcher(this._settings.models);
+        } else if (typeof this._settings.models === 'object') {
+            if (this._settings.mode === 'merge') this.models = { ...this.models, ...(this._settings.models as TLLMModelsList) };
+            else this.models = this._settings.models as TLLMModelsList;
             this.started = true;
         } else {
             this.started = true;
@@ -92,7 +92,7 @@ export class SmythModelsProvider extends ModelsProviderConnector {
             const scannedModels = await this.scanDirectoryForModels(dir);
 
             // Apply models based on settings mode or default behavior
-            if (this.settings?.mode === 'merge') {
+            if (this._settings?.mode === 'merge') {
                 this.models = { ...this.models, ...scannedModels };
             } else {
                 // Default behavior: reset to base models first, then add scanned models
@@ -186,8 +186,20 @@ export class SmythModelsProvider extends ModelsProviderConnector {
     }
 
     private async initDirWatcher(dir) {
-        if (!(await fs.stat(dir)).isDirectory()) {
-            console.warn(`Directory "${dir}" does not exist`);
+        if (!dir) return;
+
+        try {
+            const stats = await fs.stat(dir);
+            if (!stats.isDirectory()) {
+                console.warn(`Path "${dir}" exists but is not a directory`);
+                return;
+            }
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                console.warn(`Directory "${dir}" does not exist`);
+            } else {
+                console.warn(`Error accessing directory "${dir}":`, error.message);
+            }
             return;
         }
 

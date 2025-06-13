@@ -23,19 +23,19 @@ export class SmythManagedVault extends ManagedVaultConnector {
     private smythAPI: AxiosInstance;
     private vaultName: string;
 
-    constructor(private config: SmythConfigs & OAuthConfig & { vaultName: string }) {
-        super();
+    constructor(protected _settings: SmythConfigs & OAuthConfig & { vaultName: string }) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        this.oAuthAppId = config.oAuthAppID;
-        this.oAuthAppSecret = config.oAuthAppSecret;
-        this.oAuthBaseUrl = config.oAuthBaseUrl;
-        this.oAuthResource = config.oAuthResource || '';
-        this.oAuthScope = config.oAuthScope || '';
+        this.oAuthAppId = _settings.oAuthAppID;
+        this.oAuthAppSecret = _settings.oAuthAppSecret;
+        this.oAuthBaseUrl = _settings.oAuthBaseUrl;
+        this.oAuthResource = _settings.oAuthResource || '';
+        this.oAuthScope = _settings.oAuthScope || '';
         this.smythAPI = axios.create({
-            baseURL: `${config.smythAPIBaseUrl}`,
+            baseURL: `${_settings.smythAPIBaseUrl}`,
         });
-        this.vaultName = config.vaultName || 'vault';
+        this.vaultName = _settings.vaultName || 'vault';
     }
 
     @SecureConnector.AccessControl
@@ -60,7 +60,7 @@ export class SmythManagedVault extends ManagedVaultConnector {
                 settingKey: this.vaultName,
                 settingValue: JSON.stringify(vaultData),
             },
-            { headers: await this.getSmythRequestHeaders() },
+            { headers: await this.getSmythRequestHeaders() }
         );
     }
 
@@ -77,7 +77,7 @@ export class SmythManagedVault extends ManagedVaultConnector {
                 settingKey: this.vaultName,
                 settingValue: JSON.stringify(vaultData),
             },
-            { headers: await this.getSmythRequestHeaders() },
+            { headers: await this.getSmythRequestHeaders() }
         );
     }
 

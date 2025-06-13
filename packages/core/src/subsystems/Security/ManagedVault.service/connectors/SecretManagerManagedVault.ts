@@ -29,16 +29,16 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
     public scope: string = 'smyth-managed-vault';
     private secretsManager: SecretsManagerClient;
 
-    constructor(private config: SecretsManagerConfig & { vaultName: string }) {
-        super();
+    constructor(protected _settings: SecretsManagerConfig & { vaultName: string }) {
+        super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
         this.secretsManager = new SecretsManagerClient({
-            region: config.region,
-            ...(config.awsAccessKeyId && config.awsSecretAccessKey
+            region: _settings.region,
+            ...(_settings.awsAccessKeyId && _settings.awsSecretAccessKey
                 ? {
-                      accessKeyId: config.awsAccessKeyId,
-                      secretAccessKey: config.awsSecretAccessKey,
+                      accessKeyId: _settings.awsAccessKeyId,
+                      secretAccessKey: _settings.awsSecretAccessKey,
                   }
                 : {}),
         });

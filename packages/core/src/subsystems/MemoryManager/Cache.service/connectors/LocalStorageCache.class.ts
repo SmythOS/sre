@@ -19,9 +19,9 @@ export class LocalStorageCache extends CacheConnector {
     private _prefix: string = 'cache';
     private _mdPrefix: string = 'cache.metadata';
     private isInitialized: boolean = false;
-    constructor(settings: LocalStorageConfig) {
-        super();
-        this.folder = settings.folder || `${os.tmpdir()}/.smyth/cache`;
+    constructor(_settings: LocalStorageConfig) {
+        super(_settings);
+        this.folder = _settings.folder || `${os.tmpdir()}/.smyth/cache`;
         this.initialize();
     }
 
@@ -38,7 +38,7 @@ export class LocalStorageCache extends CacheConnector {
             mkdirSync(metadataFolderPath, { recursive: true });
             writeFileSync(
                 path.join(metadataFolderPath, 'README_IMPORTANT.txt'),
-                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS cache functionality',
+                'This folder is used for smythOS metadata, do not delete it, it will break SmythOS cache functionality'
             );
         }
         this.isInitialized = true;

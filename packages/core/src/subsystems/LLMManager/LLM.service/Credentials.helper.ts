@@ -29,7 +29,7 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
                 return { apiKey: '' };
             }
             case TLLMCredentials.Internal: {
-                const credentials = await getEnvCredentials(candidate, modelInfo as TLLMModel);
+                const credentials = await getInternalCredentials(modelInfo as TLLMModel);
                 if (credentials) return credentials;
                 break;
             }
@@ -54,7 +54,7 @@ export async function getLLMCredentials(candidate: AccessCandidate, modelInfo: T
     return {};
 }
 
-async function getEnvCredentials(candidate: AccessCandidate, modelInfo: TLLMModel): Promise<{ apiKey: string }> {
+async function getInternalCredentials(modelInfo: TLLMModel): Promise<{ apiKey: string }> {
     const provider = (modelInfo.provider || modelInfo.llm)?.toLowerCase();
     const apiKey = SMYTHOS_API_KEYS?.[provider] || '';
     if (!apiKey) return null;

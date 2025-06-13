@@ -14,7 +14,7 @@ export interface TAwaitSettings {
 }
 
 export type TAwaitInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export type TAwaitOutputs = {

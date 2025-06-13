@@ -4,8 +4,8 @@ import { RouterConnector, GenericRequestHandler } from '../RouterConnector';
 const console = Logger('NullRouter');
 export class NullRouter extends RouterConnector {
     public baseUrl: string;
-    constructor() {
-        super();
+    constructor(protected _settings?: any) {
+        super(_settings);
         this.baseUrl = 'http://nullrouter.local';
     }
 

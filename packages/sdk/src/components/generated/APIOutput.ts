@@ -14,7 +14,7 @@ export interface TAPIOutputSettings {
 }
 
 export type TAPIOutputInputs = {
-    [key: string]: any;
+    [key: string]: InputSettings;
 };
 
 export type TAPIOutputOutputs = {

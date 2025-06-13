@@ -1,10 +1,12 @@
 import json from '@rollup/plugin-json';
-import { createFilter } from '@rollup/pluginutils';
 import path from 'path';
 import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
 import { typescriptPaths } from 'rollup-plugin-typescript-paths';
+
+import commonjs from '@rollup/plugin-commonjs';
+import resolve from '@rollup/plugin-node-resolve';
 
 const isProduction = process.env.BUILD === 'prod';
 
@@ -14,9 +16,15 @@ const isExternal = (id) => {
 };
 
 const config = {
-    input: 'src/index.ts',
+    input: {
+        index: 'src/index.ts',
+        'commands/agent': 'src/commands/agent.ts',
+        'commands/create': 'src/commands/create.ts',
+        'commands/update': 'src/commands/update.ts',
+        help: 'src/help.ts',
+    },
     output: {
-        file: 'dist/index.js',
+        dir: 'dist',
         format: 'es',
         sourcemap: true,
         banner: '#!/usr/bin/env node',
@@ -38,6 +46,85 @@ const config = {
             sourcesContent: true,
         }),
         ...(isProduction ? [terser()] : []),
+    ],
+};
+
+const devConfig = {
+    input: './src/index.ts',
+    output: {
+        file: './dist/cli.cjs', // CommonJS output
+        format: 'cjs', // Specify the CommonJS format
+        sourcemap: true,
+        inlineDynamicImports: true, // Inline all dynamic imports into one file
+        banner: '#!/usr/bin/env node',
+    },
+    plugins: [
+        resolve({
+            browser: false, // Explicitly disable browser field resolution
+            preferBuiltins: true, // Prefer Node.js built-in modules
+            mainFields: ['main', 'module'], // Prioritize 'main' field for Node.js packages
+            extensions: ['.js', '.ts', '.json'], // Resolve these extensions
+            exportConditions: ['node'], // Use Node.js export conditions
+        }),
+        commonjs({
+            // Handle mixed ES modules and CommonJS
+            transformMixedEsModules: true,
+            // Ignore browser-specific globals
+            ignore: ['electron'],
+        }),
+        json(),
+
+        typescriptPaths({
+            tsconfig: './tsconfig.json',
+            preserveExtensions: true,
+            nonRelative: false,
+        }),
+        esbuild({
+            sourceMap: true,
+            minify: false,
+            treeShaking: false,
+            target: 'node18',
+            platform: 'node', // Explicitly set platform to node
+            define: {
+                // Define Node.js environment
+                'process.env.NODE_ENV': '"development"',
+                global: 'globalThis',
+            },
+        }),
+        sourcemaps(),
+    ],
+    external: [
+        // Keep Node.js built-ins external
+        'fs',
+        'path',
+        'os',
+        'util',
+        'crypto',
+        'events',
+        'stream',
+        'url',
+        'querystring',
+        'http',
+        'https',
+        'net',
+        'tls',
+        'zlib',
+        'buffer',
+        'child_process',
+        'cluster',
+        'dgram',
+        'dns',
+        'domain',
+        'module',
+        'readline',
+        'repl',
+        'string_decoder',
+        'timers',
+        'tty',
+        'vm',
+        'worker_threads',
+        'perf_hooks',
+        'async_hooks',
     ],
 };
 
@@ -94,9 +181,12 @@ function colorfulLogs(title = 'CLI Builder') {
         buildStart() {
             startTime = Date.now();
             hasShownFinalMessage = false;
-            console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-            console.log(`${colors.bright}${colors.bgBlue}  ${colors.reset}${colors.blue} ${title} ${colors.bgBlue}  ${colors.reset}`);
-            console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+            console.log(
+                `\n${colors.bright}${colors.magenta}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`
+            );
+            console.log(`${colors.bright} ${colors.green}    ${title}`);
+
+            console.log(`\n\n`);
             console.log(`${colors.yellow}⚡ ${colors.green}Building ${isProduction ? 'production' : 'development'} CLI bundle...${colors.reset}\n`);
 
             spinnerInterval = setInterval(() => {

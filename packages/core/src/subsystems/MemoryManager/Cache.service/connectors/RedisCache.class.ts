@@ -20,15 +20,15 @@ export class RedisCache extends CacheConnector {
     private _prefix: string = 'smyth:cache';
     private _mdPrefix: string = 'smyth:metadata';
 
-    constructor(settings: RedisConfig) {
-        super();
-        const sentinels = parseSentinelHosts(settings.hosts || process.env.REDIS_HOSTS);
+    constructor(protected _settings: RedisConfig) {
+        super(_settings);
+        const sentinels = parseSentinelHosts(_settings.hosts || process.env.REDIS_HOSTS);
         let host = sentinels.length === 1 ? sentinels[0].host : null;
         let port = sentinels.length === 1 ? sentinels[0].port : null;
 
         this.redis = new IORedis({
-            ...(host ? { host, port } : { sentinels, name: settings.name || process.env.REDIS_MASTER_NAME }),
-            password: settings.password || process.env.REDIS_PASSWORD,
+            ...(host ? { host, port } : { sentinels, name: _settings.name || process.env.REDIS_MASTER_NAME }),
+            password: _settings.password || process.env.REDIS_PASSWORD,
         });
 
         this.redis.on('error', (error) => {

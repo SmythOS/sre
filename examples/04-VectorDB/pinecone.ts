@@ -10,11 +10,11 @@ async function main() {
 
         pineconeApiKey: process.env.PINECONE_API_KEY,
         embeddings: Model.OpenAI('text-embedding-3-large', {
-            apiKey: process.env.OPENAI_API_KEY,
+            apiKey: 'fake_key',
         }),
     });
 
-    console.log(pinecone);
+    //console.log(pinecone);
 
     const result = await pinecone.insertDoc('test', 'Hello, world!');
     console.log(result);

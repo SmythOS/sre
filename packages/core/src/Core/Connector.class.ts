@@ -13,6 +13,10 @@ export class Connector<TRequest = any> {
     private _readyPromise: Promise<boolean>;
     private static lCache = new LocalCache();
 
+    public get settings() {
+        return this._settings;
+    }
+
     public get interactionHandler() {
         return this._interactionHandler;
     }
@@ -23,7 +27,7 @@ export class Connector<TRequest = any> {
         return true;
     }
 
-    constructor(config: any = {}) {
+    constructor(protected _settings?: any) {
         //TODO : check if smyth runtime is initialized and throw an error if it is not
     }
 
@@ -38,12 +42,12 @@ export class Connector<TRequest = any> {
      * This method can be called on both Connector instances and its subclasses.
      * This is used when we need to create a connector instance with a specific configuration (for example with user provided keys)
      *
-     * @param config - Configuration settings for the new instance.
+     * @param settings - Configuration settings for the new instance.
      * @returns A new instance of the current class.
      */
-    public instance(config: any): this {
+    public instance(settings: any): this {
         const configHash = createHash('sha256')
-            .update(JSON.stringify(config || {}))
+            .update(JSON.stringify(settings || {}))
             .digest('hex');
         const key = `${this.name}-${configHash}`;
 
@@ -53,7 +57,7 @@ export class Connector<TRequest = any> {
 
         // if not in cache, create a new instance from the concrete class
         const constructor = this.constructor as { new (config: any): any };
-        const instance = new constructor(config);
+        const instance = new constructor(settings);
         Connector.lCache.set(key, instance, 60 * 60 * 1000); // cache for 1 hour
 
         return instance;

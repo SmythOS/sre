@@ -5,11 +5,11 @@ export class ExpressRouter extends RouterConnector {
     private router: Router;
     public baseUrl: string;
 
-    constructor(config: { router: Router; baseUrl: string }) {
-        super(config);
+    constructor(protected _settings?: { router: Router; baseUrl: string }) {
+        super(_settings);
         this.name = 'ExpressRouter';
-        this.router = config.router;
-        this.baseUrl = config.baseUrl;
+        this.router = _settings.router;
+        this.baseUrl = _settings.baseUrl;
     }
 
     get(path: string, ...handlers: GenericRequestHandler[]): this {

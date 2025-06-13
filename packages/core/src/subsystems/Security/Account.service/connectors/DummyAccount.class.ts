@@ -45,9 +45,9 @@ export class DummyAccount extends AccountConnector {
     public name = 'DummyAccount';
     public data: any = {};
 
-    constructor(private settings) {
-        super();
-        this.data = settings.data || {};
+    constructor(protected _settings?: any) {
+        super(_settings);
+        this.data = _settings?.data || {};
         if (!this.data[DEFAULT_TEAM_ID]) {
             this.data[DEFAULT_TEAM_ID] = {
                 users: {},
@@ -57,7 +57,7 @@ export class DummyAccount extends AccountConnector {
         }
         if (!this.data[DEFAULT_TEAM_ID])
             console.warn(
-                'You are using the DummyAccount connector. This is a development tool and should not be used in production if you have security concerns.',
+                'You are using the DummyAccount connector. This is a development tool and should not be used in production if you have security concerns.'
             );
     }
 
