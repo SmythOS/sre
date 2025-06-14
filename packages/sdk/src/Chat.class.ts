@@ -60,7 +60,58 @@ class ChatCommand {
     async stream(): Promise<EventEmitter> {
         await this.chat.ready;
         this._conversation.streamPrompt(this.prompt);
-        return this._conversation;
+        //return this._conversation;
+
+        const eventEmitter = new EventEmitter();
+
+        const toolInfoHandler = (toolInfo: any) => {
+            eventEmitter.emit(TLLMEvent.ToolInfo, toolInfo);
+        };
+        const interruptedHandler = (interrupted: any) => {
+            eventEmitter.emit(TLLMEvent.Interrupted, interrupted);
+        };
+
+        const contentHandler = (content: string) => {
+            eventEmitter.emit(TLLMEvent.Content, content);
+        };
+        const toolCallHandler = (toolCall: any) => {
+            eventEmitter.emit(TLLMEvent.ToolCall, toolCall);
+        };
+        const toolResultHandler = (toolResult: any) => {
+            eventEmitter.emit(TLLMEvent.ToolResult, toolResult);
+        };
+        const endHandler = () => {
+            eventEmitter.emit(TLLMEvent.End);
+            removeHandlers();
+        };
+        const errorHandler = (error: any) => {
+            eventEmitter.emit(TLLMEvent.Error, error);
+            removeHandlers();
+        };
+        const usageHandler = (usage: any) => {
+            eventEmitter.emit(TLLMEvent.Usage, usage);
+        };
+
+        const removeHandlers = () => {
+            this._conversation.off(TLLMEvent.ToolCall, toolCallHandler);
+            this._conversation.off(TLLMEvent.ToolResult, toolResultHandler);
+            this._conversation.off(TLLMEvent.Usage, usageHandler);
+            this._conversation.off(TLLMEvent.End, endHandler);
+            this._conversation.off(TLLMEvent.Error, errorHandler);
+            this._conversation.off(TLLMEvent.Content, contentHandler);
+            this._conversation.off(TLLMEvent.ToolInfo, toolInfoHandler);
+            this._conversation.off(TLLMEvent.Interrupted, interruptedHandler);
+        };
+
+        this._conversation.on(TLLMEvent.ToolCall, toolCallHandler);
+        this._conversation.on(TLLMEvent.ToolResult, toolResultHandler);
+        this._conversation.on(TLLMEvent.End, endHandler);
+        this._conversation.on(TLLMEvent.Error, errorHandler);
+        this._conversation.on(TLLMEvent.Content, contentHandler);
+        this._conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
+        this._conversation.on(TLLMEvent.Interrupted, interruptedHandler);
+
+        return eventEmitter;
     }
 }
 
@@ -81,6 +132,9 @@ export class Chat extends SDKObject {
         defaultModel: '',
         id: uid(),
     };
+    public get agentData() {
+        return this._data;
+    }
     constructor(options: ChatOptions & { candidate: AccessCandidate }, _model: string | TLLMModel, _data?: any, private _convOptions: any = {}) {
         super();
 

@@ -48,6 +48,9 @@ export class SDKObject {
     once(event: string, listener: (...args: any[]) => void) {
         this._eventEmitter.once(event, listener);
     }
+    removeListener(event: string, listener: (...args: any[]) => void) {
+        this._eventEmitter.removeListener(event, listener);
+    }
 
     // removeAllListeners(event?: string) {
     //     this._eventEmitter.removeAllListeners(event);

@@ -564,7 +564,7 @@ export class Agent extends SDKObject {
             candidate: this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId),
         };
 
-        if (!this._hasExplicitId && !options?.shared) {
+        if (chatOptions.persist && !this._hasExplicitId && !options?.shared) {
             console.warn(
                 '!! Persistance is disabled !! Reason: You are creating a chat session with an unidentified agent.',
                 '\nSet an explicit agent ID or set the shared option to true'

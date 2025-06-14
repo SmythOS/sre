@@ -59,6 +59,9 @@
         "topicSeparator": " ",
         "theme": "theme.json",
         "helpClass": "./dist/help",
+        "hooks": {
+            "preparse": "./dist/hooks/preparse.js"
+        },
         "topics": {
             "agent": {
                 "description": "Run .smyth agent files"
@@ -73,11 +76,13 @@
     },
     "dependencies": {
         "@oclif/core": "^4.3.3",
+        "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",
         "chalk": "^5.3.0",
         "commander": "^12.0.0",
         "express": "^4.21.2",
         "inquirer": "^9.2.15",
+        "log-update": "^6.1.0",
         "pkce-challenge": "^5.0.0",
         "update-notifier": "^7.0.0"
     },

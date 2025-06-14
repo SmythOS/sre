@@ -5,6 +5,28 @@
 
 import { run } from '@oclif/core';
 import chalk from 'chalk';
+import updateNotifier from 'update-notifier';
+import { version } from '../package.json';
+import { banner } from './ascii';
+
+// Check for updates
+const notifier = updateNotifier({
+    pkg: { name: '@smythos/cli', version },
+    updateCheckInterval: 1000 * 60 * 60 * 24, // Check daily
+    shouldNotifyInNpmScript: false,
+});
+
+// Show update notificationAdd commentMore actions
+notifier.notify({
+    isGlobal: true,
+    boxenOptions: {
+        padding: 1,
+        margin: 1,
+        textAlignment: 'center',
+        borderColor: 'yellow',
+        borderStyle: 'round',
+    },
+});
 
 // Run the Oclif CLI with better error handling
 (async () => {
