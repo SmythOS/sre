@@ -8,7 +8,7 @@
             "runtimeArgs": ["--enable-source-maps"],
             "program": "${workspaceFolder}/dist/index.js",
             "cwd": "${workspaceFolder}/../../", // Set to monorepo root
-            "args": ["agent", "./packages/cli/test.smyth", "--skill", "get_price", "coin_id=bitcoin", "param2=hello world"],
+            "args": ["agent", "./packages/cli/test.smyth", "--prompt", "'what is the current bitcoin price?'"],
             "console": "integratedTerminal",
             "sourceMaps": true,
             "outFiles": ["${workspaceFolder}/dist/**/*.js", "${workspaceFolder}/../core/dist/**/*.js", "${workspaceFolder}/../sdk/dist/**/*.js"],
