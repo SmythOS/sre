@@ -1,6 +1,6 @@
 # Services
 
-The SDK exposes helpers for common resources such as language models, storage backends and vector databases. You can access them through an agent instance or directly from the SDK. See [`10-llm-storage-vectors.ts`](../../examples/01-agent-code-skill/10-llm-storage-vectors.ts) and [`pinecone.ts`](../../examples/04-VectorDB/pinecone.ts) for working code.
+The SDK exposes helpers for common resources such as language models, storage backends and vector databases. You can access them through an agent instance or directly from the SDK. See [`10-llm-storage-vectors.ts`](../../examples/01-agent-code-skill/10-llm-storage-vectors.ts) and [`upsert-and-search.ts`](../../examples/05-VectorDB-with-agent/upsert-and-search.ts) for working code.
 
 ## LLMs
 
