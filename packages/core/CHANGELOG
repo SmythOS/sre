@@ -1,0 +1,14 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [v1.0.0]
+
+### Features
+
+-   Initial release
+-   Smyth Runtime Core
+-   Connectors Serivece
+-   Subsystems architecture
+-   Security & ACL helpers
+-   Implemented services : AgentData, Storage, Account, VectorDB

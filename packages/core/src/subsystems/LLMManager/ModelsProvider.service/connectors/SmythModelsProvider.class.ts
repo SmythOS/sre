@@ -186,20 +186,8 @@ export class SmythModelsProvider extends ModelsProviderConnector {
     }
 
     private async initDirWatcher(dir) {
-        if (!dir) return;
-
-        try {
-            const stats = await fs.stat(dir);
-            if (!stats.isDirectory()) {
-                console.warn(`Path "${dir}" exists but is not a directory`);
-                return;
-            }
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                console.warn(`Directory "${dir}" does not exist`);
-            } else {
-                console.warn(`Error accessing directory "${dir}":`, error.message);
-            }
+        if (!(await fs.stat(dir)).isDirectory()) {
+            console.warn(`Directory "${dir}" does not exist`);
             return;
         }
 

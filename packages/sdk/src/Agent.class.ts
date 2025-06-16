@@ -237,11 +237,17 @@ export class Agent extends SDKObject {
             //console.warn('No id provided for the agent, generating a new one');
             this._data.id = `${this._data.name ? this._data.name + '_' : ''}${uid()}`;
         } else {
+            if (!this.validateId(this._data.id)) {
+                throw new Error(`Invalid agent id: ${this._data.id}\nOnly alphanumeric, hyphens and underscores are allowed`);
+            }
             this._hasExplicitId = true;
         }
 
         //use default team id for the SDK
         if (!this._data.teamId) {
+            if (!this.validateId(this._data.id)) {
+                throw new Error(`Invalid agent id: ${this._data.id}\nOnly alphanumeric, hyphens and underscores are allowed`);
+            }
             //console.warn('No team id provided for the agent, using default team id');
             this._data.teamId = DEFAULT_TEAM_ID;
         }
@@ -250,6 +256,11 @@ export class Agent extends SDKObject {
 
         //if we are using DummyAccount, populate the account data in order to inform it about our newly loaded agent
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
+    }
+
+    private validateId(id: string) {
+        //only accept alphanumeric, hyphens and underscores
+        return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
     }
 
     /**
@@ -401,8 +412,8 @@ export class Agent extends SDKObject {
         if (!this._vectorDBProviders) {
             this._vectorDBProviders = {} as TVectorDBProviderInstances;
             for (const provider of Object.values(TVectorDBProvider)) {
-                this._vectorDBProviders[provider] = (vectorDBSettings?: any) =>
-                    new VectorDBInstance(provider as TVectorDBProvider, vectorDBSettings, AccessCandidate.agent(this._data.id));
+                this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any) =>
+                    new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, AccessCandidate.agent(this._data.id));
             }
         }
         return this._vectorDBProviders;

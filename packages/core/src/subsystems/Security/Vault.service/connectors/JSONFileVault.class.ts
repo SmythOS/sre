@@ -75,19 +75,18 @@ export class JSONFileVault extends VaultConnector {
         if (fs.existsSync(_vaultFile)) {
             return _vaultFile;
         }
-        console.warn('Vault file not found in:', _vaultFile, 'trying to find in .smyth directory');
+        console.warn('Vault file not found in:', _vaultFile, 'trying to find in local .smyth directory');
 
-        //try to find the vault file in the .smyth directory
-        _vaultFile = path.join(os.homedir(), '.smyth', '.sre', 'vault.json');
+        //try local directory
+        _vaultFile = path.join(process.cwd(), '.smyth', '.sre', 'vault.json');
         if (fs.existsSync(_vaultFile)) {
             console.warn('Using alternative vault file found in : ', _vaultFile);
             return _vaultFile;
         }
 
-        console.warn('Vault file not found in:', _vaultFile, 'trying to find in local directory');
-
-        //try local directory
-        _vaultFile = path.join(process.cwd(), '.smyth', '.sre', 'vault.json');
+        console.warn('Vault file not found in:', _vaultFile, 'trying to find in user home directory');
+        //try to find the vault file in the .smyth directory
+        _vaultFile = path.join(os.homedir(), '.smyth', '.sre', 'vault.json');
         if (fs.existsSync(_vaultFile)) {
             console.warn('Using alternative vault file found in : ', _vaultFile);
             return _vaultFile;

@@ -200,15 +200,12 @@ export class LLMAssistant extends Component {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
                     const eventEmitter: any = await llmInference
-                        .streamRequest(
-                            {
-                                model: model,
-                                messages,
-                            },
-                            agent.id,
-                        )
+                        .promptStream({
+                            contextWindow: messages,
+                            params: { ...config, model, agentId: agent.id },
+                        })
                         .catch((error) => {
-                            console.error('Error on streamRequest: ', error);
+                            console.error('Error on promptStream: ', error);
                             reject(error);
                         });
                     eventEmitter.on('content', (content) => {
@@ -231,7 +228,9 @@ export class LLMAssistant extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.promptRequest(null, config, agent, customParams).catch((error) => ({ error: error }));
+                response = await llmInference
+                    .prompt({ contextWindow: messages, params: { ...config, agentId: agent.id } })
+                    .catch((error) => ({ error: error }));
             }
 
             // in case we have the response but it's empty string, undefined or null

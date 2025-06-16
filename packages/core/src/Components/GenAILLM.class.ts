@@ -160,6 +160,7 @@ export class GenAILLM extends Component {
             const passThrough: boolean = config.data.passthrough || false;
             const useContextWindow: boolean = config.data.useContextWindow || false;
             const useSystemPrompt: boolean = config.data.useSystemPrompt || false;
+            const useWebSearch: boolean = config.data.useWebSearch || false;
             const maxTokens: number = parseInt(config.data.maxTokens) || 1024;
             const maxContextWindowLength: number = parseInt(config.data.maxContextWindowLength) || 1024;
             const model: string = config.data.model || 'echo';
@@ -181,13 +182,13 @@ export class GenAILLM extends Component {
 
             let prompt: any = TemplateString(config.data.prompt).parse(input).result;
 
-            let fileSources: any[] = parseFiles(input, config);
+            let files: any[] = parseFiles(input, config);
             let isMultimodalRequest = false;
             const provider = await agent.modelsProvider.getProvider(model);
             const isEcho = provider === 'Echo';
 
             // Ignore files for Echo model
-            if (fileSources?.length > 0 && !isEcho) {
+            if (files?.length > 0 && !isEcho) {
                 // TODO: simplify the valid files checking logic
                 const supportedFileTypes = SUPPORTED_MIME_TYPES_MAP?.[provider] || {};
                 const modelInfo = await agent.modelsProvider.getModelInfo(model);
@@ -195,7 +196,7 @@ export class GenAILLM extends Component {
                 const fileTypes = new Set(); // Set to avoid duplicates
 
                 const validFiles = await Promise.all(
-                    fileSources.map(async (file) => {
+                    files.map(async (file) => {
                         const mimeType = file?.mimetype || (await getMimeType(file));
                         const [requestFeature = ''] =
                             Object.entries(supportedFileTypes).find(([key, value]) => (value as string[]).includes(mimeType)) || [];
@@ -208,9 +209,9 @@ export class GenAILLM extends Component {
                     })
                 );
 
-                fileSources = validFiles.filter(Boolean);
+                files = validFiles.filter(Boolean);
 
-                if (fileSources.length === 0) {
+                if (files.length === 0) {
                     return {
                         _error: `Model does not support ${fileTypes?.size > 0 ? Array.from(fileTypes).join(', ') : 'File(s)'}`,
                         _debug: logger.output,
@@ -223,7 +224,7 @@ export class GenAILLM extends Component {
             logger.debug(` Prompt\n`, prompt, '\n');
 
             if (!isEcho) {
-                logger.debug(' Files\n', await Promise.all(fileSources.map((file) => formatDataForDebug(file))));
+                logger.debug(' Files\n', await Promise.all(files.map((file) => formatDataForDebug(file))));
             }
 
             // default to json response format
@@ -231,8 +232,6 @@ export class GenAILLM extends Component {
 
             // request to LLM
             let response: any;
-
-            //response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
 
             const _prompt = llmInference.connector.enhancePrompt(prompt, config);
             let messages = [];
@@ -282,36 +281,19 @@ export class GenAILLM extends Component {
                 let _content = '';
                 let eventEmitter;
 
-                if (isMultimodalRequest && fileSources.length > 0) {
-                    eventEmitter = await llmInference
-                        .multimodalStreamRequest(
-                            {
-                                ...config.data,
-                                model,
-                                messages,
-                            },
-                            fileSources,
-                            agent
-                        )
-                        .catch((error) => {
-                            console.error('Error on multimodalStreamRequest: ', error);
-                            reject(error);
-                        });
-                } else {
-                    eventEmitter = await llmInference
-                        .streamRequest(
-                            {
-                                ...config.data,
-                                model,
-                                messages,
-                            },
-                            agent.id
-                        )
-                        .catch((error) => {
-                            console.error('Error on streamRequest: ', error);
-                            reject(error);
-                        });
-                }
+                eventEmitter = await llmInference
+                    .promptStream({
+                        contextWindow: messages,
+                        files,
+                        params: {
+                            ...config.data,
+                            agentId: agent.id,
+                        },
+                    })
+                    .catch((error) => {
+                        console.error('Error on promptStream: ', error);
+                        reject(error);
+                    });
 
                 eventEmitter.on('content', (content) => {
                     if (passThrough) {

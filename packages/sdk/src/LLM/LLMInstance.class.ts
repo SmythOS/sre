@@ -1,6 +1,5 @@
 import {
     ILLMConnectorRequest,
-    LLMChatResponse,
     LLMConnector,
     ConnectorService,
     AccessCandidate,
@@ -32,8 +31,9 @@ class LLMCommand {
 
     async run(): Promise<string> {
         await this._llm.ready;
+        const params = { ...this._params, ...this._llm.modelSettings }; // update model settings
 
-        const result = await this._llm.requester.chatRequest(this._params as TLLMConnectorParams);
+        const result = await this._llm.requester.request(params as TLLMConnectorParams);
 
         if (result.finishReason !== 'stop') {
             this._llm.emit(
@@ -65,8 +65,9 @@ class LLMCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this._llm.ready;
+        const params = { ...this._params, ...this._llm.modelSettings }; // update model settings
 
-        return await this._llm.requester.streamRequest(this._params as TLLMConnectorParams);
+        return await this._llm.requester.streamRequest(params as TLLMConnectorParams);
     }
 
     // Future extensibility:
@@ -107,6 +108,9 @@ export type TLLMInstanceParams = {
 
 export class LLMInstance extends SDKObject {
     private _llmRequester: ILLMConnectorRequest;
+    public get modelSettings() {
+        return this._modelSettings;
+    }
 
     public get requester() {
         return this._llmRequester;

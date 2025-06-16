@@ -1,4 +1,4 @@
-import { ILLMContextStore, TLLMEvent, TLLMProvider } from '@smythos/sre';
+import { ILLMContextStore } from '@smythos/sre';
 import { ComponentWrapper } from '../components/ComponentWrapper.class';
 
 export type InputSettings = {
@@ -47,5 +47,3 @@ export type ChatOptions = {
 };
 
 export type ComponentInput = { source?: any; component?: ComponentWrapper } & InputSettings;
-
-export { TLLMProvider, TLLMEvent };

@@ -1,28 +1,56 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { FunctionCallingMode } from '@google/generative-ai';
+import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@google/generative-ai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
 
 export type LLMProvider = Extract<(typeof models)[keyof typeof models], { llm: string }>['llm'] | 'VertexAI' | 'Bedrock';
 export type LLMModel = keyof typeof models;
 export type LLMModelInfo = (typeof models)[LLMModel];
 
-export type TLLMParams = {
-    model: string;
-    modelEntryName?: string; // for usage reporting
-    credentials?:
-        | Record<string, string> // for VertexAI
-        | {
-              apiKey?: string; // for standard models
-              keyId?: string; // for Bedrock
-              secretKey?: string; // for Bedrock
-              sessionKey?: string; // for Bedrock
-              isUserKey?: boolean;
-          };
+// Google Service Account Credentials Interface
+export interface VertexAICredentials {
+    type: 'service_account';
+    project_id: string;
+    private_key_id: string;
+    private_key: string;
+    client_email: string;
+    client_id: string;
+    auth_uri: string;
+    token_uri: string;
+    auth_provider_x509_cert_url: string;
+    client_x509_cert_url: string;
+    universe_domain?: string; // Optional, defaults to "googleapis.com"
+}
 
+// Basic LLM Credentials Interface
+export interface BasicCredentials {
+    apiKey: string;
+    isUserKey: boolean;
+}
+
+// AWS Bedrock Credentials Interface
+export interface BedrockCredentials {
+    accessKeyId: string;
+    secretAccessKey: string;
+    sessionToken?: string;
+}
+
+// Union type for all credential types
+export type ILLMConnectorCredentials = BasicCredentials | BedrockCredentials | VertexAICredentials;
+
+export type TOpenAIResponseToolChoice = OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
+export type TLLMToolChoice = OpenAI.ChatCompletionToolChoiceOption;
+
+export type TLLMParams = {
+    model: TLLMModel | string;
+    modelEntryName?: string; // for usage reporting
+    credentials?: ILLMConnectorCredentials;
+
+    prompt?: string;
     messages?: any[]; // TODO [Forhad]: apply proper typing
     temperature?: number;
     maxTokens?: number;
@@ -33,19 +61,20 @@ export type TLLMParams = {
     presencePenalty?: number;
     responseFormat?: any; // TODO [Forhad]: apply proper typing
     modelInfo?: TCustomLLMModel;
-    fileSources?: BinaryInput[];
+    files?: BinaryInput[];
     toolsConfig?: {
-        tools?: OpenAI.ChatCompletionTool[];
-        tool_choice?: OpenAI.ChatCompletionToolChoiceOption;
+        tools?: OpenAI.ChatCompletionTool[] | OpenAI.Responses.Tool[] | OpenAI.Responses.WebSearchTool[];
+        tool_choice?: TLLMToolChoice;
     };
     baseURL?: string;
 
-    size?: '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792'; // for image generation
+    size?: OpenAI.Images.ImageGenerateParams['size'] | OpenAI.Images.ImageEditParams['size']; // for image generation and image editing
     quality?: 'standard' | 'hd'; // for image generation
     n?: number; // for image generation
     style?: 'vivid' | 'natural'; // for image generation
 
     cache?: boolean;
+    agentId?: string;
     teamId?: string;
     thinking?: {
         // for Anthropic
@@ -64,6 +93,17 @@ export type TLLMParams = {
     // #endregion
 
     useReasoning?: boolean;
+
+    isUserKey?: boolean;
+    capabilities?: {
+        search?: boolean;
+        reasoning?: boolean;
+        imageGeneration?: boolean;
+        imageEditing?: boolean;
+    };
+    max_output_tokens?: number;
+
+    abortSignal?: AbortSignal;
 };
 
 export type TLLMParamsV2 = {
@@ -88,7 +128,7 @@ export type TLLMParamsV2 = {
     frequency_penalty?: number;
     presence_penalty?: number;
     teamId?: string;
-    fileSources?: BinaryInput[];
+    files?: BinaryInput[];
 
     // #region Search
     useWebSearch?: boolean;
@@ -265,6 +305,7 @@ export type GenerateImageConfig = {
     style?: 'vivid' | 'natural';
     n?: number;
     response_format?: 'url' | 'b64_json';
+    prompt?: string;
 };
 
 // ! Deprecated
@@ -329,3 +370,50 @@ export enum TLLMEvent {
     /** Interrupted : emitted when the response is interrupted before completion */
     Interrupted = 'interrupted',
 }
+
+export interface ILLMRequestContext {
+    modelEntryName: string;
+    agentId: string;
+    teamId: string;
+    isUserKey: boolean;
+    hasFiles?: boolean;
+    modelInfo: TCustomLLMModel | TLLMModel;
+    credentials: ILLMConnectorCredentials;
+}
+
+// Generic interface that can be extended by specific providers
+export interface ILLMRequestFuncParams<TBody = any> {
+    acRequest: AccessRequest;
+    body: TBody;
+    context: ILLMRequestContext;
+}
+
+// For future providers, you can add similar types:
+// export type TAnthropicRequestBody = Anthropic.MessageCreateParams | Anthropic.MessageStreamParams;
+// export type IAnthropicRequestFuncParams = ILLMRequestFuncParams<TAnthropicRequestBody>;
+
+export type TLLMChatResponse = {
+    content: string;
+    finishReason: string;
+    thinkingContent?: string;
+    usage?: any;
+    useTool?: boolean;
+    toolsData?: ToolData[];
+    message?: OpenAI.ChatCompletionMessageParam | Anthropic.MessageParam;
+};
+
+export type TOpenAIRequestBody =
+    | OpenAI.ChatCompletionCreateParamsNonStreaming
+    | OpenAI.ChatCompletionCreateParamsStreaming
+    | OpenAI.ChatCompletionCreateParams
+    | OpenAI.Responses.ResponseCreateParams
+    | OpenAI.Responses.ResponseCreateParamsNonStreaming
+    | OpenAI.Responses.ResponseCreateParamsStreaming
+    | OpenAI.Images.ImageGenerateParams
+    | OpenAI.Images.ImageEditParams;
+
+export type TAnthropicRequestBody = Anthropic.MessageCreateParamsNonStreaming;
+
+export type TGoogleAIRequestBody = ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest };
+
+export type TLLMRequestBody = TOpenAIRequestBody | TAnthropicRequestBody | TGoogleAIRequestBody | ConverseCommandInput;

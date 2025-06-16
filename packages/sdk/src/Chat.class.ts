@@ -199,6 +199,7 @@ async function registerProcessSkills(conversation: Conversation, agentData: Agen
             description: skill.data.description,
             //arguments: _arguments,
             handler: skill.process,
+            inputs: skill.inputs,
         });
     }
 }

@@ -119,7 +119,8 @@ const Storage: TStorageProviderInstances = {} as TStorageProviderInstances;
 
 //generate a storage instance entry for every available storage provider
 for (const provider of Object.keys(TStorageProvider)) {
-    Storage[provider] = (storageSettings?: any) => new StorageInstance(TStorageProvider[provider], storageSettings);
+    Storage[provider] = (storageSettings?: any, candidate?: AccessCandidate) =>
+        new StorageInstance(TStorageProvider[provider], storageSettings, candidate);
 }
 
 export { Storage };

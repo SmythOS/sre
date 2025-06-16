@@ -1,4 +1,5 @@
 {{imports}}
+import { AccessCandidate } from '@smythos/sre';
 import { StorageInstance } from '../../Storage.class';
 
 // Define storage provider settings mapping
@@ -26,5 +27,5 @@ export const TStorageProvider: Record<TBuiltinStorageProvider, TBuiltinStoragePr
 export type TStorageSettingsFor<T extends keyof TStorageProviderSettings> = TStorageProviderSettings[T];
 
 export type TStorageProviderInstances = {
-    [K in TStorageProvider]: (settings?: K extends keyof TStorageProviderSettings ? TStorageSettingsFor<K> : any) => StorageInstance;
+    [K in TStorageProvider]: (settings?: K extends keyof TStorageProviderSettings ? TStorageSettingsFor<K> : any, candidate?: AccessCandidate) => StorageInstance;
 };

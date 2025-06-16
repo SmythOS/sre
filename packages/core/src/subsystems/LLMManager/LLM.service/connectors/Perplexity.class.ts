@@ -1,29 +1,25 @@
 import EventEmitter from 'events';
+import axios, { AxiosInstance } from 'axios';
 
-import axios from 'axios';
-
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
-import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { Logger } from '@sre/helpers/Log.helper';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+
 import {
     TLLMParams,
     ToolData,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
-    GenerateImageConfig,
     APIKeySource,
+    BasicCredentials,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMConnectorParams,
+    ILLMRequestContext,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import { JSONContent } from '@sre/helpers/JsonContent.helper';
+import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-
-const console = Logger('PerplexityConnector');
 
 type ChatCompletionParams = {
     model: string;
@@ -49,104 +45,54 @@ type TUsage = {
 export class PerplexityConnector extends LLMConnector {
     public name = 'LLM:Perplexity';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        const messages = params?.messages || [];
+    private async getClient(params: ILLMRequestContext): Promise<AxiosInstance> {
+        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+        if (!apiKey) throw new Error('Please provide an API key for Perplexity');
 
-        //#region Handle JSON response format
-        // TODO: For now attach JSON response instruction, Perplexity has option to provide response_format as parameter. We'll check it later
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
-            } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
+        return axios.create({
+            baseURL: params?.modelInfo?.baseURL,
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        });
+    }
 
-            delete params.responseFormat;
-        }
-        //#endregion Handle JSON response format
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const chatCompletionArgs: ChatCompletionParams = {
-            model: params.model,
-            messages,
-        };
-
-        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
-        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        // Top P is not supported for o1 models
-        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-        if (params?.topK !== undefined) chatCompletionArgs.top_k = params.topK;
-        if (params?.frequencyPenalty) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-
-        if (params.responseFormat) {
-            chatCompletionArgs.response_format = params.responseFormat;
-        }
-
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
-            const response = await axios.post(params.baseURL, chatCompletionArgs, {
-                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            });
+            const perplexity = await this.getClient(context);
+            const response = await perplexity.post('/chat/completions', body);
 
             const content = response?.data?.choices?.[0]?.message.content;
             const finishReason = response?.data?.choices?.[0]?.finish_reason;
             const usage = response?.data?.usage as any;
 
             this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
-            return { content, finishReason, usage };
+            return {
+                content,
+                finishReason,
+                useTool: false,
+                toolsData: [],
+                message: { content, role: 'assistant' },
+                usage,
+            };
         } catch (error) {
             throw error;
         }
     }
 
-    protected async streamToolRequest(
-        acRequest: AccessRequest,
-        { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | IAgent,
-    ): Promise<any> {
-        throw new Error('streamToolRequest() is Deprecated!');
-    }
-
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Vision requests are not supported by Perplexity');
-    }
-
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for Perplexity.');
-    }
-
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<any> {
-        throw new Error('Tool request is not supported for Perplexity.');
-    }
-
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
-        throw new Error('Image generation request is not supported for Perplexity.');
-    }
-
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest
         const emitter = new EventEmitter();
 
         setTimeout(() => {
             try {
-                this.chatRequest(acRequest, params, agent)
+                this.request({ acRequest, body, context })
                     .then((respose) => {
                         const finishReason = respose.finishReason;
                         const usage = respose.usage;
@@ -167,8 +113,65 @@ export class PerplexityConnector extends LLMConnector {
         return emitter;
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        throw new Error('Perplexity model does not support passthrough with File(s)');
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        throw new Error('Web search is not supported for Perplexity');
+    }
+
+    protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionParams> {
+        const messages = params?.messages || [];
+
+        //#region Handle JSON response format
+        // TODO: For now attach JSON response instruction, Perplexity has option to provide response_format as parameter. We'll check it later
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            delete params.responseFormat;
+        }
+        //#endregion Handle JSON response format
+
+        const body: ChatCompletionParams = {
+            model: params.model as string,
+            messages,
+        };
+
+        if (params?.maxTokens !== undefined) body.max_tokens = params.maxTokens;
+        if (params?.temperature !== undefined) body.temperature = params.temperature;
+        if (params?.topP !== undefined) body.top_p = params.topP;
+        if (params?.topK !== undefined) body.top_k = params.topK;
+        if (params?.frequencyPenalty) body.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
+
+        if (params.responseFormat) {
+            body.response_format = params.responseFormat;
+        }
+
+        return body;
+    }
+
+    protected reportUsage(usage: TUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
+            output_tokens: usage?.completion_tokens,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
+            reasoning_tokens: usage?.reasoning_tokens || 0,
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -248,25 +251,5 @@ export class PerplexityConnector extends LLMConnector {
 
             return _message;
         });
-    }
-
-    protected reportUsage(usage: TUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0),
-            output_tokens: usage?.completion_tokens,
-            input_tokens_cache_write: 0,
-            input_tokens_cache_read: usage?.prompt_tokens_details?.cached_tokens || 0,
-            reasoning_tokens: usage?.reasoning_tokens || 0,
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
-        };
-        SystemEvents.emit('USAGE:LLM', usageData);
-
-        return usageData;
     }
 }

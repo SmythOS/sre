@@ -1,17 +1,22 @@
-import { encode, encodeChat } from 'gpt-tokenizer';
+import _ from 'lodash';
+import { type OpenAI } from 'openai';
+import { encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { LLMChatResponse, LLMConnector } from './LLM.service/LLMConnector';
+import { LLMConnector } from './LLM.service/LLMConnector';
 import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageBlock, TLLMMessageRole, TLLMModel } from '@sre/types/LLM.types';
-import _ from 'lodash';
+import { GenerateImageConfig, TLLMMessageRole, TLLMModel, TLLMChatResponse } from '@sre/types/LLM.types';
 import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
 import { IAgent } from '@sre/types/Agent.types';
 import { isAgent } from '@sre/AgentManager/Agent.helper';
+import { TLLMParams } from '@sre/types/LLM.types';
+
 const console = Logger('LLMInference');
+
+type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams };
 
 export class LLMInference {
     private model: string | TLLMModel;
@@ -26,7 +31,6 @@ export class LLMInference {
         }
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.requester(candidate).getTeam();
-        //const candidate = teamId ? AccessCandidate.team(teamId) : AccessCandidate.user('smyth');
 
         const llmInference = new LLMInference();
         llmInference.teamId = teamId;
@@ -45,43 +49,71 @@ export class LLMInference {
         llmInference.model = model;
 
         return llmInference;
-
-        /*
-        const llmInference = new LLMInference();
-        llmInference.teamId = teamId;
-
-        const isStandardLLM = LLMRegistry.isStandardLLM(model);
-
-        if (isStandardLLM) {
-            const llmProvider = LLMRegistry.getProvider(model);
-
-            if (llmProvider) {
-                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
-            }
-        } else if (teamId) {
-            const team = AccessCandidate.team(teamId);
-            const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
-            const llmProvider = customLLMRegistry.getProvider(model);
-
-            if (llmProvider) {
-                llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
-            }
-        }
-
-        if (!llmInference.llmConnector) {
-            console.error(`Model ${model} unavailable for team ${teamId}`);
-        }
-
-        llmInference.model = model;
-
-        return llmInference;
-        */
     }
 
     public static user(candidate: AccessCandidate): any {}
 
     public get connector(): LLMConnector {
         return this.llmConnector;
+    }
+
+    public async prompt({ query, contextWindow, files, params }: TPromptParams) {
+        let messages = contextWindow || [];
+
+        if (query) {
+            const content = this.llmConnector.enhancePrompt(query, params);
+            messages.push({ role: TLLMMessageRole.User, content });
+        }
+
+        if (!params.model) params.model = this.model;
+        params.messages = messages;
+        params.files = files;
+
+        try {
+            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(params.agentId)).request(params);
+
+            const result = this.llmConnector.postProcess(response?.content);
+            if (result.error) {
+                // If the model stopped before completing the response, this is usually due to output token limit reached.
+                if (response.finishReason !== 'stop') {
+                    throw new Error('The model stopped before completing the response, this is usually due to output token limit reached.');
+                }
+
+                // If the model stopped due to other reasons, throw the error
+                throw new Error(result.error);
+            }
+            return result;
+        } catch (error: any) {
+            console.error('Error in chatRequest: ', error);
+
+            throw error;
+        }
+    }
+
+    public async promptStream({ query, contextWindow, files, params }: TPromptParams) {
+        let messages = contextWindow || [];
+
+        if (query) {
+            const content = this.llmConnector.enhancePrompt(query, params);
+            messages.push({ role: TLLMMessageRole.User, content });
+        }
+
+        if (!params.model) params.model = this.model;
+        params.messages = messages;
+        params.files = files;
+
+        try {
+            return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
+        } catch (error) {
+            console.error('Error in streamRequest:', error);
+
+            const dummyEmitter = new EventEmitter();
+            process.nextTick(() => {
+                dummyEmitter.emit('error', error);
+                dummyEmitter.emit('end');
+            });
+            return dummyEmitter;
+        }
     }
 
     public async promptRequest(prompt, settings: any = {}, agent: string | IAgent, customParams: any = {}) {
@@ -111,7 +143,7 @@ export class LLMInference {
         }
 
         try {
-            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
+            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).chatRequest(params);
 
             const result = this.llmConnector.postProcess(response?.content);
             if (result.error) {
@@ -131,15 +163,15 @@ export class LLMInference {
         }
     }
 
-    public async visionRequest(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+    public async visionRequest(prompt, files: string[], config: any = {}, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
-        const _fileSources = [];
+        const _files = [];
 
-        for (let image of fileSources) {
+        for (let image of files) {
             const binaryInput = BinaryInput.from(image);
-            _fileSources.push(binaryInput);
+            _files.push(binaryInput);
             promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
         }
 
@@ -147,15 +179,16 @@ export class LLMInference {
 
         const params = config.data;
 
-        params.fileSources = _fileSources;
+        params.files = _files;
 
         if (!params.model) {
             params.model = this.model;
         }
 
         try {
-            prompt = this.llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(prompt, params);
+            params.prompt = this.llmConnector.enhancePrompt(prompt, config);
+
+            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).visionRequest(params);
 
             const result = this.llmConnector.postProcess(response?.content);
 
@@ -177,16 +210,16 @@ export class LLMInference {
     }
 
     // multimodalRequest is the same as visionRequest. visionRequest will be deprecated in the future.
-    public async multimodalRequest(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+    public async multimodalRequest(prompt, files: string[], config: any = {}, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
-        const _fileSources = [];
+        const _files = [];
 
         // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
-        for (let file of fileSources) {
+        for (let file of files) {
             const binaryInput = BinaryInput.from(file);
-            _fileSources.push(binaryInput);
+            _files.push(binaryInput);
             promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
         }
 
@@ -194,15 +227,15 @@ export class LLMInference {
 
         const params = config.data;
 
-        params.fileSources = _fileSources;
+        params.files = _files;
 
         if (!params.model) {
             params.model = this.model;
         }
 
         try {
-            prompt = this.llmConnector.enhancePrompt(prompt, config);
-            let response: LLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(prompt, params);
+            params.prompt = this.llmConnector.enhancePrompt(prompt, config);
+            let response: TLLMChatResponse = await this.llmConnector.user(AccessCandidate.agent(agentId)).multimodalRequest(params);
 
             const result = this.llmConnector.postProcess(response?.content);
 
@@ -223,16 +256,15 @@ export class LLMInference {
         }
     }
 
-    public async imageGenRequest(prompt: string, params: GenerateImageConfig, agent: string | IAgent) {
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        return this.llmConnector.user(AccessCandidate.agent(agentId)).imageGenRequest(prompt, params);
+    public async imageGenRequest({ query, files, params }: TPromptParams) {
+        params.prompt = query;
+        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageGenRequest(params);
     }
 
-    public async imageEditRequest(prompt: string, params: GenerateImageConfig, agent: string | IAgent) {
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        return this.llmConnector.user(AccessCandidate.agent(agentId)).imageEditRequest(prompt, params);
+    public async imageEditRequest({ query, files, params }: TPromptParams) {
+        params.prompt = query;
+        params.files = files;
+        return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
     }
 
     public async toolRequest(params: any, agent: string | IAgent) {
@@ -251,12 +283,6 @@ export class LLMInference {
 
             throw error;
         }
-    }
-
-    public async streamToolRequest(params: any, agent: string | IAgent) {
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        return this.llmConnector.user(AccessCandidate.agent(agentId)).streamToolRequest(params);
     }
 
     public async streamRequest(params: any, agent: string | IAgent) {
@@ -312,16 +338,16 @@ export class LLMInference {
         }
     }
 
-    public async multimodalStreamRequestLegacy(prompt, fileSources: string[], config: any = {}, agent: string | IAgent) {
+    public async multimodalStreamRequestLegacy(prompt, files: string[], config: any = {}, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
         const promises = [];
-        const _fileSources = [];
+        const _files = [];
 
         // TODO [Forhad]: For models from Google AI, we currently store files twice — once here and once in the GoogleAIConnector. We need to optimize this process.
-        for (let file of fileSources) {
+        for (let file of files) {
             const binaryInput = BinaryInput.from(file);
-            _fileSources.push(binaryInput);
+            _files.push(binaryInput);
             promises.push(binaryInput.upload(AccessCandidate.agent(agentId)));
         }
 
@@ -329,7 +355,7 @@ export class LLMInference {
 
         const params = config.data;
 
-        params.fileSources = _fileSources;
+        params.files = _files;
 
         try {
             prompt = this.llmConnector.enhancePrompt(prompt, config);

@@ -2,7 +2,7 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { IAccessCandidate } from '@sre/types/ACL.types';
+import { IAccessCandidate, TAccessRole } from '@sre/types/ACL.types';
 import {
     DatasourceDto,
     IStorageVectorDataSource,
@@ -71,7 +71,7 @@ export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest
         acRequest: AccessRequest,
         namespace: string,
         query: string | number[],
-        options: QueryOptions,
+        options: QueryOptions
     ): Promise<VectorsResultData>;
 
     protected abstract insert(acRequest: AccessRequest, namespace: string, source: IVectorDataSourceDto | IVectorDataSourceDto[]): Promise<string[]>;
@@ -90,16 +90,23 @@ export abstract class VectorDBConnector extends SecureConnector<IVectorDBRequest
         acRequest: AccessRequest,
         namespace: string,
 
-        metadata?: { [key: string]: any },
+        metadata?: { [key: string]: any }
     ): Promise<void>;
 
     protected abstract deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void>;
 
     protected abstract namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean>;
 
-    public static constructNsName(teamId: string, name: string) {
+    public static constructNsName(candidate: AccessCandidate, name: string) {
         const joinedName = name.trim().replace(/\s/g, '_').toLowerCase();
-        return `${teamId}_${joinedName}`;
+        let prefix = candidate.id;
+
+        if (candidate.role !== TAccessRole.Team) {
+            //DO NOT add role prefix for teams to preserve backward compatibility
+            prefix = candidate.role[0] + '_' + candidate.id;
+        }
+
+        return `${prefix}_${joinedName}`;
     }
 
     public static parseNsName(nsName: string) {

@@ -46,7 +46,8 @@ export interface IVectorDataSourceDto {
 export interface IStorageVectorDataSource {
     namespaceId: string;
     // indexName: string;
-    teamId: string;
+    candidateId: string;
+    candidateRole: string;
     name: string;
     metadata: string;
     text: string;
@@ -57,7 +58,8 @@ export interface IStorageVectorDataSource {
 export interface IStorageVectorNamespace {
     namespace: string;
     displayName: string;
-    teamId: string;
+    candidateId: string;
+    candidateRole: string;
     metadata?: StorageVectorNamespaceMetadata;
 }
 

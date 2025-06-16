@@ -2,7 +2,6 @@ import {
     BedrockRuntimeClient,
     ConverseCommand,
     ConverseCommandInput,
-    ConverseStreamCommandInput,
     ConverseStreamCommand,
     ConverseStreamCommandOutput,
     TokenUsage,
@@ -10,174 +9,58 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
-import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
-import { IAgent } from '@sre/types/Agent.types';
-import { Logger } from '@sre/helpers/Log.helper';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
+import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import {
+    TLLMParams,
+    ToolData,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
+    APIKeySource,
+    TLLMEvent,
+    BedrockCredentials,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMConnectorParams,
+    ILLMRequestContext,
+    TCustomLLMModel,
+} from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { customModels } from '@sre/LLMManager/custom-models';
 import { isJSONString } from '@sre/utils/general.utils';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-
-const console = Logger('BedrockConnector');
-
-type InferenceConfig = {
-    maxTokens?: number;
-    temperature?: number;
-    stopSequences?: string[];
-    topP?: number;
-};
 
 // TODO [Forhad]: Need to adjust some type definitions
 
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        let messages = params?.messages || [];
+    private async getClient(params: ILLMRequestContext): Promise<BedrockRuntimeClient> {
+        const credentials = params.credentials as BedrockCredentials;
+        const region = (params.modelInfo as TCustomLLMModel).settings.region;
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+        if (!(Object.keys(credentials).length >= 2)) throw new Error('Access key ID and secret access key are required for Bedrock');
 
-        //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt;
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        return new BedrockRuntimeClient({
+            region: region,
+            credentials,
+        });
+    }
 
-        if ('content' in systemMessage) {
-            systemPrompt = systemMessage.content;
-        }
-
-        messages = otherMessages;
-
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            systemPrompt = [{ text: JSON_RESPONSE_INSTRUCTION }];
-        }
-
-        const modelInfo = params.modelInfo;
-        const supportsSystemPrompt = customModels[modelInfo?.settings?.foundationModel]?.supportsSystemPrompt;
-
-        if (!supportsSystemPrompt) {
-            messages[0].content?.push(systemPrompt[0]);
-            systemPrompt = undefined; // Reset system prompt if it's not supported
-        }
-
-        //#endregion Separate system message and add JSON response instruction if needed
-
-        const modelId = modelInfo.settings?.customModel || modelInfo.settings?.foundationModel;
-
-        const inferenceConfig: InferenceConfig = {};
-        if (params?.maxTokens !== undefined) inferenceConfig.maxTokens = params.maxTokens;
-        if (params?.temperature !== undefined) inferenceConfig.temperature = params.temperature;
-        if (params?.topP !== undefined) inferenceConfig.topP = params.topP;
-        if (params?.stopSequences?.length) inferenceConfig.stopSequences = params.stopSequences;
-
-        const converseCommandInput: any = {
-            modelId,
-            messages,
-        };
-
-        if (Object.keys(inferenceConfig).length > 0) {
-            converseCommandInput.inferenceConfig = inferenceConfig;
-        }
-
-        if (systemPrompt) {
-            converseCommandInput.system = systemPrompt;
-        }
-
-        const command = new ConverseCommand(converseCommandInput);
-
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
-            const client = new BedrockRuntimeClient({
-                region: modelInfo.settings.region as string,
-                credentials: params?.credentials as any,
-            });
-
-            const response: ConverseCommandOutput = await client.send(command);
-            const content = response.output?.message?.content?.[0]?.text;
-            const usage = response.usage;
-
-            this.reportUsage(usage as any, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason: 'stop' };
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    protected async streamToolRequest(
-        acRequest: AccessRequest,
-        { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | IAgent
-    ): Promise<any> {
-        throw new Error('streamToolRequest() is Deprecated!');
-    }
-
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Vision requests are not supported by Bedrock');
-    }
-
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not supported for Bedrock.');
-    }
-
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<any> {
-        try {
-            const customModelInfo = params.modelInfo;
-
-            const client = new BedrockRuntimeClient({
-                region: customModelInfo.settings.region,
-                credentials: params?.credentials,
-            });
-
-            let systemPrompt;
-            let messages = params?.messages || [];
-
-            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-            if ('content' in systemMessage) {
-                systemPrompt = typeof systemMessage?.content === 'string' ? [{ text: systemMessage?.content }] : systemMessage?.content;
-            }
-
-            messages = otherMessages;
-
-            const converseCommandInput: ConverseCommandInput = {
-                modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
-                messages,
-            };
-
-            if (systemPrompt) {
-                converseCommandInput.system = systemPrompt;
-            }
-
-            if (params?.toolsConfig?.tools?.length > 0) {
-                converseCommandInput.toolConfig = {
-                    tools: params?.toolsConfig?.tools,
-                    ...(params?.toolsConfig?.tool_choice && { toolChoice: params?.toolsConfig?.tool_choice }),
-                };
-            }
-
-            const command = new ConverseCommand(converseCommandInput);
-            const response: ConverseCommandOutput = await client.send(command);
+            const bedrock = await this.getClient(context);
+            const command = new ConverseCommand(body);
+            const response: ConverseCommandOutput = await bedrock.send(command);
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             const message = response.output?.message;
@@ -201,65 +84,25 @@ export class BedrockConnector extends LLMConnector {
             }
 
             return {
-                data: {
-                    useTool,
-                    message,
-                    content: message?.content?.[0]?.text || message?.content || '',
-                    toolsData,
-                },
+                content: Array.isArray(message?.content) ? message?.content?.[0]?.text || '' : message?.content || '',
+                finishReason,
+                useTool,
+                toolsData,
+                message: message as any,
+                usage,
             };
         } catch (error: any) {
             throw error?.error || error;
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | Agent): Promise<any> {
-        throw new Error('Image generation request is not supported for Bedrock.');
-    }
-
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
         try {
-            const customModelInfo = params.modelInfo;
-
-            const client = new BedrockRuntimeClient({
-                region: customModelInfo.settings.region,
-                credentials: params?.credentials,
-            });
-
-            let systemPrompt;
-            let messages = params?.messages || [];
-
-            // Handle system message separation
-            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-            if ('content' in systemMessage) {
-                systemPrompt = typeof systemMessage?.content === 'string' ? [{ text: systemMessage?.content }] : systemMessage?.content;
-            }
-
-            messages = otherMessages;
-
-            const converseCommandInput: ConverseStreamCommandInput = {
-                modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
-                messages,
-            };
-
-            if (systemPrompt) {
-                converseCommandInput.system = systemPrompt;
-            }
-
-            if (params?.toolsConfig?.tools?.length > 0) {
-                converseCommandInput.toolConfig = {
-                    tools: params?.toolsConfig?.tools,
-                    ...(params?.toolsConfig?.tool_choice && { toolChoice: params?.toolsConfig?.tool_choice }),
-                };
-            }
-
-            const command = new ConverseStreamCommand(converseCommandInput);
-            const response: ConverseStreamCommandOutput = await client.send(command);
+            const bedrock = await this.getClient(context);
+            const command = new ConverseStreamCommand(body);
+            const response: ConverseStreamCommandOutput = await bedrock.send(command);
             const stream = response.stream;
 
             if (stream) {
@@ -334,10 +177,10 @@ export class BedrockConnector extends LLMConnector {
                         if (chunk?.metadata?.usage) {
                             const usage = chunk.metadata.usage;
                             this.reportUsage(usage as any, {
-                                modelEntryName: params.modelEntryName,
-                                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                                agentId,
-                                teamId: params.teamId,
+                                modelEntryName: context.modelEntryName,
+                                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                                agentId: context.agentId,
+                                teamId: context.teamId,
                             });
                         }
                     }
@@ -352,8 +195,63 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        throw new Error('Bedrock model does not support passthrough with File(s)');
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        throw new Error('Web search is not supported for Bedrock');
+    }
+
+    protected async reqBodyAdapter(params: TLLMParams): Promise<ConverseCommandInput> {
+        const customModelInfo = params.modelInfo;
+
+        let systemPrompt;
+        let messages = params?.messages || [];
+
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+
+        if ('content' in systemMessage) {
+            systemPrompt = typeof systemMessage?.content === 'string' ? [{ text: systemMessage?.content }] : systemMessage?.content;
+        }
+
+        messages = otherMessages;
+
+        const body: ConverseCommandInput = {
+            modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
+            messages,
+        };
+
+        if (systemPrompt) {
+            body.system = systemPrompt;
+        }
+
+        if (params?.toolsConfig?.tools?.length > 0) {
+            body.toolConfig = {
+                tools: params?.toolsConfig?.tools as any,
+                ...(params?.toolsConfig?.tool_choice && { toolChoice: params?.toolsConfig?.tool_choice as any }),
+            };
+        }
+
+        return body;
+    }
+
+    protected reportUsage(
+        usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: usage.inputTokens,
+            output_tokens: usage.outputTokens,
+            input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
+            input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -485,28 +383,6 @@ export class BedrockConnector extends LLMConnector {
                 content: textBlock,
             };
         });
-    }
-
-    protected reportUsage(
-        usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
-    ) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: usage.inputTokens,
-            output_tokens: usage.outputTokens,
-            input_tokens_cache_write: usage.cacheWriteInputTokenCount || 0,
-            input_tokens_cache_read: usage.cacheReadInputTokenCount || 0,
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
-        };
-        SystemEvents.emit('USAGE:LLM', usageData);
-
-        return usageData;
     }
 }
 

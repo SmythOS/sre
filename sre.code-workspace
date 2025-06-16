@@ -1,0 +1,27 @@
+{
+    "folders": [
+        {
+            "name": "SRE Monorepo",
+            "path": "."
+        },
+        {
+            "name": "Core",
+            "path": "packages/core"
+        },
+        {
+            "name": "SDK",
+            "path": "packages/sdk"
+        },
+        {
+            "name": "CLI",
+            "path": "packages/cli"
+        },
+        {
+            "name": "Examples",
+            "path": "examples"
+        }
+    ],
+    "settings": {
+        "vitest.enable": true
+    }
+}

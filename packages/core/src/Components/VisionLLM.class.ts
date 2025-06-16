@@ -45,13 +45,13 @@ export class VisionLLM extends Component {
 
             logger.debug(` Prompt\n`, prompt, '\n');
 
-            const fileSources = Array.isArray(input.Images) ? input.Images : [input.Images];
+            const files = Array.isArray(input.Images) ? input.Images : [input.Images];
 
             let response: any;
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
-                    const eventEmitter: any = await llmInference.multimodalStreamRequestLegacy(prompt, fileSources, config, agent).catch((error) => {
+                    const eventEmitter: any = await llmInference.multimodalStreamRequestLegacy(prompt, files, config, agent).catch((error) => {
                         console.error('Error on multimodalStreamRequest: ', error);
                         reject(error);
                     });
@@ -75,7 +75,7 @@ export class VisionLLM extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.visionRequest(prompt, fileSources, config, agent);
+                response = await llmInference.prompt({ query: prompt, files, params: { ...config, agentId: agent.id } });
             }
 
             // in case we have the response but it's empty string, undefined or null

@@ -1,32 +1,33 @@
 import EventEmitter from 'events';
 import Anthropic from '@anthropic-ai/sdk';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
-import { IAgent } from '@sre/types/Agent.types';
-import { Logger } from '@sre/helpers/Log.helper';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, ToolData, TLLMMessageBlock, TLLMToolResultMessageBlock, TLLMMessageRole, APIKeySource, TLLMEvent } from '@sre/types/LLM.types';
+import {
+    TLLMParams,
+    ToolData,
+    TLLMMessageBlock,
+    TLLMToolResultMessageBlock,
+    TLLMMessageRole,
+    APIKeySource,
+    TLLMEvent,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    BasicCredentials,
+    TAnthropicRequestBody,
+    TLLMConnectorParams,
+    ILLMRequestContext,
+} from '@sre/types/LLM.types';
 
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import { TextBlockParam } from '@anthropic-ai/sdk/resources';
+import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { ImagesResponse } from 'openai/resources/images';
-
-const console = Logger('AnthropicConnector');
 
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
-const TOOL_USE_DEFAULT_MODEL = 'claude-3-5-haiku-latest';
-const API_KEY_ERROR_MESSAGE = 'Please provide an API key for Anthropic';
-
 const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
 
 // Type aliases
@@ -39,309 +40,20 @@ export class AnthropicConnector extends LLMConnector {
 
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.Anthropic.image;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        let messages = params?.messages || [];
+    private async getClient(params: ILLMRequestContext): Promise<Anthropic> {
+        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+        if (!apiKey) throw new Error('Please provide an API key for Anthropic');
 
-        //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt = '';
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-        if ('content' in systemMessage) {
-            systemPrompt = systemMessage?.content as string;
-        }
-        messages = otherMessages;
-
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
-
-        const apiKey = params?.credentials?.apiKey;
-        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
-
-        const anthropic = new Anthropic({ apiKey });
-
-        // TODO: implement claude specific token counting to validate token limit
-        // this.validateTokenLimit(params);
-
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-        const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-            model: params.model,
-            messages: messages as Anthropic.MessageParam[],
-            max_tokens: maxTokens, // * max token is required
-        };
-
-        if (systemPrompt) messageCreateArgs.system = systemPrompt;
-
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
-        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
-
-        // #region Prepare arguments for thinking requests
-
-        // #endregion Prepare arguments for thinking requests
-
-        try {
-            const response = await anthropic.messages.create(messageCreateArgs);
-
-            const textBlock = response.content?.find((block) => block.type === 'text');
-            let content = textBlock?.text;
-
-            const finishReason = response?.stop_reason;
-            const usage = response?.usage;
-
-            if (this.hasPrefillTextForJsonResponse(messages)) {
-                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
-            }
-
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason };
-        } catch (error) {
-            throw error;
-        }
+        return new Anthropic({ apiKey });
     }
 
-    // TODO [Forhad]: check if we can get the agent ID from the acRequest.candidate
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent) {
-        let messages = params?.messages || [];
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
-
-        const content = [{ type: 'text', text: prompt }, ...imageData];
-        messages.push({ role: TLLMMessageRole.User, content });
-
-        //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt;
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-        if ('content' in systemMessage) {
-            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
-        }
-        messages = otherMessages;
-
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
-
-        const apiKey = params?.credentials?.apiKey;
-
-        // We do not provide default API key for claude, so user/team must provide their own API key
-        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
-
-        const anthropic = new Anthropic({ apiKey });
-
-        // TODO (Forhad): implement claude specific token counting properly
-        // this.validateTokenLimit(params);
-
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-        const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-            model: params.model,
-            messages,
-            max_tokens: maxTokens, // * max token is required
-        };
-
-        if (systemPrompt) messageCreateArgs.system = systemPrompt;
-
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
-        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
-
-        messageCreateArgs = (await this.prepareMessageArgs({
-            acRequest,
-            params,
-            args: messageCreateArgs,
-        })) as Anthropic.MessageCreateParamsNonStreaming;
-
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
-            const response = await anthropic.messages.create(messageCreateArgs);
-
-            const textBlock = response.content?.find((block) => block.type === 'text');
-            let content = textBlock?.text;
-
-            const finishReason = response?.stop_reason;
-            const usage = response?.usage;
-
-            if (this.hasPrefillTextForJsonResponse(messages)) {
-                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
-            }
-
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason };
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        let messages = params?.messages || [];
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
-
-        const content = [{ type: 'text', text: prompt }, ...imageData];
-        messages.push({ role: TLLMMessageRole.User, content });
-
-        //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt;
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-        if ('content' in systemMessage) {
-            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
-        }
-        messages = otherMessages;
-
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            systemPrompt = systemPrompt ? `${systemPrompt} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
-            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
-        }
-        //#endregion Separate system message and add JSON response instruction if needed
-
-        const apiKey = params?.credentials?.apiKey;
-
-        // We do not provide default API key for claude, so user/team must provide their own API key
-        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
-
-        const anthropic = new Anthropic({ apiKey });
-
-        // TODO (Forhad): implement claude specific token counting properly
-        // this.validateTokenLimit(params);
-
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-        const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-            model: params.model,
-            messages,
-            max_tokens: maxTokens, // * max token is required
-        };
-
-        if (systemPrompt) messageCreateArgs.system = systemPrompt;
-
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
-        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
-
-        messageCreateArgs = (await this.prepareMessageArgs({
-            acRequest,
-            params,
-            args: messageCreateArgs,
-        })) as Anthropic.MessageCreateParamsNonStreaming;
-
-        try {
-            const response = await anthropic.messages.create(messageCreateArgs);
-
-            const textBlock = response.content?.find((block) => block.type === 'text');
-            let content = textBlock?.text;
-
-            const finishReason = response?.stop_reason;
-            const usage = response?.usage;
-
-            if (this.hasPrefillTextForJsonResponse(messages)) {
-                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
-            }
-
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason };
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<any> {
-        try {
-            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-            const apiKey = params?.credentials?.apiKey;
-            if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
-
-            const anthropic = new Anthropic({ apiKey });
-
-            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-            const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-            let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-                model: params?.model,
-                messages: [],
-                max_tokens: maxTokens, // * max token is required
-            };
-
-            let messages = params?.messages || [];
-
-            const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-            if (hasSystemMessage) {
-                // in Anthropic we need to provide system message separately
-                const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string) || '';
-
-                messages = otherMessages as Anthropic.MessageParam[];
-            }
-
-            messageCreateArgs.messages = messages;
-
-            if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
-                messageCreateArgs.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
-            }
-
-            messageCreateArgs = (await this.prepareMessageArgs({
-                acRequest,
-                params,
-                args: messageCreateArgs,
-            })) as Anthropic.MessageCreateParamsNonStreaming;
-
-            // TODO (Forhad): implement claude specific token counting properly
-            // this.validateTokenLimit(params);
-
-            const result = await anthropic.messages.create(messageCreateArgs);
-            const message = {
-                role: result?.role || TLLMMessageRole.User,
+            const anthropic = await this.getClient(context);
+            const result = await anthropic.messages.create(body);
+            const message: Anthropic.MessageParam = {
+                role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
                 content: result?.content || '',
             };
             const stopReason = result?.stop_reason;
@@ -369,117 +81,37 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             const textBlock = result?.content?.find((block) => block.type === 'text');
-            const content = textBlock?.text;
+            const content = textBlock?.text || '';
 
             const usage = result?.usage;
 
             this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             return {
-                data: {
-                    useTool,
-                    message,
-                    content,
-                    toolsData,
-                },
+                content,
+                finishReason: result?.stop_reason,
+                useTool,
+                toolsData,
+                message,
+                usage,
             };
         } catch (error) {
             throw error;
         }
     }
 
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<any> {
-        throw new Error('Image generation request is not supported for Anthropic.');
-    }
-
-    // ! DEPRECATED METHOD
-    protected async streamToolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-    ): Promise<any> {
-        throw new Error('streamToolRequest() is Deprecated!');
-    }
-
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             const emitter = new EventEmitter();
             const usage_data = [];
 
-            const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-            const apiKey = params?.credentials?.apiKey;
-            if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
-
-            const anthropic = new Anthropic({ apiKey });
-
-            const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-            const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-            const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-            let messageCreateArgs: Anthropic.Messages.MessageStreamParams = {
-                model: params?.model,
-                messages: [],
-                max_tokens: maxTokens,
-            };
-
-            console.debug('Using Model', params?.model, 'Max Tokens=', params?.maxTokens);
-            let messages = params?.messages || [];
-
-            const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
-            if (hasSystemMessage) {
-                // in Anthropic we need to provide system message separately
-                const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-
-                messageCreateArgs.system = ((systemMessage as TLLMMessageBlock)?.content as string | Array<TextBlockParam>) || '';
-                if (typeof messageCreateArgs.system === 'string') {
-                    messageCreateArgs.system = [
-                        {
-                            type: 'text',
-                            text: messageCreateArgs.system,
-                            //cache_control: { type: 'ephemeral' }, //TODO: @Forhad check this
-                        },
-                    ];
-                }
-
-                messageCreateArgs.system.unshift({
-                    type: 'text',
-                    text: 'If you need to call a function, Do NOT inform the user that you are about to do so, and do not thank the user after you get the response. Just say something like "Give me a moment...", then when you get the response, Just continue answering the user without saying anything about the function you just called',
-                });
-
-                if (params?.cache) {
-                    messageCreateArgs.system[messageCreateArgs.system.length - 1]['cache_control'] = { type: 'ephemeral' };
-                }
-
-                messages = otherMessages as Anthropic.MessageParam[];
-            }
-
-            messageCreateArgs.messages = messages;
-
-            if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
-                messageCreateArgs.tools = JSON.parse(JSON.stringify(params?.toolsConfig?.tools)) as Anthropic.Tool[];
-                if (params?.cache) {
-                    messageCreateArgs.tools[messageCreateArgs.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
-                }
-            }
-
-            if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-            if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-            if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
-            if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
-
-            messageCreateArgs = (await this.prepareMessageArgs({
-                acRequest,
-                params,
-                args: messageCreateArgs,
-            })) as Anthropic.Messages.MessageStreamParams;
-
-            let stream = anthropic.messages.stream(messageCreateArgs);
+            const anthropic = await this.getClient(context);
+            let stream = anthropic.messages.stream(body);
 
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks
@@ -531,19 +163,12 @@ export class AnthropicConnector extends LLMConnector {
 
                 if (finalMessage?.usage) {
                     const usage = finalMessage.usage;
-                    // usage_data.push({
-                    //     prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
-                    //     completion_tokens: usage.output_tokens,
-                    //     total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
-                    //     prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
-                    //     completion_tokens_details: { reasoning_tokens: 0 },
-                    // });
 
                     const reportedUsage = this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
                     });
 
                     usage_data.push(reportedUsage);
@@ -564,141 +189,45 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        const emitter = new EventEmitter();
-        const usage_data = [];
-        let messages = params?.messages || [];
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        throw new Error('Web search requests are not supported by Anthropic');
+    }
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+    protected async reqBodyAdapter(params: TLLMParams): Promise<TAnthropicRequestBody> {
+        const body = await this.prepareBody(params);
 
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
-
-        const content = [{ type: 'text', text: prompt }, ...imageData];
-        messages.push({ role: TLLMMessageRole.User, content });
-
-        //#region Separate system message and add JSON response instruction if needed
-        let systemPrompt;
-        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
-        if ('content' in systemMessage) {
-            systemPrompt = (systemMessage as TLLMMessageBlock)?.content;
+        const shouldUseThinking = await this.shouldUseThinkingMode(params);
+        if (shouldUseThinking) {
+            return await this.prepareBodyForThinkingRequest({
+                body,
+                maxThinkingTokens: params.maxThinkingTokens,
+                toolChoice: params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice,
+            });
         }
-        messages = otherMessages;
-        //#endregion Separate system message and add JSON response instruction if needed
 
-        const apiKey = params?.credentials?.apiKey;
+        return body;
+    }
 
-        // We do not provide default API key for claude, so user/team must provide their own API key
-        if (!apiKey) throw new Error(API_KEY_ERROR_MESSAGE);
+    protected reportUsage(
+        usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+    ) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-        const anthropic = new Anthropic({ apiKey });
-
-        // TODO (Forhad): implement claude specific token counting properly
-        // this.validateTokenLimit(params);
-
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
-
-        const maxTokens = params?.maxTokens || (await modelsProvider.getMaxCompletionTokens(params?.modelEntryName || params?.model, !!apiKey));
-
-        let messageCreateArgs: Anthropic.MessageCreateParamsNonStreaming = {
-            model: params.model,
-            messages,
-            max_tokens: maxTokens, // * max token is required
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+            input_tokens_cache_write: usage.cache_creation_input_tokens,
+            input_tokens_cache_read: usage.cache_read_input_tokens,
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
         };
+        SystemEvents.emit('USAGE:LLM', usageData);
 
-        if (systemPrompt) messageCreateArgs.system = systemPrompt;
-
-        if (params?.temperature !== undefined) messageCreateArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) messageCreateArgs.top_p = params.topP;
-        if (params?.topK !== undefined) messageCreateArgs.top_k = params.topK;
-        if (params?.stopSequences?.length) messageCreateArgs.stop_sequences = params.stopSequences;
-
-        messageCreateArgs = (await this.prepareMessageArgs({
-            acRequest,
-            params,
-            args: messageCreateArgs,
-        })) as Anthropic.MessageCreateParamsNonStreaming;
-
-        try {
-            let stream = anthropic.messages.stream(messageCreateArgs);
-
-            stream.on('streamEvent', (event: any) => {
-                if (event.message?.usage) {
-                    //console.log('usage', event.message?.usage);
-                }
-            });
-
-            let toolsData: ToolData[] = [];
-
-            stream.on('error', (error) => {
-                //console.log('error', error);
-
-                emitter.emit('error', error);
-            });
-            stream.on('text', (text: string) => {
-                emitter.emit('content', text);
-            });
-
-            stream.on('thinking', (thinking) => {
-                emitter.emit('thinking', thinking);
-            });
-
-            stream.on('finalMessage', (finalMessage) => {
-                let finishReason = 'stop';
-                //console.log('finalMessage', finalMessage);
-                const thinkingBlocks = finalMessage?.content?.filter((block) => block.type === 'thinking' || block.type === 'redacted_thinking');
-                const toolUseContentBlocks = finalMessage?.content?.filter((c) => (c.type as 'tool_use') === 'tool_use');
-
-                if (toolUseContentBlocks?.length > 0) {
-                    toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
-                        toolsData.push({
-                            index,
-                            id: toolUseBlock?.id,
-                            type: 'function', // We call API only when the tool type is 'function' in `src/helpers/Conversation.helper.ts`. Even though Anthropic returns the type as 'tool_use', it should be interpreted as 'function'.
-                            name: toolUseBlock?.name,
-                            arguments: toolUseBlock?.input,
-                            role: finalMessage?.role,
-                        });
-                    });
-
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData, thinkingBlocks);
-                } else {
-                    finishReason = finalMessage.stop_reason;
-                }
-
-                if (finalMessage?.usage) {
-                    const usage = finalMessage.usage;
-                    usage_data.push({
-                        prompt_tokens: usage.input_tokens + usage.cache_creation_input_tokens + usage.cache_read_input_tokens,
-                        completion_tokens: usage.output_tokens,
-                        total_tokens: usage.input_tokens + usage.output_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
-                        prompt_tokens_details: { cached_tokens: usage.cache_read_input_tokens },
-                        completion_tokens_details: { reasoning_tokens: 0 },
-                    });
-
-                    this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
-                    });
-                }
-
-                if (finishReason !== 'stop' && finishReason !== 'end_turn') {
-                    emitter.emit('interrupted', finishReason);
-                }
-                //only emit end event after processing the final message
-                setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data, finishReason);
-                }, 100);
-            });
-
-            return emitter;
-        } catch (error) {
-            throw error;
-        }
+        return usageData;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -864,144 +393,82 @@ export class AnthropicConnector extends LLMConnector {
         return _messages;
     }
 
-    private getValidImageFileSources(fileSources: BinaryInput[]) {
-        const validSources = [];
+    private async prepareBody(params: TLLMParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+        let messages = await this.prepareMessages(params);
 
-        for (let fileSource of fileSources) {
-            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
-                validSources.push(fileSource);
-            }
-        }
-
-        if (validSources?.length === 0) {
-            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
-        }
-
-        return validSources;
-    }
-
-    private async getImageData(
-        fileSources: BinaryInput[],
-        agentId: string,
-    ): Promise<
-        {
-            type: string;
-            source: { type: 'base64'; data: string; media_type: string };
-        }[]
-    > {
-        try {
-            const imageData = [];
-
-            for (let fileSource of fileSources) {
-                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
-                const base64Data = bufferData.toString('base64');
-
-                imageData.push({
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        data: base64Data,
-                        media_type: fileSource.mimetype,
-                    },
-                });
-            }
-
-            return imageData;
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    protected reportUsage(
-        usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
-    ) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: usage.input_tokens,
-            output_tokens: usage.output_tokens,
-            input_tokens_cache_write: usage.cache_creation_input_tokens,
-            input_tokens_cache_read: usage.cache_read_input_tokens,
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
+        let body: Anthropic.MessageCreateParamsNonStreaming = {
+            model: params.model as string,
+            messages: messages as Anthropic.MessageParam[],
+            max_tokens: params.maxTokens, // * max token is required
         };
-        SystemEvents.emit('USAGE:LLM', usageData);
 
-        return usageData;
-    }
+        //#region Prepare system message and add JSON response instruction if needed
+        // TODO: We have better parameter to have structured response, need to implement it.
+        const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+        if ('content' in systemMessage) {
+            body.system = systemMessage?.content as string;
+        }
+        messages = otherMessages;
 
-    /**
-     * Prepares message arguments for Anthropic API requests, handling special cases for reasoning models.
-     */
-    private async prepareMessageArgs({
-        acRequest,
-        params,
-        args,
-    }: {
-        acRequest: AccessRequest;
-        params: TLLMParams;
-        args: AnthropicMessageParams;
-    }): Promise<AnthropicMessageParams> {
-        const shouldUseThinking = await this.shouldUseThinkingMode(acRequest, params);
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            body.system = body.system ? `${body.system} ${JSON_RESPONSE_INSTRUCTION}` : JSON_RESPONSE_INSTRUCTION;
 
-        if (shouldUseThinking) {
-            const thinkingArgs: {
-                args: AnthropicMessageParams;
-                maxThinkingTokens: number;
-                toolChoice?: Anthropic.ToolChoice;
-            } = {
-                args,
-                maxThinkingTokens: params.maxThinkingTokens,
-            };
+            messages.push({ role: TLLMMessageRole.Assistant, content: PREFILL_TEXT_FOR_JSON_RESPONSE });
+        }
 
-            const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
-            if (toolChoice) {
-                thinkingArgs.toolChoice = toolChoice;
+        const hasSystemMessage = LLMHelper.hasSystemMessage(messages);
+        if (hasSystemMessage) {
+            // in Anthropic we need to provide system message separately
+            const { systemMessage, otherMessages } = LLMHelper.separateSystemMessages(messages);
+
+            if ('content' in systemMessage) {
+                body.system = await this.prepareSystemPrompt(systemMessage, params);
             }
 
-            return await this.prepareArgsForThinkingRequest(thinkingArgs);
+            messages = otherMessages as Anthropic.MessageParam[];
+        }
+        //#endregion Prepare system message and add JSON response instruction if needed
+
+        if (params?.temperature !== undefined) body.temperature = params.temperature;
+        if (params?.topP !== undefined) body.top_p = params.topP;
+        if (params?.topK !== undefined) body.top_k = params.topK;
+        if (params?.stopSequences?.length) body.stop_sequences = params.stopSequences;
+
+        // #region Tools
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
+            body.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
+
+            if (params?.cache) {
+                body.tools[body.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
+            }
         }
 
-        return args;
+        const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+        if (toolChoice) {
+            body.tool_choice = toolChoice;
+        }
+        // #endregion Tools
+
+        body.messages = messages as Anthropic.MessageParam[];
+        return body;
     }
 
-    /**
-     * Determines if thinking mode should be used based on model capabilities and parameters.
-     */
-    private async shouldUseThinkingMode(acRequest: AccessRequest, params: TLLMParams): Promise<boolean> {
-        // Legacy thinking models always use thinking mode
-        if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
-            return true;
-        }
-
-        // Check if reasoning is explicitly requested and model supports it
-        const useReasoning = params?.useReasoning || false;
-        if (useReasoning) {
-            return await this.hasReasoningCapability(acRequest, params.modelEntryName);
-        }
-
-        return false;
-    }
-
-    private async prepareArgsForThinkingRequest({
-        args,
+    private async prepareBodyForThinkingRequest({
+        body,
         maxThinkingTokens,
         toolChoice = null,
     }: {
-        args: AnthropicMessageParams;
+        body: AnthropicMessageParams;
         maxThinkingTokens: number;
         toolChoice?: Anthropic.ToolChoice;
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
-        let messages = args.messages.filter(
+        let messages = body.messages.filter(
             (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE,
         );
 
-        let budget_tokens = Math.min(maxThinkingTokens, args.max_tokens);
+        let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
 
         // If budget_tokens is equal to max_tokens, we set it to 80% of max_tokens
         // to avoid the error: "budget_tokens must be less than max_tokens".
@@ -1014,14 +481,14 @@ export class AnthropicConnector extends LLMConnector {
         // So for now, to keep it simple, if max_tokens equals budget_tokens,
         // just use 80% of max_tokens.
 
-        if (budget_tokens === args.max_tokens) {
+        if (budget_tokens === body.max_tokens) {
             budget_tokens = Math.floor(budget_tokens * 0.8);
         }
 
-        const newArgs: Anthropic.MessageCreateParamsNonStreaming = {
-            model: args.model,
+        const thinkingBody: Anthropic.MessageCreateParamsNonStreaming = {
+            model: body.model,
             messages,
-            max_tokens: args.max_tokens,
+            max_tokens: body.max_tokens,
             thinking: {
                 type: 'enabled',
                 budget_tokens,
@@ -1031,28 +498,135 @@ export class AnthropicConnector extends LLMConnector {
         if (toolChoice) {
             // any and tool are not supported with thinking, so we set it to auto
             if (['any', 'tool'].includes(toolChoice.type)) {
-                newArgs.tool_choice = {
+                thinkingBody.tool_choice = {
                     type: 'auto',
                 };
             } else {
-                newArgs.tool_choice = toolChoice;
+                thinkingBody.tool_choice = toolChoice;
             }
         }
 
-        return newArgs;
+        return thinkingBody;
     }
 
-    private hasPrefillTextForJsonResponse(messages: Anthropic.Messages.MessageParam[]) {
-        return messages.some((message) => message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE);
+    private async prepareMessages(params: TLLMParams) {
+        const messages = params?.messages || [];
+
+        const files: BinaryInput[] = params?.files || [];
+
+        if (files?.length > 0) {
+            // #region Upload files
+            const promises = [];
+            const _files = [];
+
+            for (let image of files) {
+                const binaryInput = BinaryInput.from(image);
+                promises.push(binaryInput.upload(AccessCandidate.agent(params.agentId)));
+
+                _files.push(binaryInput);
+            }
+
+            await Promise.all(promises);
+            // #endregion Upload files
+
+            const validSources = this.getValidImageFiles(_files);
+            const imageData = await this.getImageData(validSources, params.agentId);
+
+            const userMessage = Array.isArray(messages) ? messages.pop() : {};
+            const prompt = userMessage?.content || '';
+
+            const content = [{ type: 'text', text: prompt }, ...imageData];
+            messages.push({ role: TLLMMessageRole.User, content });
+        }
+
+        return messages;
     }
 
-    private async hasReasoningCapability(acRequest: AccessRequest, modelEntryName: string) {
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+    private async prepareSystemPrompt(systemMessage: TLLMMessageBlock, params: TLLMParams): Promise<string | Array<Anthropic.TextBlockParam>> {
+        let systemPrompt = systemMessage?.content;
 
-        const modelInfo = await modelsProvider.getModelInfo(modelEntryName);
-        const features = modelInfo?.features || [];
+        if (typeof systemPrompt === 'string') {
+            systemPrompt = [
+                {
+                    type: 'text' as const,
+                    text: systemPrompt,
+                    //cache_control: { type: 'ephemeral' }, //TODO: @Forhad check this
+                },
+            ] as Array<Anthropic.TextBlockParam>;
+        }
 
-        return features.includes('reasoning');
+        (systemPrompt as Array<Anthropic.TextBlockParam>).unshift({
+            type: 'text' as const,
+            text: 'If you need to call a function, Do NOT inform the user that you are about to do so, and do not thank the user after you get the response. Just say something like "Give me a moment...", then when you get the response, Just continue answering the user without saying anything about the function you just called',
+        });
+
+        if (params?.cache) {
+            (systemPrompt as Array<Anthropic.TextBlockParam>)[systemPrompt.length - 1]['cache_control'] = { type: 'ephemeral' };
+        }
+
+        return systemPrompt as Array<Anthropic.TextBlockParam>;
+    }
+
+    /**
+     * Determines if thinking mode should be used based on model capabilities and parameters.
+     */
+    private async shouldUseThinkingMode(params: TLLMParams): Promise<boolean> {
+        // Legacy thinking models always use thinking mode
+        if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
+            return true;
+        }
+
+        // Check if reasoning is explicitly requested and model supports it
+        const useReasoning = params?.useReasoning && params.capabilities?.reasoning === true;
+
+        return useReasoning;
+    }
+
+    private getValidImageFiles(files: BinaryInput[]) {
+        const validSources = [];
+
+        for (let file of files) {
+            if (this.validImageMimeTypes.includes(file?.mimetype)) {
+                validSources.push(file);
+            }
+        }
+
+        if (validSources?.length === 0) {
+            throw new Error(`Unsupported file(s). Please make sure your file is one of the following types: ${this.validImageMimeTypes.join(', ')}`);
+        }
+
+        return validSources;
+    }
+
+    private async getImageData(
+        files: BinaryInput[],
+        agentId: string,
+    ): Promise<
+        {
+            type: string;
+            source: { type: 'base64'; data: string; media_type: string };
+        }[]
+    > {
+        try {
+            const imageData = [];
+
+            for (let file of files) {
+                const bufferData = await file.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+
+                imageData.push({
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        data: base64Data,
+                        media_type: file.mimetype,
+                    },
+                });
+            }
+
+            return imageData;
+        } catch (error) {
+            throw error;
+        }
     }
 }

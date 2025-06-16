@@ -114,7 +114,9 @@ ${JSON.stringify(categories, null, 2)}`;
         }
 
         try {
-            let response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+            let response = await llmInference
+                .prompt({ query: prompt, params: { ...config, agentId: agent.id } })
+                .catch((error) => ({ error: error }));
 
             if (response?.error) {
                 const error = response?.error + ' ' + (response?.details || '');

@@ -63,15 +63,12 @@ export class PromptGenerator extends Component {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
                     const eventEmitter: any = await llmInference
-                        .streamRequest(
-                            {
-                                model: model,
-                                messages: [{ role: 'user', content: prompt }],
-                            },
-                            agent.id,
-                        )
+                        .promptStream({
+                            query: prompt,
+                            params: { ...config, model, agentId: agent.id },
+                        })
                         .catch((error) => {
-                            console.error('Error on streamRequest: ', error);
+                            console.error('Error on promptStream: ', error);
                             reject(error);
                         });
                     eventEmitter.on('content', (content) => {
@@ -94,7 +91,9 @@ export class PromptGenerator extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.promptRequest(prompt, config, agent).catch((error) => ({ error: error }));
+                response = await llmInference
+                    .prompt({ query: prompt, params: { ...config, agentId: agent.id } })
+                    .catch((error) => ({ error: error }));
             }
 
             // in case we have the response but it's empty string, undefined or null

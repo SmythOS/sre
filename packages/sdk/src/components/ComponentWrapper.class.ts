@@ -114,19 +114,33 @@ export class ComponentWrapper {
 
             //console.log('connection', connection);
 
-            (inputsList as any)[key] = {
-                source: val,
-            };
-            const targetInput = this._inputs[key];
-            if (!targetInput) {
-                this._inputs[key] = {
+            if (typeof sourceData !== 'undefined') {
+                (inputsList as any)[key] = {
                     source: val,
-                    component: this,
-                    type: 'Any',
-                    default: false,
                 };
-            }
+                const targetInput = this._inputs[key];
+                if (!targetInput) {
+                    this._inputs[key] = {
+                        source: val,
+                        component: this,
+                        type: 'Any',
+                        default: false,
+                    };
+                }
+            } else {
+                //TODO : handle json input mapping
+                //eg component.in({param : {source: 'body.param', description: 'The parameter description' ...}})
 
+                const targetInput = this._inputs[key];
+                if (!targetInput) {
+                    this._inputs[key] = {
+                        component: this,
+                        type: 'Any',
+                        default: false,
+                        ...val,
+                    } as any;
+                }
+            }
             //console.log('input', key, rootData);
 
             //this.dataObject.connections.push(connection);

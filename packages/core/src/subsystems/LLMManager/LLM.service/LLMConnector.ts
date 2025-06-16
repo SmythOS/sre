@@ -1,10 +1,7 @@
-import { type OpenAI } from 'openai';
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { Connector } from '@sre/Core/Connector.class';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import {
     TLLMParams,
@@ -17,6 +14,9 @@ import {
     TLLMCredentials,
     TBedrockSettings,
     TVertexAISettings,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMRequestBody,
 } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
@@ -29,23 +29,17 @@ import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/
 const console = Logger('LLMConnector');
 
 export interface ILLMConnectorRequest {
-    chatRequest(params: TLLMConnectorParams): Promise<any>;
-    visionRequest(prompt, params: TLLMConnectorParams): Promise<any>;
-    multimodalRequest(prompt, params: TLLMConnectorParams): Promise<any>;
-    toolRequest(params: TLLMConnectorParams): Promise<any>;
-    streamToolRequest(params: TLLMConnectorParams): Promise<any>;
-    streamRequest(params: TLLMConnectorParams): Promise<EventEmitter>;
-    multimodalStreamRequest(prompt, params: TLLMConnectorParams): Promise<any>;
-    imageGenRequest(prompt, params: TLLMConnectorParams): Promise<any>;
-    imageEditRequest?(prompt, params: TLLMConnectorParams): Promise<any>;
-}
+    // chatRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
+    // visionRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
+    // multimodalRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
+    // toolRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
 
-export type LLMChatResponse = {
-    content: string;
-    finishReason: string;
-    thinkingContent?: string;
-    usage?: any;
-};
+    request(params: TLLMConnectorParams): Promise<TLLMChatResponse>;
+    streamRequest(params: TLLMConnectorParams): Promise<EventEmitter>;
+
+    imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
+    imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any>;
+}
 
 const SMYTHOS_API_KEYS = {
     echo: '',
@@ -96,35 +90,19 @@ export class LLMStream extends Readable {
 
 export abstract class LLMConnector extends Connector {
     public abstract name: string;
-    //public abstract user(candidate: AccessCandidate): ILLMConnectorRequest;
-    protected abstract chatRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract visionRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<LLMChatResponse>;
-    protected abstract multimodalRequest(
-        acRequest: AccessRequest,
-        prompt,
-        params: TLLMConnectorParams,
-        agent: string | Agent
-    ): Promise<LLMChatResponse>;
-    protected abstract toolRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<any>;
-    protected abstract streamToolRequest(acRequest: AccessRequest, params: TLLMConnectorParams | any, agent: string | Agent): Promise<any>;
-    protected abstract streamRequest(acRequest: AccessRequest, params: TLLMConnectorParams, agent: string | Agent): Promise<EventEmitter>;
-    protected abstract multimodalStreamRequest(
-        acRequest: AccessRequest,
-        prompt,
-        params: TLLMConnectorParams,
-        agent: string | Agent
-    ): Promise<EventEmitter>;
+
+    protected abstract request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse>;
+    protected abstract streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
+    protected abstract webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
+
+    protected abstract reqBodyAdapter(params: TLLMConnectorParams): Promise<TLLMRequestBody>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
 
-    protected abstract imageGenRequest(
-        acRequest: AccessRequest,
-        prompt,
-        params: TLLMConnectorParams,
-        agent: string | Agent
-    ): Promise<OpenAI.ImagesResponse>;
-
     // Optional method - default implementation throws error. (It's a workaround. We will move image related methods to another subsystem.)
-    protected imageEditRequest(acRequest: AccessRequest, prompt, params: TLLMConnectorParams, agent: string | Agent): Promise<any> {
+    protected imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
+        return Promise.reject(new Error('Image edit not supported by this model'));
+    }
+    protected imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
         return Promise.reject(new Error('Image edit not supported by this model'));
     }
 
@@ -139,55 +117,95 @@ export abstract class LLMConnector extends Connector {
             console.warn(`Vault Connector unavailable for ${candidate.id} `);
         }
 
-        const request: ILLMConnectorRequest = {
-            chatRequest: async (params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
+        const _request: ILLMConnectorRequest = {
+            request: async (params: TLLMConnectorParams) => {
+                const preparedParams = await this.prepareParams(candidate, params);
 
-                return this.chatRequest(candidate.readRequest, _params, candidate.id);
+                const response = await this.request({
+                    acRequest: candidate.readRequest,
+                    body: preparedParams.body,
+                    context: {
+                        modelEntryName: preparedParams.modelEntryName,
+                        agentId: preparedParams.agentId,
+                        teamId: preparedParams.teamId,
+                        isUserKey: preparedParams.isUserKey,
+                        hasFiles: preparedParams.files?.length > 0,
+                        modelInfo: preparedParams.modelInfo,
+                        credentials: preparedParams.credentials,
+                    },
+                });
+
+                return response;
             },
-            visionRequest: async (prompt, params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
+            streamRequest: async (params: TLLMConnectorParams) => {
+                const preparedParams = await this.prepareParams(candidate, params);
 
-                return this.visionRequest(candidate.readRequest, prompt, _params, candidate.id);
+                const requestParams = {
+                    acRequest: candidate.readRequest,
+                    body: preparedParams.body,
+                    context: {
+                        modelEntryName: preparedParams.modelEntryName,
+                        agentId: preparedParams.agentId,
+                        teamId: preparedParams.teamId,
+                        isUserKey: preparedParams.isUserKey,
+                        hasFiles: preparedParams.files?.length > 0,
+                        modelInfo: preparedParams.modelInfo,
+                        credentials: preparedParams.credentials,
+                    },
+                };
+
+                let response;
+
+                if (preparedParams.capabilities?.search === true && preparedParams.useWebSearch === true) {
+                    response = await this.webSearchRequest(requestParams);
+                } else {
+                    response = await this.streamRequest(requestParams);
+                }
+
+                return response;
             },
-            multimodalRequest: async (prompt, params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
 
-                return this.multimodalRequest(candidate.readRequest, prompt, _params, candidate.id);
+            imageGenRequest: async (params: any) => {
+                const preparedParams = await this.prepareParams(candidate, params);
+
+                const response = await this.imageGenRequest({
+                    acRequest: candidate.readRequest,
+                    body: preparedParams.body,
+                    context: {
+                        modelEntryName: preparedParams.modelEntryName,
+                        isUserKey: preparedParams.isUserKey,
+                        agentId: preparedParams.agentId,
+                        teamId: preparedParams.teamId,
+                        hasFiles: preparedParams.files?.length > 0,
+                        modelInfo: preparedParams.modelInfo,
+                        credentials: preparedParams.credentials,
+                    },
+                });
+
+                return response;
             },
-            toolRequest: async (params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
+            imageEditRequest: async (params: any) => {
+                const preparedParams = await this.prepareParams(candidate, params);
 
-                return this.toolRequest(candidate.readRequest, _params, candidate.id);
-            },
-            streamToolRequest: async (params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
+                const response = await this.imageEditRequest({
+                    acRequest: candidate.readRequest,
+                    body: preparedParams.body,
+                    context: {
+                        modelEntryName: preparedParams.modelEntryName,
+                        isUserKey: preparedParams.isUserKey,
+                        agentId: preparedParams.agentId,
+                        teamId: preparedParams.teamId,
+                        hasFiles: preparedParams.files?.length > 0,
+                        modelInfo: preparedParams.modelInfo,
+                        credentials: preparedParams.credentials,
+                    },
+                });
 
-                return this.streamToolRequest(candidate.readRequest, _params, candidate.id);
-            },
-            streamRequest: async (params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
-
-                return this.streamRequest(candidate.readRequest, _params, candidate.id);
-            },
-            multimodalStreamRequest: async (prompt, params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
-
-                return this.multimodalStreamRequest(candidate.readRequest, prompt, _params, candidate.id);
-            },
-            imageGenRequest: async (prompt, params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
-
-                return this.imageGenRequest(candidate.readRequest, prompt, _params, candidate.id);
-            },
-            imageEditRequest: async (prompt, params: any) => {
-                const _params: TLLMConnectorParams = await this.prepareParams(candidate, params);
-
-                return this.imageEditRequest(candidate.readRequest, prompt, _params, candidate.id);
+                return response;
             },
         };
 
-        return request;
+        return _request;
     }
 
     public enhancePrompt(prompt: string, config: any) {
@@ -249,7 +267,6 @@ export abstract class LLMConnector extends Connector {
         return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
-    //TODO : use getLLMCredentials from Credentials.helper.ts
     private async getCredentials(candidate: AccessCandidate, modelInfo: TLLMModel | TCustomLLMModel) {
         //create a credentials list that we can iterate over
         //if the credentials are not provided, we will use None as a default in order to return empty credentials
@@ -292,16 +309,16 @@ export abstract class LLMConnector extends Connector {
 
         return {};
     }
-    private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMParams> {
+    private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMConnectorParams & { body: any }> {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const fileSources = params?.fileSources;
-        delete params?.fileSources; // need to remove fileSources to avoid any issues during JSON.stringify() especially when we have large files
+        // Assign file from the original parameters to avoid overwriting the original constructor
+        const files = params?.files;
+        delete params?.files; // need to remove files to avoid any issues during JSON.stringify() especially when we have large files
 
         const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
-        const _params: TLLMParams = this.formatParamValues(clonedParams);
+        const _params: TLLMConnectorParams = this.formatParamValues(clonedParams);
 
         const model = _params.model;
         const teamId = await this.getTeamId(candidate);
@@ -334,75 +351,30 @@ export abstract class LLMConnector extends Connector {
         if (!isStandardLLM) _params.modelInfo = modelInfo as TCustomLLMModel; //only if custom LLM ?
 
         if (_params.maxTokens) {
-            _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(
-                model,
-                _params.maxTokens,
-                _params?.credentials?.isUserKey as boolean
-            );
+            _params.maxTokens = await modelProviderCandidate.adjustMaxCompletionTokens(model, _params.maxTokens, _params?.isUserKey as boolean);
+        } else {
+            // max output tokens is mandatory for Anthropic models
+            // We provide the default max output tokens here to avoid some complexity in reqBodyAdapter()
+            _params.maxTokens = await modelProviderCandidate.getMaxCompletionTokens(model, _params?.isUserKey as boolean);
         }
 
         _params.model = await modelProviderCandidate.getModelId(model);
-        // Attach the fileSources again after formatting the parameters
-        _params.fileSources = fileSources;
+        // Attach the files again after formatting the parameters
+        _params.files = files;
 
-        //if (isStandardLLM) {
-        //const modelInfo = LLMRegistry.getModelInfo(model) as TLLMModel;
+        const features = modelInfo?.features || [];
 
-        // Provide default SmythOS API key for OpenAI models to maintain backwards compatibility with existing components that use built-in models
-        // if (!_params.credentials?.apiKey && llmProvider.toLowerCase() === 'openai') {
-        //     //const modelInfo = LLMRegistry.getModelInfo(model);
-        //     const isImageGenerationModel = modelInfo?.features?.includes('image-generation');
+        _params.capabilities = {
+            search: features.includes('search'),
+            reasoning: features.includes('reasoning'),
+            imageGeneration: features.includes('image-generation'),
+        };
 
-        //     // We will not provide Smyth OS key for image generation models
-        //     if (!isImageGenerationModel) {
-        //         _params.credentials.apiKey = SMYTHOS_API_KEYS.openai;
-        //     }
-        // } else {
-        //     _params.credentials.isUserKey = true;
-        // }
-        //}
+        // The input adapter transforms the standardized parameters into the specific format required by the target LLM provider
+        _params.agentId = candidate.id;
+        const body = await this.reqBodyAdapter(_params);
 
-        // if (_params.maxTokens) {
-        //     _params.maxTokens = LLMRegistry.adjustMaxCompletionTokens(_params.model, _params.maxTokens, !!_params?.credentials?.apiKey);
-        // }
-
-        // if (_params.maxThinkingTokens) {
-        //     _params.maxThinkingTokens = LLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
-        // }
-
-        // const baseUrl = LLMRegistry.getBaseURL(params.model);
-
-        // if (baseUrl) {
-        //     _params.baseURL = baseUrl;
-        // }
-
-        //_params.model = LLMRegistry.getModelId(model) || model;
-        //} else {
-        //const team = AccessCandidate.team(teamId);
-        //const customLLMRegistry = await CustomLLMRegistry.getInstance(team);
-        //const modelInfo = customLLMRegistry.getModelInfo(model);
-        //_params.modelInfo = modelInfo;
-        //const llmProvider = customLLMRegistry.getProvider(model);
-        // if (llmProvider === TLLMProvider.Bedrock) {
-        //     _params.credentials = await this.getBedrockCredentials(candidate, modelInfo as TCustomLLMModel);
-        // } else if (llmProvider === TLLMProvider.VertexAI) {
-        //     _params.credentials = await this.getVertexAICredentials(candidate, modelInfo as TCustomLLMModel);
-        // }
-        // User key is always true for custom LLMs
-        //_params.credentials.isUserKey = true;
-        // if (_params.maxTokens) {
-        //     _params.maxTokens = customLLMRegistry.adjustMaxCompletionTokens(model, _params.maxTokens);
-        // }
-        // if (_params.maxThinkingTokens) {
-        //     _params.maxThinkingTokens = customLLMRegistry.adjustMaxThinkingTokens(_params.maxTokens, _params.maxThinkingTokens);
-        // }
-        //_params.model = customLLMRegistry.getModelId(model) || model;
-        //}
-
-        // // Attach the fileSources again after formatting the parameters
-        // _params.fileSources = fileSources;
-
-        return _params;
+        return { ..._params, body };
     }
 
     // TODO [Forhad]: apply proper typing for _value and return value

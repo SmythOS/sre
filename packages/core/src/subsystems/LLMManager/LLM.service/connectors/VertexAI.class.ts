@@ -1,20 +1,21 @@
-import { VertexAI, type ModelParams, type GenerationConfig, type Content, UsageMetadata } from '@google-cloud/vertexai';
+import { VertexAI, type GenerationConfig, type UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
-import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { Logger } from '@sre/helpers/Log.helper';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { TLLMParams, TCustomLLMModel, APIKeySource, TVertexAISettings } from '@sre/types/LLM.types';
-import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
+import {
+    TLLMParams,
+    TCustomLLMModel,
+    APIKeySource,
+    TVertexAISettings,
+    ILLMRequestFuncParams,
+    TGoogleAIRequestBody,
+    TLLMConnectorParams,
+    ILLMRequestContext,
+} from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-
-const console = Logger('VertexAIConnector');
 
 //TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
 // we had no access to VertexAI so we assumed it is working (potential bug)
@@ -22,10 +23,86 @@ const console = Logger('VertexAIConnector');
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        let messages = params?.messages || [];
+    private async getClient(params: ILLMRequestContext): Promise<VertexAI> {
+        const credentials = params.credentials as any;
+        const modelInfo = params.modelInfo as TCustomLLMModel;
+        const projectId = (modelInfo?.settings as TVertexAISettings)?.projectId;
+        const region = modelInfo?.settings?.region;
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+        return new VertexAI({
+            project: projectId,
+            location: region,
+            googleAuthOptions: {
+                credentials: credentials as any,
+            },
+        });
+    }
+
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
+        const messages = body.messages;
+        delete body.messages;
+
+        try {
+            const vertexAI = await this.getClient(context);
+            const generativeModel = vertexAI.getGenerativeModel(body);
+
+            const result = await generativeModel.generateContent({ contents: messages });
+            const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const usage = result?.response?.usageMetadata;
+
+            this.reportUsage(usage, {
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
+            });
+
+            return {
+                content,
+                finishReason: 'stop',
+                useTool: false,
+                toolsData: [],
+                message: { content, role: 'assistant' },
+                usage,
+            };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        // Simulate streaming similar to Perplexity's approach - fallback to regular request
+        const emitter = new EventEmitter();
+
+        setTimeout(() => {
+            try {
+                this.request({ acRequest, body, context })
+                    .then((response) => {
+                        const finishReason = response.finishReason;
+                        const usage = response.usage;
+
+                        // Emit the content as a stream-like response
+                        emitter.emit('interrupted', finishReason);
+                        emitter.emit('content', response.content);
+                        emitter.emit('end', undefined, usage, finishReason);
+                    })
+                    .catch((error) => {
+                        emitter.emit('error', error.message || error.toString());
+                    });
+            } catch (error) {
+                emitter.emit('error', error.message || error.toString());
+            }
+        }, 100);
+
+        return emitter;
+    }
+
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        throw new Error('Web search is not supported for Vertex AI');
+    }
+
+    protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
+        let messages = params?.messages || [];
 
         //#region Separate system message and add JSON response instruction if needed
         let systemInstruction;
@@ -45,82 +122,50 @@ export class VertexAIConnector extends LLMConnector {
 
         const modelInfo = params.modelInfo as TCustomLLMModel;
 
-        const generationConfig: GenerationConfig = {};
-        if (params?.maxTokens !== undefined) generationConfig.maxOutputTokens = params.maxTokens;
-        if (params?.temperature !== undefined) generationConfig.temperature = params.temperature;
-        if (params?.topP !== undefined) generationConfig.topP = params.topP;
-        if (params?.topK !== undefined) generationConfig.topK = params.topK;
-        if (params?.stopSequences?.length) generationConfig.stopSequences = params.stopSequences;
-
-        const modelParams: ModelParams = {
+        let body: TGoogleAIRequestBody = {
             model: modelInfo?.settings?.customModel || modelInfo?.settings?.foundationModel,
+            messages,
         };
 
+        const config: GenerationConfig = {};
+
+        if (params?.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
+        if (params?.temperature !== undefined) config.temperature = params.temperature;
+        if (params?.topP !== undefined) config.topP = params.topP;
+        if (params?.topK !== undefined) config.topK = params.topK;
+        if (params?.stopSequences?.length) config.stopSequences = params.stopSequences;
+
         if (systemInstruction) {
-            modelParams.systemInstruction = systemInstruction;
+            body.systemInstruction = systemInstruction;
         }
 
-        if (Object.keys(generationConfig).length > 0) {
-            modelParams.generationConfig = generationConfig;
+        if (Object.keys(config).length > 0) {
+            body.generationConfig = config as any;
         }
 
-        try {
-            const client = new VertexAI({
-                project: (modelInfo.settings as TVertexAISettings).projectId,
-                location: modelInfo?.settings?.region,
-                googleAuthOptions: {
-                    credentials: params.credentials as any, // TODO [Forhad]: apply proper typing
-                },
-                apiEndpoint: `${modelInfo?.settings?.region}-aiplatform.googleapis.com`,
-            });
-            const generativeModel = client.getGenerativeModel(modelParams);
-
-            const result = await generativeModel.generateContent({ contents: messages });
-            const content = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text;
-            const usage = result?.response?.usageMetadata;
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason: 'stop' };
-        } catch (error) {
-            throw error;
-        }
+        return body;
     }
 
-    protected async streamToolRequest(
-        acRequest: AccessRequest,
-        { model, messages, toolsConfig: { tools, tool_choice }, apiKey = '' },
-        agent: string | IAgent,
-    ): Promise<any> {
-        throw new Error('streamToolRequest() is not supported by Vertex AI');
-    }
+    protected reportUsage(
+        usage: UsageMetadata & { cachedContentTokenCount?: number },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Vision requests are not currently implemented for Vertex AI');
-    }
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: usage.promptTokenCount || 0,
+            output_tokens: usage.candidatesTokenCount || 0,
+            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
+            input_tokens_cache_write: 0,
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
 
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<LLMChatResponse> {
-        throw new Error('Multimodal request is not currently implemented for Vertex AI');
-    }
-
-    protected async toolRequest(acRequest: AccessRequest, params): Promise<any> {
-        throw new Error('Tool requests are not currently implemented for Vertex AI');
-    }
-
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
-        throw new Error('Image generation request is not currently implemented for Vertex AI');
-    }
-
-    protected async streamRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<EventEmitter> {
-        throw new Error('Streaming is not currently implemented for Vertex AI');
-    }
-
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        throw new Error('VertexAI model does not support passthrough with File(s)');
+        return usageData;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -144,27 +189,5 @@ export class VertexAIConnector extends LLMConnector {
                 parts: textBlock,
             };
         });
-    }
-
-    protected reportUsage(
-        usage: UsageMetadata & { cachedContentTokenCount?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
-    ) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: usage.promptTokenCount || 0,
-            output_tokens: usage.candidatesTokenCount || 0,
-            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
-            input_tokens_cache_write: 0,
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
-        };
-        SystemEvents.emit('USAGE:LLM', usageData);
-
-        return usageData;
     }
 }

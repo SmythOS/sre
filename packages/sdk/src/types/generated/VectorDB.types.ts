@@ -2,6 +2,7 @@
 
 import { PineconeConfig } from '@smythos/sre';
 import { RAMVectorDBConfig } from '@smythos/sre';
+import { AccessCandidate } from '@smythos/sre';
 import { VectorDBInstance } from '../../VectorDB.class';
 
 // Define VectorDB provider settings mapping
@@ -31,5 +32,5 @@ export const TVectorDBProvider: Record<TBuiltinVectorDBProvider, TBuiltinVectorD
 export type TVectorDBSettingsFor<T extends keyof TVectorDBProviderSettings> = TVectorDBProviderSettings[T];
 
 export type TVectorDBProviderInstances = {
-    [K in TVectorDBProvider]: (namespace:string, settings?: K extends keyof TVectorDBProviderSettings ? TVectorDBSettingsFor<K> : any) => VectorDBInstance;
+    [K in TVectorDBProvider]: (namespace:string, settings?: K extends keyof TVectorDBProviderSettings ? TVectorDBSettingsFor<K> : any, candidate?: AccessCandidate) => VectorDBInstance;
 }; 

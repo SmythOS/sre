@@ -18,7 +18,7 @@ export interface IModelsProviderRequest {
     isStandardLLM(model: string | TLLMModel | TCustomLLMModel): Promise<boolean>;
     adjustMaxCompletionTokens(model: string | TLLMModel | TCustomLLMModel, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
     getMaxContextTokens(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<number>;
-    getMaxCompletionTokens(model: string, hasAPIKey?: boolean): Promise<number>;
+    getMaxCompletionTokens(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<number>;
     validateTokensLimit({
         model,
         promptTokens,

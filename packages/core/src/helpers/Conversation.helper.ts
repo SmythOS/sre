@@ -63,7 +63,7 @@ export class Conversation extends EventEmitter {
     private _llmContextStore: ILLMContextStore;
     private _context: LLMContext;
 
-    private _maxContextSize = 1024 * 16;
+    private _maxContextSize = 1024 * 128;
     private _maxOutputTokens = 1024 * 8;
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
@@ -217,146 +217,9 @@ export class Conversation extends EventEmitter {
             model: instance._model,
         };
     })
-    public async prompt(message?: string, toolHeaders = {}) {
-        if (message) {
-            this.stop = false;
-        }
-        if (this.stop) return;
-        await this.ready;
-
-        const reqMethods = this._reqMethods;
-        const toolsConfig = this._toolsConfig;
-        const endpoints = this._endpoints;
-        const baseUrl = this._baseUrl;
-        const message_id = 'msg_' + randomUUID();
-
-        /* ==================== STEP ENTRY ==================== */
-        console.debug('Request to LLM with the given model, messages and functions properties.', {
-            model: this.model,
-            message,
-            toolsConfig,
-        });
-        /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
-
-        if (!this._context) {
-            console.error('Conversation context is not initialized!');
-
-            throw new Error('Unable to process your request. Please try again or contact support if the issue persists.');
-        }
-
-        if (message) this._context.addUserMessage(message, message_id);
-
-        const contextWindow = await this._context.getContextWindow(this._maxContextSize, this._maxOutputTokens);
-
-        const { data: llmResponse } = await llmInference
-            .toolRequest(
-                {
-                    model: this.model,
-                    messages: contextWindow,
-                    toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
-                    maxTokens: this._maxOutputTokens,
-                },
-                this._agentId
-            )
-            .catch((error: any) => {
-                throw new Error(
-                    '[LLM Request Error]\n' +
-                        JSON.stringify({
-                            code: error?.name || 'LLMRequestFailed',
-                            message: error?.message || 'Something went wrong while calling LLM.',
-                        })
-                );
-            });
-
-        // useTool = true means we need to use it
-        if (llmResponse?.useTool) {
-            /* ==================== STEP ENTRY ==================== */
-            console.debug({
-                type: 'ToolsData',
-                message: 'Tool(s) is available for use.',
-                toolsData: llmResponse?.toolsData,
-            });
-            /* ==================== STEP ENTRY ==================== */
-
-            const toolsData: ToolData[] = [];
-
-            for (const tool of llmResponse?.toolsData) {
-                const endpoint = endpoints?.get(tool?.name) || tool?.name;
-                // Sometimes we have object response from the LLM such as Anthropic
-                const parsedArgs = JSONContent(tool?.arguments).tryParse();
-                let args = typeof tool?.arguments === 'string' ? parsedArgs || {} : tool?.arguments;
-
-                if (args?.error) {
-                    throw new Error('[Tool] Arguments Parsing Error\n' + JSON.stringify({ message: args?.error }));
-                }
-
-                const toolArgs = {
-                    type: tool?.type,
-                    method: reqMethods?.get(tool?.name),
-                    endpoint,
-                    args,
-                    baseUrl,
-                    headers: toolHeaders,
-                };
-
-                /* ==================== STEP ENTRY ==================== */
-                console.debug({
-                    type: 'UseTool',
-                    message: 'As LLM returned a tool to use, so use it with the provided arguments.',
-                    plugin_url: { baseUrl, endpoint, args },
-                    arguments: args,
-                });
-                /* ==================== STEP ENTRY ==================== */
-
-                this.emit('beforeToolCall', { tool, args });
-                //TODO: Should we run these tools in parallel?
-                let { data: functionResponse, error } = await this.useTool(toolArgs);
-
-                if (error) {
-                    this.emit('toolCallError', toolArgs, error);
-                    functionResponse = typeof error === 'object' && typeof error !== null ? JSON.stringify(error) : error;
-                }
-
-                functionResponse =
-                    typeof functionResponse === 'object' && typeof functionResponse !== null ? JSON.stringify(functionResponse) : functionResponse;
-
-                /* ==================== STEP ENTRY ==================== */
-                console.debug({
-                    type: 'ToolResult',
-                    message: 'Result from the tool',
-                    response: functionResponse,
-                });
-                /* ==================== STEP ENTRY ==================== */
-
-                this.emit('afterToolCall', toolArgs, functionResponse);
-                toolsData.push({ ...tool, result: functionResponse });
-            }
-
-            // const messagesWithToolResult = llmInference.connector.transformToolMessageBlocks({ messageBlock: llmResponse?.message, toolsData });
-
-            // this._context.push(...messagesWithToolResult);
-
-            //this._context.push({ messageBlock: llmResponse?.message, toolsData });
-            this._context.addToolMessage(llmResponse?.message, toolsData, message_id);
-
-            return this.prompt(null, toolHeaders);
-        }
-
-        //this._context.push(llmResponse?.message);
-        this._context.addAssistantMessage(llmResponse?.message?.content, message_id);
-
-        let content = JSONContent(llmResponse?.content).tryParse();
-
-        /* ==================== STEP ENTRY ==================== */
-        console.debug({
-            type: 'FinalResult',
-            message: 'Here is the final result after processing all the tools and LLM response.',
-            response: content,
-        });
-        /* ==================== STEP ENTRY ==================== */
-
-        return content;
+    public async prompt(message?: string, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
+        const result = await this.streamPrompt(message, toolHeaders, concurrentToolCalls, abortSignal);
+        return result;
     }
 
     //TODO : handle attachments
@@ -422,19 +285,19 @@ export class Conversation extends EventEmitter {
         }
 
         const eventEmitter: any = await llmInference
-            .streamRequest(
-                {
+            .promptStream({
+                contextWindow,
+                params: {
                     model: this.model,
-                    messages: contextWindow,
                     toolsConfig: this._settings?.toolsStrategy ? this._settings.toolsStrategy(toolsConfig) : toolsConfig,
                     maxTokens,
                     cache: this._settings?.experimentalCache,
+                    agentId: this._agentId,
                     abortSignal,
                 },
-                this._agentId
-            )
+            })
             .catch((error) => {
-                console.error('Error on streamRequest: ', error);
+                console.error('Error on promptStream: ', error);
                 this.emit(TLLMEvent.Error, error);
             });
 
@@ -878,6 +741,7 @@ export class Conversation extends EventEmitter {
         description: string;
         arguments?: Record<string, any> | string[];
         handler: (args: Record<string, any>) => Promise<any>;
+        inputs?: any[];
     }) {
         if (!tool.arguments) {
             //if no arguments are provided, we need to extract them from the function
@@ -886,6 +750,21 @@ export class Conversation extends EventEmitter {
             const _arguments: any = {};
             for (let arg of openApiArgs) {
                 _arguments[arg.name] = arg.schema;
+                if (tool.inputs && arg.schema.properties) {
+                    const required = [];
+                    for (let prop in arg.schema.properties) {
+                        const input = tool.inputs?.find((i) => i.name === prop);
+                        if (!arg.schema.properties[prop].description) {
+                            arg.schema.properties[prop].description = input?.description;
+                        }
+                        if (!input?.optional) {
+                            required.push(prop);
+                        }
+                    }
+                    if (required.length) {
+                        arg.schema.required = required;
+                    }
+                }
             }
 
             tool.arguments = _arguments;
@@ -1158,7 +1037,7 @@ export class Conversation extends EventEmitter {
                     name: param.name,
                     in: 'query',
                     required: true,
-                    schema: { type: 'string' },
+                    schema: { type: 'string', name: param.name, required: true },
                 };
             }
 
@@ -1167,7 +1046,7 @@ export class Conversation extends EventEmitter {
                     name: param.left.name,
                     in: 'query',
                     required: false,
-                    schema: { type: 'string' },
+                    schema: { type: 'string', name: param.left.name, required: false },
                 };
             }
 
@@ -1182,12 +1061,15 @@ export class Conversation extends EventEmitter {
 
             if (param.type === 'ObjectPattern') {
                 // For destructured objects, output as a single parameter with nested fields
+                const name = `[object_${counter++}]`;
                 return {
-                    name: `[object_${counter++}]`,
+                    name,
                     in: 'query',
                     required: true,
                     schema: {
                         type: 'object',
+                        required: true,
+                        name,
                         properties: Object.fromEntries(
                             param.properties.map((prop) => {
                                 const keyName = prop.key.name || '[unknown]';
@@ -1198,11 +1080,12 @@ export class Conversation extends EventEmitter {
                 };
             }
 
+            const name = `[unknown_${counter++}]`;
             return {
-                name: `[unknown_${counter++}]`,
+                name,
                 in: 'query',
                 required: true,
-                schema: { type: 'string' },
+                schema: { type: 'string', name, required: true },
             };
         }
 

@@ -51,6 +51,8 @@ async function main() {
 
     //#endregion
 
+    console.log(agent.data);
+
     //const result = await agent.prompt('Hello, what is the price of bitcoin in USD');
 
     const result = await agent.call('MarketData', { coin_id: 'bitcoin' });

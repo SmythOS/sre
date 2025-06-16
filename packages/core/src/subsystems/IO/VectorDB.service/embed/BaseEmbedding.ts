@@ -94,7 +94,11 @@ export abstract class BaseEmbedding {
         }
     }
 
+    // this is a dummy vector used to maximize search distance
+    // we use it to create reserved vectors that store namespace data
     public get dummyVector(): number[] {
+        //This is good for cosine similarity, but not for euclidean distance
+        //TODO: detect current similarity metric and use the appropriate vector (e.g for euclidean distance, use a vector with all large values like [1e6, 1e6, ..., 1e6])
         return Array(this.dimensions - 1)
             .fill(0)
             .concat([1]);

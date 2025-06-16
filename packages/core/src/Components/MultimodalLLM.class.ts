@@ -66,13 +66,13 @@ export class MultimodalLLM extends Component {
                 logger.debug(`[Component enhanced prompt]\n${prompt}\n\n`);
             }
 
-            const fileSources = Array.isArray(input.Input) ? input.Input : [input.Input];
+            const files = Array.isArray(input.Input) ? input.Input : [input.Input];
 
             let response: any;
             if (passThrough) {
                 const contentPromise = new Promise(async (resolve, reject) => {
                     let _content = '';
-                    const eventEmitter: any = await llmInference.multimodalStreamRequestLegacy(prompt, fileSources, config, agent).catch((error) => {
+                    const eventEmitter: any = await llmInference.multimodalStreamRequestLegacy(prompt, files, config, agent).catch((error) => {
                         console.error('Error on multimodalStreamRequest: ', error);
                         reject(error);
                     });
@@ -96,7 +96,7 @@ export class MultimodalLLM extends Component {
                 });
                 response = await contentPromise;
             } else {
-                response = await llmInference.multimodalRequest(prompt, fileSources, config, agent);
+                response = await llmInference.prompt({ query: prompt, files, params: { ...config, agentId: agent.id } });
             }
 
             // in case we have the response but it's empty string, undefined or null

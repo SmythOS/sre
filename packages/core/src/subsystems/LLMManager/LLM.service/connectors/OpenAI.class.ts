@@ -1,11 +1,9 @@
 import EventEmitter from 'events';
 import OpenAI, { toFile } from 'openai';
-import { Uploadable } from 'openai/uploads';
+import type { Stream } from 'openai/streaming';
 import { encodeChat } from 'gpt-tokenizer';
 
-import { Agent } from '@sre/AgentManager/Agent.class';
-import { TOOL_USE_DEFAULT_MODEL, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
-import { Logger } from '@sre/helpers/Log.helper';
+import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
@@ -18,36 +16,25 @@ import {
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     TLLMMessageRole,
-    GenerateImageConfig,
     APIKeySource,
-    TLLMParamsV2,
     TLLMEvent,
+    ILLMRequestFuncParams,
+    TOpenAIRequestBody,
+    TOpenAIResponseToolChoice,
+    TLLMChatResponse,
+    ILLMRequestContext,
+    BasicCredentials,
+    TLLMConnectorParams,
+    TLLMModel,
+    TCustomLLMModel,
+    ILLMConnectorCredentials,
 } from '@sre/types/LLM.types';
 
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
+import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-import { ImageEditParams } from 'openai/resources/images';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-
-const console = Logger('OpenAIConnector');
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
-const reasoningModels = [
-    'o4-mini',
-    'o4-mini-2025-04-16',
-    'o3',
-    'o3-2025-04-16',
-    'o3-mini',
-    'o3-mini-2025-01-31',
-    'o1',
-    'o1-mini',
-    'o1-preview',
-    'o1-2024-12-17',
-    'o1-mini-2024-09-12',
-    'o1-preview-2024-09-12',
-];
 
 type TSearchTool = 'web_search_preview';
 type TSearchContextSize = 'low' | 'medium' | 'high';
@@ -87,451 +74,41 @@ const SEARCH_TOOL = {
 export class OpenAIConnector extends LLMConnector {
     public name = 'LLM:OpenAI';
 
+    //private openai: OpenAI;
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    protected async chatRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        const messages = params?.messages || [];
+    private async getClient(params: ILLMRequestContext): Promise<OpenAI> {
+        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
+        const baseURL = params?.modelInfo?.baseURL;
 
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
+        if (!apiKey) throw new Error('Please provide an API key for OpenAI');
 
-        //#region Handle JSON response format
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (reasoningModels.includes(params.model)) {
-                // If the model doesn't support system prompt, then we need to add JSON response instruction to the last message
-                if (messages?.[0]?.role === TLLMMessageRole.System) {
-                    delete messages[0];
-                    const lastIndex = messages.length - 1;
-                    messages[lastIndex].content += JSON_RESPONSE_INSTRUCTION;
-                } else {
-                    const lastIndex = messages.length - 1;
-                    messages[lastIndex].content += JSON_RESPONSE_INSTRUCTION;
-                }
-            } else {
-                if (messages?.[0]?.role === TLLMMessageRole.System) {
-                    messages[0].content += JSON_RESPONSE_INSTRUCTION;
-                } else {
-                    messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-                }
-            }
-
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
-                params.responseFormat = { type: 'json_object' };
-            } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-        //#endregion Handle JSON response format
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const openai = new OpenAI({
-            //FIXME: use config.env instead of process.env
-            apiKey: apiKey,
-            baseURL: params.baseURL,
-        });
-
-        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams & { max_completion_tokens?: number } = {
-            model: params.model,
-            messages,
-        };
-
-        if (params?.maxTokens !== undefined) {
-            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-            chatCompletionArgs[maxTokensKey] = params.maxTokens;
-        }
-        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        // Top P is not supported for o1 models
-        if (params?.topP !== undefined && !reasoningModels.includes(params.model)) chatCompletionArgs.top_p = params.topP;
-        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
-        if (params.responseFormat) {
-            chatCompletionArgs.response_format = params.responseFormat;
-        }
-
-        try {
-            // Validate token limit
-            const promptTokens = encodeChat(messages, 'gpt-4')?.length;
-            await this.validateTokenLimit({ acRequest, promptTokens, params });
-
-            const response = await openai.chat.completions.create(chatCompletionArgs);
-
-            const content = response?.choices?.[0]?.message.content;
-            const finishReason = response?.choices?.[0]?.finish_reason;
-            const usage = response?.usage as any;
-
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason };
-        } catch (error) {
-            throw error;
-        }
+        return new OpenAI({ baseURL, apiKey });
     }
 
-    protected async visionRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent) {
-        const messages = params?.messages || [];
-
-        //#region Handle JSON response format
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
-            } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
-
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
-                params.responseFormat = { type: 'json_object' };
-            } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-        //#endregion Handle JSON response format
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validSources = this.getValidImageFileSources(fileSources);
-        const imageData = await this.getImageData(validSources, agentId);
-
-        // Add user message
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData];
-
-        messages.push({ role: 'user', content: promptData });
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const openai = new OpenAI({
-            apiKey: apiKey,
-            baseURL: params.baseURL,
-        });
-
-        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-            model: params.model,
-            messages,
-        };
-
-        if (params?.maxTokens !== undefined) {
-            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-            chatCompletionArgs[maxTokensKey] = params.maxTokens;
-        }
-        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+        const _body = body as OpenAI.ChatCompletionCreateParams;
 
         try {
-            // Validate token limit
-            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
+            const openai = await this.getClient(context);
+            // #region Validate token limit
+            const messages = _body?.messages || [];
+            const lastMessage = messages[messages.length - 1];
+
+            const promptTokens = context?.hasFiles
+                ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
+                : encodeChat(messages as any, 'gpt-4')?.length;
+
             await this.validateTokenLimit({
                 acRequest,
-                params,
                 promptTokens,
+                context,
+                maxTokens: _body.max_completion_tokens,
             });
+            // #endregion Validate token limit
 
-            const response: any = await openai.chat.completions.create(chatCompletionArgs);
-
-            const content = response?.choices?.[0]?.message.content;
-            const usage = response?.usage;
-
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason: response?.choices?.[0]?.finish_reason };
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    private async processImageData(fileSources: BinaryInput[], agentId: string): Promise<any[]> {
-        const validSources = this.getValidImageFileSources(fileSources);
-        if (validSources.length === 0) {
-            return [];
-        }
-        return await this.getImageData(validSources, agentId);
-    }
-
-    private getValidDocumentFileSources(fileSources: BinaryInput[]): BinaryInput[] {
-        const validSources = [];
-        for (let fileSource of fileSources) {
-            if (this.validDocumentMimeTypes.includes(fileSource?.mimetype)) {
-                validSources.push(fileSource);
-            }
-        }
-
-        return validSources;
-    }
-
-    private async processDocumentData(fileSources: BinaryInput[], agentId: string): Promise<any[]> {
-        const validSources = this.getValidDocumentFileSources(fileSources);
-        if (validSources.length === 0) {
-            return [];
-        }
-        return await this.getDocumentData(validSources, agentId);
-    }
-
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<LLMChatResponse> {
-        const messages = params?.messages || [];
-
-        //#region Handle JSON response format
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
-            } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
-
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
-                params.responseFormat = { type: 'json_object' };
-            } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-        //#endregion Handle JSON response format
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-        const fileSources: BinaryInput[] = params?.fileSources || [];
-        const validImageFileSources = this.getValidImageFileSources(fileSources);
-        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
-
-        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
-        // handle the invalid files in the prompt to let the user know that some files were not processed.
-
-        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
-        // const invalidFileNames = areAllFilesValid
-        //     ? []
-        //     : // get all the original file sources that are not valid image or document
-        //       fileSources
-        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
-        //           .map(async (file) => await file.getName());
-
-        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
-        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
-
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
-
-        messages.push({ role: 'user', content: promptData });
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const openai = new OpenAI({
-            apiKey: apiKey,
-            baseURL: params.baseURL,
-        });
-
-        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-            model: params.model,
-            messages,
-        };
-
-        if (params?.maxTokens !== undefined) {
-            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-            chatCompletionArgs[maxTokensKey] = params.maxTokens;
-        }
-        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
-        try {
-            // Validate token limit
-            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-            await this.validateTokenLimit({ acRequest, params, promptTokens });
-
-            const response = await openai.chat.completions.create(chatCompletionArgs);
-
-            const content = response?.choices?.[0]?.message.content;
-            const usage = response?.usage;
-            this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
-            });
-
-            return { content, finishReason: response?.choices?.[0]?.finish_reason };
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    // #region Image Generation, will be moved to a different subsystem
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<OpenAI.ImagesResponse> {
-        try {
-            const { model, size, quality, n, responseFormat, style } = params;
-
-            const args: GenerateImageConfig & { prompt: string } = {
-                prompt,
-                model,
-                size,
-                n: n || 1,
-            };
-
-            if (quality) {
-                args.quality = quality;
-            }
-
-            // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-            if (responseFormat) {
-                args.response_format = responseFormat;
-            }
-
-            if (style) {
-                args.style = style;
-            }
-
-            const apiKey = params?.credentials?.apiKey;
-            if (!apiKey) {
-                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params?.baseURL,
-            });
-
-            const response = await openai.images.generate(args);
-
-            return response;
-        } catch (error: any) {
-            console.warn('Error generating image(s)', error);
-
-            throw error;
-        }
-    }
-
-    protected async imageEditRequest(
-        acRequest: AccessRequest,
-        prompt,
-        params: TLLMParams & { size: '256x256' | '512x512' | '1024x1024' },
-        agent: string | IAgent,
-    ): Promise<OpenAI.ImagesResponse> {
-        try {
-            const { model, size, n, responseFormat } = params;
-
-            const args: ImageEditParams = {
-                prompt,
-                model,
-                size,
-                n: n || 1,
-                image: null,
-            };
-
-            // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
-            if (responseFormat) {
-                args.response_format = responseFormat;
-            }
-
-            const apiKey = params?.credentials?.apiKey;
-            if (!apiKey) {
-                throw new Error('OpenAI API key is missing. Please provide a valid API key in the vault to proceed with Image Generation.');
-            }
-
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: params?.baseURL,
-            });
-
-            const fileSources: BinaryInput[] = params?.fileSources || [];
-
-            if (fileSources.length > 0) {
-                const images = await Promise.all(
-                    fileSources.map(
-                        async (file) =>
-                            await toFile(await file.getReadStream(), await file.getName(), {
-                                type: file.mimetype,
-                            }),
-                    ),
-                );
-
-                args.image = images as unknown as Uploadable; // ! FIXME: This is a workaround to avoid type error, will be fixed in the next version of openai
-            }
-
-            const response = await openai.images.edit(args);
-
-            return response;
-        } catch (error: any) {
-            console.warn('Error editing image(s): ', error);
-
-            throw error;
-        }
-    }
-    // #endregion Image Generation
-    protected async toolRequest(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<any> {
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const openai = new OpenAI({
-            apiKey: apiKey,
-            baseURL: params.baseURL,
-        });
-
-        const messages = params?.messages || [];
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsNonStreaming = {
-            model: params.model,
-            messages: messages,
-        };
-
-        if (params?.maxTokens !== undefined) {
-            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-            chatCompletionArgs[maxTokensKey] = params.maxTokens;
-        }
-
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
-        }
-
-        if (params?.toolsConfig?.tool_choice) {
-            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
-        }
-
-        try {
-            // Validate token limit
-            const promptTokens = encodeChat(messages, 'gpt-4')?.length;
-            await this.validateTokenLimit({ acRequest, params, promptTokens });
-
-            const result = await openai.chat.completions.create(chatCompletionArgs);
+            const result = (await openai.chat.completions.create(_body)) as OpenAI.ChatCompletion;
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -554,177 +131,53 @@ export class OpenAIConnector extends LLMConnector {
 
             const usage = result?.usage;
             this.reportUsage(usage, {
-                modelEntryName: params.modelEntryName,
-                keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId,
-                teamId: params.teamId,
+                modelEntryName: context.modelEntryName,
+                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                agentId: context.agentId,
+                teamId: context.teamId,
             });
 
             return {
-                data: { useTool, message: message, content: message?.content ?? '', toolsData },
+                content: message?.content ?? '',
+                finishReason,
+                useTool,
+                toolsData,
+                message,
+                usage,
             };
         } catch (error: any) {
             throw error;
         }
     }
 
-    // ! DEPRECATED: will be removed
-    protected async streamToolRequest(
-        acRequest: AccessRequest,
-        { model = TOOL_USE_DEFAULT_MODEL, messages, toolsConfig: { tools, tool_choice }, apiKey = '', baseURL = '' },
-    ): Promise<any> {
-        try {
-            // We provide
-            const openai = new OpenAI({
-                apiKey: apiKey,
-                baseURL: baseURL,
-            });
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const _body = body as OpenAI.ChatCompletionCreateParams;
 
-            // sanity check
-            if (!Array.isArray(messages) || !messages?.length) {
-                throw new Error('Invalid messages argument for chat completion.');
-            }
-
-            console.debug('model', model);
-            console.debug('messages', messages);
-            let args: OpenAI.ChatCompletionCreateParamsStreaming = {
-                model,
-                messages,
-                stream: true,
-                stream_options: { include_usage: true },
-            };
-
-            if (tools && tools.length > 0) args.tools = tools;
-            if (tool_choice) args.tool_choice = tool_choice;
-
-            const stream = await openai.chat.completions.create(args);
-
-            // consumed stream will not be available for further use, so we need to clone it
-            const [toolCallsStream, contentStream] = stream.tee();
-
-            let useTool = false;
-            let delta: Record<string, any> = {};
-            let toolsData: ToolData[] = [];
-            let _stream;
-
-            let message = {
-                role: '',
-                content: '',
-                tool_calls: [],
-            };
-
-            const usage_data = [];
-            for await (const part of toolCallsStream) {
-                delta = part.choices[0].delta;
-
-                message.role += delta?.role || '';
-                message.content += delta?.content || '';
-
-                const usage = part.usage;
-                if (usage) {
-                    usage_data.push(usage);
-                }
-
-                //if it's not a tools call, stop processing the stream immediately in order to allow streaming the text content
-                //FIXME: OpenAI API returns empty content as first message for content reply, and null content for tool reply,
-                //       this doesn't seem to be a very accurate way but it's the only solution to detect tool calls early enough (without reading the whole stream)
-                if (!delta?.tool_calls && delta?.content === '') {
-                    _stream = contentStream;
-                    break;
-                }
-                //_stream = toolCallsStream;
-                if (delta?.tool_calls) {
-                    const toolCall = delta?.tool_calls?.[0];
-                    const index = toolCall?.index;
-
-                    toolsData[index] = {
-                        index,
-                        role: 'tool',
-                        id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
-                        type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
-                        name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                        arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-                    };
-                }
-            }
-
-            if (toolsData?.length > 0) {
-                useTool = true;
-            }
-
-            // usage_data.forEach((usage) => {
-            //     // probably we can acc them and send them as one event
-            //
-            //     this.reportUsage(usage, { model, keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth });
-            // });
-
-            message.tool_calls = toolsData.map((tool) => {
-                return {
-                    id: tool.id,
-                    type: tool.type,
-                    function: {
-                        name: tool.name,
-                        arguments: tool.arguments,
-                    },
-                };
-            });
-
-            //console.log('result', useTool, message, toolsData);
-
-            return {
-                data: { useTool, message, stream: _stream, toolsData },
-            };
-        } catch (error: any) {
-            console.warn('Error on toolUseLLMRequest: ', error);
-            return { error };
-        }
-    }
-
-    private async streamRequestV1(acRequest: AccessRequest, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
         const emitter = new EventEmitter();
-        const usage_data = [];
-        const reportedUsage = [];
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const openai = new OpenAI({
-            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
-            baseURL: params.baseURL,
-        });
-
-        //TODO: check token limits for non api key users
-
-        let chatCompletionArgs: OpenAI.ChatCompletionCreateParamsStreaming = {
-            model: params.model,
-            messages: params.messages,
-
-            stream_options: { include_usage: true }, //add usage statis //TODO: @Forhad check this
-            stream: true,
-        };
-
-        if (params?.maxTokens !== undefined) {
-            const maxTokensKey = reasoningModels.includes(params.model) ? 'max_completion_tokens' : 'max_tokens';
-            chatCompletionArgs[maxTokensKey] = params.maxTokens;
-        }
-
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            chatCompletionArgs.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
-        }
-        if (params?.toolsConfig?.tool_choice) {
-            chatCompletionArgs.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
-        }
+        const usage_data: any[] = [];
+        const reportedUsage: any[] = [];
 
         try {
-            // Validate token limit
-            const promptTokens = encodeChat(params.messages, 'gpt-4')?.length;
-            await this.validateTokenLimit({ acRequest, params, promptTokens });
+            const openai = await this.getClient(context);
+            // #region Validate token limit
+            const messages = _body?.messages || [];
+            const lastMessage = messages[messages.length - 1];
+
+            const promptTokens = context?.hasFiles
+                ? await LLMHelper.countVisionPromptTokens(lastMessage?.content)
+                : encodeChat(messages as any, 'gpt-4')?.length;
+
+            await this.validateTokenLimit({
+                acRequest,
+                promptTokens,
+                context,
+                maxTokens: _body.max_completion_tokens,
+            });
+            // #endregion Validate token limit
 
             let finishReason = 'stop';
-            const stream = await openai.chat.completions.create(chatCompletionArgs);
+
+            const stream = await openai.chat.completions.create({ ..._body, stream: true, stream_options: { include_usage: true } });
 
             // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
@@ -777,10 +230,10 @@ export class OpenAIConnector extends LLMConnector {
                 usage_data.forEach((usage) => {
                     // probably we can acc them and send them as one event
                     const _reported = this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
                     });
 
                     reportedUsage.push(_reported);
@@ -799,46 +252,17 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    private async streamRequestV2(acRequest: AccessRequest, params: TLLMParamsV2, agent: string | IAgent): Promise<EventEmitter> {
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        const _body = body as OpenAI.Responses.ResponseCreateParams;
+
         const emitter = new EventEmitter();
         const usage_data = [];
         const reportedUsage = [];
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-        const agentId = agent instanceof Agent ? agent.id : agent;
-
-        const openai = new OpenAI({
-            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
-            baseURL: params.baseURL,
-        });
-
-        // Prepare the request parameters
-        const requestParams: OpenAI.Responses.ResponseCreateParams = {
-            model: params.model,
-            input: params.messages,
-            stream: true,
-        };
-
-        if (params?.max_output_tokens !== undefined) {
-            requestParams.max_output_tokens = params.max_output_tokens;
-        }
-
-        // #region Handle tools configuration
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            requestParams.tools = params?.toolsConfig?.tools;
-        }
-
-        if (params?.toolsConfig?.tool_choice) {
-            requestParams.tool_choice = params.toolsConfig.tool_choice;
-        }
-        // #endregion
 
         try {
+            const openai = await this.getClient(context);
             let finishReason = 'stop';
-            const stream = await openai.responses.create(requestParams);
+            const stream = (await openai.responses.create(_body)) as Stream<OpenAI.Responses.ResponseStreamEvent>;
 
             // Process stream asynchronously while we need to return emitter immediately
             (async () => {
@@ -879,20 +303,28 @@ export class OpenAIConnector extends LLMConnector {
                 }
 
                 // Report usage statistics
-                // #region Report normal token usage
-                usage_data.forEach((usage) => {
-                    const _reported = this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
-                    });
-                    reportedUsage.push(_reported);
-                });
-                // #endregion
+                const modelName = context.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
 
-                // Report web search tool usage
-                this.reportWebSearchUsage(agentId, params);
+                const searchTool = _body.tools?.[0] as OpenAI.Responses.WebSearchTool;
+                const cost = SEARCH_TOOL.cost?.[modelName]?.[searchTool?.search_context_size] || 0;
+
+                this.reportUsage(
+                    {
+                        cost,
+
+                        // 👇 Just to avoid a TypeScript error.
+                        completion_tokens: 0,
+                        prompt_tokens: 0,
+                        total_tokens: 0,
+                        // 👆 Just to avoid a TypeScript error.
+                    },
+                    {
+                        modelEntryName: context.modelEntryName,
+                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                        agentId: context.agentId,
+                        teamId: context.teamId,
+                    }
+                );
 
                 // Emit interrupted event if finishReason is not 'stop'
                 if (finishReason !== 'stop') {
@@ -911,345 +343,118 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async streamRequest(acRequest: AccessRequest, params: TLLMParams & TLLMParamsV2, agent: string | IAgent): Promise<EventEmitter> {
-        // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
-        if (params?.useWebSearch && this.hasSearchCapability(acRequest, params.modelEntryName)) {
-            const searchTool = this.getWebSearchTool(params);
-
-            // TODO: Only support Web Search tool for now, need to implement other tools as well
-            const _params = {
-                ...params,
-                toolsConfig: { tools: [searchTool] },
-            };
-
-            return this.streamRequestV2(acRequest, _params, agent);
-        } else {
-            return this.streamRequestV1(acRequest, params, agent);
-        }
-    }
-
-    private async multimodalStreamRequestV1(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        const messages = params?.messages || [];
-        const emitter = new EventEmitter();
-        const usage_data = [];
-
-        // Check if the team has their own API key, then use it
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        //#region Handle JSON response format
-        const responseFormat = params?.responseFormat || '';
-        if (responseFormat === 'json') {
-            // We assume that the system message is first item in messages array
-            if (messages?.[0]?.role === TLLMMessageRole.System) {
-                messages[0].content += JSON_RESPONSE_INSTRUCTION;
-            } else {
-                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
-            }
-
-            if (MODELS_WITH_JSON_RESPONSE.includes(params.model)) {
-                params.responseFormat = { type: 'json_object' };
-            } else {
-                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
-            }
-        }
-        //#endregion Handle JSON response format
-
-        const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
-
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validImageFileSources = this.getValidImageFileSources(fileSources);
-        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
-
-        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
-        // handle the invalid files in the prompt to let the user know that some files were not processed.
-
-        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
-        // const invalidFileNames = areAllFilesValid
-        //     ? []
-        //     : // get all the original file sources that are not valid image or document
-        //       fileSources
-        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
-        //           .map(async (file) => await file.getName());
-
-        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
-        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
-
-        const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
-
-        messages.push({ role: 'user', content: promptData });
-
-        const openai = new OpenAI({
-            apiKey: apiKey,
-            baseURL: params.baseURL,
-        });
-
-        const chatCompletionArgs: OpenAI.ChatCompletionCreateParams = {
-            model: params.model,
-            messages,
-
-            stream_options: { include_usage: true },
-            stream: true,
-        };
-
-        if (params?.maxTokens !== undefined) chatCompletionArgs.max_tokens = params.maxTokens;
-        if (params?.temperature !== undefined) chatCompletionArgs.temperature = params.temperature;
-        if (params?.topP !== undefined) chatCompletionArgs.top_p = params.topP;
-        if (params?.frequencyPenalty !== undefined) chatCompletionArgs.frequency_penalty = params.frequencyPenalty;
-        if (params?.presencePenalty !== undefined) chatCompletionArgs.presence_penalty = params.presencePenalty;
-        if (params?.responseFormat !== undefined) chatCompletionArgs.response_format = params.responseFormat;
-        if (params?.stopSequences?.length) chatCompletionArgs.stop = params.stopSequences;
-
+    // #region Image Generation, will be moved to a different subsystem
+    protected async imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
         try {
-            // Validate token limit
-            const promptTokens = await LLMHelper.countVisionPromptTokens(promptData);
-            await this.validateTokenLimit({ acRequest, params, promptTokens });
+            const openai = await this.getClient(context);
+            const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
 
-            let finishReason = 'stop';
-            const stream: any = await openai.chat.completions.create(chatCompletionArgs);
-
-            // Process stream asynchronously while as we need to return emitter immediately
-            (async () => {
-                let delta: Record<string, any> = {};
-
-                let toolsData: any = [];
-
-                for await (const part of stream) {
-                    delta = part.choices[0]?.delta;
-
-                    const usage = part.usage;
-                    if (usage) {
-                        usage_data.push(usage);
-                    }
-                    emitter.emit('data', delta);
-
-                    if (!delta?.tool_calls && delta?.content) {
-                        emitter.emit('content', delta?.content, delta?.role);
-                    }
-                    //_stream = toolCallsStream;
-                    if (delta?.tool_calls) {
-                        const toolCall = delta?.tool_calls?.[0];
-                        const index = toolCall?.index;
-
-                        toolsData[index] = {
-                            index,
-                            role: 'tool',
-                            id: (toolsData?.[index]?.id || '') + (toolCall?.id || ''),
-                            type: (toolsData?.[index]?.type || '') + (toolCall?.type || ''),
-                            name: (toolsData?.[index]?.name || '') + (toolCall?.function?.name || ''),
-                            arguments: (toolsData?.[index]?.arguments || '') + (toolCall?.function?.arguments || ''),
-                        };
-                        continue;
-                    }
-
-                    if (part.choices[0]?.finish_reason) {
-                        finishReason = part.choices[0]?.finish_reason;
-                    }
-                }
-                if (toolsData?.length > 0) {
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                usage_data.forEach((usage) => {
-                    // probably we can acc them and send them as one event
-                    this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
-                    });
-                });
-
-                if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
-                }
-
-                setTimeout(() => {
-                    emitter.emit('end', toolsData, usage_data, finishReason);
-                }, 100);
-            })();
-
-            return emitter;
+            return response;
         } catch (error: any) {
             throw error;
         }
     }
 
-    private async multimodalStreamRequestV2(acRequest: AccessRequest, prompt, params: TLLMParamsV2, agent: string | IAgent): Promise<EventEmitter> {
-        const emitter = new EventEmitter();
-        const usage_data = [];
-        const reportedUsage = [];
-        const apiKey = params?.credentials?.apiKey;
-
-        if (!apiKey) {
-            throw new Error('An API key is required to use this model.');
-        }
-
-        const agentId = agent instanceof Agent ? agent.id : agent;
-
-        const fileSources: BinaryInput[] = params?.fileSources || []; // Assign fileSource from the original parameters to avoid overwriting the original constructor
-        const validImageFileSources = this.getValidImageFileSources(fileSources);
-        const validDocumentFileSources = this.getValidDocumentFileSources(fileSources);
-
-        // TODO: GenAILLM class already handles this, so we don't really need it. But in case it's needed, uncomment and
-        // handle the invalid files in the prompt to let the user know that some files were not processed.
-
-        // const areAllFilesValid = fileSources.length === validImageFileSources.length + validDocumentFileSources.length;
-        // const invalidFileNames = areAllFilesValid
-        //     ? []
-        //     : // get all the original file sources that are not valid image or document
-        //       fileSources
-        //           .filter((file) => !validImageFileSources.includes(file) && !validDocumentFileSources.includes(file))
-        //           .map(async (file) => await file.getName());
-
-        const imageData = validImageFileSources.length > 0 ? await this.processImageData(validImageFileSources, agentId) : [];
-
-        // #region re-structure image data for the updated OpenAI SDK
-        for (const image of imageData) {
-            image.type = 'input_image';
-            image.image_url = image.image_url.url;
-            delete image.image_url.url;
-        }
-        // #endregion
-
-        const documentData = validDocumentFileSources.length > 0 ? await this.processDocumentData(validDocumentFileSources, agentId) : [];
-
-        for (const document of documentData) {
-            document.type = 'input_file';
-            document.filename = document.file.filename;
-            document.file = document.file.file_data;
-        }
-
-        const promptData = [{ type: 'input_text', text: prompt || '' }, ...imageData, ...documentData];
-
-        const input = params.messages;
-
-        input.push({ role: 'user', content: promptData });
-
-        const openai = new OpenAI({
-            apiKey: apiKey, // we provide default API key for OpenAI with limited quota
-            baseURL: params.baseURL,
-        });
-
-        // Prepare the request parameters
-        const requestParams: OpenAI.Responses.ResponseCreateParams = {
-            model: params.model,
-            input,
-            stream: true,
-        };
-
-        if (params?.max_output_tokens !== undefined) {
-            requestParams.max_output_tokens = params.max_output_tokens;
-        }
-
-        // #region Handle tools configuration
-        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            requestParams.tools = params?.toolsConfig?.tools;
-        }
-
-        if (params?.toolsConfig?.tool_choice) {
-            requestParams.tool_choice = params.toolsConfig.tool_choice;
-        }
-        // #endregion
+    protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
+        const _body = body as OpenAI.Images.ImageEditParams;
 
         try {
-            let finishReason = 'stop';
-            const stream = await openai.responses.create(requestParams);
+            const openai = await this.getClient(context);
+            const response = await openai.images.edit(_body);
 
-            // Process stream asynchronously while we need to return emitter immediately
-            (async () => {
-                let toolsData: any = [];
-                let currentToolCall = null;
-
-                for await (const part of stream) {
-                    // Handle different event types from the stream
-                    if ('type' in part) {
-                        const event = part.type;
-
-                        switch (event) {
-                            case 'response.output_text.delta': {
-                                if (part?.delta) {
-                                    // Emit content in delta format for compatibility
-                                    const deltaMsg = {
-                                        role: 'assistant',
-                                        content: part.delta,
-                                    };
-                                    emitter.emit('data', deltaMsg);
-                                    emitter.emit('content', part.delta, 'assistant');
-                                }
-                                break;
-                            }
-                            // TODO: Handle other events
-                            default: {
-                                break;
-                            }
-                        }
-                    }
-
-                    if ('response' in part) {
-                        // Handle usage statistics
-                        if (part.response?.usage) {
-                            usage_data.push(part.response.usage);
-                        }
-                    }
-                }
-
-                // Report usage statistics
-                // #region Report normal token usage
-                usage_data.forEach((usage) => {
-                    const _reported = this.reportUsage(usage, {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
-                    });
-                    reportedUsage.push(_reported);
-                });
-                // #endregion
-
-                // Report web search tool usage
-                this.reportWebSearchUsage(agentId, params);
-
-                // Emit interrupted event if finishReason is not 'stop'
-                if (finishReason !== 'stop') {
-                    emitter.emit('interrupted', finishReason);
-                }
-
-                // Emit end event with same data structure as v1
-                setTimeout(() => {
-                    emitter.emit('end', toolsData, reportedUsage, finishReason);
-                }, 100);
-            })();
-
-            return emitter;
+            return response;
         } catch (error: any) {
             throw error;
         }
     }
 
-    protected async multimodalStreamRequest(
-        acRequest: AccessRequest,
-        prompt,
-        params: TLLMParams & TLLMParamsV2,
-        agent: string | IAgent,
-    ): Promise<EventEmitter> {
-        // * Use streamRequestV2 for search to support the new OpenAI SDK; retain streamRequestV1 for legacy support.
-        if (params?.useWebSearch && this.hasSearchCapability(acRequest, params.modelEntryName)) {
-            const searchTool = this.getWebSearchTool(params);
-
-            // TODO: Only support Web Search tool for now, need to implement other tools as well
-            const _params = {
-                ...params,
-                toolsConfig: { tools: [searchTool] },
-            };
-
-            return this.multimodalStreamRequestV2(acRequest, prompt, _params, agent);
-        } else {
-            return this.multimodalStreamRequestV1(acRequest, prompt, params, agent);
+    private async processImageData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        const validSources = this.getValidImageFiles(files);
+        if (validSources.length === 0) {
+            return [];
         }
+        return await this.getImageData(validSources, agentId);
+    }
+
+    private getValidDocumentFiles(files: BinaryInput[]): BinaryInput[] {
+        const validSources = [];
+        for (let file of files) {
+            if (this.validDocumentMimeTypes.includes(file?.mimetype)) {
+                validSources.push(file);
+            }
+        }
+
+        return validSources;
+    }
+
+    private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
+        const validSources = this.getValidDocumentFiles(files);
+        if (validSources.length === 0) {
+            return [];
+        }
+        return await this.getDocumentData(validSources, agentId);
+    }
+
+    protected async reqBodyAdapter(params: TLLMParams): Promise<TOpenAIRequestBody> {
+        // if it's web search request and the model has search capability, then we need to prepare the request body for the web search request
+        if (params?.useWebSearch && params.capabilities?.search === true) {
+            return this.prepareBodyForWebSearchRequest(params);
+        }
+
+        if (params.capabilities?.imageGeneration === true) {
+            if (params?.files?.length > 0) {
+                return this.prepareBodyForImageEditRequest(params);
+            } else {
+                return this.prepareBodyForImageGenRequest(params);
+            }
+        }
+
+        if (params.capabilities?.imageEditing === true) {
+        }
+
+        // In default, we will prepare the request body
+        return this.prepareBody(params);
+    }
+
+    protected reportUsage(
+        usage: OpenAI.Completions.CompletionUsage & {
+            input_tokens?: number;
+            output_tokens?: number;
+            input_tokens_details?: { cached_tokens?: number };
+            prompt_tokens_details?: { cached_tokens?: number };
+            cost?: number; // for web search tool
+        },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
+    ) {
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
+
+        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
+
+        const outputTokens =
+            usage?.output_tokens || // Returned by the search tool
+            usage?.completion_tokens ||
+            0;
+
+        const cachedInputTokens =
+            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
+            usage?.prompt_tokens_details?.cached_tokens ||
+            0;
+
+        const usageData = {
+            sourceId: `llm:${modelName}`,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            input_tokens_cache_write: 0,
+            input_tokens_cache_read: cachedInputTokens,
+            cost: usage?.cost || 0, // for web search tool
+            keySource: metadata.keySource,
+            agentId: metadata.agentId,
+            teamId: metadata.teamId,
+        };
+        SystemEvents.emit('USAGE:LLM', usageData);
+
+        return usageData;
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
@@ -1331,12 +536,12 @@ export class OpenAIConnector extends LLMConnector {
         });
     }
 
-    private getValidImageFileSources(fileSources: BinaryInput[]) {
+    private getValidImageFiles(files: BinaryInput[]) {
         const validSources = [];
 
-        for (let fileSource of fileSources) {
-            if (this.validImageMimeTypes.includes(fileSource?.mimetype)) {
-                validSources.push(fileSource);
+        for (let file of files) {
+            if (this.validImageMimeTypes.includes(file?.mimetype)) {
+                validSources.push(file);
             }
         }
 
@@ -1344,8 +549,8 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     private async getImageData(
-        fileSources: BinaryInput[],
-        agentId: string,
+        files: BinaryInput[],
+        agentId: string
     ): Promise<
         {
             type: string;
@@ -1355,10 +560,10 @@ export class OpenAIConnector extends LLMConnector {
         try {
             const imageData = [];
 
-            for (let fileSource of fileSources) {
-                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+            for (let file of files) {
+                const bufferData = await file.readData(AccessCandidate.agent(agentId));
                 const base64Data = bufferData.toString('base64');
-                const url = `data:${fileSource.mimetype};base64,${base64Data}`;
+                const url = `data:${file.mimetype};base64,${base64Data}`;
 
                 imageData.push({
                     type: 'image_url',
@@ -1373,8 +578,8 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     private async getDocumentData(
-        fileSources: BinaryInput[],
-        agentId: string,
+        files: BinaryInput[],
+        agentId: string
     ): Promise<
         {
             type: string;
@@ -1389,16 +594,16 @@ export class OpenAIConnector extends LLMConnector {
 
             // Note: We're embedding the file data in the prompt, but we should ideally be uploading the files to OpenAI first
             // in case we start to support bigger files. Refer to this guide: https://platform.openai.com/docs/guides/pdf-files?api-mode=chat
-            for (let fileSource of fileSources) {
-                const bufferData = await fileSource.readData(AccessCandidate.agent(agentId));
+            for (let file of files) {
+                const bufferData = await file.readData(AccessCandidate.agent(agentId));
                 const base64Data = bufferData.toString('base64');
-                const fileData = `data:${fileSource.mimetype};base64,${base64Data}`;
+                const fileData = `data:${file.mimetype};base64,${base64Data}`;
 
                 documentData.push({
                     type: 'file',
                     file: {
                         file_data: fileData,
-                        filename: await fileSource.getName(),
+                        filename: await file.getName(),
                     },
                 });
             }
@@ -1409,7 +614,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    private getWebSearchTool(params: TLLMParamsV2) {
+    private getWebSearchTool(params: TLLMParams) {
         const searchCity = params?.webSearchCity;
         const searchCountry = params?.webSearchCountry;
         const searchRegion = params?.webSearchRegion;
@@ -1447,101 +652,197 @@ export class OpenAIConnector extends LLMConnector {
         return searchTool;
     }
 
-    protected reportUsage(
-        usage: OpenAI.Completions.CompletionUsage & {
-            input_tokens?: number;
-            output_tokens?: number;
-            input_tokens_details?: { cached_tokens?: number };
-            prompt_tokens_details?: { cached_tokens?: number };
-            cost?: number; // for web search tool
-        },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
-    ) {
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
-        const inputTokens = usage?.input_tokens || usage?.prompt_tokens - (usage?.prompt_tokens_details?.cached_tokens || 0); // Returned by the search tool
-
-        const outputTokens =
-            usage?.output_tokens || // Returned by the search tool
-            usage?.completion_tokens ||
-            0;
-
-        const cachedInputTokens =
-            usage?.input_tokens_details?.cached_tokens || // Returned by the search tool
-            usage?.prompt_tokens_details?.cached_tokens ||
-            0;
-
-        const usageData = {
-            sourceId: `llm:${modelName}`,
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-            input_tokens_cache_write: 0,
-            input_tokens_cache_read: cachedInputTokens,
-            cost: usage?.cost || 0, // for web search tool
-            keySource: metadata.keySource,
-            agentId: metadata.agentId,
-            teamId: metadata.teamId,
-        };
-        SystemEvents.emit('USAGE:LLM', usageData);
-
-        return usageData;
-    }
-
-    private reportWebSearchUsage(agentId, params): void {
-        for (const tool of params.toolsConfig?.tools || []) {
-            if (SEARCH_TOOL.type === tool.type) {
-                const modelName = params.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
-
-                this.reportUsage(
-                    {
-                        cost: SEARCH_TOOL.cost?.[modelName]?.[tool.search_context_size] || 0,
-
-                        // 👇 Just to avoid a TypeScript error.
-                        completion_tokens: 0,
-                        prompt_tokens: 0,
-                        total_tokens: 0,
-                        // 👆 Just to avoid a TypeScript error.
-                    },
-                    {
-                        modelEntryName: params.modelEntryName,
-                        keySource: params.credentials.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId,
-                        teamId: params.teamId,
-                    },
-                );
-            }
-        }
-    }
-
     private async validateTokenLimit({
         acRequest,
-        params,
+        maxTokens,
         promptTokens,
+        context,
     }: {
         acRequest: AccessRequest;
-        params: TLLMParams;
+        maxTokens: number;
         promptTokens: number;
+        context: ILLMRequestContext;
     }): Promise<void> {
-        const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
-        const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
+        const provider = await this.getProvider(acRequest, context.modelEntryName);
 
-        await modelsProvider.validateTokensLimit({
-            model: params?.modelEntryName,
+        await provider.validateTokensLimit({
+            model: context.modelEntryName,
             promptTokens,
-            completionTokens: params?.maxTokens,
-            hasAPIKey: params.credentials.isUserKey as boolean,
+            completionTokens: maxTokens,
+            hasAPIKey: context.isUserKey,
         });
     }
 
-    // TODO: This is a temporary method for checking search capability. It will be removed once we fully migrate to the new OpenAI SDK across all methods.
-    private async hasSearchCapability(acRequest: AccessRequest, modelEntryName: string) {
+    private async getProvider(acRequest: AccessRequest, modelEntryName: string) {
         const modelsProviderConnector = ConnectorService.getModelsProviderConnector();
         const modelsProvider = modelsProviderConnector.requester(acRequest.candidate as AccessCandidate);
 
-        const modelInfo = await modelsProvider.getModelInfo(modelEntryName);
-        const features = modelInfo?.features || [];
+        return modelsProvider;
+    }
 
-        return features.includes('search');
+    private async prepareBodyForWebSearchRequest(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
+        const body: OpenAI.Responses.ResponseCreateParams = {
+            model: params.model as string,
+            input: params.messages,
+            stream: true,
+        };
+
+        if (params?.max_output_tokens !== undefined) {
+            body.max_output_tokens = params.max_output_tokens;
+        }
+
+        // #region Handle tools configuration
+
+        const searchTool = this.getWebSearchTool(params);
+        body.tools = [searchTool];
+
+        if (params?.toolsConfig?.tool_choice) {
+            body.tool_choice = params.toolsConfig.tool_choice as TOpenAIResponseToolChoice;
+        }
+
+        return body;
+    }
+
+    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
+        const { model, size, quality, n, responseFormat, style } = params;
+
+        const body: OpenAI.Images.ImageGenerateParams = {
+            prompt: params.prompt,
+            model: model as string,
+            size: size as OpenAI.Images.ImageGenerateParams['size'],
+            n: n || 1,
+        };
+
+        if (quality) {
+            body.quality = quality;
+        }
+
+        // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
+        if (responseFormat) {
+            body.response_format = responseFormat;
+        }
+
+        if (style) {
+            body.style = style;
+        }
+
+        return body;
+    }
+
+    private async prepareBodyForImageEditRequest(params: TLLMParams): Promise<OpenAI.Images.ImageEditParams> {
+        const { model, size, n, responseFormat } = params;
+
+        const body: OpenAI.Images.ImageEditParams = {
+            prompt: params.prompt,
+            model: model as string,
+            size: size as OpenAI.Images.ImageEditParams['size'],
+            n: n || 1,
+            image: null,
+        };
+
+        // * Models like 'gpt-image-1' do not support the 'response_format' parameter, so we only set it when explicitly specified.
+        if (responseFormat) {
+            body.response_format = responseFormat;
+        }
+
+        const files: BinaryInput[] = params?.files || [];
+
+        if (files.length > 0) {
+            const images = await Promise.all(
+                files.map(
+                    async (file) =>
+                        await toFile(await file.getReadStream(), await file.getName(), {
+                            type: file.mimetype,
+                        })
+                )
+            );
+
+            body.image = images;
+        }
+
+        return body;
+    }
+
+    private async prepareBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
+        const messages = await this.prepareMessages(params);
+
+        //#region Handle JSON response format
+        // TODO: We have better parameter to have structured response, need to implement it.
+        const responseFormat = params?.responseFormat || '';
+        if (responseFormat === 'json') {
+            // We assume that the system message is first item in messages array
+            if (messages?.[0]?.role === TLLMMessageRole.System) {
+                messages[0].content += JSON_RESPONSE_INSTRUCTION;
+            } else {
+                messages.unshift({ role: TLLMMessageRole.System, content: JSON_RESPONSE_INSTRUCTION });
+            }
+
+            if (MODELS_WITH_JSON_RESPONSE.includes(params.model as string)) {
+                params.responseFormat = { type: 'json_object' };
+            } else {
+                params.responseFormat = undefined; // We need to reset it, otherwise 'json' will be passed as a parameter to the OpenAI API
+            }
+        }
+        //#endregion Handle JSON response format
+
+        const body: OpenAI.ChatCompletionCreateParams = {
+            model: params.model as string,
+            messages,
+        };
+
+        if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
+            body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+        }
+
+        if (params?.toolsConfig?.tool_choice) {
+            body.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+        }
+
+        if (params?.maxTokens !== undefined) body.max_completion_tokens = params.maxTokens;
+        if (params?.temperature !== undefined) body.temperature = params.temperature;
+        if (params?.topP !== undefined) body.top_p = params.topP;
+        if (params?.frequencyPenalty !== undefined) body.frequency_penalty = params.frequencyPenalty;
+        if (params?.presencePenalty !== undefined) body.presence_penalty = params.presencePenalty;
+        if (params?.responseFormat !== undefined) body.response_format = params.responseFormat;
+        if (params?.stopSequences?.length) body.stop = params.stopSequences;
+
+        return body;
+    }
+
+    private async prepareMessages(params: TLLMParams) {
+        const messages = params?.messages || [];
+
+        const files: BinaryInput[] = params?.files || []; // Assign file from the original parameters to avoid overwriting the original constructor
+
+        if (files.length > 0) {
+            // #region Upload files
+            const promises = [];
+            const _files = [];
+
+            for (let image of files) {
+                const binaryInput = BinaryInput.from(image);
+                promises.push(binaryInput.upload(AccessCandidate.agent(params.agentId)));
+
+                _files.push(binaryInput);
+            }
+
+            await Promise.all(promises);
+            // #endregion Upload files
+
+            const validImageFiles = this.getValidImageFiles(_files);
+            const validDocumentFiles = this.getValidDocumentFiles(_files);
+
+            const imageData = validImageFiles.length > 0 ? await this.processImageData(validImageFiles, params.agentId) : [];
+            const documentData = validDocumentFiles.length > 0 ? await this.processDocumentData(validDocumentFiles, params.agentId) : [];
+
+            const userMessage = Array.isArray(messages) ? messages.pop() : {};
+            const prompt = userMessage?.content || '';
+
+            const promptData = [{ type: 'text', text: prompt || '' }, ...imageData, ...documentData];
+
+            messages.push({ role: 'user', content: promptData });
+        }
+
+        return messages;
     }
 }

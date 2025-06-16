@@ -136,7 +136,7 @@ enum MODEL_FAMILY {
 
 const imageGenerator = {
     [MODEL_FAMILY.GPT]: async ({ model, prompt, config, logger, agent, input }) => {
-        let args: GenerateImageConfig & { fileSources?: BinaryInput[] } = {
+        let args: GenerateImageConfig & { files?: BinaryInput[] } = {
             model,
             size: config?.data?.size || 'auto',
             quality: config?.data?.quality || 'auto',
@@ -155,20 +155,19 @@ const imageGenerator = {
 
             const provider = await agent.modelsProvider.getProvider(model);
 
-            const fileSources: any[] = parseFiles(input, config);
-            const validFileSources = fileSources.filter((file) => imageGenerator.isValidImageFile(provider, file.mimetype));
+            const files: any[] = parseFiles(input, config);
+            const validFiles = files.filter((file) => imageGenerator.isValidImageFile(provider, file.mimetype));
 
-            if (fileSources.length > 0 && validFileSources.length === 0) {
+            if (files.length > 0 && validFiles.length === 0) {
                 throw new Error('Supported image file types are: ' + SUPPORTED_MIME_TYPES_MAP[provider]?.imageGen?.join(', '));
             }
 
             let response;
 
-            if (validFileSources.length > 0) {
-                args.fileSources = validFileSources;
-                response = await llmInference.imageEditRequest(prompt, args, agent);
+            if (validFiles.length > 0) {
+                response = await llmInference.imageEditRequest({ query: prompt, files: validFiles, params: { ...args, agentId: agent.id } });
             } else {
-                response = await llmInference.imageGenRequest(prompt, args, agent);
+                response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
             }
 
             if (response?.usage) {
@@ -194,9 +193,9 @@ const imageGenerator = {
     [MODEL_FAMILY.DALL_E]: async ({ model, prompt, config, logger, agent, input }) => {
         let _finalPrompt = prompt;
 
-        const fileSources: any[] = parseFiles(input, config);
+        const files: any[] = parseFiles(input, config);
 
-        if (fileSources.length > 0) {
+        if (files.length > 0) {
             throw new Error('OpenAI Image Generation Error: DALL-E models do not support image editing or variations. Please use a different model.');
         }
 
@@ -243,7 +242,7 @@ const imageGenerator = {
             };
         }
 
-        const response: any = await llmInference.imageGenRequest(_finalPrompt, args, agent);
+        const response: any = await llmInference.imageGenRequest({ query: _finalPrompt, params: { ...args, agentId: agent.id } });
 
         let output = response?.data?.[0]?.[responseFormat];
         const revised_prompt = response?.data?.[0]?.revised_prompt;
@@ -263,8 +262,8 @@ const imageGenerator = {
 
         const negativePrompt = config?.data?.negativePrompt || '';
 
-        const fileSources: any[] = parseFiles(input, config);
-        let seedImage = Array.isArray(fileSources) ? fileSources[0] : fileSources;
+        const files: any[] = parseFiles(input, config);
+        let seedImage = Array.isArray(files) ? files[0] : files;
         seedImage = await normalizeImageInput(seedImage);
 
         const modelId = await agent.modelsProvider.getModelId(model);

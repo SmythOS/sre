@@ -8,6 +8,8 @@ export default async function runChat(args: any, flags: any) {
     const model = flags.chat === 'DEFAULT_MODEL' ? 'gpt-4o' : flags.chat;
 
     const agent = Agent.import(agentPath, { model });
+    console.log(chalk.white('\nYou are now chatting with agent : ') + chalk.bold.green(agent.data?.name));
+    console.log(chalk.white('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
     const chat = agent.chat();
 
     // Create readline interface for user input

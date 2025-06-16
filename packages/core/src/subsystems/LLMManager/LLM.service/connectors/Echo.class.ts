@@ -1,40 +1,29 @@
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import { LLMChatResponse, LLMConnector } from '../LLMConnector';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
-import { Readable } from 'stream';
-import { SystemEvents } from '@sre/Core/SystemEvents';
-import { APIKeySource, TLLMParams } from '@sre/types/LLM.types';
-import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
+import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMConnectorParams, TLLMParams } from '@sre/types/LLM.types';
 
 export class EchoConnector extends LLMConnector {
     public name = 'LLM:Echo';
-    protected async chatRequest(acRequest: AccessRequest, params, agent: string | IAgent): Promise<LLMChatResponse> {
-        const content = params?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
-        return { content, finishReason: 'stop' } as LLMChatResponse;
+
+    protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
+        const content = body?.messages?.[0]?.content; // As Echo model only used in PromptGenerator so we can assume the first message is the user message to echo
+        return {
+            content,
+            finishReason: 'stop',
+            useTool: false,
+            toolsData: [],
+            message: { content, role: 'assistant' },
+            usage: {},
+        } as TLLMChatResponse;
     }
-    protected async visionRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent) {
-        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
-    }
-    protected async multimodalRequest(acRequest: AccessRequest, prompt, params, agent: string | IAgent) {
-        return { content: prompt, finishReason: 'stop' } as LLMChatResponse;
-    }
-    protected async toolRequest(acRequest: AccessRequest, params, agent: string | IAgent) {
-        throw new Error('Echo model does not support tool requests');
-    }
-    protected async imageGenRequest(acRequest: AccessRequest, prompt, params: any, agent: string | IAgent): Promise<any> {
-        throw new Error('Image generation request is not supported for Echo.');
-    }
-    protected async streamToolRequest(acRequest: AccessRequest, params, agent: string | IAgent) {
-        throw new Error('Echo model does not support tool requests');
-    }
-    protected async streamRequest(acRequest: AccessRequest, params: any, agent: string | IAgent): Promise<EventEmitter> {
+
+    protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         let content = '';
 
-        if (Array.isArray(params?.messages)) {
-            content = params?.messages?.filter((m) => m.role === 'user').pop()?.content;
+        if (Array.isArray(body?.messages)) {
+            content = body?.messages?.filter((m) => m.role === 'user').pop()?.content;
         }
         //params?.messages?.[0]?.content;
 
@@ -62,8 +51,13 @@ export class EchoConnector extends LLMConnector {
 
         return emitter;
     }
-    protected async multimodalStreamRequest(acRequest: AccessRequest, prompt, params: TLLMParams, agent: string | IAgent): Promise<EventEmitter> {
-        throw new Error('Echo model does not support passthrough with File(s)');
+
+    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
+        throw new Error('Web search is not supported for Echo');
+    }
+
+    protected async reqBodyAdapter(params: TLLMParams): Promise<any> {
+        return params;
     }
 
     public enhancePrompt(prompt: string, config: any) {

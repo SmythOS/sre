@@ -72,8 +72,8 @@ export class RAMVectorDB extends VectorDBConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
-        const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
-        const preparedNs = VectorDBConnector.constructNsName(teamId, resourceId);
+        //const teamId = await this.accountConnector.getCandidateTeam(AccessCandidate.clone(candidate));
+        const preparedNs = VectorDBConnector.constructNsName(candidate as AccessCandidate, resourceId);
         const acl = this.acls[preparedNs];
         const exists = !!acl;
 
@@ -86,14 +86,15 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async createNamespace(acRequest: AccessRequest, namespace: string, metadata?: { [key: string]: any }): Promise<void> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         if (!this.namespaces[preparedNs]) {
             const nsData: IStorageVectorNamespace = {
                 namespace: preparedNs,
                 displayName: namespace,
-                teamId,
+                candidateId: acRequest.candidate.id,
+                candidateRole: acRequest.candidate.role,
                 metadata: {
                     ...metadata,
                     storageType: 'RAM',
@@ -119,15 +120,15 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         return !!this.namespaces[preparedNs];
     }
 
     @SecureConnector.AccessControl
     protected async getNamespace(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorNamespace> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         const nsData = this.namespaces[preparedNs];
         if (!nsData) {
             throw new Error(`Namespace ${namespace} not found`);
@@ -137,16 +138,16 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async listNamespaces(acRequest: AccessRequest): Promise<IStorageVectorNamespace[]> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
         // Filter namespaces by team
-        return Object.values(this.namespaces).filter((ns) => ns.teamId === teamId);
+        return Object.values(this.namespaces).filter((ns) => ns.candidateId === acRequest.candidate.id);
     }
 
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         // Delete from memory
         delete this.vectors[preparedNs];
@@ -162,8 +163,8 @@ export class RAMVectorDB extends VectorDBConnector {
         query: string | number[],
         options: QueryOptions = {}
     ): Promise<VectorsResultData> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         if (!this.namespaces[preparedNs]) {
             throw new Error('Namespace does not exist');
@@ -202,8 +203,8 @@ export class RAMVectorDB extends VectorDBConnector {
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         const sources = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const insertedIds: string[] = [];
@@ -247,8 +248,8 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         const ids = Array.isArray(id) ? id : [id];
 
@@ -259,13 +260,13 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         const datasourceId = datasource.id || crypto.randomUUID();
 
         // Ensure namespace exists
         if (!this.namespaces[preparedNs]) {
-            throw new Error(`Namespace ${namespace} does not exist. Please create the namespace first.`);
+            await this.createNamespace(acRequest, namespace);
         }
 
         // Process text and create vectors
@@ -303,7 +304,8 @@ export class RAMVectorDB extends VectorDBConnector {
 
         const storageDataSource: IStorageVectorDataSource = {
             namespaceId: preparedNs,
-            teamId,
+            candidateId: acRequest.candidate.id,
+            candidateRole: acRequest.candidate.role,
             name: datasource.label || `Datasource ${datasourceId}`,
             metadata: JSON.stringify(datasource.metadata || {}),
             text: datasource.text,
@@ -314,16 +316,18 @@ export class RAMVectorDB extends VectorDBConnector {
         // Store datasource metadata in memory
         if (!this.datasources[preparedNs]) {
             this.datasources[preparedNs] = {};
+            this.datasources[preparedNs][datasourceId] = storageDataSource;
+        } else {
+            this.datasources[preparedNs][datasourceId].vectorIds.push(...vectorIds);
         }
-        this.datasources[preparedNs][datasourceId] = storageDataSource;
 
         return storageDataSource;
     }
 
     @SecureConnector.AccessControl
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         // Ensure namespace exists
         if (!this.namespaces[preparedNs]) {
@@ -347,8 +351,8 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         const namespaceDatasources = this.datasources[preparedNs] || {};
         return Object.values(namespaceDatasources);
@@ -356,8 +360,8 @@ export class RAMVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource> {
-        const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = VectorDBConnector.constructNsName(teamId, namespace);
+        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+        const preparedNs = VectorDBConnector.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         const datasource = this.datasources[preparedNs]?.[datasourceId];
         if (!datasource) {
