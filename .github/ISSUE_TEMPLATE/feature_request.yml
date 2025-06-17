@@ -1,0 +1,144 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for SmythOS SRE
+title: '[Feature]: '
+labels: ['enhancement', 'needs-triage']
+assignees: []
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for suggesting a new feature! 🚀
+
+              Please search existing issues and feature requests to avoid duplicates.
+
+    - type: dropdown
+      id: feature-area
+      attributes:
+          label: 📦 Feature Area
+          description: Which area would this feature affect?
+          options:
+              - 'Core SRE (Runtime Environment)'
+              - 'SDK (Developer Interface)'
+              - 'CLI (Command Line Tools)'
+              - 'Components (Agent Building Blocks)'
+              - 'Connectors (Integrations)'
+              - 'Security & Access Control'
+              - 'Documentation'
+              - 'Developer Experience'
+              - 'Performance & Optimization'
+              - 'Other'
+          default: 0
+      validations:
+          required: true
+
+    - type: textarea
+      id: feature-summary
+      attributes:
+          label: 🎯 Feature Summary
+          description: A clear and concise description of the feature you'd like to see
+          placeholder: 'I would like SmythOS to support...'
+      validations:
+          required: true
+
+    - type: textarea
+      id: problem-statement
+      attributes:
+          label: 🤔 Problem Statement
+          description: What problem does this feature solve? What's the current limitation?
+          placeholder: 'Currently, users have to... which is problematic because...'
+      validations:
+          required: true
+
+    - type: textarea
+      id: proposed-solution
+      attributes:
+          label: 💡 Proposed Solution
+          description: How would you like this feature to work?
+          placeholder: 'The feature could work by...'
+
+    - type: textarea
+      id: use-cases
+      attributes:
+          label: 🎯 Use Cases
+          description: Describe specific use cases where this feature would be helpful
+          placeholder: |
+              1. As a developer, I want to...
+              2. When building agents for...
+              3. In production environments where...
+
+    - type: textarea
+      id: api-design
+      attributes:
+          label: 🔧 API Design (Optional)
+          description: If you have ideas about how the API should look, share them here
+          render: typescript
+          placeholder: |
+              // Example API design
+              const agent = new Agent({
+                // new feature configuration
+              });
+
+    - type: dropdown
+      id: priority
+      attributes:
+          label: ⚡ Priority
+          description: How important is this feature to you?
+          options:
+              - 'Low - Nice to have'
+              - 'Medium - Would improve my workflow'
+              - 'High - Blocking my current project'
+              - 'Critical - Essential for production use'
+          default: 1
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: 🔄 Alternatives Considered
+          description: What workarounds or alternatives have you considered?
+          placeholder: "I've tried... but it doesn't work because..."
+
+    - type: dropdown
+      id: affected-connectors
+      attributes:
+          label: 🔌 Affected Connectors (if applicable)
+          description: Which connectors would this feature involve?
+          multiple: true
+          options:
+              - 'Storage (Local/S3/Azure/GCP)'
+              - 'LLM (OpenAI/Anthropic/Google/AWS Bedrock)'
+              - 'VectorDB (Pinecone/Chroma/SmythManaged)'
+              - 'Cache (RAM/Redis/Memcached)'
+              - 'Vault (HashiCorp/AWS Secrets Manager)'
+              - 'New Connector Type'
+              - 'Not applicable'
+
+    - type: textarea
+      id: additional-context
+      attributes:
+          label: 📋 Additional Context
+          description: Add any other context, screenshots, or examples about the feature request
+          placeholder: 'Additional information that might help understand the request...'
+
+    - type: checkboxes
+      id: contribution
+      attributes:
+          label: 🤝 Contribution
+          description: Are you interested in contributing to this feature?
+          options:
+              - label: I'd be willing to contribute to implementing this feature
+              - label: I'd be willing to help with testing this feature
+              - label: I'd be willing to help with documentation for this feature
+
+    - type: checkboxes
+      id: checklist
+      attributes:
+          label: ✅ Checklist
+          description: Please confirm the following
+          options:
+              - label: I have searched existing issues and feature requests to avoid duplicates
+                required: true
+              - label: This feature request is specific and actionable
+                required: true
+              - label: I have provided sufficient context and use cases
+                required: true

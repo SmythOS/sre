@@ -1,0 +1,162 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in SmythOS SRE
+title: '[Bug]: '
+labels: ['bug', 'needs-triage']
+assignees: []
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to fill out this bug report! 🙏
+
+              Before submitting, please search existing issues to avoid duplicates.
+
+    - type: dropdown
+      id: affected-package
+      attributes:
+          label: 📦 Affected Package
+          description: Which package is affected by this bug?
+          options:
+              - '@smythos/sre (Core Runtime)'
+              - '@smythos/sdk (SDK)'
+              - '@smythos/cli (CLI)'
+              - 'Documentation'
+              - 'Examples'
+              - 'Not sure'
+          default: 0
+      validations:
+          required: true
+
+    - type: textarea
+      id: bug-description
+      attributes:
+          label: 🐛 Bug Description
+          description: A clear and concise description of what the bug is.
+          placeholder: Describe the bug...
+      validations:
+          required: true
+
+    - type: textarea
+      id: reproduction-steps
+      attributes:
+          label: 🔄 Steps to Reproduce
+          description: Steps to reproduce the behavior
+          placeholder: |
+              1. Initialize SRE with '...'
+              2. Create agent with '...'
+              3. Call method '...'
+              4. See error
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected-behavior
+      attributes:
+          label: ✅ Expected Behavior
+          description: A clear description of what you expected to happen.
+          placeholder: What should have happened?
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual-behavior
+      attributes:
+          label: ❌ Actual Behavior
+          description: What actually happened instead?
+          placeholder: What actually happened?
+      validations:
+          required: true
+
+    - type: textarea
+      id: code-sample
+      attributes:
+          label: 💻 Code Sample
+          description: If applicable, add a minimal code sample that reproduces the issue
+          render: typescript
+          placeholder: |
+              // Your code here
+              const agent = new Agent({...});
+
+    - type: textarea
+      id: error-logs
+      attributes:
+          label: 📝 Error Logs
+          description: If applicable, add any error messages or stack traces
+          render: shell
+          placeholder: Paste your error logs here
+
+    - type: dropdown
+      id: environment-os
+      attributes:
+          label: 🖥️ Operating System
+          description: What OS are you running on?
+          options:
+              - macOS
+              - Windows
+              - Linux (Ubuntu)
+              - Linux (Other)
+              - Other
+      validations:
+          required: true
+
+    - type: input
+      id: environment-node
+      attributes:
+          label: 🟢 Node.js Version
+          description: What version of Node.js are you using?
+          placeholder: 'e.g., 18.17.0'
+      validations:
+          required: true
+
+    - type: input
+      id: environment-pnpm
+      attributes:
+          label: 📦 pnpm Version
+          description: What version of pnpm are you using?
+          placeholder: 'e.g., 8.6.0'
+      validations:
+          required: true
+
+    - type: input
+      id: package-version
+      attributes:
+          label: 📋 SmythOS Version
+          description: What version of SmythOS packages are you using?
+          placeholder: 'e.g., 1.2.3'
+      validations:
+          required: true
+
+    - type: dropdown
+      id: connectors-used
+      attributes:
+          label: 🔌 Connectors Used
+          description: Which connectors are you using? (Select all that apply)
+          multiple: true
+          options:
+              - 'Storage (Local/S3/Azure/GCP)'
+              - 'LLM (OpenAI/Anthropic/Google/AWS Bedrock)'
+              - 'VectorDB (Pinecone/Chroma/SmythManaged)'
+              - 'Cache (RAM/Redis/Memcached)'
+              - 'Vault (HashiCorp/AWS Secrets Manager)'
+              - 'None/Default'
+
+    - type: textarea
+      id: additional-context
+      attributes:
+          label: 📋 Additional Context
+          description: Add any other context about the problem here
+          placeholder: Any additional information that might help us debug this issue
+
+    - type: checkboxes
+      id: terms
+      attributes:
+          label: ✅ Checklist
+          description: Please confirm the following
+          options:
+              - label: I have searched existing issues to avoid duplicates
+                required: true
+              - label: I have provided all the required information above
+                required: true
+              - label: I am willing to provide additional information if needed
+                required: true
