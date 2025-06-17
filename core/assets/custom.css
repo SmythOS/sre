@@ -1,0 +1,30 @@
+/* Light theme for top navigation bar */
+.tsd-page-toolbar {
+    background-color: #f6f8fa !important;
+    border-bottom: 1px solid #eaecef !important;
+}
+
+/* Adjust text and link colors in the top nav bar */
+.tsd-page-toolbar .tsd-breadcrumb a {
+    color: #0366d6 !important;
+}
+
+.tsd-page-toolbar .tsd-breadcrumb span {
+    color: #24292e !important;
+}
+
+/* Adjust search icon color */
+.tsd-page-toolbar .tsd-widget svg {
+    fill: #24292e !important;
+}
+
+/* Hide the settings panel */
+.tsd-navigation.settings {
+    display: none !important;
+}
+
+/* Remove borders from the navigation icons by targeting the SVG stroke */
+.tsd-navigation .tsd-kind-icon svg,
+.tsd-navigation .tsd-kind-icon svg rect {
+    stroke: transparent !important;
+}

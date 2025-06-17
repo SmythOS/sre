@@ -1,0 +1,128 @@
+/* Light theme for top navigation bar */
+.tsd-page-toolbar {
+    background-color: #f6f8fa !important;
+    border-bottom: 1px solid #eaecef !important;
+}
+
+/* Adjust text and link colors in the top nav bar */
+.tsd-page-toolbar .tsd-breadcrumb a {
+    color: #0366d6 !important;
+}
+
+.tsd-page-toolbar .tsd-breadcrumb span {
+    color: #24292e !important;
+}
+
+/* Adjust search icon color */
+.tsd-page-toolbar .tsd-widget svg {
+    fill: #24292e !important;
+}
+
+/* Light theme for our custom header */
+.custom-header {
+    background-color: #f6f8fa;
+    color: #24292e;
+    padding: 1em 2em;
+    border-bottom: 1px solid #eaecef;
+    text-align: center;
+}
+
+.custom-header h1 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #24292e;
+}
+
+.custom-header p {
+    margin: 0.5em 0 0;
+    font-size: 1em;
+    color: #586069;
+}
+
+/* Hide the settings panel */
+.tsd-navigation.settings {
+    display: none !important;
+}
+
+/**************************************/
+
+/* Remove borders from the navigation icons by targeting the SVG stroke */
+.tsd-navigation .tsd-kind-icon svg,
+.tsd-navigation .tsd-kind-icon svg rect {
+    stroke: transparent !important;
+}
+
+/*CSS for injected menu from docusorus */
+
+.header-submenu {
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.header-submenu-container {
+    align-items: center;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    margin: 0 auto;
+    max-width: var(--ifm-container-width-xl);
+    padding: 0.5rem 1rem;
+}
+
+.menu-bar {
+    align-items: center;
+    display: flex;
+    grid-column: 2;
+}
+
+.menu-bar ul {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.hitTree_kk6K,
+.menu-bar li {
+    align-items: center;
+    display: flex;
+}
+
+.menu-bar a {
+    align-items: center;
+    color: #333;
+    display: inline-flex;
+    font-size: 0.925rem;
+    -webkit-text-decoration: none;
+    text-decoration: none;
+}
+
+.menu-bar a svg {
+    margin-right: 6px;
+    stroke-width: 1.2;
+}
+
+.menu-bar a:hover {
+    color: #007acc;
+}
+
+.menu-bar a.active {
+    border-bottom: 2px solid #3c89f9;
+    padding-bottom: 4px;
+}
+
+.header-submenu-search {
+    grid-column: 3;
+    justify-self: end;
+}
+
+.header-submenu-search .DocSearch-Button {
+    font-size: 0.875rem;
+    height: 32px;
+}
