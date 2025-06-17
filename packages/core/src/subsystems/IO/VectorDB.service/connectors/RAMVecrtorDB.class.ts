@@ -90,7 +90,7 @@ export class RAMVectorDB extends VectorDBConnector {
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         if (!this.namespaces[preparedNs]) {
-            const nsData: IStorageVectorNamespace = {
+            const nsData = {
                 namespace: preparedNs,
                 displayName: namespace,
                 candidateId: acRequest.candidate.id,
@@ -178,7 +178,7 @@ export class RAMVectorDB extends VectorDBConnector {
 
         // Search in namespace data
         const namespaceData = this.vectors[preparedNs] || [];
-        const results: Array<{ id: string; score: number; values: number[]; metadata?: any }> = [];
+        const results: Array<{ id: string; score: number; values: number[]; metadata?: any; text: string }> = [];
 
         for (const vector of namespaceData) {
             const similarity = this.cosineSimilarity(queryVector as number[], vector.values);
@@ -187,6 +187,7 @@ export class RAMVectorDB extends VectorDBConnector {
                 score: similarity,
                 values: vector.values,
                 metadata: options.includeMetadata ? vector.metadata : undefined,
+                text: vector.metadata?.text,
             });
         }
 
@@ -228,7 +229,7 @@ export class RAMVectorDB extends VectorDBConnector {
             const vectorData: VectorData = {
                 id: source.id,
                 values: vector,
-                datasource: source.metadata?.datasource || 'unknown',
+                datasource: source.metadata?.datasourceId || 'unknown',
                 metadata: source.metadata,
             };
 

@@ -45,10 +45,13 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: MilvusConfig) {
         super(_settings);
+        if (!_settings.credentials) {
+            return;
+        }
 
         // Create client config based on credential type
         const clientConfig = {
-            address: _settings.credentials.address,
+            address: _settings.credentials?.address,
             token: 'token' in _settings.credentials ? _settings.credentials.token : undefined,
             user: 'user' in _settings.credentials ? _settings.credentials.user : undefined,
             password: 'password' in _settings.credentials ? _settings.credentials.password : undefined,

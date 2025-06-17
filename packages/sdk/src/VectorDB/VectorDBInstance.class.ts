@@ -126,6 +126,10 @@ export class VectorDBInstance extends SDKObject {
 
     public async purge() {
         await this.ready;
+
+        if (!(await this.namespaceExists())) {
+            return;
+        }
         await this._VectorDBRequest.deleteNamespace(this._namespace);
     }
 }
