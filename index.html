@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,34 +14,40 @@
             padding: 2rem;
             background: #f8f9fa;
         }
+
         .header {
             text-align: center;
             margin-bottom: 3rem;
             padding: 2rem;
             background: white;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
         .docs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
             margin-top: 2rem;
         }
+
         .doc-card {
             background: white;
             padding: 2rem;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             transition: transform 0.2s;
         }
+
         .doc-card:hover {
             transform: translateY(-2px);
         }
+
         .doc-card h2 {
             margin-top: 0;
             color: #2c3e50;
         }
+
         .doc-link {
             display: inline-block;
             margin-top: 1rem;
@@ -51,34 +58,40 @@
             border-radius: 4px;
             transition: background 0.2s;
         }
+
         .doc-link:hover {
             background: #0056b3;
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>SmythOS Documentation</h1>
-        <p>Welcome to the comprehensive documentation for the SmythOS platform - an agent operating system for building, deploying, and managing AI agents.</p>
+        <p>SmythOS is a framework for building and orchestration AI Agents.</p>
     </div>
 
     <div class="docs-grid">
         <div class="doc-card">
             <h2>🏗️ Core Documentation</h2>
-            <p>Technical deep-dive into the Smyth Runtime Environment (SRE). Learn about the kernel architecture, security model, subsystems, and low-level agent orchestration.</p>
+            <p>Technical deep-dive into the Core of SmythOS, the Smyth Runtime Environment (SRE). Learn about the kernel
+                architecture,
+                security model, subsystems, and low-level agent orchestration.</p>
             <a href="./core/" class="doc-link">Explore Core Docs</a>
         </div>
 
         <div class="doc-card">
             <h2>🚀 SDK Documentation</h2>
-            <p>Developer-friendly SDK for building applications and agents on top of SmythOS. Get started with agents, streaming, chat, and component integration.</p>
+            <p>Developer-friendly SDK for building applications and agents on top of SmythOS. Get started with agents,
+                streaming, chat, VectorDB, Storage and component integration.</p>
             <a href="./sdk/" class="doc-link">Explore SDK Docs</a>
         </div>
     </div>
 
     <footer style="text-align: center; margin-top: 3rem; padding: 2rem; color: #666;">
-        <p>SmythOS - The Agent Operating System</p>
+        <p>SmythOS - The Operating System for Agentic AI</p>
         <p><a href="https://github.com/smythos/sre" target="_blank">View on GitHub</a></p>
     </footer>
 </body>
+
 </html>
