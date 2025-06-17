@@ -120,7 +120,7 @@ export class VectorDBInstance extends SDKObject {
         return results.map((result) => ({
             embedding: options?.includeEmbeddings ? result.values : undefined,
             text: result.metadata?.text,
-            metadata: typeof result.metadata?.user === 'string' ? JSON.parse(result.metadata.user) : result.metadata?.user,
+            metadata: typeof result.metadata === 'string' ? JSON.parse(result.metadata) : result.metadata,
         }));
     }
 

@@ -1,10 +1,18 @@
-export type VectorDBMetadata = ({ text?: string; user?: string } & Record<string, string>) | undefined;
+export type VectorDBMetadata = {
+    namespaceId: string;
+    datasourceId: string;
+    datasourceLabel: string;
+    acl: string;
+    user_metadata?: string;
+    text?: string;
+};
 
 export type VectorsResultData = {
     id: string;
     score?: number;
     values: number[];
-    metadata?: ({ text?: string; user?: Record<string, string> } & Record<string, any>) | undefined;
+    text: string;
+    metadata?: Record<string, any>;
 }[];
 
 export interface NsKnownMetadata {
@@ -46,20 +54,19 @@ export interface IVectorDataSourceDto {
 export interface IStorageVectorDataSource {
     namespaceId: string;
     // indexName: string;
-    candidateId: string;
-    candidateRole: string;
     name: string;
     metadata: string;
-    text: string;
+    text?: string;
     vectorIds: string[];
     id: string;
+    candidateId: string;
+    candidateRole: string;
 }
 
 export interface IStorageVectorNamespace {
     namespace: string;
     displayName: string;
-    candidateId: string;
-    candidateRole: string;
+    teamId: string;
     metadata?: StorageVectorNamespaceMetadata;
 }
 

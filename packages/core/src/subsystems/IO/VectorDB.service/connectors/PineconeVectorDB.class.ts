@@ -4,7 +4,7 @@ import { IAccessCandidate, IACL, TAccessLevel, TAccessRole } from '@sre/types/AC
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { VectorDBConnector } from '../VectorDBConnector';
+import { VectorDBConnector, DeleteTarget } from '../VectorDBConnector';
 import {
     DatasourceDto,
     IStorageVectorDataSource,
@@ -176,18 +176,21 @@ export class PineconeVectorDB extends VectorDBConnector {
             includeValues: true,
         });
 
-        let matches: VectorsResultData = [];
+        let matches = [];
 
         for (const match of results.matches) {
             if (match.metadata?.isSkeletonVector) continue;
 
-            if (match.metadata?.user) {
-                match.metadata.user = JSONContentHelper.create(match.metadata.user.toString()).tryParse();
+            if (match.metadata?.[this.USER_METADATA_KEY]) {
+                match.metadata[this.USER_METADATA_KEY] = JSONContentHelper.create(match.metadata[this.USER_METADATA_KEY].toString()).tryParse();
             }
+
             matches.push({
                 id: match.id,
                 values: match.values,
-                metadata: match.metadata,
+                text: match.metadata?.text as string | undefined,
+                metadata: match.metadata?.[this.USER_METADATA_KEY] as Record<string, any> | undefined,
+                score: match.score,
             });
         }
 
@@ -236,14 +239,19 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
-        const _ids = Array.isArray(id) ? id : [id];
-        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
+    protected async delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void> {
+        const isDeleteByFilter = typeof deleteTarget === 'object';
 
-        const res = await this.client
-            .Index(this.indexName)
-            .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-            .deleteMany(_ids);
+        if (isDeleteByFilter) {
+            // TODO: handle delete by filter logic
+        } else {
+            const _ids = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
+
+            const res = await this.client
+                .Index(this.indexName)
+                .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+                .deleteMany(_ids);
+        }
     }
 
     @SecureConnector.AccessControl
@@ -257,6 +265,7 @@ export class PineconeVectorDB extends VectorDBConnector {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });
+        const label = datasource.label || 'Untitled';
         const ids = Array.from({ length: chunkedText.length }, (_, i) => `${dsId}_${crypto.randomUUID()}`);
         const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
             return {
@@ -266,7 +275,8 @@ export class PineconeVectorDB extends VectorDBConnector {
                     acl: acl.serializedACL,
                     namespaceId: formattedNs,
                     datasourceId: dsId,
-                    user: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
+                    datasourceLabel: label,
+                    user_metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
                 },
             };
         });
