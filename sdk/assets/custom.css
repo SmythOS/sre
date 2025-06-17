@@ -1,7 +1,77 @@
-/* Light theme for top navigation bar */
+:root {
+    --dark-code-background: #323233;
+}
+
+:root[data-theme='light'] {
+    --hl-0: var(--dark-hl-0);
+    --hl-1: var(--dark-hl-1);
+    --hl-2: var(--dark-hl-2);
+    --hl-3: var(--dark-hl-3);
+    --hl-4: var(--dark-hl-4);
+    --hl-5: var(--dark-hl-5);
+    --hl-6: var(--dark-hl-6);
+    --hl-7: var(--dark-hl-7);
+    --hl-8: var(--dark-hl-8);
+    --hl-9: var(--dark-hl-9);
+    --hl-10: var(--dark-hl-10);
+    --hl-11: var(--dark-hl-11);
+    --hl-12: var(--dark-hl-12);
+    --hl-13: var(--dark-hl-13);
+    --code-background: var(--dark-code-background);
+}
+p > code {
+    background: transparent !important;
+    font-weight: 700 !important;
+}
+
+pre {
+    position: relative;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 10px;
+    border: 5px solid var(--color-accent);
+    margin-bottom: 8px;
+    border-radius: 10px;
+}
 .tsd-page-toolbar {
-    background-color: #f6f8fa !important;
-    border-bottom: 1px solid #eaecef !important;
+    background-color: #f5f5f5 !important;
+    border-bottom: 1px solid #d1d1d1 !important;
+}
+.container-main {
+    background-color: #f9fafb !important;
+    margin: 20px auto;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    padding-top: 20px;
+}
+.col-content {
+    padding-left: 20px;
+}
+body {
+    background: transparent;
+}
+
+@media (min-width: 770px) {
+    .container-main {
+        border-radius: 0px;
+        border-left: 0px;
+        border-right: 0px;
+    }
+}
+@media (min-width: 1200px) {
+    .container-main {
+        border-radius: 0px;
+        border-left: 0px;
+        border-right: 0px;
+    }
+}
+
+@media (min-width: 1800px) {
+    .container-main {
+        border-radius: 10px;
+        border-left: 1px solid #d1d5db;
+        border-right: 1px solid #d1d5db;
+    }
 }
 
 /* Adjust text and link colors in the top nav bar */
