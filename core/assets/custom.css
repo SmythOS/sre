@@ -19,7 +19,10 @@
     --hl-13: var(--dark-hl-13);
     --code-background: var(--dark-code-background);
 }
-p > code {
+p > code,
+a > code,
+li > code,
+span > code {
     background: transparent !important;
     font-weight: 700 !important;
 }
