@@ -22,6 +22,11 @@
 p > code,
 a > code,
 li > code,
+h2 > code,
+h3 > code,
+h4 > code,
+h5 > code,
+h6 > code,
 span > code {
     background: transparent !important;
     font-weight: 700 !important;
