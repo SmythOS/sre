@@ -27,6 +27,7 @@ h3 > code,
 h4 > code,
 h5 > code,
 h6 > code,
+strong > code,
 span > code {
     background: transparent !important;
     font-weight: 700 !important;
