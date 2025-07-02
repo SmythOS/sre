@@ -22,9 +22,6 @@
 
             "@sre/Core/*": ["Core/*"],
 
-            "@sre/sdk": ["sdk/sdk.index.ts"],
-            "@sre/sdk/*": ["sdk/*"],
-
             "@sre/utils/*": ["utils/*"],
             "@sre/utils": ["utils/index"],
 
@@ -61,7 +58,7 @@
         "esModuleInterop": true,
         "typeRoots": ["./node_modules/@types"]
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts"],
+    "include": ["src/**/*.ts", "tests/**/*.ts", "src/subsystems/IO/VectorDB.service/connectors/MilvusVectorDB.class.ts"],
 
     "exclude": ["node_modules"]
 }

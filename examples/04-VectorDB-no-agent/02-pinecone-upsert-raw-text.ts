@@ -11,6 +11,19 @@ const filePath = path.join(__dirname, '../files/bitcoin.pdf');
 
 dotenv.config();
 
+function logMemoryUsage(label: string) {
+    const usage = process.memoryUsage();
+    const formatBytes = (bytes: number) => (bytes / 1024 / 1024).toFixed(2) + ' MB';
+
+    console.log(`\n=== Memory Usage (${label}) ===`);
+    console.log(`RSS: ${formatBytes(usage.rss)} (Resident Set Size)`);
+    console.log(`Heap Used: ${formatBytes(usage.heapUsed)}`);
+    console.log(`Heap Total: ${formatBytes(usage.heapTotal)}`);
+    console.log(`External: ${formatBytes(usage.external)}`);
+    console.log(`Array Buffers: ${formatBytes(usage.arrayBuffers)}`);
+    console.log('===============================\n');
+}
+
 async function main() {
     const pinecone = VectorDB.Pinecone('test', {
         indexName: 'demo-vec',
@@ -33,4 +46,12 @@ async function main() {
     console.log('done');
 }
 
-main();
+// Log memory usage before main execution
+logMemoryUsage('Before Main');
+
+main()
+    .then(() => {
+        // Log memory usage after main execution
+        logMemoryUsage('After Main');
+    })
+    .catch(console.error);

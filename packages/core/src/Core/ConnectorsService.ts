@@ -111,7 +111,7 @@ export class ConnectorService {
             //     //return the first instance
             //     return ConnectorService.ConnectorInstances[connectorType][Object.keys(ConnectorService.ConnectorInstances[connectorType])[0]] as T;
             // }
-            console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+            console.warn(`Connector ${connectorType}:${connectorName} not initialized returning DummyConnector`);
             //print stack trace
 
             printStackTrace(console, 5);
@@ -181,7 +181,6 @@ export class ConnectorService {
     static getRouterConnector(name?: string): RouterConnector {
         return ConnectorService.getInstance<RouterConnector>(TConnectorService.Router, name);
     }
-
 
     static getCodeConnector(name?: string): RouterConnector {
         return ConnectorService.getInstance<RouterConnector>(TConnectorService.Code, name);

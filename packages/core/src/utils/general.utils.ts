@@ -214,7 +214,9 @@ export function getFormattedStackTrace(limit: number = 3, skip: number = 0): str
             const [, functionName, filePath, lineNum] = match;
             const fileName = filePath.split(/[/\\]/).pop() || filePath;
             const cleanFunctionName = functionName.includes('.') ? functionName.split('.').pop() : functionName;
-            formattedCalls.push(`${i < length - 1 ? '├' : '└'} ${cleanFunctionName}() in ${fileName}  (${filePath}:${lineNum})`);
+            formattedCalls.push(`${i < length - 1 ? '├' : '└'} ${cleanFunctionName}()`);
+            formattedCalls.push(`${i < length - 1 ? '│' : ' '}  └ ${filePath}:${lineNum}`);
+            formattedCalls.push(`${i < length - 1 ? '│' : ' '}`);
         }
 
         // Fallback for other formats

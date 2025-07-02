@@ -22,7 +22,7 @@ import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { EmbeddingsFactory } from '../embed';
 
-const console = Logger('RAM VectorDB');
+const console = Logger('RAMVec');
 
 interface VectorData {
     id: string;

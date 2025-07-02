@@ -18,11 +18,11 @@ export abstract class SecureConnector<TRequest = any> extends Connector<TRequest
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
 
     public async start() {
-        console.info(`Starting ${this.name} connector ...`);
+        console.info(`Starting ${this.name} S:Connector ...`);
     }
 
     public async stop() {
-        console.info(`Stopping ${this.name} connector ...`);
+        console.info(`Stopping ${this.name} S:Connector ...`);
     }
 
     protected async hasAccess(acRequest: AccessRequest) {

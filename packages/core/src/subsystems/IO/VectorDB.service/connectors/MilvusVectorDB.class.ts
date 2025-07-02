@@ -1,4 +1,3 @@
-//==[ SRE: S3Storage ]======================
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { Logger } from '@sre/helpers/Log.helper';
@@ -11,17 +10,23 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
 import { chunkText } from '@sre/utils/string.utils';
-import { CreateIndexSimpleReq, DataType, ErrorCode, FieldType, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import crypto from 'crypto';
 import { jsonrepair } from 'jsonrepair';
 import { EmbeddingsFactory } from '../embed';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import * as MilvusTypes from '@zilliz/milvus2-sdk-node';
+
+//#IFDEF STATIC MILVUS_STATIC
+//import * as Milvus from '@zilliz/milvus2-sdk-node';
+//const { DataType, ErrorCode, MilvusClient } = await LazyLoadFallback<typeof MilvusTypes>(Milvus);
+//#ENDIF
 
 const console = Logger('Milvus');
 
 export type IMilvusCredentials = { address: string; token: string } | { address: string; user: string; password: string; token?: string };
-type IndexParams = Omit<CreateIndexSimpleReq, 'collection_name'>[] | Omit<CreateIndexSimpleReq, 'collection_name'>;
+type IndexParams = Omit<MilvusTypes.CreateIndexSimpleReq, 'collection_name'>[] | Omit<MilvusTypes.CreateIndexSimpleReq, 'collection_name'>;
 
 export type MilvusConfig = {
     credentials: IMilvusCredentials;
@@ -31,12 +36,12 @@ export type MilvusConfig = {
 // Define schema field names as a type for strong typing
 type SchemaFieldNames = 'id' | 'text' | 'namespaceId' | 'datasourceId' | 'datasourceLabel' | 'vector' | 'acl' | 'user_metadata';
 
-type SchemaField = FieldType & { name: SchemaFieldNames };
+type SchemaField = MilvusTypes.FieldType & { name: SchemaFieldNames };
 
 export class MilvusVectorDB extends VectorDBConnector {
     public name = 'MilvusVectorDB';
     public id = 'milvus';
-    private client: MilvusClient;
+    private client: MilvusTypes.MilvusClient;
     private cache: CacheConnector;
     private accountConnector: AccountConnector;
     public embedder: BaseEmbedding;
@@ -48,6 +53,11 @@ export class MilvusVectorDB extends VectorDBConnector {
         if (!_settings.credentials) {
             return;
         }
+        this.lazyInit(_settings);
+    }
+
+    async lazyInit(_settings: MilvusConfig) {
+        const { DataType, MilvusClient } = await LazyLoadFallback<typeof MilvusTypes>('@zilliz/milvus2-sdk-node');
 
         // Create client config based on credential type
         const clientConfig = {
@@ -118,10 +128,13 @@ export class MilvusVectorDB extends VectorDBConnector {
             field_name: 'vector',
         };
         // this.options = _settings.options;
+
+        this.started = true;
     }
 
     @SecureConnector.AccessControl
     protected async createNamespace(acRequest: AccessRequest, namespace: string, metadata?: { [key: string]: any }): Promise<void> {
+        await this.ready();
         //* Since Pinecone does not create explicit namespaces,
         //*  we create a zero or dummy vector in the namespace to trigger the namespace creation and filter it out
 
@@ -149,12 +162,13 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const res = await this.client.hasCollection({
             collection_name: this.constructNsName(acRequest.candidate as AccessCandidate, namespace),
         });
 
-        if (res.status.error_code !== ErrorCode.SUCCESS) {
+        if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
             throw new Error(`Error checking collection: ${res}`);
         }
 
@@ -163,6 +177,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -171,7 +186,7 @@ export class MilvusVectorDB extends VectorDBConnector {
             collection_name: preparedNs,
         });
 
-        if (res.error_code !== ErrorCode.SUCCESS) {
+        if (res.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
             throw new Error(`Error dropping collection: ${res}`);
         }
 
@@ -185,6 +200,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         query: string | number[],
         options: QueryOptions = {}
     ): Promise<VectorsResultData> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -221,6 +237,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -248,7 +265,7 @@ export class MilvusVectorDB extends VectorDBConnector {
             collection_name: preparedNs,
             data: preparedSource,
         });
-        if (res.status.error_code !== ErrorCode.SUCCESS) {
+        if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
             console.error('Error inserting data: ', res);
             throw new Error(`Error inserting data: ${res?.status?.error_code}`);
         }
@@ -258,6 +275,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -272,7 +290,7 @@ export class MilvusVectorDB extends VectorDBConnector {
                 collection_name: preparedNs,
                 expr: `datasourceId == "${(deleteTarget as any).datasourceId}"`,
             });
-            if (res.status.error_code !== ErrorCode.SUCCESS) {
+            if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
                 throw new Error(`Error deleting data: ${res}`);
             }
         } else {
@@ -282,7 +300,7 @@ export class MilvusVectorDB extends VectorDBConnector {
                 collection_name: preparedNs,
                 ids: _ids as string[],
             });
-            if (res.status.error_code !== ErrorCode.SUCCESS) {
+            if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
                 throw new Error(`Error deleting data: ${res}`);
             }
         }
@@ -290,6 +308,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
+        await this.ready();
         const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner);
         const dsId = datasource.id || crypto.randomUUID();
@@ -331,6 +350,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -339,6 +359,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async listDatasources(acRequest: AccessRequest, namespace: string): Promise<IStorageVectorDataSource[]> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -384,6 +405,7 @@ export class MilvusVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource | undefined> {
+        await this.ready();
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         const res = await this.client.query({
@@ -414,12 +436,14 @@ export class MilvusVectorDB extends VectorDBConnector {
     }
 
     private async setACL(acRequest: AccessRequest, preparedNs: string, acl: IACL): Promise<void> {
+        await this.ready();
         await this.cache
             .requester(AccessCandidate.clone(acRequest.candidate))
             .set(`vectorDB:pinecone:namespace:${preparedNs}:acl`, JSON.stringify(acl));
     }
 
     private async getACL(ac: AccessCandidate, preparedNs: string): Promise<ACL | null | undefined> {
+        await this.ready();
         let aclRes = await this.cache.requester(ac).get(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
         const acl = JSONContentHelper.create(aclRes?.toString?.()).tryParse();
         return acl;
@@ -439,6 +463,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     }
 
     private async deleteACL(ac: AccessCandidate, preparedNs: string): Promise<void> {
+        await this.ready();
         this.cache.requester(AccessCandidate.clone(ac)).delete(`vectorDB:pinecone:namespace:${preparedNs}:acl`);
     }
 

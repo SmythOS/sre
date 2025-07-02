@@ -28,8 +28,6 @@
 
             "@sre/Core/*": ["Core/*"],
 
-            "@sre/sdk/*": ["sdk/*"],
-
             "@sre/utils/*": ["utils/*"],
             "@sre/utils": ["utils/index"],
 
