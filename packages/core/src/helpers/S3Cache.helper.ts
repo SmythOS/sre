@@ -1,8 +1,8 @@
-import { GetBucketLifecycleConfigurationCommandOutput, PutBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
-
-import { GetBucketLifecycleConfigurationCommand } from '@aws-sdk/client-s3';
-import { S3Client } from '@aws-sdk/client-s3';
 import { Logger } from '@sre/helpers/Log.helper';
+
+import type * as S3Types from '@aws-sdk/client-s3';
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+
 const console = Logger('S3Cache');
 
 export function generateLifecycleRules() {
@@ -89,7 +89,7 @@ export function ttlToExpiryDays(ttl: number) {
     return Math.ceil(ttl / (60 * 60 * 24));
 }
 
-export async function checkAndInstallLifecycleRules(bucketName: string, s3Client: S3Client) {
+export async function checkAndInstallLifecycleRules(bucketName: string, s3Client: S3Types.S3Client) {
     // Validate inputs
     if (!bucketName || bucketName.trim() === '') {
         throw new Error('Bucket name is required and cannot be empty');
@@ -101,10 +101,14 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
 
     console.log(`Checking lifecycle rules for bucket: ${bucketName}`);
 
+    const { GetBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommand } = await LazyLoadFallback<typeof S3Types>(
+        '@aws-sdk/client-s3'
+    );
     try {
         // Check existing lifecycle configuration
+
         const getLifecycleCommand = new GetBucketLifecycleConfigurationCommand({ Bucket: bucketName });
-        const existingLifecycle: GetBucketLifecycleConfigurationCommandOutput = await s3Client.send(getLifecycleCommand);
+        const existingLifecycle: S3Types.GetBucketLifecycleConfigurationCommandOutput = await s3Client.send(getLifecycleCommand);
         const existingRules = existingLifecycle.Rules;
         const newRules = generateLifecycleRules();
         const nonExistingNewRules = getNonExistingRules(existingRules, newRules);

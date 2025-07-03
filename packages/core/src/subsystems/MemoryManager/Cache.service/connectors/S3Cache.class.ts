@@ -7,21 +7,24 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 
-import {
-    S3Client,
-    GetObjectCommand,
-    PutObjectCommand,
-    PutObjectCommandInput,
-    DeleteObjectCommand,
-    HeadObjectCommand,
-    CopyObjectCommand,
-    GetObjectTaggingCommand,
-    PutObjectTaggingCommand,
-    HeadObjectCommandOutput,
-    GetObjectTaggingCommandOutput,
-    GetObjectCommandOutput,
-} from '@aws-sdk/client-s3';
 import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
+
+// import {
+//     S3Client,
+//     GetObjectCommand,
+//     PutObjectCommand,
+//     PutObjectCommandInput,
+//     DeleteObjectCommand,
+//     HeadObjectCommand,
+//     CopyObjectCommand,
+//     GetObjectTaggingCommand,
+//     PutObjectTaggingCommand,
+//     HeadObjectCommandOutput,
+//     GetObjectTaggingCommandOutput,
+//     GetObjectCommandOutput,
+// } from '@aws-sdk/client-s3';
+import type * as S3Types from '@aws-sdk/client-s3';
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
 
 const console = Logger('S3Cache');
 export type S3CacheConfig = {
@@ -33,13 +36,22 @@ export type S3CacheConfig = {
 
 export class S3Cache extends CacheConnector {
     public name: string = 'S3Cache';
-    private s3Client: S3Client;
+    private s3Client: S3Types.S3Client;
     private bucketName: string;
     private isInitialized: boolean = false;
     private cachePrefix: string = '_smyth_cache';
 
     constructor(protected _settings: S3CacheConfig) {
         super(_settings);
+
+        if (!_settings) {
+            return;
+        }
+        this.lazyInit(_settings);
+    }
+
+    async lazyInit(_settings: S3CacheConfig) {
+        const { S3Client } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
         this.s3Client = new S3Client({
             region: _settings.region,
             credentials: {
@@ -48,6 +60,8 @@ export class S3Cache extends CacheConnector {
             },
         });
         this.bucketName = _settings.bucketName;
+
+        this.started = true;
     }
 
     public get client() {
@@ -56,18 +70,20 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async get(acRequest: AccessRequest, key: string): Promise<string | null> {
+        await this.ready();
         const candidateId = acRequest.candidate.id;
         if (!this.isInitialized) {
             await this.initialize();
         }
         try {
+            const { HeadObjectCommand, DeleteObjectCommand, GetObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             const params = {
                 Bucket: this.bucketName,
                 Key: `${this.cachePrefix}/${candidateId}/${key}`,
             };
 
             const s3HeadCommand = new HeadObjectCommand(params);
-            const headData: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
+            const headData: S3Types.HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const expirationHeader = headData?.Expiration;
             if (expirationHeader) {
@@ -86,7 +102,7 @@ export class S3Cache extends CacheConnector {
             }
 
             const s3GetCommand = new GetObjectCommand(params);
-            const objectData: GetObjectCommandOutput = await this.s3Client.send(s3GetCommand);
+            const objectData: S3Types.GetObjectCommandOutput = await this.s3Client.send(s3GetCommand);
             return objectData.Body.transformToString();
         } catch (error) {
             console.error(`Error reading object ${key}:`, error);
@@ -96,6 +112,10 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async set(acRequest: AccessRequest, key: string, data: any, acl?: IACL, metadata?: CacheMetadata, ttl?: number): Promise<boolean> {
+        await this.ready();
+
+        const { PutObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+
         const accessCandidate = acRequest.candidate;
         const candidateId = accessCandidate.id;
 
@@ -103,7 +123,7 @@ export class S3Cache extends CacheConnector {
         newMetadata['acl'] = ACL.from(acl).addAccess(accessCandidate.role, accessCandidate.id, TAccessLevel.Owner).ACL;
         const serializedMetadata = this.serializeS3Metadata(newMetadata);
 
-        const s3PutCommandConfig: PutObjectCommandInput = {
+        const s3PutCommandConfig: S3Types.PutObjectCommandInput = {
             Bucket: this.bucketName,
             Key: `${this.cachePrefix}/${candidateId}/${key}`,
             Body: data,
@@ -122,7 +142,9 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async delete(acRequest: AccessRequest, key: string): Promise<void> {
+        await this.ready();
         try {
+            const { DeleteObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             const candidateId = acRequest.candidate.id;
             const deleteCommand = new DeleteObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidateId}/${key}` });
             await this.s3Client.send(deleteCommand);
@@ -134,14 +156,16 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async exists(acRequest: AccessRequest, key: string): Promise<boolean> {
+        await this.ready();
         const candidateId = acRequest.candidate.id;
         try {
+            const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             const params = {
                 Bucket: this.bucketName,
                 Key: `${this.cachePrefix}/${candidateId}/${key}`,
             };
             const s3HeadCommand = new HeadObjectCommand(params);
-            const headData: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
+            const headData: S3Types.HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const expirationHeader = headData?.Expiration;
             if (expirationHeader) {
@@ -167,6 +191,7 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async getMetadata(acRequest: AccessRequest, key: string): Promise<CacheMetadata> {
+        await this.ready();
         const candidateId = acRequest.candidate.id;
 
         try {
@@ -180,6 +205,7 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
+        await this.ready();
         const candidateId = acRequest.candidate.id;
 
         try {
@@ -196,6 +222,8 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async updateTTL(acRequest: AccessRequest, key: string, ttl?: number): Promise<void> {
+        await this.ready();
+        const { PutObjectTaggingCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
         if (ttl) {
             const candidateId = acRequest.candidate.id;
             const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
@@ -210,9 +238,11 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async getTTL(acRequest: AccessRequest, key: string): Promise<number> {
+        await this.ready();
+        const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
         const candidateId = acRequest.candidate.id;
         const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidateId}/${key}` });
-        const s3HeadObjectResponse: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
+        const s3HeadObjectResponse: S3Types.HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
         const expirationHeader = s3HeadObjectResponse?.Expiration;
         if (expirationHeader) {
             const expirationDateMatch = expirationHeader.match(/expiry-date="([^"]+)"/);
@@ -227,9 +257,11 @@ export class S3Cache extends CacheConnector {
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
+        await this.ready();
         try {
+            const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             const s3HeadCommand = new HeadObjectCommand({ Bucket: this.bucketName, Key: `${this.cachePrefix}/${candidate.id}/${resourceId}` });
-            const s3HeadObjectResponse: HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
+            const s3HeadObjectResponse: S3Types.HeadObjectCommandOutput = await this.s3Client.send(s3HeadCommand);
 
             const metadata = s3HeadObjectResponse.Metadata;
             if (!metadata.acl) {
@@ -248,6 +280,7 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     async getACL(acRequest: AccessRequest, key: string): Promise<IACL> {
+        await this.ready();
         try {
             const metadata = await this.getMetadata(acRequest, key);
             return (metadata?.acl as IACL) || {};
@@ -258,6 +291,7 @@ export class S3Cache extends CacheConnector {
 
     @SecureConnector.AccessControl
     async setACL(acRequest: AccessRequest, key: string, acl: IACL) {
+        await this.ready();
         try {
             let metadata = await this.getMetadata(acRequest, key);
             if (!metadata) metadata = {};
@@ -271,12 +305,15 @@ export class S3Cache extends CacheConnector {
     }
 
     private async getS3Metadata(resourceId: string): Promise<Record<string, any> | undefined> {
+        await this.ready();
+
         try {
+            const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             const command = new HeadObjectCommand({
                 Bucket: this.bucketName,
                 Key: resourceId,
             });
-            const response: HeadObjectCommandOutput = await this.client.send(command);
+            const response: S3Types.HeadObjectCommandOutput = await this.client.send(command);
             const s3RawMetadata = response.Metadata;
             if (!s3RawMetadata || Object.keys(s3RawMetadata).length === 0) return {};
 
@@ -294,13 +331,15 @@ export class S3Cache extends CacheConnector {
     }
 
     private async setS3Metadata(resourceId: string, metadata: Record<string, any>): Promise<void> {
+        await this.ready();
         try {
+            const { GetObjectTaggingCommand, CopyObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
             // Get the current object content
             const getObjectTaggingCommand = new GetObjectTaggingCommand({
                 Bucket: this.bucketName,
                 Key: resourceId,
             });
-            const objectTagging: GetObjectTaggingCommandOutput = await this.client.send(getObjectTaggingCommand);
+            const objectTagging: S3Types.GetObjectTaggingCommandOutput = await this.client.send(getObjectTaggingCommand);
             const serializedMetadata = this.serializeS3Metadata(metadata);
             const copyObjectCommand = new CopyObjectCommand({
                 Bucket: this.bucketName,
@@ -319,6 +358,7 @@ export class S3Cache extends CacheConnector {
     }
 
     private async initialize() {
+        await this.ready();
         await checkAndInstallLifecycleRules(this.bucketName, this.s3Client);
         this.isInitialized = true;
     }

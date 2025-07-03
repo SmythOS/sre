@@ -17,11 +17,14 @@ import { EmbeddingsFactory } from '../embed';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
 
-import type * as PineconeTypes from '@pinecone-database/pinecone';
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
 
+import type * as PineconeTypes from '@pinecone-database/pinecone';
+let PineconeModule: typeof PineconeTypes | undefined;
+
 //#IFDEF STATIC PINECONE_STATIC
-//import { Pinecone } from '@pinecone-database/pinecone';
+//import * as _PineconeModule from '@pinecone-database/pinecone';
+//PineconeModule = _PineconeModule;
 //#ENDIF
 
 const logger = Logger('Pinecone');
@@ -65,7 +68,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     }
 
     async lazyInit(_settings: PineconeConfig) {
-        const { Pinecone } = await LazyLoadFallback<typeof PineconeTypes>('@pinecone-database/pinecone');
+        const { Pinecone } = await LazyLoadFallback<typeof PineconeTypes>(PineconeModule, '@pinecone-database/pinecone');
 
         this.client = new Pinecone({
             apiKey: _settings.apiKey,

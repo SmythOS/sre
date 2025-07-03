@@ -33,6 +33,12 @@ const config = {
         colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
         //SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
+        // conditionalCompilationPlugin({
+        //     flags: {
+        //         STATIC: process.env.STATIC === 'true',
+        //         PINECONE_STATIC: process.env.PINECONE_STATIC === 'true',
+        //     },
+        // }),
         json(),
         typescriptPaths({
             tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
@@ -275,6 +281,73 @@ function SDKGenPlugin() {
             } catch (error) {
                 this.error(`Failed to generate SDK files: ${error.message}`);
             }
+        },
+    };
+}
+
+// Custom conditional compilation plugin
+// Usage: Set environment variables like STATIC=true or PINECONE_STATIC=true
+// to enable/disable code blocks wrapped in //#IFDEF and //#ENDIF
+function conditionalCompilationPlugin(options = {}) {
+    const { flags = {} } = options;
+
+    return {
+        name: 'conditional-compilation',
+        transform(code, id) {
+            // Skip node_modules
+            if (id.includes('node_modules')) {
+                return null;
+            }
+
+            let modified = false;
+            let result = code;
+
+            // Regular expression to match //#IFDEF blocks
+            const ifdefRegex = /^\/\/#IFDEF\s+(.+?)$\n([\s\S]*?)^\/\/#ENDIF$/gm;
+
+            result = result.replace(ifdefRegex, (match, condition, content) => {
+                const conditions = condition.trim().split(/\s+/);
+                let shouldEnable = false;
+
+                // Check if any of the conditions are met
+                for (const cond of conditions) {
+                    if (flags[cond] === true) {
+                        shouldEnable = true;
+                        break;
+                    }
+                }
+
+                // Process the content lines
+                const lines = content.split('\n');
+                const processedLines = lines.map((line) => {
+                    // Skip empty lines
+                    if (line.trim() === '') {
+                        return line;
+                    }
+
+                    if (shouldEnable) {
+                        // Uncomment the line if it's commented
+                        if (line.match(/^\s*\/\/\s*/)) {
+                            modified = true;
+                            return line.replace(/^(\s*)\/\/\s*/, '$1');
+                        }
+                        return line;
+                    } else {
+                        // Comment the line if it's not commented
+                        if (!line.match(/^\s*\/\//)) {
+                            modified = true;
+                            const indent = line.match(/^(\s*)/)[1];
+                            const codeContent = line.substring(indent.length);
+                            return `${indent}//${codeContent}`;
+                        }
+                        return line;
+                    }
+                });
+
+                return `//#IFDEF ${condition}\n${processedLines.join('\n')}\n//#ENDIF`;
+            });
+
+            return modified ? { code: result, map: null } : null;
         },
     };
 }

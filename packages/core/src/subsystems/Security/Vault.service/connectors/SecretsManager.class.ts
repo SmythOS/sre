@@ -7,13 +7,16 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { VaultConnector } from '../VaultConnector';
-import {
-    SecretsManagerClient,
-    GetSecretValueCommand,
-    ListSecretsCommand,
-    ListSecretsCommandOutput,
-    GetSecretValueCommandOutput,
-} from '@aws-sdk/client-secrets-manager';
+// import {
+//     SecretsManagerClient,
+//     GetSecretValueCommand,
+//     ListSecretsCommand,
+//     ListSecretsCommandOutput,
+//     GetSecretValueCommandOutput,
+// } from '@aws-sdk/client-secrets-manager';
+
+import type * as SecretsManagerTypes from '@aws-sdk/client-secrets-manager';
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
 
 const console = Logger('SecretsManager');
 
@@ -24,11 +27,19 @@ export type SecretsManagerConfig = {
 };
 export class SecretsManager extends VaultConnector {
     public name: string = 'SecretsManager';
-    private secretsManager: SecretsManagerClient;
+    private secretsManager: SecretsManagerTypes.SecretsManagerClient;
 
     constructor(protected _settings: SecretsManagerConfig) {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+
+        this.lazyInit(_settings);
+    }
+
+    async lazyInit(_settings: SecretsManagerConfig) {
+        //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
+
+        const { SecretsManagerClient } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
 
         this.secretsManager = new SecretsManagerClient({
             region: _settings.region,
@@ -39,10 +50,13 @@ export class SecretsManager extends VaultConnector {
                   }
                 : {}),
         });
+
+        this.started = true;
     }
 
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, secretName: string) {
+        await this.ready();
         try {
             const secret = await this.getSecretByName(secretName);
             return secret?.SecretString;
@@ -54,17 +68,20 @@ export class SecretsManager extends VaultConnector {
 
     @SecureConnector.AccessControl
     protected async exists(acRequest: AccessRequest, keyId: string) {
+        await this.ready();
         const secret = await this.get(acRequest, keyId);
         return !!secret;
     }
 
     @SecureConnector.AccessControl
     protected async listKeys(acRequest: AccessRequest) {
+        await this.ready();
         console.warn('SecretsManager.listKeys is not implemented');
         return [];
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
+        await this.ready();
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.getCandidateTeam(candidate);
 
@@ -78,11 +95,13 @@ export class SecretsManager extends VaultConnector {
     }
 
     private async getSecretByName(secretName: string) {
+        await this.ready();
+        const { ListSecretsCommand, GetSecretValueCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
         try {
             const secrets = [];
             let nextToken: string | undefined;
             do {
-                const listResponse: ListSecretsCommandOutput = await this.secretsManager.send(
+                const listResponse: SecretsManagerTypes.ListSecretsCommandOutput = await this.secretsManager.send(
                     new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] })
                 );
                 if (listResponse.SecretList) {
@@ -114,8 +133,10 @@ export class SecretsManager extends VaultConnector {
             console.error(error);
         }
 
-        async function getSpecificSecret(secret, secretsManager: SecretsManagerClient) {
-            const data: GetSecretValueCommandOutput = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
+        async function getSpecificSecret(secret, secretsManager: SecretsManagerTypes.SecretsManagerClient) {
+            const data: SecretsManagerTypes.GetSecretValueCommandOutput = await secretsManager.send(
+                new GetSecretValueCommand({ SecretId: secret.ARN })
+            );
             let secretString = data.SecretString;
             let secretName = secret.Name;
 

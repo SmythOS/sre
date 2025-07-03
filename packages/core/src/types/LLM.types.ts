@@ -5,7 +5,7 @@ import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@googl
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
+import type { ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
 
 export type LLMProvider = Extract<(typeof models)[keyof typeof models], { llm: string }>['llm'] | 'VertexAI' | 'Bedrock';
 export type LLMModel = keyof typeof models;

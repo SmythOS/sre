@@ -1,12 +1,3 @@
-import {
-    BedrockRuntimeClient,
-    ConverseCommand,
-    ConverseCommandInput,
-    ConverseStreamCommand,
-    ConverseStreamCommandOutput,
-    TokenUsage,
-    ConverseCommandOutput,
-} from '@aws-sdk/client-bedrock-runtime';
 import EventEmitter from 'events';
 
 import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -32,12 +23,18 @@ import { LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+
+import type * as BedrocTypes from '@aws-sdk/client-bedrock-runtime';
+
 // TODO [Forhad]: Need to adjust some type definitions
 
 export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
-    private async getClient(params: ILLMRequestContext): Promise<BedrockRuntimeClient> {
+    private async getClient(params: ILLMRequestContext): Promise<BedrocTypes.BedrockRuntimeClient> {
+        const { BedrockRuntimeClient } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
+
         const credentials = params.credentials as BedrockCredentials;
         const region = (params.modelInfo as TCustomLLMModel).settings.region;
 
@@ -51,9 +48,10 @@ export class BedrockConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
+            const { ConverseCommand } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
             const bedrock = await this.getClient(context);
             const command = new ConverseCommand(body);
-            const response: ConverseCommandOutput = await bedrock.send(command);
+            const response: BedrocTypes.ConverseCommandOutput = await bedrock.send(command);
 
             const usage = response.usage;
             this.reportUsage(usage as any, {
@@ -100,9 +98,10 @@ export class BedrockConnector extends LLMConnector {
         const emitter = new EventEmitter();
 
         try {
+            const { ConverseStreamCommand } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
             const bedrock = await this.getClient(context);
             const command = new ConverseStreamCommand(body);
-            const response: ConverseStreamCommandOutput = await bedrock.send(command);
+            const response: BedrocTypes.ConverseStreamCommandOutput = await bedrock.send(command);
             const stream = response.stream;
 
             if (stream) {
@@ -199,7 +198,7 @@ export class BedrockConnector extends LLMConnector {
         throw new Error('Web search is not supported for Bedrock');
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<ConverseCommandInput> {
+    protected async reqBodyAdapter(params: TLLMParams): Promise<BedrocTypes.ConverseCommandInput> {
         const customModelInfo = params.modelInfo;
 
         let systemPrompt;
@@ -213,7 +212,7 @@ export class BedrockConnector extends LLMConnector {
 
         messages = otherMessages;
 
-        const body: ConverseCommandInput = {
+        const body: BedrocTypes.ConverseCommandInput = {
             modelId: customModelInfo.settings?.customModel || customModelInfo.settings?.foundationModel,
             messages,
         };
@@ -233,7 +232,7 @@ export class BedrockConnector extends LLMConnector {
     }
 
     protected reportUsage(
-        usage: TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
+        usage: BedrocTypes.TokenUsage & { cacheReadInputTokenCount: number; cacheWriteInputTokenCount: number },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
