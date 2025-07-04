@@ -37,7 +37,8 @@ const INCLUDED_COMPONENTS = [
     'ImageGenerator',
     'TavilyWebSearch',
     'MCPClient',
-    'ServerlessCode'
+    'ServerlessCode',
+    'ECMASandbox'
 ]; // Example: ['APICall', 'GenAILLM', 'Image']
 
 /**

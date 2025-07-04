@@ -4,6 +4,7 @@ import { APICall } from './APICall';
 import { APIOutput } from './APIOutput';
 import { Await } from './Await';
 import { Classifier } from './Classifier';
+import { ECMASandbox } from './ECMASandbox';
 import { GenAILLM } from './GenAILLM';
 import { HuggingFace } from './HuggingFace';
 import { ImageGenerator } from './ImageGenerator';
@@ -13,5 +14,5 @@ import { TavilyWebSearch } from './TavilyWebSearch';
 
 
 
-const Components = { APICall, APIOutput, Await, Classifier, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ServerlessCode, TavilyWebSearch, };
+const Components = { APICall, APIOutput, Await, Classifier, ECMASandbox, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ServerlessCode, TavilyWebSearch, };
  export default Components; 

@@ -18,6 +18,7 @@ export * from './Components/ComponentHost.class';
 export * from './Components/DataSourceCleaner.class';
 export * from './Components/DataSourceIndexer.class';
 export * from './Components/DataSourceLookup.class';
+export * from './Components/ECMASandbox.class';
 export * from './Components/FEncDec.class';
 export * from './Components/FHash.class';
 export * from './Components/FileStore.class';
