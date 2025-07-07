@@ -3,9 +3,6 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
-import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
-
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -35,6 +32,24 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import { LLMConnector } from '../LLMConnector';
 
+//import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
+
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as GoogleGenAITypes from '@google/generative-ai';
+let GoogleGenAIModule: typeof GoogleGenAITypes | undefined;
+//#IFDEF STATIC GOOGLE_GENERATIVE_AI_STATIC
+import * as _GoogleGenAIModule from '@google/generative-ai';
+GoogleGenAIModule = _GoogleGenAIModule;
+//#ENDIF
+
+//import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
+import type * as GoogleGenAIServerTypes from '@google/generative-ai/server';
+let GoogleGenAIServerModule: typeof GoogleGenAIServerTypes | undefined;
+//#IFDEF STATIC GOOGLE_GENERATIVE_AI_SERVER_STATIC
+import * as _GoogleGenAIServerModule from '@google/generative-ai/server';
+GoogleGenAIServerModule = _GoogleGenAIServerModule;
+//#ENDIF
+
 const MODELS_SUPPORT_SYSTEM_INSTRUCTION = [
     'gemini-1.5-pro-exp-0801',
     'gemini-1.5-pro-latest',
@@ -56,7 +71,7 @@ const VALID_MIME_TYPES = [
 ];
 
 // will be removed after updating the SDK
-type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount: number };
+type UsageMetadataWithThoughtsToken = GoogleGenAITypes.UsageMetadata & { thoughtsTokenCount: number };
 
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
@@ -66,7 +81,8 @@ export class GoogleAIConnector extends LLMConnector {
         image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    private async getClient(params: ILLMRequestContext): Promise<GoogleGenerativeAI> {
+    private async getClient(params: ILLMRequestContext): Promise<GoogleGenAITypes.GoogleGenerativeAI> {
+        const { GoogleGenerativeAI } = await LazyLoadFallback<typeof GoogleGenAIModule>(GoogleGenAIModule, '@google/generative-ai');
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
         if (!apiKey) throw new Error('Please provide an API key for Google AI');
@@ -202,7 +218,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         const messages = await this.prepareMessages(params);
 
-        let body: ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest } = {
+        let body: GoogleGenAITypes.ModelParams & { messages: string | TLLMMessageBlock[] | GoogleGenAITypes.GenerateContentRequest } = {
             model: model as string,
             messages,
         };
@@ -219,7 +235,7 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
-        const config: GenerationConfig = {};
+        const config: GoogleGenAITypes.GenerationConfig = {};
 
         if (params.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
         if (params.temperature !== undefined) config.temperature = params.temperature;
@@ -409,8 +425,8 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
-    private async prepareMessages(params: TLLMParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
-        let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
+    private async prepareMessages(params: TLLMParams): Promise<string | TLLMMessageBlock[] | GoogleGenAITypes.GenerateContentRequest> {
+        let messages: string | TLLMMessageBlock[] | GoogleGenAITypes.GenerateContentRequest = params?.messages || '';
 
         const files: BinaryInput[] = params?.files || [];
 
@@ -494,7 +510,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMParams): Promise<GenerateContentRequest> {
+    private async prepareMessagesWithTools(params: TLLMParams): Promise<GoogleGenAITypes.GenerateContentRequest> {
         let formattedMessages: TLLMMessageBlock[];
         let systemInstruction = '';
 
@@ -511,7 +527,7 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = messages;
         }
 
-        const toolsPrompt: GenerateContentRequest = {
+        const toolsPrompt: GoogleGenAITypes.GenerateContentRequest = {
             contents: formattedMessages as any,
         };
 
@@ -597,6 +613,10 @@ export class GoogleAIConnector extends LLMConnector {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
+            const { GoogleAIFileManager, FileState } = await LazyLoadFallback<typeof GoogleGenAIServerModule>(
+                GoogleGenAIServerModule,
+                '@google/generative-ai/server'
+            );
             // Create a temporary directory
             const tempDir = os.tmpdir();
             const fileName = uid();

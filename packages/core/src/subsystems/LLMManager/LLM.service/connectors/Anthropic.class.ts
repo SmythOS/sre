@@ -1,5 +1,4 @@
 import EventEmitter from 'events';
-import Anthropic from '@anthropic-ai/sdk';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -26,11 +25,21 @@ import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
+//import Anthropic from '@anthropic-ai/sdk';
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as AnthropicTypes from '@anthropic-ai/sdk';
+
+let AnthropicModule: typeof AnthropicTypes | undefined;
+//#IFDEF STATIC ANTHROPIC_STATIC
+import * as _AnthropicModule from '@anthropic-ai/sdk';
+AnthropicModule = _AnthropicModule;
+//#ENDIF
+
 const PREFILL_TEXT_FOR_JSON_RESPONSE = '{';
 const LEGACY_THINKING_MODELS = ['smythos/claude-3.7-sonnet-thinking', 'claude-3.7-sonnet-thinking'];
 
 // Type aliases
-type AnthropicMessageParams = Anthropic.MessageCreateParamsNonStreaming | Anthropic.Messages.MessageStreamParams;
+type AnthropicMessageParams = AnthropicTypes.Anthropic.MessageCreateParamsNonStreaming | AnthropicTypes.Anthropic.Messages.MessageStreamParams;
 
 // TODO [Forhad]: implement proper typing
 
@@ -39,7 +48,8 @@ export class AnthropicConnector extends LLMConnector {
 
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.Anthropic.image;
 
-    private async getClient(params: ILLMRequestContext): Promise<Anthropic> {
+    private async getClient(params: ILLMRequestContext): Promise<AnthropicTypes.Anthropic> {
+        const { Anthropic } = await LazyLoadFallback<typeof AnthropicModule>(AnthropicModule, '@anthropic-ai/sdk');
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
         if (!apiKey) throw new Error('Please provide an API key for Anthropic');
@@ -51,8 +61,8 @@ export class AnthropicConnector extends LLMConnector {
         try {
             const anthropic = await this.getClient(context);
             const result = await anthropic.messages.create(body);
-            const message: Anthropic.MessageParam = {
-                role: (result?.role || TLLMMessageRole.User) as Anthropic.MessageParam['role'],
+            const message: AnthropicTypes.Anthropic.MessageParam = {
+                role: (result?.role || TLLMMessageRole.User) as AnthropicTypes.Anthropic.MessageParam['role'],
                 content: result?.content || '',
             };
             const stopReason = result?.stop_reason;
@@ -65,7 +75,7 @@ export class AnthropicConnector extends LLMConnector {
 
                 if (toolUseContentBlocks?.length === 0) return;
 
-                toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                toolUseContentBlocks.forEach((toolUseBlock: AnthropicTypes.Anthropic.Messages.ToolUseBlock, index) => {
                     toolsData.push({
                         index,
                         id: toolUseBlock?.id,
@@ -159,7 +169,7 @@ export class AnthropicConnector extends LLMConnector {
                 const toolUseContentBlocks = finalMessage.content.filter((c) => c.type === 'tool_use');
 
                 if (toolUseContentBlocks?.length > 0) {
-                    toolUseContentBlocks.forEach((toolUseBlock: Anthropic.Messages.ToolUseBlock, index) => {
+                    toolUseContentBlocks.forEach((toolUseBlock: AnthropicTypes.Anthropic.Messages.ToolUseBlock, index) => {
                         toolsData.push({
                             index,
                             id: toolUseBlock?.id,
@@ -215,7 +225,7 @@ export class AnthropicConnector extends LLMConnector {
             return await this.prepareBodyForThinkingRequest({
                 body,
                 maxThinkingTokens: params.maxThinkingTokens,
-                toolChoice: params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice,
+                toolChoice: params?.toolsConfig?.tool_choice as unknown as AnthropicTypes.Anthropic.ToolChoice,
             });
         }
 
@@ -223,8 +233,8 @@ export class AnthropicConnector extends LLMConnector {
     }
 
     protected reportUsage(
-        usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+        usage: AnthropicTypes.Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -355,7 +365,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -407,12 +417,12 @@ export class AnthropicConnector extends LLMConnector {
         return _messages;
     }
 
-    private async prepareBody(params: TLLMParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+    private async prepareBody(params: TLLMParams): Promise<AnthropicTypes.Anthropic.MessageCreateParamsNonStreaming> {
         let messages = await this.prepareMessages(params);
 
-        let body: Anthropic.MessageCreateParamsNonStreaming = {
+        let body: AnthropicTypes.Anthropic.MessageCreateParamsNonStreaming = {
             model: params.model as string,
-            messages: messages as Anthropic.MessageParam[],
+            messages: messages as AnthropicTypes.Anthropic.MessageParam[],
             max_tokens: params.maxTokens, // * max token is required
         };
 
@@ -440,7 +450,7 @@ export class AnthropicConnector extends LLMConnector {
                 body.system = await this.prepareSystemPrompt(systemMessage, params);
             }
 
-            messages = otherMessages as Anthropic.MessageParam[];
+            messages = otherMessages as AnthropicTypes.Anthropic.MessageParam[];
         }
         //#endregion Prepare system message and add JSON response instruction if needed
 
@@ -451,20 +461,20 @@ export class AnthropicConnector extends LLMConnector {
 
         // #region Tools
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools.length > 0) {
-            body.tools = params?.toolsConfig?.tools as unknown as Anthropic.Tool[];
+            body.tools = params?.toolsConfig?.tools as unknown as AnthropicTypes.Anthropic.Tool[];
 
             if (params?.cache) {
                 body.tools[body.tools.length - 1]['cache_control'] = { type: 'ephemeral' };
             }
         }
 
-        const toolChoice = params?.toolsConfig?.tool_choice as unknown as Anthropic.ToolChoice;
+        const toolChoice = params?.toolsConfig?.tool_choice as unknown as AnthropicTypes.Anthropic.ToolChoice;
         if (toolChoice) {
             body.tool_choice = toolChoice;
         }
         // #endregion Tools
 
-        body.messages = messages as Anthropic.MessageParam[];
+        body.messages = messages as AnthropicTypes.Anthropic.MessageParam[];
         return body;
     }
 
@@ -475,11 +485,11 @@ export class AnthropicConnector extends LLMConnector {
     }: {
         body: AnthropicMessageParams;
         maxThinkingTokens: number;
-        toolChoice?: Anthropic.ToolChoice;
-    }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+        toolChoice?: AnthropicTypes.Anthropic.ToolChoice;
+    }): Promise<AnthropicTypes.Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE,
+            (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -499,7 +509,7 @@ export class AnthropicConnector extends LLMConnector {
             budget_tokens = Math.floor(budget_tokens * 0.8);
         }
 
-        const thinkingBody: Anthropic.MessageCreateParamsNonStreaming = {
+        const thinkingBody: AnthropicTypes.Anthropic.MessageCreateParamsNonStreaming = {
             model: body.model,
             messages,
             max_tokens: body.max_tokens,
@@ -556,7 +566,10 @@ export class AnthropicConnector extends LLMConnector {
         return messages;
     }
 
-    private async prepareSystemPrompt(systemMessage: TLLMMessageBlock, params: TLLMParams): Promise<string | Array<Anthropic.TextBlockParam>> {
+    private async prepareSystemPrompt(
+        systemMessage: TLLMMessageBlock,
+        params: TLLMParams
+    ): Promise<string | Array<AnthropicTypes.Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
         if (typeof systemPrompt === 'string') {
@@ -566,19 +579,19 @@ export class AnthropicConnector extends LLMConnector {
                     text: systemPrompt,
                     //cache_control: { type: 'ephemeral' }, //TODO: @Forhad check this
                 },
-            ] as Array<Anthropic.TextBlockParam>;
+            ] as Array<AnthropicTypes.Anthropic.TextBlockParam>;
         }
 
-        (systemPrompt as Array<Anthropic.TextBlockParam>).unshift({
+        (systemPrompt as Array<AnthropicTypes.Anthropic.TextBlockParam>).unshift({
             type: 'text' as const,
             text: 'If you need to call a function, Do NOT inform the user that you are about to do so, and do not thank the user after you get the response. Just say something like "Give me a moment...", then when you get the response, Just continue answering the user without saying anything about the function you just called',
         });
 
         if (params?.cache) {
-            (systemPrompt as Array<Anthropic.TextBlockParam>)[systemPrompt.length - 1]['cache_control'] = { type: 'ephemeral' };
+            (systemPrompt as Array<AnthropicTypes.Anthropic.TextBlockParam>)[systemPrompt.length - 1]['cache_control'] = { type: 'ephemeral' };
         }
 
-        return systemPrompt as Array<Anthropic.TextBlockParam>;
+        return systemPrompt as Array<AnthropicTypes.Anthropic.TextBlockParam>;
     }
 
     /**
@@ -614,7 +627,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string,
+        agentId: string
     ): Promise<
         {
             type: string;
@@ -644,7 +657,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    private hasPrefillText(messages: Anthropic.MessageParam[]) {
+    private hasPrefillText(messages: AnthropicTypes.Anthropic.MessageParam[]) {
         for (let i = messages.length - 1; i >= 0; i--) {
             const message = messages[i];
 

@@ -1,4 +1,3 @@
-import Groq from 'groq-sdk';
 import EventEmitter from 'events';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -20,6 +19,15 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as GroqTypes from 'groq-sdk';
+
+let GroqModule: typeof GroqTypes | undefined;
+//#IFDEF STATIC GROQ_STATIC
+import * as _GroqModule from 'groq-sdk';
+GroqModule = _GroqModule;
+//#ENDIF
+
 type ChatCompletionCreateParams = {
     model: string;
     messages: any;
@@ -35,7 +43,8 @@ type ChatCompletionCreateParams = {
 export class GroqConnector extends LLMConnector {
     public name = 'LLM:Groq';
 
-    private async getClient(params: ILLMRequestContext): Promise<Groq> {
+    private async getClient(params: ILLMRequestContext): Promise<GroqTypes.Groq> {
+        const { Groq } = await LazyLoadFallback<typeof GroqModule>(GroqModule, 'groq-sdk');
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
         if (!apiKey) throw new Error('Please provide an API key for Groq');
@@ -188,7 +197,7 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected reportUsage(
-        usage: Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
+        usage: GroqTypes.Groq.Completions.CompletionUsage & { prompt_tokens_details?: { cached_tokens?: number } },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name

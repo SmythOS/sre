@@ -19,6 +19,7 @@ const config = {
         file: 'dist/index.js',
         format: 'es',
         sourcemap: true,
+        sourcemapExcludeSources: true,
     },
     external: isExternal,
     plugins: [
@@ -39,14 +40,14 @@ const config = {
         //     //     return path.resolve(path.dirname(sourcemapPath), relativeSourcePath);
         //     // },
         // }),
-        sourcemaps(),
+        //sourcemaps(),
         esbuild({
             sourceMap: true,
             minifyWhitespace: true,
             minifySyntax: true,
             minifyIdentifiers: false,
             treeShaking: true,
-            sourcesContent: true,
+            sourcesContent: false,
         }),
         //terser(),
     ],

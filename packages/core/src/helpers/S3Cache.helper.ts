@@ -3,6 +3,12 @@ import { Logger } from '@sre/helpers/Log.helper';
 import type * as S3Types from '@aws-sdk/client-s3';
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
 
+let S3Module: typeof S3Types | undefined;
+//#IFDEF STATIC S3_STATIC
+import * as _S3Module from '@aws-sdk/client-s3';
+S3Module = _S3Module;
+//#ENDIF
+
 const console = Logger('S3Cache');
 
 export function generateLifecycleRules() {
@@ -102,6 +108,7 @@ export async function checkAndInstallLifecycleRules(bucketName: string, s3Client
     console.log(`Checking lifecycle rules for bucket: ${bucketName}`);
 
     const { GetBucketLifecycleConfigurationCommand, PutBucketLifecycleConfigurationCommand } = await LazyLoadFallback<typeof S3Types>(
+        S3Module,
         '@aws-sdk/client-s3'
     );
     try {

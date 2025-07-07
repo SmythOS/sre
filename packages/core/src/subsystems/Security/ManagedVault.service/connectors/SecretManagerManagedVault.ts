@@ -10,19 +10,14 @@ import { randomUUID } from 'crypto';
 import { ManagedVaultConnector } from '../ManagedVaultConnector';
 import { SecretsManagerConfig } from '../../Vault.service/connectors/SecretsManager.class';
 
-// import {
-//     CreateSecretCommand,
-//     DeleteSecretCommand,
-//     GetSecretValueCommand,
-//     GetSecretValueCommandOutput,
-//     ListSecretsCommand,
-//     ListSecretsCommandOutput,
-//     PutSecretValueCommand,
-//     SecretsManagerClient,
-// } from '@aws-sdk/client-secrets-manager';
-
 import type * as SecretsManagerTypes from '@aws-sdk/client-secrets-manager';
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
+
+let SecretsManagerModule: typeof SecretsManagerTypes | undefined;
+//#IFDEF STATIC SECRETS_MANAGER_STATIC
+import * as _SecretsManagerModule from '@aws-sdk/client-secrets-manager';
+SecretsManagerModule = _SecretsManagerModule;
+//#ENDIF
 
 const console = Logger('SecretManagerManagedVault');
 
@@ -41,7 +36,7 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
     async lazyInit(_settings: SecretsManagerConfig & { vaultName: string }) {
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        const { SecretsManagerClient } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { SecretsManagerClient } = await LazyLoadFallback<typeof SecretsManagerTypes>(SecretsManagerModule, '@aws-sdk/client-secrets-manager');
 
         this.secretsManager = new SecretsManagerClient({
             region: _settings.region,
@@ -66,7 +61,10 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
     @SecureConnector.AccessControl
     protected async set(acRequest: AccessRequest, secretName: string, value: string) {
         await this.ready();
-        const { PutSecretValueCommand, CreateSecretCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { PutSecretValueCommand, CreateSecretCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>(
+            SecretsManagerModule,
+            '@aws-sdk/client-secrets-manager'
+        );
         const secret = await this.getSecretByName(secretName);
         if (secret) {
             await this.secretsManager.send(new PutSecretValueCommand({ SecretId: secret.ARN, SecretString: value }));
@@ -84,7 +82,7 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, secretName: string) {
         await this.ready();
-        const { DeleteSecretCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { DeleteSecretCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>(SecretsManagerModule, '@aws-sdk/client-secrets-manager');
         const secret = await this.getSecretByName(secretName);
         if (secret) {
             await this.secretsManager.send(new DeleteSecretCommand({ SecretId: secret.ARN }));
@@ -114,7 +112,10 @@ export class SecretManagerManagedVault extends ManagedVaultConnector {
 
     private async getSecretByName(secretName: string) {
         await this.ready();
-        const { ListSecretsCommand, GetSecretValueCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { ListSecretsCommand, GetSecretValueCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>(
+            SecretsManagerModule,
+            '@aws-sdk/client-secrets-manager'
+        );
 
         try {
             const secrets = [];

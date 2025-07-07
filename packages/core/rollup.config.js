@@ -36,25 +36,26 @@ const config = {
         file: 'dist/index.js',
         format: 'es',
         sourcemap: true,
+        sourcemapExcludeSources: true,
     },
     external: isExternal, // Use the function to mark non-local imports as external
     plugins: [
         colorfulLogs('SmythOS Runtime Builder'), // Add our custom logging plugin
         //SDKGenPlugin(),
         ctixPlugin(), // Add ctix plugin as first plugin
-        // conditionalCompilationPlugin({
-        //     flags: {
-        //         STATIC: process.env.STATIC === 'true',
-        //         PINECONE_STATIC: process.env.PINECONE_STATIC === 'true',
-        //     },
-        // }),
+        conditionalCodePreprocessor({
+            flags: {
+                STATIC: true, //process.env.STATIC === 'true',
+                //PINECONE_STATIC: true, //process.env.PINECONE_STATIC === 'true',
+            },
+        }),
         json(),
         typescriptPaths({
             tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
             preserveExtensions: true,
             nonRelative: false,
         }),
-        sourcemaps(),
+        //sourcemaps(),
         esbuild({
             sourceMap: true,
             minifyWhitespace: true,
@@ -79,6 +80,7 @@ const zeroDepConfig = {
         file: 'dist/index.js',
         format: 'es',
         sourcemap: true,
+        sourcemapExcludeSources: true,
         inlineDynamicImports: true, // Inline dynamic imports to create a single bundle
     },
     external: isExternalBuiltinsOnly, // Only mark Node.js built-ins as external
@@ -99,14 +101,14 @@ const zeroDepConfig = {
             preserveExtensions: true,
             nonRelative: false,
         }),
-        sourcemaps(),
+        //sourcemaps(),
         esbuild({
             sourceMap: true,
             minifyWhitespace: true,
             minifySyntax: true,
             minifyIdentifiers: false,
             treeShaking: true,
-            sourcesContent: false,
+            //sourcesContent: false,
         }),
 
         // typescript({
@@ -342,8 +344,9 @@ function SDKGenPlugin() {
 // Custom conditional compilation plugin
 // Usage: Set environment variables like STATIC=true or PINECONE_STATIC=true
 // to enable/disable code blocks wrapped in //#IFDEF and //#ENDIF
-function conditionalCompilationPlugin(options = {}) {
+function conditionalCodePreprocessor(options = {}) {
     const { flags = {} } = options;
+    console.log('\n>>>>>>>>>>>>> conditionalCompilationPlugin flags', flags);
 
     return {
         name: 'conditional-compilation',
@@ -357,49 +360,73 @@ function conditionalCompilationPlugin(options = {}) {
             let result = code;
 
             // Regular expression to match //#IFDEF blocks
-            const ifdefRegex = /^\/\/#IFDEF\s+(.+?)$\n([\s\S]*?)^\/\/#ENDIF$/gm;
+            const ifdefRegex = /^\/\/#IFDEF\s+(.+?)$\r?\n([\s\S]*?)^\/\/#ENDIF$/gm;
 
-            result = result.replace(ifdefRegex, (match, condition, content) => {
-                const conditions = condition.trim().split(/\s+/);
-                let shouldEnable = false;
+            // More flexible fallback regex
+            //const ifdefRegexFallback = /\/\/#IFDEF\s+(.+?)[\r\n]+([\s\S]*?)\/\/#ENDIF/gm;
 
-                // Check if any of the conditions are met
-                for (const cond of conditions) {
-                    if (flags[cond] === true) {
-                        shouldEnable = true;
-                        break;
-                    }
-                }
+            // Debug: Check if file contains any ifdef blocks
+            const hasIfdefBlocks = code.includes('//#IFDEF');
 
-                // Process the content lines
-                const lines = content.split('\n');
-                const processedLines = lines.map((line) => {
-                    // Skip empty lines
-                    if (line.trim() === '') {
-                        return line;
-                    }
+            // Try strict regex first, then fallback
+            const processIfdefBlocks = (regex) => {
+                return result.replace(regex, (match, condition, content) => {
+                    const conditions = condition.trim().split(/\s+/);
+                    let shouldEnable = false;
 
-                    if (shouldEnable) {
-                        // Uncomment the line if it's commented
-                        if (line.match(/^\s*\/\/\s*/)) {
-                            modified = true;
-                            return line.replace(/^(\s*)\/\/\s*/, '$1');
+                    // Check if any of the conditions are met
+                    for (const cond of conditions) {
+                        if (flags[cond] === true) {
+                            shouldEnable = true;
+
+                            break;
                         }
-                        return line;
-                    } else {
-                        // Comment the line if it's not commented
-                        if (!line.match(/^\s*\/\//)) {
-                            modified = true;
-                            const indent = line.match(/^(\s*)/)[1];
-                            const codeContent = line.substring(indent.length);
-                            return `${indent}//${codeContent}`;
-                        }
-                        return line;
                     }
+
+                    // Process the content lines
+                    const lines = content.split('\n');
+                    const processedLines = lines.map((line) => {
+                        // Skip empty lines
+                        if (line.trim() === '') {
+                            return line;
+                        }
+
+                        if (shouldEnable) {
+                            // Uncomment the line if it's commented
+                            if (line.match(/^\s*\/\/\s*/)) {
+                                modified = true;
+                                return line.replace(/^(\s*)\/\/\s*/, '$1');
+                            }
+                            return line;
+                        } else {
+                            // Comment the line if it's not commented
+                            if (!line.match(/^\s*\/\//)) {
+                                modified = true;
+                                const indent = line.match(/^(\s*)/)[1];
+                                const codeContent = line.substring(indent.length);
+                                return `${indent}//${codeContent}`;
+                            }
+                            return line;
+                        }
+                    });
+
+                    const result = `//#IFDEF ${condition}\n${processedLines.join('\n')}\n//#ENDIF`;
+
+                    return result;
                 });
+            };
 
-                return `//#IFDEF ${condition}\n${processedLines.join('\n')}\n//#ENDIF`;
-            });
+            // Try strict regex first
+            let newResult = processIfdefBlocks(ifdefRegex);
+
+            // If no changes were made and we have ifdef blocks, try fallback regex
+            // if (!modified && hasIfdefBlocks) {
+            //     console.log('>>>>>>>>>>>>> Trying fallback regex...');
+            //     result = newResult;
+            //     newResult = processIfdefBlocks(ifdefRegexFallback);
+            // }
+
+            result = newResult;
 
             return modified ? { code: result, map: null } : null;
         },

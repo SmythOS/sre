@@ -123,7 +123,7 @@ export class RuntimeContext extends EventEmitter {
                     //fs.writeFileSync(this.ctxFile, JSON.stringify(ctxData, null, 2));
                     await this._cacheConnector
                         .requester(AccessCandidate.agent(this.runtime.agent.id))
-                        .set(this.ctxFile, JSON.stringify(ctxData, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
+                        .set(this.ctxFile, JSON.stringify(ctxData, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours of inactivity
                 } else {
                     ctxData = JSON.parse(data);
                     if (!ctxData.step) ctxData.step = 0;
@@ -177,10 +177,8 @@ export class RuntimeContext extends EventEmitter {
             const exists = await this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).exists(this.ctxFile);
 
             if (exists) {
-                if (this.runtime.debug)
-                    this._cacheConnector
-                        .requester(AccessCandidate.agent(this.runtime.agent.id))
-                        .updateTTL(this.ctxFile, 5 * 60); //expires in 5 minute
+                if (this.runtime.debug) this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).updateTTL(this.ctxFile, 5 * 60);
+                //expires in 5 minute
                 else this._cacheConnector.requester(AccessCandidate.agent(this.runtime.agent.id)).delete(this.ctxFile);
                 //if (this.runtime.debug && fs.existsSync(this.ctxFile)) await delay(1000 * 60); //if we're in debug mode, we keep the file for a while to allow final state read
                 //if (fs.existsSync(this.ctxFile)) fs.unlinkSync(this.ctxFile);
@@ -191,7 +189,7 @@ export class RuntimeContext extends EventEmitter {
             if (data)
                 await this._cacheConnector
                     .requester(AccessCandidate.agent(this.runtime.agent.id))
-                    .set(this.ctxFile, JSON.stringify(data, null, 2), null, null, 6 * 60 * 60); //expires in 6 hours max
+                    .set(this.ctxFile, JSON.stringify(data, null, 2), null, null, 1 * 60 * 60); //expires in 1 hours max
         }
     }
 

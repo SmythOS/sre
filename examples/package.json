@@ -7,7 +7,10 @@
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
     "scripts": {
-        "start": "tsx"
+        "start": "tsx",
+        "build:all": "tsc",
+        "profile:static": "cross-env BUILD_TYPE=static node .profiling/analyze-dependencies.cjs",
+        "profile:lazy": "cross-env BUILD_TYPE=lazy node .profiling/analyze-dependencies.cjs"
     },
     "dependencies": {
         "@smythos/sdk": "workspace:*",
@@ -17,6 +20,7 @@
     },
     "devDependencies": {
         "@types/node": "^20.19.0",
+        "cross-env": "^7.0.3",
         "ts-node": "^10.9.2",
         "tsx": "^4.7.0",
         "typescript": "^5.3.0"

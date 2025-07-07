@@ -18,10 +18,9 @@ import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
 
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
-
 import type * as PineconeTypes from '@pinecone-database/pinecone';
-let PineconeModule: typeof PineconeTypes | undefined;
 
+let PineconeModule: typeof PineconeTypes | undefined;
 //#IFDEF STATIC PINECONE_STATIC
 //import * as _PineconeModule from '@pinecone-database/pinecone';
 //PineconeModule = _PineconeModule;

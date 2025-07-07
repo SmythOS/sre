@@ -24,8 +24,13 @@ import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
-
 import type * as BedrocTypes from '@aws-sdk/client-bedrock-runtime';
+
+let BedrockModule: typeof BedrocTypes | undefined;
+//#IFDEF STATIC BEDROCK_STATIC
+import * as _BedrockModule from '@aws-sdk/client-bedrock-runtime';
+BedrockModule = _BedrockModule;
+//#ENDIF
 
 // TODO [Forhad]: Need to adjust some type definitions
 
@@ -33,7 +38,7 @@ export class BedrockConnector extends LLMConnector {
     public name = 'LLM:Bedrock';
 
     private async getClient(params: ILLMRequestContext): Promise<BedrocTypes.BedrockRuntimeClient> {
-        const { BedrockRuntimeClient } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
+        const { BedrockRuntimeClient } = await LazyLoadFallback<typeof BedrocTypes>(BedrockModule, '@aws-sdk/client-bedrock-runtime');
 
         const credentials = params.credentials as BedrockCredentials;
         const region = (params.modelInfo as TCustomLLMModel).settings.region;
@@ -48,7 +53,7 @@ export class BedrockConnector extends LLMConnector {
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
-            const { ConverseCommand } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
+            const { ConverseCommand } = await LazyLoadFallback<typeof BedrocTypes>(BedrockModule, '@aws-sdk/client-bedrock-runtime');
             const bedrock = await this.getClient(context);
             const command = new ConverseCommand(body);
             const response: BedrocTypes.ConverseCommandOutput = await bedrock.send(command);
@@ -98,7 +103,7 @@ export class BedrockConnector extends LLMConnector {
         const emitter = new EventEmitter();
 
         try {
-            const { ConverseStreamCommand } = await LazyLoadFallback<typeof BedrocTypes>('@aws-sdk/client-bedrock-runtime');
+            const { ConverseStreamCommand } = await LazyLoadFallback<typeof BedrocTypes>(BedrockModule, '@aws-sdk/client-bedrock-runtime');
             const bedrock = await this.getClient(context);
             const command = new ConverseStreamCommand(body);
             const response: BedrocTypes.ConverseStreamCommandOutput = await bedrock.send(command);

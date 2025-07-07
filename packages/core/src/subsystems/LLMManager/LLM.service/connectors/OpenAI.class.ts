@@ -1,38 +1,43 @@
 import EventEmitter from 'events';
-import OpenAI, { toFile } from 'openai';
-import type { Stream } from 'openai/streaming';
 import { encodeChat } from 'gpt-tokenizer';
+import type { Stream } from 'openai/streaming';
 
-import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import { BUILT_IN_MODEL_PREFIX, JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
-import { JSON_RESPONSE_INSTRUCTION, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 
 import {
-    TLLMParams,
-    ToolData,
-    TLLMMessageBlock,
-    TLLMToolResultMessageBlock,
-    TLLMMessageRole,
     APIKeySource,
-    TLLMEvent,
+    BasicCredentials,
+    ILLMRequestContext,
     ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMEvent,
+    TLLMMessageBlock,
+    TLLMMessageRole,
+    TLLMParams,
+    TLLMToolResultMessageBlock,
+    ToolData,
     TOpenAIRequestBody,
     TOpenAIResponseToolChoice,
-    TLLMChatResponse,
-    ILLMRequestContext,
-    BasicCredentials,
-    TLLMConnectorParams,
-    TLLMModel,
-    TCustomLLMModel,
-    ILLMConnectorCredentials,
 } from '@sre/types/LLM.types';
 
-import { LLMConnector } from '../LLMConnector';
-import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SystemEvents } from '@sre/Core/SystemEvents';
+import { LLMConnector } from '../LLMConnector';
+
+//import OpenAI, { toFile } from 'openai';
+
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as OpenAITypes from 'openai';
+
+let OpenAIModule: typeof OpenAITypes | undefined;
+//#IFDEF STATIC OPENAI_STATIC
+import * as _OpenAIModule from 'openai';
+OpenAIModule = _OpenAIModule;
+//#ENDIF
 
 const MODELS_WITH_JSON_RESPONSE = ['gpt-4.5-preview', 'gpt-4o-2024-08-06', 'gpt-4o-mini-2024-07-18', 'gpt-4-turbo', 'gpt-3.5-turbo'];
 
@@ -78,7 +83,8 @@ export class OpenAIConnector extends LLMConnector {
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    private async getClient(params: ILLMRequestContext): Promise<OpenAI> {
+    private async getClient(params: ILLMRequestContext): Promise<OpenAITypes.OpenAI> {
+        const { OpenAI } = await LazyLoadFallback<typeof OpenAIModule>(OpenAIModule, 'openai');
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
         const baseURL = params?.modelInfo?.baseURL;
 
@@ -88,7 +94,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
-        const _body = body as OpenAI.ChatCompletionCreateParams;
+        const _body = body as OpenAITypes.OpenAI.ChatCompletionCreateParams;
 
         try {
             const openai = await this.getClient(context);
@@ -108,7 +114,7 @@ export class OpenAIConnector extends LLMConnector {
             });
             // #endregion Validate token limit
 
-            const result = (await openai.chat.completions.create(_body)) as OpenAI.ChatCompletion;
+            const result = (await openai.chat.completions.create(_body)) as OpenAITypes.OpenAI.ChatCompletion;
             const message = result?.choices?.[0]?.message;
             const finishReason = result?.choices?.[0]?.finish_reason;
 
@@ -151,7 +157,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const _body = body as OpenAI.ChatCompletionCreateParams;
+        const _body = body as OpenAITypes.OpenAI.ChatCompletionCreateParams;
 
         const emitter = new EventEmitter();
         const usage_data: any[] = [];
@@ -253,7 +259,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        const _body = body as OpenAI.Responses.ResponseCreateParams;
+        const _body = body as OpenAITypes.OpenAI.Responses.ResponseCreateParams;
 
         const emitter = new EventEmitter();
         const usage_data = [];
@@ -262,7 +268,7 @@ export class OpenAIConnector extends LLMConnector {
         try {
             const openai = await this.getClient(context);
             let finishReason = 'stop';
-            const stream = (await openai.responses.create(_body)) as Stream<OpenAI.Responses.ResponseStreamEvent>;
+            const stream = (await openai.responses.create(_body)) as Stream<OpenAITypes.OpenAI.Responses.ResponseStreamEvent>;
 
             // Process stream asynchronously while we need to return emitter immediately
             (async () => {
@@ -305,7 +311,7 @@ export class OpenAIConnector extends LLMConnector {
                 // Report usage statistics
                 const modelName = context.modelEntryName?.replace(BUILT_IN_MODEL_PREFIX, '');
 
-                const searchTool = _body.tools?.[0] as OpenAI.Responses.WebSearchTool;
+                const searchTool = _body.tools?.[0] as OpenAITypes.OpenAI.Responses.WebSearchTool;
                 const cost = SEARCH_TOOL.cost?.[modelName]?.[searchTool?.search_context_size] || 0;
 
                 this.reportUsage(
@@ -344,10 +350,10 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     // #region Image Generation, will be moved to a different subsystem
-    protected async imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
+    protected async imageGenRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAITypes.OpenAI.ImagesResponse> {
         try {
             const openai = await this.getClient(context);
-            const response = await openai.images.generate(body as OpenAI.Images.ImageGenerateParams);
+            const response = await openai.images.generate(body as OpenAITypes.OpenAI.Images.ImageGenerateParams);
 
             return response;
         } catch (error: any) {
@@ -355,8 +361,8 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
-    protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAI.ImagesResponse> {
-        const _body = body as OpenAI.Images.ImageEditParams;
+    protected async imageEditRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<OpenAITypes.OpenAI.ImagesResponse> {
+        const _body = body as OpenAITypes.OpenAI.Images.ImageEditParams;
 
         try {
             const openai = await this.getClient(context);
@@ -417,7 +423,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected reportUsage(
-        usage: OpenAI.Completions.CompletionUsage & {
+        usage: OpenAITypes.OpenAI.Completions.CompletionUsage & {
             input_tokens?: number;
             output_tokens?: number;
             input_tokens_details?: { cached_tokens?: number };
@@ -458,7 +464,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
-        let tools: OpenAI.ChatCompletionTool[] = [];
+        let tools: OpenAITypes.OpenAI.ChatCompletionTool[] = [];
 
         if (type === 'function') {
             tools = toolDefinitions.map((tool) => {
@@ -680,8 +686,8 @@ export class OpenAIConnector extends LLMConnector {
         return modelsProvider;
     }
 
-    private async prepareBodyForWebSearchRequest(params: TLLMParams): Promise<OpenAI.Responses.ResponseCreateParams> {
-        const body: OpenAI.Responses.ResponseCreateParams = {
+    private async prepareBodyForWebSearchRequest(params: TLLMParams): Promise<OpenAITypes.OpenAI.Responses.ResponseCreateParams> {
+        const body: OpenAITypes.OpenAI.Responses.ResponseCreateParams = {
             model: params.model as string,
             input: params.messages,
             stream: true,
@@ -703,13 +709,13 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<OpenAI.Images.ImageGenerateParams> {
+    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<OpenAITypes.OpenAI.Images.ImageGenerateParams> {
         const { model, size, quality, n, responseFormat, style } = params;
 
-        const body: OpenAI.Images.ImageGenerateParams = {
+        const body: OpenAITypes.OpenAI.Images.ImageGenerateParams = {
             prompt: params.prompt,
             model: model as string,
-            size: size as OpenAI.Images.ImageGenerateParams['size'],
+            size: size as OpenAITypes.OpenAI.Images.ImageGenerateParams['size'],
             n: n || 1,
         };
 
@@ -729,13 +735,15 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareBodyForImageEditRequest(params: TLLMParams): Promise<OpenAI.Images.ImageEditParams> {
+    private async prepareBodyForImageEditRequest(params: TLLMParams): Promise<OpenAITypes.OpenAI.Images.ImageEditParams> {
         const { model, size, n, responseFormat } = params;
 
-        const body: OpenAI.Images.ImageEditParams = {
+        const { toFile } = await LazyLoadFallback<typeof OpenAIModule>(OpenAIModule, 'openai');
+
+        const body: OpenAITypes.OpenAI.Images.ImageEditParams = {
             prompt: params.prompt,
             model: model as string,
-            size: size as OpenAI.Images.ImageEditParams['size'],
+            size: size as OpenAITypes.OpenAI.Images.ImageEditParams['size'],
             n: n || 1,
             image: null,
         };
@@ -763,7 +771,7 @@ export class OpenAIConnector extends LLMConnector {
         return body;
     }
 
-    private async prepareBody(params: TLLMParams): Promise<OpenAI.ChatCompletionCreateParams> {
+    private async prepareBody(params: TLLMParams): Promise<OpenAITypes.OpenAI.ChatCompletionCreateParams> {
         const messages = await this.prepareMessages(params);
 
         //#region Handle JSON response format
@@ -785,17 +793,17 @@ export class OpenAIConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        const body: OpenAI.ChatCompletionCreateParams = {
+        const body: OpenAITypes.OpenAI.ChatCompletionCreateParams = {
             model: params.model as string,
             messages,
         };
 
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
-            body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
+            body.tools = params?.toolsConfig?.tools as OpenAITypes.OpenAI.ChatCompletionTool[];
         }
 
         if (params?.toolsConfig?.tool_choice) {
-            body.tool_choice = params?.toolsConfig?.tool_choice as OpenAI.ChatCompletionToolChoiceOption;
+            body.tool_choice = params?.toolsConfig?.tool_choice as OpenAITypes.OpenAI.ChatCompletionToolChoiceOption;
         }
 
         if (params?.maxTokens !== undefined) body.max_completion_tokens = params.maxTokens;

@@ -1,3 +1,5 @@
+logMemoryUsage('Before Imports');
+
 import { VectorDB, Model, AccessCandidate } from '@smythos/sdk';
 import dotenv from 'dotenv';
 

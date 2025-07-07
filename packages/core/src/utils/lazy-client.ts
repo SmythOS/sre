@@ -5,12 +5,7 @@ const console = Logger('LazyLoader');
 
 const lazyLoadedModules = new Map<string, any>();
 
-export async function LazyLoadFallback<T>(client: T | string, packageName?: string): Promise<T> {
-    if (typeof client === 'string') {
-        packageName = client;
-        client = undefined;
-    }
-
+export async function LazyLoadFallback<T>(client: T, packageName?: string): Promise<T> {
     if (client) {
         if (packageName) {
             lazyLoadedModules.set(packageName, client);

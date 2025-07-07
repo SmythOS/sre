@@ -1,25 +1,40 @@
-import mysql from 'mysql2/promise';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { DEFAULT_TEAM_ID, IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
 import { AccountConnector } from '../AccountConnector';
 import { KeyValueObject } from '@sre/types/Common.types';
 
+import type * as mysqlTypes from 'mysql2/promise';
+
+let mysqlModule: typeof mysqlTypes | undefined;
+//#IFDEF STATIC MYSQL_STATIC
+import * as _mysqlModule from 'mysql2/promise';
+import { LazyLoadFallback } from '../../../../utils/lazy-client';
+mysqlModule = _mysqlModule;
+//#ENDIF
+
 export class AWSAccount extends AccountConnector {
     public name = 'AWSAccount';
 
-    private pool: mysql.Pool;
+    private pool: mysqlTypes.Pool;
 
     constructor(protected _settings: any) {
         super(_settings);
 
-        this.pool = mysql.createPool({
+        this.lazyInit(_settings);
+    }
+
+    async lazyInit(_settings: any) {
+        const { createPool } = await LazyLoadFallback<typeof mysqlTypes>(mysqlModule, 'mysql2/promise');
+        this.pool = createPool({
             host: _settings.host,
             database: _settings.database || 'app',
             user: _settings.user || 'app',
             password: _settings.password,
             connectionLimit: 10,
         });
+
+        this.started = true;
     }
 
     public isTeamMember(team: string, candidate: IAccessCandidate): Promise<boolean> {

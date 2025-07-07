@@ -7,16 +7,15 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { VaultConnector } from '../VaultConnector';
-// import {
-//     SecretsManagerClient,
-//     GetSecretValueCommand,
-//     ListSecretsCommand,
-//     ListSecretsCommandOutput,
-//     GetSecretValueCommandOutput,
-// } from '@aws-sdk/client-secrets-manager';
 
 import type * as SecretsManagerTypes from '@aws-sdk/client-secrets-manager';
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
+
+let SecretsManagerModule: typeof SecretsManagerTypes | undefined;
+//#IFDEF STATIC SECRETS_MANAGER_STATIC
+import * as _SecretsManagerModule from '@aws-sdk/client-secrets-manager';
+SecretsManagerModule = _SecretsManagerModule;
+//#ENDIF
 
 const console = Logger('SecretsManager');
 
@@ -39,7 +38,7 @@ export class SecretsManager extends VaultConnector {
     async lazyInit(_settings: SecretsManagerConfig) {
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
 
-        const { SecretsManagerClient } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { SecretsManagerClient } = await LazyLoadFallback<typeof SecretsManagerTypes>(SecretsManagerModule, '@aws-sdk/client-secrets-manager');
 
         this.secretsManager = new SecretsManagerClient({
             region: _settings.region,
@@ -96,7 +95,10 @@ export class SecretsManager extends VaultConnector {
 
     private async getSecretByName(secretName: string) {
         await this.ready();
-        const { ListSecretsCommand, GetSecretValueCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>('@aws-sdk/client-secrets-manager');
+        const { ListSecretsCommand, GetSecretValueCommand } = await LazyLoadFallback<typeof SecretsManagerTypes>(
+            SecretsManagerModule,
+            '@aws-sdk/client-secrets-manager'
+        );
         try {
             const secrets = [];
             let nextToken: string | undefined;

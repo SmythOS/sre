@@ -140,3 +140,4 @@ tests/dev/000-experimental
 distibutions
 *.bak
 .smyth/
+.clinic/

@@ -15,12 +15,14 @@ import { jsonrepair } from 'jsonrepair';
 import { EmbeddingsFactory } from '../embed';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { DeleteTarget, VectorDBConnector } from '../VectorDBConnector';
-import { LazyLoadFallback } from '@sre/utils/lazy-client';
-import * as MilvusTypes from '@zilliz/milvus2-sdk-node';
 
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as MilvusTypes from '@zilliz/milvus2-sdk-node';
+
+let MilvusModule: typeof MilvusTypes | undefined;
 //#IFDEF STATIC MILVUS_STATIC
-//import * as Milvus from '@zilliz/milvus2-sdk-node';
-//const { DataType, ErrorCode, MilvusClient } = await LazyLoadFallback<typeof MilvusTypes>(Milvus);
+import * as _MilvusModule from '@zilliz/milvus2-sdk-node';
+MilvusModule = _MilvusModule;
 //#ENDIF
 
 const console = Logger('Milvus');
@@ -57,7 +59,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     }
 
     async lazyInit(_settings: MilvusConfig) {
-        const { DataType, MilvusClient } = await LazyLoadFallback<typeof MilvusTypes>('@zilliz/milvus2-sdk-node');
+        const { DataType, MilvusClient } = await LazyLoadFallback<typeof MilvusTypes>(MilvusModule, '@zilliz/milvus2-sdk-node');
 
         // Create client config based on credential type
         const clientConfig = {
@@ -163,12 +165,13 @@ export class MilvusVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
         await this.ready();
+        const { ErrorCode } = await LazyLoadFallback<typeof MilvusTypes>(MilvusModule, '@zilliz/milvus2-sdk-node');
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const res = await this.client.hasCollection({
             collection_name: this.constructNsName(acRequest.candidate as AccessCandidate, namespace),
         });
 
-        if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
+        if (res.status.error_code !== ErrorCode.SUCCESS) {
             throw new Error(`Error checking collection: ${res}`);
         }
 
@@ -178,6 +181,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
         await this.ready();
+        const { ErrorCode } = await LazyLoadFallback<typeof MilvusTypes>(MilvusModule, '@zilliz/milvus2-sdk-node');
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -186,7 +190,7 @@ export class MilvusVectorDB extends VectorDBConnector {
             collection_name: preparedNs,
         });
 
-        if (res.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
+        if (res.error_code !== ErrorCode.SUCCESS) {
             throw new Error(`Error dropping collection: ${res}`);
         }
 
@@ -238,6 +242,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
     ): Promise<string[]> {
         await this.ready();
+        const { ErrorCode } = await LazyLoadFallback<typeof MilvusTypes>(MilvusModule, '@zilliz/milvus2-sdk-node');
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -265,7 +270,7 @@ export class MilvusVectorDB extends VectorDBConnector {
             collection_name: preparedNs,
             data: preparedSource,
         });
-        if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
+        if (res.status.error_code !== ErrorCode.SUCCESS) {
             console.error('Error inserting data: ', res);
             throw new Error(`Error inserting data: ${res?.status?.error_code}`);
         }
@@ -276,6 +281,7 @@ export class MilvusVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void> {
         await this.ready();
+        const { ErrorCode } = await LazyLoadFallback<typeof MilvusTypes>(MilvusModule, '@zilliz/milvus2-sdk-node');
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -290,7 +296,7 @@ export class MilvusVectorDB extends VectorDBConnector {
                 collection_name: preparedNs,
                 expr: `datasourceId == "${(deleteTarget as any).datasourceId}"`,
             });
-            if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
+            if (res.status.error_code !== ErrorCode.SUCCESS) {
                 throw new Error(`Error deleting data: ${res}`);
             }
         } else {
@@ -300,7 +306,7 @@ export class MilvusVectorDB extends VectorDBConnector {
                 collection_name: preparedNs,
                 ids: _ids as string[],
             });
-            if (res.status.error_code !== MilvusTypes.ErrorCode.SUCCESS) {
+            if (res.status.error_code !== ErrorCode.SUCCESS) {
                 throw new Error(`Error deleting data: ${res}`);
             }
         }

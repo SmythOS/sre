@@ -1,7 +1,6 @@
 import { Logger } from '@sre/helpers/Log.helper';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { CacheMetadata } from '@sre/types/Cache.types';
-import IORedis from 'ioredis';
 import { CacheConnector } from '../CacheConnector';
 
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -9,14 +8,22 @@ import { RedisConfig } from '@sre/types/Redis.types';
 
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+
+import type * as IORedisTypes from 'ioredis';
+
+let IORedisModule: typeof IORedisTypes | undefined;
+//#IFDEF STATIC IORedis_STATIC
+import * as _IORedisModule from 'ioredis';
+IORedisModule = _IORedisModule;
+//#ENDIF
 
 const console = Logger('RedisCache');
 
 export class RedisCache extends CacheConnector {
     public name: string = 'RedisCache';
-    private redis: IORedis;
+    private redis: IORedisTypes.Redis;
     private _prefix: string = 'smyth:cache';
     private _mdPrefix: string = 'smyth:metadata';
 
@@ -26,7 +33,17 @@ export class RedisCache extends CacheConnector {
         let host = sentinels.length === 1 ? sentinels[0].host : null;
         let port = sentinels.length === 1 ? sentinels[0].port : null;
 
-        this.redis = new IORedis({
+        this.lazyInit(_settings);
+    }
+
+    async lazyInit(_settings: RedisConfig) {
+        const { Redis } = await LazyLoadFallback<typeof IORedisTypes>(IORedisModule, 'ioredis');
+
+        const sentinels = parseSentinelHosts(_settings.hosts || process.env.REDIS_HOSTS);
+        let host = sentinels.length === 1 ? sentinels[0].host : null;
+        let port = sentinels.length === 1 ? sentinels[0].port : null;
+
+        this.redis = new Redis({
             ...(host ? { host, port } : { sentinels, name: _settings.name || process.env.REDIS_MASTER_NAME }),
             password: _settings.password || process.env.REDIS_PASSWORD,
         });
@@ -38,6 +55,8 @@ export class RedisCache extends CacheConnector {
         this.redis.on('connect', () => {
             console.log('Redis connected!');
         });
+
+        this.started = true;
     }
 
     public get client() {

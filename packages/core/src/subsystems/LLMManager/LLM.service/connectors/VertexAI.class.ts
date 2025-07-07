@@ -1,4 +1,3 @@
-import { VertexAI, type GenerationConfig, type UsageMetadata } from '@google-cloud/vertexai';
 import EventEmitter from 'events';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -17,13 +16,25 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 
+//import { VertexAI, type GenerationConfig, type UsageMetadata } from '@google-cloud/vertexai';
+
+import { LazyLoadFallback } from '@sre/utils/lazy-client';
+import type * as VertexAITypes from '@google-cloud/vertexai';
+
+let VertexAIModule: typeof VertexAITypes | undefined;
+//#IFDEF STATIC VERTEXAI_STATIC
+import * as _VertexAIModule from '@google-cloud/vertexai';
+VertexAIModule = _VertexAIModule;
+//#ENDIF
+
 //TODO: [AHMED/FORHAD]: test the usage reporting for VertexAI because by the time we were implementing the feature of usage reporting
 // we had no access to VertexAI so we assumed it is working (potential bug)
 
 export class VertexAIConnector extends LLMConnector {
     public name = 'LLM:VertexAI';
 
-    private async getClient(params: ILLMRequestContext): Promise<VertexAI> {
+    private async getClient(params: ILLMRequestContext): Promise<VertexAITypes.VertexAI> {
+        const { VertexAI } = await LazyLoadFallback<typeof VertexAIModule>(VertexAIModule, '@google-cloud/vertexai');
         const credentials = params.credentials as any;
         const modelInfo = params.modelInfo as TCustomLLMModel;
         const projectId = (modelInfo?.settings as TVertexAISettings)?.projectId;
@@ -127,7 +138,7 @@ export class VertexAIConnector extends LLMConnector {
             messages,
         };
 
-        const config: GenerationConfig = {};
+        const config: VertexAITypes.GenerationConfig = {};
 
         if (params?.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
         if (params?.temperature !== undefined) config.temperature = params.temperature;
@@ -147,7 +158,7 @@ export class VertexAIConnector extends LLMConnector {
     }
 
     protected reportUsage(
-        usage: UsageMetadata & { cachedContentTokenCount?: number },
+        usage: VertexAITypes.UsageMetadata & { cachedContentTokenCount?: number },
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name

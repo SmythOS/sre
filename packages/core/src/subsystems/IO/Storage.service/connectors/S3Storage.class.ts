@@ -29,15 +29,10 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import type * as S3Types from '@aws-sdk/client-s3';
 import { LazyLoadFallback } from '@sre/utils/lazy-client';
 
+let S3Module: typeof S3Types | undefined;
 //#IFDEF STATIC S3_STATIC
-// import {
-//     DeleteObjectCommand,
-//     GetObjectCommand,
-//     HeadObjectCommand,
-//     PutObjectCommand,
-//     PutObjectTaggingCommand,
-//     S3Client,
-// } from '@aws-sdk/client-s3';
+import * as _S3Module from '@aws-sdk/client-s3';
+S3Module = _S3Module;
 //#ENDIF
 
 const console = Logger('S3Storage');
@@ -73,7 +68,7 @@ export class S3Storage extends StorageConnector {
     }
 
     async lazyInit(_settings: S3Config) {
-        const { S3Client } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { S3Client } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         this.bucket = _settings.bucket;
         const clientConfig: any = {};
@@ -138,7 +133,7 @@ export class S3Storage extends StorageConnector {
     public async read(acRequest: AccessRequest, resourceId: string) {
         await this.ensureInitialized();
 
-        const { HeadObjectCommand, DeleteObjectCommand, GetObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { HeadObjectCommand, DeleteObjectCommand, GetObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
@@ -227,7 +222,7 @@ export class S3Storage extends StorageConnector {
     async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
         await this.ensureInitialized();
 
-        const { PutObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { PutObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
@@ -265,7 +260,7 @@ export class S3Storage extends StorageConnector {
     @SecureConnector.AccessControl
     async delete(acRequest: AccessRequest, resourceId: string): Promise<void> {
         await this.ensureInitialized();
-        const { DeleteObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { DeleteObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
@@ -287,7 +282,7 @@ export class S3Storage extends StorageConnector {
     async exists(acRequest: AccessRequest, resourceId: string): Promise<boolean> {
         await this.ensureInitialized();
 
-        const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         // const accessTicket = await this.getAccessTicket(resourceId, acRequest);
         // if (accessTicket.access !== TAccessResult.Granted) throw new Error('Access Denied');
@@ -365,7 +360,7 @@ export class S3Storage extends StorageConnector {
     @SecureConnector.AccessControl
     async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
         await this.ensureInitialized();
-        const { PutObjectTaggingCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+        const { PutObjectTaggingCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
         const expiryMetadata = generateExpiryMetadata(ttlToExpiryDays(ttl)); // seconds to days
         const s3PutObjectTaggingCommand = new PutObjectTaggingCommand({
@@ -448,7 +443,7 @@ export class S3Storage extends StorageConnector {
 
     private async getS3Metadata(resourceId: string): Promise<Record<string, any> | undefined> {
         try {
-            const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+            const { HeadObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
 
             const command = new HeadObjectCommand({
                 Bucket: this.bucket,
@@ -473,7 +468,7 @@ export class S3Storage extends StorageConnector {
 
     private async setS3Metadata(resourceId: string, metadata: Record<string, any>): Promise<void> {
         try {
-            const { GetObjectCommand, PutObjectCommand } = await LazyLoadFallback<typeof S3Types>('@aws-sdk/client-s3');
+            const { GetObjectCommand, PutObjectCommand } = await LazyLoadFallback<typeof S3Types>(S3Module, '@aws-sdk/client-s3');
             // Get the current object content
             const getObjectCommand = new GetObjectCommand({
                 Bucket: this.bucket,
