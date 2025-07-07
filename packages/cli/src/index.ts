@@ -2,6 +2,9 @@
  * SRE CLI Entry Point
  * Oclif CLI runner with better error handling
  */
+import { suppressWarnings } from './warnings-override';
+
+suppressWarnings();
 
 import { run } from '@oclif/core';
 import chalk from 'chalk';

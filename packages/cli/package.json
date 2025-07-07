@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "0.2.20",
+    "version": "0.2.21",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",
@@ -13,14 +13,14 @@
     ],
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
-    "main": "dist/index.js",
+    "main": "dist/index.cjs",
     "types": "dist/types/index.d.ts",
     "bin": {
-        "sre": "dist/index.js"
+        "sre": "dist/index.cjs"
     },
     "exports": {
         ".": {
-            "import": "./dist/index.js",
+            "import": "./dist/index.cjs",
             "types": "./dist/types/index.d.ts"
         }
     },
@@ -47,7 +47,7 @@
     "scripts": {
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:bundle": "cross-env BUILD=dev rollup -c",
-        "build": "pnpm run build:bundle && pnpm run oclif:manifest && pnpm run build:types",
+        "build": "pnpm run build:bundle && pnpm run oclif:manifest",
         "dev": "rollup -c -w",
         "lint": "echo 'Lint script not implemented'",
         "test": "echo 'Test script not implemented'",
@@ -62,9 +62,8 @@
         "commands": "./dist/commands",
         "topicSeparator": " ",
         "theme": "theme.json",
-        "helpClass": "./dist/help",
         "hooks": {
-            "preparse": "./dist/hooks/preparse.js"
+            "preparse": "./dist/hooks/preparse.cjs"
         },
         "topics": {
             "agent": {
@@ -79,10 +78,10 @@
         }
     },
     "dependencies": {
-        "@aws-sdk/client-bedrock-runtime": "^3.826.0",
-        "@aws-sdk/client-s3": "^3.826.0",
-        "@aws-sdk/client-secrets-manager": "^3.826.0",
-        "@modelcontextprotocol/sdk": "^1.12.1",
+
+    },
+    "devDependencies": {
+        "@modelcontextprotocol/sdk": "^1.14.0",
         "@oclif/core": "^4.3.3",
         "@smythos/sdk": "workspace:*",
         "@smythos/sre": "workspace:*",
@@ -94,9 +93,7 @@
         "inquirer": "^9.2.15",
         "log-update": "^6.1.0",
         "ora": "^8.2.0",
-        "update-notifier": "^7.0.0"
-    },
-    "devDependencies": {
+        "update-notifier": "^7.0.0",        
         "@oclif/plugin-help": "^6.2.21",
         "@oclif/test": "^3.1.9",
         "@rollup/plugin-commonjs": "^28.0.3",

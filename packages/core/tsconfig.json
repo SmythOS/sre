@@ -22,6 +22,11 @@
 
             "@sre/Core/*": ["Core/*"],
 
+            "pkce-challenge": ["./node_modules/pkce-challenge/dist/index.node.cjs"],
+
+            "@sre/sdk": ["sdk/sdk.index.ts"],
+            "@sre/sdk/*": ["sdk/*"],
+
             "@sre/utils/*": ["utils/*"],
             "@sre/utils": ["utils/index"],
 

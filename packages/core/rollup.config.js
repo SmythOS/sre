@@ -1,5 +1,7 @@
 import json from '@rollup/plugin-json';
 import { createFilter } from '@rollup/pluginutils';
+import nodeResolve from '@rollup/plugin-node-resolve';
+import commonjs from '@rollup/plugin-commonjs';
 import path from 'path';
 import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
@@ -19,6 +21,13 @@ const isExternal = (id, ...overArgs) => {
     //console.log('isExternal', _isExternal, id, ...overArgs);
 
     return _isExternal;
+};
+
+// Function for zero-deps build - only mark Node.js built-ins as external
+const isExternalBuiltinsOnly = (id) => {
+    const builtins = ['fs', 'path', 'crypto', 'os', 'stream', 'events', 'child_process', 'querystring', 'process', 'fs/promises', 'readline-sync'];
+    const problematicPackages = ['pkce-challenge']; // Packages that cause bundling issues
+    return builtins.includes(id) || id.startsWith('node:') || problematicPackages.includes(id);
 };
 
 const config = {
@@ -52,7 +61,52 @@ const config = {
             minifySyntax: true,
             minifyIdentifiers: false,
             treeShaking: true,
-            sourcesContent: true,
+            sourcesContent: false,
+        }),
+
+        // typescript({
+        //     tsconfig: 'tsconfig.json',
+        //     clean: true,
+        // }),
+        //terser(),
+    ],
+};
+
+// Zero dependencies config - bundles all dependencies into the output
+const zeroDepConfig = {
+    input: 'src/index.ts',
+    output: {
+        file: 'dist/index.js',
+        format: 'es',
+        sourcemap: true,
+        inlineDynamicImports: true, // Inline dynamic imports to create a single bundle
+    },
+    external: isExternalBuiltinsOnly, // Only mark Node.js built-ins as external
+    plugins: [
+        colorfulLogs('SmythOS Runtime Builder (Zero Deps)'), // Add our custom logging plugin
+        //SDKGenPlugin(),
+        ctixPlugin(), // Add ctix plugin as first plugin
+        nodeResolve({
+            preferBuiltins: true,
+            browser: false,
+            exportConditions: ['node'],
+            skip: ['pkce-challenge'], // Skip problematic packages
+        }),
+        commonjs(),
+        json(),
+        typescriptPaths({
+            tsconfig: './tsconfig.json', // Ensure this points to your tsconfig file
+            preserveExtensions: true,
+            nonRelative: false,
+        }),
+        sourcemaps(),
+        esbuild({
+            sourceMap: true,
+            minifyWhitespace: true,
+            minifySyntax: true,
+            minifyIdentifiers: false,
+            treeShaking: true,
+            sourcesContent: false,
         }),
 
         // typescript({

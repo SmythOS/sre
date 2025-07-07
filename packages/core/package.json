@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sre",
-    "version": "1.5.24",
+    "version": "1.5.25",
     "description": "Smyth Runtime Environment",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -30,7 +30,9 @@
     },
     "devDependencies": {
         "@istanbuljs/nyc-config-typescript": "^1.0.2",
+        "@rollup/plugin-commonjs": "^28.0.3",
         "@rollup/plugin-json": "^6.1.0",
+        "@rollup/plugin-node-resolve": "^15.3.1",
         "@rollup/pluginutils": "^5.1.0",
         "@types/express": "^4.17.23",
         "@types/lodash": "^4.17.10",

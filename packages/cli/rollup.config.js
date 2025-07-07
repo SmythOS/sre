@@ -7,6 +7,7 @@ import { typescriptPaths } from 'rollup-plugin-typescript-paths';
 
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
+import fs from 'fs';
 
 const isProduction = process.env.BUILD === 'prod';
 
@@ -52,54 +53,38 @@ const config = {
     ],
 };
 
-const devConfig = {
-    input: './src/index.ts',
-    output: {
-        file: './dist/cli.cjs', // CommonJS output
-        format: 'cjs', // Specify the CommonJS format
-        sourcemap: true,
-        inlineDynamicImports: true, // Inline all dynamic imports into one file
-        banner: '#!/usr/bin/env node',
+const isCJS = true;
+// Zero-dependency standalone bundle configuration (No optimizations)
+const zeroDepConfig = {
+    input: {
+        index: 'src/index.ts',
+        'commands/agent': 'src/commands/agent/agent.index.ts',
+        'commands/create': 'src/commands/create/create.index.ts',
+        'commands/update': 'src/commands/update.ts',
+        'hooks/preparse': 'src/hooks/preparse.ts',
     },
-    plugins: [
-        resolve({
-            browser: false, // Explicitly disable browser field resolution
-            preferBuiltins: true, // Prefer Node.js built-in modules
-            mainFields: ['main', 'module'], // Prioritize 'main' field for Node.js packages
-            extensions: ['.js', '.ts', '.json'], // Resolve these extensions
-            exportConditions: ['node'], // Use Node.js export conditions
-        }),
-        commonjs({
-            // Handle mixed ES modules and CommonJS
-            transformMixedEsModules: true,
-            // Ignore browser-specific globals
-            ignore: ['electron'],
-        }),
-        json(),
-
-        typescriptPaths({
-            tsconfig: './tsconfig.json',
-            preserveExtensions: true,
-            nonRelative: false,
-        }),
-        esbuild({
-            sourceMap: true,
-            minify: false,
-            treeShaking: false,
-            target: 'node18',
-            platform: 'node', // Explicitly set platform to node
-            define: {
-                // Define Node.js environment
-                'process.env.NODE_ENV': '"development"',
-                global: 'globalThis',
-            },
-        }),
-        sourcemaps(),
-    ],
+    output: {
+        dir: 'dist',
+        format: isCJS ? 'cjs' : 'es',
+        sourcemap: false, // Enable sourcemaps for debugging
+        banner: '#!/usr/bin/env node',
+        entryFileNames: isCJS ? '[name].cjs' : '[name].js',
+        chunkFileNames: isCJS ? 'chunks/[name].cjs' : 'chunks/[name].js', // Use predictable chunk names
+        inlineDynamicImports: false, // Keep separate files
+        exports: 'auto', // Handle mixed exports
+        // manualChunks: (id) => {
+        //     if (id.includes('node_modules')) {
+        //         return 'vendor';
+        //     }
+        // },
+    },
+    // Only keep essential Node.js built-ins external
     external: [
-        // Keep Node.js built-ins external
         'fs',
+        'fs/promises',
         'path',
+        'path/posix',
+        'path/win32',
         'os',
         'util',
         'crypto',
@@ -128,10 +113,53 @@ const devConfig = {
         'worker_threads',
         'perf_hooks',
         'async_hooks',
+        'inspector',
+        'v8',
+        'constants',
+        'assert',
+        'process',
+    ],
+    plugins: [
+        deleteFolder('dist'),
+        colorfulLogs('CLI Zero-Dep Builder'),
+        resolve({
+            browser: false,
+            preferBuiltins: true,
+            mainFields: ['module', 'main'],
+            extensions: ['.js', '.ts', '.json'],
+            exportConditions: isCJS ? ['node'] : ['node', 'import'],
+        }),
+        commonjs({
+            transformMixedEsModules: true,
+            ignore: ['electron'],
+            requireReturnsDefault: 'auto',
+            ignoreDynamicRequires: isCJS, // Handle dynamic requires properly
+            dynamicRequireTargets: ['node_modules/**/*.js'],
+        }),
+        json(),
+        typescriptPaths({
+            tsconfig: './tsconfig.json',
+            preserveExtensions: true,
+            nonRelative: false,
+        }),
+        esbuild({
+            sourceMap: false,
+            minify: true, // No minification
+            treeShaking: true, // No tree-shaking
+            target: 'node18',
+            platform: 'node',
+            format: isCJS ? undefined : 'esm',
+            define: {
+                'process.env.NODE_ENV': '"development"',
+                global: 'globalThis',
+            },
+            keepNames: true, // Keep all names
+        }),
+        // No terser plugin - no compression at all
     ],
 };
 
-export default config;
+export default zeroDepConfig;
 
 //#region [Custom Plugins] =====================================================
 
@@ -150,6 +178,12 @@ const colors = {
     white: '\x1b[37m',
     bgBlue: '\x1b[44m',
 };
+
+function deleteFolder(folderPath) {
+    if (fs.existsSync(folderPath)) {
+        fs.rmSync(folderPath, { recursive: true });
+    }
+}
 
 // Custom colorful logging plugin
 function colorfulLogs(title = 'CLI Builder') {
@@ -214,8 +248,8 @@ function colorfulLogs(title = 'CLI Builder') {
             return null;
         },
         transform(code, id) {
+            processedFiles++;
             if (!id.includes('node_modules')) {
-                processedFiles++;
                 const relativePath = path.relative(process.cwd(), id);
                 currentFile = relativePath;
             }

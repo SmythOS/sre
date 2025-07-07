@@ -16,7 +16,6 @@ import {
     TLLMChatResponse,
     BasicCredentials,
     TAnthropicRequestBody,
-    TLLMConnectorParams,
     ILLMRequestContext,
 } from '@sre/types/LLM.types';
 
@@ -81,9 +80,13 @@ export class AnthropicConnector extends LLMConnector {
             }
 
             const textBlock = result?.content?.find((block) => block.type === 'text');
-            const content = textBlock?.text || '';
+            let content = textBlock?.text || '';
 
             const usage = result?.usage;
+
+            if (this.hasPrefillText(body.messages)) {
+                content = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${content}`;
+            }
 
             this.reportUsage(usage, {
                 modelEntryName: context.modelEntryName,
@@ -116,6 +119,10 @@ export class AnthropicConnector extends LLMConnector {
             let toolsData: ToolData[] = [];
             let thinkingBlocks: any[] = []; // To preserve thinking blocks
 
+            // Determine if we need to inject prefill text and track if it's been injected
+            const needsPrefillInjection = this.hasPrefillText(body.messages);
+            let prefillInjected = false;
+
             stream.on('streamEvent', (event: any) => {
                 if (event.message?.usage) {
                     //console.log('usage', event.message?.usage);
@@ -127,7 +134,14 @@ export class AnthropicConnector extends LLMConnector {
 
                 emitter.emit('error', error);
             });
+
             stream.on('text', (text: string) => {
+                // Inject prefill text only once at the very beginning if needed
+                if (needsPrefillInjection && !prefillInjected) {
+                    text = `${PREFILL_TEXT_FOR_JSON_RESPONSE}${text}`;
+                    prefillInjected = true;
+                }
+
                 emitter.emit('content', text);
             });
 
@@ -628,5 +642,17 @@ export class AnthropicConnector extends LLMConnector {
         } catch (error) {
             throw error;
         }
+    }
+
+    private hasPrefillText(messages: Anthropic.MessageParam[]) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const message = messages[i];
+
+            if (message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
