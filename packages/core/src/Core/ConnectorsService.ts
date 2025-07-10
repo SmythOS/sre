@@ -18,6 +18,7 @@ import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/Manage
 import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
 import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
+import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
 const console = Logger('ConnectorService');
 
 let ServiceRegistry: TServiceRegistry = {};
@@ -182,9 +183,8 @@ export class ConnectorService {
         return ConnectorService.getInstance<RouterConnector>(TConnectorService.Router, name);
     }
 
-
-    static getCodeConnector(name?: string): RouterConnector {
-        return ConnectorService.getInstance<RouterConnector>(TConnectorService.Code, name);
+    static getCodeConnector(name?: string): CodeConnector {
+        return ConnectorService.getInstance<CodeConnector>(TConnectorService.Code, name);
     }
 }
 
