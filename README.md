@@ -90,10 +90,11 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 **Supported Connectors:**
 
 -   **Storage**: Local, S3, Google Cloud, Azure
--   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
+-   **LLM**: OpenRouter
 -   **VectorDB**: Pinecone, Milvus, RAMVec
 -   **Cache**: RAM, Redis
--   **Vault**: JSON File, AWS Secrets Manager, HashiCorp 
+-   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
+-   **Database**: PostgreSQL
 
 ### SDK - `packages/sdk`
 
@@ -123,7 +124,7 @@ async function main() {
 
     //Importing the agent workflow
     const agent = Agent.import(agentPath, {
-        model: Model.OpenAI('gpt-4o'),
+        model: Model.OpenRouter('gpt-4o'),
     });
 
     //query the agent and get the full response
@@ -205,7 +206,7 @@ async function main() {
                 namespace: 'myNameSpace',
                 indexName: 'demo-vec',
                 pineconeApiKey: process.env.PINECONE_API_KEY,
-                embeddings: Model.OpenAI('text-embedding-3-large'),
+                embeddings: Model.OpenRouter('text-embedding-3-large'),
             });
 
             const searchResult = await vec.search(topic, {
@@ -215,7 +216,7 @@ async function main() {
             const context = searchResult.map((e) => e?.metadata?.text).join('\n');
 
             // LLM - Generate the article
-            const llm = agent.llm.OpenAI('gpt-4o-mini');
+            const llm = agent.llm.OpenRouter('gpt-4o-mini');
             const result = await llm.prompt(`Write an article about ${topic} using the following context: ${context}`);
 
             // Storage - Save the article
