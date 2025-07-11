@@ -1075,7 +1075,7 @@ export class Conversation extends EventEmitter {
 
             if (param.type === 'ObjectPattern') {
                 // For destructured objects, output as a single parameter with nested fields
-                const name = `[object_${counter++}]`;
+                const name = `object___${counter++}`;
                 return {
                     name,
                     in: 'query',
@@ -1094,7 +1094,7 @@ export class Conversation extends EventEmitter {
                 };
             }
 
-            const name = `[unknown_${counter++}]`;
+            const name = `unknown___${counter++}`;
             return {
                 name,
                 in: 'query',

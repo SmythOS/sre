@@ -1,4 +1,14 @@
-import { AccessCandidate, AgentProcess, BinaryInput, Conversation, DEFAULT_TEAM_ID, TLLMConnectorParams, TLLMEvent, TLLMProvider } from '@smythos/sre';
+import {
+    AccessCandidate,
+    AgentProcess,
+    BinaryInput,
+    Conversation,
+    DEFAULT_TEAM_ID,
+    TLLMConnectorParams,
+    TLLMEvent,
+    TLLMModel,
+    TLLMProvider,
+} from '@smythos/sre';
 import EventEmitter from 'events';
 import { Chat, prepareConversation } from '../LLM/Chat.class';
 import { Component } from '../Components/Components.index';
@@ -20,6 +30,7 @@ import { TLLMInstanceFactory, TLLMProviderInstances } from '../LLM/LLM.class';
 import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
 import { MCP, MCPSettings, MCPTransport } from '../MCP/MCP.class';
+import { findClosestModelInfo } from '../LLM/Model';
 
 const console = SDKLog;
 
@@ -58,29 +69,29 @@ class AgentCommand {
         return this.run().then(resolve, reject);
     }
 
-
     private async getFiles() {
         let files = [];
         if (this._options?.files) {
-            files = await Promise.all(this._options.files.map(async (file: string) => {
-                if (isFile(file)) {
-                    // Read local file using Node.js fs API with explicit null encoding to get raw binary data
-                    const buffer = await fs.promises.readFile(file, null);
-                    const binaryInput = BinaryInput.from(buffer);
-                    await binaryInput.ready();
-                    await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
-                    return binaryInput;
-                } else {
-                    const binaryInput = BinaryInput.from(file);
-                    await binaryInput.ready();
-                    await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
-                    return binaryInput;
-                }
-            }));
+            files = await Promise.all(
+                this._options.files.map(async (file: string) => {
+                    if (isFile(file)) {
+                        // Read local file using Node.js fs API with explicit null encoding to get raw binary data
+                        const buffer = await fs.promises.readFile(file, null);
+                        const binaryInput = BinaryInput.from(buffer);
+                        await binaryInput.ready();
+                        await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
+                        return binaryInput;
+                    } else {
+                        const binaryInput = BinaryInput.from(file);
+                        await binaryInput.ready();
+                        await binaryInput.upload(AccessCandidate.agent(this.agent.data.id));
+                        return binaryInput;
+                    }
+                })
+            );
         }
         return files.length > 0 ? files : undefined;
     }
-
 
     /**
      * Execute the agent command and return the complete response.
@@ -96,21 +107,20 @@ class AgentCommand {
     async run(): Promise<string> {
         await this.agent.ready;
 
-        let files = await this.getFiles();         
+        let files = await this.getFiles();
         const conversation = await prepareConversation(this.agent.data);
 
         //does this agent have any skill that is capable of handling binary files ?
-        const hasBinarySkill = this.agent.data.components.find(c => 
-            c.name === 'APIEndpoint' && c.inputs.find(i => i.type === 'Binary')
-        )
+        const hasBinarySkill = this.agent.data.components.find((c) => c.name === 'APIEndpoint' && c.inputs.find((i) => i.type === 'Binary'));
 
         const attachmentsPrompt = !files || files.length === 0 ? '' : `\n\n----\nAttachments: ${files.map((file) => ` - ${file.url}`).join('\n')}`;
 
-        
-        const result = await conversation.streamPrompt({message: this.prompt + attachmentsPrompt, files:hasBinarySkill ? undefined: files}).catch((error) => {
-            console.error('Error on streamPrompt: ', error);
-            return { error };
-        });
+        const result = await conversation
+            .streamPrompt({ message: this.prompt + attachmentsPrompt, files: hasBinarySkill ? undefined : files })
+            .catch((error) => {
+                console.error('Error on streamPrompt: ', error);
+                return { error };
+            });
 
         return result;
     }
@@ -195,7 +205,7 @@ class AgentCommand {
         conversation.on(TLLMEvent.ToolInfo, toolInfoHandler);
         conversation.on(TLLMEvent.Interrupted, interruptedHandler);
 
-        conversation.streamPrompt({message: this.prompt, files});
+        conversation.streamPrompt({ message: this.prompt, files });
 
         return conversation;
     }
@@ -333,7 +343,12 @@ export class Agent extends SDKObject {
         super();
 
         const { model, ...rest } = this._settings;
-        this._data.defaultModel = model as string;
+
+        if (typeof model === 'string') {
+            this._data.defaultModel = findClosestModelInfo(model);
+        } else {
+            this._data.defaultModel = model as any;
+        }
 
         for (let key in rest) {
             this._data[key as keyof AgentData] = rest[key];
@@ -503,9 +518,7 @@ export class Agent extends SDKObject {
                         );
                     }
                     const candidate =
-                        scope !== Scope.TEAM && this._hasExplicitId
-                            ? AccessCandidate.agent(this._data.id)
-                            : AccessCandidate.team(this._data.teamId);
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
 
                     return new StorageInstance(provider as TStorageProvider, storageSettings, candidate);
                 };

@@ -10,6 +10,7 @@ import { GroqConnector } from './connectors/Groq.class';
 import { BedrockConnector } from './connectors/Bedrock.class';
 import { VertexAIConnector } from './connectors/VertexAI.class';
 import { PerplexityConnector } from './connectors/Perplexity.class';
+import { xAIConnector } from './connectors/xAI';
 
 export class LLMService extends ConnectorServiceProvider {
     public register() {
@@ -22,7 +23,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'TogetherAI', OpenAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Bedrock', BedrockConnector);
         ConnectorService.register(TConnectorService.LLM, 'VertexAI', VertexAIConnector);
-        ConnectorService.register(TConnectorService.LLM, 'xAI', OpenAIConnector);
+        ConnectorService.register(TConnectorService.LLM, 'xAI', xAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Perplexity', PerplexityConnector);
     }
 

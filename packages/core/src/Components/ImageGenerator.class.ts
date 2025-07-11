@@ -262,6 +262,10 @@ const imageGenerator = {
         const teamId = agent.teamId;
         const apiKey = (await getCredentials(AccessCandidate.team(teamId), 'runware')) as string;
 
+        if (!apiKey) {
+            throw new Error('Runware API key is missing. Please provide a valid key to continue.');
+        }
+
         const runware = new Runware({ apiKey });
         await runware.ensureConnection();
 

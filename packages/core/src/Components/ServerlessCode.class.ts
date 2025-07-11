@@ -3,13 +3,14 @@ import { Component } from './Component.class';
 import Joi from 'joi';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
-import { calculateExecutionCost, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
+import { calculateExecutionCost, generateCodeFromLegacyComponent, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
 
 export class ServerlessCode extends Component {
 
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
+        code: Joi.string().max(500000).allow('').label('Code').optional(),
         deploy_btn: Joi.string().max(500000).allow('').label('Deploy').optional(),
         accessKeyId: Joi.string().max(100).allow('').label('AWS Access Key ID').optional(),
         secretAccessKey: Joi.string().max(200).allow('').label('AWS Secret Access Key').optional(),
@@ -70,11 +71,14 @@ export class ServerlessCode extends Component {
                     secretAccessKey: codeCredentials.secretAccessKey,
                 })
             }
+            let code = config?.data?.code;
+            if (!code) {
+                code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs))
+            }
             // Deploy lambda function if it doesn't exist or the code hash is different
             await codeConnector.agent(agent.id)
                 .deploy(config.id, {
-                    code: config?.data?.code_body,
-                    dependencies: config?.data?.code_imports,
+                    code,
                     inputs: codeInputs,
                 }, {
                     runtime: 'nodejs',

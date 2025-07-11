@@ -2,29 +2,23 @@ import crypto from 'crypto';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import zl from 'zip-lib';
+import {
+    InvokeCommand,
+    Runtime,
+    LambdaClient,
+    UpdateFunctionCodeCommand,
+    CreateFunctionCommand,
+    GetFunctionCommand,
+    GetFunctionCommandOutput,
+    InvokeCommandOutput,
+} from '@aws-sdk/client-lambda';
+import { GetRoleCommand, CreateRoleCommand, IAMClient, GetRoleCommandOutput, CreateRoleCommandOutput } from '@aws-sdk/client-iam';
 import fs from 'fs';
 import { AWSConfig, AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { IAgent } from '@sre/types/Agent.types';
 import { SystemEvents } from '@sre/Core/SystemEvents';
-
-import { LazyLoadFallback } from '@sre/utils/lazy-client';
-import type * as LambdaTypes from '@aws-sdk/client-lambda';
-
-let LambdaModule: typeof LambdaTypes | undefined;
-//#IFDEF STATIC AWS_LAMBDA_STATIC
-import * as _LambdaModule from '@aws-sdk/client-lambda';
-LambdaModule = _LambdaModule;
-//#ENDIF
-
-import type * as IAMTypes from '@aws-sdk/client-iam';
-let IAMModule: typeof IAMTypes | undefined;
-//#IFDEF STATIC AWS_IAM_STATIC
-import * as _IAMModule from '@aws-sdk/client-iam';
-IAMModule = _IAMModule;
-//#ENDIF
-
-//import { GetRoleCommand, CreateRoleCommand, IAMClient, GetRoleCommandOutput, CreateRoleCommandOutput } from '@aws-sdk/client-iam';
+import * as acorn from 'acorn';
 
 export const cachePrefix = 'serverless_code';
 export const cacheTTL = 60 * 60 * 24 * 16; // 16 days
@@ -34,11 +28,10 @@ export function getLambdaFunctionName(agentId: string, componentId: string) {
     return `${agentId}-${componentId}`;
 }
 
-export function generateCodeHash(code_body: string, code_imports: string, codeInputs: string[]) {
-    const importsHash = getSanitizeCodeHash(code_imports);
+export function generateCodeHash(code_body: string, codeInputs: string[]) {
     const bodyHash = getSanitizeCodeHash(code_body);
     const inputsHash = getSanitizeCodeHash(JSON.stringify(codeInputs));
-    return `imports-${importsHash}__body-${bodyHash}__inputs-${inputsHash}`;
+    return `body-${bodyHash}__inputs-${inputsHash}`;
 }
 
 export function getSanitizeCodeHash(code: string) {
@@ -95,47 +88,17 @@ export async function setDeployedCodeHash(agentId: string, componentId: string, 
     await redisCache.user(AccessCandidate.agent(agentId)).set(`${cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, cacheTTL);
 }
 
-export function extractNpmImports(code: string) {
-    const importRegex = /import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]/g;
-    const requireRegex = /require\(['"]([^'"]+)['"]\)/g;
-    const dynamicImportRegex = /import\(['"]([^'"]+)['"]\)/g;
-
-    let libraries = new Set();
-    let match;
-
-    // Function to extract the main package name
-    function extractPackageName(modulePath: string) {
-        if (modulePath.startsWith('@')) {
-            // Handle scoped packages (e.g., @babel/core)
-            return modulePath.split('/').slice(0, 2).join('/');
-        }
-        return modulePath.split('/')[0]; // Extract the first part (main package)
-    }
-    // Match static ESM imports
-    while ((match = importRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-    // Match CommonJS require() calls
-    while ((match = requireRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-    // Match dynamic import() calls
-    while ((match = dynamicImportRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-
-    return Array.from(libraries);
-}
-
-export function generateLambdaCode(code_imports: string, code_body: string, input_variables: string[]) {
-    const lambdaCode = `${code_imports}\nexport const handler = async (event, context) => {
+export function generateLambdaCode(code: string, parameters: string[]) {
+    const lambdaCode = `
+    ${code}
+    export const handler = async (event, context) => {
       try {
         context.callbackWaitsForEmptyEventLoop = false;
         let startTime = Date.now();
-        const result = await (async () => {
-          ${input_variables && input_variables.length ? input_variables.map((variable) => `const ${variable} = event.${variable};`).join('\n') : ''}
-          ${code_body}
-        })();
+
+        ${parameters && parameters.length ? parameters.map((variable) => `const ${variable} = event.${variable};`).join('\n') : ''}
+        const result = await main(${parameters.join(', ')});
+      
         let endTime = Date.now();
         return {
             result,
@@ -162,11 +125,6 @@ export async function zipCode(directory: string) {
 }
 
 export async function createOrUpdateLambdaFunction(functionName, zipFilePath, awsConfigs) {
-    const { LambdaClient, UpdateFunctionCodeCommand, CreateFunctionCommand } = await LazyLoadFallback<typeof LambdaTypes>(
-        LambdaModule,
-        '@aws-sdk/client-lambda'
-    );
-
     const client = new LambdaClient({
         region: awsConfigs.region,
         credentials: {
@@ -177,8 +135,6 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
     const functionContent = fs.readFileSync(zipFilePath);
 
     try {
-        const { IAMClient, GetRoleCommand, CreateRoleCommand } = await LazyLoadFallback<typeof IAMTypes>(IAMModule, '@aws-sdk/client-iam');
-        const { Runtime } = await LazyLoadFallback<typeof LambdaTypes>(LambdaModule, '@aws-sdk/client-lambda');
         // Check if the function exists
         const exisitingFunction = await getDeployedFunction(functionName, awsConfigs);
         if (exisitingFunction) {
@@ -205,7 +161,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                     credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
                 });
                 const getRoleCommand = new GetRoleCommand({ RoleName: `smyth-${functionName}-role` });
-                const roleResponse: IAMTypes.GetRoleCommandOutput = await iamClient.send(getRoleCommand);
+                const roleResponse: GetRoleCommandOutput = await iamClient.send(getRoleCommand);
                 roleArn = roleResponse.Role.Arn;
             } catch (error) {
                 if (error.name === 'NoSuchEntityException') {
@@ -218,7 +174,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                         RoleName: `smyth-${functionName}-role`,
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
                     });
-                    const roleResponse: IAMTypes.CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
+                    const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
                     await waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                     roleArn = roleResponse.Role.Arn;
                 } else {
@@ -251,9 +207,8 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
 }
 
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         try {
-            const { GetRoleCommand } = await LazyLoadFallback<typeof IAMTypes>(IAMModule, '@aws-sdk/client-iam');
             let interval = setInterval(async () => {
                 const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
                 const roleResponse = await client.send(getRoleCommand);
@@ -269,9 +224,8 @@ export async function waitForRoleDeploymentStatus(roleName, client): Promise<boo
 }
 
 export async function verifyFunctionDeploymentStatus(functionName, client): Promise<boolean> {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
         try {
-            const { GetFunctionCommand } = await LazyLoadFallback<typeof LambdaTypes>(LambdaModule, '@aws-sdk/client-lambda');
             let interval = setInterval(async () => {
                 const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
                 const lambdaResponse = await client.send(getFunctionCommand);
@@ -313,7 +267,6 @@ export async function invokeLambdaFunction(
     awsCredentials: AWSCredentials & AWSRegionConfig
 ): Promise<any> {
     try {
-        const { LambdaClient, InvokeCommand } = await LazyLoadFallback<typeof LambdaTypes>(LambdaModule, '@aws-sdk/client-lambda');
         const client = new LambdaClient({
             region: awsCredentials.region as string,
             ...(awsCredentials.accessKeyId && {
@@ -330,7 +283,7 @@ export async function invokeLambdaFunction(
             InvocationType: 'RequestResponse',
         });
 
-        const response: LambdaTypes.InvokeCommandOutput = await client.send(invokeCommand);
+        const response: InvokeCommandOutput = await client.send(invokeCommand);
         if (response.FunctionError) {
             throw new Error(new TextDecoder().decode(response.Payload));
         }
@@ -342,7 +295,6 @@ export async function invokeLambdaFunction(
 
 export async function getDeployedFunction(functionName: string, awsConfigs: AWSCredentials & AWSRegionConfig) {
     try {
-        const { LambdaClient, GetFunctionCommand } = await LazyLoadFallback<typeof LambdaTypes>(LambdaModule, '@aws-sdk/client-lambda');
         const client = new LambdaClient({
             region: awsConfigs.region as string,
             credentials: {
@@ -351,7 +303,7 @@ export async function getDeployedFunction(functionName: string, awsConfigs: AWSC
             },
         });
         const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
-        const lambdaResponse: LambdaTypes.GetFunctionCommandOutput = await client.send(getFunctionCommand);
+        const lambdaResponse: GetFunctionCommandOutput = await client.send(getFunctionCommand);
         return {
             status: lambdaResponse.Configuration.LastUpdateStatus,
             functionName: lambdaResponse.Configuration.FunctionName,
@@ -407,4 +359,178 @@ export function reportUsage({ cost, agentId, teamId }: { cost: number; agentId: 
         agentId,
         teamId,
     });
+}
+
+export function validateAsyncMainFunction(code: string): { isValid: boolean; error?: string; parameters?: string[]; dependencies?: string[] } {
+    try {
+        // Parse the code using acorn
+        const ast = acorn.parse(code, {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+        });
+
+        // Extract library imports
+        const libraries = new Set<string>();
+        function extractPackageName(modulePath: string): string {
+            if (modulePath.startsWith('@')) {
+                // Handle scoped packages (e.g., @babel/core)
+                return modulePath.split('/').slice(0, 2).join('/');
+            }
+            return modulePath.split('/')[0]; // Extract the first part (main package)
+        }
+
+        function processNodeForImports(node: any): void {
+            if (!node) return;
+
+            // Handle ImportDeclaration (ES6 imports)
+            if (node.type === 'ImportDeclaration') {
+                const modulePath = node.source.value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    // Skip relative imports and absolute paths
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Handle CallExpression (require() calls)
+            if (
+                node.type === 'CallExpression' &&
+                node.callee.type === 'Identifier' &&
+                node.callee.name === 'require' &&
+                node.arguments.length > 0 &&
+                node.arguments[0].type === 'Literal'
+            ) {
+                const modulePath = node.arguments[0].value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Handle dynamic import() calls
+            if (
+                node.type === 'CallExpression' &&
+                node.callee.type === 'Import' &&
+                node.arguments.length > 0 &&
+                node.arguments[0].type === 'Literal'
+            ) {
+                const modulePath = node.arguments[0].value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Recursively process child nodes
+            for (const key in node) {
+                if (node[key] && typeof node[key] === 'object') {
+                    if (Array.isArray(node[key])) {
+                        (node[key] as any[]).forEach(processNodeForImports);
+                    } else {
+                        processNodeForImports(node[key]);
+                    }
+                }
+            }
+        }
+
+        // Extract dependencies from the entire AST
+        processNodeForImports(ast);
+        const dependencies = Array.from(libraries) as string[];
+
+        // Check if there's a function declaration or function expression named 'main' at the root level
+        let hasAsyncMain = false;
+        let hasMain = false;
+        let mainParameters: string[] = [];
+
+        for (const node of ast.body) {
+            if (node.type === 'FunctionDeclaration') {
+                if (node.id?.name === 'main') {
+                    hasMain = true;
+                    if (node.async) {
+                        hasAsyncMain = true;
+                        mainParameters = extractParameters(node.params);
+                        break;
+                    }
+                }
+            } else if (node.type === 'VariableDeclaration') {
+                // Check for const/let/var main = async function() or const/let/var main = async () =>
+                for (const declarator of node.declarations) {
+                    if (declarator.id.type === 'Identifier' && declarator.id.name === 'main') {
+                        hasMain = true;
+                        if (declarator.init) {
+                            if (declarator.init.type === 'FunctionExpression' && declarator.init.async) {
+                                hasAsyncMain = true;
+                                mainParameters = extractParameters(declarator.init.params);
+                                break;
+                            } else if (declarator.init.type === 'ArrowFunctionExpression' && declarator.init.async) {
+                                hasAsyncMain = true;
+                                mainParameters = extractParameters(declarator.init.params);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else if (node.type === 'ExpressionStatement' && node.expression.type === 'AssignmentExpression') {
+                // Check for main = async function() or main = async () =>
+                if (node.expression.left.type === 'Identifier' && node.expression.left.name === 'main') {
+                    hasMain = true;
+                    const right = node.expression.right;
+                    if ((right.type === 'FunctionExpression' || right.type === 'ArrowFunctionExpression') && right.async) {
+                        hasAsyncMain = true;
+                        mainParameters = extractParameters(right.params);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!hasMain) {
+            return {
+                isValid: false,
+                error: 'No main function found at root level',
+                dependencies,
+            };
+        }
+
+        if (!hasAsyncMain) {
+            return {
+                isValid: false,
+                error: 'Main function exists but is not async',
+                dependencies,
+            };
+        }
+
+        return { isValid: true, parameters: mainParameters, dependencies };
+    } catch (error) {
+        return {
+            isValid: false,
+            error: `Failed to parse code: ${error.message}`,
+        };
+    }
+}
+
+function extractParameters(params: any[]): string[] {
+    return params.map((param: any): string => {
+        if (param.type === 'Identifier') {
+            return param.name;
+        } else if (param.type === 'AssignmentPattern' && param.left.type === 'Identifier') {
+            return param.left.name;
+        } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
+            return param.argument.name;
+        } else if (param.type === 'ObjectPattern') {
+            // For destructured objects, return the object name or a placeholder
+            return param.name || '[object]';
+        } else if (param.type === 'ArrayPattern') {
+            // For destructured arrays, return a placeholder
+            return '[array]';
+        }
+        return '[unknown]';
+    });
+}
+
+export function generateCodeFromLegacyComponent(code_body: string, code_imports: string, codeInputs: string[]) {
+    const code = `
+    ${code_imports}
+     async function main(${codeInputs.join(', ')}) {
+        ${code_body}
+    }
+    `;
+    return code;
 }

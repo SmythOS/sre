@@ -36,18 +36,52 @@ export interface TGenAILLMSettings {
     useContextWindow?: boolean;
     /** The maximum number of messages to use from this component context window (if useContextWindow is true) */
     maxContextWindowLength?: number;
-    /** Use Search */
+    /** If true, the component will use web search for additional context */
     useWebSearch?: boolean;
-    /** Search Content Size */
+    /** Web Search Context Size */
     webSearchContextSize?: 'high' | 'medium' | 'low';
-    /** Search City */
+    /** Web Search City */
     webSearchCity?: string;
-    /** Search Country */
+    /** Web Search Country */
     webSearchCountry?: string;
-    /** Search Region */
+    /** Web Search Region */
     webSearchRegion?: string;
-    /** Search Timezone */
+    /** Web Search Timezone */
     webSearchTimezone?: string;
+    /** If true, the component will use xAI live search capabilities */
+    useSearch?: boolean;
+    /** Search Mode */
+    searchMode?: 'auto' | 'on' | 'off';
+    /** If true, include citations and sources in the response */
+    returnCitations?: boolean;
+    /** Max Search Results */
+    maxSearchResults?: number;
+    /** Search Data Sources */
+    searchDataSources?: 'web' | 'x' | 'news' | 'rss';
+    /** Search Country */
+    searchCountry?: string;
+    /** Excluded Websites */
+    excludedWebsites?: string;
+    /** Allowed Websites */
+    allowedWebsites?: string;
+    /** Included X Handles */
+    includedXHandles?: string;
+    /** Excluded X Handles */
+    excludedXHandles?: string;
+    /** Post Favorite Count */
+    postFavoriteCount?: number;
+    /** Post View Count */
+    postViewCount?: number;
+    /** RSS Link */
+    link?: string;
+    /** If true, enable safe search filtering */
+    safeSearch?: boolean;
+    /** From Date */
+    fromDate?: string;
+    /** To Date */
+    toDate?: string;
+    /** RSS Link */
+    rssLinks?: string;
     /** Use Reasoning */
     useReasoning?: boolean;
 }
