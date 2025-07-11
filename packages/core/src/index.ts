@@ -169,6 +169,7 @@ export * from './subsystems/LLMManager/LLM.service/connectors/Echo.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/GoogleAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Groq.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/OpenAI.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/OpenRouter.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
 export * from './subsystems/LLMManager/ModelsProvider.service/connectors/JSONModelsProvider.class';
