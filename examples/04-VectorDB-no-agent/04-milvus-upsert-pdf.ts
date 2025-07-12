@@ -20,7 +20,7 @@ async function main() {
             token: process.env.MILVUS_TOKEN,
         },
 
-        embeddings: Model.OpenAI('text-embedding-3-large'),
+        embeddings: Model.OpenRouter('text-embedding-3-large'),
     });
 
     // This will wipe all the data in 'test' namespace

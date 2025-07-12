@@ -63,17 +63,17 @@ export const models = {
 
     // #endregion DeepSeek ==========================
 
-    // #region OpenAI Models ==========================
+    // #region OpenRouter Models ==========================
 
     // keep the gpt-4o-mini as default model for now
     'gpt-4o-mini': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-4o-mini-2024-07-18',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
 
         label: 'GPT 4o Mini',
         modelId: 'gpt-4o-mini-2024-07-18',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image', 'search'],
         tags: ['Personal'],
         tokens: 0,
@@ -91,11 +91,11 @@ export const models = {
 
     // #region GPT 4.1
     'gpt-4.1-nano': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT 4.1 Nano',
         modelId: 'gpt-4.1-nano',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image'],
         tags: ['New', 'Personal'],
         tokens: 0,
@@ -106,11 +106,11 @@ export const models = {
         credentials: 'vault',
     },
     'gpt-4.1-mini': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT 4.1 Mini',
         modelId: 'gpt-4.1-mini',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image', 'search'],
         tags: ['New', 'Personal'],
         tokens: 0,
@@ -126,11 +126,11 @@ export const models = {
         credentials: 'vault',
     },
     'gpt-4.1': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT 4.1',
         modelId: 'gpt-4.1',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image', 'search'],
         tags: ['New', 'Personal'],
         tokens: 0,
@@ -144,7 +144,7 @@ export const models = {
 
     // #region GPT 4o
     'gpt-4o-mini-2024-07-18': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -153,11 +153,11 @@ export const models = {
         credentials: 'vault',
     },
     'gpt-4.5-preview': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT 4.5 Preview',
         modelId: 'gpt-4.5-preview',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image'],
         tags: ['Personal', 'Deprecated'],
         tokens: 0,
@@ -168,13 +168,13 @@ export const models = {
         credentials: 'vault',
     },
     'gpt-4o': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-4o-2024-08-06',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
 
         label: 'GPT 4o',
         modelId: 'gpt-4o-2024-08-06',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image', 'search', 'document'],
         tags: ['Personal'],
         tokens: 0,
@@ -185,7 +185,7 @@ export const models = {
         credentials: 'vault',
     },
     'gpt-4o-2024-08-06': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -197,11 +197,11 @@ export const models = {
 
     // #region o3 models
     'o4-mini': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT o4 mini',
         modelId: 'o4-mini-2025-04-16',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'reasoning'],
         tags: ['New', 'Personal'],
         tokens: 0,
@@ -212,11 +212,11 @@ export const models = {
         credentials: 'vault',
     },
     o3: {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
 
         label: 'GPT o3',
         modelId: 'o3-2025-04-16',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'reasoning'],
         tags: ['Personal'],
         tokens: 0,
@@ -227,13 +227,13 @@ export const models = {
         credentials: 'vault',
     },
     'o3-mini': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'o3-mini-2025-01-31',
         components: ['PromptGenerator', 'GenAILLM'],
 
         label: 'GPT o3 mini',
         modelId: 'o3-mini-2025-01-31',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'reasoning'],
         tags: ['Personal'],
         tokens: 0,
@@ -245,7 +245,7 @@ export const models = {
         credentials: 'vault',
     },
     'o3-mini-2025-01-31': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -257,13 +257,13 @@ export const models = {
 
     // #region o1 models
     o1: {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'o1-2024-12-17',
         components: ['PromptGenerator', 'GenAILLM'],
 
         label: 'GPT o1',
         modelId: 'o1-2024-12-17',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'reasoning'],
         tags: ['Personal'],
         tokens: 0,
@@ -274,7 +274,7 @@ export const models = {
         credentials: 'vault',
     },
     'o1-2024-12-17': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -283,13 +283,13 @@ export const models = {
         credentials: 'vault',
     },
     'o1-mini': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'o1-mini-2024-09-12',
         components: ['PromptGenerator', 'GenAILLM'],
 
         label: 'GPT o1 mini',
         modelId: 'o1-mini-2024-09-12',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text'],
         tags: ['Personal'],
         tokens: 0,
@@ -300,7 +300,7 @@ export const models = {
         credentials: 'vault',
     },
     'o1-mini-2024-09-12': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -309,13 +309,13 @@ export const models = {
         credentials: 'vault',
     },
     'o1-preview': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'o1-preview-2024-09-12',
         components: ['PromptGenerator', 'GenAILLM'],
 
         label: 'GPT o1 Preview',
         modelId: 'o1-preview-2024-09-12',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text'],
         tags: ['Personal'],
         tokens: 0,
@@ -326,7 +326,7 @@ export const models = {
         credentials: 'vault',
     },
     'o1-preview-2024-09-12': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -338,13 +338,13 @@ export const models = {
 
     // #region GPT-4-turbo
     'gpt-4-turbo-latest': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-4-turbo-2024-04-09',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier'],
 
         label: 'GPT 4 Turbo Latest',
         modelId: 'gpt-4-turbo-2024-04-09',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools'],
         tags: ['Personal', 'legacy'],
         tokens: 0,
@@ -354,13 +354,13 @@ export const models = {
         hidden: true,
     },
     'gpt-4-turbo': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-4-turbo-2024-04-09',
         components: ['PromptGenerator', 'LLMAssistant', 'VisionLLM', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
 
         label: 'GPT 4 Turbo',
         modelId: 'gpt-4-turbo-2024-04-09',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools', 'image'],
         tags: ['Personal', 'legacy'],
         tokens: 0,
@@ -370,7 +370,7 @@ export const models = {
         hidden: true,
     },
     'gpt-4-turbo-2024-04-09': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -382,13 +382,13 @@ export const models = {
 
     // #region GPT-4
     'gpt-4-latest': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-4-0613',
         components: ['PromptGenerator', 'LLMAssistant'],
 
         label: 'GPT 4 Latest',
         modelId: 'gpt-4-0613',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools'],
         tags: ['Personal', 'legacy'],
         tokens: 0,
@@ -398,12 +398,12 @@ export const models = {
         hidden: true,
     },
     'gpt-4': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
 
         label: 'GPT 4',
         modelId: 'gpt-4o-2024-08-06',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools'],
         tags: ['Personal', 'deprecated'],
         tokens: 0,
@@ -413,7 +413,7 @@ export const models = {
         hidden: true,
     },
     'gpt-4-0613': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -426,13 +426,13 @@ export const models = {
 
     // #region GPT-3.5
     'gpt-3.5-turbo-latest': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-3.5-turbo-0125',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
 
         label: 'GPT 3.5 Turbo Latest',
         modelId: 'gpt-3.5-turbo-0125',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools'],
         tags: ['Personal', 'legacy'],
         tokens: 0,
@@ -442,13 +442,13 @@ export const models = {
         hidden: true,
     },
     'gpt-3.5-turbo': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         alias: 'gpt-3.5-turbo-0125',
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'GPTPlugin', 'AgentPlugin', 'Chatbot'],
 
         label: 'GPT 3.5 Turbo',
         modelId: 'gpt-3.5-turbo-0125',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['text', 'tools'],
         tags: ['Personal', 'legacy'],
         tokens: 0,
@@ -458,7 +458,7 @@ export const models = {
         hidden: true,
     },
     'gpt-3.5-turbo-0125': {
-        llm: 'OpenAI',
+        llm: 'OpenRouter',
         tokens: 2048,
         completionTokens: 2048,
         enabled: false,
@@ -468,12 +468,12 @@ export const models = {
     },
     // #endregion GPT-3.5
 
-    // # region OpenAI embeddings
+    // # region OpenRouter embeddings
 
     'text-embedding-ada-002': {
-        label: 'OpenAI Embeddings Ada 002',
+        label: 'OpenRouter Embeddings Ada 002',
         modelId: 'text-embedding-ada-002',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['embeddings'],
         tokens: 0,
         completionTokens: 0,
@@ -481,9 +481,9 @@ export const models = {
         credentials: ['internal', 'vault'],
     },
     'text-embedding-3-large': {
-        label: 'OpenAI Embeddings 3 Large',
+        label: 'OpenRouter Embeddings 3 Large',
         modelId: 'text-embedding-3-large',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['embeddings'],
         tokens: 0,
         completionTokens: 0,
@@ -491,7 +491,7 @@ export const models = {
         credentials: ['internal', 'vault'],
     },
 
-    // #endregion OpenAI Models ==========================
+    // #endregion OpenRouter Models ==========================
 
     // #region Anthropic Models ==========================
     'claude-4-opus': {
@@ -2237,11 +2237,11 @@ export const models = {
 
     // #region Image Generation Models ============================
 
-    // #region OpenAI Models gpt-image-1
+    // #region OpenRouter Models gpt-image-1
     'smythos/gpt-image-1': {
         label: 'GPT Image 1',
         modelId: 'gpt-image-1',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['image-generation'],
         tags: ['New', 'SmythOS'],
         enabled: true,
@@ -2251,7 +2251,7 @@ export const models = {
     'gpt-image-1': {
         label: 'GPT Image 1',
         modelId: 'gpt-image-1',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['image-generation'],
         tags: ['New', 'Personal'],
         enabled: false,
@@ -2261,11 +2261,11 @@ export const models = {
     },
     // #endregion gpt-image-1
 
-    // #region OpenAI Models DALL-E
+    // #region OpenRouter Models DALL-E
     'dall-e-3': {
         label: 'DALL·E 3',
         modelId: 'dall-e-3',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['image-generation'],
         tags: ['Deprecated'],
         enabled: true,
@@ -2275,14 +2275,14 @@ export const models = {
     'dall-e-2': {
         label: 'DALL·E 2',
         modelId: 'dall-e-2',
-        provider: 'OpenAI',
+        provider: 'OpenRouter',
         features: ['image-generation'],
         tags: ['Deprecated'],
         enabled: true,
 
         credentials: 'vault',
     },
-    // #endregion OpenAI Models DALL-E
+    // #endregion OpenRouter Models DALL-E
 
     // #region Runware Models
     'smythos/flux.1-schnell': {

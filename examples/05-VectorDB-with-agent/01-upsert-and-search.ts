@@ -15,7 +15,7 @@ const pineconeNamespace = 'crypto-ns';
 const pineconeSettings = {
     indexName: 'demo-vec',
     apiKey: process.env.PINECONE_API_KEY,
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: Model.OpenRouter('text-embedding-3-large'),
 };
 
 async function createAgent() {

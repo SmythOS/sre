@@ -121,7 +121,7 @@ const mcpUrl = await agent.mcp(MCPTransport.SSE, 3388);
 ### Query llm through agent
 
 ```typescript
-const llm = agent.llm.OpenAI('gpt-4o');
+const llm = agent.llm.OpenRouter('gpt-4o');
 //other available models : agent.llm.Anthropic(...), agent.llm.Google(...), agent.llm.Groq(...), agent.llm.TogetherAI(...), agent.llm.Bedrock(...), agent.llm.VertexAI(...), agent.llm.xAI(...), agent.llm.Perplexity(...)
 
 //prompt
@@ -139,7 +139,7 @@ stream.on(TLLMEvent.Content, (data) => {
 ### Query LLM with advanced settings
 
 ```typescript
-const llm = agent.llm.OpenAI('gpt-4o', {
+const llm = agent.llm.OpenRouter('gpt-4o', {
     temperature: 0.5,
     max_tokens: 100,
     top_p: 1,
@@ -151,7 +151,7 @@ const llm = agent.llm.OpenAI('gpt-4o', {
 ### Query LLM with custom api key
 
 ```typescript
-const llm = agent.llm.OpenAI('gpt-4o', {
+const llm = agent.llm.OpenRouter('gpt-4o', {
     apiKey: 'your-api-key',
 });
 ```
@@ -159,7 +159,7 @@ const llm = agent.llm.OpenAI('gpt-4o', {
 ### Query LLM with custom model
 
 ```typescript
-const llm = agent.llm.OpenAI(Model.OpenAI('custom-model', { baseURL: 'https://api.custom-model.com' }));
+const llm = agent.llm.OpenRouter(Model.OpenRouter('custom-model', { baseURL: 'https://api.custom-model.com' }));
 ```
 
 ## Local Storage
@@ -190,7 +190,7 @@ const storage = agent.storage.S3Storage({
 const pinecone = agent.vectorDB.Pinecone('my-namespace', {
     indexName: 'my-index',
     apiKey: 'your-pinecone-api-key',
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: Model.OpenRouter('text-embedding-3-large'),
 });
 
 await pinecone.insertDoc('my-doc', 'This is the content of my document');
@@ -205,7 +205,7 @@ const milvus = agent.vectorDB.Milvus('my-collection', {
         address: 'your-milvus-address',
         token: 'your-milvus-token',
     },
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: Model.OpenRouter('text-embedding-3-large'),
 });
 
 await milvus.insertDoc('my-doc', 'This is the content of my document');
@@ -231,7 +231,7 @@ Many capabilities are also available as standalone classes, you can use them wit
 ### Access LLM models
 
 ```typescript
-const openaiGPT4Mini = LLM.OpenAI('gpt-4o-mini');
+const llmOpenRouterGPT4Mini = LLM.OpenRouter('gpt-4o-mini');
 const anthropicClaude4Sonnet = LLM.Anthropic('claude-4.0-sonnet');
 const googleGemini20Flash = LLM.Google('gemini-2.0-flash');
 //...
@@ -240,13 +240,13 @@ const googleGemini20Flash = LLM.Google('gemini-2.0-flash');
 ### Prompt LLM
 
 ```typescript
-const result = await openaiGPT4Mini.prompt('Hello, how are you?');
+const result = await llmOpenRouterGPT4Mini.prompt('Hello, how are you?');
 ```
 
 ### Prompt LLM with attachment
 
 ```typescript
-const llm = LLM.OpenAI('gpt-4o-mini');
+const llm = LLM.OpenRouter('gpt-4o-mini');
 
 const result = await llm.prompt('Describe these images?', {
     files: ['./path/to/image.png', 'https://image.com/myimage.png'],
@@ -256,7 +256,7 @@ const result = await llm.prompt('Describe these images?', {
 ### Prompt LLM with stream
 
 ```typescript
-const stream = await openaiGPT4Mini.prompt('Hello, how are you?').stream();
+const stream = await llmOpenRouterGPT4Mini.prompt('Hello, how are you?').stream();
 
 stream.on(TLLMEvent.Content, (data) => {
     console.log(data);
@@ -294,7 +294,7 @@ console.log(data);
 const pinecone = VectorDB.Pinecone('my-namespace', {
     indexName: 'my-index',
     apiKey: 'your-pinecone-api-key',
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: Model.OpenRouter('text-embedding-3-large'),
 });
 
 await pinecone.insertDoc('my-doc', 'This is the content of my document');
@@ -309,7 +309,7 @@ const milvus = VectorDB.Milvus('my-collection', {
         address: 'your-milvus-address',
         token: 'your-milvus-token',
     },
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: Model.OpenRouter('text-embedding-3-large'),
 });
 
 await milvus.insertDoc('my-doc', 'This is the content of my document');

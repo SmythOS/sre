@@ -9,7 +9,7 @@ async function main() {
         process: async ({ userName, userNumber }) => {
             const secret = `${userNumber * 10}_${userName.substring(0, 3)}`;
 
-            const openai = agent.llm.OpenAI('gpt-4o-mini');
+            const openai = agent.llm.OpenRouter('gpt-4o-mini');
             const result = openai.prompt('Write a haiku about sakura trees');
             console.log(result);
 
