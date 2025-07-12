@@ -124,6 +124,8 @@ export * from './subsystems/IO/Router.service/RouterConnector';
 export * from './subsystems/IO/Storage.service/index';
 export * from './subsystems/IO/Storage.service/SmythFS.class';
 export * from './subsystems/IO/Storage.service/StorageConnector';
+export * from './subsystems/IO/Git.service/index';
+export * from './subsystems/IO/Git.service/GitConnector';
 export * from './subsystems/IO/VectorDB.service/index';
 export * from './subsystems/IO/VectorDB.service/VectorDBConnector';
 export * from './subsystems/LLMManager/LLM.service/index';

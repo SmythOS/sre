@@ -31,6 +31,8 @@ export * from './utils/help';
 export * from './utils/index';
 export * from './VectorDB/VectorDB.class';
 export * from './VectorDB/VectorDBInstance.class';
+export * from './Git/Git.class';
+export * from './Git/GitInstance.class';
 export * from './Components/generated/APICall';
 export * from './Components/generated/APIOutput';
 export * from './Components/generated/Await';
