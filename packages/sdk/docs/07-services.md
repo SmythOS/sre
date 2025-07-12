@@ -88,7 +88,7 @@ import { VectorDB, Model } from '@smythos/sdk';
 const pinecone = VectorDB.Pinecone({
     indexName: 'my-app-docs',
     // We also need to specify which model to use for creating embeddings
-    embeddings: Model.OpenAI({ model: 'text-embedding-3-large' }),
+    embeddings: Model.OpenRouter({ model: 'text-embedding-3-large' }),
 });
 
 // Add documents to the index

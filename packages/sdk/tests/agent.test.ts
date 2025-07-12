@@ -14,7 +14,7 @@ import { expect, describe, it } from 'vitest';
 describe('SDK Agent Tests', () => {
     it('imported agent', async () => {
         const agent = Agent.import('./packages/sdk/tests/data/AgentData/crypto-info-agent.smyth', {
-            model: Model.OpenAI('gpt-4o-mini', { maxTokens: 10 }),
+            model: Model.OpenRouter('gpt-4o-mini', { maxTokens: 10 }),
         });
 
         //const result = await agent.prompt('Hello, Who are you ?');
@@ -74,7 +74,7 @@ describe('SDK Agent Tests', () => {
             process: async ({ userName, userNumber }) => {
                 const secret = `${userNumber * 10}_${userName.substring(0, 3)}`;
 
-                const openai = agent.llm.OpenAI('gpt-4o-mini');
+                const openai = agent.llm.OpenRouter('gpt-4o-mini');
                 console.log(openai);
 
                 console.log('calculating secret...', secret);

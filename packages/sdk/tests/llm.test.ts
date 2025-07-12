@@ -23,7 +23,7 @@ declare module '../src/types/SDKTypes' {
 describe('SDK LLM Tests', () => {
     it('LLM - Prompt from LLMInstance', async () => {
         //initialize the LLM
-        const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
+        const llm = new LLMInstance(TLLMProvider.OpenRouter, { model: 'gpt-4o' });
 
         //direct prompt
         const result = await llm.prompt('What is the capital of France?');
@@ -33,7 +33,7 @@ describe('SDK LLM Tests', () => {
     });
 
     it('LLM - Prompt from named LLM', async () => {
-        const llm = LLM.OpenAI('gpt-4o-mini', {
+        const llm = LLM.OpenRouter('gpt-4o-mini', {
             temperature: 0.1,
             maxTokens: 100,
         });
@@ -45,7 +45,7 @@ describe('SDK LLM Tests', () => {
     });
 
     it('LLM - Prompt with attachments', async () => {
-        const llm = LLM.OpenAI('gpt-4o-mini', {
+        const llm = LLM.OpenRouter('gpt-4o-mini', {
             temperature: 0.1,
             maxTokens: 100,
         });
@@ -59,7 +59,7 @@ describe('SDK LLM Tests', () => {
     });    
 
     it('LLMProxy - Chat', async () => {
-        const llm = LLM.OpenAI({ model: 'gpt-4o' });
+        const llm = LLM.OpenRouter({ model: 'gpt-4o' });
 
         const chat = llm.chat();
         const result2 = await chat.prompt('Hi my name is John Doe. What is the capital of France?');
@@ -73,7 +73,7 @@ describe('SDK LLM Tests', () => {
     });
 
     it('LLM - StreamPrompt', async () => {
-        const llm = LLM.OpenAI({ model: 'gpt-4o' });
+        const llm = LLM.OpenRouter({ model: 'gpt-4o' });
 
         const eventEmitter = await llm.prompt('What is the capital of France?').stream();
 

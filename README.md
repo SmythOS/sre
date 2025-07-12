@@ -27,7 +27,7 @@ SmythOS provides a complete **Operating System for Agentic AI**. Just as traditi
 
 SmythOS provides a **unified interface for all resources**, ensuring consistency and simplicity across your entire AI platform. Whether you're storing a file locally, on S3, or any other storage provider, you don't need to worry about the underlying implementation details. SmythOS offers a powerful abstraction layer where all providers expose the same functions and APIs.
 
-This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs (OpenAI, Anthropic), or any other resource, the interface remains consistent across providers.
+This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs via OpenRouter or Anthropic, or any other resource, the interface remains consistent across providers.
 
 This approach makes your AI platform **easy to scale** and incredibly flexible. You can seamlessly swap between different providers to test performance, optimize costs, or meet specific requirements without changing a single line of your business logic.
 
@@ -90,10 +90,17 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 **Supported Connectors:**
 
 -   **Storage**: Local, S3, Google Cloud, Azure
--   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
+-   **LLM**: OpenRouter
 -   **VectorDB**: Pinecone, Milvus, RAMVec
 -   **Cache**: RAM, Redis
--   **Vault**: JSON File, AWS Secrets Manager, HashiCorp 
+-   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
+-   **Database**: PostgreSQL
+
+### Configuring OpenRouter
+Store your `OPENROUTER_API_KEY` in the environment or vault for LLM requests.
+
+### Configuring PostgreSQL
+Set `PGHOST`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` in your environment so the AWSAccount connector can connect.
 
 ### SDK - `packages/sdk`
 
@@ -123,7 +130,7 @@ async function main() {
 
     //Importing the agent workflow
     const agent = Agent.import(agentPath, {
-        model: Model.OpenAI('gpt-4o'),
+        model: Model.OpenRouter('gpt-4o'),
     });
 
     //query the agent and get the full response
@@ -205,7 +212,7 @@ async function main() {
                 namespace: 'myNameSpace',
                 indexName: 'demo-vec',
                 pineconeApiKey: process.env.PINECONE_API_KEY,
-                embeddings: Model.OpenAI('text-embedding-3-large'),
+                embeddings: Model.OpenRouter('text-embedding-3-large'),
             });
 
             const searchResult = await vec.search(topic, {
@@ -215,7 +222,7 @@ async function main() {
             const context = searchResult.map((e) => e?.metadata?.text).join('\n');
 
             // LLM - Generate the article
-            const llm = agent.llm.OpenAI('gpt-4o-mini');
+            const llm = agent.llm.OpenRouter('gpt-4o-mini');
             const result = await llm.prompt(`Write an article about ${topic} using the following context: ${context}`);
 
             // Storage - Save the article
