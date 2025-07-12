@@ -13,6 +13,7 @@ import { LogService } from '@sre/IO/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 import { CodeService } from '@sre/ComputeManager/Code.service';
+import { GitService } from '@sre/IO/Git.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -30,6 +31,7 @@ export type TServiceRegistry = {
     Component?: ComponentService;
     ModelsProvider?: ModelsProviderService;
     Code?: CodeService;
+    Git?: GitService;
 };
 
 export enum TConnectorService {
@@ -48,6 +50,7 @@ export enum TConnectorService {
     Component = 'Component',
     ModelsProvider = 'ModelsProvider',
     Code = 'Code',
+    Git = 'Git',
 }
 
 export type SREConnectorConfig = {
