@@ -87,6 +87,8 @@ export * from './Components/APICall/parseHeaders';
 export * from './Components/APICall/parseProxy';
 export * from './Components/APICall/parseUrl';
 export * from './Components/Image/imageSettings.config';
+export * from './Components/HTTPCall.class';
+export * from './Components/WebSearch.class';
 export * from './subsystems/AgentManager/Agent.class';
 export * from './subsystems/AgentManager/Agent.helper';
 export * from './subsystems/AgentManager/AgentLogger.class';
