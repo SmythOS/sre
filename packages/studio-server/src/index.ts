@@ -5,40 +5,45 @@ import path from 'path';
 import os from 'os';
 import { Agent } from '@smythos/sdk';
 import { startMcpServer } from '../../cli/src/commands/agent/mcp.cmd';
-// import { LocalComponentConnector } from '@sre/subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
-// import { AccessRequest } from '@sre/subsystems/Security/AccessControl/AccessRequest.class';
-// import { TAccessRole } from '@sre/types/ACL.types';
+import {
+  LocalComponentConnector,
+  ConnectorService,
+  AccessCandidate,
+} from '@smythos/sre';
 
 const WORKFLOWS_DIR = path.join(__dirname, '../workflows');
 
-async function init() {
+async function bootSRE() {
   // Initialize SRE using startMcpServer with a minimal agent
-  const dummyAgent = { version: '1.0', data: { id: 'init', components: [], connections: [] } };
+  const dummyAgent = {
+    version: '1.0',
+    data: { id: 'init', components: [], connections: [] },
+  };
   await startMcpServer(dummyAgent, 'stdio', 0, {});
 }
 
-init().catch((err) => console.error(err));
+async function main() {
+  await bootSRE();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+  const app = express();
+  app.use(cors());
+  app.use(express.json());
 
 app.get('/components', async (_req, res) => {
-  const componentsDir = path.resolve(__dirname, '../../core/src/Components');
-  const componentFiles = fs.readdirSync(componentsDir);
-
-  const componentDetails = componentFiles
-    .filter(file => file.endsWith('.class.ts'))
-    .map(file => {
-      const name = path.basename(file, '.class.ts');
-      return {
-        name,
-        description: `The ${name} component.`,
-        inputs: [], 
-      };
-    });
-
-  res.json(componentDetails);
+  try {
+    const connector = ConnectorService.getComponentConnector() as LocalComponentConnector;
+    const requester = connector.requester(AccessCandidate.agent('studio-server'));
+    const components = await requester.getAll();
+    const componentDetails = Object.entries(components).map(([name, instance]: [string, any]) => ({
+      name,
+      settings: instance.schema?.settings || {},
+      inputs: instance.schema?.inputs || {},
+    }));
+    res.json(componentDetails);
+  } catch (err: any) {
+    console.error('Failed to load components', err);
+    res.status(500).json({ error: 'failed to load components' });
+  }
 });
 
 app.get('/workflows', (_req, res) => {
@@ -92,3 +97,6 @@ const PORT = Number(process.env.PORT) || 3010;
 app.listen(PORT, () => {
   console.log(`Studio server listening on http://localhost:${PORT}`);
 });
+}
+
+main().catch(err => console.error(err));
