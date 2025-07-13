@@ -28,7 +28,8 @@
         "dist",
         "theme.json",
         "README.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "templates"
     ],
     "type": "module",
     "engines": {
