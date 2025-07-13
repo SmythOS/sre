@@ -84,3 +84,38 @@ The vault stores keys for different teams, but must have at least a "default" te
 ### config.json Structure
 
 (TBD)
+
+### Debug Logging
+
+To capture detailed debugging information for each agent, configure the Log service
+to use the `DebugLog` connector:
+
+```json
+{
+    "Log": { "Connector": "DebugLog" }
+}
+```
+
+Logs are written to `~/.smyth/logs/<agent-id>/debug.jsonl`. Each line is a JSON
+object containing the timestamp and execution details.
+
+### Docker Execution
+
+When the `Docker` connector is selected for the Code service, code snippets run
+inside a Docker container. The container image and execution timeout are
+specified in the Code configuration:
+
+```json
+{
+    "Code": {
+        "Connector": "Docker",
+        "Settings": {
+            "image": "python:3.12-slim",
+            "timeout": 10000
+        }
+    }
+}
+```
+
+The `image` field sets the Docker image used to execute the code, while
+`timeout` (in milliseconds) controls how long the container is allowed to run.
