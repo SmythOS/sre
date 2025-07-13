@@ -1,19 +1,14 @@
-import { OpenAIConnector, TOpenAIConnectorParams } from './OpenAI.class';
-import { TLLMProvider } from '@sre/types/LLM.types';
+import { OpenAIConnector } from './OpenAI.class';
+import { BasicCredentials, ILLMRequestContext } from '@sre/types/LLM.types';
 import { Logger } from '@sre/helpers/Log.helper';
 
 const console = Logger('OpenRouter');
 
 export class OpenRouterConnector extends OpenAIConnector {
-    public name: string = 'OpenRouter';
-    public provider: TLLMProvider = 'OpenRouter';
+    public name = 'LLM:OpenRouter';
 
-    constructor(params?: TOpenAIConnectorParams) {
-        super(params);
-        this.client = this.getClient(params?.apiKey);
-    }
-
-    protected async getClient(apiKey?: string) {
+    protected async getClient(params: ILLMRequestContext) {
+        let apiKey = (params.credentials as BasicCredentials)?.apiKey;
         if (!apiKey) apiKey = process.env.OPENROUTER_API_KEY;
 
         if (!apiKey) {
