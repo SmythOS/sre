@@ -53,6 +53,10 @@ importers:
         version: 5.8.3
 
   packages/cli:
+    dependencies:
+      '@smythos/sre':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@modelcontextprotocol/sdk':
         specifier: ^1.14.0
@@ -81,9 +85,6 @@ importers:
       '@smythos/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@smythos/sre':
-        specifier: workspace:*
-        version: link:../core
       '@types/extract-zip':
         specifier: ^2.0.3
         version: 2.0.3
