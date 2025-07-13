@@ -9,11 +9,17 @@ import {
   LocalComponentConnector,
   ConnectorService,
   AccessCandidate,
+  SRE,
 } from '@smythos/sre';
 
 const WORKFLOWS_DIR = path.join(__dirname, '../workflows');
 
 async function bootSRE() {
+  if (process.env.NODE_ENV === 'test') {
+    SRE.init();
+    await SRE.ready();
+    return;
+  }
   // Initialize SRE using startMcpServer with a minimal agent
   const dummyAgent = {
     version: '1.0',
@@ -22,7 +28,7 @@ async function bootSRE() {
   await startMcpServer(dummyAgent, 'stdio', 0, {});
 }
 
-async function main() {
+export async function createApp() {
   await bootSRE();
 
   const app = express();
@@ -107,10 +113,17 @@ app.get('/logs/:agentId', (req, res) => {
   res.json(entries);
 });
 
-const PORT = Number(process.env.PORT) || 3010;
-app.listen(PORT, () => {
-  console.log(`Studio server listening on http://localhost:${PORT}`);
-});
+  return app;
 }
 
-main().catch(err => console.error(err));
+export async function startServer() {
+  const app = await createApp();
+  const PORT = Number(process.env.PORT) || 3010;
+  return app.listen(PORT, () => {
+    console.log(`Studio server listening on http://localhost:${PORT}`);
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  startServer().catch(err => console.error(err));
+}
