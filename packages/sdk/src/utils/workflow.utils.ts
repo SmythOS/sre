@@ -1,9 +1,8 @@
 import fs from 'fs';
-import { Agent } from '../../../sdk/src/Agent/Agent.class';
+import { Agent } from '../Agent/Agent.class';
 
 export function saveWorkflow(agent: Agent, file: string) {
-    const data = agent.export();
-    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(file, JSON.stringify(agent.export(), null, 2));
 }
 
 export function loadWorkflow(path: string): Agent {

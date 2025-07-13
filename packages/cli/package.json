@@ -82,13 +82,12 @@
         }
     },
     "dependencies": {
-
+        "@smythos/sre": "workspace:*"
     },
     "devDependencies": {
         "@modelcontextprotocol/sdk": "^1.14.0",
         "@oclif/core": "^4.3.3",
         "@smythos/sdk": "workspace:*",
-        "@smythos/sre": "workspace:*",
         "boxen": "^7.1.1",
         "chalk": "^5.3.0",
         "dotenv": "^16.5.0",

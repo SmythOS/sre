@@ -6,6 +6,13 @@ Command line interface for SmythOS SRE (Smyth Runtime Environment) - an advanced
 pnpm install -g @smythos/cli
 ```
 
+If installation fails with errors about `cpufeatures.node`, rebuild the optional
+native dependency used by `ssh2`:
+
+```bash
+pnpm rebuild ssh2 --unsafe-perm
+```
+
 ## Commands Overview
 
 The SRE CLI provides several commands:

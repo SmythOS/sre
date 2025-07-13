@@ -1,8 +1,8 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { Agent } from '../../../sdk/src/Agent/Agent.class';
-import { saveWorkflow, loadWorkflow } from '@sre/utils';
+import { Agent } from '@smythos/sdk';
+import { saveWorkflow, loadWorkflow } from '@smythos/sdk/utils';
 import { testData } from '../utils/test-data-manager';
 
 const tempFile = path.join(testData.getBaseDir(), 'temp-workflow.smyth');

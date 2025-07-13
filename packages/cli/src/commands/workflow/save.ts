@@ -1,6 +1,10 @@
 import { Args, Command } from '@oclif/core';
 import { Agent } from '@smythos/sdk';
-import { saveWorkflow } from '@smythos/sre/utils';
+import fs from 'fs';
+
+function saveWorkflow(agent: Agent, file: string) {
+    fs.writeFileSync(file, JSON.stringify(agent.export(), null, 2));
+}
 
 export default class WorkflowSave extends Command {
     static override description = 'Save an agent workflow to a file';
