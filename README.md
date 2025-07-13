@@ -146,6 +146,12 @@ The **SDK** provides a clean, developer-friendly abstraction layer over the SRE 
 
 The **SRE CLI** helps you get started quickly with scaffolding and project management.
 
+
+### Studio Server - `packages/studio-server`
+Run the development server with:
+```bash
+pnpm --filter @smythos/studio-server dev
+```
 ## Code examples
 
 The SDK allows you to build agents with code or load and run a .smyth file.
