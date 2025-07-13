@@ -48,3 +48,43 @@ SRE provides a rich library of over 40 standard components, which are organized 
 -   **Storage & Files**: Components for interacting with the Storage service (e.g., `FileStore`).
 
 This extensive library allows for the creation of complex agent behaviors through the visual composition of these standard blocks. Developers can also create new, custom components by extending the base `Component` class.
+
+### External Integration
+
+Two standard components connect your agent to outside services: `HTTPCall` and `WebSearch`.
+
+**HTTPCall**
+
+Configuration options:
+- `method` – HTTP method (`GET`, `POST`, etc.).
+- `url` – Request URL.
+- `headers` – Optional headers.
+- `body` – Request body (optional).
+- `query` – Query parameters (optional).
+
+**WebSearch**
+
+Configuration options:
+- `method` – HTTP method.
+- `url` – Search API endpoint.
+- `queryParam` – Name of the search query parameter.
+- `headers` – Optional headers.
+- `query` – Additional query parameters.
+
+Example workflow:
+
+```typescript
+const callApi = Component.HTTPCall({
+    method: 'GET',
+    url: 'https://api.example.com/data',
+    headers: { Authorization: 'Bearer token' },
+});
+
+const search = Component.WebSearch({
+    url: 'https://api.duckduckgo.com/',
+    method: 'GET',
+    queryParam: 'q',
+});
+
+search.in({ SearchQuery: callApi.out.Response.title });
+```
