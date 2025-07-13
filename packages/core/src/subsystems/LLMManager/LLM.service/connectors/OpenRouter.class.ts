@@ -1,5 +1,6 @@
 import { OpenAIConnector, TOpenAIConnectorParams } from './OpenAI.class';
 import { TLLMProvider } from '@sre/types/LLM.types';
+import { Logger } from '@sre/helpers/Log.helper';
 
 const console = Logger('OpenRouter');
 
@@ -12,7 +13,7 @@ export class OpenRouterConnector extends OpenAIConnector {
         this.client = this.getClient(params?.apiKey);
     }
 
-    protected getClient(apiKey?: string) {
+    protected async getClient(apiKey?: string) {
         if (!apiKey) apiKey = process.env.OPENROUTER_API_KEY;
 
         if (!apiKey) {
