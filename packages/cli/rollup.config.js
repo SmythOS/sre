@@ -22,6 +22,8 @@ const config = {
         'commands/agent': 'src/commands/agent/agent.index.ts',
         'commands/create': 'src/commands/create/create.index.ts',
         'commands/update': 'src/commands/update.ts',
+        'commands/workflow/save': 'src/commands/workflow/save.ts',
+        'commands/workflow/load': 'src/commands/workflow/load.ts',
         'hooks/preparse': 'src/hooks/preparse.ts',
         help: 'src/help.ts',
     },
@@ -61,6 +63,8 @@ const zeroDepConfig = {
         'commands/agent': 'src/commands/agent/agent.index.ts',
         'commands/create': 'src/commands/create/create.index.ts',
         'commands/update': 'src/commands/update.ts',
+        'commands/workflow/save': 'src/commands/workflow/save.ts',
+        'commands/workflow/load': 'src/commands/workflow/load.ts',
         'hooks/preparse': 'src/hooks/preparse.ts',
     },
     output: {
