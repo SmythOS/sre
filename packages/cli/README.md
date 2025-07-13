@@ -8,11 +8,33 @@ pnpm install -g @smythos/cli
 
 ## Commands Overview
 
-The SRE CLI provides three main commands:
+The SRE CLI provides several commands:
 
 -   `sre agent` - Run SmythOS agent files with various execution modes
 -   `sre create` - Create new SmythOS projects
 -   `sre update` - Update the CLI and check for updates
+-   `sre workflow save` - Export an agent workflow to a file
+-   `sre workflow load` - Import a workflow from a file
+
+## Workflow Command
+
+Manage agent workflows from the CLI.
+
+### Save
+
+```bash
+sre workflow save <agent.smyth> <file>
+```
+
+Export the workflow of the specified agent to `<file>` for sharing or version control.
+
+### Load
+
+```bash
+sre workflow load <file>
+```
+
+Load a workflow definition from `<file>` back into an agent. This is handy for restoring or migrating workflows.
 
 ---
 
