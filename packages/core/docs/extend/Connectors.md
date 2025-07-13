@@ -260,3 +260,54 @@ SRE.init({
     // ...
 });
 ```
+
+## Common Connectors
+
+### NeonAccount
+The `NeonAccount` connector stores account and team settings in a PostgreSQL database. Configure it with the following environment variables or provide them directly in the settings:
+
+- `NEON_HOST`
+- `NEON_USER`
+- `NEON_PASSWORD`
+- `NEON_DATABASE`
+
+```typescript
+SRE.init({
+    Security: {
+        Account: {
+            Connector: 'NeonAccount',
+            Settings: {
+                host: process.env.NEON_HOST,
+                user: process.env.NEON_USER,
+                password: process.env.NEON_PASSWORD,
+                database: process.env.NEON_DATABASE,
+            },
+        },
+    },
+});
+```
+
+### Git Connector
+Provides minimal Git operations for agents. The `Git` connector supports cloning repositories, creating diffs and committing changes.
+
+```typescript
+const git = ConnectorService.getGitConnector();
+await git.clone('https://github.com/example/repo.git', '/tmp/repo');
+const diff = await git.diff('/tmp/repo');
+await git.commit('/tmp/repo', 'update files');
+```
+
+### Docker Code Execution
+`DockerCode` executes code snippets inside ephemeral Docker containers. Configure the runtime image and timeout via `CodeConfig`.
+
+```typescript
+const result = await SRE.Compute.Code.execute(
+    'codeId',
+    {},
+    { runtime: 'python:3.12-slim', timeout: 10000 },
+);
+```
+
+### DebugLog Connector
+`DebugLog` is a log connector that writes JSONL log entries under `~/.smyth/logs/<agentId>/debug.jsonl`. Enable it during development to persist detailed agent activity locally.
+
