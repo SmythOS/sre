@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { setupSRE } from '../../utils/sre';
 import { models as LLM_MODELS } from '@sre/LLMManager/models';
+import { Logger } from '@sre/helpers/Log.helper';
 
 const models = {
     'gpt-4o-mini': LLM_MODELS['gpt-4o-mini'],
     'claude-3-5-haiku-latest': LLM_MODELS['claude-3-5-haiku-latest'],
     'gemini-1.5-flash': LLM_MODELS['gemini-1.5-flash'],
 };
+const logger = Logger('conversation.test');
 
 setupSRE({
     ModelsProvider: {
@@ -18,6 +20,7 @@ setupSRE({
         Connector: 'ConsoleLog',
     },
 });
+logger.info('starting Conversation tests');
 
 const TIMEOUT = 120_000;
 const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';

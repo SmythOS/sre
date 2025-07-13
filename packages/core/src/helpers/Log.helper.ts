@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import winston from 'winston';
 import Transport from 'winston-transport';
-import { getFormattedStackTrace, parseCLIArgs } from '../utils';
+import { getFormattedStackTrace } from '../utils';
 import config from '@sre/config';
 import { EventEmitter } from 'events';
+import { logLevel } from './logLevel.helper';
 winston.addColors({
     error: 'red',
     warn: 'yellow',
@@ -11,16 +12,6 @@ winston.addColors({
     debug: 'blue',
 });
 
-const logLevelMap = {
-    min: 'info',
-    full: 'debug',
-};
-
-let logLevel = () => {
-    let val = parseCLIArgs('debug')?.debug || config?.env?.LOG_LEVEL || 'none';
-    if (logLevelMap[val]) val = logLevelMap[val];
-    return !['none', 'error', 'warn', 'info', 'debug'].includes(val) ? 'none' : val;
-};
 
 // Retrieve the DEBUG environment variable and split it into an array of namespaces
 const namespaces = (config.env.LOG_FILTER || '').split(',');

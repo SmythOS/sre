@@ -5,15 +5,18 @@ import path from 'path';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { setupSRE } from '../utils/sre';
+import { Logger } from '@sre/helpers/Log.helper';
 
 const agentId = 'test-agent';
 const logDir = path.join(os.homedir(), '.smyth', 'logs', agentId);
+const logger = Logger('debug-log.test');
 
 beforeAll(() => {
     if (fs.existsSync(logDir)) fs.rmSync(logDir, { recursive: true, force: true });
     setupSRE({
         Log: { Connector: 'DebugLog' },
     });
+    logger.info('starting DebugLog tests');
 });
 
 describe('DebugLog Connector', () => {
