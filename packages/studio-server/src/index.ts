@@ -5,6 +5,9 @@ import path from 'path';
 import os from 'os';
 import { Agent } from '@smythos/sdk';
 import { startMcpServer } from '../../cli/src/commands/agent/mcp.cmd';
+// import { LocalComponentConnector } from '@sre/subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
+// import { AccessRequest } from '@sre/subsystems/Security/AccessControl/AccessRequest.class';
+// import { TAccessRole } from '@sre/types/ACL.types';
 
 const WORKFLOWS_DIR = path.join(__dirname, '../workflows');
 
@@ -19,6 +22,24 @@ init().catch((err) => console.error(err));
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get('/components', async (_req, res) => {
+  const componentsDir = path.resolve(__dirname, '../../core/src/Components');
+  const componentFiles = fs.readdirSync(componentsDir);
+
+  const componentDetails = componentFiles
+    .filter(file => file.endsWith('.class.ts'))
+    .map(file => {
+      const name = path.basename(file, '.class.ts');
+      return {
+        name,
+        description: `The ${name} component.`,
+        inputs: [], 
+      };
+    });
+
+  res.json(componentDetails);
+});
 
 app.get('/workflows', (_req, res) => {
   const files = fs.readdirSync(WORKFLOWS_DIR).filter((f) => f.endsWith('.smyth'));

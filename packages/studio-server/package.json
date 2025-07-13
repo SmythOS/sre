@@ -4,18 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts"
+    "dev": "tsx src/index.ts"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "cors": "^2.8.5",
     "@smythos/sdk": "workspace:*",
-    "@smythos/sre": "workspace:*"
+    "@smythos/sre": "workspace:*",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
     "@types/express": "^4.17.23",
-    "@types/node": "^20.19.0"
+    "@types/node": "^20.19.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.4.5"
   }
 }
