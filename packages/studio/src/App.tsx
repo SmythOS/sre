@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -15,6 +15,14 @@ const initialEdges: any[] = [];
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [components, setComponents] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/components')
+      .then((r) => r.json())
+      .then(setComponents)
+      .catch(console.error);
+  }, []);
 
   const addNode = () => {
     setNodes((nds) => [
@@ -35,6 +43,11 @@ export default function App() {
       <div style={{ display: 'flex', height: '100vh' }}>
         <div style={{ width: 150, borderRight: '1px solid #ccc', padding: 10 }}>
           <button onClick={addNode}>Add Node</button>
+          <ul>
+            {components.map((c) => (
+              <li key={c.name}>{c.name}</li>
+            ))}
+          </ul>
         </div>
         <div style={{ flexGrow: 1 }}>
           <ReactFlow
