@@ -17,11 +17,25 @@ export default function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [components, setComponents] = useState<any[]>([]);
 
+  const fallbackComponents = [
+    { name: 'TextInput' },
+    { name: 'HTTPCall' },
+  ];
+
   useEffect(() => {
-    fetch('/components')
-      .then((r) => r.json())
-      .then(setComponents)
-      .catch(console.error);
+    async function loadComponents() {
+      try {
+        const res = await fetch('http://localhost:3010/components');
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        const data = await res.json();
+        setComponents(data);
+      } catch (err) {
+        console.error('Failed to fetch components, using fallback', err);
+        setComponents(fallbackComponents);
+      }
+    }
+
+    loadComponents();
   }, []);
 
   const addNode = () => {
