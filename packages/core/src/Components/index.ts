@@ -3,6 +3,7 @@ import { APIEndpoint } from './APIEndpoint.class';
 import { APIOutput } from './APIOutput.class';
 import { PromptGenerator } from './PromptGenerator.class';
 import { APICall } from './APICall/APICall.class';
+import { HTTPCall } from './HTTPCall.class';
 import { VisionLLM } from './VisionLLM.class';
 import { FSleep } from './FSleep.class';
 import { FHash } from './FHash.class';
@@ -32,6 +33,7 @@ import { GenAILLM } from './GenAILLM.class';
 import { FileStore } from './FileStore.class';
 import { ScrapflyWebScrape } from './ScrapflyWebScrape.class';
 import { TavilyWebSearch } from './TavilyWebSearch.class';
+import { WebSearch } from './WebSearch.class';
 import { ComponentHost } from './ComponentHost.class';
 import { ServerlessCode } from './ServerlessCode.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
@@ -46,6 +48,7 @@ const components = {
     PromptGenerator: new PromptGenerator(),
     LLMPrompt: new PromptGenerator(),
     APICall: new APICall(),
+    HTTPCall: new HTTPCall(),
     VisionLLM: new VisionLLM(),
     FSleep: new FSleep(),
     FHash: new FHash(),
@@ -73,7 +76,7 @@ const components = {
     MultimodalLLM: new MultimodalLLM(),
     GenAILLM: new GenAILLM(),
     FileStore: new FileStore(),
-    WebSearch: new TavilyWebSearch(),
+    WebSearch: new WebSearch(),
     WebScrape: new ScrapflyWebScrape(),
     TavilyWebSearch: new TavilyWebSearch(),
     ScrapflyWebScrape: new ScrapflyWebScrape(),
