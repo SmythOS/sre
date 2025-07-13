@@ -95,12 +95,39 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 -   **Cache**: RAM, Redis
 -   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
 -   **Database**: PostgreSQL
+-   **Git**: [Git Connector](https://smythos.github.io/sre/core/documents/subsystems_io.html#git)
+-   **Code Execution**: [Docker](https://smythos.github.io/sre/core/documents/subsystems_compute-manager.html#docker)
+-   **HTTP/WebSearch**: [WebSearch Component](https://smythos.github.io/sre/core/documents/components.html#websearch)
+-   **Log**: [DebugLog](https://smythos.github.io/sre/core/documents/subsystems_io.html#debuglog)
 
 ### Configuring OpenRouter
 Store your `OPENROUTER_API_KEY` in the environment or vault for LLM requests.
 
 ### Configuring PostgreSQL
 Set `NEON_HOST`, `NEON_USER`, `NEON_PASSWORD` and `NEON_DATABASE` in your environment so the NeonAccount connector can connect.
+
+```typescript
+import { NeonAccount } from '@sre/Security/Account.service/connectors/NeonAccount.class';
+
+const account = new NeonAccount({
+    host: process.env.NEON_HOST!,
+    user: process.env.NEON_USER!,
+    password: process.env.NEON_PASSWORD!,
+    database: process.env.NEON_DATABASE!,
+});
+```
+
+### Debug Logging
+
+Enable the `DebugLog` connector to capture detailed logs:
+
+```typescript
+SRE.init({
+    Log: { Connector: 'DebugLog' },
+});
+```
+
+Logs are stored per agent in `~/.smyth/logs/<agentId>/debug.jsonl`.
 
 ### SDK - `packages/sdk`
 
