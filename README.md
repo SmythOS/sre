@@ -100,7 +100,7 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 Store your `OPENROUTER_API_KEY` in the environment or vault for LLM requests.
 
 ### Configuring PostgreSQL
-Set `PGHOST`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` in your environment so the AWSAccount connector can connect.
+Set `NEON_HOST`, `NEON_USER`, `NEON_PASSWORD` and `NEON_DATABASE` in your environment so the NeonAccount connector can connect.
 
 ### SDK - `packages/sdk`
 
