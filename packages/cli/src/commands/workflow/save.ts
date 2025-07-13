@@ -1,6 +1,6 @@
 import { Args, Command } from '@oclif/core';
 import { Agent } from '@smythos/sdk';
-import { saveWorkflow } from '@smythos/sre/utils';
+import { saveWorkflow } from '@smythos/sdk/utils';
 
 export default class WorkflowSave extends Command {
     static override description = 'Save an agent workflow to a file';

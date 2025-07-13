@@ -1,5 +1,5 @@
 import { Args, Command } from '@oclif/core';
-import { loadWorkflow } from '@smythos/sre/utils';
+import { loadWorkflow } from '@smythos/sdk/utils';
 import fs from 'fs';
 import path from 'path';
 
