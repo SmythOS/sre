@@ -122,6 +122,8 @@ const zeroDepConfig = {
         'constants',
         'assert',
         'process',
+        'cpu-features',
+        '../build/Release/cpufeatures.node',
     ],
     plugins: [
         deleteFolder('dist'),

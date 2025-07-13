@@ -1,5 +1,9 @@
 import { Args, Command } from '@oclif/core';
-import { loadWorkflow } from '@smythos/sdk/utils';
+import { Agent } from '@smythos/sdk';
+function loadWorkflow(filePath: string): Agent {
+    const data = fs.readFileSync(filePath, 'utf8');
+    return Agent.import(JSON.parse(data));
+}
 import fs from 'fs';
 import path from 'path';
 
