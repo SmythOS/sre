@@ -71,6 +71,8 @@ Check the [Examples](examples), [documentation](https://smythos.github.io/sre/sd
 
 **Note:** If you face an issue with the CLI or with your code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
 
+Additional instructions for enabling DebugLog output and configuring Docker-based code execution are available in the [configuration guide](packages/core/docs/configuration.md#debug-logging).
+
 ## Repository Structure
 
 This monorepo contains three main packages:
