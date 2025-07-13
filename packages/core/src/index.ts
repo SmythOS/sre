@@ -99,6 +99,7 @@ export * from './subsystems/AgentManager/AgentSSE.class';
 export * from './subsystems/AgentManager/EmbodimentSettings.class';
 export * from './subsystems/AgentManager/ForkedAgent.class';
 export * from './subsystems/AgentManager/OSResourceMonitor';
+export * from './subsystems/JobQueue.service';
 export * from './subsystems/LLMManager/custom-models';
 export * from './subsystems/LLMManager/LLM.helper';
 export * from './subsystems/LLMManager/LLM.inference';
