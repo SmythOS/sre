@@ -78,7 +78,7 @@ export class OpenAIConnector extends LLMConnector {
     private validImageMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.image;
     private validDocumentMimeTypes = SUPPORTED_MIME_TYPES_MAP.OpenAI.document;
 
-    private async getClient(params: ILLMRequestContext): Promise<OpenAI> {
+    protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
         const baseURL = params?.modelInfo?.baseURL;
 

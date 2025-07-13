@@ -65,6 +65,20 @@ app.post('/workflows/:name', (req, res) => {
   res.json({ saved: true });
 });
 
+app.post('/execute', async (req, res) => {
+  const { workflow, prompt } = req.body || {};
+  if (!workflow) return res.status(400).json({ error: 'workflow required' });
+
+  const agent = Agent.import(workflow);
+  try {
+    const result = await agent.prompt(prompt || '');
+    res.json(result);
+  } catch (err: any) {
+    console.error('Failed to execute workflow', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/run', async (req, res) => {
   const name = req.query.name as string;
   if (!name) return res.status(400).json({ error: 'name required' });
