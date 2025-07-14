@@ -4,9 +4,28 @@ This package exposes a lightweight Express server used by the SmythOS studio.
 
 ## Running
 
-Start the development server:
+### Environment Variables
+
+Before launching the server make sure the required API keys are available in the
+environment. At minimum you need an `OPENROUTER_API_KEY` so the runtime can make
+LLM requests. Workflows that use other connectors (for example Neon/PostgreSQL)
+require additional variables such as `NEON_HOST`, `NEON_USER`, `NEON_PASSWORD`
+and `NEON_DATABASE`.
+
+You can store these in a `.env` file:
 
 ```bash
+OPENROUTER_API_KEY=your-openrouter-key
+NEON_HOST=your-neon-host
+NEON_USER=your-neon-user
+NEON_PASSWORD=your-neon-password
+NEON_DATABASE=your-database
+```
+
+Export the variables before starting the server:
+
+```bash
+export $(grep -v '^#' .env | xargs)
 pnpm --filter @smythos/studio-server dev
 ```
 
