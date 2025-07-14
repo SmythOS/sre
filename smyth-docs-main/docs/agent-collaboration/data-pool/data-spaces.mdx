@@ -1,0 +1,115 @@
+---
+title: Data Spaces
+description: Data Spaces are named containers where you upload and index documents or URLs for agents to use as part of their memory.
+keywords: [data spaces, indexing, data upload, rag, document search, smythos agent memory, file knowledge base]
+sidebar_position: 2
+---
+
+# Data Spaces
+
+**Data Spaces** are named containers in the [Data Pool](/docs/agent-collaboration/data-pool) that hold files or URLs. These sources are indexed using vector embeddings so your agents can retrieve and use them through **retrieval-augmented generation (RAG)**.
+
+<InfoCallout title="What makes Data Spaces useful">
+Once indexed, your sources become part of your agent’s contextual knowledge. This allows agents to answer questions, summarise content, and reference details from those documents in real time.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How to Create a Data Space
+
+1. Open the **Data Pool** from the left navigation
+2. Click **Add Data Space**
+3. Enter a name and confirm
+
+<Image src="/docs/img/data_pool/data_spaces/create-data-space-popup.jpg" alt="Create Data Space modal" caption="Each Data Space represents a dedicated container of searchable documents." />
+
+<SuccessCallout title="Space created">
+The new space appears in your list. It will initially show **No data source** and **Not Indexed**.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## How to Add Sources
+
+Each Data Space can include one or more sources:
+
+1. Click the **Add Data Source** icon next to a space
+2. Enter a label
+3. Choose one of the following:
+   - Upload a file (`.pdf`, `.docx`, `.xml`)
+   - Add a URL or sitemap
+
+<Image src="/docs/img/data_pool/data_spaces/add-data-source-popup.jpg" alt="Add Data Source modal in SmythOS" caption="Files and links are transformed into searchable vector embeddings." />
+
+<TipCallout title="Label clearly for easier reference">
+Use titles like “2024 Pricing Guide” instead of generic names like “Document 1.”
+</TipCallout>
+
+<Spacer size="md" />
+
+## How Indexing Works
+
+Indexing starts automatically once a source is added. You can track progress in the **Indexing Status** column. Agents can only retrieve from sources marked **Indexed**.
+
+<InfoCallout title="Behind the scenes">
+Indexing turns your files into vector embeddings. These are stored in your default or [Custom Storage](/docs/agent-collaboration/data-pool/custom-storage) setup and made available to agents via semantic search.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Manage and Organize Spaces
+
+From the Data Pool overview:
+
+- Click a row to view or edit a Data Space
+- Add or remove sources at any time
+- Duplicate or delete a Data Space
+
+<WarningCallout title="Deleting a space is permanent">
+Removing a Data Space also deletes all its sources. Agents depending on this data will no longer have access to it.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Use Data Spaces in Agents
+
+To connect a Data Space to an agent:
+
+1. Open your [Project Space](/docs/agent-collaboration/spaces)
+2. Select or create an agent
+3. Attach one or more Data Spaces
+
+Once connected, the agent uses semantic retrieval to reference indexed content during execution.
+
+<SuccessCallout title="Instant RAG support">
+After attaching a space, your agent can immediately start pulling context from it in responses and workflows.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## FAQ
+
+### What types of sources are supported?
+
+You can upload `.pdf`, `.docx`, and `.xml` files, or add URLs and full sitemaps.
+
+### Can a single space contain both files and URLs?
+
+Yes. Data Spaces can mix multiple file types and links.
+
+### Is there a limit to how many sources I can add?
+
+There is no enforced limit. For better performance and organisation, group similar content across separate spaces.
+
+### What if indexing fails?
+
+Check file type and size. Retry if needed, or consider using [Custom Storage](/docs/agent-collaboration/data-pool/custom-storage) for more control.
+
+<Spacer size="md" />
+
+## What's Next?
+
+- [Explore the full Data Pool](/docs/agent-collaboration/data-pool)
+- [Use Custom Storage integrations](/docs/agent-collaboration/data-pool/custom-storage)
+- [Connect data to agents in Spaces](/docs/agent-collaboration/spaces)
+- [Track how agents use data in Analytics](/docs/agent-collaboration/analytics)

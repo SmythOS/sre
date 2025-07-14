@@ -1,0 +1,100 @@
+---
+title: Deployment
+description: Learn how the Smyth Runtime Environment starts up, initializes, and scales from development to production, including managed cloud options.
+keywords: [SmythOS, SRE, deployment, Agent Cloud, boot, initialization, scaling, production, development]
+sidebar_position: 5
+toc_max_heading_level: 2
+---
+
+# Deployment with SRE
+
+SRE supports a flexible deployment lifecycle, allowing you to move from local development to managed cloud or private infrastructure environments without rewriting your agent code.
+
+<InfoCallout title="What this covers">
+This page explains how SRE initializes, what deployment environments are available, and how each option supports your workflow.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How SRE Starts Up
+
+Each time SRE runs, it follows a consistent boot process. This process allows you to configure once and scale with confidence.
+
+The [architecture](/docs/agent-runtime/architecture) reference describes this process in detail.
+
+```typescript
+import { SRE } from 'smyth-runtime';
+
+const sre = SRE.init({
+  Storage: { Connector: 'S3', Settings: { bucket: 'my-bucket' } },
+  Cache: { Connector: 'Redis', Settings: { url: 'redis://prod-cluster' } },
+  Vault: { Connector: 'HashicorpVault', Settings: { url: 'https://vault.company.com' } },
+  LLM: { Connector: 'OpenAI', Settings: { apiKey: '...' } },
+});
+
+await sre.ready();
+```
+
+<Spacer size="md" />
+
+## Deployment Environments
+
+SRE is designed to be portable and flexible. You can deploy your agents in different environments, depending on your needs.
+
+| Mode             | Infrastructure         | Common Use Case                  | How to Access         |
+| :--------------- | :--------------------- | :------------------------------- | :-------------------- |
+| Agent Cloud      | SmythOS-managed        | Production, staging, MVPs        | Via [Studio](/docs/agent-studio/overview) |
+| Local Runtime    | Your own device        | Debugging, local development     | SDK or Docker         |
+| Self-Hosted      | Your infrastructure    | Enterprise, regulated workloads  | Custom deployment     |
+
+<Spacer size="md" />
+
+## Agent Cloud Deployment
+
+Agent Cloud is the fully-managed hosting service provided by SmythOS. It is the fastest path to a production-ready deployment.
+
+**Benefits include:**
+- Auto-scaling, production-grade infrastructure with HTTPS
+- No setup or maintenance required
+- Centralized logs and traces available in [Studio](/docs/agent-studio/overview)
+- Continuous deployment workflows from Studio
+
+**Deployment steps:**
+1. Open your agent in Studio.
+2. Click the Deploy button.
+3. Select the Agent Cloud target.
+4. Set your agent version and release notes.
+5. Click Deploy.
+
+<InfoCallout title="Use a custom subdomain">
+You can map your own subdomain to your Agent Cloud deployment through your account settings.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Local Development Setup
+
+Running SRE on your own machine is ideal for development, testing workflows, or working offline. The [Getting Started](/docs/agent-runtime/getting-started) guide walks you through this process.
+
+- Run code directly using the [SDK](/docs/agent-runtime/sdk-guide)
+- Use RAM for cache and Local for storage connectors
+- See immediate output in your local logs
+
+<Spacer size="md" />
+
+## Self-Hosted and Enterprise
+
+For complete control, run SRE on your own servers or cloud infrastructure. Configure it with production connectors for storage, secrets, logging, and compute. This approach fits organizations with enterprise or regulatory requirements.
+
+<InfoCallout title="Need help with this setup?">
+Contact [support@smythos.com](mailto:support@smythos.com) for enterprise deployment guidance or advanced configuration support.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Continue from here
+
+- [Agent Architecture](/docs/agent-runtime/architecture)
+- [Runtime SDK Guide](/docs/agent-runtime/sdk-guide)
+- [Studio Agent Builder](/docs/agent-studio/overview)
+- [Building Agents](/docs/agent-runtime/building-agents)

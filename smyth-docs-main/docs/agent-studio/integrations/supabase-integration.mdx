@@ -1,0 +1,358 @@
+---
+title: Supabase Integration
+description: Connect SmythOS to Supabase to interact with your PostgreSQL database, manage data, and build powerful backends directly from your agent workflows.
+og:title: SmythOS & Supabase - Automate Your Open Source Backend
+og:description: Learn to integrate Supabase with SmythOS. Empower your agents to insert, read, update, and delete rows in your database, connecting your application data to any automation.
+og:image: /docs/img/integrations/smythos_supabase.png
+tags: [database, serverless, postgres, backend]
+keywords: [Supabase SmythOS Integration, Connect Supabase to SmythOS, SmythOS Supabase, Automate Database, PostgreSQL API, No-Code Backend, Firebase Alternative]
+---
+# Supabase Integration with SmythOS
+
+> **Need a powerful, open-source backend for your agents?** Connect Supabase to SmythOS and empower your agents to directly read from and write to your PostgreSQL database with ease.
+
+<InfoCallout title="TL;DR">
+Securely link your Supabase project to SmythOS using your project's URL and a secure service_role key. Then, use our suite of components to give your agents full CRUD (Create, Read, Update, Delete) capabilities for your database tables.
+</InfoCallout>
+
+## List of Supabase Components
+Quickly compare Supabase components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Insert Row**](#insert-row) | Write | Inserts a single new row into a table. | <Badge type="required" /> `project_id`, `table`, `Body` | `id` | Saving a new user profile to a 'users' table. |
+| [**Insert Multiple Rows**](#insert-multiple-rows) | Write | Inserts a batch of new rows into a table at once. | <Badge type="required" /> `project_id`, `table`, `Body` | `rows` | Performing a bulk import of product data. |
+| [**Read Rows**](#read-rows) | Read | Retrieves rows from a table, with optional filters. | <Badge type="required" /> `project_id`, `table` | `rows` | Fetching all tasks from a 'todos' table. |
+| [**Get Row**](#get-row) | Read | Retrieves a single row from a table by its ID. | <Badge type="required" /> `project_id`, `table`, `id`| `id` | Fetching a specific user's record. |
+| [**Update Row**](#update-row) | Write | Updates specific fields in an existing row. | <Badge type="required" /> `project_id`, `table`, `id`, `Body` | `id` | Changing a user's subscription status. |
+| [**Delete Row**](#delete-row) | Write | Permanently deletes a row from a table by its ID. | <Badge type="required" /> `project_id`, `table`, `id` | `Response` | Removing user data upon account closure. |
+| [**List Projects**](#list-projects) | Read | Retrieves a list of all your Supabase projects. | <Badge type="required" /> `trigger` | `projects` | Finding the correct `project_id` for other operations. |
+| [**Get Columns**](#get-columns) | Read | Retrieves the schema (all columns) for a specific table. | <Badge type="required" /> `project_id`, `table` | `columns` | Verifying a table's structure before inserting data. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Supabase with Your Agent?</summary>
+
+Supabase provides the power of a PostgreSQL database with the convenience of a modern, developer-friendly interface. Integrating it with SmythOS allows your agents to have a robust, scalable, and persistent memory.
+
+- **Automate Data Management:** Create agents that can automatically save, retrieve, and manage data in a structured SQL database. Log application events, store user preferences, or manage content for a CMS, all programmatically.
+- **Build Application Backends:** Use SmythOS agents as a serverless backend for your applications. An agent can handle API requests, process data, and interact with your Supabase database, all in one workflow.
+- **Create a "Memory" for Your Agents:** Allow agents to remember information and context across different sessions and executions by storing state in a Supabase table.
+- **Data-Driven Workflows:** Trigger agents based on database changes (using Supabase Functions and webhooks) or have agents make complex decisions based on the relational data they retrieve from your database.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Supabase account** with a project created.
+- Your Supabase Project's **URL** and **`service_role` secret key**.
+
+<Divider />
+
+## Getting Started With Supabase
+
+The connection between SmythOS and Supabase is configured using your Project URL and a secure API key.
+
+### Step 1: Get Your Supabase Credentials
+1.  Log in to your [Supabase Dashboard](https://supabase.com/dashboard/).
+2.  Select the project you want to connect to.
+3.  In the left menu, navigate to **Project Settings** (the gear icon).
+4.  Click on the **API** tab.
+5.  On this page, you will find your Project **URL** and your project API keys.
+6.  **Copy the Project URL.**
+7.  Under "Project API keys," find the **`service_role`** secret key and click "reveal" to see the full key. **Copy this key.**
+
+### Step 2: Store Your Credentials in SmythOS Vault
+Your `service_role` key grants full access to your database, bypassing any Row Level Security policies. It is a highly sensitive credential.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create new secrets for your Supabase URL and your `service_role` key. Give them memorable names, like `supabase_project_url` and `supabase_service_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Supabase Component
+1.  In your SmythOS agent graph, drag and drop any Supabase component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` (for the Project URL) and `Role Secret` (for the service_role key) fields, select the corresponding secrets you saved in the Vault.
+4.  Your connection is now configured. You will provide the `project_id` (the reference ID from your URL) as a standard input.
+
+<InfoCallout title="Heads-up">You must add the API Key and Role Secret from the Vault to **each** Supabase component you use. This ensures all your API calls are properly authenticated with the correct permissions.</InfoCallout>
+<Divider />
+
+## Which Supabase Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new user record** to a `users` table | A table name and data | [Insert Row](#insert-row) | The standard method for creating a single new record in your database. |
+| **Import multiple records** at once | A table name and an array of data | [Insert Multiple Rows](#insert-multiple-rows) | More efficient for bulk inserts than calling "Insert Row" in a loop. |
+| **Get all records** from a `products` table | A table name | [Read Rows](#read-rows) | Retrieves multiple rows at once, perfect for fetching entire datasets. |
+| **Change a user's email address** | A specific row `id` | [Update Row](#update-row) | Modifies the fields of an existing record without overwriting the entire row. |
+| **Permanently remove** a user's data | A specific row `id` | [Delete Row](#delete-row) | The standard way to delete a record from a table. |
+| **Verify your connection** and find your Project ID | Your Supabase account | [List Projects](#list-projects)| A simple way to get a list of all your projects and their reference IDs. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Supabase component.
+
+### <a name="list-projects"></a>List Projects
+Retrieve a list of all Supabase projects associated with your account.
+
+<InfoCallout>This component requires your main Supabase `API Key` (Access Token) for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value can be used to trigger the component's execution. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `projects`| array | An array of project objects, each containing details like name, ID, and region. |
+| `Response`| object | The full, raw JSON response from the Supabase Management API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+This is an excellent first step to verify your connection and to programmatically find the `project_id` (reference ID) for a specific project that you need to use in other components.
+</TipCallout>
+
+<Divider/>
+
+### <a name="insert-row"></a>Insert Row
+Inserts a single new row into a specified table.
+
+<InfoCallout>This component requires your Project URL and a `service_role` key for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body / Table Row:** A JSON editor where you define the data for the new row as a single JSON object.
+- **Prefer:** Controls the response. `return=representation` returns the full created row.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project (from the URL). |
+| `table` | string | Yes | The name of the table to insert data into. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The `id` of the newly created row (if returned). |
+| `Response`| object | The full, raw JSON response from the Supabase API. |
+
+<TipCallout title="Use Case">
+An agent processes a new user sign-up. It takes the user's email and name and uses this component to insert a new record into the `profiles` table.
+</TipCallout>
+
+```json
+{
+  "component": "supabase.insertRow",
+  "project_id": "your-project-ref-id",
+  "table": "profiles",
+  "Body": {
+    "email": "new.user@example.com",
+    "full_name": "Jane Doe"
+  }
+}
+```
+
+<WarningCallout title="Data Structure">
+The `Body` must be a valid JSON object where keys match the column names in your Supabase table.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="delete-row"></a>Delete Row
+Permanently deletes one or more rows that match a query.
+
+<InfoCallout>This component requires your Project URL and a `service_role` key for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project. |
+| `table` | string | Yes | The name of the table to delete from. |
+| `id` | string | Yes | The filter to identify the row(s) to delete (e.g., `eq.123` to delete the row where id equals 123). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the deleted row, if one was returned. |
+| `Response`| object | A successful deletion typically returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a user deletes their account, an agent uses this component with the filter `id=eq.{user_id}` to permanently remove their data from the `profiles` table.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone. Be very careful with your filters. Deleting without a filter can wipe an entire table.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-columns"></a>Get Columns
+Retrieves the schema (all columns and their types) for a specific table.
+
+<InfoCallout>This component requires your Project URL and an `anon` or `service_role` key for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project. |
+| `table` | string | Yes | The name of the table whose schema you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `columns` | object | An object containing the collection of columns and their definitions. |
+| `Response`| object | The raw JSON response from the API, which contains the schema details. |
+
+<TipCallout title="Use Case">
+Before inserting data, an agent can use this component to programmatically check the table's schema to ensure the data it has is valid and matches the required column names and types.
+</TipCallout>
+### <a name="get-row"></a>Get Row
+Retrieve a single row from a Supabase table by its ID.
+
+<InfoCallout>This component requires your Project URL and an `anon` or `service_role` key for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project. |
+| `table` | string | Yes | The name of the table to read from. |
+| `id` | string | Yes | The ID of the specific row you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The `id` of the retrieved row. |
+| `Response`| object | The raw JSON response from the API, containing the full row data in an array. |
+
+<TipCallout title="Use Case">
+A support agent needs to look up a user's details. It takes the user's ID, passes it to this component, and retrieves their full profile record from the `profiles` table.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-row"></a>Update Row
+Updates specific fields in one or more existing rows that match a query.
+
+<InfoCallout>This component requires your Project URL and a `service_role` key for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the new values for the columns you want to change (e.g., `{"status": "shipped"}`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project. |
+| `table` | string | Yes | The name of the table to update. |
+| `id` | string | Yes | The filter to identify the row(s) to update (e.g., `eq.123` to update the row where id equals 123). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The `id` of the updated row, if a single row was updated and `return=representation` was set. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When an e-commerce order is shipped, an agent uses this component to find the order in the `orders` table (using `id=eq.{order_id}`) and updates its `status` field to "Shipped".
+</TipCallout>
+
+<Divider/>
+
+### <a name="read-rows"></a>Read Rows
+Retrieves multiple rows from a specific table in your Supabase project.
+
+<InfoCallout>This component requires your Project URL and an `anon` or `service_role` key for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your specific Supabase project identifier. |
+| `table` | string | Yes | The name of the Supabase table from which to retrieve rows. |
+| `select` | string | Optional| Comma-separated columns to return, e.g., `id,name,email`. Defaults to `*`. |
+| `[column_filter]`| string| Optional | Add inputs to filter by column using PostgREST syntax (e.g., `status=eq.active`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `rows` | array | The data retrieved from the Supabase table, structured as an array of row objects. |
+| `Response`| object | The complete API response from Supabase. |
+
+<TipCallout title="Use Case">
+An agent generates a daily report by calling this component on a `sales` table, filtering for all records created in the last 24 hours.
+</TipCallout>
+
+<Divider/>
+
+### <a name="insert-multiple-rows"></a>Insert Multiple Rows
+Inserts a batch of new rows into a specified table in a single API call.
+
+<InfoCallout>This component requires your Project URL and a `service_role` key for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the data for the new rows as an **array of JSON objects**.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | The reference ID of your Supabase project. |
+| `table` | string | Yes | The name of the table to insert data into. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `rows` | array | An array of the newly created row objects, if `return=representation` is used. |
+| `Response`| object | The full, raw JSON response from the Supabase API. |
+
+<TipCallout title="Use Case">
+An agent reads a CSV file containing 100 new leads, converts it to a JSON array, and uses this component to insert all 100 leads into the `contacts` table in one efficient operation.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Service Key:** Your `service_role` key can bypass all database security policies. **Never** expose it publicly. Always store it in the SmythOS `Vault`. For read-only operations, consider creating and using the `anon` key if your security rules allow it.
+* **Use Row Level Security (RLS):** For any production application, enable Row Level Security on your Supabase tables. This provides a critical layer of security, even if your `service_role` key were to be compromised.
+* **Master PostgREST Filtering:** The power of Supabase's API comes from its PostgREST filtering capabilities. Learn the operators (`eq`, `gt`, `lt`, `like`, `in`, etc.) to build precise queries directly in your component inputs for components like `Read Rows`, `Update Row`, and `Delete Row`.
+* **Create Database Functions:** For complex, multi-step database operations (like "increment a value by 10"), create a PostgreSQL function inside your Supabase project. You can then call this single function from your agent, which is more efficient and secure than making multiple API calls.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key (`anon` or `service_role` key) is incorrect or missing from the request headers.
+  * **Solution:** Verify that the keys in your SmythOS Vault are correct and match those in your Supabase project's API settings. Ensure they are correctly selected in the component settings.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `project_id` is incorrect, or the `table` name does not exist.
+  * **Solution:** Double-check your project reference ID and the table name for typos. Ensure you are targeting the correct project.
+
+* **Write Operation Fails (Insert/Update/Delete)**
+  * **Cause:** This is often due to a database constraint violation. For example, trying to insert a row with a `user_email` that is marked as `UNIQUE` but already exists, or trying to insert a `null` value into a `NOT NULL` column.
+  * **Solution:** Check the `Response` output for the detailed error message from PostgreSQL. This will usually tell you exactly which constraint was violated. Ensure the data in your `Body` matches your table's schema.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful, data-driven applications with the **SmythOS Supabase Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a complete serverless backend for a user registration system. It uses the [Firebase Auth Integration](/docs/agent-studio/integrations/firebase-integration) for authentication, and then `Insert Row` to save new user profiles to your Supabase `profiles` table.
+    * Creates a logging service. After any critical action (like sending an email with [Resend](/docs/agent-studio/integrations/resend-integration) or processing a payment with [Stripe](/docs/agent-studio/integrations/stripe-integration)), an agent inserts a log record into a `logs` table in Supabase.
+    * Powers a dynamic website. An agent uses `Read Rows` to fetch content (like blog posts or product listings) from your Supabase database and provides it to a frontend framework.
+
+* **Explore Other Integrations:**
+    * Use Supabase as the source of truth for a marketing campaign. An agent can `Read Rows` to get a list of customer emails, then pass them to the [Mailchimp Integration](/docs/agent-studio/integrations/mailchimp-integration) to add them to a new campaign.
+    * When a new record is added to a Supabase table (detected via a webhook), trigger an agent to send a notification to a [Slack](/docs/agent-studio/integrations/slack-integration) channel.

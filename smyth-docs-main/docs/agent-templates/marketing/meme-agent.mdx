@@ -1,0 +1,449 @@
+---
+description: A comprehensive tutorial on creating a Meme Agent in SmythOS.
+---
+# Tutorial: Create a Meme Generator Agent
+
+<Youtube videoId="ClvdsDXI-PI" title="SmythOS - Meme Generator Agent" />
+
+## Introduction
+
+Before delving into the specifics of workflow components, we highly recommend taking a look at this [workflows](/docs/agent-studio/build-agents/building-workflows). This visual guide will help you gain a foundational understanding of the basic behaviors and functionalities of the components within a workflow.
+
+## Settings
+
+> **Note:** The `Meme Generator` agent is available as a template, allowing you to use it for experimentation and exploration of its functionality and structure. 
+
+<Image
+  src="/docs/img/meme_agent//agentTemplate.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+Before diving into the creation process, it's crucial to configure two essential settings for our meme generator agent. These settings involve assigning a name and a description, which will define the agent's identity and purpose.
+
+For this tutorial, we will use the following configurations:
+
+- **Name:** `Meme Maker`
+- **Description:** `Make memes based on the free IMGflip API`
+
+<Image
+  src="/docs/img/meme_agent//agentSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+## Setting Up Components
+
+### Make Meme - API Endpoint
+
+We begin our setup with the **API endpoint**, a key component that serves as a conduit for our agent to interact with the external world.
+
+#### Settings
+
+- **Name:** *make_meme*
+- **Description:** >*This endpoint makes a series of meme jokes. Based on a user input, we'll create a hilariously funny meme. We will select one or more  meme images that fits the topic and for each image, create captions for it in JSON format. The JSON contains multiple memes. For each meme, call draw_meme. If there are multiple jokes, call the draw_meme once for each joke*
+
+This setup ensures our agent effectively utilizes this endpoint to generate memes tailored to user inputs. The `draw_meme` endpoint will be elaborated on subsequently.
+
+<Image
+  src="/docs/img/meme_agent//makeMemeSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Inputs
+
+We require two inputs:
+- **Name:** *meme_concept* - The main idea for the meme.
+- **Name:** *humor_type* - An optional input to specify the humor style.
+
+<Image
+  src="/docs/img/meme_agent//makeMemeInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Outputs
+
+For outputs, we set up to retrieve our inputs:
+- **Name:** *body.meme_concept*
+- **Name:** *body.humor_type*
+
+<Image
+  src="/docs/img/meme_agent//makeMemeOutputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+### Meme Database - LLM Prompt
+
+The next critical component in our setup is the **meme database**. To facilitate the creation of memes, we'll be utilizing an external service that provides a limited selection of meme templates. Selecting the appropriate template for the user's meme concept requires access to specific information about each template. There are a few methods to accomplish this:
+
+- We could use an **API endpoint** to retrieve a complete list of meme templates.
+- Alternatively, a **Data Lookup component** could serve as a data source for these templates.
+
+However, for this tutorial, we'll explore a different approach that not only addresses our current needs but also offers flexibility for similar challenges in the future.
+
+We will employ an **LLM (Large Language Model) prompt component**, not for generating content, but to simply reflect our query using the **Echo mode**. This involves populating the prompt with a detailed list of meme templates, ensuring we have all the necessary information to match templates with the user's concept.
+
+#### Settings
+Below is the list of meme templates, including the template ID, name, and the number of text boxes required, this list needs to be placed in the **Prompt** field of the **LLM prompt** component:
+
+- **Model:** *Echo*
+- **Prompt:**
+
+>- **181913649**, Drake Hotline Bling, 2
+>- **87743020**, Two Buttons, 3
+>- **112126428**, Distracted Boyfriend, 3
+>- **217743513**, UNO Draw 25 Cards, 2
+>- **131087935**, Running Away Balloon, 5
+>- [... Additional template entries ...]
+>- **137501417**, Friendship ended, 2
+>- **342785297**, Gus Fring we are not the same, 3
+>- **61532**, The Most Interesting Man In The World, 2
+>- **427308417**, 0 days without (Lenny, Simpsons), 2
+>- **132769734**, Hard To Swallow Pills, 2
+>- [... Remaining template entries ...]
+
+[Here](https://docs.google.com/document/d/16qtygBQrfeDuELKcf9r7ruLdmki8Ji_37ZTgtxWSbf4/edit?usp=sharing) you can find the complete list of meme templates.
+
+This list can be obtained from the meme creation service. While this solution requires maintenance to accommodate changes in template IDs or other details, it illustrates the variety of approaches available for a single purpose.
+
+<Image
+  src="/docs/img/meme_agent//memeDatabaseSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+### Choose Image - LLM Prompt
+
+With the user's meme concept and a list of meme templates at hand, the next step is to select the most suitable meme templates. This selection process is accomplished using an LLM prompt component, which intelligently matches templates to the concept.
+
+#### Settings
+
+This **LLM prompt** is designed to filter and choose meme templates that align closely with the provided meme concept. The prompt is structured as follows:
+
+- **Prompt:** >*Pick a few memes from my meme database that would fit the meme concept about {`{{meme_concept}}`} and return id, name and box_count. Only pick memes that have box_count of 1 or 2. meme database: {`{{meme_database}}`}*
+
+This prompt is tasked with selecting templates that most accurately represent the meme concept. It evaluates the templates based on their suitability and returns the `id`, `name`, and `box_count` of those selected. And it only will select templates that has a `box_count` of 1 or 2. This is because templates with more than two `box_count`, are not included in the free plan.
+
+<Image
+  src="/docs/img/meme_agent//chooseImageSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Inputs
+
+The successful operation of this component hinges on two primary inputs:
+
+- **Name:** *meme_concept* - Captures the central theme or idea for the meme.
+- **Name:** *meme_database* - Contains the list of meme templates for selection.
+
+<Image
+  src="/docs/img/meme_agent//chooseImageInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Outputs
+
+The output is straightforward and utilizes the standard `Reply` output mechanism to convey the chosen templates.
+
+### Write Meme - LLM Prompt
+
+This component is designed to generate entertaining and humorous jokes based on a variety of factors. It utilizes selected meme templates as a foundation, allowing for a wide range of creative possibilities. Each meme template is chosen to match the specific meme concept that you're aiming to convey, ensuring that the humor is tailored to your desired theme.
+
+#### Settings
+
+- **Prompt:** > *I'm on Reddit and need to make a ridiculously funny {`{{humor_type}}`} meme to stand out. This is extremely important to my mental health. Here is the meme assignment they've given me.*
+>
+> *I am allowed to work with the following memes:*
+> *{`{{meme_database}}`}*
+>
+> *The id is something to remember, the name is the type of meme image you have to work with, and the box count is the number of text boxes you can generate text for.*
+>
+> *Here is my topic I'm creating a meme about:* > *{`{{meme_concept}}`}*
+>
+> *Take a deep breath and think step by step:*
+>
+> 1. *First, think about this scenario.*
+>    *Would this suit satire, humor, or irony?*
+>    *What type of comedy humor would work best for this topic?*
+>
+> 2. *Then, brainstorm at least 10 meme concepts. Use the images I'm allowed to work with, and ensure you only generate as many lines as would fit in the box_count. For example, if box count is 2, then you would have to fit the entire meme joke in two text captions. IT IS CRITICAL THAT EACH JOKE HAS TEXT IN EACH BOX. FORMAT: text on images often can't be long, keep the text per caption short to fit in the meme.*
+>
+> 3. *Then, critically evaluate them.* >    *Emotion: Content that evokes strong emotions, such as laughter, awe, or shock, is more likely to be shared.*
+>    *Relevance: Content that is relevant to the audience's interests or current events is more likely to be shared.*
+>    *Timing: Timing is critical in making something go viral.*
+>    *Relatability: Memes that reference popular culture, events, or trends that are relevant to people tend to be more successful.*
+>    *Funny: How funny is the concept?*
+>    *Complete: Did the joke fill all content boxes?*
+>
+> 4. *Finally, decide on the funniest concepts only, and return the funniest concepts, maximum 3 funniest concept. What is your final answer?*
+>
+> 5. *As a last step, return your output in this format. The id needs to match the id from the meme database you've selected, and add one line of text per box_count for that meme. So if you have two caption lines, then you'd have text0 and another text1. If box_count is 5, you would have text0, text1, text2, text3, text4 - and so on. ENSURE YOU FOLLOW THE FOLLOWING STRUCTURE*
+>
+> *For example:*
+```json
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}",
+  "text1": "{{caption2}}"
+
+},
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}"
+},
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}",
+  "text1": "{{caption2}}",
+  "text2": "{{caption3}}"
+}
+```
+
+The creation of jokes presents a unique challenge, as humor is inherently human and nuanced. To effectively generate jokes, advanced prompt engineering techniques are essential.
+
+We will methodically break down this intricate prompt, step by step, to better understand and execute it effectively. 
+
+> *I'm on Reddit and need to make a ridiculously funny {`{{humor_type}}`} meme to stand out. This is extremely important to my mental health. Here is the meme assignment they've given me.*
+>
+> *I am allowed to work with the following memes:*
+> *{`{{meme_database}}`}*
+>
+> *The id is something to remember, the name is the type of meme image you have to work with, and the box count is the number of text boxes you can generate text for.*
+>
+> *Here is my topic I'm creating a meme about:* > *{`{{meme_concept}}`}*
+
+In the section above, we outline the necessary inputs and confirm that the agent adheres strictly to the given instructions. Phrases such as *This is extremely important to my mental health* serve as key prompt techniques designed to emphasize the importance of the instructions, ensuring the agent's compliance.
+
+---
+
+> *Take a deep breath and think step by step:*
+>
+> 1. *First, think about this scenario.*
+>    *Would this suit satire, humor, or irony?*
+>    *What type of comedy humor would work best for this topic?*
+
+The phrase *Take a deep breath* is a strategic prompt technique employed to enhance the quality of the results. It sets the stage for the first step, where the agent is encouraged to carefully consider the given questions and reflect on them before producing any output. This approach promotes thoughtful and thorough processing.
+
+---
+
+> 2. *Then, brainstorm at least 10 meme concepts. Use the images I'm allowed to work with, and ensure you only generate as many lines as would fit in the box_count. For example, if box count is 2, then you would have to fit the entire meme joke in two text captions. IT IS CRITICAL THAT EACH JOKE HAS TEXT IN EACH BOX. FORMAT: text on images often can't be long, keep the text per caption short to fit in the meme.*
+
+In the second step, we instruct the agent to *brainstorm at least 10 meme concepts*. By specifying the number of concepts, we ensure that the agent dedicates sufficient time to generate a diverse range of ideas. The instruction *IT IS CRITICAL THAT EACH JOKE HAS TEXT IN EACH BOX* is emphasized in uppercase to underline its importance, ensuring that each part of the meme contains text. Following this step, the agent will have developed text for the memes, tailored to the chosen templates.
+
+---
+
+> 3. *Then, critically evaluate them.* >    *Emotion: Content that evokes strong emotions, such as laughter, awe, or shock, is more likely to be shared.*
+>    *Relevance: Content that is relevant to the audience's interests or current events is more likely to be shared.*
+>    *Timing: Timing is critical in making something go viral.*
+>    *Relatability: Memes that reference popular culture, events, or trends that are relevant to people tend to be more successful.*
+>    *Funny: How funny is the concept?*
+>    *Complete: Did the joke fill all content boxes?*
+
+Step 3 is a refinement phase where we provide key guidelines to the agent for creating effective memes. This step is crucial for enhancing the quality of the results.
+
+---
+
+> 4. *Finally, decide on the funniest concepts only, and return the funniest concepts, maximum 3 funniest concept. What is your final answer?*
+
+In Step 4, the task is to select only the most humorous concepts.
+
+---
+
+> 5. *As a last step, return your output in this format. The id needs to match the id from the meme database you've selected, and add one line of text per box_count for that meme. So if you have two caption lines, then you'd have text0 and another text1. If box_count is 5, you would have text0, text1, text2, text3, text4 - and so on. ENSURE YOU FOLLOW THE FOLLOWING STRUCTURE*
+>
+> *For example:*
+```json
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}",
+  "text1": "{{caption2}}"
+
+},
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}"
+},
+{
+  "template_id": "{{id}}",
+  "text0": "{{caption1}}",
+  "text1": "{{caption2}}",
+  "text2": "{{caption3}}"
+}
+```
+
+In the final step of this prompt, we simply request the formatting of the results to conform to the accepted format required by the service used for creating the memes.
+
+<Image
+  src="/docs/img/meme_agent//writeMemeSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Inputs
+
+As indicated in the above prompt, the following inputs are required:
+
+- **Name:** *meme_concept* - Captures the central theme or idea for the meme.
+- **Name:** *meme_database* - Contains the list of meme templates for selection.
+- **Name:** *humor_type* - This is optional.
+
+<Image
+  src="/docs/img/meme_agent//writeMemeInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Outputs
+
+The output process is direct and employs the standard `Reply` output to present the selected templates. Consequently, this component generates a list of memes in JSON format, prepared for visualization.
+
+### Draw Meme - API Endpoint
+
+The previously mentioned component plays a critical role in generating multiple jokes, each formatted in JSON. This format includes essential details like the text for the jokes and the selected template ID. Following this, the `draw_meme` endpoint is tasked with a specific and crucial function: to be executed for each individual joke generated by the previous component.
+
+#### Settings 
+
+- **Name:** *draw_meme*
+- **Prompt:** >*Generates a meme from template_id and texts. When you show images, link them to the image URL, in a new browser tab.*
+
+In the description we are defining that this endpoint as to be used to draw the memes and present them in a clickable image.
+
+<Image
+  src="/docs/img/meme_agent//drawMemeSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Inputs
+
+To achieve this, the `draw_meme` endpoint requires specific inputs:
+
+- **Name:** *template_id*
+  - **Description:** *the template_id of the meme*
+
+- **Name:** *text0*
+- **Name:** *text1*
+
+Each joke comes with an associated template ID, which is essential for the meme creation process. The `template_id` input in the `draw_meme` endpoint ensures that each joke is matched with the correct visual template, maintaining the coherence and appeal of the meme.
+
+Text0 and Text1, these inputs are designed to receive the text content of the jokes. `text0` is the primary textbox, which is always used. `text1`, however, is optional. This flexibility accommodates different meme templates, as some may require only one textbox while others might need two. By structuring the inputs this way, the endpoint is versatile enough to handle a variety of template formats.
+
+<Image
+  src="/docs/img/meme_agent//drawMemeInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Outputs
+
+For outputs, we set up to retrieve our inputs:
+- **Name:** *body.template_id*
+- **Name:** *body.text0*
+- **Name:** *body.text1*
+
+
+<Image
+  src="/docs/img/meme_agent//drawMemeOutputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+### Draw Meme - API Call
+
+Next, we have the **API call** component, which creates the meme image based on the information provided. For more details on the services offered by **imgflip**, you can refer to the documentation on its official website.
+
+#### Settings
+
+- **Method:** `POST`
+- **URL:** `https://api.imgflip.com/caption_image`
+- **Content Type:** `application/x-www-form-urlencoded`
+- **Body:**
+```json
+{
+  "username": "username",
+  "password": "password",
+  "template_id": "{{template_id}}",
+  "text0": "{{text0}}",
+  "text1": "{{text1}}"
+}
+```
+
+<Image
+  src="/docs/img/meme_agent//apiCallSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Inputs
+
+The API call component requires specific inputs:
+
+- **Name:** *template_id*
+- **Name:** *text0*
+- **Name:** *text1*
+
+We need to establish inputs that mirror those required by the `draw_meme` endpoint.
+
+<Image
+  src="/docs/img/meme_agent//apiCallInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Outputs
+
+We will focus on setting up the output to capture the essential information from the API response. In this case the URL of the generated image:
+
+- **Name:** *Response.data.url*
+
+That output will isolate the value of the URL of the generated image.
+
+<Image
+  src="/docs/img/meme_agent//apiCallOutputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+### Filter Response - API Output
+
+AS we say previously, we have all the information we need in the Response of the API Call component. But the only information we need is the URL of the generated image. We will use the API Output component to filter the response. This component just mirror the inputs in the output in a JSON format. For our case we just need to create one input for the URL of the generated image.
+
+#### Inputs
+
+- **Name:** *image_url*
+
+#### Outputs
+
+In its default configuration, the output of this component is focused solely on the URL of the generated meme image. This narrow focus is incredibly useful in enhancing the efficiency of our agent. By ensuring that the agent only receives the URL, we eliminate any potential distractions or complications that might arise from handling additional, unnecessary data.
+
+This approach to filtering the response is key to refining the agent's answers. It keeps the agent streamlined and focused on the relevant data, avoiding the clutter of extraneous information. Ultimately, this leads to a more precise and user-friendly experience, as the agent can quickly and easily provide the direct link to the generated meme, which is the core outcome of the meme creation process.
+
+In conclusion, the steps outlined above effectively demonstrate how to develop a meme generator agent. For a comprehensive assessment of its functionality, users are encouraged to utilize Debug mode or interact with the agent via the chatbot interface. This approach offers a practical and user-friendly way to verify and enjoy the capabilities of the meme generator.
+
+<Image
+  src="/docs/img/meme_agent//apiOutputInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>

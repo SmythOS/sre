@@ -1,0 +1,136 @@
+---
+title: Debugging Guide
+description: Use SmythOS debugging tools to inspect workflows, test components, and optimize agent performance.
+keywords: [debugging, testing, form preview, inspect panel, error handling, logs]
+sidebar_position: 3
+---
+
+# Debugging Guide
+
+SmythOS offers a complete set of debugging tools to help you test workflows, inspect component behavior, and catch issues before deployment. This guide walks through each tool and shows how to use them effectively.
+
+<Spacer size="md" />
+
+## Debug Toolbar
+
+The debug toolbar allows you to activate component-level debugging during development. Once enabled, you can step through components, inspect their state, and monitor execution in real time.
+
+<Arcade src="https://demo.arcade.software/WUoSyQG5iZJ8rSwgUfYL?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Debug Bar | SmythOS" />
+
+### Controls
+
+- **Debug Mode**: Enables inspection for all components.
+- **Step**: Executes the selected component once.
+- **Run/Pause**: Starts or pauses the workflow.
+- **Stop**: Terminates the session.
+- **Attach**: Links to an external debug request sent into the system.
+
+If a session becomes unresponsive, refresh the page to reset the environment.
+
+### Inspecting a Component
+
+Once debugging is active:
+
+1. Select a component
+2. Hover to see input/output values, current state, and execution status
+3. Review detailed logs in the component panel
+
+<Spacer size="md" />
+
+## Testing with Form Preview
+
+Use Form Preview to run full workflows from a UI-based form, directly inside the builder.
+
+<Arcade src="https://demo.arcade.software/W4WLnpjktNZHWCZ2eNc5?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Form Preview | SmythOS" />
+
+### How It Works
+
+- Every agent skill is exposed as an API endpoint through the Agent Skill component.
+- Clicking the Form Preview button auto-generates a form with required input fields.
+- Default values are pre-filled, which you can modify.
+- Clicking "Run" executes the entire workflow.
+
+This lets you validate inputs, debug logic, and verify outputs before deployment.
+
+<InfoCallout title="Tip">
+Use Form Preview to test workflows without writing any API calls.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Inspect Panel
+
+The Inspect panel offers structured visibility into agent execution. Access it from the **Inspect** button at the bottom of the builder interface.
+
+<Arcade src="https://demo.arcade.software/HnylgpsxgIbl0a4OeXKy?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="SmythOS | Inspect" />
+
+### Tabs
+
+#### Logs
+
+- View a detailed log stream for each component
+- Track inputs, outputs, errors, and timestamps
+- Understand the full execution path
+
+#### Network
+
+- Timeline view of each component’s runtime
+- Identify performance bottlenecks and slow steps
+- View credits consumed by cost-based components like WebSearch or NodeJS
+- Click to highlight that component in the canvas
+
+#### Source
+
+- See the full JSON representation of the current agent
+- Includes component configs, inputs, outputs, globals, and metadata
+
+<InfoCallout title="Tip">
+Use the Network tab to visually trace workflow execution and locate performance issues.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Error Handling
+
+Use the reserved `_error` output to capture execution failures from any component.
+
+```json
+{
+  "message": "Error description",
+  "code": "ERROR_CODE",
+  "details": {
+    "component": "ComponentName",
+    "timestamp": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+### Configuration
+
+- Must be manually added to components
+- Captures failure metadata
+- Works system-wide or per component
+
+<Arcade src="https://demo.arcade.software/35JnDtVi1ZSrmbRVe2BU?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="_error Output | SmythOS" />
+
+### Workflow Optimization
+
+- Use the Network tab to analyze execution duration for each component
+- Identify and fix slow or high-cost operations
+- Use cache layers for repeated computations or data access
+- Track credit usage for LLM and API components during testing
+
+<Spacer size="md" />
+
+## What's Next?
+
+- [Deployment Guide](/docs/agent-deployments/overview)
+- [Logs Explorer](/docs/agent-studio/manage-agents/logs)
+- [API Call Component](/docs/agent-studio/components/advanced/api-call)
+- [Mock Data Setup](/docs/agent-studio/components/advanced/api-call#step-5-enable-mock-mode)
+
+<Spacer size="md" />
+
+<InfoCallout title="Need Help?">
+If you encounter persistent debugging issues, review logs, inspect input/output mismatches, and reach out via [Support Chat](https://app.smythos.com/support) for direct assistance.
+</InfoCallout>

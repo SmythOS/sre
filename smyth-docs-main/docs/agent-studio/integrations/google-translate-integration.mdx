@@ -1,0 +1,226 @@
+---
+title: Google Translate Integration
+description: Connect SmythOS to Google Translate to detect languages and translate text automatically within your agent workflows.
+og:title: SmythOS & Google Translate - Automate Global Communication
+og:description: Learn to integrate Google Translate with SmythOS. Empower your agents to understand and communicate in multiple languages, breaking down barriers in your automated processes.
+og:image: /docs/img/integrations/smythos_google_translate.png
+keywords: [Google Translate SmythOS Integration, Connect Google Translate to SmythOS, SmythOS Translation API, Automate Text Translation, Language Detection API, No-Code Translation]
+---
+# Google Translate Integration with SmythOS
+
+> **Need to make your agents multilingual?** Connect Google Translate to SmythOS and empower them to detect, translate, and process text in hundreds of languages automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your Google Cloud project to SmythOS by setting up OAuth 2.0 credentials. Then, use our Google Translate components to enable your agents to perform language detection and text translation tasks in real time.
+</InfoCallout>
+
+## List of Google Translate Components
+Quickly compare Google Translate components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Translate Text**](#translate-text) | Translate | Translates one or more strings of text into a target language. | <Badge type="required" /> `project_id`, `text`, `targetLanguageCode` | `translations` | Translating customer support tickets. |
+| [**Detect Language**](#detect-language) | Detect | Identifies the language of a given string of text. | <Badge type="required" /> `project_id`, `content` | `languageCode` | Routing incoming emails based on language. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Google Translate with Your Agent?</summary>
+
+Google Translate is a world-class machine translation service. Integrating it with SmythOS allows you to build agents that operate globally and understand user input regardless of language.
+
+- **Automate Multilingual Support:** Automatically detect the language of an incoming customer support ticket or email, translate it to your team's native language, and then translate your team's response back to the customer's language.
+- **Global Content Workflows:** Create agents that can take content in one language and automatically translate it into several others for international websites or marketing campaigns.
+- **Data Processing and Analysis:** Process unstructured text data from various global sources by first standardizing it into a single language for easier analysis, sentiment tracking, or classification.
+- **Enhanced User Interaction:** Build chatbots or interactive agents that can seamlessly switch languages based on the user's input, providing a more natural and inclusive user experience.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Google Cloud Platform (GCP) Project**.
+- The **Cloud Translation API** enabled in your GCP project.
+- **OAuth 2.0 credentials (`Client ID` and `Client Secret`)** from the Google Cloud Console.
+
+<Divider />
+
+## Getting Started With Google Translate
+
+The connection between SmythOS and Google Translate is handled via OAuth 2.0. This requires a one-time setup in the Google Cloud Console to get your credentials.
+
+### Step 1: Get Your OAuth 2.0 Credentials from Google
+1.  **Go to Google Cloud Console:**
+    * Navigate to `https://console.cloud.google.com/` and select or create a project.
+2.  **Enable the Cloud Translation API:**
+    * In the search bar, find "Cloud Translation API" and **Enable** it for your project.
+3.  **Configure OAuth Consent Screen:**
+    * Go to **APIs & Services > OAuth consent screen**.
+    * Choose **External** for User Type and click `Create`.
+    * Fill in the required app information (App name, User support email, Developer contact).
+    * **Scopes:** Click `Add or Remove Scopes`, search for "cloud-translation", and add `https://www.googleapis.com/auth/cloud-translation`. Click `Update`.
+    * **Test Users:** Add the email addresses of the Google accounts that will authenticate (including your own).
+4.  **Create OAuth Client ID:**
+    * Go to **APIs & Services > Credentials**.
+    * Click `+ Create Credentials` and select `OAuth client ID`.
+    * For **Application type**, select `Web application`.
+    * Under **Authorized redirect URIs**, click `+ Add URI` and enter `https://app.smythos.com/oauth/google/callback`.
+    * Click `Create`.
+
+5.  **Copy Your Credentials:**
+    * A dialog will appear with **Your Client ID** and **Your Client Secret**.
+    * Copy both values immediately.
+
+    <WarningCallout title="Secure Your Credentials!">
+    Your `Client ID` and `Client Secret` are sensitive. Store them securely in the SmythOS `Vault`. [Learn more here.](/docs/agent-studio/key-concepts/vault)
+    </WarningCallout>
+
+### Step 2: Authenticate in SmythOS
+1.  **Add a Google Translate Component:** Drag any Google Translate component onto your agent graph in SmythOS.
+2.  **Enter Credentials:**
+    * Click the component to open its **Settings**.
+    * Input the `Client ID` and `Client Secret` you just copied (or reference them from the Vault).
+3.  **Authorize the Connection:**
+    * Click the `Authenticate` button.
+    * You'll be redirected to a Google sign-in page. Log in and grant the requested permissions.
+    * You will be redirected back to SmythOS, and the integration will show as connected.
+
+<InfoCallout title="One-Time Setup" collapsible >
+Once you authenticate, the connection is saved for your SmythOS account. You won't need to re-enter credentials for other Google Translate components.
+</InfoCallout>
+
+<Divider />
+
+## Which Google Translate Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Convert text from one language to another** | One or more strings of text | [Translate Text](#translate-text) | The core component for all translation tasks. |
+| **Figure out what language a piece of text is written in** | A single string of content | [Detect Language](#detect-language) | Essential for pre-processing text before deciding how to handle it. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Google Translate component.
+
+### <a name="translate-text"></a>Translate Text
+Translates one or more strings of text into a specified target language.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-translate) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your numeric Google Cloud Project ID. |
+| `text` | array | Yes | An array of text strings to be translated. |
+| `targetLanguageCode` | string | Yes | The ISO-639-1 code for the target language (e.g., `es` for Spanish, `fr` for French). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `translations`| array | An array of objects, each containing a `translatedText` field. The order matches the input `text` array. |
+| `Response`| object | The full, raw JSON response from the Google Translate API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent receives an email, uses "Detect Language" to identify it as Spanish, then uses this component to translate the body to English for an English-speaking support team.
+</TipCallout>
+
+```json
+{
+  "component": "googleTranslate.translateText",
+  "project_id": "your-gcp-project-id",
+  "text": [
+    "Hello, world!",
+    "How are you?"
+  ],
+  "targetLanguageCode": "de"
+}
+```
+
+<WarningCallout title="API Costs">
+Google's Translation API is a paid service. Each character translated will count against your Google Cloud project's billing.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="detect-language"></a>Detect Language
+Analyzes a string of text and determines the language it is written in. (This component was formerly referred to as "Language Code Validator").
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-translate) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your numeric Google Cloud Project ID. |
+| `content` | string | Yes | The text content whose language you want to detect. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `languageCode` | string | The ISO-639-1 code of the most likely language detected. |
+| `Response`| object | The full API response, which includes a list of detected languages and their confidence scores. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Build an intelligent ticket routing system. An agent uses this component to detect the language of an incoming support request and then adds a corresponding tag (e.g., "language-french") before assigning it to the appropriate regional team.
+</TipCallout>
+
+```json
+{
+  "component": "googleTranslate.detectLanguage",
+  "project_id": "your-gcp-project-id",
+  "content": "Bonjour, comment puis-je vous aider aujourd'hui?"
+}
+```
+
+<WarningCallout title="Confidence Score">
+For short or ambiguous text, the detection may have a low confidence. The full `Response` object contains a `confidence` score that you can use to build more robust logic.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always use the SmythOS `Vault` to store your `Client ID` and `Client Secret`.
+* **Manage Costs:** The Translation API is powerful but not free. Monitor your usage in the Google Cloud Console. For internal tasks, consider if you can pre-process or batch texts to reduce the number of calls.
+* **Use Correct Language Codes:** All language codes should be in ISO-639-1 format (e.g., `en`, `es`, `zh-CN`). An incorrect code will result in an error.
+* **Error Handling:** Build logic in your agent to handle cases where language detection is not confident or a translation fails. The raw `Response` object is key for debugging.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Authentication Errors (`invalid_client`, `redirect_uri_mismatch`):**
+    * **Cause:** Incorrect `Client ID`/`Secret` or a misconfigured redirect URI.
+    * **Solution:** Verify your credentials. Ensure the redirect URI in Google Cloud Console is exactly `https://app.smythos.com/oauth/google/callback`.
+
+* **Permission Denied (`403 Forbidden`):**
+    * **Cause:** The authenticated user does not have permission to use the Translation API on the specified `project_id`, or the **Cloud Translation API** is not enabled.
+    * **Solution:** Ensure the API is enabled in your GCP project. Confirm the authenticating user has a role with permission to use the translation service, such as "Cloud Translation API User."
+
+* **Invalid Argument (`400 Bad Request`):**
+    * **Cause:** An invalid language code was provided, or the `project_id` format is incorrect.
+    * **Solution:** Check that all language codes are valid ISO-639-1 codes. Ensure your `project_id` is correct.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build globally-aware agents with the **SmythOS Google Translate Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Monitors a Twitter stream for mentions of your brand in any language, translates them to English, and performs sentiment analysis.
+    * Takes an English-language product description and automatically translates it into five other languages, preparing it for an international e-commerce site.
+    * Powers a multilingual chatbot that first detects the user's language and then uses translation to communicate back and forth seamlessly.
+
+* **Explore Other Integrations:**
+    * Combine Google Translate with the [ScrapingBee Integration](/docs/agent-studio/integrations/scrapingbee-integration) to scrape foreign-language websites and translate their content for analysis.
+    * Feed translated text into AI components like [Fal.ai](/docs/agent-studio/integrations/falai-integration) to generate summaries or insights.
+    * Log translations and their source text in a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) to build a glossary or review translation quality.

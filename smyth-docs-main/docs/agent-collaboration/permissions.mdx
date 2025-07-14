@@ -1,0 +1,121 @@
+---
+title: User Management
+description: Understand what each role can do in SmythOS and how to assign the right access to teammates across your organization or spaces.
+keywords: [roles, permissions, RBAC, team access, manage roles, organization roles, custom roles]
+toc_max_heading_level: 2
+sidebar_position: 4
+---
+
+# Roles and Permissions
+
+Roles in SmythOS define what users can see or do across the platform. They apply at both the space level and the organization level. You can use predefined roles or create your own in [Organization Management](/docs/account-management/organization-management).
+
+<InfoCallout title="Where roles apply">
+Roles are enforced across agents, spaces, and org-level tools like billing, analytics, and team access.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Assigning Roles
+
+You can assign a role:
+
+- When inviting a teammate to a [space](/docs/agent-collaboration/spaces)
+- From the **Team Settings** inside a space
+- From the **Roles tab** in [Organization Management](/docs/account-management/organization-management)
+
+If you're adding someone via the **Share Agent** option in Studio, they are automatically added to the agent’s space and assigned the default space-level role.
+
+<TipCallout title="Need to add or remove teammates?">
+See the [Add or Remove Users](/docs/agent-collaboration/adding-users) guide for step-by-step instructions.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Default Roles in New Spaces
+
+By default, new members added through Studio or dashboard invites get the default role set in your [Roles Settings](/docs/account-management/organization-management). If no role is configured, new members are assigned **Super Admin**.
+
+<InfoCallout title="Manage defaults">
+You can configure the default role in [Organization Management](/docs/account-management/organization-management).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Predefined Role Types
+
+| Role            | Scope                  | Best For                                | Description |
+|------------------|-------------------------|-------------------------------------------|-------------|
+| **Super Admin**  | Full organization       | Founders, execs, billing owners            | Full control across all agents, spaces, and plans |
+| **Admin**        | Per space               | Team leads, project managers               | Controls agents, team, and space settings |
+| **Editor**       | Agents and tools        | Developers, analysts, technical builders   | Can build, test, and modify agents |
+| **Viewer**       | Read-only               | Stakeholders, reviewers, clients           | View agents and data but cannot change anything |
+
+<Spacer size="md" />
+
+## Permission Details by Role
+
+| Page              | Super Admin      | Admin           | Editor          | Viewer          |
+|-------------------|------------------|------------------|------------------|------------------|
+| Dashboard         | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Agent Settings    | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Agent Builder     | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Templates         | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Domains           | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Data Pool         | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Vault             | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| Analytics         | View and Edit     | View and Edit    | View and Edit    | View Only        |
+| My Plan           | View and Edit     | View Only        | View Only        | View Only        |
+| Team Roles        | View and Edit     | View and Edit    | View Only        | View Only        |
+| Team Members      | View and Edit     | View and Edit    | View Only        | View Only        |
+
+<WarningCallout title="Only Super Admins can assign org-level roles">
+Roles created at the org level must be assigned from [Organization Management](/docs/account-management/organization-management).
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Creating Custom Roles
+
+If predefined roles don’t fit, you can create custom roles from the [Roles tab](/docs/account-management/organization-management) in your org settings.
+
+To create a custom role:
+
+1. Open your **Profile Menu**
+2. Select **Organization Management**
+3. Click the **Roles tab**
+4. Click **Create Role**
+5. Name the role, toggle **Manage Team** if needed
+6. Choose **View** and **Edit** access for each category
+
+<Image src="/docs/img/agent_collaboration/organization-create-role.jpg" alt="Create a role with custom permissions" caption="You can fully customize access for any role." />
+
+<InfoCallout title="Manage Team explained">
+The Manage Team toggle allows users with that role to invite or remove others and update role assignments.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Managing Roles
+
+To change, update, or delete a role:
+
+- Navigate to **Organization Management**
+- Click the **Roles tab**
+- Select the role from the list
+- Choose **Edit**, **Set as Default**, or **Delete**
+
+You can only delete a role if it’s not assigned to any users.
+
+<SuccessCallout title="Default roles">
+You can set any role as the default. All new teammates will be assigned this role unless specified otherwise.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## What’s Next?
+
+- [Manage your organization and default roles](/docs/account-management/organization-management)
+- [Invite members and assign space-level roles](/docs/agent-collaboration/spaces/invite-members)
+- [Add or remove users in Studio or dashboard](/docs/agent-collaboration/adding-users)
+- [Control space-level permissions](/docs/agent-collaboration/spaces)

@@ -15,6 +15,8 @@ export * from './Core/SDKObject.class';
 export * from './DocParser/Doc.class';
 export * from './DocParser/DocInstance.class';
 export * from './DocParser/DocParser.class';
+export * from './Git/Git.class';
+export * from './Git/GitInstance.class';
 export * from './LLM/Chat.class';
 export * from './LLM/LLM.class';
 export * from './LLM/LLMInstance.class';

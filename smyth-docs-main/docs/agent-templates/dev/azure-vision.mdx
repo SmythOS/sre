@@ -1,0 +1,87 @@
+# Tutorial: Azure Vision OCR Agent
+
+This agent is a highly-efficient text recognition system designed to recognize and extract printed text from images and convert it into a machine-usable character stream. 
+
+<Youtube videoId="H_7Ipun6nLI" title="SmythOS -  Azure Vision OCR Agent" />
+
+## RapidAPI Registration
+
+`RapidAPI` provides a variety of endpoints for various purposes. Among these, the `Microsoft Computer Vision` endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key:
+
+1. Go to [https://rapidapi.com/](https://rapidapi.com/)
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image src="/docs/img/azure_vision_agent/Image 1.png" alt="alt text" />
+
+4. Copy your API key using the `copy` icon. You can also click the eye icon to see your API key.
+
+<Image src="/docs/img/azure_vision_agent/Image 2.png" alt="alt text" />
+
+### Microsoft Computer Vision Subscription
+
+1. Navigate to this [link](https://rapidapi.com/microsoft-azure-org-microsoft-cognitive-services/api/microsoft-computer-vision3) and go to the pricing tab.
+
+<Image src="/docs/img/azure_vision_agent/Image 3.png" alt="alt text" />
+
+2. Select a subscription plan from the options available: Basic (free), Pro , or Ultra Plan. The Basic free plan offers 5,000 requests/month.
+
+<Image src="/docs/img/azure_vision_agent/Image 4.png" alt="alt text" />
+
+3. Click the `Subscribe` button.
+
+<Image src="/docs/img/azure_vision_agent/Image 5.png" alt="alt text" />
+   
+4. Subscription created successfully.
+
+<Image src="/docs/img/azure_vision_agent/Image 6.png" alt="alt text" />
+
+## Azure Vision OCR Agent Setup
+
+1. In SmythOS, go to `Templates` tab
+
+<Image src="/docs/img/azure_vision_agent/Image 7.png" alt="alt text" />
+
+2. Find the `Azure OCR` Agent, hover over it, click the Remix button, and allow the template to initialize and configure.
+
+<Image src="/docs/img/azure_vision_agent/Image 8.png" alt="alt text" />
+
+## LLM Prompt Setup
+
+1. In `SmythOS`, locate the `LLM Prompt` component then click on the gear icon to access its settings.
+
+<Image src="/docs/img/azure_vision_agent/Image 9.png" alt="alt text" />
+
+2. Input your RapidAPI key in the Prompt section. Remember to click on the check mark icon to confirm and save your configuration.
+
+<Image src="/docs/img/azure_vision_agent/Image 10.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test the Agent
+
+Follow the steps outlined below to evaluate the Azure Vision OCR Agent.
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/azure_vision_agent/Image 11.png" alt="alt text" />
+
+2. Ask the agent to analyze your image URL.
+   1. **Supported Extensions:** `.png` or `.jpeg` or `.jpg` or `.webp`
+   2. **URL Format:** https://www.example.com/image.png
+
+3. Let’s use the image below as an example.
+   1. **URL:** https://i.stack.imgur.com/sFPWe.png
+
+<Image src="/docs/img/azure_vision_agent/Image 12.png" alt="alt text" />
+
+4. Ask the agent to analyze your image.
+   1. **Prompt:** Analyze this image https://i.stack.imgur.com/sFPWe.png
+
+<Image src="/docs/img/azure_vision_agent/Image 13.png" alt="alt text" />
+
+5. Here’s the result!
+
+<Image src="/docs/img/azure_vision_agent/Image 14.png" alt="alt text" />

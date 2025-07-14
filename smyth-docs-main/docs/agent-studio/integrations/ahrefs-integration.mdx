@@ -1,0 +1,282 @@
+---
+title: Ahrefs Integration
+description: Connect SmythOS to Ahrefs. Automate backlink analysis, competitor research, and SEO metric tracking directly from your agents.
+og:title: SmythOS & Ahrefs - Automate Your SEO Intelligence
+og:description: Learn to integrate Ahrefs with SmythOS. Empower your agents to fetch backlinks, referring domains, broken links, and anchor text for powerful, automated SEO workflows.
+og:image: /docs/img/integrations/smythos_ahrefs.png
+keywords: [Ahrefs SmythOS Integration, Connect Ahrefs to SmythOS, SmythOS Ahrefs Components, Automate Ahrefs, SmythOS SEO Automation, No-Code Ahrefs, SEO API]
+tags: [analytics, data, insights]
+---
+# Ahrefs Integration with SmythOS
+
+> **Want to put your SEO data on autopilot?** Connect Ahrefs to SmythOS and let your agents fetch backlink profiles, monitor referring domains, and track SEO metrics in real time.
+
+<InfoCallout title="TL;DR">
+Securely link your Ahrefs account to SmythOS using an API key. Then, use our Ahrefs components to enable your agents to automate SEO reporting, competitor analysis, and backlink monitoring.
+</InfoCallout>
+
+## List of Ahrefs Components
+Quickly compare Ahrefs components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**List All Backlinks**](#list-all-backlinks) | Read | Returns all backlinks for a URL, prefix, or domain. | <Badge type="required" /> `target`, `select`<br /><Badge type="optional" /> `limit` | `backlinks` | Monitor link-building campaigns. |
+| [**List Broken Backlinks**](#list-broken-backlinks) | Read | Retrieves backlinks pointing to broken pages on a target. | <Badge type="required" /> `target`, `select`<br /><Badge type="optional" /> `limit` | `backlinks` | Find and reclaim lost link equity. |
+| [**List Referring Domains**](#list-referring-domains) | Read | Fetches all unique domains linking to a target. | <Badge type="required" /> `target`, `select`<br /><Badge type="optional" /> `limit` | `refdomains` | Analyze the quality of a link profile. |
+| [**List Anchors**](#list-anchors) | Read | Extracts all anchor texts used in backlinks to a target. | <Badge type="required" /> `target`, `select`<br /><Badge type="optional" /> `limit` | `anchors` | Audit anchor text for brand safety. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Ahrefs with Your Agent?</summary>
+
+Ahrefs is an industry-leading tool for SEO intelligence. By connecting it to SmythOS, you transform its powerful data into an active component of your marketing and growth engine.
+
+- **Automated Reporting:** Agents can run weekly or monthly reports on new backlinks, broken links, or referring domain growth and send the data directly to a Google Sheet or email summary.
+- **Competitor Monitoring:** Set up agents to automatically track the backlink profiles of your key competitors. Get alerts when they earn a high-quality link, giving you opportunities to replicate their success.
+- **Streamline SEO Audits:** Automate the data-gathering phase of an SEO audit. Let an agent pull all necessary backlink and referring domain data so you can spend more time on analysis and strategy.
+- **Data-Driven Outreach:** Identify high-quality referring domains and use that data to fuel your link-building outreach campaigns, all within a single, automated workflow.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **Ahrefs account** with a subscription plan that includes API access.
+- Your Ahrefs **API Key**.
+
+<Divider />
+
+## Getting Started With Ahrefs
+
+The connection between SmythOS and Ahrefs is configured using a secure API key.
+
+### Step 1: Get Your Ahrefs API Key
+1.  Log in to your [Ahrefs account](https://ahrefs.com/).
+2.  In the top-right corner, click on your profile icon and go to **Account settings**.
+3.  From the left-hand menu, navigate to the **API** section.
+4.  If you don't have a key, click **Generate New API Key**.
+5.  Copy your API key.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your Ahrefs API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Ahrefs API Key as the value. Give it a memorable name, like `ahrefs_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure an Ahrefs Component
+1.  In your SmythOS agent graph, drag and drop any Ahrefs component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `ahrefs_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Ahrefs component you use. This provides granular control and ensures all connections are secure.</InfoCallout>
+<Divider />
+
+## Which Ahrefs Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Get a full list of links** to a new blog post | A specific URL | [List All Backlinks](#list-all-backlinks) | Provides a complete list of every single backlink. |
+| **Find link reclamation opportunities** | Your domain | [List Broken Backlinks](#list-broken-backlinks) | Pinpoints valuable links pointing to 404 pages. |
+| **Assess the authority of a link profile** | A competitor's domain | [List Referring Domains](#list-referring-domains) | Shows the unique domains linking out, which is a key quality metric. |
+| **Check for brand vs. keyword anchor text** | Your homepage | [List Anchors](#list-anchors) | Reveals how other sites are describing you in their links. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Ahrefs component.
+
+### <a name="list-all-backlinks"></a>List All Backlinks
+Retrieves all backlinks pointing to a specific URL, domain, or prefix.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ahrefs) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `target` | <Badge type="required" /> | The URL, domain (e.g., `example.com`), or prefix (e.g., `example.com/*`) to analyze. |
+| `select` | <Badge type="required" /> | Comma-separated list of fields to return (e.g., `url_from,anchor,domain_rating_source`). |
+| `limit` | <Badge type="optional" /> | The maximum number of results to return (default: 100). |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `backlinks` | An array of backlink objects containing the selected fields. |
+| `response`| The raw JSON response from the Ahrefs API. |
+| `headers` | HTTP headers from the API response, including rate limit information. |
+
+<TipCallout title="Use Case" collapsible>
+Schedule a weekly agent to check for new backlinks to your homepage, filter for high Domain Rating links, and send a summary to Slack.
+</TipCallout>
+
+```json
+{
+  "component": "ahrefs.listAllBacklinks",
+  "target": "smythos.com",
+  "select": "url_from,anchor,nofollow,domain_rating_source",
+  "limit": 500
+}
+```
+
+<WarningCallout title="API Usage">
+Requesting many fields or a high limit will consume more of your Ahrefs API quota. Use the `select` parameter to fetch only the data you need.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-broken-backlinks"></a>List Broken Backlinks
+Retrieves all backlinks that point to a broken (e.g., 404) page on the target.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ahrefs) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `target` | <Badge type="required" /> | The URL, domain, or prefix to check for broken inbound links. |
+| `select` | <Badge type="required" /> | Comma-separated list of fields (e.g., `url_from,url_to,http_code`). |
+| `limit` | <Badge type="optional" /> | The maximum number of results to return (default: 100). |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `backlinks` | An array of objects, each detailing a broken backlink. |
+| `response`| The raw JSON response from the Ahrefs API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Run a monthly agent to find all broken backlinks, export them to a Google Sheet, and assign a team member to perform outreach for link reclamation.
+</TipCallout>
+
+```json
+{
+  "component": "ahrefs.listBrokenBacklinks",
+  "target": "smythos.com",
+  "select": "url_from,url_to,anchor,domain_rating_source",
+  "limit": 200
+}
+```
+
+<WarningCallout title="Actionable Insights">
+This component is one of the most effective ways to find "quick win" SEO opportunities by fixing links you've already earned.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-referring-domains"></a>List Referring Domains
+Fetches all unique domains that link to the target, along with metrics for each domain.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ahrefs) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `target` | <Badge type="required" /> | The URL, domain, or prefix to analyze. |
+| `select` | <Badge type="required" /> | Comma-separated list of fields (e.g., `refdomain,domain_rating,backlinks,traffic_domain`). |
+| `limit` | <Badge type="optional" /> | The maximum number of results to return (default: 100). |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `refdomains`| An array of objects, each representing a unique referring domain. |
+| `response`| The raw JSON response from the Ahrefs API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Analyze a competitor's referring domains to identify high-authority websites you could target for your own link-building campaigns.
+</TipCallout>
+
+```json
+{
+  "component": "ahrefs.listReferringDomains",
+  "target": "competitor.com",
+  "select": "refdomain,domain_rating,first_seen,last_seen",
+  "limit": 1000
+}
+```
+
+<WarningCallout title="Data Interpretation">
+A high number of backlinks from a single referring domain might be less valuable than single links from many different high-quality domains.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-anchors"></a>List Anchors
+Extracts the anchor texts used in backlinks pointing to the target.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ahrefs) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `target` | <Badge type="required" /> | The URL, domain, or prefix to inspect. |
+| `select` | <Badge type="required" /> | Comma-separated list of fields (e.g., `anchor,backlinks,refdomains`). |
+| `limit` | <Badge type="optional" /> | The maximum number of results to return (default: 100). |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `anchors` | An array of objects, each detailing an anchor text and its frequency. |
+| `response`| The raw JSON response from the Ahrefs API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Monitor your anchor text profile to ensure a natural mix of branded, keyword-rich, and generic anchors, which is a sign of a healthy link profile.
+</TipCallout>
+
+```json
+{
+  "component": "ahrefs.listAnchors",
+  "target": "[smythos.com/blog/seo-automation](https://smythos.com/blog/seo-automation)",
+  "select": "anchor,backlinks,type",
+  "limit": 100
+}
+```
+
+<WarningCallout title="Brand Safety">
+Use this component to quickly identify potentially spammy or negative anchor text that could be harming your brand's reputation.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Your Ahrefs API key is a credential. Always use the SmythOS `Vault` to store it securely. Never expose it in plaintext in your agent's configuration.
+* **Be Specific with `select`:** To minimize your API credit usage and speed up your agent, only request the fields you absolutely need in the `select` parameter.
+* **Handle Rate Limits:** The Ahrefs API has usage limits. Design your agents to handle potential rate-limiting errors, perhaps by inspecting the response headers or building in small delays between large batches of requests.
+* **Paginate for Large Audits:** For comprehensive audits, you may need more than the maximum `limit` of 1000 results. The Ahrefs API supports cursor-based pagination; you can build a looping mechanism in your agent to fetch all pages of results.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API key provided is invalid, has been revoked, or is not included in the request.
+  * **Solution:** Verify that the API key stored in your SmythOS Vault is correct and has not expired. Ensure the key is correctly selected in the component's settings.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** Your Ahrefs subscription has expired, or you have exhausted your API credits for the month.
+  * **Solution:** Check your subscription status and API usage in your Ahrefs account settings.
+
+* **Empty `backlinks` or `refdomains` Array**
+  * **Cause:** The target may genuinely have no data, or the `target` parameter is formatted incorrectly.
+  * **Solution:** Double-check the `target`. For domains, do not include `http://` or `www.`. For prefixes, ensure it ends with a `*`. Confirm in the Ahrefs UI that the target has data.
+
+<Divider />
+
+## What's Next?
+
+You're now ready to build powerful, automated SEO workflows with the **SmythOS Ahrefs Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Runs weekly, fetches all new backlinks using `List All Backlinks`, filters for links with a Domain Rating over 50, and logs them in a Google Sheet.
+    * Monitors a competitor's domain with `List Referring Domains`, and when a new, high-quality domain is found, sends an alert to a Slack channel for your outreach team.
+    * Performs a monthly health check by using `List Broken Backlinks`, generating a PDF report of the findings, and emailing it to the webmaster.
+
+* **Explore Other Integrations:** Combine Ahrefs data with other SmythOS tools. Use the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) for reporting, or the [Gmail](/docs/agent-studio/integrations/google-gmail-integration) components to automate notifications.

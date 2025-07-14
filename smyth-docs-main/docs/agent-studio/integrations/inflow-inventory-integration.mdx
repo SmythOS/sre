@@ -1,0 +1,235 @@
+---
+title: InFlow Inventory Integration
+description: Connect SmythOS to InFlow Inventory to automate inventory management, track products, manage customers, and streamline your sales and purchasing workflows.
+og:title: SmythOS & InFlow - Automate Your Inventory Management
+og:description: Learn to integrate InFlow Inventory with SmythOS. Empower your agents to get product lists, manage customers, and add new products to your inventory system automatically.
+og:image: /docs/img/integrations/smythos_inflow.png
+keywords: [InFlow Inventory SmythOS Integration, Connect InFlow to SmythOS, SmythOS Inventory Management, Automate Inventory, Inventory API, No-Code Inventory]
+---
+# InFlow Inventory Integration with SmythOS
+
+> **Want to automate your inventory and order management?** Connect InFlow Inventory to SmythOS and empower your agents to manage products, track stock, and sync customer data automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your InFlow Inventory account to SmythOS using an API key. Then, use our components to automate a wide range of operational tasks, from adding new products to your inventory to retrieving customer lists.
+</InfoCallout>
+
+## List of InFlow Inventory Components
+Quickly compare InFlow Inventory components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Add Product to Inventory**](#add-product-to-inventory) | Write | Creates a new product record in your inventory. | <Badge type="required" /> `companyId`, `productID`, `product_name`, `sku` | `productId` | Automatically adding a new item from a supplier's catalog. |
+| [**Get Product List**](#get-product-list)| Read | Retrieves a list of all products from your inventory. | <Badge type="required" /> `companyId` | `products` | Performing a full catalog audit or syncing with a website. |
+| [**Get Product Details**](#get-product-details)| Search | Searches for products using a query against various fields. | <Badge type="required" /> `companyId`, `search_details` | `productId`, `name` | Finding a specific product's ID by its SKU or name. |
+| [**Get Customer List**](#get-customer-list)| Read | Retrieves a list of all customers. | <Badge type="required" /> `companyId` | `customers` | Syncing your customer list to a separate CRM or marketing tool. |
+| [**Get Customer Detail**](#get-customer-detail) | Search | Searches for a specific customer by name. | <Badge type="required" /> `companyId`, `name` | `customerId`, `email`| Finding a customer's ID to associate with a sales order. |
+| [**Get Category List**](#get-category-list)| Read | Retrieves the list of all product categories. | <Badge type="required" /> `companyId` | `categories` | Getting the correct category ID before creating a new product. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate InFlow Inventory with Your Agent?</summary>
+
+InFlow Inventory is a powerful system for managing the core of your physical business. Integrating it with SmythOS allows you to connect your inventory operations to every other part of your business.
+
+- **Automate Product Management:** Create agents that can automatically add new products to your InFlow inventory from a supplier's data feed, a spreadsheet, or your e-commerce platform.
+- **Synchronize Customer Data:** Keep your customer records consistent. When a new client is created in your CRM or e-commerce store, an agent can automatically create a corresponding customer profile in InFlow.
+- **Streamline Order-to-Cash:** Build a workflow where a new sales order in another system triggers an agent to check stock levels in InFlow, and if the stock is available, proceed with creating an invoice.
+- **Data-Driven Reporting:** Schedule agents to periodically fetch product, customer, or category lists to create custom reports, analyze trends, or feed data into a business intelligence tool.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **InFlow Inventory account**.
+- Your InFlow Inventory **API Key**.
+- Your InFlow **Company ID**.
+
+<Divider />
+
+## Getting Started With InFlow Inventory
+
+The connection between SmythOS and InFlow Inventory is configured using a secure API Key.
+
+### Step 1: Get Your InFlow Inventory API Key
+1.  Log in to your InFlow Inventory account.
+2.  Navigate to the **Settings** or **API** section within your account dashboard to find or generate your API key. This process may vary depending on your InFlow version (Cloud or On-premise).
+3.  You will also need your **Company ID**, which is often found in your account or company profile settings.
+4.  Copy the API Key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your InFlow Inventory API Key as the value. Give it a memorable name, like `inflow_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure an InFlow Inventory Component
+1.  In your SmythOS agent graph, drag and drop any InFlow Inventory component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `inflow_api_key`).
+4.  Your connection is now configured for that component. You will provide the `companyId` as a standard input.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** InFlow component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which InFlow Inventory Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new item** to your inventory system | Product data | [Add Product to Inventory](#add-product-to-inventory) | The standard method for creating a new product record from scratch. |
+| **Get a list of all your products** | Your entire catalog | [Get Product List](#get-product-list) | Retrieves your full product list, ideal for audits or syncing data. |
+| **Find a product** when you know its name or SKU | A search term | [Get Product Details](#get-product-details) | The best way to find a specific product's ID and other information. |
+| **Get a list of all your customers** | Your customer database | [Get Customer List](#get-customer-list) | Retrieves all customer records. |
+| **Find the ID** for a specific customer | A customer name | [Get Customer Detail](#get-customer-detail) | Searches for a specific customer to get their unique ID for other operations. |
+| **Find the correct category ID** for a new product | Your category structure | [Get Category List](#get-category-list) | A necessary first step to ensure products are categorized correctly upon creation. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each InFlow Inventory component.
+
+### <a name="add-product-to-inventory"></a>Add Product to Inventory
+Creates a new product record in your InFlow Inventory.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-inflow-inventory) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `companyId` | string | Yes | The unique identifier of your company. |
+| `productID` | string | Yes | Your internal unique identifier for the new product. |
+| `product_name`| string | Yes | The name of the new product. |
+| `sku` | string | Yes | The Stock Keeping Unit for the new product. |
+| `itemType` | string | Yes | The type of item (e.g., 'Inventory', 'Service'). |
+| `originCountry`| string | Optional| The product's country of origin. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `productId` | string | The unique identifier assigned by InFlow to the newly added product. |
+| `Response`| object | The full, raw JSON response from the InFlow Inventory API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent monitors a supplier's FTP server. When a new product data file is uploaded, the agent parses it and calls this component to add the new items to your InFlow inventory.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-product-list"></a>Get Product List
+Retrieves a list of all products from your inventory.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-inflow-inventory) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `companyId` | string | Yes | The unique identifier of your company. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `products` | array | An array of product objects retrieved from your inventory. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A "sync" agent runs nightly, fetches all products using this component, and updates the product catalog on a connected e-commerce website like Shopify or Squarespace.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-product-details"></a>Get Product Details
+Searches for specific products using a full-text search query.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-inflow-inventory) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `companyId` | string | Yes | The unique identifier of your company. |
+| `search_details` | string | Yes | The search term (e.g., a product name, SKU, or description). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `productId`| string | The ID of the first matching product found. |
+| `name` | string | The name of the first matching product. |
+| `categoryId`| string | The category ID of the first matching product. |
+| `Response`| object | The raw JSON response, which may contain multiple matching products. |
+
+<TipCallout title="Use Case">
+Before updating inventory, an agent needs the InFlow `productId`. It uses the product's SKU as the `search_details` to find the correct record and retrieve its ID.
+</TipCallout>
+
+<Divider/>
+
+### <a name="customer-management"></a>Customer Management
+Includes **Get Customer List** and **Get Customer Detail**. These components allow you to retrieve and search for customer records.
+
+<InfoCallout>These components require an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-inflow-inventory) section.</InfoCallout>
+
+#### Common Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `companyId` | string | Yes | The unique identifier of your company. |
+| `name` | string | (For Get Detail) Yes | The name of the customer to search for. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `customers` | array | (List) An array of customer objects. |
+| `customerId`| string | (Get Detail) The unique ID of the matching customer. |
+| `email` | string | (Get Detail) The email of the matching customer. |
+
+<TipCallout title="Use Case">
+When a new order comes in, an agent uses `Get Customer Detail` with the customer's name to see if they already exist in InFlow. If not, the agent could then proceed to create a new customer record.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your InFlow Inventory API key in the SmythOS `Vault`.
+* **Understand the Data Hierarchy:** To manage inventory effectively, you need the correct IDs. A common workflow is to first use a `Get` or `List` component to find the `productId` or `customerId` before attempting to update a record.
+* **Use for Synchronization:** This integration is ideal for creating a single source of truth for your inventory. Build agents that sync data between InFlow and your other platforms (e-commerce, accounting, CRM) to ensure consistency.
+* **Error Handling:** When adding a product, check for errors related to duplicate SKUs. Your agent should be able to handle these cases gracefully, perhaps by switching to an "update" logic instead of "create".
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, has been disabled, or is missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your InFlow Inventory account settings.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect `companyId`, `productId`, or other identifier was provided.
+  * **Solution:** Double-check all IDs for typos. Ensure the resource you are trying to access exists within your InFlow account.
+
+* **No Results Found in Search**
+  * **Cause:** The `search_details` query may not have any matches, or the term might be too specific.
+  * **Solution:** Try a broader search term to confirm the connection is working. Check for typos in your query.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful inventory management automations with the **SmythOS InFlow Inventory Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a full product lifecycle manager. When a new product is added to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration), the agent creates it in InFlow, then creates a corresponding product page on a [Shopify](/docs/agent-studio/integrations/shopify-integration) or [Squarespace](/docs/agent-studio/integrations/squarespace-integration) store.
+    * Manages stock levels. It connects to your e-commerce store's API. When a sale is made, it automatically decreases the stock quantity in InFlow. When new stock arrives, it increases the quantity.
+    * Syncs customer data. When a new client is added in [Jobber](/docs/agent-studio/integrations/jobber-integration), an agent creates a corresponding customer record in InFlow Inventory.
+
+* **Explore Other Integrations:**
+    * Connect InFlow to your accounting software. When a new sales order is fulfilled in InFlow, trigger an agent to create an invoice in your accounting platform.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to generate a rich product description, then use the InFlow API to update the product record.

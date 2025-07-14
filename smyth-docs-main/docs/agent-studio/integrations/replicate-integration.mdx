@@ -1,0 +1,399 @@
+---
+title: Replicate Integration
+description: Connect SmythOS to Replicate to run a vast library of open-source AI models for image generation, language processing, and more, directly within your agent workflows.
+og:title: SmythOS & Replicate - Run Any Open-Source AI Model
+og:description: Learn to integrate Replicate with SmythOS. Empower your agents to run thousands of machine learning models for text-to-image, speech-to-text, and other advanced AI tasks.
+og:image: /img/integrations/smythos_replicate.png
+keywords: [Replicate SmythOS Integration, Connect Replicate to SmythOS, SmythOS AI Models, Automate Machine Learning, Open-Source AI, Image Generation API, No-Code AI]
+---
+# Replicate Integration with SmythOS
+
+> **Want to run any open-source AI model with a simple API?** Connect Replicate to SmythOS and empower your agents to perform cutting-edge AI tasks, from image generation to audio transcription.
+
+<InfoCallout title="TL;DR">
+Securely link your Replicate account to SmythOS using an API Token. Then, use our suite of components to execute thousands of available models on the Replicate platform by specifying the model version and inputs.
+</InfoCallout>
+
+## List of Replicate Components
+Quickly compare Replicate components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Llama 2 Chat**](#llama-2-chat) | Generate | Interacts with the Llama 2 AI model for text generation. | <Badge type="required" /> `prompt` | `id` | Conversational AI, Q&A, and text completion. |
+| [**Music Generator**](#music-generator) | Generate | Creates music from a text prompt. | <Badge type="required" /> `prompt`, `duration` | `id` | Generating background music for videos. |
+| [**Image Restoration**](#image-restoration) | Enhance | Restores and enhances old or degraded images. | <Badge type="required" /> `image_url` | `id` | Improving the quality of scanned old photos. |
+| [**Face Restoration**](#face-restoration) | Enhance | Specifically restores and clarifies faces within an image. | <Badge type="required" /> `image_url` | `id` | Fixing blurry faces in photographs. |
+| [**Background Remover**](#background-remover) | Edit | Removes the background from a given image. | <Badge type="required" /> `image_url` | `id` | Creating product images with transparent backgrounds. |
+| [**Answer Image Questions**](#answer-image-questions)| Analyze | Provides a text answer to a question about an image. | <Badge type="required" /> `image_url`, `question` | `id` | Visual Q&A and image understanding. |
+| [**Llama Text Generator**](#llama-text-generator)| Generate | Generates text content based on a prompt using a Llama model. | <Badge type="required" /> `prompt` | `id` | Drafting articles, emails, or creative writing. |
+| [**Face Swap**](#face-swap) | Edit | Swaps a face from a source image onto a target image. | <Badge type="required" /> `swap_image_url`, `target_image_url` | `id` | Creating memes or visual effects. |
+| [**Upscale Image**](#upscale-image) | Enhance | Enhances the resolution of an image with AI upscaling. | <Badge type="required" /> `image_url`, `prompt` | `id` | Making low-resolution images sharp and clear. |
+| [**Stability Text Generation**](#stability-text-generation)| Generate | Generates text using a Stability AI model. | <Badge type="required" /> `prompt` | `id` | An alternative for high-quality text generation. |
+| [**Stability AI Image Generation**](#stability-ai-image-generation)| Generate | Creates an image from a prompt using a Stable Diffusion model. | <Badge type="required" /> `prompt` | `id` | Generating marketing assets or concept art. |
+| [**Get Prediction**](#get-prediction) | Fetch | Retrieves the final result of an asynchronous Replicate job. | <Badge type="required" /> `prediction_id` | `Response` | The essential second step for all Replicate workflows. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Replicate with Your Agent?</summary>
+
+Replicate makes it incredibly simple to run a vast array of open-source machine learning models via a clean API. Integrating it with SmythOS allows you to incorporate highly specialized AI capabilities into your workflows.
+
+- **Access a Massive Model Library:** Go beyond standard text and image generation. Use models for video creation, music generation, image restoration, speech-to-text, and countless other specialized tasks.
+- **Simplified AI Infrastructure:** Run complex models on powerful hardware without managing servers or worrying about dependencies. Replicate handles all the infrastructure for you.
+- **Automate Creative Pipelines:** Chain Replicate models with other components. For example, use an AI text model to write a script, an Elevenlabs model to create a voiceover, and a Replicate model to generate a video.
+- **Prototype and Scale:** Quickly experiment with different models to find the best one for your task. Replicate's pay-as-you-go pricing makes it easy to scale your usage as your needs grow.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Replicate account**.
+- Your Replicate **API Token**.
+
+<Divider />
+
+## Getting Started With Replicate
+
+The connection between SmythOS and Replicate is configured using a secure API Token.
+
+### Step 1: Get Your Replicate API Token
+1.  Log in to your [Replicate account](https://replicate.com/).
+2.  Navigate to your [Account settings](https://replicate.com/account/api-tokens) by clicking your profile icon.
+3.  Your API token is displayed on this page. Copy it to your clipboard.
+
+### Step 2: Store Your API Token in SmythOS Vault
+Your API Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Replicate API Token as the value. Give it a memorable name, like `replicate_api_token`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a Replicate Component
+1.  In your SmythOS agent graph, drag and drop any Replicate component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Token` field, select the secret you saved in the Vault (e.g., `replicate_api_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Token from the Vault to **each** Replicate component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Replicate Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Generate an image** from a text description | A text prompt | [Stability AI Image Generation](#stability-ai-image-generation) | The standard way to create images using Stable Diffusion models. |
+| **Generate a piece of music** | A text prompt | [Music Generator](#music-generator) | Specifically designed to create audio files from a musical description. |
+| **Transcribe a meeting recording** | An audio file URL | Use the `openai/whisper` model with the universal "Run Model" component. | The best-in-class model for speech-to-text. |
+| **Fix an old, blurry photo** | An image URL | [Image Restoration](#image-restoration) | A specialized model for enhancing the overall quality of old images. |
+| **Get the final result** of any generation job | A prediction `id` | [Get Prediction](#get-prediction) | This is the mandatory second step for every Replicate workflow to retrieve the output. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Replicate component.
+
+### <a name="llama-2-chat"></a>Llama 2 Chat
+Interact with the Llama 2 AI model for conversational AI and text generation tasks.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-replicate) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The text prompt or question to send to the Llama 2 model. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the prediction job. This is essential for retrieving the result. |
+| `Response`| object | The initial API response confirming the job has started. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent uses this component to power a chatbot. It takes the user's question as the `prompt` and then uses the returned `id` with the "Get Prediction" component to fetch the AI's answer.
+</TipCallout>
+
+<WarningCallout title="Asynchronous Operation">
+This component only **starts** the text generation. You must use the output `id` with the `Get Prediction` component to get the final text response.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="music-generator"></a>Music Generator
+Generate a piece of music from a text description.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Model Version:** Choose between different model sizes like `stereo-large` or `melody-large`.
+- **Output Format:** Select `wav` or `mp3`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of the music you want to create (e.g., "An upbeat, 8-bit chiptune track"). |
+| `duration` | integer| Yes | The duration of the generated audio in seconds. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the music generation job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent generates a short, royalty-free background track for a marketing video based on the prompt "A calm, lo-fi hip hop beat".
+</TipCallout>
+
+<Divider/>
+
+### <a name="image-restoration"></a>Image Restoration
+Restores and enhances old or low-quality images using advanced AI models.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url` | string | Yes | The public URL of the image to be restored. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the image restoration job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent designed for a photo archive service takes user-uploaded old family photos and uses this component to automatically improve their clarity and fix damage.
+</TipCallout>
+
+<Divider/>
+
+### <a name="face-restoration"></a>Face Restoration
+A specialized model that focuses on restoring and clarifying human faces within an image.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url` | string | Yes | The public URL of the image containing faces to restore. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the face restoration job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent processes a blurry group photo. It uses this component to specifically enhance the faces, making them clearer while leaving the background as is.
+</TipCallout>
+
+<Divider/>
+
+### <a name="background-remover"></a>Background Remover
+Removes the background from an image, leaving the foreground subject with a transparent background.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url` | string | Yes | The public URL of the image to process. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the background removal job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An e-commerce agent takes product photos and uses this component to automatically remove their backgrounds, preparing them for use on the product page.
+</TipCallout>
+### <a name="answer-image-questions"></a>Answer Image Questions
+Analyzes an image and provides a text-based answer to a question about it.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url` | string | Yes | The public URL of the image to analyze. |
+| `question` | string | Yes | The question you want to ask about the image. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the visual Q&A job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An accessibility agent takes an image from a webpage and a user's question like, "What color is the car in this image?", and uses this component to provide a text answer.
+</TipCallout>
+
+<Divider/>
+
+### <a name="llama-text-generator"></a>Llama Text Generator
+Generates text content based on a provided prompt using a Llama family model.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The starting point or context to guide the text generation. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the text generation job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent is tasked with writing a short product description. It provides a prompt with the product name and key features, and this component generates the descriptive text.
+</TipCallout>
+
+<Divider/>
+
+### <a name="face-swap"></a>Face Swap
+Swaps the face from a source image onto a target image.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `swap_image_url` | string | Yes | The URL of the image containing the face you want to use. |
+| `target_image_url`| string | Yes | The URL of the image where the face will be placed. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the face swap job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+A social media agent creates a fun marketing image by swapping a celebrity's face onto a historical painting.
+</TipCallout>
+
+<Divider/>
+
+### <a name="upscale-image"></a>Upscale Image
+Enhances the resolution of an image using AI-powered upscaling.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url` | string | Yes | The URL of the low-resolution image to be upscaled. |
+| `prompt` | string | Yes | A prompt to guide the upscaling process. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the upscaling job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent takes a small, pixelated logo and uses this component to generate a high-resolution version suitable for print.
+</TipCallout>
+
+<Divider/>
+
+### <a name="stability-ai-image-generation"></a>Stability AI Image Generation
+Generates a high-quality image from a text prompt using a Stable Diffusion model.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of the image you want to generate. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the image generation job. |
+| `Response`| object | The initial API response confirming the job has started. |
+
+<TipCallout title="Use Case">
+A marketing agent generates a unique featured image for a blog post with the prompt, "A futuristic city skyline at dusk, synthwave style, digital art."
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-prediction"></a>Get Prediction
+Retrieves the final result of an asynchronous job started by any other Replicate component.
+
+<InfoCallout>This component requires an `API Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prediction_id`| string | Yes | The `id` obtained from the output of another Replicate component (e.g., Llama 2 Chat, Music Generator). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The full JSON response from the API, which includes the `status` of the job and the final `output`. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+This is the mandatory second step for all Replicate workflows. After starting a job with `Image Restoration` and getting an `id`, an agent uses this component in a loop with a delay, checking the `status` until it is "succeeded," then retrieves the final image URL from the `output`.
+</TipCallout>
+
+<WarningCallout title="Essential Workflow Component">
+All generative components on Replicate are asynchronous. You **must** use this component to fetch the result after starting a job.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Token:** Always store your Replicate API token in the SmythOS `Vault`.
+* **Master the Asynchronous Flow:** The key to using Replicate is the two-step process. First, call a generative component to get a prediction `id`. Second, use the `Get Prediction` component (often in a loop with a delay) to poll for the final result. Check the `status` field in the response until it is "succeeded".
+* **Check Model Inputs on Replicate:** Before using a new model, visit its page on the Replicate website and click the "API" tab. This will show you the exact structure and required parameters for the `input` object.
+* **Use Public URLs:** For all components that take an image or audio file as input, the URL must be publicly accessible for Replicate's servers to download it.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Token is incorrect, invalid, or has been revoked.
+  * **Solution:** Verify that the API Token in your SmythOS Vault is correct and matches the one in your Replicate account settings.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** You have run out of funds in your Replicate account.
+  * **Solution:** Check your billing status and add credits to your Replicate account.
+
+* **Prediction Fails or is Stuck "processing"**
+  * **Cause:** The model may have encountered an error with your specific input, or there could be a temporary issue with the model on Replicate's side.
+  * **Solution:** Check the `error` field in the response from the `Get Prediction` component for a detailed message. Try a different, simpler input to see if the model is working. Check the Replicate status page for any known issues.
+
+* **Incorrect Input Error**
+  * **Cause:** The JSON object passed as the `input` does not match the schema the model expects.
+  * **Solution:** Go to the model's page on Replicate and carefully review the "API" tab. Ensure every parameter name and data type in your input matches their example exactly.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build agents with a virtually limitless set of AI capabilities using the **SmythOS Replicate Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates a full video short. It uses an LLM to write a script, [Elevenlabs](/docs/agent-studio/integrations/elevenlabs-integration) to generate a voiceover, a Replicate text-to-image model to create scenes, and a Replicate image-to-video model to animate them.
+    * Acts as an "image expert." A user provides an image URL, and the agent uses `Answer Image Questions` to describe it, `Face Restoration` to enhance it, and `Background Remover` to create a cutout version.
+    * Transcribes a podcast episode using the `openai/whisper` model on Replicate, then uses an LLM from [OpenRouter](/docs/agent-studio/integrations/openrouter-integration) to generate show notes and chapter timestamps.
+
+* **Explore Other Integrations:**
+    * Generate images with Replicate and store them in [OneDrive](/docs/agent-studio/integrations/onedrive-integration) or another cloud storage service.
+    * Use Replicate's speech-to-text models to process audio from customer support calls, then log the transcript as a note in [GoHighLevel](/docs/agent-studio/integrations/gohighlevel-integration) or [HubSpot](/docs/agent-studio/integrations/hubspot-integration).

@@ -1,0 +1,99 @@
+---
+title: Quickstart
+description: Build and run your first AI agent with the Smyth Runtime Environment (SRE) using a real-world example.
+keywords: [quickstart, SRE, AI agent, SDK, agent example, tutorial]
+sidebar_position: 3
+---
+
+# Quickstart
+
+<InfoCallout title="Fastest Path to Your First Agent">
+This guide shows how to build and run a simple AI agent using the SmythOS SDK. For setup and prerequisites, see the <a href="/docs/agent-runtime/getting-started">Getting Started</a> page.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## 1. Create a New Project
+
+If you haven’t already, scaffold a project using the [CLI instructions](/docs/agent-runtime/getting-started) or create a folder manually.
+
+<TipCallout title="CLI Scaffolding (Recommended)">
+For the fastest setup, see [Getting Started](/docs/agent-runtime/getting-started) for full CLI details.
+```bash
+npm i -g @smythos/cli
+sre create
+```
+</TipCallout>
+
+<Spacer size="md" />
+
+## 2. Install the SDK
+
+Inside your project folder, install the SmythOS SDK. If you need help with this step, see the [installation instructions to get started](/docs/agent-runtime/getting-started)
+
+```bash
+npm install @smythos/sdk
+```
+
+<Spacer size="md" />
+
+## 3. Build Your First Agent
+
+Create a new file called <strong>index.ts</strong> in your project folder, and add the following code:
+
+```typescript
+import { Agent } from '@smythos/sdk';
+
+async function main() {
+    // Create a new agent
+    const agent = new Agent({
+        name: 'CryptoMarket Assistant',
+        behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
+        model: 'gpt-4o',
+    });
+
+    // Add a skill to the agent
+    agent.addSkill({
+        name: 'MarketData',
+        description: 'Use this skill to get comprehensive market data and statistics for a cryptocurrency',
+        process: async ({ coin_id }) => {
+            const url = `https://api.coingecko.com/api/v3/coins/${coin_id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.market_data;
+        },
+    });
+
+    // Prompt the agent and let it use the skill
+    const promptResult = await agent.prompt('What are the current prices of Bitcoin and Ethereum ?');
+    console.log(promptResult);
+
+    // You can also call the skill directly
+    const directCallResult = await agent.call('MarketData', { coin_id: 'bitcoin' });
+    console.log('Direct call to MarketData for Bitcoin:', directCallResult.current_price.usd);
+}
+
+main();
+```
+
+<Spacer size="md" />
+
+## 4. Run Your Agent
+
+Use <strong>ts-node</strong> to run your agent:
+
+```bash
+ts-node index.ts
+```
+
+<InfoCallout title="What to Expect">
+If everything is set up correctly, you should see your agent respond with the current prices of Bitcoin and Ethereum.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Next Steps
+
+- Edit your agent’s skills or prompts to try out new ideas.
+- Explore advanced workflows in the [SDK Guide](/docs/agent-runtime/sdk-guide).
+- Learn about system internals in the [SRE Architecture](/docs/agent-runtime/architecture) page.

@@ -1,0 +1,147 @@
+---
+title: LLM Prompt (Legacy)
+description: Generate stateless content from a text prompt using a variety of language models.
+keywords: [LLM, Prompt, legacy, generate, OpenAI, stateless, completion, text]
+toc_max_heading_level: 2
+---
+
+# LLM Prompt Component
+
+Use the **LLM Prompt** component to generate text content from a prompt in a single, stateless turn. It's ideal for straightforward tasks like summarization, translation, or content creation where conversation history is not required.
+
+<InfoCallout title="When to use this component">
+This is a versatile component for single-turn AI generation. For multi-turn, stateful conversations that require memory, consider using the **[LLM Assistant Component](/docs/agent-studio/components/advanced/llm-assistant)**. For the most up-to-date features, see the **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)**.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Model Selection](#step-1-select-a-model)
+- [Write the Prompt](#step-2-write-the-prompt)
+- [Define Inputs](#step-3-define-inputs)
+- [Advanced Settings](#step-4-configure-advanced-settings)
+- [Define Outputs](#step-5-define-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select a Model
+
+Choose the language model that will generate the response.
+
+| Field          | Description                                                                                                   |
+|----------------|---------------------------------------------------------------------------------------------------------------|
+| **Model** | Select from available models like `OpenAI` (GPT-3.5, GPT-4) or `Echo` (which simply mirrors the prompt). |
+| **Custom Model** | <Badge type="optional">No</Badge> Connect to your own LLM provider like Amazon Bedrock or Google Vertex AI (Enterprise feature).     |
+
+<TipCallout title="Unlocking More Models">
+You can add credentials for other model providers in the **[Vault](/docs/agent-studio/key-concepts/vault)** to expand your model selection.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 2: Write the Prompt
+
+This is the core instruction for the AI. Craft a clear and specific prompt to guide the model's output. You can include variables from your inputs to make it dynamic.
+
+**Example Prompt:**
+`Summarize the following text into three key points: {{article_text}}`
+
+<Spacer size="md" />
+
+## Step 3: Define Inputs
+
+Inputs are variables you can pass into your prompt from other parts of your workflow.
+
+| Field           | Required?                   | Description                                                       |
+|-----------------|-----------------------------|-------------------------------------------------------------------|
+| **Name** | <Badge type="required">Yes</Badge> | A unique name for the input variable (e.g., `article_text`).      |
+| **Type** | <Badge type="required">Yes</Badge> | The data type (e.g., String, Number, Array, Object).              |
+| **Description** | <Badge type="optional">No</Badge>  | A clear explanation of what the input is for.                     |
+| **Optional** | <Badge type="optional">No</Badge>  | Mark as true if the input is not always required.                 |
+| **Default Value** | <Badge type="optional">No</Badge>  | A fallback value to use if no input is provided.                  |
+
+<Spacer size="md" />
+
+## Step 4: Configure Advanced Settings
+
+Fine-tune the model's behavior for more control over the generated text.
+
+<Tabs
+  tabs={[
+    {
+      label: 'Creativity',
+      content: (
+        <>
+          <p><strong>Temperature:</strong> Controls randomness. Lower values (e.g., 0.2) make the output more focused and deterministic. Higher values (e.g., 1.0) increase creativity.</p>
+          <p><strong>Top P:</strong> An alternative to Temperature that controls nucleus sampling. It's recommended to alter one but not both.</p>
+        </>
+      )
+    },
+    {
+      label: 'Length & Repetition',
+      content: (
+        <>
+          <p><strong>Max Output Tokens:</strong> Limits the maximum length of the generated response.</p>
+          <p><strong>Frequency Penalty:</strong> Decreases the likelihood of the model repeating the same line verbatim. Values range from -2.0 to 2.0.</p>
+          <p><strong>Presence Penalty:</strong> Increases the likelihood of the model talking about new topics. Values range from -2.0 to 2.0.</p>
+          <TipCallout>Adjust either Frequency or Presence Penalty, not both.</TipCallout>
+        </>
+      )
+    },
+    {
+      label: 'Stop Sequences',
+      content: (
+        <>
+          <p><strong>Stop Sequence(s):</strong> Define one or more strings of text that will cause the model to stop generating. For example, using `###` as a stop sequence will end the generation when the model produces it.</p>
+        </>
+      )
+    }
+  ]}
+/>
+
+<Spacer size="md" />
+
+## Step 5: Define Outputs
+
+By default, the component has one output, `Reply`, which contains the full response from the model. You can add custom outputs to parse this response and extract specific fields.
+
+| Field       | Description                                                                                                    |
+|-------------|----------------------------------------------------------------------------------------------------------------|
+| **Name** | A unique name for your custom output (e.g., `summary`).                                                        |
+| **Expression**| A **JSON Path** expression to extract data from the `Reply`. For example, `Reply.summary` would extract the `summary` field from a JSON object returned by the model. |
+| **Description**| An optional description for the output field.                                                                  |
+
+<InfoCallout title="Parsing JSON Responses">
+To use custom outputs effectively, your prompt should instruct the model to return its response in a specific JSON format. For example: `Please return your answer as a JSON object with a "title" and a "summary" field.`
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Be Specific in Your Prompt:** The most important factor for a good response is a clear, detailed, and unambiguous prompt.
+- **Structure Your Output:** For predictable results, explicitly ask the model to format its response in a certain way (e.g., as JSON, a Markdown list, etc.) and use custom outputs to parse it.
+- **Tune One Parameter at a Time:** When adjusting advanced settings, modify one parameter (like Temperature) and test the result before changing others.
+- **Use `Echo` for Debugging:** The `Echo` model is useful for testing how your dynamic inputs are being inserted into your prompt.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your prompt isn't working as expected...">
+- **Empty or Garbage Output:** Check if your prompt is clear and if your `Max Output Tokens` setting is high enough. A low value can cut off the response.
+- **Fails to Parse JSON:** If you are trying to extract fields from a JSON response, run the component in **Debug Mode** and inspect the raw `Reply` to ensure the model is actually returning valid JSON in the format you expect.
+- **Model Refuses to Answer:** Your prompt might be hitting a content filter. Try rephrasing the request. Also, check that your API key (if using your own) is valid and has sufficient credits.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Chain multiple `LLM Prompt` components together, where the `Reply` of one becomes an input for the next, creating a processing pipeline.
+- Use a **[Classifier Component](/docs/agent-studio/components/base/classifier)** to determine user intent, then route to different `LLM Prompt` components with specialized prompts.
+- Pass the output to a **[JSON Filter Component](/docs/agent-studio/components/advanced/json-filter)** to further clean or simplify the data before using it in other steps.

@@ -1,0 +1,177 @@
+---
+title: Mailchimp Integration
+description: Connect SmythOS to Mailchimp to automate adding and managing subscribers in your mailing lists directly from your agent workflows.
+og:title: SmythOS & Mailchimp - Automate Your Email Marketing
+og:description: Learn to integrate Mailchimp with SmythOS. Empower your agents to automatically add new subscribers to your audiences, streamlining your marketing and onboarding processes.
+og:image: /docs/img/integrations/smythos_mailchimp.png
+keywords: [Mailchimp SmythOS Integration, Connect Mailchimp to SmythOS, SmythOS Mailchimp, Automate Email Marketing, Add Subscriber API, No-Code Mailchimp]
+---
+# Mailchimp Integration with SmythOS
+
+> **Want to automatically grow your mailing lists?** Connect Mailchimp to SmythOS and empower your agents to add new subscribers to your audiences based on actions in your other applications.
+
+<InfoCallout title="TL;DR">
+Securely link your Mailchimp account to SmythOS using an API key. Then, use the "Add Member to Audience" component to automate the process of adding new contacts to your mailing lists from any workflow.
+</InfoCallout>
+
+## List of Mailchimp Components
+Quickly compare Mailchimp components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Add Email to Mailing list**](#add-email-to-mailing-list) | Write | Adds a new subscriber to a specified Mailchimp audience (mailing list). | <Badge type="required" /> `dc`, `audience_id`, `email` | `id`, `contactId` | Adding a new user to a newsletter list upon sign-up. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Mailchimp with Your Agent?</summary>
+
+Mailchimp is a leading email marketing and automation platform. Integrating it with SmythOS allows you to bridge the gap between your applications and your marketing efforts.
+
+- **Automate List Growth:** Create agents that automatically add new users to your Mailchimp audience when they sign up for your product, fill out a contact form, or make a purchase.
+- **Streamline Onboarding:** When a new user is added to an audience, it can trigger Mailchimp's own powerful automation workflows, such as sending a welcome email series.
+- **Data Synchronization:** Keep your mailing lists in sync with your other systems. An agent can connect to your CRM and ensure that any new contact is also added to the appropriate marketing list in Mailchimp.
+- **Segmented Marketing:** Build more advanced agents that add users to different audiences based on their behavior or properties, allowing for more targeted and effective email marketing campaigns.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Mailchimp account**.
+- A Mailchimp **API Key**.
+- The **Audience ID** for the list you want to add subscribers to.
+- Your account's **Data Center Prefix** (e.g., `us6`).
+
+<Divider />
+
+## Getting Started With Mailchimp
+
+The connection between SmythOS and Mailchimp is configured using a secure API Key and requires you to know your account's data center.
+
+### Step 1: Get Your Mailchimp API Key & Credentials
+1.  Log in to your [Mailchimp account](https://mailchimp.com/).
+2.  Click on your profile icon in the bottom-left, then go to **Account & billing** > **Extras** > **API keys**.
+3.  Click **Create A Key**. Give it a descriptive name (e.g., "SmythOS Agent") and copy the generated **API Key**.
+4.  **Find your Data Center Prefix:** Look at the URL in your browser's address bar when you are logged into Mailchimp. It will look something like `https://us6.admin.mailchimp.com/`. The `us6` part is your data center prefix.
+5.  **Find your Audience ID:** Navigate to **Audience** > **All contacts**. From the **Settings** dropdown, choose **Audience name and defaults**. Your Audience ID will be listed there.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Mailchimp API Key as the value. Give it a memorable name, like `mailchimp_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the Mailchimp Component
+1.  In your SmythOS agent graph, drag and drop the **Add Member to Audience** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `mailchimp_api_key`).
+4.  Your connection is now configured. You will provide the `dc` and `audience_id` as standard inputs.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each Mailchimp component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Mailchimp Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new person** to your newsletter or marketing list | An email address and an audience ID | [Add Email to Mailing List](#add-email-to-mailing-list) | This is the core component for growing your Mailchimp audiences programmatically. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Mailchimp component.
+
+### <a name="add-email-to-mailing-list"></a>Add Email to Mailing list
+Adds a new subscriber email to a specified Mailchimp mailing list. 
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-mailchimp) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Status:** Select the initial status for the new subscriber.
+    - `subscribed`: The user is immediately added as an active subscriber.
+    - `unsubscribed`: The user is added but marked as unsubscribed.
+    - `cleaned`: The email address is added but marked as invalid (bounced).
+    - `pending`: The user is sent a confirmation email (double opt-in).
+    - `transactional`: The user is added to receive transactional emails only.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `dc` | string | Yes | The data center prefix for your account (e.g., `us6`). |
+| `audience_id`| string | Yes | The unique ID for the audience you are adding the member to. |
+| `email`| string | Yes | The email address of the new subscriber. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The MD5 hash of the lowercase email address, which serves as the subscriber's ID. |
+| `contactId` | string | The unique identifier for the contact profile in Mailchimp. |
+| `uniqueEmailId`| string | The unique ID for this email address within the specific audience. |
+| `Response`| object | The full, raw JSON response from the Mailchimp API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent is connected to a "Request a Demo" form on a website. When the form is submitted, the agent takes the user's email and calls this component to add them to the "Prospective Customers" audience in Mailchimp.
+</TipCallout>
+
+```json
+{
+  "component": "mailchimp.addEmailToMailingList",
+  "dc": "us19",
+  "audience_id": "a1b2c3d4e5",
+  "email": "new.lead@example.com"
+}
+```
+
+<WarningCallout title="Data Center Prefix is Crucial">
+The `dc` input is required and must match your account's data center prefix. An incorrect value will cause the API call to fail.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Mailchimp API key in the SmythOS `Vault`.
+* **Use Double Opt-in:** For compliance and list health, it's best practice to set the `Status` in the component settings to `pending`. This sends a confirmation email to the user, ensuring they explicitly consent to being on your list.
+* **Manage Audiences:** Keep your audiences clean and segmented. You can create different agents to add subscribers to different audiences based on where they signed up (e.g., "Newsletter Subscribers" vs. "Webinar Attendees").
+* **Include Merge Fields:** You can add more inputs to the component to pass additional data, like `FNAME` for first name and `LNAME` for last name. This requires adding a `merge_fields` object to the component's request body, which can be done with advanced customization.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, has been revoked, or is missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and active. Generate a new key in Mailchimp if necessary and update your Vault secret.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `audience_id` is incorrect, or the `dc` (data center prefix) is wrong, causing the request to be sent to the wrong server.
+  * **Solution:** Double-check both your Audience ID and your Data Center Prefix in your Mailchimp account.
+
+* **"Member Exists" Error**
+  * **Cause:** You are trying to add an email address that is already on the specified audience.
+  * **Solution:** This is expected behavior. If you need to update an existing member, you would use a different API endpoint (e.g., a PATCH request), which may require a custom API component in SmythOS.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful email marketing automations with the **SmythOS Mailchimp Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your e-commerce platform. When a customer makes their first purchase, the agent adds them to a "New Customers" audience in Mailchimp to trigger a welcome email sequence.
+    * Manages webinar registrations. When a user registers for a webinar, the agent adds them to a specific audience for that event to send them reminders and follow-up materials.
+    * Integrates with your CRM. When a sales lead's status changes to "Contacted," an agent adds them to a long-term nurturing campaign audience in Mailchimp.
+
+* **Explore Other Integrations:**
+    * Use a form-builder integration to capture leads, then pass the email addresses directly to the Mailchimp component.
+    * After adding a new member with this component, use the [Resend](/docs/agent-studio/integrations/resend-integration) or [SendGrid](/docs/agent-studio/integrations/sendgrid-integration) integrations to send an immediate, custom transactional email if needed.
+    * Connect to a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration) to log every time a new subscriber is added for auditing purposes.

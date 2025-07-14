@@ -1,0 +1,154 @@
+---
+title: Deploy as Alexa Skill
+keywords: [SmythOS, Alexa Skill, voice assistant, deploy AI agent to Alexa, SmythOS Alexa endpoint]
+description: How to deploy your SmythOS agent as an Alexa Skill using Amazon Developer Console.
+---
+
+# Deploy as Alexa Skill
+
+> **Your agent, now voice-enabled.** Connect it to Alexa and let users talk to it like a human.
+
+<InfoCallout> **TL;DR:** Copy your SmythOS Alexa endpoint → set up a Custom Alexa Skill → wire the endpoint as your handler. Alexa now speaks for your agent. </InfoCallout>
+<Divider />
+## Why Deploy Your Agent to Alexa?
+
+Voice extends your agent’s reach. Alexa integration lets users interact naturally with no screens or keyboards required. It’s ideal for:
+
+- Personal assistants
+- FAQ bots
+- Home automation agents
+- Productivity helpers
+
+All it takes is one endpoint and a little setup.
+<Divider />
+## Prerequisites
+
+Make sure you have the following ready:
+
+- A deployed SmythOS agent (must be public; no authentication)
+- An Amazon Developer account ([sign up here](https://developer.amazon.com/alexa))
+- Basic agent behavior already configured
+
+<Divider />
+
+## Step 1: Get Your SmythOS Alexa Endpoint URL
+
+1. Go to your **SmythOS Dashboard**
+2. Select your deployed agent
+3. Open the **Test** sidebar and click the **Alexa** tab
+4. Copy the provided endpoint... it looks like this:
+
+```text
+https://<your-agent>.agent.stage.smyth.ai/alexa
+```
+
+<InfoCallout> For production, swap `stage` with `pstage`. </InfoCallout>
+<Divider />
+
+## Step 2: Create a New Alexa Skill in the Developer Console
+
+1. Visit the [Alexa Developer Console](https://developer.amazon.com/alexa/console/ask)
+2. Click **Create Skill**
+3. Enter a name (e.g. "My SmythOS Agent")
+4. Choose **Custom** for the model
+5. Select **Start from scratch**
+6. Click **Create Skill**
+
+<Divider />
+
+## Step 3: Add Your SmythOS Endpoint as the Skill Handler
+
+1. In the left sidebar, go to **Endpoint**
+2. Set **Service Endpoint Type** to `HTTPS`
+3. Paste your SmythOS Alexa URL in **Default Region**
+4. Under Certificate Type, select:
+   - `My development endpoint is a sub-domain...`
+5. Save changes
+
+<Divider />
+
+## Step 4: Choose an Invocation Name for Your Skill
+
+1. In the sidebar, go to **Invocation**
+2. Enter how users will launch your agent (e.g., "my agent")
+3. Save the model
+
+<Divider />
+
+## Step 5: Add a Custom Intent for User Queries
+
+1. Navigate to **Intents** → click **Add Intent**
+2. Name it `SmythOSAgentIntent`
+3. Create a custom intent
+4. Add the following sample utterances:
+
+```text
+{searchQuery}
+ask {searchQuery}
+tell me {searchQuery}
+find {searchQuery}
+search for {searchQuery}
+```
+
+5. When prompted, create the `searchQuery` slot
+6. Set its type to `AMAZON.SearchQuery`
+
+<Divider />
+
+## Step 6: Build and Test Your Alexa Skill
+
+1. Click **Build Model** (wait for it to finish)
+2. Open the **Test** tab
+3. Enable testing in `Development` mode
+4. Try your invocation:
+
+```text
+Alexa, open my agent
+Alexa, ask what’s the weather in New York
+```
+
+<Divider />
+
+## How Your Alexa-Connected Agent Works Behind the Scenes
+
+- The invocation triggers your agent via the Alexa endpoint
+- Alexa sends the query using the `searchQuery` slot
+- SmythOS handles it and returns a response
+- Alexa reads the agent’s reply aloud
+
+<Divider />
+
+## Known Limitations and Constraints
+
+- Only public agents without authentication are supported
+- Alexa limits the character count in responses
+- Visuals and complex UI are not supported
+- Users must re-invoke your skill after each interaction
+
+<Divider />
+
+## Optional: Publish Your Alexa Skill to the Public
+
+Want to go public?
+
+1. Open the **[Distribution](https://developer.amazon.com/en-US/docs/alexa/devconsole/about-the-developer-console.html)** tab in the Alexa console, part of the Alexa Skills Kit (ASK) developer console
+2. Fill in:
+   - Skill description
+   - Sample phrases
+   - Icons (108x108 and 512x512)
+   - Privacy and terms URLs
+3. Submit for certification
+
+<PromptCard prompt="Connect your public SmythOS agent to Alexa by using the HTTPS endpoint and defining a searchQuery intent." />
+
+<Divider />
+
+## What’s Next?
+
+Now that your voice interface is live:
+
+- Track usage inside SmythOS Agent Settings → **[Logs](/docs/agent-studio/manage-agents/logs)**
+- Iterate on your agent logic, then rebuild the Alexa model
+- Explore alternate voice use cases with [MCP](//docs/agent-deployments/deployments/deploy-as-mcp-server) or [ChatBot](/docs/agent-deployments/deployments/deploy-as-chatbot) deployments
+
+Your agent just got its voice. What you do with it is up to you.

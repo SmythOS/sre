@@ -27,7 +27,7 @@ SmythOS provides a complete **Operating System for Agentic AI**. Just as traditi
 
 SmythOS provides a **unified interface for all resources**, ensuring consistency and simplicity across your entire AI platform. Whether you're storing a file locally, on S3, or any other storage provider, you don't need to worry about the underlying implementation details. SmythOS offers a powerful abstraction layer where all providers expose the same functions and APIs.
 
-This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs (OpenAI, Anthropic), or any other resource, the interface remains consistent across providers.
+This principle applies to **all services** - not just storage. Whether you're working with VectorDBs, cache (Redis, RAM), LLMs via OpenRouter or Anthropic, or any other resource, the interface remains consistent across providers.
 
 This approach makes your AI platform **easy to scale** and incredibly flexible. You can seamlessly swap between different providers to test performance, optimize costs, or meet specific requirements without changing a single line of your business logic.
 
@@ -71,6 +71,8 @@ Check the [Examples](examples), [documentation](https://smythos.github.io/sre/sd
 
 **Note:** If you face an issue with the CLI or with your code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
 
+Additional instructions for enabling DebugLog output and configuring Docker-based code execution are available in the [configuration guide](packages/core/docs/configuration.md#debug-logging).
+
 ## Repository Structure
 
 This monorepo contains three main packages:
@@ -90,10 +92,44 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 **Supported Connectors:**
 
 -   **Storage**: Local, S3, Google Cloud, Azure
--   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
+-   **LLM**: OpenRouter
 -   **VectorDB**: Pinecone, Milvus, RAMVec
 -   **Cache**: RAM, Redis
--   **Vault**: JSON File, AWS Secrets Manager, HashiCorp 
+-   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
+-   **Database**: PostgreSQL
+-   **Git**: [Git Connector](https://smythos.github.io/sre/core/documents/subsystems_io.html#git)
+-   **Code Execution**: [Docker](https://smythos.github.io/sre/core/documents/subsystems_compute-manager.html#docker)
+-   **HTTP/WebSearch**: [WebSearch Component](https://smythos.github.io/sre/core/documents/components.html#websearch)
+-   **Log**: [DebugLog](https://smythos.github.io/sre/core/documents/subsystems_io.html#debuglog)
+
+### Configuring OpenRouter
+Store your `OPENROUTER_API_KEY` in the environment or vault for LLM requests.
+
+### Configuring PostgreSQL
+Set `NEON_HOST`, `NEON_USER`, `NEON_PASSWORD` and `NEON_DATABASE` in your environment so the NeonAccount connector can connect.
+
+```typescript
+import { NeonAccount } from '@sre/Security/Account.service/connectors/NeonAccount.class';
+
+const account = new NeonAccount({
+    host: process.env.NEON_HOST!,
+    user: process.env.NEON_USER!,
+    password: process.env.NEON_PASSWORD!,
+    database: process.env.NEON_DATABASE!,
+});
+```
+
+### Debug Logging
+
+Enable the `DebugLog` connector to capture detailed logs:
+
+```typescript
+SRE.init({
+    Log: { Connector: 'DebugLog' },
+});
+```
+
+Logs are stored per agent in `~/.smyth/logs/<agentId>/debug.jsonl`.
 
 ### SDK - `packages/sdk`
 
@@ -110,6 +146,20 @@ The **SDK** provides a clean, developer-friendly abstraction layer over the SRE 
 
 The **SRE CLI** helps you get started quickly with scaffolding and project management.
 
+
+### Studio - `packages/studio`
+
+The web-based workflow builder. Follow the instructions in
+[`packages/studio/README.md`](packages/studio/README.md) to start the app.
+
+
+### Studio Server - `packages/studio-server`
+Run the development server with:
+```bash
+pnpm --filter @smythos/studio-server dev
+```
+See [`packages/studio-server/README.md`](packages/studio-server/README.md) for
+available endpoints and usage details.
 ## Code examples
 
 The SDK allows you to build agents with code or load and run a .smyth file.
@@ -123,7 +173,7 @@ async function main() {
 
     //Importing the agent workflow
     const agent = Agent.import(agentPath, {
-        model: Model.OpenAI('gpt-4o'),
+        model: Model.OpenRouter('gpt-4o'),
     });
 
     //query the agent and get the full response
@@ -205,7 +255,7 @@ async function main() {
                 namespace: 'myNameSpace',
                 indexName: 'demo-vec',
                 pineconeApiKey: process.env.PINECONE_API_KEY,
-                embeddings: Model.OpenAI('text-embedding-3-large'),
+                embeddings: Model.OpenRouter('text-embedding-3-large'),
             });
 
             const searchResult = await vec.search(topic, {
@@ -215,7 +265,7 @@ async function main() {
             const context = searchResult.map((e) => e?.metadata?.text).join('\n');
 
             // LLM - Generate the article
-            const llm = agent.llm.OpenAI('gpt-4o-mini');
+            const llm = agent.llm.OpenRouter('gpt-4o-mini');
             const result = await llm.prompt(`Write an article about ${topic} using the following context: ${context}`);
 
             // Storage - Save the article

@@ -1,0 +1,53 @@
+# Tutorial: Lead Enrichment Guide
+
+This guide will walk you through creating a lead enrichment agent using SmythOS.
+
+The **Lead Enrichment Agent** is an AI agent designed to gather and analyze online data to enhance lead profiles with rich, actionable insights...
+
+<Youtube videoId="V0ft3GrLtjY" title="SmythOS - Lead Enrichment Agent" />
+
+## Agent Setup
+
+1. Navigate to **Templates**.
+
+<Image src="/docs/img/lead_enrichment_agent/img_1.png" alt="Navigate to Templates" />
+
+2. Select the **Sales** tab. Click the **Remix** button on the Lead Enrichment Agent template.
+
+<Image src="/docs/img/lead_enrichment_agent/img_2.png" alt="Remix Agent" />
+
+3. Allow the template to initialize and configure.
+
+## Run Agent with Form Preview
+
+1. After loading the remixed agent workflow, click **Form Preview**.
+
+<Image src="/docs/img/lead_enrichment_agent/img_3.png" alt="Click Form Preview" />
+
+2. Enter the required information on the form then click **Run**.
+
+<Image src="/docs/img/lead_enrichment_agent/gif 1.gif" alt="Run Form" />
+
+3. Here’s the output:
+
+<Image src="/docs/img/lead_enrichment_agent/img_4.png" alt="Output" />
+
+> When working with templates or agents that use external API services, you can leverage the Mock Data feature for API Call components during testing and debugging:
+>
+>1. Enable **Debug Mode** in the toolbar at the top of the Builder
+>2. Select an API Call component that uses API keys from the Vault
+>3. In the component settings, enable the **Use Mock Data** toggle
+>4. Define the mock response data you want the component to return
+>5. Run your workflow to test without needing actual API credentials
+
+> **Pro Tip:** The Mock Data feature is perfect for testing third-party integrations without having to register for multiple external services. Learn more about [Mock Data configuration](/docs/agent-studio/components/advanced/api-call#step-5-enable-mock-mode).
+
+## Deploy the Agent in Your Workflow
+
+Once the setup is complete, deploy your agent to make it live and ready for integration into your workflow. SmythOS automatically provides a production subdomain for your deployed agent (e.g., `xyz.agent.pa.smyth.ai`), but you can also configure your own custom subdomain.
+
+Key deployment features:
+- • Automatic SSL/TLS certification
+- • Built-in rate limiting
+- • Request logging and monitoring
+- • Version control and rollback capabilities

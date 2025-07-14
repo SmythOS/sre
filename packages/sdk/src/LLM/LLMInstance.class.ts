@@ -148,9 +148,9 @@ export type TLLMInstanceParams = {
  *
  * @example Usage example
  * ```typescript
- * const llm = LLM.OpenAI({ model: 'gpt-4o' });
+ * const llm = LLM.OpenRouter({ model: 'gpt-4o' });
  * //the above is equivalent to:
- * const llm = new LLMInstance(TLLMProvider.OpenAI, { model: 'gpt-4o' });
+ * const llm = new LLMInstance(TLLMProvider.OpenRouter, { model: 'gpt-4o' });
  *
  * //then you can prompt the LLM to get the response in one shot
  * const response = await llm.prompt('Hello, world!');

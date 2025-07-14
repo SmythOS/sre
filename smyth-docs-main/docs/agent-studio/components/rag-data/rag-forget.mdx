@@ -1,0 +1,78 @@
+---
+title: RAG Forget
+description: Permanently remove specific data sources from your agent's knowledge base using a unique identifier.
+keywords: [RAG, Forget, delete, remove, knowledge base, data source, namespace, vector]
+toc_max_heading_level: 2
+---
+
+# RAG Forget Component
+
+Use the **RAG Forget** component to permanently delete a specific piece of information from your agent's knowledge base. By providing a unique `Source Identifier`, you can instruct the agent to remove outdated, incorrect, or irrelevant data.
+
+<InfoCallout title="Why this matters">
+Managing the lifecycle of information is as important as acquiring it. The `RAG Forget` component is crucial for data hygiene, allowing you to keep your agent's knowledge base relevant and accurate. It is also an essential tool for complying with data privacy regulations that grant users the right to have their information removed.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Specify the Target Data](#step-1-specify-the-target-data)
+- [Handle the Output](#step-2-handle-the-output)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Specify the Target Data
+
+Tell the component exactly which piece of information to delete by specifying its `Namespace` and unique `Source Identifier`.
+
+| Setting             | Required?                   | Description                                                                                                                                                             |
+|---------------------|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Namespace** | <Badge type="required">Yes</Badge> | Select the knowledge base (namespace) from which the data source will be deleted.                                                                                       |
+| **Source Identifier** | <Badge type="required">Yes</Badge> | The unique ID of the data source you want to delete. This must exactly match the identifier used when the data was stored, typically with the **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** component. |
+
+<TipCallout title="Dynamic Deletion">
+The `Source Identifier` can be a static value you type in, or a dynamic variable passed from a previous step. This allows you to build workflows where, for example, a user can request to have their own data deleted.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/JjTexW59LqsY5BfGNEEM?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="RAG Forget | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Handle the Output
+
+The component provides a simple success or failure indicator for the deletion operation.
+
+| Output    | Description                                                                   |
+|-----------|-------------------------------------------------------------------------------|
+| **Success** | Returns `true` if the data source was successfully deleted. Returns an empty value if the deletion fails (e.g., the identifier was not found). |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Verify Before Deleting:** This action is permanent and cannot be undone. It is a good practice to use the **[RAG Search Component](/docs/agent-studio/components/rag-data/rag-search)** first to confirm you have the correct `Source Identifier` before deleting.
+- **Implement Data Retention Policies:** You can create time-based workflows that automatically delete data after a certain period. Use a database to store identifiers and their creation timestamps, and have a scheduled agent run daily to forget expired entries.
+- **Build User-Facing Deletion Flows:** Allow your users to manage their own data by creating an **Agent Skill** where a user can provide an ID, and your workflow uses `RAG Forget` to process the deletion request.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If data is not being forgotten...">
+- **Check the `Success` Output:** If the `Success` output is empty, the operation failed.
+- **Identifier Mismatch:** The most common reason for failure is an incorrect `Source Identifier`. Check for typos, case-sensitivity issues, or extra spaces. The identifier must be an exact match.
+- **Wrong Namespace:** Ensure you are targeting the correct `Namespace`. The data might exist, but in a different knowledge base.
+- **Data Source Was Manually Created:** This component can typically only delete data sources that were added programmatically (e.g., via `RAG Remember`). Manually uploaded data sources in the UI may not be deletable this way.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Create a complete data management workflow by combining **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)**, **[RAG Search](/docs/agent-studio/components/rag-data/rag-search)**, and `RAG Forget`.
+- Build an agent skill that allows an administrator to provide a `Source Identifier` and have the agent confirm the deletion.
+- Use this component as part of a GDPR or CCPA compliance workflow to handle user data deletion requests.

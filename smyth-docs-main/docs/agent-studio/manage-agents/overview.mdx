@@ -1,0 +1,80 @@
+---
+title: Manage Agents
+description: Learn how to configure your agent’s core settings, behavior, and shared variables from the Agent Settings page.
+keywords: [manage agents, agent configuration, agent settings, behavior, avatar, intro message, global variables]
+sidebar_position: 1
+---
+
+# Manage Agents
+
+Configure the agent's behavior, default LLM, manage embodiments, and customize its personality and capabilities. This is where you define how your agent acts, what it looks like, and how it responds during runtime.
+
+<Arcade src="https://demo.arcade.software/SlE2b4llRxs1HP7PNwqP?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Agent Overview | SmythOS" />
+
+Access your Agent Settings in the Agent Canvas by either, 
+1. Clicking on the Agent Card OR
+2. Selecting **Settings** form the left sidebar
+
+You can update agent information, manage security and authentication, and view logs or schedule tasks from there.
+
+<Spacer size="md" />
+
+## Configuration
+
+Use this section to define the identity and behavior of your agent.
+
+### Identity
+
+| Setting | Description |
+|--------|-------------|
+| **Name** | The unique name used in UI and API requests. Choose something meaningful and descriptive. |
+| **Avatar** | Auto-generated based on the name, or upload a custom image (recommended size: 256x256px). |
+| **Description** | A short summary to describe the agent's purpose and use case. |
+
+<Spacer size="md" />
+
+### Behavior Settings
+
+| Setting | Description |
+|--------|-------------|
+| **Default LLM** | Sets the primary language model used in chat and chatbot contexts. Affects response quality and reasoning. |
+| **Behavior Description** | This acts as the system prompt. Describe what your agent knows, how it should behave, and any constraints or logic you want applied during generation. |
+
+<InfoCallout>
+Use the behavior description to guide the agent’s tone, structure, or persona. This affects every LLM-based response it gives.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Global Variables
+<TipCallout title="Non-sensitive values">
+Use global variables for non-sensitive values that are shared across your agent’s workflow.
+</TipCallout>
+Global variables let you store reusable values for your workflows. They are accessible across all components inside your agent.
+
+### Common Uses
+
+- Shared API endpoints  
+- Static parameters (e.g. `"language": "en-US"`)  
+- Reused config values across components
+
+<WarningCallout title="Use Vault for Secrets">
+Do not store secrets or API keys in global variables. Use the [Vault](/docs/agent-studio/key-concepts/vault) instead to manage sensitive credentials securely.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## What's Next
+
+You can continue refining your agent with these settings:
+
+- [Authentication Settings](/docs/agent-studio/manage-agents/authentication)  
+- [Agent Logs](/docs/agent-studio/manage-agents/logs)  
+- [Vault Configuration](/docs/agent-studio/key-concepts/vault)  
+- [Agent Tasks](/docs/agent-studio/manage-agents/tasks)
+
+<Spacer size="md" />
+
+<small>
+Updates you make here affect both the interactive experience and any deployed endpoints. Review carefully before publishing changes.
+</small>

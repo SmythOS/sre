@@ -1,0 +1,720 @@
+---
+title: GitHub Integration
+description: Connect SmythOS to GitHub to automate repository management, issue tracking, pull request workflows, and version control operations directly from your agents.
+og:title: SmythOS & GitHub - Automate Your Development Lifecycle
+og:description: Learn to integrate GitHub with SmythOS. Empower agents to interact with repositories, manage issues, branches, commits, pull requests, and more.
+og:image: /img/integrations/smythos_github_default.png
+keywords: [GitHub SmythOS Integration, Connect GitHub to SmythOS, SmythOS GitHub Components, Automate GitHub, Version Control Automation, CI/CD SmythOS, GitHub API SmythOS]
+---
+# GitHub Integration with SmythOS
+
+> **Want to supercharge your development workflows?** Connect GitHub to SmythOS and let your agents automate repository interactions, manage issues, handle pull requests, and much more.
+
+<InfoCallout title="TL;DR">
+Generate a Personal Access Token (PAT) from your GitHub account with the necessary scopes. Then, add this token to the SmythOS GitHub integration settings to enable your agents to use a comprehensive suite of GitHub components for automating your development lifecycle.
+</InfoCallout>
+
+## List of GitHub Components
+Quickly compare GitHub components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Get Issue**](#get-issue) | Read | Fetches detailed information about a specific issue. | <Badge type="required" /> `repo_owner`, `repo_name`, `issue_number` | `id`, `title` | Fetching context before updating a task. |
+| [**Count Open Issues**](#count-open-issues) | Read | Gets the total number of open issues in a repository. | <Badge type="required" /> `repo_owner`, `repo_name` | `openIssues` | Monitoring project health. |
+| [**Add Labels to Issues**](#add-labels-to-issues) | Write | Adds specified labels to an existing GitHub issue. | <Badge type="required" /> `repo_owner`, `repo_name`, `issue_number`, `label` | `labels` | Automatically categorizing new issues. |
+| [**Get Issue Labels**](#get-issue-labels) | Read | Retrieves all labels currently applied to a specific issue. | <Badge type="required" /> `repo_owner`, `repo_name`, `issue_number` | `labels` | Checking an issue's status before processing. |
+| [**Create Branch**](#create-branch) | Write | Creates a new branch in a repository from a specified commit SHA. | <Badge type="required" /> `repo_owner`, `repo_name`, `branch_name`, `hash_to_branch_from` | `branchRef` | Automating feature branch creation. |
+| [**Get Branch Info**](#get-branch-info) | Read | Retrieves detailed information about a specific branch. | <Badge type="required" /> `repo_owner`, `repo_name`, `branch_name` | `sha` | Getting the latest commit hash for a branch. |
+| [**Fetch Commits since Timestamp**](#fetch-commits-since-timestamp) | Read | Lists commits on a branch since a given timestamp. | <Badge type="required" /> `repo_owner`, `repo_name`, `branch_name`, `timestamp` | `commits` | Generating a daily changelog. |
+| [**Commit File**](#commit-file) | Write | Creates or updates a file in a repository with a commit. | <Badge type="required" /> `repo_owner`, `repo_name`, `file_name`, `content` | `commitSha` | Committing auto-generated documentation. |
+| [**Update File Content**](#update-file-content) | Write | Updates an existing file in a repository. | <Badge type="required" /> `repo_owner`, `repo_name`, `path`, `content`, `sha` | `sha` | Syncing a configuration file. |
+| [**Get Repo Directory Content**](#get-repo-directory-content) | Read | Retrieves the contents of a directory within a repository. | <Badge type="required" /> `repo_owner`, `repo_name`<br/><Badge type="optional" /> `directory_path` | `content` | Listing files to find a specific config. |
+| [**Create Pull Request**](#create-pull-request) | Write | Creates a new pull request between two branches. | <Badge type="required" /> `owner`, `repo_name`, `title`, `pull_branch`, `base_branch` | `id`, `url` | Automating the code review process. |
+| [**Get Pull Request**](#get-pull-request) | Read | Fetches details of a specific pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `title`, `state` | Checking the status of a PR. |
+| [**List Pull Requests**](#list-pull-requests) | Read | Lists pull requests for a repository, with optional filters. | <Badge type="required" /> `repo_owner`, `repo_name` | `pull_requests` | Generating a daily summary of open PRs. |
+| [**Merge Pull Request**](#merge-pull-request) | Write | Merges a pull request into its base branch. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `merged`, `sha` | Auto-merging approved PRs. |
+| [**List Pull Request Commits**](#list-pull-request-commits) | Read | Lists commits associated with a specific pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `commits` | Auditing changes in a PR. |
+| [**List Pull Request Files**](#list-pull-request-files) | Read | Lists files changed in a specific pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `files` | Checking for changes in critical files. |
+| [**List Pull Request Reviews**](#list-pull-request-reviews) | Read | Lists all reviews submitted for a pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `reviews` | Checking for approvals before merging. |
+| [**List Pull Request Review Comments**](#list-pull-request-review-comments) | Read | Lists all review comments on a pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number` | `comments` | Analyzing feedback patterns. |
+| [**Reply to Review Comment**](#reply-to-review-comment) | Write | Creates a reply to a specific review comment on a pull request. | <Badge type="required" /> `repo_owner`, `repo_name`, `pull_number`, `comment_id`, `body` | `id` | Posting automated replies to bot comments. |
+| [**Fetch GitHub User**](#fetch-github-user) | Read | Retrieves public information about a specified GitHub user. | <Badge type="required" /> `username` | `id`, `name` | Getting contributor details. |
+| [**Search GitHub**](#search-github) | Read | Performs a search across GitHub based on a query. | <Badge type="required" /> `query` | `results` | Finding all issues with a specific label. |
+| [**Fetch Latest Release**](#fetch-latest-release) | Read | Retrieves details of the latest published release for a repository. | <Badge type="required" /> `repo_owner`, `repo_name` | `id`, `tag_name` | Triggering deployment workflows. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate GitHub with Your Agent?</summary>
+
+Integrating GitHub with SmythOS allows your agents to become powerful assistants in your software development lifecycle:
+
+- **Automated Code Commits:** Agents can commit configuration files, documentation updates, or even generated code directly to repositories based on external triggers or data processing.
+- **Intelligent Issue Management:** An agent can monitor external systems (like a bug tracker or customer feedback tool) and automatically create corresponding GitHub issues, assign labels, or update their status.
+- **Pull Request Automation:** Agents can be configured to create pull requests when new feature branches are ready, or to fetch details of open PRs for daily summaries or to check for merge conflicts.
+- **Release Monitoring:** Agents can fetch information about the latest releases, allowing other systems to be updated or notifications to be sent when new software versions are published.
+- **Repository Health Checks:** Schedule agents to perform routine checks, like counting open issues, fetching commit activity, or ensuring branch naming conventions are followed.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **GitHub Account** with access to the repositories you plan to integrate with.
+- A **GitHub Personal Access Token (PAT)** with the appropriate scopes.
+
+<Divider />
+
+## Getting Started With GitHub
+
+The connection is configured using a secure Personal Access Token (PAT).
+
+### Step 1: Generate a GitHub Personal Access Token
+1.  **Sign in to GitHub** and navigate to **Settings** > **Developer settings**.
+2.  Go to **Personal access tokens** > **Tokens (classic)**.
+3.  Click **Generate new token (classic)**.
+4.  Give your token a descriptive **Note** (e.g., "SmythOS Integration").
+5.  Set an **Expiration** period.
+6.  **Select scopes:** For broad functionality, check the main **`repo`** scope. This grants full control of private repositories, including code, issues, and pull requests.
+7.  Click **Generate token**.
+
+### Step 2: Copy and Store Your Token
+- **Important:** GitHub will show your new PAT **only once**. Copy the token immediately.
+- For security, store this token in the SmythOS **Vault**. Create a new secret named `github_pat` and paste your token as the value. [Learn more about the Vault here.](/docs/agent-studio/key-concepts/vault)
+
+    <WarningCallout title="Secure Your Personal Access Token!">
+    Your GitHub PAT is like a password. Treat it with extreme care. Do not commit it to repositories or share it publicly.
+    </WarningCallout>
+
+### Step 3: Configure the GitHub Integration in SmythOS
+1.  In your agent graph, drag and drop any GitHub component.
+2.  Click the component to open its **Settings**.
+3.  In the `Access Token` field, select the secret you saved in the Vault (e.g., `github_pat`).
+4.  Your connection is now configured for all GitHub components in that agent.
+
+<InfoCallout title="Token Scopes & Permissions" collapsible >
+If your agents encounter permission errors, the most common reason is that the PAT lacks the required scopes. You may need to regenerate the token with broader permissions (like the full `repo` scope) and update the secret in your Vault.
+</InfoCallout>
+
+<Divider />
+
+## Which GitHub Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new file** in your repository | `repo_owner`, `repo_name`, `file_name`, `content` | [Commit File](#commit-file) | The primary method for adding new files and committing them in one step. |
+| **Update an existing file** | `repo_owner`, `repo_name`, `path`, `content`, `sha` | [Update File Content](#update-file-content) | Specifically designed to modify an existing file, requiring the file's SHA for safety. |
+| **Start a new feature branch** | `repo_owner`, `repo_name`, `branch_name`, `hash_to_branch_from` | [Create Branch](#create-branch) | The correct way to create a new branch pointing to a specific commit. |
+| **Propose changes for review** | `owner`, `repo_name`, `title`, `pull_branch`, `base_branch` | [Create Pull Request](#create-pull-request) | This initiates the formal code review and merge process between two branches. |
+| **Automatically merge a PR** that has been approved | `repo_owner`, `repo_name`, `pull_number` | [Merge Pull Request](#merge-pull-request) | Finalizes the PR lifecycle by merging the code into the base branch. |
+| **Find a specific piece of code or issue** | A search `query` | [Search GitHub](#search-github) | A powerful tool to query across all of GitHub using its advanced search syntax. |
+| **Get a quick count of open bugs** | `repo_owner`, `repo_name` | [Count Open Issues](#count-open-issues) | A simple way to get a key repository health metric. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each GitHub component.
+
+### <a name="get-issue"></a>Get Issue
+Fetches detailed information about a specific issue from a GitHub repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `issue_number` | integer | Yes | The unique number identifying the issue. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The unique identifier assigned to the issue. |
+| `title` | string | The title of the issue. |
+| `body` | string | The main description/content of the issue. |
+| `state` | string | The current state of the issue (e.g., `open`, `closed`). |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent retrieves the full description and current status for a specific GitHub issue to generate a summary report.
+</TipCallout>
+
+<Divider/>
+
+### <a name="count-open-issues"></a>Count Open Issues
+Gets the number of open issues in a specific GitHub repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The username or organization that owns the repository. |
+| `repo_name` | string | Yes | The name of the repository itself. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `openIssues` | integer | The number of open issues in the repository. Extracted from `Response.open_issues_count`. |
+| `Response` | object | The raw JSON response from the API, containing the full repository object. |
+
+<TipCallout title="Use Case">
+A dashboard agent fetches the count of open issues daily for several key repositories to monitor overall project health or backlog size.
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-labels-to-issues"></a>Add Labels to Issues
+Adds one or more labels to an existing GitHub issue.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The account owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `issue_number` | integer | Yes | The number that identifies the issue. |
+| `label` | string | Yes | The name of the label to add. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `labels` | array | An array of objects representing all labels now on the issue. |
+| `Response` | object | The full, raw JSON response from the GitHub API. |
+
+<TipCallout title="Use Case">
+Automatically add a "bug" label to a new GitHub issue if it was created from a customer support ticket tagged as a product defect.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-issue-labels"></a>Get Issue Labels
+Retrieves all the labels currently associated with a specific issue.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The username or organization that owns the repository. |
+| `repo_name` | string | Yes | The name of the repository itself. |
+| `issue_number` | integer | Yes | The number that identifies the issue. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `labels` | array | An array of label objects applied to the issue. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before an agent processes a GitHub issue, it first fetches the existing labels to determine its current status or category.
+</TipCallout>
+
+### <a name="create-branch"></a>Create Branch
+Creates a new branch in a repository from a specific commit SHA.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The account owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `branch_name` | string | Yes | The name for the new branch (e.g., `feature/new-login`). |
+| `hash_to_branch_from` | string | Yes | The commit SHA from which the new branch will be created. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `branchRef` | string | The full reference name of the new branch (e.g., `refs/heads/feature/new-login`). |
+| `sha` | string | The commit SHA that the new branch points to. |
+| `Response` | object | The raw JSON response from the GitHub API. |
+
+<TipCallout title="Use Case">
+When a new task is approved in your project manager, an agent automatically creates a new feature branch from the latest commit on `develop`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-branch-info"></a>Get Branch Info
+Retrieves detailed information about a specific branch, including its latest commit.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `branch_name` | string | Yes | The exact name of the branch. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | The name of the branch. |
+| `sha` | string | The SHA (commit hash) of the latest commit on the branch. |
+| `protected` | boolean | Indicates if the branch is protected. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before creating a new feature branch, an agent uses this component to fetch the SHA of the latest commit on the `develop` branch to use as a starting point.
+</TipCallout>
+
+<Divider/>
+
+### <a name="fetch-commits-since-timestamp"></a>Fetch Commits since Timestamp
+Retrieves information about commits made to a specific branch since a given timestamp.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The repository owner's username or organization name. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `branch_name` | string | Yes | The name of the branch from which commits will be retrieved. |
+| `timestamp` | string | Yes | The timestamp in ISO 8601 format (e.g., `2024-07-15T18:32:01Z`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commits` | array | An array of commit objects, each detailing the SHA, author, message, and date. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A daily agent fetches all commits made to the `main` branch since the previous day to generate a changelog or send update notifications.
+</TipCallout>
+
+<Divider/>
+
+### <a name="commit-file"></a>Commit File
+Creates a new file in a repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `file_name` | string | Yes | The full path to the file (e.g., `docs/new-feature.md`). |
+| `content` | string | Yes | The file content, which must be **Base64 encoded**. |
+| `commit_message` | string | Yes | A short message describing the commit. |
+| `branch` | string | Optional | The branch to commit to. Defaults to the repo's default branch. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commitSha` | string | The SHA identifier of the new commit. |
+| `fileSha` | string | The blob SHA of the new file content. |
+| `Response` | object | The raw JSON response from the GitHub API. |
+
+<TipCallout title="Use Case">
+An agent generates a daily report and automatically commits it as a new Markdown file to a documentation repository.
+</TipCallout>
+
+<WarningCallout title="Base64 Encoding Required">
+You must encode your file content to Base64 before passing it to the `content` input.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="update-file-content"></a>Update File Content
+Updates the content of an existing file in a repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The repository owner. |
+| `repo_name` | string | Yes | The repository name. |
+| `path` | string | Yes | The full path to the file to be updated. |
+| `content` | string | Yes | The new file content, **Base64 encoded**. |
+| `sha` | string | Yes | The SHA hash (blob SHA) of the file being replaced. |
+| `commit_message`| string | Yes | A descriptive message for the commit. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commit_sha`| string | The SHA of the commit that updated the file. |
+| `file_sha` | string | The new SHA (blob SHA) of the updated file content. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent periodically fetches external configuration data and updates a `config.json` file in a repository with the latest settings.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-repo-directory-content"></a>Get Repo Directory Content
+Retrieves the contents (files and subdirectories) within a specific directory of a GitHub repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The username or organization name of the repository owner. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `directory_path` | string | Optional | The path to the directory. If omitted, returns the root directory's contents. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `content` | array | An array of objects, detailing each file or subdirectory. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent needs to list all configuration files (e.g., `*.json`) within a `config/` directory of a repository to verify their presence.
+</TipCallout>
+
+### <a name="create-pull-request"></a>Create Pull Request
+Creates a new pull request to propose changes from one branch to another.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `owner` | string | Yes | The account owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `title` | string | Yes | The title of the new pull request. |
+| `pull_branch` | string | Yes | The name of the branch where your changes are implemented (the "head" branch). |
+| `base_branch` | string | Yes | The name of the branch you want the changes pulled into (the "base" branch). |
+| `body` | string | Optional | The contents/description of the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The unique identifier for the newly created pull request. |
+| `number` | integer | The pull request number. |
+| `url` | string | The API URL for the created pull request. |
+| `html_url` | string | The HTML URL to view the pull request on GitHub.com. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After an agent successfully pushes code changes to a feature branch, it automatically creates a pull request to merge these changes into the `develop` branch.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-pull-request"></a>Get Pull Request
+Lists details of a specific pull request by its number.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number identifying the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | The title of the pull request. |
+| `state` | string | The current state (e.g., `open`, `closed`). |
+| `requester`| string | The login of the user who created the PR. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent, triggered by a notification, uses this component to fetch a PR's current state before processing it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-pull-requests"></a>List Pull Requests
+Lists pull requests in a specified repository, with optional filters.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `state` | string | Optional| Filter by state: `open`, `closed`, or `all`. Default: `open`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `pull_requests`| array | An array of pull request objects, extracted from the `Response`. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A daily reporting agent lists all currently `open` pull requests for a repository to include in a status update.
+</TipCallout>
+
+<Divider/>
+
+### <a name="merge-pull-request"></a>Merge Pull Request
+Merges an open pull request into the base branch.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request to merge. |
+| `commit_title`| string | Optional| Title for the merge commit. |
+| `merge_method`| string | Optional| `merge` (default), `squash`, or `rebase`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `sha` | string | The SHA hash of the merge commit. |
+| `merged` | boolean | Indicates whether the merge was successful. |
+| `message` | string | A message pertaining to the merge status. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After all automated checks pass and a PR receives approvals, an agent automatically merges it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-pull-request-commits"></a>List Pull Request Commits
+Lists a maximum of 250 commits for a specified pull request.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commits` | array | An array of commit objects, extracted from the `Response`. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a pull request is updated, an agent fetches the list of its commits to log the commit messages and authors for an audit trail.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-pull-request-files"></a>List Pull Request Files
+Lists the files that have been changed in a specified pull request.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `files` | array | An array of file objects, each detailing a file changed in the PR. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a pull request is opened, an agent lists the files changed. If any files match a predefined list of critical configuration files, it adds a "needs-security-review" label to the PR.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-pull-request-reviews"></a>List Pull Request Reviews
+Lists all reviews submitted for a specified pull request.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `reviews` | array | An array of review objects, extracted from the `Response`. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent checks all reviews on a pull request. If it has at least two "APPROVED" reviews and no "CHANGES_REQUESTED" reviews, the agent proceeds to merge the PR.
+</TipCallout>
+
+### <a name="list-pull-request-review-comments"></a>List Pull Request Review Comments
+Lists all review comments for a specified pull request. These are comments made on specific lines of code within a review.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `comments` | array | An array of review comment objects, extracted from the `Response`. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent fetches all review comments on a pull request to perform analysis, such as identifying frequently commented-on files or common feedback patterns.
+</TipCallout>
+
+<Divider/>
+
+### <a name="reply-to-review-comment"></a>Reply to Review Comment
+Creates a reply to an existing review comment on a pull request.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The owner of the repository. |
+| `repo_name` | string | Yes | The name of the repository. |
+| `pull_number`| integer| Yes | The number of the pull request. |
+| `comment_id` | integer| Yes | The ID of the review comment you are replying to. |
+| `body` | string | Yes | The content of your reply. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The ID of the created reply comment. |
+| `url` | string | The API URL of the created reply comment. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+If a CI build fails due to a linting error commented on by a bot, an agent could automatically reply to the bot's comment stating "Linting issues addressed and fixed."
+</TipCallout>
+
+<Divider/>
+
+### <a name="fetch-github-user"></a>Fetch GitHub User
+Retrieves public information about a GitHub user.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `username` | string | Yes | The GitHub username (login) of the user. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The unique identifier (ID) of the GitHub user. |
+| `name` | string | The display name of the user. |
+| `email` | string | The user's publicly visible email address, if available. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When processing a new contributor's first pull request, an agent fetches their GitHub user profile to get their name for internal records.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-github"></a>Search GitHub
+Searches for entities (code, issues, users, etc.) across GitHub using GitHub's search syntax.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The search query string, including keywords and qualifiers (e.g., `user:SmythOS-agent`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of search result items. |
+| `total_count` | integer | The total number of items found by the search. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent searches for all open issues across multiple repositories with the label "security" to compile a priority list. Query: `org:MyOrg label:security is:issue is:open`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="fetch-latest-release"></a>Fetch Latest Release
+Retrieves the latest published full release for a specified repository.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `repo_owner` | string | Yes | The repository owner's username or organization name. |
+| `repo_name` | string | Yes | The name of the repository. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The unique identifier for the latest release. |
+| `tag_name` | string | The tag name for this release (e.g., `v1.2.3`). |
+| `name` | string | The name of the release. |
+| `body` | string | The release notes/description. |
+| `assets` | array | An array of asset objects associated with the release. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent monitors a critical software repository and, upon detecting a new latest release, triggers a deployment workflow.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Personal Access Token (PAT):** Treat your PAT like a password. Store it securely using SmythOS Vault. Grant it only the minimum necessary scopes for the actions your agents will perform.
+* **Understand GitHub API Rate Limits:** Be aware of GitHub's API rate limits. Check `X-RateLimit-Remaining` in the `Headers` output. Implement graceful handling (e.g., delays) in your agents if they make many requests.
+* **Pagination:** For components that list multiple items (issues, PRs, commits), always check for pagination information in the `Link` header (found in the `Headers` output) or use `page` and `per_page` parameters correctly to fetch all results.
+* **Base64 Encoding for File Content:** For "Commit File" and "Update File Content," ensure the `content` input is correctly Base64 encoded.
+* **SHA for File Updates:** When using "Update File Content," providing the correct `sha` (blob SHA) of the file you intend to update is crucial to avoid conflicts.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **`401 Unauthorized` Errors:**
+    * **Cause:** Invalid, revoked, or missing Personal Access Token; Token does not have the required scopes for the action.
+    * **Solution:** Verify the PAT is correct and active. Ensure it has the necessary scopes (e.g., `repo`). Update the token in SmythOS Vault.
+* **`404 Not Found` Errors:**
+    * **Cause:** Incorrect `repo_owner`, `repo_name`, `issue_number`, or other identifier.
+    * **Solution:** Double-check all identifiers for typos. Verify the resource exists on GitHub.com.
+* **`422 Unprocessable Entity`:**
+    * **Cause:** Invalid request body, missing required fields, or a business rule violation (e.g., creating a branch that already exists).
+    * **Solution:** Carefully review the inputs. For file updates, ensure the `sha` is correct. For PRs, ensure `head` and `base` branches are valid and distinct.
+
+<InfoCallout>
+For persistent issues, the `Response` object from the component is your most valuable tool. It contains the raw JSON error message from the GitHub API, which usually provides specific details about what went wrong.
+</InfoCallout>
+
+<Divider />
+## What's Next?
+
+With SmythOS integrated with GitHub, you can automate your entire development lifecycle.
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Automatically creates a feature branch, a draft pull request, and a tracking issue when a new task is created in your project management tool.
+    * Monitors open pull requests and, once approved by two team members, automatically merges the PR and deletes the source branch.
+    * Fetches the latest release notes and posts them to a company-wide Slack channel.
+* **Explore Other Integrations:**
+    * Trigger GitHub actions from an incoming [Gmail](/docs/agent-studio/integrations/google-gmail-integration).
+    * Log repository activity, such as new issues or commits, to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) for reporting.
+    * When a new user signs up in [Firebase](/docs/agent-studio/integrations/firebase-integration), automatically invite them to a specific GitHub repository.

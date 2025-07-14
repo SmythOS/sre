@@ -1,0 +1,54 @@
+---
+title: Export / Import Agents
+description: Quickly test, validate, and import API calls using Postman in your SmythOS workflow.
+keywords: [postman, export agent, import collection, api testing, smythos postman integration]
+toc_max_heading_level: 2
+sidebar_position: 9
+---
+
+# How to Export / Import Agents via Postman
+
+Use Postman to test your agent’s endpoints or import external APIs into SmythOS.
+
+<Spacer size="md" />
+
+## Export to Postman
+
+- Go to your agent in the Team Dashboard
+- Click the three-dot menu and choose <code>Export to Postman</code>
+- Choose one of the following options:
+
+  - **Test Endpoint Collection**
+    - Uses the test subdomain
+    - Best for local testing or debugging
+
+  - **Prod Endpoint Collection**
+    - Available only after deployment
+    - Uses the production subdomain
+    - Recommended for live monitoring or staging
+
+- Import the downloaded JSON file into Postman
+
+<Arcade src="https://demo.arcade.software/CI0fMYdVuulWQlXdLHHo?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Export Agent to Postman | SmythOS" />
+
+<Spacer size="md" />
+
+## Import Postman Collection
+
+Use this to bring external API definitions into your agent.
+
+- Go to the <code>Builder</code> view
+- Drag your Postman collection file into the canvas
+- SmythOS will:
+  - Automatically convert each request into an <code>API Call</code> component
+  - Preserve methods, headers, and payloads
+
+<Arcade src="https://demo.arcade.software/GTrFqGZF3az6Z128wTrU?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Import Postman Collection | SmythOS" />
+
+<Spacer size="md" />
+
+## Notes
+
+- Only supports JSON Postman format (v2.x recommended)
+- Use descriptive names for requests to keep imported nodes organized
+- You can update URLs and tokens directly inside the imported component

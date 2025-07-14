@@ -1,0 +1,322 @@
+---
+title: Firestore Integration
+description: Connect SmythOS to Google Cloud Firestore to create, read, update, and delete documents in a scalable NoSQL database directly from your agents.
+og:title: SmythOS & Firestore - Automate Your Cloud Database
+og:description: Learn to integrate Google Cloud Firestore with SmythOS. Empower your agents to interact with a powerful, scalable NoSQL database for advanced data management and application backends.
+og:image: /docs/img/integrations/smythos_firestore.png
+keywords: [Firestore SmythOS Integration, Connect Firestore to SmythOS, SmythOS Firestore, Automate Cloud Database, NoSQL Database API, Google Cloud Firestore]
+---
+# Firestore Integration with SmythOS
+
+> **Need a powerful, scalable database for your agents?** Connect Google Cloud Firestore to SmythOS and empower your agents to create, read, update, and delete documents for any application.
+
+<InfoCallout title="TL;DR">
+Securely link your Google Cloud project to SmythOS by setting up OAuth 2.0 credentials. Then, use our suite of Firestore components to give your agents full CRUD (Create, Read, Update, Delete) capabilities for your cloud database.
+</InfoCallout>
+
+## List of Firestore Components
+Quickly compare Firestore components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Document**](#create-document) | Write | Creates a new document within a specified collection. | <Badge type="required" /> `project_id`, `collection_id`<br /><Badge type="optional" /> `Body` | `name`, `fields` | Saving new user profiles or logging events. |
+| [**Get Document**](#get-document) | Read | Retrieves a single document by its ID. | <Badge type="required" /> `project_id`, `collection_id`, `document_id` | `fields` | Fetching a user's settings or a specific record. |
+| [**Update Document**](#update-document) | Write | Updates the fields of an existing document. | <Badge type="required" /> `project_id`, `collection_id`, `document_id`<br /><Badge type="optional" /> `Body` | `name` | Changing a user's profile information. |
+| [**Delete Document**](#delete-document) | Write | Deletes a single document by its ID. | <Badge type="required" /> `project_id`, `collection_id`, `document_id` | `Response` | Removing user data upon account closure. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Firestore with Your Agent?</summary>
+
+Firestore is a flexible, scalable NoSQL database perfect for building modern applications. Integrating it with SmythOS allows your agents to have a powerful, persistent memory and data backend.
+
+- **Automate Data Management:** Create agents that can automatically save, retrieve, and manage data. Log application events, store user preferences, or manage content for a CMS, all programmatically.
+- **Build Application Backends:** Use SmythOS agents as the serverless backend for your web or mobile apps. An agent can handle user data, process requests, and interact with your Firestore database, all in one place.
+- **Create a Persistent Memory for Agents:** Allow agents to remember information across conversations and executions by storing state and context in a Firestore document.
+- **Data-Driven Workflows:** Trigger agents based on database changes (using Firestore Triggers and a webhook) or have agents make decisions based on the data they retrieve from your collections.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Google Cloud Platform (GCP) Project** with a Firestore database created.
+- The **Cloud Firestore API** enabled in your GCP project.
+- **OAuth 2.0 credentials (`Client ID` and `Client Secret`)** from the Google Cloud Console.
+
+<Divider />
+
+## Getting Started With Firestore
+
+The connection between SmythOS and Firestore is handled via OAuth 2.0. This requires a one-time setup in the Google Cloud Console to get your credentials.
+
+### Step 1: Get Your OAuth 2.0 Credentials from Google
+1.  **Go to Google Cloud Console:**
+    * Navigate to `https://console.cloud.google.com/` and select your project.
+2.  **Enable the Firestore API:**
+    * In the search bar, find "Cloud Firestore API" and **Enable** it for your project.
+3.  **Configure OAuth Consent Screen:**
+    * Go to **APIs & Services > OAuth consent screen**.
+    * Choose **External** for User Type and click `Create`.
+    * Fill in the required app information (App name, User support email, Developer contact).
+    * **Scopes:** Click `Add or Remove Scopes`, search for "firestore", and add `https://www.googleapis.com/auth/datastore`. Click `Update`. This scope allows full access to Firestore.
+    * **Test Users:** Add the email addresses of the Google accounts that will authenticate (including your own).
+4.  **Create OAuth Client ID:**
+    * Go to **APIs & Services > Credentials**.
+    * Click `+ Create Credentials` and select `OAuth client ID`.
+    * For **Application type**, select `Web application`.
+    * Under **Authorized redirect URIs**, click `+ Add URI` and enter `https://app.smythos.com/oauth/google/callback`.
+    * Click `Create`.
+
+5.  **Copy Your Credentials:**
+    * A dialog will appear with **Your Client ID** and **Your Client Secret**.
+    * Copy both values immediately.
+
+    <WarningCallout title="Secure Your Credentials!">
+    Your `Client ID` and `Client Secret` are sensitive. Store them securely in the SmythOS `Vault`. [Learn more here.](/docs/agent-studio/key-concepts/vault)
+    </WarningCallout>
+
+### Step 2: Authenticate in SmythOS
+1.  **Add a Firestore Component:** Drag any Firestore component onto your agent graph in SmythOS.
+2.  **Enter Credentials:**
+    * Click the component to open its **Settings**.
+    * Input the `Client ID` and `Client Secret` you just copied (or reference them from the Vault).
+3.  **Authorize the Connection:**
+    * Click the `Authenticate` button.
+    * You'll be redirected to a Google sign-in page. Log in and grant the requested permissions.
+    * You will be redirected back to SmythOS, and the integration will show as connected.
+
+<InfoCallout title="One-Time Setup" collapsible >
+Once you authenticate, the connection is saved for your SmythOS account. You won't need to re-enter credentials for other Firestore components.
+</InfoCallout>
+
+<Divider />
+
+## Which Firestore Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new record** to your database | A `collection_id` and data | [Create Document](#create-document) | This is the primary method for inserting new data. Firestore will auto-generate a document ID. |
+| **Read a specific record** you know the ID for | A `document_id` | [Get Document](#get-document) | The most direct way to fetch a single, known piece of data. |
+| **Change some fields** in an existing record | A `document_id` and new data | [Update Document](#update-document) | Use this to modify existing records without overwriting the entire document. |
+| **Permanently remove a record** | A `document_id` | [Delete Document](#delete-document) | The standard way to delete data from your database. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Firestore component.
+
+### <a name="create-document"></a>Create Document
+Creates a new document with a unique, auto-generated ID within a specified collection.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-firestore) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the `fields` of the new document. You must specify the data type for each field (e.g., `stringValue`, `integerValue`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your Google Cloud Project ID. |
+| `collection_id` | string | Yes | The ID of the collection where the new document will be created. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | The full resource path of the newly created document, including its auto-generated ID. |
+| `fields` | object | The fields of the document that were just created. |
+| `Response`| object | The full, raw JSON response from the Firestore API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+When a new user signs up via Firebase Auth, an agent takes their UID, calls this component to create a new document in the "users" collection, and stores additional profile information like their name and subscription plan.
+</TipCallout>
+
+```json
+{
+  "component": "firestore.createDocument",
+  "project_id": "your-gcp-project-id",
+  "collection_id": "users",
+  "Body": {
+    "fields": {
+      "name": { "stringValue": "Jane Doe" },
+      "plan": { "stringValue": "Premium" }
+    }
+  }
+}
+```
+
+<WarningCallout title="Data Structure">
+The `Body` requires a specific JSON structure for fields. Each field must be an object containing its type and value (e.g., `{"fieldName": {"stringValue": "fieldValue"}}`).
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-document"></a>Get Document
+Retrieves the contents of a single document by specifying its path.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-firestore) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your Google Cloud Project ID. |
+| `collection_id` | string | Yes | The ID of the collection containing the document. |
+| `document_id` | string | Yes | The unique ID of the document to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `fields` | object | An object containing the key-value pairs of the document's fields. |
+| `name` | string | The full resource path of the retrieved document. |
+| `Response`| object | The full, raw JSON response from the Firestore API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+A chatbot needs to retrieve a user's preferences. It takes the user's ID, uses it as the `document_id` in this component, and fetches their preference document from the "user_settings" collection.
+</TipCallout>
+
+```json
+{
+  "component": "firestore.getDocument",
+  "project_id": "your-gcp-project-id",
+  "collection_id": "products",
+  "document_id": "prod_12345"
+}
+```
+
+<Divider/>
+
+### <a name="update-document"></a>Update Document
+Updates or creates a document. If the document exists, its fields are updated. If it doesn't exist, it will be created. This is also known as an "upsert" operation.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-firestore) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the `fields` to be updated or created in the document.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your Google Cloud Project ID. |
+| `collection_id` | string | Yes | The ID of the collection containing the document. |
+| `document_id` | string | Yes | The unique ID of the document to update. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | The full resource path of the updated document. |
+| `fields` | object | The fields of the document after the update operation. |
+| `Response`| object | The full, raw JSON response from the Firestore API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+After a user upgrades their subscription plan, an agent uses this component to find the user's document by their ID and update the `plan` field from "Free" to "Premium".
+</TipCallout>
+
+```json
+{
+  "component": "firestore.updateDocument",
+  "project_id": "your-gcp-project-id",
+  "collection_id": "users",
+  "document_id": "user_abcde",
+  "Body": {
+    "fields": {
+      "plan": { "stringValue": "Premium" },
+      "last_updated": { "timestampValue": "2025-06-11T10:00:00Z" }
+    }
+  }
+}
+```
+
+<WarningCallout title="Patch vs. Overwrite">
+This operation performs a "patch," meaning it only updates the fields you specify in the `Body`. Fields not included in the `Body` will remain unchanged.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="delete-document"></a>Delete Document
+Permanently removes a single document from a collection.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-firestore) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_id` | string | Yes | Your Google Cloud Project ID. |
+| `collection_id` | string | Yes | The ID of the collection containing the document. |
+| `document_id` | string | Yes | The unique ID of the document to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the API, which will be empty on success. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+When a user requests to delete their account, an agent is triggered to call this component with the user's ID to permanently erase their profile document from the "users" collection.
+</TipCallout>
+
+```json
+{
+  "component": "firestore.deleteDocument",
+  "project_id": "your-gcp-project-id",
+  "collection_id": "sessions",
+  "document_id": "session_xyz789"
+}
+```
+
+<WarningCallout title="Permanent Action">
+Deletion is irreversible. Once a document is deleted, it cannot be recovered. This action does not delete subcollections within the document.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always store your Google Cloud `Client ID` and `Client Secret` in the SmythOS `Vault`.
+* **Use Firestore Security Rules:** This integration operates with the broad permissions granted via OAuth. It is critical to configure Firestore Security Rules in your Firebase project to define what data can be accessed and modified, providing a crucial layer of server-side protection.
+* **Understand Data Structure:** Firestore is a NoSQL database. Plan your data structure with collections and documents in mind. A common pattern is to use the User ID (UID) from Firebase Authentication as the `document_id` for user-specific data.
+* **Parse the `fields` Object:** When you get a document, the `fields` output contains nested objects with data types (e.g., `{"name": {"stringValue": "Jane"}}`). You will need to use a Code component or other tools to parse this structure to access the simple values (e.g., "Jane").
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Authentication Errors (`invalid_client`, `redirect_uri_mismatch`):**
+    * **Cause:** Incorrect `Client ID`/`Secret` or a misconfigured redirect URI.
+    * **Solution:** Verify your credentials. Ensure the redirect URI in Google Cloud Console is exactly `https://app.smythos.com/oauth/google/callback`.
+
+* **Error: `403 Forbidden` / PERMISSION_DENIED**
+    * **Cause:** The authenticated user does not have permission to access Firestore in the specified project, or the Firestore API is not enabled.
+    * **Solution:** Ensure the **Cloud Firestore API** is enabled in your GCP project. Confirm the authenticating user has a role with Firestore permissions, such as "Cloud Datastore User."
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `document_id` or `collection_id` specified does not exist when trying to `Get` or `Delete` a document.
+  * **Solution:** Verify that the path to your document is correct. Check for typos in the IDs.
+
+* **Error: `400 Bad Request` / Invalid Argument**
+  * **Cause:** The JSON `Body` for creating or updating a document is malformed.
+  * **Solution:** Ensure your fields follow the correct Firestore REST API structure: `{"fields": {"yourFieldName": {"stringValue": "yourValue"}}}`. Every value must be wrapped in an object that declares its type.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful, data-driven applications with the **SmythOS Firestore Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a full backend for a user registration system. It uses the [Firebase Integration](/docs/agent-studio/integrations/firebase-integration) to create a user, then uses the Firestore `Create Document` component to save their profile information, using their new Firebase UID as the document ID.
+    * Powers a configuration panel. An agent fetches settings from a "config" collection in Firestore using `Get Document` to dynamically change its own behavior without needing to be redeployed.
+    * Creates a logging system. After performing any critical action (like sending an important email), an agent uses `Create Document` to write a log entry with a timestamp and details to a "logs" collection in Firestore.
+
+* **Explore Other Integrations:**
+    * Connect a [web scraper](/docs/agent-studio/integrations/scrapingbee-integration) to your agent. Scrape data from websites and use `Create Document` to save the structured data directly into Firestore.
+    * Use Firestore as a state machine. An agent can read the status of a long-running job from a document, perform the next step, and then use `Update Document` to update the status.

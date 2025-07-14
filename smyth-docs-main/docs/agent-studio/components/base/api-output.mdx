@@ -1,0 +1,127 @@
+---
+title: API Output
+description: Define a standardized, clean JSON response for a workflow, especially for skills acting as API endpoints.
+keywords: [API Output, output, response, JSON, skill, endpoint, format, result]
+toc_max_heading_level: 2
+---
+
+# API Output Component
+
+Use the **API Output** component to structure and standardize the final output of a workflow. It's especially powerful when used as the final step in an **[Agent Skill](/docs/agent-studio/components/base/agent-skill)**, ensuring that any workflow acting as an API endpoint returns a clean, predictable, and well-formed JSON response.
+
+<InfoCallout title="Why this matters">
+Consistent and clean outputs are crucial for building reliable agents. The `API Output` component acts as a formal "return" statement for your workflows, making them easier to call, debug, and integrate with other systems.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Define Output Fields](#step-1-define-the-output-fields-inputs)
+- [Select an Output Format](#step-2-select-an-output-format)
+- [Handle the Final Output](#step-3-handle-the-final-output)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Define the Output Fields (Inputs)
+
+The "inputs" of this component are actually the fields you want to include in your final JSON output object. For each key-value pair you want in the response, you will add one input.
+
+| Field           | Required?                   | Description                                                       |
+|-----------------|-----------------------------|-------------------------------------------------------------------|
+| **Name** | <Badge type="required">Yes</Badge> | The key name for the field in the final JSON output (e.g., `data`). |
+| **Type** | <Badge type="required">Yes</Badge> | The data type (e.g., String, Number, Array, Object).              |
+| **Optional** | <Badge type="optional">No</Badge>  | Marks the field as not required to be present in the output.      |
+| **Default Value** | <Badge type="optional">No</Badge>  | A fallback value to use if the connected input is empty.          |
+
+<TipCallout title="Structuring a Response">
+Think of each input as a field in your final JSON response. If you want a response like `{"status": "success", "data": {...}}`, you would create two inputs named `status` and `data`.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/BDTiFUzkoQo0nVtWLfI1?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="API Output | SmythOS"/>
+
+<Spacer size="md" />
+
+## Step 2: Select an Output Format
+
+This setting controls the structure and level of detail in the final JSON object.
+
+<Tabs
+  tabs={[
+    {
+      label: 'Full',
+      content: (
+        <>
+          <p><strong>Full (Default):</strong> Returns a detailed object including component metadata like names and descriptions for each field.</p>
+          <p><strong>Ideal for:</strong> Debugging and getting a comprehensive view of the output structure.</p>
+        </>
+      )
+    },
+    {
+      label: 'Minimal',
+      content: (
+        <>
+          <p><strong>Minimal:</strong> Returns a clean JSON object with only the names and values of the fields you defined.</p>
+          <p><strong>Ideal for:</strong> Most production use cases where you need a simple, predictable response.</p>
+        </>
+      )
+    },
+    {
+      label: 'Raw',
+      content: (
+        <>
+          <p><strong>Raw:</strong> Outputs the data without any processing or structuring from the component.</p>
+          <p><strong>Ideal for:</strong> Scenarios where you need to pass through data to another system that expects a specific, unprocessed format.</p>
+        </>
+      )
+    }
+  ]}
+/>
+
+<Spacer size="md" />
+
+## Step 3: Handle the Final Output
+
+The component produces a single, consolidated JSON object based on your defined inputs and selected format.
+
+| Output   | Description                                           | Data Structure                                                 |
+|----------|-------------------------------------------------------|----------------------------------------------------------------|
+| **Output** | The final, structured JSON object representing the workflow's result. | A valid JSON object. The exact structure depends on the `Output Format`. |
+
+**Example (Minimal Format):**
+If you have two inputs, `status` (value: "ok") and `user_id` (value: 123), the output would be:
+```json
+{
+  "status": "ok",
+  "user_id": 123
+}
+```
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **End Skills with API Output:** Always use `API Output` as the final step for any **Agent Skill** that has "Advanced Request Parts" enabled. This creates a formal, reliable contract for your skill's response.
+- **Standardize Your Responses:** Adopt a consistent response structure across all your skills (e.g., `{ "success": true, "data": {...} }` or `{ "success": false, "error": {...} }`). This makes your agent more robust and easier to integrate with.
+- **Use Minimal for Production:** The `Minimal` format is almost always the right choice for live skills, as it provides a clean and predictable output without unnecessary metadata.
+- **Connect All Inputs:** Ensure every input field in the `API Output` component is connected to the data it's supposed to represent from earlier in your workflow.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your output is incorrect...">
+- **Check the Output Format:** The most common issue is having the wrong format selected. If your output contains extra metadata you don't want, switch from `Full` to `Minimal`.
+- **Missing Fields:** If a field is missing from your output, check that its corresponding input is correctly named and connected to a data source in your workflow.
+- **Incorrect Data Structure:** Ensure the data you are passing into the inputs matches the `Type` you selected for each. For example, don't pass a string into an input that is typed as an `Object`.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Make this the final component in an **[Agent Skill](/docs/agent-studio/components/base/agent-skill)** to define its return value.
+- Call a skill that uses `API Output` from an external application to see how it receives the clean, structured JSON response.

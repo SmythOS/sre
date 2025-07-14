@@ -1,0 +1,122 @@
+# Tutorial: Transparent Image Maker Agent
+
+This agent specializes in removing image backgrounds. If you have a photo from which you require the background to be removed, this is your go-to solution. This agent can help you isolate the subject from its surroundings, unclutter the image, and improve its focus. This can be particularly helpful for product images, professional headshots, or any image that you want to customize for different needs. 
+
+<Youtube videoId="85LcMniv_Zw" title="SmythOS -  Transparent Image Maker Agent" />
+
+## RemoveBG API Key
+
+1. Go to https://www.remove.bg/api#remove-background
+2. If you do not have an account, proceed to create one by following the registration process.
+3. Go to your profile located in the upper right corner and select `My Account`.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 1.png" alt="alt text" />
+
+4. Click on `API Keys` on your dashboard, then click the `New API Key` button.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 2.png" alt="alt text" />
+
+5. Create a key label for easy identification of your API key, then click `Create API Key` button.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 3.png" alt="alt text" />
+
+6. Copy your API Key and click the `Save Changes` button.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 4.png" alt="alt text" />
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the `Templates` tab.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 5.png" alt="alt text" />
+
+2. You can scroll down to find the `Transparent Image Maker` or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 6.png" alt="alt text" />
+
+3. Allow the template to initialize and configure. 
+
+### Adding API Key to the Vault
+
+Your API Key will be needed on your Remove Background API Call component.
+
+1. Navigate to the Vault section on your `SmythOS` dashboard.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 7.png" alt="alt text" />
+
+2. Click the `Add Key` button to add your `RemoveBG API Key`.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 8.png" alt="alt text" />
+
+3. Input the `RemoveBG API Key` generated from your RemoveBG account.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 9.png" alt="alt text" />
+
+4. Select a distinct Key name that you can readily differentiate whenever it is required for use.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 10.png" alt="alt text" />
+
+5. Choose `API Call` for the Scope and click `Done` to save your API Key.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 11.png" alt="alt text" />
+
+6. Your `RemoveBG API Key` has been successfully added to your `Vault` and is now ready for use.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 12.png" alt="alt text" />
+
+### API Call Component Setup
+
+1. Locate the `Remove Background API Call component` that has a missing key. Click the gear icon to access its settings. Then, then click the `edit` button situated in the headers section.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 13.png" alt="alt text" />
+
+2. Highlight the text, then click on the `key` icon. Choose the `RemoveBG API Key` stored in your `Vault`, and finally, click the `Save` button.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 14.png" alt="alt text" />
+
+3. Once saved, your API key is now added in the headers section. Additionally, don’t forget to click the checkmark icon to save your configuration.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 15.png" alt="alt text" />
+
+1. You’re all set!
+
+## Test the Agent
+
+1. Open the chatbot embodiment.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 16.png" alt="alt text" />
+
+2. Open the debugger when testing via the chat embodiment to preview the generated image.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 17.png" alt="alt text" />
+
+
+3. In the chat embodiment, ask the agent to remove the background of your preferred image using a prompt. 
+   1. **Sample Prompt:**
+      1. Remove the background from this image: Classic turquoise VW Beetle parked on a cobblestone street in a quaint European village.
+
+4. When the debugger is successfully attached, click `Run` to allow the agent to proceed with the process. It won't proceed unless `Run` is clicked.	
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 18.png" alt="alt text" />
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 19.png" alt="alt text" />
+
+5. In the Image Generator component, hover over the output and click `Preview` to see the generated image before the background removal.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 20.png" alt="alt text" />
+
+6. This is the preview image. You can also open it in a new tab.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 21.png" alt="alt text" />
+
+7. In the `Remove Background` component, you can check the preview of the image with the background removed.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 22.png" alt="alt text" />
+
+8. Here’s the preview.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 23.png" alt="alt text" />
+
+9. Background successfully removed. You can go to the preview or click the link to download the image.
+
+<Image src="/docs/img/transparent_image_maker_agent/Image 24.png" alt="alt text" />

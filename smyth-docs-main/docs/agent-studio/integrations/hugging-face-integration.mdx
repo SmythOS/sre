@@ -1,0 +1,172 @@
+---
+title: Hugging Face Integration
+description: Connect SmythOS to Hugging Face to run thousands of open-source AI models for text generation, image analysis, and more, directly within your agents.
+og:title: SmythOS & Hugging Face - Access the World of Open-Source AI
+og:description: Learn to integrate Hugging Face with SmythOS. Empower your agents to leverage a vast library of AI models for natural language processing, computer vision, and audio tasks.
+og:image: /docs/img/integrations/smythos_huggingface.png
+keywords: [Hugging Face SmythOS Integration, Connect Hugging Face to SmythOS, SmythOS AI Models, Automate NLP, Open-Source AI, Machine Learning API, No-Code AI]
+---
+# Hugging Face Integration with SmythOS
+
+> **Want to leverage the universe of open-source AI?** Connect Hugging Face to SmythOS and empower your agents to run thousands of pre-trained models for any task imaginable.
+
+<InfoCallout title="TL;DR">
+Securely link your Hugging Face account to SmythOS using an Access Token. Then, use the generic Hugging Face component to run any public model from the Hub by providing its specific inputs.
+</InfoCallout>
+
+## List of Hugging Face Task Examples
+The Hugging Face integration provides a flexible component to run almost any model from the Hub. Here are some examples of what you can do.
+
+| **Component/Task** | **Action** | **What it Does** | **Example Inputs** | **Example Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Inference API Runner**](#inference-api-runner) | AI Task | Runs inference on any specified Hugging Face model. | `model`, `inputs` | `response` | A universal tool for any AI task. |
+| **Text Generation** | Generate | Creates text based on a starting prompt. | `model`, `inputs` (prompt) | `generated_text` | Drafting emails, writing articles. |
+| **Image Classification** | Analyze | Identifies objects or concepts in an image. | `model`, `inputs` (image URL) | `label`, `score` | Tagging user-uploaded images. |
+| **Sentiment Analysis** | Analyze | Determines the sentiment (positive, negative, neutral) of a text. | `model`, `inputs` (text) | `label`, `score` | Analyzing customer feedback. |
+| **Summarization** | Generate | Condenses a long piece of text into a short summary. | `model`, `inputs` (long text) | `summary_text` | Summarizing articles or reports. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Hugging Face with Your Agent?</summary>
+
+Hugging Face is the leading platform for open-source AI models. Integrating it with SmythOS gives your agents access to a virtually unlimited set of capabilities.
+
+- **Automate Any AI Task:** Go beyond basic text generation. Use specialized models for sentiment analysis, image recognition, language translation, audio transcription, and more.
+- **Access State-of-the-Art Models:** Leverage the latest and greatest models created by the global AI community without having to manage your own infrastructure.
+- **Create Sophisticated Pipelines:** Chain multiple models together. For example, use a speech-to-text model to transcribe audio, then a sentiment analysis model to analyze the transcript, and finally a text generation model to draft a reply.
+- **Cost-Effective AI:** Utilize powerful, free, open-source models for a wide range of tasks, providing a cost-effective alternative to proprietary AI services for many use cases.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Hugging Face account**.
+- Your Hugging Face **Access Token**.
+
+<Divider />
+
+## Getting Started With Hugging Face
+
+The connection between SmythOS and Hugging Face is configured using a secure Access Token.
+
+### Step 1: Get Your Hugging Face Access Token
+1.  Log in to your [Hugging Face account](https://huggingface.co/).
+2.  Navigate to your profile settings by clicking your profile picture in the top-right corner.
+3.  In the left menu, click on **Access Tokens**.
+4.  Click the **New token** button. Give your token a name and a role (e.g., `read`).
+5.  Copy the generated token to your clipboard.
+
+### Step 2: Store Your Access Token in SmythOS Vault
+Your Access Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Hugging Face Access Token as the value. Give it a memorable name, like `huggingface_access_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the Hugging Face Component
+1.  In your SmythOS agent graph, drag and drop the **Hugging Face** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Access Token` field, select the secret you saved in the Vault (e.g., `huggingface_access_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Access Token from the Vault to each Hugging Face component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Hugging Face Model Should I Use?
+The Hugging Face integration uses a single, powerful component. The key is choosing the right model for your task. You can browse thousands of models on the [Hugging Face Hub](https://huggingface.co/models).
+
+| If you need to… | Task Category | Example Model ID |
+|-----------------|---------------|------------------|
+| **Write an email or story** | Text Generation | `openai-community/gpt2` |
+| **Summarize a long article** | Summarization | `facebook/bart-large-cnn` |
+| **Analyze customer feedback sentiment** | Text Classification | `distilbert/distilbert-base-uncased-finetuned-sst-2-english` |
+| **Generate an image from a prompt** | Text-to-Image | `runwayml/stable-diffusion-v1-5` |
+| **Identify what's in a picture** | Image Classification | `google/vit-base-patch16-224` |
+| **Transcribe a voice note** | Automatic Speech Recognition | `openai/whisper-base` |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the main Hugging Face component.
+
+### <a name="inference-api-runner"></a>Inference API Runner
+Runs inference on any publicly available model on the Hugging Face Hub using their serverless Inference API.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hugging-face) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `model` | string | Yes | The ID of the model from the Hugging Face Hub (e.g., `distilbert/distilbert-base-uncased-finetuned-sst-2-english`). |
+| `inputs`| any | Yes | The input data for the model. The format depends entirely on the model being used. It could be a string, an object with parameters, or a URL to an image/audio file. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `response`| any | The raw output from the model. The structure of this output varies greatly between models. |
+| `headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case: Sentiment Analysis" collapsible>
+An agent takes customer feedback text from a form, passes it as the `inputs` to the `distilbert/distilbert-base-uncased-finetuned-sst-2-english` model, and then checks the `response` to see if the sentiment is `POSITIVE` or `NEGATIVE`.
+</TipCallout>
+
+```json
+{
+  "component": "huggingface.inference",
+  "model": "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+  "inputs": "SmythOS is an amazing platform that has streamlined our workflows!"
+}
+```
+
+<WarningCallout title="Check Model Documentation!">
+The single most important step is to **check the documentation on the model's page on the Hugging Face Hub**. This will tell you the exact format required for the `inputs` and what structure to expect in the `response`.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Access Token:** Always use the SmythOS `Vault` to store your Hugging Face Access Token.
+* **Start with Popular Models:** When exploring a new task, start with the most popular and well-documented models on the Hub. They are often more reliable and have more examples.
+* **Parse the Response Carefully:** The output structure is model-specific. Use a "Code" component in SmythOS to parse the JSON `response` and extract the exact fields you need for downstream steps.
+* **Handle Model Loading Times:** The first time you call a model via the Inference API, it may need to be loaded into memory, which can take some time. Subsequent calls are usually much faster. Build appropriate delays or retries into your agent if you need an immediate response.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Access Token is missing, invalid, or does not have the correct permissions.
+  * **Solution:** Verify that the Access Token in your SmythOS Vault is correct. Ensure you are using a token with at least `read` permissions.
+
+* **Error: `503 Service Unavailable` or "Model is loading"**
+  * **Cause:** The model you are trying to use is currently being loaded onto a server. This is common on the first request.
+  * **Solution:** Wait a minute and try the request again. You can build a loop with a delay in your agent to handle this automatically.
+
+* **Error: `400 Bad Request` or Model-Specific Validation Error**
+  * **Cause:** The `inputs` you provided are not in the format the model expects.
+  * **Solution:** Go to the model's page on the Huggng Face Hub. Read its documentation carefully and look at the examples to see the required input structure. For example, some models expect `{"inputs": "your text"}` while others might expect `{"text": "your text"}`.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to integrate a universe of AI models into your workflows with the **SmythOS Hugging Face Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Scrapes customer reviews from a website, runs each review through a sentiment analysis model, and logs the score to a Google Sheet.
+    * Takes a text prompt, generates an image with a text-to-image model, and then uses an image classification model to verify that the generated image contains the objects mentioned in the prompt.
+    * Transcribes a sales call recording with a speech-to-text model, then runs the transcript through a summarization model to create meeting notes.
+
+* **Explore Other Integrations:**
+    * Combine Hugging Face with the [ScrapingBee Integration](/docs/agent-studio/integrations/scrapingbee-integration) to scrape text from a web page and feed it into any NLP model.
+    * Use the results from a Hugging Face model to trigger actions in [Slack](/docs/agent-studio/integrations/slack-integration), [Gmail](/docs/agent-studio/integrations/google-gmail-integration), or by updating a record in a CRM.
+    * Generate text with a Hugging Face model and then give it a voice using the [Elevenlabs Integration](/docs/agent-studio/integrations/elevenlabs-integration).

@@ -1,0 +1,128 @@
+---
+title: Use Telegram with SmythOS
+description: Integrate Telegram to send messages or audio through your agents in SmythOS.
+keywords: [Telegram, SmythOS, messaging integration, send message, send audio, API bot, bot token]
+---
+
+# Use Telegram with SmythOS
+
+> Enable your agents to communicate directly through Telegram channels or chats using message or audio formats.
+
+<InfoCallout>
+**TL;DR:** Connect your Telegram bot via API token, choose a message or audio component, and trigger delivery from your agent.
+</InfoCallout>
+
+<Divider />
+
+## Why Use Telegram With Your Agent?
+
+Telegram offers broad reach, high delivery rates, and a frictionless messaging UX. It's ideal for:
+
+- Pushing alerts or content to a known user base
+- Sending automated updates from agents
+- Audio-based interactions via agent-generated voice
+- Building brand presence in community channels
+
+With SmythOS, you can either connect directly via components or use the [Model Context Protocol (MCP)](/docs/agent-deployments/deployments/deploy-as-mcp-server) to serve your agent over a webhook server, which Telegram bots can poll for messages.
+
+<Divider />
+
+## Prerequisites
+
+To use Telegram integrations, you'll need:
+
+- A Telegram bot (created via [BotFather](https://t.me/botfather))
+- Your bot's **API token**
+- A chat ID or channel username (@handle)
+- Optionally, [Vault access](/docs/agent-studio/key-concepts/vault) for securely storing tokens
+
+<Divider />
+
+## Deploy Options
+
+### 1. Use Telegram Components Directly
+
+This works well if your agent pushes notifications, answers predefined requests, or sends scheduled updates.
+
+- **Send Message**: For short text replies or updates
+- **Send Audio**: To deliver voice responses (e.g., paired with ElevenLabs)
+
+Follow the configuration steps below to connect these components to your workflows.
+
+### 2. Deploy Agent via MCP and Connect to Telegram Bot
+
+If you want Telegram to **receive user messages and trigger agent replies**, deploy your agent with [MCP](/docs/agent-deployments/deployments/deploy-as-mcp-server):
+
+- Deploy your agent as an MCP webhook
+- Use a Telegram bot that calls this webhook on each message
+- Relay response back to Telegram via your bot code or SmythOS component
+
+This setup enables fully conversational agents inside Telegram.
+
+<Divider />
+
+## Send Message
+
+### Component Setup
+
+1. Create a Telegram bot via [BotFather](https://t.me/botfather)
+2. Copy the **API token**
+3. Paste it into the **Send Message** component settings
+4. Optionally store it in [Vault → API Keys](/docs/agent-studio/key-concepts/vault)
+
+### Inputs
+
+```json
+{
+  "chat_id": "@channelusername",
+  "text": "Hello from SmythOS!"
+}
+```
+
+- **chat_id**: Telegram chat or channel identifier
+- **text**: Message content (max 4096 characters)
+
+### Outputs
+
+- **response**: Telegram response object
+- **headers**: HTTP headers from the request
+- **messageId**: Unique ID of the sent message
+
+<Divider />
+
+## Send Audio
+
+### Component Setup
+
+Same setup as above; reuse your Telegram bot API token.
+
+### Inputs
+
+```json
+{
+  "chat_id": "@channelusername",
+  "audio_url": "https://example.com/audio.mp3"
+}
+```
+
+- **chat_id**: Target Telegram chat or channel
+- **audio_url**: Direct URL to an audio file
+
+> Tip: You can use [ElevenLabs](/docs/agent-deployments/integration-components/elevenlabs-integration) to generate voice from text and pass the result here.
+
+### Outputs
+
+- **response**: Result of audio delivery
+- **headers**: HTTP response metadata
+- **messageId**: Telegram-generated message ID
+
+<Divider />
+
+## What’s Next?
+
+- Monitor your message or audio delivery in [Agent Logs](/docs/agent-studio/manage-agents/logs)
+- Use this with [Deploy as API](/docs/agent-deployments/deployments/deploy-as-api) to send Telegram messages on external events
+- Chain outputs to other systems or notifications
+- Deploy over [Custom Domain](/docs/agent-deployments/deployments/deploy-to-your-domain) to enable branded responses
+
+<PromptCard prompt="Set up a Telegram bot and connect it to your SmythOS agent using either direct components or MCP deployment." />

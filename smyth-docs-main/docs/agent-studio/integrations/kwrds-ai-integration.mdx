@@ -1,0 +1,232 @@
+---
+title: Kwrds.ai Integration
+description: Connect SmythOS to Kwrds.ai to automate AI-powered keyword research, discover related queries, and analyze SERP data directly from your agents.
+og:title: SmythOS & Kwrds.ai - Automate Your SEO Content Strategy
+og:description: Learn to integrate Kwrds.ai with SmythOS. Empower your agents to fetch keyword volume, CPC, competition, "People Also Ask" queries, and more to fuel your SEO workflows.
+og:image: /docs/img/integrations/smythos_kwrdsai.png
+keywords: [Kwrds.ai SmythOS Integration, Connect Kwrds.ai to SmythOS, SmythOS Keyword Research, Automate SEO, AI Keyword Tool, People Also Ask API, No-Code SEO]
+---
+# Kwrds.ai Integration with SmythOS
+
+> **Want to power your content strategy with AI-driven insights?** Connect Kwrds.ai to SmythOS and empower your agents to perform advanced keyword research and SERP analysis automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your Kwrds.ai account to SmythOS using an API key. Then, use our suite of components to automate the retrieval of keyword volume, CPC, "People Also Ask" questions, and other critical SEO data.
+</InfoCallout>
+
+## List of Kwrds.ai Components
+Quickly compare Kwrds.ai components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Keyword Research**](#keyword-research) | Research | Retrieves core metrics (volume, CPC, competition) for a keyword. | <Badge type="required" /> `search_question` | `volume`, `cpc` | Analyzing the value of a target keyword. |
+| [**Related Keywords**](#related-keywords) | Research | Finds a list of semantically related keywords. | <Badge type="required" /> `search_question` | `keywords` | Expanding a content topic cluster. |
+| [**People Also Ask**](#people-also-ask) | Research | Retrieves "People Also Ask" questions from Google for a keyword. | <Badge type="required" /> `keyword` | `results` | Creating FAQ sections and answering user questions. |
+| [**Search Volume**](#search-volume) | Research | Gets search volume and other metrics for a batch of keywords. | <Badge type="required" /> `keywords` | `volume`, `cpc` | Quickly analyzing a list of potential keywords. |
+| [**SERP**](#serp) | Research | Fetches the Search Engine Results Page (SERP) data for a query. | <Badge type="required" /> `search_question`| `serp`, `pasf` | Analyzing top-ranking competitors for a keyword. |
+| [**AI Keyword Generation**](#ai-keyword-generation)| Generate | Uses AI to generate new keyword ideas based on a seed topic. | <Badge type="required" /> `search_question`| `Response` | Brainstorming new content ideas and keyword targets. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Kwrds.ai with Your Agent?</summary>
+
+Kwrds.ai provides AI-powered SEO insights that are essential for modern content strategy. Integrating it with SmythOS allows you to automate the entire research and planning process.
+
+- **Automate Keyword Discovery:** Create agents that take a single topic and automatically generate a list of related keywords, find "People Also Ask" questions, and analyze the search volume for each, creating a complete content brief in seconds.
+- **Streamline Content Creation:** Build a workflow where an agent researches a keyword with Kwrds.ai, then feeds the keyword, related questions, and search intent into an LLM to generate a well-structured, SEO-optimized article draft.
+- **Enhance Competitive Analysis:** Programmatically fetch the SERP data for your most important keywords to see who is ranking and what kind of content they are using. Track changes over time to spot new opportunities.
+- **Scale Your SEO Efforts:** Instead of manually researching keywords one by one, build agents that can analyze hundreds or thousands of keywords from a list, enriching your data and saving countless hours.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Kwrds.ai account**.
+- Your Kwrds.ai **API Key**.
+
+<Divider />
+
+## Getting Started With Kwrds.ai
+
+The connection between SmythOS and Kwrds.ai is configured using a secure API Key.
+
+### Step 1: Get Your Kwrds.ai API Key
+1.  Log in to your [Kwrds.ai account](https://kwrds.ai/).
+2.  Navigate to your **Account** settings page.
+3.  In the API Key section, your key will be displayed. Copy it to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Kwrds.ai API Key as the value. Give it a memorable name, like `kwrdsai_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Kwrds.ai Component
+1.  In your SmythOS agent graph, drag and drop any Kwrds.ai component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Kwrds API key` field, select the secret you saved in the Vault (e.g., `kwrdsai_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Kwrds.ai component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Kwrds.ai Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Get all core metrics** for a single keyword | A search query | [Keyword Research](#keyword-research) | Provides a comprehensive overview (volume, CPC, intent) for one keyword. |
+| **Understand what questions users are asking** | A keyword | [People Also Ask](#people-also-ask) | Directly fetches the PAA box from Google SERPs, perfect for content ideation. |
+| **Find new keywords** related to a topic | A seed keyword | [Related Keywords](#related-keywords) | Expands your keyword list with semantically similar terms. |
+| **Analyze the top 10 results** for a query | A search query | [SERP](#serp) | Gives you the actual search results page data for competitor analysis. |
+| **Quickly get search volume** for a long list of keywords| An array of keywords | [Search Volume](#search-volume) | Optimized for bulk processing of keyword lists. |
+| **Brainstorm completely new ideas** | A seed topic | [AI Keyword Generation](#ai-keyword-generation) | Leverages AI to come up with creative and relevant keyword suggestions. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Kwrds.ai component.
+
+### <a name="keyword-research"></a>Keyword Research
+Retrieves a comprehensive set of data, including search volume, CPC, and competition, for a single keyword.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-kwrdsai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `search_question`| string | Yes | The keyword or question to research. |
+| `search_country`| string | Optional| The locale for the search (e.g., `en-GB`). Default: `en-US`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `volume` | integer | The monthly search volume for the keyword. |
+| `cpc` | float | The average Cost Per Click for the keyword. |
+| `search_intent` | string | The likely user intent (e.g., informational, transactional). |
+| `competition_value`| float | A score indicating advertiser competition. |
+| `Response`| object | The full, raw JSON response from the Kwrds.ai API. |
+
+<TipCallout title="Use Case">
+Before writing a new blog post, an agent takes the target keyword, runs it through this component, and checks if the `volume` is above a certain threshold and the `competition_value` is low enough.
+</TipCallout>
+
+<Divider/>
+
+### <a name="people-also-ask"></a>People Also Ask
+Retrieves the list of questions that appear in Google's "People Also Ask" box for a given keyword.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-kwrdsai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `keyword` | string | Yes | The keyword to find related questions for. |
+| `search_country` | string | Optional | Two-letter country code. Default: `US`. |
+| `search_language`| string | Optional | Two-letter language code. Default: `en`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of strings, where each string is a question from the PAA box. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent tasked with creating a content brief for an article uses this component to generate a list of questions that should be answered in an FAQ section.
+</TipCallout>
+
+<Divider/>
+
+### <a name="related-keywords"></a>Related Keywords
+Retrieves a list of keywords that are semantically related to a given keyword.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-kwrdsai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `search_question`| string | Yes | The seed keyword or question. |
+| `search_country`| string | Optional| The locale for the search. Default: `en-US`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `keywords` | array | An array of related keyword objects, each with its own volume, cpc, etc. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+To build a topic cluster, an agent takes a main pillar keyword (e.g., "AI agents"), uses this component to find related sub-topics, and then creates a list of potential blog posts.
+</TipCallout>
+
+<Divider/>
+
+### <a name="serp"></a>SERP
+Returns the live Search Engine Results Page (SERP) data for a given query.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-kwrdsai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `search_question`| string | Yes | The keyword or question to search for. |
+| `search_country`| string | Optional| The locale for the search. Default: `en-US`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `serp` | array | An array of objects representing the top search results (URL, title, description). |
+| `pasf` | array | An array of "People Also Search For" queries. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A competitor analysis agent runs this component with a target keyword, extracts the top 5 ranking URLs from the `serp` output, and then sends those URLs to a web scraper to analyze their content.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Kwrds.ai API key in the SmythOS `Vault`.
+* **Chain Components for Deep Research:** The real power comes from combining these components. Start with `AI Keyword Generation`, validate the ideas with `Search Volume`, find questions with `People Also Ask`, and analyze competitors with `SERP`.
+* **Use a Loop for Bulk Analysis:** To analyze a large list of keywords, use a `Loop` component in SmythOS. Inside the loop, call the `Keyword Research` component for each keyword and log the results to a Google Sheet or database.
+* **Localize Your Research:** Always specify the `search_country` and `search_language` to get the most accurate and relevant data for your target audience.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, has been disabled, or is missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your Kwrds.ai account dashboard.
+
+* **Error: `402 Payment Required` or Quota Errors**
+  * **Cause:** You have exhausted the API credits available in your Kwrds.ai plan.
+  * **Solution:** Log in to your Kwrds.ai account to check your usage and upgrade your plan if necessary.
+
+* **Empty Results**
+  * **Cause:** The keyword may have very low or no search data, or the specific combination of keyword and country has no results.
+  * **Solution:** Try a broader keyword to test the connection. Double-check the `search_country` code for typos.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful SEO and content strategy workflows with the **SmythOS Kwrds.ai Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a "Content Brief Generator." It takes a topic, finds related keywords and "People Also Ask" questions, analyzes the top SERP results, and compiles all of it into a structured brief in a Notion document.
+    * Performs automated keyword clustering. The agent takes a list of keywords, fetches their SERP results, and groups them together based on how many overlapping URLs they have.
+    * Monitors keyword opportunities. It regularly checks a list of target keywords and sends an alert if the `competition_value` drops below a certain threshold.
+
+* **Explore Other Integrations:**
+    * Combine Kwrds.ai with an [LLM component](/docs/agent-studio/integrations/openrouter-integration). Use the keyword data and PAA questions to generate a high-quality, SEO-optimized draft of a blog post.
+    * Feed the results of your keyword research directly into a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) to build a dynamic content calendar and tracking dashboard.
+    * Use the `SERP` component to find competitor articles, then use a [web scraping tool](/docs/agent-studio/integrations/scrapingbee-integration) to analyze their word count and structure.

@@ -1,0 +1,169 @@
+---
+title: Resend Integration
+description: Connect SmythOS to Resend to automate sending beautiful and reliable transactional emails directly from your agent workflows.
+og:title: SmythOS & Resend - Automate Your Email Delivery
+og:description: Learn to integrate Resend with SmythOS. Empower your agents to send programmatic emails for notifications, alerts, and user communication with a developer-friendly API.
+og:image: /docs/img/integrations/smythos_resend.png
+keywords: [Resend SmythOS Integration, Connect Resend to SmythOS, SmythOS Email API, Automate Transactional Email, No-Code Email, Email Delivery API]
+---
+# Resend Integration with SmythOS
+
+> **Need a simple, developer-friendly way to send emails from your agents?** Connect Resend to SmythOS and empower your agents to send transactional emails programmatically with ease.
+
+<InfoCallout title="TL;DR">
+Securely link your Resend account to SmythOS using an API key. Then, use the "Send Email" component to automate all your transactional email needs, from sending welcome messages to critical system alerts.
+</InfoCallout>
+
+## List of Resend Components
+Quickly compare Resend components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send Email**](#send-email) | Write | Sends an email with specified content to one or more recipients. | <Badge type="required" /> `From`, `To`, `Subject`, `Text` | `id` | Sending welcome emails or password resets. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Resend with Your Agent?</summary>
+
+Resend is a modern email platform designed for developers. Integrating it with SmythOS allows you to build reliable and powerful communication workflows.
+
+- **Automate Transactional Emails:** Create agents that automatically send critical emails like account verifications, password resets, order confirmations, and invoices, ensuring reliable delivery.
+- **Reliable Alerting System:** When an agent detects an important event—a system failure, a new high-value customer—it can use Resend to send a dependable email alert to the right people.
+- **Streamline User Onboarding:** Build an agent that, upon a new user sign-up, sends a beautifully formatted welcome email, starting the customer relationship on the right foot.
+- **Centralize Email Logic:** Manage all your application's transactional email logic from within SmythOS agents, making it easy to update, monitor, and control your email communications.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Resend account**.
+- A Resend **API Key**.
+- A **verified domain** in your Resend account to send emails from.
+
+<Divider />
+
+## Getting Started With Resend
+
+The connection between SmythOS and Resend is configured using a secure API Key.
+
+### Step 1: Get Your Resend API Key
+1.  Log in to your [Resend account](https://resend.com/).
+2.  Navigate to the **API Keys** section in the left-hand menu.
+3.  Click the **+ Create API Key** button.
+4.  Give your key a name (e.g., "SmythOS Agent") and set the permission to **Full access**.
+5.  Click **Add**.
+6.  **Copy the API key immediately.** It will not be shown again for security reasons.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Resend API Key as the value. Give it a memorable name, like `resend_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the Resend Component
+1.  In your SmythOS agent graph, drag and drop the **Send Email** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Authentication Key` field, select the secret you saved in the Vault (e.g., `resend_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each Resend component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Resend Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send any kind of email** | One or more recipients | [Send Email](#send-email) | This is the core, all-in-one component for sending emails with Resend. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Resend component.
+
+### <a name="send-email"></a>Send Email
+Sends an email with a specified subject and content to one or more recipients. The content can be plain text or HTML.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-resend) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `From` | string | Yes | The sender's email address (e.g., `You <you@example.com>`). Must use a domain verified in Resend. |
+| `To` | string/array| Yes | The recipient's email address. Can be a single string or an array of strings for multiple recipients. |
+| `Subject`| string | Yes | The subject line of the email. |
+| `Text` | string | Yes | The plain text body content of the email. You can also pass HTML content here. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the sent email, useful for tracking. |
+| `Response`| object | The full, raw JSON response from the Resend API, containing the `id` and other details. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent processes a password reset request. It generates a unique reset link, and then calls this component to send an email to the user with the subject "Your Password Reset Link" and the link in the `Text` body.
+</TipCallout>
+
+```json
+{
+  "component": "resend.sendEmail",
+  "From": "Onboarding Team <onboarding@example.com>",
+  "To": "new.user@example.com",
+  "Subject": "Welcome to SmythOS!",
+  "Text": "<h1>Welcome aboard!</h1><p>We're so glad to have you. Let us know if you need anything.</p>"
+}
+```
+
+<WarningCallout title="Verified Domain Required">
+To send emails in a production environment, you **must** verify your domain in Resend. Emails sent from unverified domains will fail.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Resend API key in the SmythOS `Vault`.
+* **Use HTML for Rich Emails:** The `Text` input can accept a full HTML string. Use this to send beautifully designed emails. For more complex designs, consider building the HTML outside the agent and passing it in as a variable.
+* **Verify Your Domain:** The most critical step for deliverability is to complete the Domain Authentication process in your Resend account. This improves your sending reputation and ensures your emails don't land in spam.
+* **Handle Bounces and Complaints:** Use the Resend dashboard to monitor your email activity. If you see high bounce or complaint rates, investigate the causes to protect your sender reputation.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect or has been revoked.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and active. Generate a new key in Resend if necessary and update your Vault secret.
+
+* **Error: `422 Unprocessable Entity` / "You must verify your domain to send emails"**
+  * **Cause:** You are trying to send an email from a domain that has not been verified in your Resend account.
+  * **Solution:** Log in to your Resend account, go to the **Domains** section, and follow the instructions to add and verify your sending domain by adding DNS records.
+
+* **Emails Go to Spam**
+  * **Cause:** This is a complex deliverability issue often related to a new domain's reputation or the content of the email.
+  * **Solution:** Ensure your domain is fully verified in Resend (with DKIM/SPF). Warm up your domain by sending a small volume of high-quality emails first. Avoid spammy words in your subject and content.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful email workflows with the **SmythOS Resend Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages a product waitlist. When a user signs up, the agent adds them to a database. When the product launches, the agent iterates through the list and sends a personalized launch announcement email to each user.
+    * Sends a daily summary report. The agent gathers data from various sources ([Google Analytics](/docs/agent-studio/integrations/google-analytics-integration), internal databases), formats it into an HTML report, and emails it to stakeholders.
+    * Powers an alert system. When a system monitoring tool detects an issue, it triggers an agent that sends a high-priority email alert to the on-call engineering team.
+
+* **Explore Other Integrations:**
+    * Combine Resend with a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration). When a new record is added, trigger an agent to send a confirmation email.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to draft a personalized follow-up email based on a customer's recent activity, then send it via Resend.
+    * Connect to a payment processor. When a subscription payment fails, send a dunning email to the customer asking them to update their payment information.

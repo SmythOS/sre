@@ -1,0 +1,110 @@
+---
+title: Computer Use
+description: Use a powerful AI to execute complex computer operations like web searching, data analysis, and report generation using natural language.
+keywords: [Computer Use, AI, automation, virtual computer, natural language, data analysis, web search, enterprise]
+toc_max_heading_level: 2
+---
+
+# Computer Use Component
+
+Use the **Computer Use** component to give your agent a powerful, AI-driven virtual computer. It can execute complex, multi-step tasks described in natural language—from researching topics on the web to analyzing data—all without writing a single line of code.
+
+<InfoCallout title="Why this matters">
+This component allows you to automate tasks that would normally require a human operator or complex custom code. By simply describing what you want to achieve, you can enable your agent to perform research, analyze information, and generate structured results autonomously, drastically expanding its capabilities.
+
+This component is exclusively available for Enterprise accounts. [Contact us](https://smythos.com/talk-to-us) to get access.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [How It Works](#step-1-how-it-works)
+- [Define the Task (Prompt)](#step-2-define-the-task-prompt)
+- [Provide Inputs](#step-3-provide-inputs)
+- [Handle Outputs](#step-4-handle-the-outputs)
+- [Best Practices & Limitations](#step-5-best-practices--limitations)
+- [Troubleshooting Tips](#step-6-troubleshooting-tips)
+- [What to Try Next](#step-7-what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: How It Works
+
+The Computer Use component functions as a virtual computer operated by an advanced AI model. When you provide a natural language prompt, the AI formulates an execution plan. This plan may involve using various tools like web search, data calculation, or text analysis to fulfill your request. The final result is then structured and returned as an output.
+
+<Arcade src="https://demo.arcade.software/iA1SBPZMiyWMdwRUeTUP?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Computer Use | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Define the Task (Prompt)
+
+This is the core of the component. You provide a clear, natural language instruction that tells the AI computer what you want it to accomplish.
+
+| Setting | Description |
+|:---|:---|
+| **Prompt** | The primary instruction that guides the AI computer's operations. You can connect this to outputs from other components to dynamically generate tasks. |
+
+##### Example Prompts:
+- "Search for the current weather in New York and extract the temperature and conditions."
+- "Find the latest stock price for Microsoft and calculate the 7-day average."
+- "Look up population data for the top 10 most populous cities in California and create a summary table."
+
+<Spacer size="md" />
+
+## Step 3: Provide Inputs
+
+You can make your prompts dynamic by adding custom inputs.
+
+| Input | Description |
+|:---|:---|
+| **Prompt** | The default input for your main instruction. |
+| **Custom Inputs** | Click the **+** icon to add new inputs (e.g., `location`, `company_name`). You can then reference these in your prompt using `{{variable}}` syntax to make your tasks reusable and dynamic. |
+
+<Spacer size="md" />
+
+## Step 4: Handle Outputs
+
+The component provides a single, comprehensive `Output` and allows you to define custom outputs to easily extract specific pieces of data.
+
+| Output | Description |
+|:---|:---|
+| **Output** | The default output containing the complete, structured results of the executed tasks. |
+| **Custom Outputs**| Click the **+** icon to add new outputs that extract specific data from the main `Output` (e.g., `temperature`, `stock_price`). SmythOS automatically understands that these custom outputs are parsing the default `Output`, so no complex expression is needed. |
+
+<TipCallout title="Easily Parse Results">
+By creating custom outputs with clear names, you can easily route different parts of the result to other components. For example, a `temperature` output can be sent to a notification, while a `summary` output can be saved to a database.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 5: Best Practices & Limitations
+
+- **Be Specific:** Provide clear, detailed instructions for best results. Instead of "find company info," try "Find the founding date and current CEO of Microsoft."
+- **Start Simple:** Begin with straightforward, single-step tasks and gradually increase complexity as you get a feel for how the component interprets prompts.
+- **Test Iteratively:** Run your prompt in **Debug Mode** and refine it based on the output to improve accuracy.
+- **Create Dedicated Outputs:** Set up specific custom outputs for each data element you need. This makes your workflow much cleaner than trying to parse a single large JSON object downstream.
+
+<WarningCallout title="Limitations">
+- Tasks are limited to operations that can be performed in a secure, isolated environment (primarily web-based research and data manipulation).
+- The component cannot access private systems, local files, or networks without proper authentication provided through other components.
+- Complex or ambiguous instructions may require refinement for optimal results. Processing time will vary based on task complexity.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Step 6: Troubleshooting Tips
+
+<InfoCallout title="If your task isn't executing correctly...">
+- **The result is inaccurate or irrelevant:** Your prompt is likely too ambiguous. Add more specific details, context, and constraints to guide the AI.
+- **The component fails to extract data:** Ensure the data you are asking for is publicly available on the web. If parsing fails, inspect the main `Output` in Debug mode to see the raw data structure and adjust your prompt or custom outputs accordingly.
+- **The task is too complex:** If a very complex prompt fails, break it down into smaller, sequential tasks using multiple Computer Use components or other tools.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 7: What to Try Next
+
+- Feed the raw `Output` into a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to have it write a narrative summary of the structured data.
+- Use this component as a more powerful alternative to the basic **[Web Search Component](/docs/agent-studio/components/tools/web-search)** for complex research tasks that require multiple steps.
+- Use a **[JSON Filter Component](/docs/agent-studio/components/advanced/json-filter)** to further refine or clean the structured `Output` before passing it to other parts of your workflow.

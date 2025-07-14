@@ -1,0 +1,232 @@
+---
+title: Google Drive Integration
+description: Seamlessly integrate Google Drive into SmythOS. Upload, list, and access your Drive files through powerful agent automation.
+og:title: Integrate Google Drive with SmythOS
+og:description: Learn how to connect Google Drive to SmythOS, so agents can upload files, fetch metadata, and work with documents from the cloud.
+og:image: /docs/img/integrations/smythos_google_drive.png
+keywords: [Google Drive SmythOS Integration, Automate Drive Files, Upload to Google Drive, List Google Drive Files, SmythOS File Management, Connect Google Drive, Google Drive API No-Code]
+---
+
+# Google Drive Integration
+
+> **Want your agents to work with cloud documents?** Connect Google Drive to SmythOS and give your agents the power to upload, fetch, and manage files—automatically.
+
+<InfoCallout title="TL;DR">
+Link your Google account to SmythOS once. Then use Drive components to upload, list, and interact with files from your Google Drive in real-time.
+</InfoCallout>
+
+## List of Google Drive Components
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|--------------|------------|------------------|------------|------------------|---------------|
+| [**Upload File**](#upload-file) | Write | Uploads a file to a Google Drive folder. | <code>file</code>, <code>folderId</code>, <code>fileName</code>, <code>mimeType</code> | <code>driveFile</code>, <code>response</code> | Save a generated report or PDF to Drive. |
+| [**List Files**](#list-files) | Read | Retrieves a list of files within a folder. | <code>folderId</code> | <code>files</code>, <code>response</code> | List recent uploads for user access or logic branching. |
+| [**Get File Metadata**](#get-file-metadata) | Read | Fetches metadata (name, size, mimeType) for a given file ID. | <code>fileId</code> | <code>driveFile</code>, <code>response</code> | Display file info before download or share. |
+
+<InfoCallout>
+<details>
+<summary>Why Use Google Drive With SmythOS?</summary>
+
+Google Drive lets your agents access documents as inputs and store generated files as outputs:
+
+- Upload generated PDFs, reports, or scraped content
+- Reference files dynamically via `fileId` or `folderId`
+- Use metadata for filtering, naming, or logic branching
+- Store agent logs, archives, or deliverables for human review
+
+</details>
+</InfoCallout>
+
+<Divider />
+
+## Prerequisites
+
+You’ll need:
+
+- A **SmythOS account** ([sign up here](https://app.smythos.com/signup))
+- A **Google account** with access to Drive
+- Appropriate access to the target files and folders
+
+<Divider />
+
+## Connect Google Drive to SmythOS
+
+The integration requires a simple one-time authorization.
+
+### Step 1: Add a Drive Component
+
+From the SmythOS Integrations panel, drag in any **Google Drive** component like "Upload File".
+
+<Divider />
+
+### Step 2: Authenticate
+
+You can connect your Google account in two ways:
+
+**Option A: Click the Authenticate Button**
+<Arcade src="https://demo.arcade.software/abc123-google-drive-auth" title="Authenticate Google Drive" />
+
+**Option B: Use Component Settings**
+Open any Drive component → Settings tab → Find the `OAuth` section → Click `Authenticate`.
+
+You’ll be prompted to:
+
+1. Choose your Google account  
+2. Grant permission for file access  
+3. Return to SmythOS—authentication complete 🎉
+
+<InfoCallout title="Switching Accounts or Resetting Connection?" collapsible>
+To switch accounts, de-authenticate from the Drive integration settings. Then re-authenticate with your desired Google account.
+<Arcade src="https://demo.arcade.software/deauth-google-drive" title="Remove Google Drive Connection" />
+</InfoCallout>
+
+<Divider />
+
+## Component Details
+
+### <a name="upload-file"></a>Upload File — Send Files to Google Drive
+
+Upload a file from your agent’s workflow to a specific Google Drive folder.
+
+<InfoCallout>
+Use this to store AI-generated content like PDFs, spreadsheets, or reports.
+</InfoCallout>
+
+#### Inputs
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| <code>file</code> | <Badge type="required" /> | File object to upload (e.g., from previous component like HTML-to-PDF). |
+| <code>folderId</code> | <Badge type="required" /> | Target folder’s Drive ID. |
+| <code>fileName</code> | <Badge type="required" /> | Desired name of the file in Drive (e.g., <code>summary.pdf</code>). |
+| <code>mimeType</code> | <Badge type="required" /> | MIME type (e.g., <code>application/pdf</code>, <code>text/plain</code>). |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>driveFile</code> | Object with uploaded file’s metadata: name, id, mimeType, webViewLink. |
+| <code>response</code> | Full API response from Google Drive. |
+| <code>headers</code> | HTTP headers from Drive API response. |
+
+<TipCallout title="Use Case">
+Convert a markdown blog post into PDF, then upload it to your team’s shared Drive folder for review.
+</TipCallout>
+
+<PromptCard prompt={`{
+  "component": "drive.uploadFile",
+  "file": "{{pdf_output}}",
+  "folderId": "1A2B3FolderID",
+  "fileName": "Monthly_Report_June.pdf",
+  "mimeType": "application/pdf"
+}`} />
+
+<WarningCallout title="Troubleshooting">
+Missing file? Double-check your MIME type and ensure the `file` object is populated.
+</WarningCallout>
+
+<Divider />
+
+### <a name="list-files"></a>List Files — Get Files in a Folder
+
+Retrieves all visible files inside a specified folder.
+
+#### Inputs
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| <code>folderId</code> | <Badge type="required" /> | ID of the folder to list contents from. |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>files</code> | Array of file objects with IDs, names, mimeTypes. |
+| <code>response</code> | Raw API response from Drive. |
+| <code>headers</code> | HTTP metadata headers. |
+
+<TipCallout title="Use Case">
+List all submissions in a shared folder, then loop over them for processing.
+</TipCallout>
+
+<PromptCard prompt={`{
+  "component": "drive.listFiles",
+  "folderId": "SharedSubmissionsFolder123"
+}`} />
+
+<WarningCallout title="Troubleshooting">
+Empty array returned? Check that your Google account has permission to view the folder contents.
+</WarningCallout>
+
+<Divider />
+
+### <a name="get-file-metadata"></a>Get File Metadata — Inspect a Drive File
+
+Fetch information about a Drive file using its `fileId`.
+
+#### Inputs
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| <code>fileId</code> | <Badge type="required" /> | Unique ID of the file you want to inspect. |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>driveFile</code> | Metadata including name, mimeType, modifiedTime, size. |
+| <code>response</code> | Raw response from Drive API. |
+| <code>headers</code> | HTTP headers. |
+
+<TipCallout title="Use Case">
+Use this to verify a file’s type or timestamp before processing it in a workflow.
+</TipCallout>
+
+<PromptCard prompt={`{
+  "component": "drive.getFileMetadata",
+  "fileId": "1XyzABCDriveFileId"
+}`} />
+
+<WarningCallout title="Troubleshooting">
+Getting 403 errors? Make sure the file isn’t in trash or shared only with other users.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices
+
+- Use `fileId` and `folderId` dynamically from previous steps to avoid hardcoding
+- Only request scopes you need (e.g., Drive file access vs full Drive control)
+- Store sensitive folder IDs in SmythOS Vault for reusability
+- Clean up stale or temporary files by chaining a [Delete File] component (coming soon)
+
+<Divider />
+
+## Troubleshooting Tips
+
+**404 Errors?**  
+→ Double-check `fileId` or `folderId` and ensure the file is shared with your connected account.
+
+**Permission Denied?**  
+→ Re-authenticate and confirm that consent was granted to view/edit files.
+
+**Wrong file format?**  
+→ Be sure to set `mimeType` correctly (e.g., `application/json`, `text/csv`).
+
+<InfoCallout>
+Still stuck? Inspect the <code>response</code> field for a detailed error from the Drive API.
+</InfoCallout>
+
+<Divider />
+
+## What's Next?
+
+You’ve successfully integrated Google Drive with SmythOS!
+
+Now try building an agent that:
+- Uploads a file after parsing web content
+- Lists files, filters them by name, and downloads specific reports
+- Uses `driveFile.webViewLink` to send the user a view-only version of the file
+- Combine this with [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration)
+
+<Divider />

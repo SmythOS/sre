@@ -2,6 +2,8 @@
 import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Model, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
+
+const run = process.env.OPENROUTER_API_KEY ? it : it.skip;
 // SRE.init({
 //     Vault: {
 //         Connector: 'JSONFileVault',
@@ -12,9 +14,9 @@ import { expect, describe, it } from 'vitest';
 // });
 
 describe('SDK Agent Tests', () => {
-    it('imported agent', async () => {
+    run('imported agent', async () => {
         const agent = Agent.import('./packages/sdk/tests/data/AgentData/crypto-info-agent.smyth', {
-            model: Model.OpenAI('gpt-4o-mini', { maxTokens: 10 }),
+            model: Model.OpenRouter('gpt-4o-mini', { maxTokens: 10 }),
         });
 
         //const result = await agent.prompt('Hello, Who are you ?');
@@ -23,7 +25,7 @@ describe('SDK Agent Tests', () => {
         console.log(result);
     });
 
-    it('Declarative Agent', async () => {
+    run('Declarative Agent', async () => {
         const agent = new Agent({
             name: 'SRE Assistant',
             behavior:
@@ -65,7 +67,7 @@ describe('SDK Agent Tests', () => {
         console.log(result2);
     });
 
-    it('Procedural Agent', async () => {
+    run('Procedural Agent', async () => {
         const agent = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
 
         agent.addSkill({
@@ -74,7 +76,7 @@ describe('SDK Agent Tests', () => {
             process: async ({ userName, userNumber }) => {
                 const secret = `${userNumber * 10}_${userName.substring(0, 3)}`;
 
-                const openai = agent.llm.OpenAI('gpt-4o-mini');
+                const openai = agent.llm.OpenRouter('gpt-4o-mini');
                 console.log(openai);
 
                 console.log('calculating secret...', secret);

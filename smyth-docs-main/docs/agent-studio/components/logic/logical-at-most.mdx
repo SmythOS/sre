@@ -1,0 +1,91 @@
+---
+title: Logic At Most
+description: Verify that no more than a maximum number of conditions are met before proceeding in a workflow.
+keywords: [Logic, At Most, condition, boolean, maximum, limit]
+toc_max_heading_level: 2
+---
+
+# Logic At Most Component
+
+Use the **Logic At Most** component to check that no more than a specified maximum number of inputs are `true`. This component is useful for setting upper limits and ensuring that a certain threshold is not exceeded.
+
+<InfoCallout title="Why this matters">
+Many processes require upper bounds or limits. The `Logic At Most` component is perfect for enforcing these rules, such as "trigger an alert only if at most 2 out of 10 services are offline" or "approve a request automatically if at most 1 flag is raised." It allows you to create workflows that can handle acceptable failure rates or tolerance levels gracefully.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Set the Maximum Limit](#step-1-set-the-maximum-limit)
+- [Provide Inputs](#step-2-provide-inputs)
+- [Handle the Outputs](#step-3-handle-the-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Set the Maximum Limit
+
+This is the core setting of the component. You define the maximum number of inputs that can be `true` for the "Verified" path to be taken.
+
+| Setting          | Description                                                                                             |
+|------------------|---------------------------------------------------------------------------------------------------------|
+| **Maximum Inputs** | Define the maximum number of inputs (from 0 to 9) that can have a `true` value to trigger the `Verified` output. |
+
+### How Inputs are Evaluated
+- **`True`**: Any input that has a value (e.g., a non-empty string, any number, the boolean `true`, an object, an array).
+- **`False`**: Any input that is empty, `null`, `undefined`, or the boolean `false`.
+
+<Spacer size="md" />
+
+## Step 2: Provide Inputs
+
+You can add multiple inputs to the component, each representing a condition to be checked against the maximum limit.
+
+| Action      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| **Add Input** | Click the `+` icon to add a new input field. Give it a descriptive name that reflects the condition you are checking. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Outputs
+
+The component has two output branches, allowing you to direct the workflow based on whether the maximum limit was respected.
+
+| Output       | Description                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------|
+| **Verified** | This path executes if the number of `true` inputs is **less than or equal to** the specified maximum.     |
+| **Unverified** | This path executes if the number of `true` inputs is **greater than** the specified maximum.         |
+
+<TipCallout title="Branching Your Workflow">
+Connect the `Verified` output to the steps that should run when the condition is met (i.e., the limit was not exceeded). Connect the `Unverified` output to a path that handles the "too many" case, such as escalating to a human or logging a critical error.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Enforce Business Rules:** Use this component to enforce rules like "a user can have at most 3 active sessions" or "a discount code can be applied to at most 1 promotional item."
+- **Check for Low Error Rates:** In a quality control workflow, you could run several checks and use `Logic At Most` to pass an item if it has, for example, at most 2 minor defects.
+- **Gatekeeping and Escalation:** Use this to automatically handle simple cases while escalating more complex ones. For example, "if at most 1 issue is detected, proceed; otherwise, create a support ticket."
+- **Set Maximum to 0 for a NOR Gate:** If you set **Maximum Inputs** to `0`, this component behaves like a logical NOR gate, meaning the `Verified` path only runs if *all* inputs are `false`.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your logic isn't branching as expected...">
+- **Check the Maximum Setting:** Ensure the `Maximum Inputs` value is set correctly for your use case.
+- **Inspect Your Inputs:** Use the **Debug** panel to check the actual values being passed to each input. An input you believe is `false` might have an unexpected value (like the string "false"), causing it to be evaluated as `true`.
+- **Verified vs. Unverified Path:** Double-check that you have connected your downstream components to the correct output path (`Verified` or `Unverified`) based on your intended logic.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use this component after a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** to check that at most a certain number of items in the list failed processing.
+- In a fraud detection system, check several risk indicators and use `Logic At Most` to allow a transaction if it triggers at most one low-level warning.
+- Combine this with **[Logic At Least](/docs/agent-studio/components/logic/logical-at-least)** to check for a range, for example, "Verified if at least 2 AND at most 4 conditions are true."

@@ -1,12 +1,19 @@
+import path from 'path';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+    resolve: {
+        alias: {
+            '@smythos/sre': path.resolve(__dirname, 'packages/core/src'),
+            '@smythos/sdk': path.resolve(__dirname, 'packages/sdk/src'),
+        },
+    },
     plugins: [tsconfigPaths()],
     test: {
         globals: true,
         environment: 'node',
-        include: ['packages/*/tests/**/*.test.ts'],
+        include: ['packages/*/tests/**/*.test.{ts,tsx}'],
         exclude: ['node_modules', 'dist'],
         coverage: {
             reporter: ['text', 'text-summary', 'html'],

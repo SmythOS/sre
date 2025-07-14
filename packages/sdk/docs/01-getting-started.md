@@ -5,6 +5,35 @@ Welcome to the SmythOS SDK! This guide will walk you through creating your very 
 The code in this guide is a more detailed version of the script found in [`examples/01-agent-code-skill/01-prompting.ts`](../../examples/01-agent-code-skill/01-prompting.ts).
 
 ## 1. Installation
+### Environment Configuration
+
+Before running the examples you'll need a few environment variables. Set your `OPENROUTER_API_KEY` so the SDK can make LLM requests and provide your Neon PostgreSQL credentials for the `NeonAccount` connector:
+
+```bash
+export OPENROUTER_API_KEY=your-openrouter-key
+export NEON_HOST=your-neon-host
+export NEON_USER=your-neon-user
+export NEON_PASSWORD=your-neon-password
+export NEON_DATABASE=your-database
+```
+
+If you load agents from `.smyth` files you can pass these settings when calling `Agent.import`:
+
+```typescript
+import { Agent } from '@smythos/sdk';
+
+const agent = await Agent.import('./agent.smyth', {
+    Account: {
+        Connector: 'NeonAccount',
+        Settings: {
+            host: process.env.NEON_HOST,
+            user: process.env.NEON_USER,
+            password: process.env.NEON_PASSWORD,
+            database: process.env.NEON_DATABASE,
+        },
+    },
+});
+```
 
 ### Method 1: Using the CLI (Recommended)
 

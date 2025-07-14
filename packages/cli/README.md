@@ -6,13 +6,55 @@ Command line interface for SmythOS SRE (Smyth Runtime Environment) - an advanced
 pnpm install -g @smythos/cli
 ```
 
+If installation fails with errors about `cpufeatures.node`, rebuild the optional
+native dependency used by `ssh2`:
+
+```bash
+pnpm rebuild ssh2 --unsafe-perm
+```
+
 ## Commands Overview
 
-The SRE CLI provides three main commands:
+The SRE CLI provides several commands:
 
 -   `sre agent` - Run SmythOS agent files with various execution modes
 -   `sre create` - Create new SmythOS projects
 -   `sre update` - Update the CLI and check for updates
+-   `sre workflow save` - Export an agent workflow to a file
+-   `sre workflow load` - Import a workflow from a file or template
+
+## Workflow Command
+
+Manage agent workflows from the CLI.
+
+### Save
+
+```bash
+sre workflow save <agent.smyth> <file>
+```
+
+Export the workflow of the specified agent to `<file>` for sharing or version control.
+
+### Load
+
+```bash
+sre workflow load <file-or-template>
+```
+
+Load a workflow definition from `<file-or-template>` back into an agent. You can also provide a template name instead of a file path.
+
+### Templates
+
+The CLI includes a few starter workflow templates located in the `templates/` folder:
+
+- `echo` - A minimal agent that simply echoes back any prompt.
+- `crypto-info` - An agent that fetches cryptocurrency prices from a public API.
+
+You can load a template directly:
+
+```bash
+sre workflow load echo
+```
 
 ---
 

@@ -1,0 +1,70 @@
+# Tutorial: kwrds.ai SEO Content Outliner
+
+This agent, built by one of our community experts, **[T10](https://t10.de/en/services/ai-agents/)**, can generate **SEO content outlines** and **keyword strategies** using **kwrds.ai** data and insights. It helps you uncover high-impact keywords, structure your content for better rankings, and streamline your SEO workflow. Whether you’re a content marketer or an SEO specialist, this agent simplifies research and accelerates content planning.
+
+<Youtube videoId="IdakDNPxpno" title="SmythOS - kwrds.ai SEO Content Outliner" />
+
+## kwrds.ai API Key
+
+1. Navigate to kwrds.ai or through this link:  [kwrds.ai](https://kwrds.ai/affiliate?linkId=lp_790671&sourceId=t10&tenantId=kwrdsai)
+
+2. Click **Sign in / Register**.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_1.png" alt="Sign in/Register" />
+
+3. Sign in / Sign up with your Google account or by registering an email and password.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_2.png" alt="Sign up options" />
+4. Go to your **Account** by clicking your avatar. Then, copy the API key.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_3.png" alt="Copy API Key" />
+   
+## Agent Setup
+
+1. Navigate to **Templates**.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_4.png" alt="Templates" />
+2. Select the **Marketing** tab. Click the **Remix** button on the kwrds.ai SEO Content Outliner template.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_5.png" alt="Remix Button" />
+3. Allow the template to initialize and configure.
+
+## kwrds.ai API Call Component Setup
+
+1. Locate the **kwrds.ai API Call** components in the workflow. Select the component, then click the component's **Settings** icon.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_6.png" alt="Component Settings" />
+2. Click the **edit** icon on the **Headers** section of the component settings.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_7.png" alt="Edit Headers" />
+3. Delete the placeholder value for the `X-API-KEY` property.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_8.png" alt="Delete Placeholder" />
+4. Click the **key** icon to add your kwrds.ai API key to the Vault.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_9.png" alt="Add API Key" />
+      <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_10.png" alt="Add API Key" />
+5. Save the changes to component settings and repeat the same for the other kwrds.ai API Call components.
+
+## GenAI LLM Component Setup
+
+1. Locate the **GenAI LLM** components in the workflow.
+2. Open the component’s setting. Select your **LLM model** of choice. To get the best output, we recommend using `claude-3.5-sonnet-latest`.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_11.png" alt="LLM Selection" />
+3. After selecting your LLM model, scroll down to the bottom of the component settings, click **Advanced**, and update the output token limit to use at least over 8k tokens.
+4. Repeat the same steps for the rest of the GenAI LLM components in the workflow.
+
+## Test the Agent Workflow
+
+1. Enable **Debug**.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_12.png" alt="Enable Debug" />
+2. Enter the required input values. Click **Run** when done.
+
+   > **Note:** You can test using the default values provided. Toggle the input fields off, then click **Run**.
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_13.png" alt="Run Agent" />
+3. Here’s the result!
+
+   <Image src="/docs/img/kwrdsai_seo_content_outliner_agent/img_14.png" alt="Workflow Result" />

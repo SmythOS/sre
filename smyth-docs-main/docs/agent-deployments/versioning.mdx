@@ -1,0 +1,97 @@
+---
+title: Versioning
+description: Learn how version numbers work in SmythOS, when to increment them, and how to use release notes effectively.
+keywords: [SmythOS, versioning, agent deployment, release notes, semantic versioning, agent management]
+sidebar_position: 4
+---
+
+# Agent Versioning
+
+Each time you deploy an agent, you assign a version number using the `Major.Minor` format — for example, `1.0`, `2.3`, or `4.7`.
+
+This versioning system helps track what’s changed between deployments, communicate updates to your team or users, and manage rollback scenarios if something breaks.
+
+<InfoCallout>
+**TL;DR:** Use a new **major** version for breaking changes. Bump the **minor** version for new features or fixes that don’t break things.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Version Number Format
+
+SmythOS uses **semantic-style versioning** — specifically:
+
+[Major].[Minor]
+
+- **Major**: Increase this when the agent changes in a way that breaks existing behavior or interface.
+- **Minor**: Use this for non-breaking changes like bug fixes, new features, or configuration tweaks.
+
+<Spacer size="md" />
+
+## When to Bump the Version
+
+| Change Type                     | Example                                                                 | Version Update     |
+|--------------------------------|-------------------------------------------------------------------------|--------------------|
+| Breaking input/output changes  | Changing the expected input schema, removing a component               | `1.0 → 2.0`        |
+| Adding a new feature           | Adding a summarizer component to an existing agent                     | `1.0 → 1.1`        |
+| Fixing a bug                   | Correcting an API call or fixing a loop logic                          | `1.1 → 1.2`        |
+| UI-only tweak (no agent change)| Updating name/description of agent or component                        | Optional           |
+| Complete rebuild from scratch  | New architecture or new behavior                                       | `2.3 → 3.0`        |
+
+<WarningCallout>
+You cannot reuse a version number. Each version must be unique per agent.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Adding Release Notes
+
+The **Release Notes** field is optional, but helpful. This text appears in the **Agent Settings → Deployments** tab and gives anyone viewing the agent a summary of what’s new.
+
+### Good examples:
+- `Adds new classification component for content tagging`
+- `Fixes bug where emails failed to send on retry`
+- `Adds support for image inputs and optional PDF export`
+
+### Bad or vague:
+- `Updated agent`  
+- `Fix 1`  
+- `New stuff added`
+
+Keep it short but specific. Think of it as a commit message for your agent.
+
+<Spacer size="md" />
+
+## How Versioning Works in SmythOS
+
+When you deploy an agent, you’ll see version fields like this:
+
+<Image
+  src="/docs/images/agent_deployments/deploy-version-ui.jpg"
+  alt="Deploy Version UI"
+  caption="Screenshot of the Deploy Version UI"
+/>
+
+- **Major** and **Minor** fields are required.
+- You’ll also see the auto-generated subdomain and the optional release notes field.
+
+If you're using [custom domains](/docs/agent-deployments/subdomains), your version still applies regardless of URL.
+
+<Spacer size="md" />
+
+## Notes on Version Behavior
+
+- Each version is saved separately. You can refer back to older versions at any time.
+- You can’t deploy two versions with the same number (e.g., can’t deploy `1.0` twice).
+- Versions are agent-specific. Two different agents can both have a `1.0` version.
+
+<InfoCallout title="Keep it Simple">
+There’s no concept of patch or build numbers (e.g., `1.0.1`) in SmythOS. Stick with an easier way: `Major.Minor`.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What’s Next?
+
+- Ready to deploy? See [Deployment Quick Start](/docs/agent-deployments/quickstart)
+- Need to edit or remove old versions? Go to **Agent Settings → Deployments**

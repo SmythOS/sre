@@ -1,0 +1,73 @@
+---
+title: Custom Storage
+description: Connect external vector databases like Pinecone to store indexed embeddings outside SmythOS. Ideal for advanced retrieval and large-scale data sharing.
+keywords: [custom storage, pinecone, vector store, external embeddings, rag, agent memory, data pool, indexing]
+sidebar_position: 3
+---
+
+# Custom Storage
+
+**Custom Storage** lets you connect your own vector database, such as Pinecone, to handle document embeddings outside of SmythOS. This gives you full control over storage, scaling, and retrieval logic, especially in enterprise or multi-agent environments.
+
+<InfoCallout title="Why use Custom Storage?">
+Use Custom Storage if you need external access to your vector data, want to scale embedding limits, or plan to share the same data across multiple agents or systems.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How it works
+
+When Custom Storage is enabled, all indexing operations from your [Data Spaces](/docs/agent-collaboration/data-pool/data-spaces) write directly to the external vector store. SmythOS fetches context from there during retrieval-augmented generation (RAG).
+
+This setup is managed from the [Data Pool](/docs/agent-collaboration/data-pool).
+
+<Spacer size="md" />
+
+## Pinecone setup
+
+To use Pinecone:
+
+1. Create an account at [pinecone.io](https://www.pinecone.io/)
+2. Create an index with:
+   - **Dimension**: `1536`
+   - **Environment**: e.g. `us-west4-gcp`
+3. Copy the following values from your Pinecone dashboard:
+   - **API Key**
+   - **Index Name**
+   - **Index Host URL**
+   - **Region/Environment**
+4. In SmythOS Studio, open **Data Pool**
+5. Click **Customize Storage**
+6. Paste your Pinecone credentials into the form
+7. Save configuration
+
+<Image src="/docs/img/agent_collaboration/customize-storage-pinecone.jpg" alt="Custom Storage configuration form in SmythOS" caption="Paste your Pinecone credentials and save to activate external storage." />
+
+<WarningCallout title="Vector dimension must be 1536">
+SmythOS requires a vector dimension of 1536 to match the embedding model format. Other values will not work.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## When to use internal vs custom storage
+
+| Use Case                                  | Internal Storage        | Custom Storage (Pinecone) |
+|-------------------------------------------|-------------------------|----------------------------|
+| Quick setup and testing                   | ✓                       |                            |
+| Production-grade indexing                 |                         | ✓                          |
+| Control over storage and cost             |                         | ✓                          |
+| Multi-agent shared knowledge base         |                         | ✓                          |
+| Maximum retrieval speed within SmythOS    | ✓                       |                            |
+
+<TipCallout title="Most users can start with internal storage">
+If you are unsure whether you need Custom Storage, begin with the default setup. You can migrate later if needed.
+</TipCallout>
+
+<Spacer size="md" />
+
+## What's Next
+
+- [Data Pool overview](/docs/agent-collaboration/data-pool)
+- [Create and manage Data Spaces](/docs/agent-collaboration/data-pool/data-spaces)
+- [Connect data to agents](/docs/agent-collaboration/spaces)
+- [Monitor usage in Analytics](/docs/agent-collaboration/analytics)

@@ -1,0 +1,104 @@
+---
+title: Web Scrape
+description: Extract and structure content from any webpage, with advanced options for handling JavaScript, anti-bot protection, and dynamic content.
+keywords: [Web Scrape, scrape, crawl, extract, web content, data extraction, dynamic content]
+toc_max_heading_level: 2
+---
+
+# Web Scrape Component
+
+Use the **Web Scrape** component to extract content from one or more webpages. This powerful tool can parse HTML, extract clean text, convert content to Markdown or JSON, and even handle modern websites that rely heavily on JavaScript.
+
+<InfoCallout title="Why this matters">
+The web is the world's largest data source. The Web Scrape component allows your agent to tap into this source, enabling it to perform market research, monitor competitors, aggregate news, or gather any other publicly available information to inform its actions and enrich its knowledge base.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Configure Scraper Settings](#step-1-configure-scraper-settings)
+- [Provide Target URLs](#step-2-provide-target-urls)
+- [Handle the Results](#step-3-handle-the-results)
+- [Usage and Abuse Policy](#step-4-usage-and-abuse-policy)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Configure Scraper Settings
+
+Fine-tune the scraper's behavior to match the structure of your target websites and the format you need.
+
+| Setting                      | Description                                                                                                                                                                                                                                    |
+|------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Format** | Choose how the scraped content should be structured. Options include `Markdown` (great for LLMs), `Text` (for clean text extraction), `Raw` HTML, or structured `JSON`. You can also choose to exclude images or links from Markdown. |
+| **Bypass Anti-Bot Protection** | Enable this if the target website uses tools like Cloudflare or other Captcha-based systems to block scrapers.                                                                                                                                   |
+| **JavaScript Rendering** | Enable this for Single Page Applications (SPAs) or any site that loads its content dynamically using JavaScript. The component will render the page in a headless browser before extracting content.                                                 |
+| **Auto Scroll** | Enable this for pages that use infinite scrolling to load more content as the user scrolls down. The component will automatically scroll to the bottom to ensure all content is loaded before extraction.                                                 |
+
+<TipCallout title="Which Format Should I Choose?">
+- Use **Markdown** when you plan to feed the content into a **GenAI LLM** for summarization or analysis.
+- Use **Text** when you only need the raw text content without any formatting.
+- Use **JSON** for a structured representation of the page, which is useful for targeted data extraction.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/CGogKgUeHYFSff4xVZ1Z?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WebScrape | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide Target URLs
+
+The component needs to know which webpage(s) to scrape.
+
+| Input   | Description                                                                                               |
+|---------|-----------------------------------------------------------------------------------------------------------|
+| **URLs**| The default input. It accepts a single URL string, a comma-separated list of URLs, or an array of URL strings. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Results
+
+The component provides two outputs to separate successful scrapes from failures.
+
+| Output        | Description                                                                                                                                                  |
+|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Results** | The primary output containing the scraped data from the successfully processed webpages. This is typically an array of objects, one for each successful URL. |
+| **Failed URLs** | An array containing any URLs that could not be successfully processed due to errors (e.g., 404 Not Found, timeouts, or being blocked).                          |
+
+<Spacer size="md" />
+
+## Step 4: Usage and Abuse Policy
+
+<WarningCallout title="Prohibited Usage">
+This component is a powerful tool. Using it for any of the following activities is strictly prohibited and may result in the suspension of your account: automated payments, account creation, spamming, vote manipulation, credit card testing, brute-force login attacks, referral/ad fraud, or scraping of banking, ticketing, betting, or gambling sites. Always respect the website's `robots.txt` file and terms of service.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Start with Simple Extraction:** Begin by scraping a single page with a simple `Text` format to ensure the basic connection works before adding advanced settings.
+- **Enable JS Rendering for Modern Sites:** Most modern websites are built with frameworks like React, Vue, or Angular. You will almost always need to enable `JavaScript Rendering` to get the full content.
+- **Use `Auto Scroll` for Social Media and Blogs:** Feeds on sites like Twitter, LinkedIn, or long blog pages often use infinite scroll. Enable `Auto Scroll` to capture all the content.
+- **Process Results with a Loop:** If you scrape multiple URLs, connect the `Results` output to a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** to process each scraped page individually.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your scraping fails...">
+- **Getting Blocked or Empty Results:** The website likely has anti-bot measures. Try enabling **Bypass Anti-Bot Protection**. If that doesn't work, the site's protection may be too advanced for automated scraping.
+- **Missing Content:** If the output is missing content that you can see in your browser, the site is loading it dynamically. Enable **JavaScript Rendering** and/or **Auto Scroll**.
+- **Check `Failed URLs`:** Always check the `Failed URLs` output. This will tell you which specific pages failed and can help you diagnose if the issue is with a single page or the entire site.
+- **Scraping behind a login:** This component cannot log into websites. For pages that require authentication, you would need to use a browser automation tool or an API if one is available.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Scrape an article and feed the `Results` into a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to automatically generate a summary.
+- Create a research agent that takes a topic, uses **[Web Search](/docs/agent-studio/components/tools/web-search)** to find a list of relevant URLs, and then uses `Web Scrape` to extract the content from each one.
+- Build a knowledge base ingestion pipeline. Scrape a list of your company's blog posts and use **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** to add the content of each post to your agent's memory.

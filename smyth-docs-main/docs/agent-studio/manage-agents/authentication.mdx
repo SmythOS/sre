@@ -1,0 +1,137 @@
+---
+title: Authentication Settings
+description: Configure authentication for your SmythOS agents using Bearer Tokens or OAuth OIDC.
+keywords: [authentication, bearer token, oauth, oidc, agent security, smythos]
+sidebar_position: 3
+---
+
+# Authentication Settings
+
+You can secure your agent endpoints using two authentication options:
+
+- **Bearer Token** — simple API key passed in the request header  
+- **OAuth OIDC** — connect to an identity provider and enforce user-level access
+
+<Arcade src="https://demo.arcade.software/b9DNcjegkwRtT1JqrVYX?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Auth Settings | SmythOS" />
+
+<Spacer size="md" />
+
+## Use a Bearer Token
+
+This method lets you authenticate API calls with a shared secret. It’s suitable for internal tools and programmatic access.
+
+### Getting Started
+
+1. Generate a secure token string (you can use any random value).
+2. Go to your agent’s **[Settings](/docs/agent-studio/manage-agents/overview)**.
+3. Scroll to **Authentication** and paste your token.
+4. When calling the agent, pass the token in your request headers.
+
+### Example
+
+```bash
+curl https://your-agent.smythos.com/api/v1/chat \
+  -H "Authorization: Bearer abc123xyz789"
+```
+
+<InfoCallout title="No third-party setup needed">
+Bearer Token is ideal for testing and backend automations without needing an identity provider.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Use OAuth OIDC
+
+Use OAuth with OpenID Connect (OIDC) when you need fine-grained user authentication, such as SSO or domain-based restrictions.
+
+This lets you delegate identity to providers like Google, Microsoft, Auth0, or your own OIDC-compatible service.
+
+### What you’ll configure
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **OIDC Config Endpoint** | Discovery URL from provider | `https://example.com/.well-known/openid-configuration` |
+| **Client ID** | Your app’s public ID | `abc123clientid` |
+| **Client Secret** | Confidential app credential | `xyz789clientsecret` |
+| **Allowed Emails** | Who can access the agent | `["user@example.com", "*.org"]` |
+| **Callback URL** | Redirect URL after login | `https://youragent.smythos.com/chatbot/callback` |
+
+You’ll enter this info under the **Authentication** section in **[Agent Settings](/docs/agent-studio/manage-agents/overview)**.
+
+<Spacer size="md" />
+
+## Build Your Callback URL
+
+SmythOS constructs your callback URL from your agent’s subdomain.
+
+### Format
+
+```text
+https://{your-subdomain}.smythos.com/chatbot/callback
+```
+
+Replace `{`your-subdomain`}` with your actual agent name.
+
+### Example
+```text
+https://myagent.smythos.com/chatbot/callback
+```
+
+<WarningCallout title="Callback URL must match exactly">
+Your OAuth provider will reject mismatches. Double-check spacing, casing, and characters.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Restrict Access by Email
+
+Use **Allowed Emails** to restrict agent access to specific users or domains.
+
+```text
+Individual user: user@example.com
+Entire domain: @example.org
+Use wildcard: *.example.com
+```
+This means only those users can pass the OAuth login flow.
+
+<Spacer size="md" />
+
+## Behind the Scenes
+
+When you provide the OIDC Config Endpoint, SmythOS fetches this JSON automatically:
+
+```json
+{
+  "authorization_endpoint": "https://example.com/auth",
+  "token_endpoint": "https://example.com/token",
+  "userinfo_endpoint": "https://example.com/userinfo",
+  "jwks_uri": "https://example.com/.well-known/jwks.json"
+}
+```
+
+You don’t need to configure each endpoint manually.
+
+<Spacer size="md" />
+
+## Where This Connects in SmythOS
+
+- View or change auth settings in **[Manage Agents](/docs/agent-studio/manage-agents/overview)**  
+- Link to secure **[Chat Interfaces](/docs/agent-studio/manage-agents/tasks#chat-interface)**  
+- Use with **[Deployed Endpoints](/docs/agent-deployments/overview)**  
+- Monitor auth errors in the **[Logs Explorer](/docs/agent-studio/build-agents/debugging)**
+
+<Spacer size="md" />
+
+## Troubleshooting Auth Issues
+
+| Problem | What to check |
+|---------|----------------|
+| Login fails | Double-check OIDC client ID, secret, or discovery URL |
+| Unauthorized error | Verify Bearer token matches |
+| Callback error | Must use HTTPS and match exactly |
+| Access denied | Email may not be in allowed list |
+| Request blocked | Review CORS and redirect URIs in provider config |
+
+<InfoCallout title="Need to debug?">
+Check the Logs tab in your agent’s settings for auth errors. Go to **[Debugging](/docs/agent-studio/build-agents/debugging)** for a full walkthrough.
+</InfoCallout>

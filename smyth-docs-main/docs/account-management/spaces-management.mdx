@@ -1,0 +1,124 @@
+---
+title: Spaces Management
+description: Organize work, manage access, and control branding using Spaces in SmythOS.
+keywords: [spaces, access control, permissions, teams, collaboration, white labeling]
+sidebar_position: 4
+---
+
+# Spaces Management
+
+Spaces in SmythOS act as isolated workspaces, each with its own agents, resources, and team members. They help you manage access cleanly, especially when working across clients, projects, or environments.
+
+<Spacer size="md" />
+
+## What is a Space?
+
+A space is a self-contained workspace inside your SmythOS organization. It comes with its own:
+
+- Agents and workflows
+- Data and configurations
+- Role-based team structure
+- Branding settings
+
+You typically create a new space when you're:
+
+- Serving a different client
+- Segmenting dev vs production environments
+- Separating internal departments or product lines
+
+<InfoCallout>
+Each space keeps agents, data, and configurations private unless intentionally shared.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Core Actions
+
+You can manage your spaces from the dropdown in the top right corner.
+
+### Create a Space
+
+1. Click your [organization name](/docs/account-management/organization-management) in the top-right corner of the dashboard  
+2. Select [**Create New Space**](/docs/agent-collaboration/spaces)
+3. Name your space and optionally add a description
+4. Invite initial team members
+
+### Add or Remove Members
+
+You can invite collaborators via the Space Settings panel.
+
+1. Go to **Space Settings**
+2. Enter email addresses
+3. Assign roles based on what each user needs access to
+
+To remove a member:
+
+1. Open the member list in Space Settings
+2. Click the remove icon next to their name
+
+<WarningCallout>
+Only space creators can delete a space, and they cannot remove themselves. Members cannot leave a space they were not the creator of.
+</WarningCallout>
+
+For full steps, visit the [Invite Members page](/docs/agent-collaboration/spaces/invite-members).
+
+<Spacer size="md" />
+
+## Roles and Permissions
+
+Spaces use role-based access control. You assign one of four roles when adding a member. Here’s a quick overview of the key differences:
+
+| Area              | Super Admin | Admin         | Editor        | Viewer        |
+|-------------------|-------------|---------------|---------------|---------------|
+| Edit Agents       | ✅          | ✅            | ✅            | ❌            |
+| Access Agent Logs | ✅          | ✅            | ✅            | ✅            |
+| Add Team Members  | ✅          | ✅            | ❌            | ❌            |
+| Modify Vault Keys | ✅          | ✅            | ✅            | ❌            |
+| Manage Branding   | ✅          | ✅            | ❌            | ❌            |
+
+<TipCallout title="Need full access details?">
+See the complete [Roles and Permissions](/docs/agent-collaboration/permissions) reference.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Branding Your Space
+
+Each space can be customized to match your company’s brand identity. You can upload a logo and apply consistent visuals across agent UIs.
+
+To update branding:
+
+1. Go to **Space Settings**
+2. Click **Change Logo**
+3. Upload a square image (recommended size: 256x256px)
+
+This applies your brand identity to all agent interfaces in the space.
+
+More on [White Labeling](/docs/agent-collaboration/spaces/white-labeling)
+
+<Spacer size="md" />
+
+## Team Chat in Spaces
+
+Each space comes with an optional internal chat channel for collaboration. You can use this to:
+
+- Coordinate with teammates
+- Share updates about agent builds
+- Ask questions and assign follow-up
+
+Spaces with chat enabled have a dedicated messaging section. See [Team Spaces Chat](/docs/agent-collaboration/spaces/team-spaces-chat) for usage tips.
+
+<Spacer size="md" />
+
+## Space Deletion Rules
+
+You can only delete a space if you created it. Before deletion:
+
+1. Remove all agents, subdomains, and members
+2. Ensure no active deployments or billing ties
+3. Then proceed to delete from **Space Settings**
+
+<WarningCallout title="Double check before space deletion">
+Deletion is permanent and cannot be undone.
+</WarningCallout>
+

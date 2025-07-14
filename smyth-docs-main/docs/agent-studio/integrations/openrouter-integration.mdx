@@ -1,0 +1,173 @@
+---
+title: OpenRouter Integration
+description: Connect SmythOS to OpenRouter to access hundreds of AI and Large Language Models (LLMs) from a single, unified API endpoint.
+og:title: SmythOS & OpenRouter - Your Gateway to All AI Models
+og:description: Learn to integrate OpenRouter with SmythOS. Empower your agents to leverage a massive variety of LLMs for any task, optimizing for cost, speed, or capability.
+og:image: /docs/img/integrations/smythos_openrouter.png
+keywords: [OpenRouter SmythOS Integration, Connect OpenRouter to SmythOS, SmythOS LLM Gateway, Automate AI Models, Unified AI API, No-Code LLM, Language Model API]
+---
+# OpenRouter Integration with SmythOS
+
+> **Want to use any AI model without juggling multiple APIs?** Connect OpenRouter to SmythOS and give your agents access to hundreds of LLMs through a single, powerful component.
+
+<InfoCallout title="TL;DR">
+Securely link your OpenRouter account to SmythOS using an API key. Then, use the universal "Chat Completion" component to run any supported language model, from OpenAI's GPT series to open-source models like Llama and Mixtral.
+</InfoCallout>
+
+## List of OpenRouter Components
+The OpenRouter integration provides a single, flexible component that can be used to access any supported model.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Chat Completion**](#chat-completion)| AI Task | Runs text generation or chat on hundreds of different LLMs. | <Badge type="required" /> `prompt`<br /><Badge type="optional" /> `model` | `message_content`| Any NLP task: summarization, writing, Q&A, etc. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate OpenRouter with Your Agent?</summary>
+
+OpenRouter acts as a unified gateway to a vast array of Large Language Models (LLMs). Integrating it with SmythOS provides unparalleled flexibility and power for your AI agents.
+
+- **Access Hundreds of Models:** Don't get locked into a single AI provider. Access models from OpenAI, Anthropic, Google, Mistral, and the open-source community through one simple interface.
+- **Optimize for Cost and Performance:** Choose the perfect model for any task. Use a fast, inexpensive model for simple classifications, and a powerful, state-of-the-art model for complex reasoning or creative writing.
+- **Future-Proof Your Agents:** As new and better models are released, they are often added to OpenRouter. You can easily switch the model your agent uses without rebuilding your entire workflow.
+- **Simplified Workflow:** Manage a single API key and a single component to interact with dozens of different AI services, dramatically simplifying development and maintenance.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **OpenRouter account**.
+- Your OpenRouter **API Key**.
+
+<Divider />
+
+## Getting Started With OpenRouter
+
+The connection between SmythOS and OpenRouter is configured using a secure API key.
+
+### Step 1: Get Your OpenRouter API Key
+1.  Log in to your [OpenRouter account](https://openrouter.ai/).
+2.  Navigate to the [Keys section](https://openrouter.ai/keys) of your account settings.
+3.  Click **Create Key**, give it a name, and copy the generated key.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your OpenRouter API Key as the value. Give it a memorable name, like `openrouter_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the OpenRouter Component
+1.  In your SmythOS agent graph, drag and drop the **OpenRouter Chat Completion** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `openrouter_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each OpenRouter component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which OpenRouter Model Should I Use?
+
+| If you need to… | Task Type | Recommended Model (Example) | Why this one? |
+|-----------------|-----------|-----------------------------|---------------|
+| **Write a high-quality blog post** | Creative Writing | `openai/gpt-4-turbo` or `anthropic/claude-3-opus` | State-of-the-art models with strong reasoning and writing skills. |
+| **Quickly classify an email** | Simple Classification | `mistralai/mistral-7b-instruct` | A fast and highly capable open-source model that is very cost-effective. |
+| **Summarize a technical document** | Summarization | `google/gemini-pro` | Strong at understanding and condensing complex information. |
+| **Let the system choose the best model** | Automatic | `openrouter/auto` | OpenRouter will route your request to the best model based on price and performance. |
+
+<TipCallout>
+You can find a complete, updated list of all supported models and their pricing on the [OpenRouter Models page](https://openrouter.ai/docs#models).
+</TipCallout>
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the OpenRouter component.
+
+### <a name="chat-completion"></a>Chat Completion
+Provides a unified interface to send prompts to hundreds of different Large Language Models (LLMs).
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-openrouter) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The text input or question to send to the language model. |
+| `model` | string | Optional | The ID of the model you want to use (e.g., `openai/gpt-3.5-turbo`). Defaults to `openrouter/auto`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_content` | string | The text content of the AI's generated response. |
+| `id` | string | The unique identifier for the completion request. |
+| `Response`| object | The full, raw JSON response from the OpenRouter API, including usage data. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Create a versatile "research assistant" agent. The agent takes a topic as a `prompt`, uses the `google/gemini-pro` model to get a detailed explanation, and then uses a second call with the `mistralai/mistral-7b-instruct` model to summarize that explanation into three bullet points.
+</TipCallout>
+
+```json
+{
+  "component": "openrouter.chatCompletion",
+  "prompt": "Explain the concept of zero-shot learning in 50 words or less.",
+  "model": "anthropic/claude-3-sonnet"
+}
+```
+
+<WarningCallout title="Model Costs Vary">
+Different models have different pricing. Be sure to check the cost per token on the OpenRouter website before running large-scale workflows.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always use the SmythOS `Vault` to store your OpenRouter API key.
+* **Model Selection is Key:** The most important choice you'll make is the `model`. For simple, repetitive tasks, choose a fast, cheap model. For complex, creative, or multi-step reasoning, choose a state-of-the-art model.
+* **Leverage `openrouter/auto`:** If you're unsure which model to use, the `auto` setting is a great starting point. OpenRouter will choose a suitable model for you.
+* **Prompt Engineering:** The quality of your output depends heavily on the quality of your `prompt`. Be clear, specific, and provide context or examples for the best results.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API key is missing, invalid, or disabled.
+  * **Solution:** Verify that the API key in your SmythOS Vault is correct and matches the one in your OpenRouter dashboard.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** You have insufficient credits in your OpenRouter account.
+  * **Solution:** Log in to your OpenRouter account and add credits to your balance.
+
+* **Error: `404 Not Found` (for a model)**
+  * **Cause:** The `model` ID you provided is incorrect, misspelled, or not supported by OpenRouter.
+  * **Solution:** Check the [OpenRouter Models page](https://openrouter.ai/docs#models) for the correct, full model ID string (e.g., `openai/gpt-4-turbo`).
+
+* **Error: `429 Too Many Requests`**
+  * **Cause:** You have exceeded the rate limit for a specific model or for your account in general.
+  * **Solution:** Add a delay in your agent between frequent calls. Some models have stricter rate limits than others.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build incredibly flexible AI agents with the **SmythOS OpenRouter Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a "writer's assistant." It first generates a blog post outline using a fast model like Mistral, then takes the approved outline and writes the full article using a powerful model like Claude 3 Opus.
+    * Analyzes customer feedback. It uses a cheap model to quickly classify feedback as positive or negative. For negative feedback, it uses a more powerful model to draft a thoughtful, empathetic response.
+    * A/B tests different AI models for a specific task. Send the same prompt to two different models via OpenRouter and compare their outputs to see which performs better for your use case.
+
+* **Explore Other Integrations:**
+    * Combine OpenRouter with the [ScrapingBee Integration](/docs/agent-studio/integrations/scrapingbee-integration) to scrape content from a website and then use any LLM to summarize or analyze it.
+    * Generate text with an OpenRouter model and then give it a voice using the [Elevenlabs Integration](/docs/agent-studio/integrations/elevenlabs-integration).
+    * Use OpenRouter to process data before logging it to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) or sending it as an [Gmail](/docs/agent-studio/integrations/google-gmail-integration).

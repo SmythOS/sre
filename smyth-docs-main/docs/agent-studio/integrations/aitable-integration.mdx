@@ -1,0 +1,201 @@
+---
+title: AITable Integration
+description: Connect to AITable to manage datasheets, fields, and records via components. Automate your no-code database flows in SmythOS.
+og:title: SmythOS + AITable
+og:description: Create, update, and query datasheets using AITable inside SmythOS agents.
+og:image: /docs/img/integrations/smythos_aitable.png
+keywords: [AITable, No-Code Database, Datasheet Automation, AITable API, AITable Integration, SmythOS Flows]
+---
+
+# AITable Integration
+
+> Need to power your agents with spreadsheet-style automation? AITable provides an open-source, AI-ready database platform to create and manipulate records via API.
+
+<InfoCallout title="TL;DR">
+Get your <code>AITable API Token</code> from your profile, store it in Vault, and use <strong>AITable components</strong> to create datasheets, add records, and manage fields programmatically.
+</InfoCallout>
+
+## List of AITable Components
+
+| **Component** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|--------------|------------------|------------|------------------|--------------|
+| [**Get Records**](#get-records) | Retrieves rows from a datasheet | <code>datasheetId</code> | <code>records</code> | Display or use table content in flows |
+| [**Create Datasheet**](#create-datasheet) | Creates a new datasheet | <code>spaceId</code>, <code>name</code> | <code>datasheetId</code> | Add new storage dynamically |
+| [**Create Record**](#create-record) | Adds a record to a datasheet | <code>datasheetId</code> | <code>recordId</code> | Insert rows from user input or upstream data |
+| [**Update Multiple Records**](#update-multiple-records) | Batch update up to 10 rows | <code>datasheetId</code> | <code>records</code> | Modify rows in bulk |
+| [**Delete Field**](#delete-field) | Removes a field from a datasheet | <code>spaceId</code>, <code>datasheetId</code>, <code>fieldId</code> | <code>message</code> | Clean up unneeded columns |
+
+<Divider />
+
+## Required Setup
+
+### AITable API Token
+
+To access any AITable component, you’ll need to create an API token:
+
+1. Go to your profile → **My Settings** → **Developer Configuration**
+2. Click `+` to generate a new API token
+3. Copy it and store it in Vault
+
+<TipCallout title="Use Vault">
+Store your API token in <strong>Vault</strong> so it’s reusable across flows and components.
+</TipCallout>
+
+<Image src="/docs/img/integrations/aitable_token.png" alt="AITable Token Configuration" />
+
+<Divider />
+
+## <a name="get-records"></a>Get Records
+
+Fetches all rows from a specified datasheet.
+
+### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>datasheetId</code> | <Badge type="required" /> | The ID of the datasheet you want to read |
+
+### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>records</code> | Array of row data |
+| <code>response</code> | Full API JSON response |
+| <code>headers</code> | Response metadata |
+
+<Arcade src="https://demo.arcade.software/w5v49RTlZuD51AoglFW8?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="AITable Get Records" />
+
+<Divider />
+
+## <a name="create-datasheet"></a>Create Datasheet
+
+Creates a new datasheet (optionally with a first field).
+
+### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>spaceId</code> | <Badge type="required" /> | Workspace where the datasheet will reside |
+| <code>name</code> | <Badge type="required" /> | Name of the datasheet |
+| <code>description</code> | Optional | Description text |
+| <code>field_type</code> | Optional | Type of initial field (`Text`, `Number`, etc) |
+| <code>field_name</code> | Optional | Name of the first field (`Title`, etc) |
+
+### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>datasheetId</code> | ID of the created datasheet |
+| <code>response</code> | Full JSON response |
+| <code>headers</code> | Response headers |
+
+<Arcade src="https://demo.arcade.software/2XNmm3eArAaCUQDbYGM0?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="AITable Create Datasheet" />
+
+<Divider />
+
+## <a name="create-record"></a>Create Record
+
+Add a new row (record) to a datasheet.
+
+### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>datasheetId</code> | <Badge type="required" /> | The datasheet to insert into |
+
+Additional fields go in the component’s **Body** section, using the field keys as JSON.
+
+### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>recordId</code> | ID of the new record |
+| <code>response</code> | API response with record details |
+| <code>headers</code> | Response headers |
+
+<Arcade src="https://demo.arcade.software/YGylrA9hpNMqeKXlGrGb?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="AITable Create Record" />
+
+<Divider />
+
+## <a name="update-multiple-records"></a>Update Multiple Records
+
+Updates up to 10 records in a single API call.
+
+### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>datasheetId</code> | <Badge type="required" /> | Datasheet to update |
+
+Update data is included in the **Body** tab in JSON format.
+
+### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>records</code> | Array of updated record summaries |
+| <code>response</code> | JSON API response |
+| <code>headers</code> | HTTP headers from the call |
+
+<Arcade src="https://demo.arcade.software/9TLRNKnR1LKShUMpEA6J?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="AITable Update Multiple Records" />
+
+<Divider />
+
+## <a name="delete-field"></a>Delete Field
+
+Remove a field (column) from a datasheet.
+
+### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>spaceId</code> | <Badge type="required" /> | Space ID the datasheet belongs to |
+| <code>datasheetId</code> | <Badge type="required" /> | Target datasheet |
+| <code>fieldId</code> | <Badge type="required" /> | ID of the field to remove |
+
+### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>message</code> | Status message from the API |
+| <code>response</code> | JSON response object |
+| <code>headers</code> | Metadata headers |
+
+<Arcade src="https://demo.arcade.software/GUl6Dg2jQNbT13pe7z3U?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="AITable Delete Field" />
+
+<Divider />
+
+## Best Practices
+
+- Store your API token in Vault once—reuse across components
+- Use field names that match your datasheet schema exactly
+- Test requests using the AITable developer playground before building in SmythOS
+- Use "Create Datasheet" + "Create Field" to build custom table structures dynamically
+- Batch-create or update records where possible to reduce API calls
+
+<Divider />
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| <code>401 Unauthorized</code> | API token missing or invalid | Recheck token in Vault |
+| <code>404 Not Found</code> | Datasheet or field ID typo | Double-check IDs from dashboard |
+| <code>400 Bad Request</code> | Malformed payload | Review body structure and required fields |
+
+<Divider />
+
+## What's Next?
+
+You’ve successfully connected AITable to SmythOS!
+
+Now try building an agent that:
+- Collects form input and logs each submission as a new AITable record
+- Generates a custom datasheet for every new client or project
+- Uses **batch updates** to enrich multiple rows from an external API
+
+**Want even more automation?** Combine this with:
+- [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) for spreadsheet-to-datasheet syncing  
+- [Google Drive Integration](/docs/agent-studio/integrations/google-drive-integration) for working with uploaded sheets or templates
+
+<Image src="/docs/img/integrations/smythos_aitable.png" alt="AITable Integration Overview" />

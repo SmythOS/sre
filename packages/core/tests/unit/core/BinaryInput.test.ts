@@ -32,16 +32,15 @@ describe('BinaryInput Tests', () => {
     });
 
     it('should handle URL input', async () => {
-        const imageUrl = 'https://fastly.picsum.photos/id/358/536/354.jpg?hmac=B5MKNtRmR2RBqLeb7thQXV573rQcrX5Hrih-N8SuliM';
-
-        const binary = new BinaryInput(imageUrl);
+        const imagePath = testData.getDataPath('file-samples/sample.png');
+        const binary = new BinaryInput(`file://${imagePath}`);
         await binary.ready();
 
         const jsonData = await binary.getJsonData(mockCandidate);
-        expect(jsonData.mimetype).toBe('image/jpeg');
-        expect(jsonData.size).toBe(35108);
-        expect(jsonData.name).toContain('.jpg');
-        expect(jsonData.url).toMatch(/^smythfs:\/\/.*\.jpg$/);
+        expect(jsonData.mimetype).toBe('image/png');
+        expect(jsonData.size).toBe(fs.statSync(imagePath).size);
+        expect(jsonData.name).toContain('.png');
+        expect(jsonData.url).toMatch(/^smythfs:\/\/.*\.png$/);
     });
 
     it('should handle base64 encoded data', async () => {

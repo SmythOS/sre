@@ -1,0 +1,121 @@
+---
+title: Organization Management
+description: Manage your SmythOS organization including user roles, team permissions, and member access.
+keywords: [organization settings, team roles, user management, SmythOS org, role management, default role]
+sidebar_position: 3
+---
+
+# Organization Management
+
+Your organization is the parent layer in SmythOS. Every space, user, and permission is scoped under it. All members must first belong to your organization before they can be added to any space.
+
+<InfoCallout title="Why this matters">
+Organization-level users control access to all [spaces](/docs/agent-collaboration/spaces/). If someone isn’t in your org, they can’t join any space you manage.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Managing Roles
+
+Roles define what your team can access and control across SmythOS. You can assign roles when [inviting users](/docs/agent-collaboration/spaces/invite-members), or update them later.
+
+### How to access roles
+
+1. Click your **user profile**
+2. Select **Manage Roles** from the dropdown
+
+<SuccessCallout title="Default role for new users">
+You can define a default role that gets applied automatically when a user is added. If none is set, Super Admin is used.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## Role Permissions Overview
+
+These permissions are available when creating custom roles or assigning defaults. To modify the default roles assiged to new members, go to https://app.smythos.com/teams/roles.
+
+| Page               | Super Admin            |
+|--------------------|------------------------|
+| Dashboard          | View and Edit          |
+| Agent Settings     | View and Edit          |
+| Agent Builder      | View and Edit          |
+| Templates          | View and Edit          |
+| Domains            | View and Edit          |
+| Data Pool          | View and Edit          |
+| Vault              | View and Edit          |
+| Analytics          | View and Edit          |
+| My Plan            | View and Edit          |
+| Team Roles         | View and Edit          |
+| Team Members       | View and Edit          |
+
+<WarningCallout title="Manage team access">
+To view the detailed Team Roles and Team Members, your role must include **Manage Team** permissions.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## How to create, edit, or delete roles
+
+### Create a new role
+
+1. Go to **Manage Roles**
+2. Click **Add Role**
+3. Name the role and select allowed actions
+
+### Edit an existing role
+
+1. In **Manage Roles**, click the role you want to update
+2. Adjust permissions as needed
+
+### Delete a role
+
+1. Make sure it’s not assigned to any active user
+2. Click **Delete Role**
+
+<InfoCallout title="Need default roles?">
+Set your org’s default role in the **Roles** section so new users get it automatically. If not configured, Super Admin is assigned.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Managing Users
+
+User management is where you invite, edit, or remove people from your organization.
+
+### Access user management
+
+1. Click your **user profile**
+2. Select **User Management**
+
+### Invite a new user
+
+1. Click **Invite Member**
+2. Enter their email and choose a role
+3. Send the invite
+
+<SuccessCallout title="Invite link expires">
+All invites are valid for 7 days. If not accepted in time, you’ll need to resend it.
+</SuccessCallout>
+
+### Edit a user’s role
+
+1. Go to **User Management**
+2. Find the user and select **Edit Role**
+
+### Remove a user
+
+1. Locate the user in **User Management**
+2. Click **Remove**
+
+<WarningCallout title="Users must be removed from spaces too">
+Removing someone from your organization does not automatically remove them from individual spaces. Be sure to [remove them from each space](/docs/agent-collaboration/spaces/invite-members) if needed.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## What’s next?
+
+- [Assign space-level permissions](/docs/agent-collaboration/permissions)
+- [Add or remove users from agents or spaces](/docs/agent-collaboration/adding-users)
+- [Set up white labeling and branding](/docs/agent-collaboration/spaces/white-labeling)
+- [View usage and billing plans](/docs/account-management/model-rates)

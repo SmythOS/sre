@@ -1,0 +1,115 @@
+---
+description: Create and deploy your first agent in under five minutes.
+keywords: [SmythOS, Weaver, quickstart, AI agent]
+sidebar_position: 3
+---
+# Quickstart
+
+> **Need an agent in five minutes?** 
+> **Weaver** is the **no-code AI workflow builder** inside SmythOS.  
+> Describe a goal in plain language → Weaver assembles, connects, and generates the agent for you.
+
+<InfoCallout title="TL;DR"> In the next three minutes you’ll create, debug, and deploy a working agent without touching code, APIs, or the visual canvas. </InfoCallout>
+
+<Divider/>
+
+## Prerequisites
+
+- A SmythOS account (<DocLink to="https://app.smythos.com/signup">sign up</DocLink> if you’re new).  
+- Zero coding skills. Weaver handles the heavy lifting.
+- Think of a goal... e.g. *“Send daily summaries from Airtable to Slack.”*
+
+That’s it. No coding. No hassle.
+
+<Divider/>
+
+## Step 1 - Describe What You Want
+
+Open Weaver and paste the prompt below:
+
+<PromptCard prompt={`Create an agent that writes SEO-optimized blog posts and publishes them to WordPress.\n\nThe agent should have the following skills:\n- Write article from a topic\n- Extract research keywords\n- Post article to WordPress using a given URL`} />
+
+Weaver will instantly:
+
+- Parse the prompt
+- Ask questions to help tailor the workflow
+- Provide a plan after thinking
+- Select and connect relevant components
+- Build the first draft visually
+
+<Divider/>
+
+## Step 2 - Let Weaver Think and Propose
+
+After you describe your goal, Weaver enters a "Thinking..." phase where it:
+
+- Interprets your intent
+- Suggests a workflow plan based on your request
+- Asks follow-up questions to clarify details like:
+
+    - What kind of blogs are you targeting?
+    - Do you want keyword extraction to be optional or required?
+    - Which CMS platform are you using—WordPress.com or self-hosted?
+
+Then it drafts a complete workflow such as:
+
+- Generate blog structure
+- Write full content
+- Research topics
+- Publish (optional)
+<Divider/>
+
+## Step 3 - Review the Draft
+
+You’ll see a canvas with three cards:
+
+- **GenAI Writer**  
+- **Keyword Extractor**  
+- **WordPress Poster**
+
+Hover to inspect inputs/outputs, click to edit, or drag to adjust wiring.
+
+> **Circles legend** -> ● = required input, ○ = optional
+
+<Divider/>
+
+## Step 4 - Test It Live
+
+Ask the agent:
+
+<PromptCard prompt={`Write a post about “Top AI trends in 2025.”`} />
+
+Watch real-time outputs:
+
+- Article text  
+- Extracted keywords  
+- WordPress publish confirmation  
+
+Weaver’s **LLM orchestration framework** gives inline feedback, no silent errors.
+
+<Divider/>
+
+## Step 5 - Enable Debug Mode
+
+If something goes wrong:
+
+1. Click any block with a red border to open the error details
+2. Review the input/output snapshot and Weaver’s explanation
+3. Hit "Fix with AI" — one click usually solves it
+4. <kdb>Cmd/Ctrl + click</kdb> to select and fix multiple blocks at once
+
+<Divider/>
+
+## Step 6 - Deploy Your Agent
+
+When everything passes:
+
+1. Choose <DocLink to='/docs/agent-deployments/overview'> **Deploy**</DocLink> and go with the default Agent Cloud option which hosts the agent on our infrastructure or download the SRE for running locally. 
+2. Tag your version in case you want to restore a previously deployed instance.
+
+Weaver allows you:
+
+    - Share the agent to <DocLink to='/docs/agent-collaboration/overview'>collaborate</DocLink> with your friends and colleagues by inviting them
+    - To debug using activity logs
+
+<SuccessCallout title="You did it!">You used prompt-based agent creation to build, test, and deploy without ever opening the drag-and-drop canvas. That’s true **no-code agent building**. </SuccessCallout>

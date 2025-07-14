@@ -1,0 +1,720 @@
+---
+title: Jira Integration
+description: Connect SmythOS to the Jira Cloud Platform to automate issue tracking, project management, and development workflows directly from your agents.
+og:title: SmythOS & Jira - Automate Your Development Workflow
+og:description: Learn to integrate Jira with SmythOS. Empower your agents to create, update, assign, and transition issues, streamlining your entire development and project management lifecycle.
+og:image: /docs/img/integrations/smythos_jira.png
+keywords: [Jira SmythOS Integration, Connect Jira to SmythOS, SmythOS Jira, Automate Project Management, Issue Tracking API, No-Code Jira, Atlassian API]
+---
+# Jira Cloud Platform Integration with SmythOS
+
+> **Want to automate your team's project management and issue tracking?** Connect the Jira Cloud Platform to SmythOS and empower your agents to create, update, and manage issues programmatically.
+
+<InfoCallout title="TL;DR">
+Securely link your Jira account to SmythOS using your user email and an API token, combined and encoded in Base64. Then, use our suite of components to automate your entire issue lifecycle, from creation to transition and commenting.
+</InfoCallout>
+
+## List of Jira Components
+Quickly compare Jira components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Issue**](#create-issue) | Write | Creates a new issue in a Jira project. | <Badge type="required" /> `domain_name`, `project_key`, `summary` | `id`, `key`, `url` | Automatically creating a bug report from a support ticket. |
+| [**Update Issue Summary**](#update-issue-summary)| Write | Updates the summary (title) of an existing issue. | <Badge type="required" /> `domain_name`, `issue_key`, `summary`| `Response` | Clarifying the title of a bug report. |
+| [**Transition Issue**](#transition-issue)| Write | Changes the status of an issue (e.g., "To Do" to "In Progress"). | <Badge type="required" /> `domain_name`, `issue_key`, `transitionId` | `Response` | Moving a task to "Done" when a PR is merged. |
+| [**Assign Issue**](#assign-issue) | Write | Assigns an issue to a specific user. | <Badge type="required" /> `domain_name`, `issue_key`, `accountId`| `Response` | Automatically assigning new bugs to a QA lead. |
+| [**Add Comment**](#add-comment) | Write | Adds a new comment to a specific issue. | <Badge type="required" /> `domain_name`, `issue_key`, `comment` | `commentId`, `url` | Posting automated status updates to a task. |
+| [**Label Jira Issue**](#label-jira-issue) | Write | Adds labels to an existing issue for categorization. | <Badge type="required" /> `domain_name`, `issue_key`, `label` | `Response` | Tagging an issue with "security" or "frontend". |
+| [**Get Jira Issue**](#get-jira-issue) | Read | Retrieves detailed information about a single issue. | <Badge type="required" /> `domain_name`, `issue_key` | `id`, `summary`, `description` | Fetching context before updating a task. |
+| [**Get Transitions**](#get-transitions)| Read | Retrieves the possible status transitions for an issue. | <Badge type="required" /> `domain_name`, `issue_key` | `transitions` | Finding the correct `transitionId` to move an issue to "In Review". |
+| [**Get Issue Comments**](#get-issue-comments)| Read | Retrieves all comments from a specific issue. | <Badge type="required" /> `domain_name`, `issue_key` | `comments` | Analyzing discussion on a feature request. |
+| [**Delete Issue**](#delete-issue) | Write | Permanently deletes an issue. | <Badge type="required" /> `domain_name`, `issue_key` | `Response` | Removing a ticket created in error. |
+| [**Find Users**](#find-users) | Search | Searches for users within your Jira instance. | <Badge type="required" /> `domain_name`, `query` | `Response` | Finding a user's `accountId` to assign them an issue. |
+| [**Get All Users**](#get-all-users) | Read | Retrieves all users within your Jira instance. | <Badge type="required" /> `domain_name` | `users` | Auditing active Jira users. |
+| [**Add User To Group**](#add-user-to-group) | Write | Adds a user to a specific Jira group. | <Badge type="required" /> `domain_name`, `groupId`, `accountId` | `Response` | Automating user provisioning for new team members. |
+| [**Remove User From Group**](#remove-user-from-group) | Write | Removes a user from a specific Jira group. | <Badge type="required" /> `domain_name`, `groupId`, `accountId` | `Response` | De-provisioning access for departing team members. |
+| [**Find Groups**](#find-groups) | Search | Searches for groups within your Jira instance. | <Badge type="required" /> `domain_name`, `query` | `groups` | Finding the correct `groupId` for user management. |
+| [**Create Group**](#create-group) | Write | Creates a new Jira group. | <Badge type="required" /> `domain_name`, `name` | `groupId` | Programmatically setting up new team groups. |
+| [**Remove Group**](#remove-group) | Write | Deletes an existing Jira group. | <Badge type="required" /> `domain_name`, `groupId` | `Response` | Cleaning up unused or obsolete groups. |
+| [**Get Group Users**](#get-group-users) | Read | Retrieves all users belonging to a specific Jira group. | <Badge type="required" /> `domain_name`, `groupId` | `users` | Auditing group memberships. |
+| [**Archive Issues**](#archive-issues) | Write | Archives a list of issues. | <Badge type="required" /> `domain_name`, `issueIdsOrkeys` | `numberOfIssuesUpdated`, `errors` | Bulk archiving old issues for cleanup. |
+| [**Unarchive Issues**](#unarchive-issues) | Write | Unarchives a list of issues. | <Badge type="required" /> `domain_name`, `issueIdsOrkeys` | `numberOfIssuesUpdated`, `errors` | Restoring previously archived issues. |
+| [**Get Comment**](#get-comment) | Read | Retrieves a single comment from a Jira issue by its ID. | <Badge type="required" /> `domain_name`, `issue_key`, `commentId` | `commentId`, `content`, `author` | Fetching the content of a specific comment. |
+| [**Delete Comment**](#delete-comment) | Write | Permanently removes a specific comment from a Jira issue. | <Badge type="required" /> `domain_name`, `issue_key`, `comment_id` | `Response` | Removing an outdated automated status comment. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Jira with Your Agent?</summary>
+
+Jira is the central nervous system for countless development teams. Integrating it with SmythOS allows you to build powerful agents that connect your project management directly to your other business and development tools.
+
+- **Automated Issue Creation:** Create agents that listen for triggers—a new bug report from a customer support tool, a critical alert from a monitoring service, or a new feature request from a product board—and automatically create a corresponding, well-structured issue in the correct Jira project.
+- **Streamlined Workflows:** Build agents that move issues through your workflow automatically. When a pull request is merged in GitHub, an agent can find the linked Jira issue and use `Transition Issue` to move it from "In Review" to "Done".
+- **Intelligent Triage and Assignment:** An agent can analyze an incoming bug report, use an LLM to determine its likely priority and component, `Label Jira Issue` accordingly, and then `Assign Issue` to the appropriate team lead.
+- **Data Synchronization:** Keep other systems in sync with Jira. When an issue is updated, an agent can post a notification to a Slack channel or update the status in an external project management tool.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Jira Cloud** instance.
+- An **Atlassian account** with permissions to access the desired Jira projects.
+- An **API Token** generated from your Atlassian account.
+
+<Divider />
+
+## Getting Started With Jira Cloud
+
+The connection is handled via Basic Authentication, which requires your user email and an API token, combined and encoded in Base64 format.
+
+### Step 1: Generate a Jira API Token
+1.  Log in to your [Atlassian Account](https://id.atlassian.com/manage-profile/security/api-tokens).
+2.  Click **Create API token**.
+3.  Give your token a memorable label (e.g., "SmythOS Agent") and click **Create**.
+4.  **Copy the generated API Token immediately.** It will not be shown again.
+
+### Step 2: Encode Your Credentials in Base64
+1.  Combine your Atlassian account email and the API Token into a single string with a colon in between: `your-email@example.com:YourAPIToken`.
+2.  Use a Base64 encoding tool (like the "Encode/Decode" component in SmythOS) to encode this entire string.
+3.  Copy the resulting Base64 encoded string.
+
+### Step 3: Store Your Encoded Credentials in SmythOS Vault
+Your encoded credentials are a sensitive secret. Use the SmythOS `Vault` to store them securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your **Base64 encoded string** as the value. Give it a memorable name, like `jira_base64_auth`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 4: Configure a Jira Component
+1.  In your SmythOS agent graph, drag and drop any Jira component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Base 64 Encoded User Email and API Token` field, select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Base64 encoded secret from the Vault to each Jira component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Jira Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new bug report** | A project key and summary | [Create Issue](#create-issue) | The primary method for programmatically creating new issues. |
+| **Move a task to "In Progress"** | An issue key and a transition ID | [Transition Issue](#transition-issue) | The correct way to change an issue's workflow status. |
+| **Find the ID for the "Done" status**| An issue key | [Get Transitions](#get-transitions) | This is a prerequisite for `Transition Issue`, as it gives you the valid `transitionId`. |
+| **Assign a bug** to a developer | An issue key and an account ID | [Assign Issue](#assign-issue) | The standard way to set or change the assignee of an issue. |
+| **Find a user's ID** to assign them a task | A user's name or email | [Find Users](#find-users) | The best way to get a user's `accountId` needed for assignments. |
+| **Add a "customer-reported" tag** | An issue key and a label | [Label Jira Issue](#label-jira-issue) | Allows for programmatic categorization of your issues. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Jira Cloud Platform component.
+
+### <a name="create-issue"></a>Create Issue
+Creates a new issue in a specified Jira project.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain (e.g., `your-company`). |
+| `project_key`| string | Yes | The key of the project (e.g., `PROJ`). |
+| `summary` | string | Yes | The title or summary of the issue. |
+| `description`| string | Optional| The detailed body of the issue. Supports Jira's wiki markup. |
+| `issue_type`| string | Optional| The type of issue (e.g., "Bug", "Task"). Default: "Task". |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the newly created issue. |
+| `key` | string | The human-readable key of the issue (e.g., `PROJ-123`). |
+| `url` | string | The direct URL to view the issue in Jira. |
+| `Response`| object | The full, raw JSON response from the Jira API. |
+
+<TipCallout title="Use Case">
+An agent receives an alert from a monitoring system. It uses this component to create a new "Bug" in the "INFRA" project with the alert details in the description.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-issue-summary"></a>Update Issue Summary
+Updates the summary (title) of an existing Jira issue.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain (e.g., `your-company`). |
+| `issue_key`| string | Yes | The key of the issue to update (e.g., `PROJ-123`). |
+| `summary` | string | Yes | The new summary text for the issue. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful update returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent analyzes an incoming bug report and determines the title is too vague. It uses an LLM to suggest a clearer title and then calls this component to update the issue's summary.
+</TipCallout>
+
+<Divider/>
+
+### <a name="transition-issue"></a>Transition Issue
+Changes the status of an issue by performing a workflow transition.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to transition. |
+| `transitionId`| string | Yes | The ID of the workflow transition to perform. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful transition returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+After a developer merges a pull request linked to `PROJ-123`, an agent uses the `Get Transitions` component to find the ID for "Move to QA", then calls this component to automatically update the issue's status.
+</TipCallout>
+
+<WarningCallout title="Prerequisite: Get Transitions">
+You must use the `Get Transitions` component first to find the valid `transitionId` for the desired status. You cannot simply provide the status name (e.g., "Done").
+</WarningCallout>
+
+<Divider/>
+
+### <a name="assign-issue"></a>Assign Issue
+Assigns a Jira issue to a specific user.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to assign. |
+| `accountId`| string | Yes | The Atlassian account ID of the user to assign the issue to. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful assignment returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A triage agent creates a new bug report. It then calls the `Find Users` component to get the `accountId` for the QA team lead and uses this component to automatically assign the new issue to them.
+</TipCallout>
+
+<WarningCallout title="Use Account ID">
+You must provide the user's `accountId`, not their email or username. Use the `Find Users` component to get this ID first.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="add-comment"></a>Add Comment
+Adds a new comment to a specific Jira issue.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to comment on. |
+| `comment` | string | Yes | The text content of the comment. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commentId` | string | The unique ID of the newly created comment. |
+| `url` | string | The direct URL to the comment. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When an agent performs an automated action related to an issue (e.g., deploying a fix), it adds a comment to the Jira issue: "Automated deployment to staging completed successfully."
+</TipCallout>
+
+<Divider/>
+
+### <a name="label-jira-issue"></a>Label Jira Issue
+Adds labels to an existing issue for categorization.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to label. |
+| `label` | string | Yes | The label to add to the issue. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful update returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent processes a customer feedback ticket. Based on keywords, it adds the "customer-feedback" and "feature-request" labels to the corresponding Jira issue.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-jira-issue"></a>Get Jira Issue
+Retrieves the full details of a specific issue using its key.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to retrieve (e.g., `PROJ-123`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the issue. |
+| `summary` | string | The summary/title of the issue. |
+| `description`| object | The issue's description in Atlassian Document Format. |
+| `projectId`| string | The ID of the project the issue belongs to. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before transitioning an issue, an agent uses this component to fetch its current status and comments to ensure the transition is valid.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-transitions"></a>Get Transitions
+Retrieves the list of possible workflow transitions for an issue's current status.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to check. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `transitions`| array | An array of transition objects, each with an `id` and `name` (e.g., `{"id": "21", "name": "Start Progress"}`). |
+| `Response`| object | The full, raw JSON response from the Jira API. |
+
+<TipCallout title="Use Case">
+This component is the essential first step before using `Transition Issue`. An agent gets the list of available transitions to find the correct `id` for the "Done" status before attempting to close the issue.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-issue-comments"></a>Get Issue Comments
+Retrieves all comments from a specific Jira issue.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue whose comments you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `comments`| array | An array of comment objects, each containing the author, body, and creation time. |
+| `Response`| object | The raw JSON response, including pagination details. |
+
+<TipCallout title="Use Case">
+To provide context to an AI, an agent fetches all comments from an issue to understand the history of the discussion before generating a summary.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-issue"></a>Delete Issue
+Permanently deletes a Jira issue.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent identifies duplicate or erroneously created tickets and uses this component to automatically clean up the Jira backlog.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="find-users"></a>Find Users
+Searches for users within your Jira instance based on a query string.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `query` | string | Yes | The string to search for in user names or emails. |
+| `maxResults`| integer | Optional | The maximum number of users to return. Default: 50. |
+| `startAt` | integer | Optional | The index of the first user to return. Default: 0. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `users` | array | An array of user objects, each containing `accountId`, `displayName`, and `emailAddress`. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before assigning an issue, an agent uses this component to find the `accountId` of the target user by searching their name or email.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-all-users"></a>Get All Users
+Retrieves a paginated list of all users within your Jira instance.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `maxResults`| integer | Optional | The maximum number of users to return per page. Default: 50. |
+| `startAt` | integer | Optional | The index of the first user to return. Default: 0. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `users` | array | An array of user objects, each containing `accountId`, `displayName`, and `emailAddress`. |
+| `Response`| object | The raw JSON response from the API, including pagination details. |
+
+<TipCallout title="Use Case">
+An auditing agent regularly fetches all users to compare against an internal employee directory for consistency.
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-user-to-group"></a>Add User To Group
+Adds a specified user to a Jira group.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `groupId` | string | Yes | The ID of the group to add the user to. |
+| `accountId`| string | Yes | The Atlassian account ID of the user to add. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful addition returns the group object. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+As part of an onboarding workflow, an agent automatically adds new employees to relevant Jira groups based on their role, granting them immediate project access.
+</TipCallout>
+
+<Divider/>
+
+### <a name="remove-user-from-group"></a>Remove User From Group
+Removes a specified user from a Jira group.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `groupId` | string | Yes | The ID of the group to remove the user from. |
+| `accountId`| string | Yes | The Atlassian account ID of the user to remove. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful removal returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When an employee leaves the company, a de-provisioning agent automatically removes them from all relevant Jira groups to revoke access.
+</TipCallout>
+
+<Divider/>
+
+### <a name="find-groups"></a>Find Groups
+Searches for groups within your Jira instance based on a query string.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `query` | string | Yes | The string to search for in group names. |
+| `maxResults`| integer | Optional | The maximum number of groups to return. Default: 50. |
+| `startAt` | integer | Optional | The index of the first group to return. Default: 0. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `groups` | array | An array of group objects, each containing `name` and `groupId`. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent needs to add a user to a specific team group but only knows the team's name. It uses this component to find the corresponding `groupId`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-group"></a>Create Group
+Creates a new Jira group.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `name` | string | Yes | The name of the new group. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `groupId` | string | The ID of the newly created group. |
+| `name` | string | The name of the newly created group. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a new project starts, an agent can automatically create a dedicated Jira group for the project team.
+</TipCallout>
+
+<Divider/>
+
+### <a name="remove-group"></a>Remove Group
+Deletes an existing Jira group.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `groupId` | string | Yes | The ID of the group to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+After a project concludes, an agent can automatically remove the associated Jira group to clean up the instance.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-group-users"></a>Get Group Users
+Retrieves a paginated list of users belonging to a specific Jira group.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `groupId` | string | Yes | The ID of the group whose users you want to retrieve. |
+| `maxResults`| integer | Optional | The maximum number of users to return per page. Default: 50. |
+| `startAt` | integer | Optional | The index of the first user to return. Default: 0. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `users` | array | An array of user objects, each containing `accountId`, `displayName`, and `emailAddress`. |
+| `Response`| object | The raw JSON response from the API, including pagination details. |
+
+<TipCallout title="Use Case">
+An agent needs to verify the members of a specific Jira group to ensure proper access controls.
+</TipCallout>
+
+<Divider/>
+
+### <a name="archive-issues"></a>Archive Issues
+Archives a list of Jira issues. Archived issues are hidden from most views but can be unarchived.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issueIdsOrkeys`| array | Yes | An array of strings, where each string is an issue ID or key to be archived. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `numberOfIssuesUpdated`| integer | The count of issues successfully archived. |
+| `errors` | array | A list of any errors that occurred during the process for specific issues. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+At the end of a fiscal year, a cleanup agent gets a list of all "Done" issues from the previous year and uses this component to archive them in a single batch operation.
+</TipCallout>
+
+<Divider/>
+
+### <a name="unarchive-issues"></a>Unarchive Issues
+Unarchives a list of previously archived Jira issues, making them visible again.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issueIdsOrkeys`| array | Yes | An array of strings, where each string is an issue ID or key to be unarchived. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `numberOfIssuesUpdated`| integer | The count of issues successfully unarchived. |
+| `errors` | array | A list of any errors that occurred during the process for specific issues. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+If a stakeholder requests information from an old project, an agent can quickly unarchive the relevant issues to make them accessible for reporting or review.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-comment"></a>Get Comment
+Retrieves a single, specific comment from a Jira issue by its ID.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue containing the comment. |
+| `commentId`| string | Yes | The unique identifier of the comment to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commentId`| string | The unique ID of the retrieved comment. |
+| `content` | object | The body of the comment in Atlassian Document Format. |
+| `author` | object | Details of the user who wrote the comment. |
+| `url` | string | The direct URL to the comment. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+If a workflow is triggered by a new comment, the agent can use this component to fetch the full content of that specific comment for processing.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-comment"></a>Delete Comment
+Permanently removes a specific comment from a Jira issue.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-jira-cloud) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | Your Jira Cloud domain. |
+| `issue_key`| string | Yes | The key of the issue containing the comment. |
+| `comment_id`| string | Yes | The ID of the comment to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent posts an automated status update as a comment. Once the task is complete, it calls this component to delete the now-outdated status comment to keep the issue clean.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Your `useremail:api_token` string is a direct credential. Always Base64 encode it and store the result in the SmythOS `Vault`.
+* **Understand the Workflow:** Many Jira actions are multi-step. To change an issue's status, you must first `Get Transitions` to find the correct ID, then `Transition Issue`. To assign an issue, you may need to `Find Users` first to get their `accountId`.
+* **Use JQL for Advanced Searches:** While not a dedicated component, Jira's power comes from JQL (Jira Query Language). You can use a generic API component in SmythOS to make calls to Jira's `/rest/api/3/search` endpoint with a JQL query for highly specific searches.
+* **Custom Fields:** To update custom fields on an issue, you will need to use the `Update Issue` endpoint with a custom JSON body. This typically requires a generic API call component where you construct the full payload according to the Jira REST API documentation.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Base64 encoded `useremail:api_token` string is incorrect, or the user's account does not have access. The API token may have been revoked.
+  * **Solution:** Carefully re-create and re-encode your credential string. Ensure the user email is correct and the API token is valid in your Atlassian account settings.
+
+* **Error: `403 Forbidden`**
+  * **Cause:** The authenticated user does not have the necessary project permissions to perform the action (e.g., trying to create an issue in a project they can't access).
+  * **Solution:** Check the user's project role and permission scheme directly in Jira.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect `domain_name`, `issue_key`, or `project_key` was provided.
+  * **Solution:** Double-check all identifiers for typos. Ensure the issue or project exists and the user has permission to view it.
+
+* **"Transition is not available" Error**
+  * **Cause:** You are attempting to use a `transitionId` that is not valid for the issue's current status in the workflow.
+  * **Solution:** Always call the `Get Transitions` component for the specific issue right before you attempt to transition it to get the list of currently available transitions.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful development and project management workflows with the **SmythOS Jira Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a bridge to your customer support tool. When a support ticket is escalated to "bug," the agent automatically creates a linked Jira issue. When the Jira issue is marked "Done," the agent posts an internal note back on the support ticket.
+    * Manages your release process. When a developer merges a PR into the `release` branch in [GitHub](/docs/agent-studio/integrations/github-integration), an agent finds all related Jira issues and transitions them to a "Ready for Release" status.
+    * Creates a daily stand-up report by fetching all issues assigned to a specific user that were updated in the last 24 hours and sending a summary to a [Microsoft Teams](/docs/agent-studio/integrations/microsoft-teams-integration) channel.
+
+* **Explore Other Integrations:**
+    * When a new issue is created, send a notification to a [Slack](/docs/agent-studio/integrations/slack-integration) or [Discord](/docs/agent-studio/integrations/discord-integration) channel.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a long customer email, then use that summary as the description when creating a Jira issue.
+    * Connect Jira to a time-tracking tool, automatically creating log entries based on issue transitions.
+```

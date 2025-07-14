@@ -1,0 +1,121 @@
+---
+title: Bulk Actions
+description: Run large sets of tasks through your agent’s endpoint using manual rows or CSV uploads.
+keywords: [bulk, batch tasks, csv upload, agent endpoints, automation]
+toc_max_heading_level: 2
+sidebar_position: 7
+---
+
+# Agent Bulk Work
+
+Use **Bulk Work** to run one of your agent’s endpoints across many inputs at once. Whether you're generating summaries, classifying data, or testing prompt variations. This tool lets you scale without writing scripts or calling the API manually.
+
+<InfoCallout title="Why Bulk Work matters">
+It’s perfect for processing structured inputs like contact lists, user queries, or product data without needing a developer.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Open Bulk Work
+
+1. Go to **Agents**
+2. Open the deployed agent you want to use
+3. Find the **Tasks** tab on the **Settings** tab in the left sidebar
+4. Go the Agent Skilll section
+4. Click the **Bulk Work** button on your target Agent SKill
+
+<Image 
+  src="/docs/img/agent_collaboration/open-bulk-work.jpg" 
+  alt="Open Bulk Work screen in the Agents section" 
+  caption="Click the Bulk Work button under your chosen agent skill to open the Bulk Work table." 
+/>
+
+You’ll land in a table where you can add data manually or upload a CSV.
+
+<Image 
+  src="/docs/img/agent_collaboration/agent-bulk-work.jpg" 
+  alt="Bulk Work screen showing data added and ready to run" 
+  caption="After adding a row manually or uploading a CSV with headers matching the agent skill, the data appears in the Bulk Work table ready for processing." 
+/>
+<Spacer size="md" />
+
+## Add Input Data
+
+You have two ways to supply data:
+
+### Option 1: Enter rows manually
+
+- Click **Add Row**
+- Fill in values for each required input
+- Add more rows as needed
+
+This is helpful for quick tests or small batches.
+
+### Option 2: Upload a CSV file
+
+- Click **Upload CSV**
+- Your header row must exactly match the endpoint input names
+
+<WarningCallout title="Header row must match input fields">
+If the CSV column names don’t match the required inputs exactly, your upload will fail. Double-check spelling and casing.
+</WarningCallout>
+
+<Spacer size="md" />
+
+<Image 
+  src="/docs/img/agent_collaboration/bulk-work-in-progress.jpg" 
+  alt="Bulk Work run in progress after adding data" 
+  caption="After uploading a CSV or manually adding rows with headers matching your endpoint, the Bulk Work run will begin processing." 
+/>
+
+### Example Format
+
+Remember, the header rows must match the input fields exactly.
+
+| query                          | max_results |
+|-------------------------------|-------------|
+| digital marketing trends 2023 | 5           |
+| AI developments healthcare     | 10          |
+| sustainable energy innovations | 7           |
+
+Once uploaded, rows will auto-populate into the interface.
+
+<Spacer size="md" />
+
+## Run the Tasks
+
+You can choose to:
+
+- Click **Run** on a single row
+- Click **Run in Bulk** to execute all rows at once
+
+Your agent will process each row and display results inline.
+
+<Spacer size="md" />
+
+## Review the Results
+
+Once complete:
+
+- Output fields will show directly in the table
+- You can inspect individual results in place
+- Use the **Logs Explorer** for deeper insight or debugging
+
+<Spacer size="md" />
+
+## CSV Input Reference
+
+Your inputs must match the fields required by the endpoint.
+
+| Field Name    | Type    | Description                            |
+|---------------|---------|----------------------------------------|
+| `query`       | string  | The task prompt or instruction         |
+| `max_results` | number  | Optional. Limits how many results to return |
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- [Set Work Schedules](/docs/agent-collaboration/agent-work-schedules)
+- [Chat with Your Agent](/docs/agent-collaboration/chat-with-agent)
+- [Deploy an Agent](/docs/agent-deployments/overview)

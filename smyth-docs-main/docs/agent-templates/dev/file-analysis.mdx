@@ -1,0 +1,78 @@
+# Tutorial: File Analysis Agent
+
+This agent is designed to manage document file uploads in .txt or .pdf formats.
+
+### PDFCrowd API Key
+
+1. Go to https://pdfcrowd.com/ and create an account if you don’t have one yet.
+2. Navigate to the left side bar and click “API v2 License”. Copy your API Key and store in a secure location, or you can add them to your SmythOS vault. Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your keys to the vault.
+
+<Image src="/docs/img/file_analysis_agent/Image 1.png" alt="alt text" />
+
+### Base64 Conversion
+
+1. Go to https://www.base64encode.org/
+2. Enter your PDFCrowd username and API key in the following format: `username:apikey`
+
+<Image src="/docs/img/file_analysis_agent/Image 2.png" alt="alt text" />
+
+3. Next, click `Encode`, then copy the converted code and store it in a secure location.
+
+<Image src="/docs/img/file_analysis_agent/Image 3.png" alt="alt text" />
+
+## Agent Setup
+
+1. In SmythOS, navigate to the templates tab.
+
+<Image src="/docs/img/file_analysis_agent/Image 4.png" alt="alt text" />
+
+2. You can scroll down to find the `File Analysis Agent` agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/file_analysis_agent/Image 5.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+## PDF to Text Component Setup
+
+1. In the builder, find the `PDF to Text` component. Click the gear icon to open the settings, then click the key icon.
+
+<Image src="/docs/img/file_analysis_agent/Image 6.png" alt="alt text" />
+
+2. Scroll down to the bottom and click `Add Key`.
+
+<Image src="/docs/img/file_analysis_agent/Image 7.png" alt="alt text" />
+
+3. Name your API key for easy identification, enter the Base64 key of your PDFCrowd credentials, and click `Save` to continue.
+
+<Image src="/docs/img/file_analysis_agent/Image 8.png" alt="alt text" />
+
+> Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your keys to the vault.
+
+4. Remember to click the check icon to save your configuration.
+
+<Image src="/docs/img/file_analysis_agent/Image 9.png" alt="alt text" />
+
+5. You’re all set!
+
+## Agent Test
+
+1. In the builder, enable debug mode.
+
+<Image src="/docs/img/file_analysis_agent/Image 10.png" alt="alt text" />
+
+2. Navigate to the APIEndpoint component and click the bug icon.
+
+<Image src="/docs/img/file_analysis_agent/Image 11.png" alt="alt text" />
+
+3. Click `Choose File` to upload the file you want to analyze, then click `Step`.
+
+<Image src="/docs/img/file_analysis_agent/Image 12.png" alt="alt text" />
+
+4. The module will turn green when completed. Click `Step` in the top right corner of the builder for a step-by-step process of the modules, or click `Run` to execute the entire process.
+
+<Image src="/docs/img/file_analysis_agent/Image 13.png" alt="alt text" />
+
+5. Hover over `reply` on the LLM component to view the outputs.
+
+<Image src="/docs/img/file_analysis_agent/Image 14.png" alt="alt text" />
+

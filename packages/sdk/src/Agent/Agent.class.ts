@@ -755,4 +755,11 @@ export class Agent extends SDKObject {
         const instance = new MCP(this);
         return await instance.start({ transport, port });
     }
+
+    /**
+     * Export the agent workflow as a plain object
+     */
+    public export() {
+        return JSON.parse(JSON.stringify(this.data));
+    }
 }

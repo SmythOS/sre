@@ -1,0 +1,240 @@
+---
+title: Classifier
+description: Automatically categorize input into custom buckets using LLM prompts.
+keywords: [Classifier, text classification, LLM, categories, prompt, routing]
+toc_max_heading_level: 2
+---
+
+# Classifier Component
+
+Use the **Classifier** component to route unstructured input (for example user messages, logs or email content) into clear, predefined categories using a prompt powered by a language model.
+
+<InfoCallout title="Why this matters">
+Instead of writing complex if-else logic, you can use this component to classify text into buckets such as “support”, “sales” or “urgent” based on simple natural-language descriptions.
+</InfoCallout>
+
+<Arcade
+  src="https://demo.arcade.software/QvVcl616TZ2ubN30z5Nh?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+  title="Classifier | SmythOS"
+/>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Choose a Model](#step-1-choose-a-model)
+- [Write or Update the Prompt](#step-2-write-the-prompt)
+- [Add Inputs](#step-3-add-inputs)
+- [Define Output Categories](#step-4-create-outputs)
+- [Advanced Routing (Optional)](#step-5-advanced-routing-optional)
+- [Debug and Preview](#step-6-debug-and-preview)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1 - Choose a Model
+
+| Field            | Required? | Description                                     | Tips |
+|------------------|-----------|-------------------------------------------------|------|
+| **Model**        | <Badge type="required">Yes</Badge> | The LLM used for classification                 | By default you will see **GPT 4o Mini (SmythOS 128K)**. You can also choose GPT 4.1 Nano, GPT 4.1 Mini, GPT o1, Claude Sonnet 3.7, Gemini 2.5 Pro, Sonar or other supported engines. |
+| **Custom Model** | <Badge type="optional">No</Badge>    | Use your own hosted model or external API        | You can connect to OpenAI, Claude, Google AI, Grok, or any endpoint compatible with your workflow. |
+
+<InfoCallout title="Token limits">
+Default models have token windows from 128K to 1M tokens (shown next to each model name). If you need to classify very large inputs or include extra context, use a custom model with extended limits.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 2 - Write or Update the Prompt
+
+<PromptCard
+  title="Default Classification Prompt"
+  prompt="Classify the {{Input}} content to one of the categories. Set the selected category to true and the others to an empty value."
+  tags={['classifier', 'routing', 'prompt']}
+/>
+<TipCallout title="Make prompts specific">
+You can add context such as examples of each category or definitions of what qualifies for a category. For instance, you might write:  
+<PromptCard
+  title="Specific Classification Prompt Example"
+  tags={['classifier', 'example']}
+  collapsible={false}
+  prompt={`
+  Classify the {{Input}} text as 'support' if it mentions troubleshooting or technical issues, 'sales' if it talks about pricing or upgrades, 'marketing' if it refers to promotions or events, and so on. Return "true" under the matching category and leave other categories blank.
+`} />
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 3 - Add Inputs
+
+| Field        | Required? | Description                                                   | Notes |
+|--------------|-----------|---------------------------------------------------------------|-------|
+| **Input Name**    | <Badge type="required">Yes</Badge> | A descriptive label for the input, for example `user_message` or `email_body`. | This name becomes a variable reference in your prompt (use `{{InputName}}`). |
+| **Input Type**    | <Badge type="required">Yes</Badge> | The data type of the input value. Options typically include `Text`, `Number`, `Boolean`, `Any` etc. | Choose `Any` if you do not need type‐specific validation. |
+
+<InfoCallout>
+You must have at least one primary input that the model will classify. You can optionally add more inputs (for example `sender`, `channel` or `metadata`), but they are not strictly required to drive classification.
+</InfoCallout>
+
+<details>
+  <summary><strong>Advanced Options for Each Input</strong></summary>
+
+  1. **Required / Optional**  
+     - Choose whether this input must be provided (`Required`) or can be skipped (`Optional`).  
+     - If you set it to `Optional`, and no value is provided at runtime, the model will receive an empty value for that input variable.
+
+  2. **Color Label**  
+     - Click the color swatch to pick a hex code (for example `#F35063`) that helps visually organize inputs on the workflow canvas.  
+     - This is purely for organizational clarity... colors do not affect model behavior.
+
+  3. **Default Value**  
+     - If no value is supplied by the user or upstream component, the model will use whatever you enter here.  
+     - Useful if you want to ensure the prompt always has at least a placeholder (for example `"No message provided"`).
+
+  <img
+    src=""
+    alt="Add Input dialog showing Name, Type, Required/Optional toggle, Color hex picker and Default Value field"
+    style={{ width: '100%', marginTop: '1rem' }}
+  />
+</details>
+
+<Spacer size="md" />
+
+
+## Step 4 - Create Outputs
+
+Each **Output** corresponds to one classification bucket. The model will assign exactly one bucket (set to `true`) and leave all others blank. By default, when you first open the Classifier node, no categories are defined... you must click **+ Outputs** to begin defining them.
+
+| Field           | Required? | Description                                                   | Example |
+|-----------------|-----------|---------------------------------------------------------------|---------|
+| **Name**         | <Badge type="required">Yes</Badge> | A unique identifier for this category.                      | `support`, `sales`, `critical_alert` |
+| **Description**  | <Badge type="optional">No</Badge>  | A short explanation of what content belongs in this bucket. | “Password reset requests or technical issues.” |
+| **Expression**   | <Badge type="optional">No</Badge>  | (Advanced) A custom expression that can post‐process or filter which messages go here. Leave blank to rely purely on the LLM. | For example, you could write a JSONPath or Liquid expression to extract a field or to validate the model’s output. |
+| **Color**        | <Badge type="optional">No</Badge>  | Pick a hex code (for example `#3C89F9`) to color-code this output on the canvas. Helpful when you have many buckets. | Use contrasting colors for easy identification. |
+
+<details>
+  <summary><strong>Example: Adding a New Category</strong></summary>
+
+  1. Click **+ Outputs** on the Classifier card to open the **Add Output** dialog.  
+  2. In **Output Name**, type `support`.  
+  3. (Optional) In **Description**, type “Customer support requests, including troubleshooting or technical issues.”  
+  4. (Optional) In **Expression**, leave blank if you don’t need extra filtering logic.  
+  5. Click the color swatch and choose a hex value like `#3C89F9`.  
+  6. Click **Create**.  
+
+  <img
+    src=""
+    alt="Add Output dialog showing fields: Output Name, Description, Expression and Color"
+    style={{ width: '100%', marginTop: '1rem' }}
+  />
+
+  7. You will now see “support” appear in the **Categories** list on the Classifier node. It will use the color you picked. Repeat these steps to add as many categories (outputs) as you need.
+</details>
+
+### Example Output Configuration (JSON)
+
+```json
+[
+  {
+    "Name": "positive_sentiment",
+    "Color": "green",
+    "Description": "Text that shows appreciation, praise or good feedback"
+  },
+  {
+    "Name": "support",
+    "Color": "#3C89F9",
+    "Description": "Customer support inquiries or help requests"
+  },
+  {
+    "Name": "escalation",
+    "Color": "red",
+    "Description": "Urgent or high-risk issues requiring immediate attention"
+  }
+]
+```
+<Spacer size="md" />
+
+## Step 5 - Advanced Routing (Optional)
+
+You can configure each category’s Format or attach downstream logic by using custom expressions, Webhook calls or conditional fields. For example, you might want the “sales” bucket to forward message content to a CRM, while “engineering” sends technical logs to a different queue.
+
+### Example: Return Different Formats per Category
+
+```json
+[
+  {
+    "Name": "sales",
+    "Description": "Routes message to the sales inbox",
+    "Format": "text"
+  },
+  {
+    "Name": "engineering",
+    "Description": "Forwards technical messages to the dev team",
+    "Format": "json"
+  },
+  {
+    "Name": "marketing",
+    "Description": "Extracts campaign name from the input",
+    "Format": "text"
+  }
+]
+```
+
+<TipCallout> You can reference parts of the input or return fixed values by writing Liquid or JSONPath expressions under **Expression** for that output. This is useful if you need to extract a substring, call an API or reshape the response. </TipCallout>
+ <Spacer size="md" />
+## Step 6 - Debug and Preview
+
+<InfoCallout title="Live testing"> 
+1. Click **Debug** on the Classifier node. <br/> 2. Paste or type a sample message to see how the model routes your input.
+
+**Example Input**:  
+“Hi, I’m trying to reset my password but the link isn’t working.”
+
+**Configured Outputs**:
+
+```json
+[
+  { "Name": "support", "Description": "Customer support requests" },
+  { "Name": "sales", "Description": "Product pricing or upgrade inquiries" },
+  { "Name": "marketing", "Description": "Messages about promotions or events" }
+]
+```
+
+**Expected Result**: The LLM should mark the support category as true and leave the other outputs empty. You will see this result returned in the debug console along with any token usage details.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- Use detailed, mutually exclusive descriptions for each output
+- Avoid vague labels like "misc" or overlapping categories like “help” and “support”
+- Always test edge cases in **Debug**
+- Use fallback categories if you expect unpredictable input
+- Stick to consistent naming like `snake_case` or `kebab-case`
+- Validate using real user data if possible
+
+<Spacer size="md" />
+## Troubleshooting Tips
+
+<InfoCallout title="If classification doesn’t behave as expected">
+- Double-check that your output descriptions are specific and non-overlapping  
+- Review the prompt: vague instructions lead to unpredictable classification  
+- Confirm your input field is correctly referenced as `{{Input}}` in the prompt  
+- Test with Debug to see the full model output and how it matched categories  
+- If all outputs are skipped, add a fallback category or simplify inputs  
+- Ensure the model you’re using supports the prompt + input token count  
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Combine with **[Agent Skill](/docs/agent-studio/components/base/agent-skill)** to classify natural user queries
+- Store classifications in **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** to build memory or logs
+
+<TipCallout>
+Want to go deeper? Try chaining **Classifier** with a **GenAI LLM** to auto-reply to each category differently.
+</TipCallout>

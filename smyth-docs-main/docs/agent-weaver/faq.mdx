@@ -1,0 +1,73 @@
+---
+description: Quick answers to the most common Weaver questions.
+keywords:
+  - SmythOS
+  - Weaver
+  - FAQ
+  - troubleshooting
+  - agent issues
+  - no-code agent orchestration
+sidebar_position: 11
+---
+
+# FAQ
+
+<TipCallout>
+**Bookmark this page.** Future-you will thank present-you.
+</TipCallout>
+
+<details>
+<summary> “Run” does nothing — no response.</summary>
+
+**Cause** — Model timeout or empty prompt.  
+**Fix**
+
+1. Check your internet connection.  
+2. Shorten the prompt (under 2 000 chars).  
+3. Reload the page.
+</details>
+
+<details>
+<summary> “Fix with AI” button is greyed out.</summary>
+
+The button appears only when **at least one component is selected** *and* debug logs contain an error.  
+Select a red-border node, or multi-select with <kbd>Cmd/Ctrl</kbd>.
+</details>
+
+<details>
+<summary> My agent costs too many tokens.</summary>
+
+1. **Analytics → Model Usage** → identify agent & skill.  
+3. See <DocLink to="/docs/account-management/model-rates">Model Rates</DocLink>.
+</details>
+
+<details>
+<summary> Logs are empty.</summary>
+
+Toggle **Debug** before hitting **Run** — logs capture only after activation.
+</details>
+
+<details>
+<summary> How do I upload an image?</summary>
+
+Drag-and-drop PNG/JPG/SVG into chat; Weaver converts to base64 and passes to the **ImageGenerator** skill automatically.
+</details>
+
+<details>
+<summary> Select multiple components?</summary>
+
+Hold <kbd>Cmd</kbd> / <kbd>Ctrl</kbd> while clicking each component — or drag a selection box starting on empty canvas.
+</details>
+
+<details>
+<summary> External API response too slow: job times out.</summary>
+
+Increase **Maximum Wait Time** in APICall settings or move the call to an **Async → Await** pattern.
+</details>
+
+<details>
+<summary> None of the above solved it... help!</summary>
+
+Jump into **#support** on [Discord](https://discord.gg/smythos). Weaver support crew is powered by ☕ and memes.
+</details>
+<Divider/>

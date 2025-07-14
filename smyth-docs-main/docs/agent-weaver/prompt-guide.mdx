@@ -1,0 +1,158 @@
+---
+title: Prompt Engineering
+description: Craft clear prompts that get the results you want from Weaver.
+keywords:
+  - SmythOS
+  - Weaver
+  - prompt design
+  - prompt-based agent creation
+  - AI workflow builder
+  - no-code agent orchestration
+sidebar_position: 5
+---
+# Prompt Engineering with Weaver
+
+> **Good prompt ⇒ Great agent**  
+> Weaver will try its best with whatever you throw at it, but the clearer the ask, the cleaner the wiring.  
+> Think *tasks*, not *code* ... your job is to explain specifically what you want and let Weaver do the rest.
+
+<InfoCallout title="TL;DR"> State a goal ➜ list skills ➜ add constraints. That’s 95 % of prompt craft. </InfoCallout>
+
+<Divider/>
+
+## Mind-set Shift: Describe Jobs, Not Code
+
+Bad habit (thinking like a developer):
+
+> “Call the `summarise()` function with the weekly_sales dataset.”
+
+Better habit (thinking like a PM):
+
+> “Summarise weekly sales data for Monday stand-up.”
+
+More examples:
+
+- “Translate this blog post to Spanish.”  
+- “Email the summary to the team every Friday at 4 PM.”  
+- “Resize all images in `/uploads` to 1024 px wide.”
+
+<Divider/>
+
+## The Universal Prompt Framework
+
+Goal: [What you want to achieve]
+
+Skills:
+1. [Skill 1]
+2. [Skill 2]
+3. …
+
+Constraints:
+- [Any mandatory formats, limits, sources]
+
+>Use **Goal → Skills → Constraints** every time.
+
+<Divider/>
+
+## Good vs Poor Prompts (Kyoto Edition)
+
+<PromptCard
+  title="Blog Prompt: Travel"
+  tags={['SEO', 'Formal tone', 'Markdown']}
+  collapsible
+  prompt={`Goal: Draft a 600-word travel article about Kyoto.
+
+Skills:
+1. Research attractions and local cuisine
+2. Generate SEO-friendly title and slug
+3. Produce Markdown article
+4. Extract five focus keywords
+
+Constraints:
+– Formal tone
+– UK English`}
+/>
+
+<PromptCard prompt={`Write something about Kyoto. Make it good for SEO.`} />
+
+> The first prompt gives Weaver four precise blocks to assemble.
+> The second leaves enough ambiguity to fill a Zen garden.
+
+<Divider/>
+
+## Advanced Examples
+
+### Weekly Sales Digest
+
+Goal: Deliver a Monday-morning sales digest email.
+
+Skills:
+1. Fetch weekly_sales.csv from S3
+2. Summarise trends into 5 bullet points
+3. Generate chart PNG
+4. Email to sales-team@acme.com
+
+Constraints:
+- Use “Sales Digest” as subject
+- Skip weeks with less than 100 rows
+
+### Multilingual Blog Pipeline
+
+Goal: Publish each post in EN → ES → FR.
+
+Skills:
+1. Detect new post published to WordPress
+2. Translate Markdown to Spanish
+3. Translate Spanish to French
+4. Post translations under /es/ and /fr/
+
+Constraints:
+- Preserve Markdown formatting
+- Keep code blocks untouched
+
+### Airtable → Slack Snapshot
+
+Goal: Send daily Airtable summary to Slack.
+
+Skills:
+1. Query “Tasks” base, get today’s records
+2. Count tasks by status
+3. Format a Slack message
+4. Post to #daily-ops
+
+Constraints:
+- Run at 17:00 UTC
+- Use Slack block-kit
+
+<Divider/>
+
+## Prompt Debugging 101
+
+1. **Locate the misbehaving component** (red border).
+2. Click on the component and ask Weaver to fix it and *explain what changed* (or click Fix with AI button on the componenet):
+   <PromptCard prompt={`Output missed the bullet list. Ensure summary is bullet-pointed.`} />
+3. Re-run just that block with debug mode enabled and step through it, not the whole agent.
+4. Rinse, repeat, ship.
+
+> *Still wrong?* Break the skill in two. Smaller skills fail more loudly.
+
+<TipCallout title="Get the best out of Weaver">
+**Remember:** A clear goal, numbered **Skills**, and explicit constraints let Weaver be the best AI workflow composer you’ve ever met.
+</TipCallout>
+
+<Divider/>
+
+## Cheatsheet
+
+| If you want…              | Add this to **Skills**          |
+| ------------------------- | ------------------------------- |
+| Ranking or classification | “Classify text sentiment”       |
+| Extraction                | “Extract company names”         |
+| Transformation            | “Convert JSON to CSV”           |
+| Messaging                 | “Send message to Teams channel” |
+
+<Divider/>
+
+## Next Up
+
+* Practice in the playground → <DocLink to="/docs/agent-weaver/quickstart">Build your first agent</DocLink>

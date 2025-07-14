@@ -1,0 +1,171 @@
+---
+title: Zapier Integration
+description: Connect SmythOS to Zapier to automate workflows across thousands of apps, empowering your agents to perform virtually any action you can define in a Zap.
+og:title: SmythOS & Zapier - Automate Everything, Everywhere
+og:description: Learn to integrate Zapier with SmythOS. Empower your agents to trigger Zapier "Actions," connecting them to thousands of other apps and services with no code.
+og:image: /docs/img/integrations/smythos_zapier.png
+keywords: [Zapier SmythOS Integration, Connect Zapier to SmythOS, SmythOS Zapier, Automate Workflows, Zapier API, No-Code Automation, App Integration]
+---
+# Zapier Integration with SmythOS
+
+> **Want to connect your agent to thousands of other apps?** Integrate Zapier with SmythOS and empower your agents to trigger any custom workflow you can build, from sending emails to updating CRM records.
+
+<InfoCallout title="TL;DR">
+Create "Actions" in Zapier and get a Zapier API Key. Securely add the key to SmythOS to allow your agents to run these actions, effectively connecting your agent to any of Zapier's 6,000+ integrated apps.
+</InfoCallout>
+
+## What is the Zapier Integration?
+Unlike other integrations that have specific components for specific tasks (e.g., "Create User"), the Zapier integration provides a single, universal component. You first define a custom "Action" inside your Zapier account. This action can do anything Zapier can do, like "Create a Google Doc," "Send a Slack Message," or "Add a row to a Google Sheet."
+
+Your SmythOS agent can then run that specific action, passing in data to it dynamically.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Run Zapier Action**](#run-zapier-action) | Universal | Triggers any custom "Action" you have defined in your Zapier account. | Varies based on the action you define. | Varies based on the action's result. | A universal connector to any of Zapier's 6,000+ apps. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Zapier with Your Agent?</summary>
+
+Zapier is the industry leader in app-to-app automation. Integrating it with SmythOS unlocks a virtually limitless world of possibilities for your agents.
+
+- **Infinite Connectivity:** Connect your agent to thousands of apps that may not have a native SmythOS integration yet. If an app is on Zapier, your agent can now interact with it.
+- **AI-Powered Workflows:** Combine the reasoning power of your SmythOS agent with the action-oriented capabilities of Zapier. An agent can decide *what* to do, and then trigger a Zapier Action to *do it*.
+- **Simplify Complex Actions:** Consolidate a multi-step process in another app into a single Zapier Action. Your agent can then execute that entire complex workflow with one simple component call.
+- **Bridge a Gap:** Use Zapier as a bridge to legacy systems or niche applications. If you can connect it to Zapier, you can now control it with your SmythOS agent.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Zapier account**.
+- A Zapier **API Key** for "Zapier Actions".
+
+<Divider />
+
+## Getting Started With Zapier Actions
+
+The connection is configured using a secure API Key from Zapier. The setup process involves creating the action in Zapier first.
+
+### Step 1: Create a Custom Action in Zapier
+1.  **Log in to Zapier** and navigate to [**Zapier Actions**](https://actions.zapier.com/custom/actions/).
+2.  Click **+ Create Action**.
+3.  **Configure the Action:**
+    * Choose the app you want to connect to (e.g., Google Docs).
+    * Choose the event (e.g., Create Document).
+    * Connect and authorize your account for that app.
+    * **Set up the action inputs:** Define the fields you want your SmythOS agent to provide. For example, for a "Create Google Doc" action, you would add input fields for `document_title` and `document_content`.
+    * Give your action a clear, descriptive name.
+4.  Activate your action by turning it on.
+
+### Step 2: Get Your Zapier API Key
+1.  In Zapier, navigate to the [API Keys page for Zapier Actions](https://actions.zapier.com/credentials/).
+2.  Zapier provides you with a default API key. You can copy this key or generate a new one.
+
+### Step 3: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Zapier API Key as the value. Give it a memorable name, like `zapier_actions_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 4: Configure the Zapier Component in SmythOS
+1.  In your SmythOS agent graph, drag and drop the **Zapier** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault.
+4.  From the action dropdown, select the custom action you created in Step 1.
+5.  The component's inputs will dynamically update to match the fields you defined for your Zapier action.
+
+<InfoCallout title="Heads-up">You only need to set up the API Key once. After that, you can use the component to run any of the custom actions you have created in your Zapier account.</InfoCallout>
+<Divider />
+
+## Which Zapier Action Should I Use?
+The power of this integration is that you decide what actions are available. You are not limited to a predefined list.
+
+| If you need your agent to… | Example Zapier Action to Create | Required Inputs You'd Define |
+|-----------------|---------------------------------|----------------------------------|
+| **Send a Slack message** | "Post to Slack Channel" | `channel_name`, `message_text` |
+| **Create a new Google Calendar event** | "Schedule Google Calendar Event" | `event_title`, `start_time`, `end_time`, `attendee_emails` |
+| **Add a row to a Google Sheet** | "Add Row to Project Tracker" | `project_name`, `task_description`, `status` |
+| **Create an invoice in QuickBooks** | "Create QuickBooks Invoice" | `customer_email`, `item_name`, `amount` |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the universal Zapier component.
+
+### <a name="run-zapier-action"></a>Run Zapier Action
+Triggers any custom "Action" you have defined in your Zapier account, passing dynamic data to it.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-zapier) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Action Selection:** A dropdown list where you select which of your pre-configured Zapier Actions to run.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `Instructions` | string | Optional | A natural language prompt describing what you want to do. The component's AI will attempt to extract the values for the other inputs from this text. |
+| `[Dynamic Inputs]`| any | Varies | The component will display input fields that match the ones you defined when creating the action in Zapier (e.g., `document_title`, `message_text`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `output` | object | The results returned by the Zapier action. The structure of this object depends on what the action was designed to return. |
+| `Response`| object | The full, raw JSON response from the Zapier API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+You create a Zapier Action called "Send Welcome Slack Message" with one input: `user_name`. In SmythOS, your onboarding agent calls this action after a new user signs up. The agent passes the new user's name to the `user_name` input. The Zapier action then posts "Welcome to the team, [user_name]!" to your #general Slack channel.
+</TipCallout>
+
+<WarningCallout title="AI Guessing vs. Specific Values">
+You can either fill in the specific input fields directly OR use the `Instructions` field and let the AI figure it out. For reliable, repeatable workflows, providing specific values is recommended. Use the `Instructions` field for more dynamic, conversational use cases.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Zapier API key in the SmythOS `Vault`.
+* **Name Actions Clearly:** Give your Zapier Actions descriptive names (e.g., "Create-Google-Doc-From-Template" instead of "My Action"). This makes them much easier to find and use in the SmythOS component.
+* **Define Clear Inputs:** When creating an action in Zapier, give your input fields clear, descriptive names. This makes it easier for both you and the component's AI to understand what data is needed.
+* **Return Useful Data:** In your Zapier Action setup, you can configure what data the action should return upon completion. For example, a "Create Google Doc" action should return the `document_url`. This result will then be available in the `output` of the SmythOS component.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized` or `403 Forbidden`**
+  * **Cause:** The API Key is incorrect or has been revoked.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one on your Zapier credentials page.
+
+* **Action Not Found in Dropdown**
+  * **Cause:** The action may not be activated in Zapier, or SmythOS needs to refresh its connection.
+  * **Solution:** Go to your Zapier Actions page and ensure the action you want to use is turned on. In the SmythOS component, try re-selecting the Zapier integration or refreshing the page to fetch the latest list of actions.
+
+* **Action Fails with an Error**
+  * **Cause:** The data passed from SmythOS to the Zapier action is incorrect, or there is a problem with the Zap itself (e.g., the connected Google account was disconnected).
+  * **Solution:** Check the **Task History** for your Zap in your Zapier account. It will provide detailed logs about why the action failed. This is the best place to debug issues with the execution of the Zap itself.
+
+<Divider />
+
+## What's Next?
+
+You can now connect your agents to over 6,000 applications with the **SmythOS Zapier Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages your calendar. The agent connects to Google Calendar via a Zapier Action to find open slots and book meetings.
+    * Acts as a CRM assistant. You can tell your agent, "Create a new lead for John Doe at Acme Inc.," and it will trigger a Zapier Action to create a new contact and deal in Pipedrive, Salesforce, or any other CRM connected to Zapier.
+    * Controls your smart home. Create Zapier actions that connect to IFTTT or smart home device APIs, allowing your agent to turn on lights or adjust the thermostat based on other triggers.
+
+* **Explore the Possibilities:**
+    * Browse the [Zapier App Directory](https://zapier.com/apps) to see all the services you can now connect to. If an app has a Zapier integration, you can control it with a SmythOS agent.
+    * The combination of SmythOS's reasoning and Zapier's vast connectivity allows you to build automations that were previously impossible without extensive custom code.

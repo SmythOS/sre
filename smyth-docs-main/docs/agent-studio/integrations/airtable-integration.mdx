@@ -1,0 +1,266 @@
+---
+title: Airtable Integration
+description: Connect SmythOS to Airtable and automate record creation, updates, and queries from your bases and tables.
+og:title: SmythOS + Airtable
+og:description: Integrate Airtable with SmythOS to power no-code database automation for your agents.
+og:image: /docs/img/integrations/smythos_airtable.png
+keywords: [Airtable Integration, Airtable API, Airtable Automation, SmythOS Airtable Components, Airtable Record Update, No-Code Database]
+---
+
+# Airtable Integration
+
+> Build fast, flexible database agents by connecting Airtable to SmythOS.
+
+<InfoCallout title="TL;DR">
+Grab your Airtable <code>Personal Access Token</code> and <code>Base ID</code>, store them securely in <strong>Vault</strong>, and then use SmythOS’s Airtable components to fetch, list, update, or create records in your bases.
+</InfoCallout>
+
+## List of Airtable Components
+
+| **Component** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------------|------------|------------------|--------------|
+| [Get Record](#get-record) | Fetches a single record by ID | <code>baseID</code>, <code>tableIdOrName</code>, <code>recordID</code> | <code>recFields</code>, <code>recordId</code> | View a customer’s profile from ID |
+| [List Records](#list-records) | Lists multiple records from a table | <code>baseID</code>, <code>tableIdOrName</code> | <code>records</code> | Display rows from a dataset |
+| [List Records (Next Page)](#list-records-next-page) | Paginates through additional records | <code>baseID</code>, <code>tableIdOrName</code>, <code>offset</code> | <code>records</code>, <code>offset</code> | Retrieve records beyond first page |
+| [Create a Record](#create-a-record) | Creates a single new record | <code>baseID</code>, <code>tableIdOrName</code>, <code>fields</code> | <code>recordID</code> | Add a support ticket or form submission |
+| [Create Records](#create-records) | Creates multiple new records | <code>baseID</code>, <code>tableIdOrName</code>, <code>body</code> | <code>records</code> | Bulk-import contacts |
+| [Update Record](#update-record) | Updates a single record | <code>baseID</code>, <code>tableIdOrName</code>, <code>recordID</code>, <code>body</code> | <code>recFields</code>, <code>recordId</code> | Edit a user's status or info |
+| [List Tables](#list-tables) | Returns all tables in a base | <code>baseID</code>, <code>trigger</code> | <code>tables</code> | Dynamically discover table names |
+| [Get Row Data](#get-row-data) | Retrieve rows by field-based query | <code>baseID</code>, <code>tableId</code>, <code>field_name</code>, <code>query</code> | <code>fields</code>, <code>id</code> | Search for a user by email |
+
+<Divider />
+
+## Prerequisites
+
+Before using any Airtable component in SmythOS, make sure to:
+
+1. [Create an Airtable account](https://airtable.com/).
+2. Visit [Create Personal Access Token](https://airtable.com/create/tokens).
+3. Select necessary scopes and access to your desired base.
+4. Copy and store your token in SmythOS Vault.
+
+<TipCallout title="Use Vault">
+Never expose tokens directly in components. Always store secrets in <strong>Vault</strong> and reference them by name.
+</TipCallout>
+
+<Divider />
+
+## Component Details
+
+### <a name="get-record"></a>Get Record
+
+Fetches a specific record from a table using its ID.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name or ID |
+| `recordID` | <Badge type="required" /> | ID of the record to fetch |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `recFields` | Fields of the record |
+| `recordId` | The record ID |
+| `response` | Full response object |
+| `headers` | HTTP headers from Airtable |
+
+<Arcade src="https://demo.arcade.software/Qo0syvxwkcFlQfsQsS57?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Airtable Get Record" />
+
+<Divider />
+
+### <a name="list-records"></a>List Records
+
+Lists records from a table.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name or ID |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `records` | Array of retrieved records |
+| `offset` | Offset for pagination |
+| `response` | Raw Airtable response |
+| `headers` | HTTP headers |
+
+<Arcade src="https://demo.arcade.software/q5PRuLK1UNzdFXuKctUZ?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Airtable List Records" />
+
+<Divider />
+
+### <a name="list-records-next-page"></a>List Records (Next Page)
+
+Use this to paginate through a large dataset.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name or ID |
+| `offset` | <Badge type="required" /> | Offset token from previous response |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `records` | Paginated records |
+| `offset` | Next offset token |
+| `response` | Airtable raw response |
+| `headers` | HTTP headers |
+
+<Arcade src="https://demo.arcade.software/ifGa3upx1hbovESLKg2s?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="List Records (Next Page)" />
+
+<Divider />
+
+### <a name="create-a-record"></a>Create a Record
+
+Creates a single record in a given table.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name |
+| `fields` | <Badge type="required" /> | Field data as JSON object |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `recordID` | New record ID |
+| `response` | Full response from Airtable |
+| `headers` | HTTP headers |
+
+<Arcade src="https://demo.arcade.software/D34paVicB2m8BkVJhy21?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Create a Record" />
+
+<Divider />
+
+### <a name="create-records"></a>Create Records
+
+Creates multiple records in batch.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name |
+| `body` | <Badge type="optional" /> | Array of JSON record objects |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `records` | Created records |
+| `response` | API response |
+| `headers` | HTTP metadata |
+
+<Arcade src="https://demo.arcade.software/Uzdb0vAfrpzJJwkjuy9Z?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Create Records" />
+
+<Divider />
+
+### <a name="update-record"></a>Update Record
+
+Updates fields for a given record.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableIdOrName` | <Badge type="required" /> | Table name |
+| `recordID` | <Badge type="required" /> | Record ID to update |
+| `body` | <Badge type="optional" /> | Fields to update in JSON format |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `recFields` | Updated record fields |
+| `recordId` | Updated record ID |
+| `response` | Full API response |
+| `headers` | HTTP metadata |
+
+<Arcade src="https://demo.arcade.software/B5OWBuPDNrjLTCiXFdVl?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Update Record" />
+
+<Divider />
+
+### <a name="list-tables"></a>List Tables
+
+Lists all tables from a base.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `trigger` | <Badge type="required" /> | Value used to trigger this component |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `tables` | Table metadata |
+| `response` | Airtable response |
+| `headers` | HTTP headers |
+
+<Arcade src="https://demo.arcade.software/m0WQ5uzKw4XL7WpghNAN?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="List Tables" />
+
+<Divider />
+
+### <a name="get-row-data"></a>Get Row Data
+
+Finds rows based on a field-value match.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `baseID` | <Badge type="required" /> | Airtable Base ID |
+| `tableId` | <Badge type="required" /> | Table name or ID |
+| `field_name` | <Badge type="required" /> | Field to search |
+| `query` | <Badge type="required" /> | Value to search for |
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| `fields` | Matched field data |
+| `id` | Matching record IDs |
+| `response` | Full API response |
+| `headers` | HTTP headers |
+
+<Arcade src="https://demo.arcade.software/KhxRAayWiwR6FC6AN06Z?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Get Row Data" />
+
+<Divider />
+
+## Best Practices
+
+<TipCallout>
+Use consistent field naming across Airtable and your other systems to simplify mapping between components.
+</TipCallout>
+
+- Always use `Vault` for secure key storage.
+- Use pagination components (`List Records Next Page`) for large datasets.
+- Validate case-sensitive table names and record IDs carefully.
+
+<Divider />
+
+## What's Next?
+
+Build powerful agents that automate your Airtable workflows:
+
+- Sync data from [Google Sheets](/docs/agent-studio/integrations/google-sheets-integration).
+- Use `Get Record` to fetch CRM data before replying to a user via OpenAI.
+
+<Image src="/docs/img/integrations/smythos_airtable.png" alt="SmythOS Airtable Integration Visual" />

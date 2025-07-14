@@ -1,0 +1,113 @@
+---
+title: Security Model
+description: Learn how SmythOS protects your AI agents with enterprise-grade security, access control, and secret management.
+keywords: [SmythOS, SRE, security, access control, vault, authentication, encryption, permissions, spaces, organization]
+sidebar_position: 11
+toc_max_heading_level: 2
+---
+
+# SRE Security Model
+
+The Smyth Runtime Environment (SRE) is designed with security at its core. Every operation, agent execution, resource access, or collaboration, is protected by a security model that includes zero-trust access control, vault-backed secret management, and real-time role enforcement.
+
+<InfoCallout title="Security by Default">
+Every request in SRE is checked against role-based permissions and access policies. Only verified candidates with the correct role and explicit access can read, write, or execute.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Identity Enforcement with Candidates and ACLs
+
+SRE enforces access at the identity level using the **Candidate and ACL model**:
+
+- A `Candidate` is any identity in the system -> an agent, user, or even a specific process.
+- An **Access Control List (ACL)** defines what actions each candidate can perform.
+
+Every time a candidate attempts to access a resource, such as storage or an LLM, SRE checks the ACL for explicit permission.
+
+<codeblock>
+const candidate = AccessCandidate.agent(agentId);
+const storage = ConnectorService.getStorageConnector().user(candidate);
+await storage.write('results.json', data);
+</codeblock>
+
+You can manage these permissions through [Roles and Permissions](/docs/agent-collaboration/permissions), and they are enforced consistently across [Spaces](/docs/agent-collaboration/spaces) and your [Organization](/docs/account-management/organization-management).
+
+<Spacer size="md" />
+
+## Vault-Based Secret Management
+
+Sensitive data, like API keys, credentials, and tokens, is never hardcoded or exposed. Instead, SRE uses the [Vault](/docs/agent-studio/key-concepts/vault) subsystem for secure, encrypted secret storage.
+
+- Vaults encrypt all data at rest and in transit.
+- You can use built-in vaults or external providers, including AWS Secrets Manager and HashiCorp Vault.
+- Role-based access ensures only approved agents or users can access specific secrets.
+- Every secret access is logged for compliance and traceability.
+
+To manage secrets, visit the [Vault dashboard](/docs/agent-studio/key-concepts/vault).
+
+<Spacer size="md" />
+
+## Authentication and Identity Providers
+
+SRE supports both built-in authentication and integration with external enterprise systems:
+
+- Connect with enterprise SSO or LDAP.
+- Add [custom account connectors](/docs/agent-runtime/sdk-guide) to fit your organization’s authentication workflows.
+- Use token-based login for programmatic or API access.
+
+You can manage users and authentication settings from the [Organization Management panel](/docs/account-management/organization-management).
+
+<Spacer size="md" />
+
+## Role-Based Access Control (RBAC)
+
+Role-based access control is central to SRE. Roles define **who can do what**... from the agent runtime to your admin dashboard, and are enforced in real time.
+
+- **Organization-wide roles:** e.g., Super Admin
+- **Space-specific roles:** e.g., Admin, Editor, Viewer
+
+If a candidate does not have the correct permissions, the action is denied before execution.
+
+To adjust or review roles, see the [Roles and Permissions guide](/docs/agent-collaboration/permissions).
+
+<Spacer size="md" />
+
+## Enterprise Security Features
+
+SRE is built to support production and regulated environments:
+
+- **TLS/SSL encryption** across all internal and external communication.
+- **Audit logs** for every critical operation (agent runs, data access, vault usage).
+- **Vault secrets** can be rotated and revoked automatically.
+- **Least privilege policies** since unknown or unconfigured actions are denied by default.
+
+To learn more about deploying SRE in enterprise settings, see [Enterprise Deployment](/docs/agent-runtime/enterprise-deployment).
+
+<WarningCallout title="Review Policies Regularly">
+Security is a shared responsibility. Review your ACLs, vault settings, and audit logs periodically to maintain compliance and minimize risk.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## How SRE Security Connects
+
+SRE security spans multiple subsystems. Here’s where to manage each area:
+
+| Security Area           | Where It’s Managed                                           |
+|-------------------------|-------------------------------------------------------------|
+| Identity & ACLs         | [Roles and Permissions](/docs/agent-collaboration/permissions) |
+| Credential Storage      | [Vault](/docs/agent-studio/key-concepts/vault)                                    |
+| User Roles & Login      | [Organization Management](/docs/account-management/organization-management) |
+| Agent Environments      | [Spaces](/docs/agent-collaboration/spaces)                  |
+| Advanced Deployment     | [Enterprise Deployment](/docs/agent-runtime/enterprise-deployment)    |
+
+<Spacer size="md" />
+
+## What’s Next?
+
+- [Roles and Permissions](/docs/agent-collaboration/permissions)
+- [Organization Management](/docs/account-management/organization-management)
+- [Spaces Overview](/docs/agent-collaboration/spaces)
+- [Enterprise Deployment](/docs/agent-runtime/enterprise-deployment)
+- [Architecture Overview](/docs/agent-runtime/architecture)

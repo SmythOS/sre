@@ -1,0 +1,104 @@
+---
+title: Use Microsoft Teams with SmythOS
+description: Connect your Microsoft Teams workspace to SmythOS agents for rich collaboration, messaging, and integration workflows.
+keywords: [SmythOS, Microsoft Teams, Teams chat, Azure integration, Microsoft Graph API, send message, chat workflows]
+---
+
+# Use Microsoft Teams with SmythOS
+
+> Add your SmythOS agents into the Microsoft 365 ecosystem. Integrate chat, collaboration, and workflow automation directly into your agents with Microsoft Teams support.
+
+<InfoCallout> **TL;DR:** Register an Azure app, add Microsoft Graph API permissions, store your credentials in Vault, and plug in Teams chat components to automate interactions. </InfoCallout>
+
+<Divider />
+
+## Why Use Microsoft Teams With Your Agent?
+
+Microsoft Teams is a hub for workplace communication. It combines messaging, meetings, file sharing, and integration with apps. Embedding it in your agents lets you:
+
+- Centralize alerts and workflows inside the tools your team already uses
+- Create conversational interfaces with live users
+- Automate message handling and channel updates
+
+With SmythOS, this becomes a no-code/low-code extension of your existing agent logic.
+
+<Divider />
+
+## Prerequisites
+
+Before you begin:
+
+- You need a Microsoft 365 tenant and access to the [Microsoft Entra Portal](https://entra.microsoft.com/)
+- Your app must be registered in Azure with Microsoft Graph API enabled
+- Your SmythOS agent should be deployed with [Vault access configured](/docs/agent-studio/key-concepts/vault)
+
+<Divider />
+
+## Step 1: Register an Azure App
+
+1. Visit the [Microsoft Entra Portal](https://entra.microsoft.com/)
+2. Navigate to **Azure Active Directory → App registrations → New registration**
+3. Fill out:
+   - Name: `SmythOS Agent App`
+   - Redirect URI: `https://app.smythos.com/oauth/oauth2/callback`
+   - Account type: choose based on internal vs external use
+4. Click **Register**
+
+<InfoCallout> After registration, copy your **Client ID** and **Tenant ID** because you’ll use them in Vault. </InfoCallout>
+
+## Step 2: Add Microsoft Graph API Permissions
+
+1. Go to your app → **API Permissions**
+2. Add permissions under **Microsoft Graph**:
+   - `Chat.Read`, `Chat.ReadWrite`
+   - `Channel.ReadBasic.All`, `Team.ReadBasic.All`
+   - `offline_access`
+3. Click **Grant admin consent** to apply
+
+## Step 3: Create a Client Secret
+
+1. In the app, go to **Certificates & secrets → New client secret**
+2. Name it, set expiry, and save the generated value
+
+## Step 4: Store in SmythOS Vault
+
+1. Open SmythOS → **Vault → API Keys → Add Key**
+2. Add your credentials securely:
+   - `client_id`
+   - `client_secret`
+   - `tenant_id`
+
+<Divider />
+
+## Component Capabilities
+
+Once your connection is live, use these components in your agent workflows:
+
+### Read and Retrieve
+
+- **List Chats**: Get all chats a user is part of
+- **List Messages in Chat**: Get all messages from a given chat
+- **Get Message in Chat**: Retrieve a single message by ID
+- **Get Chat Info**: Get metadata about a specific chat thread
+
+### Create and Interact
+
+- **Create Chat**: Start a new chat with users
+- **Add Chat Member**: Add a new user to an existing chat
+- **Send Message in Chat**: Post text to a direct or group chat
+
+### Work with Channels
+
+- **Send Message in Channel**: Push messages to public or private channels
+- **Send Reply in Channel**: Reply to a specific message in a thread
+
+<Divider />
+
+## What’s Next?
+
+- Monitor agent-to-Teams traffic in [Agent Logs](/docs/agent-studio/manage-agents/logs)
+- Use [Scheduled Routines](/docs/agent-collaboration/agent-work-schedules) to auto-post messages to teams
+- Embed [Chatbot agents](/docs/agent-deployments/deployments/deploy-as-chatbot) that use Teams as a channel
+- Use [Data Spaces](/docs/agent-collaboration/data-pool/data-spaces) to enrich or personalize messages
+
+<PromptCard prompt="Send a new message to a Microsoft Teams channel using the Send Message component with channel_id and content input." />

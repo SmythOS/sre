@@ -1,0 +1,67 @@
+---
+description: Proven tips for designing reliable, maintainable SmythOS agents.
+keywords:
+  - SmythOS
+  - Weaver
+  - best practices
+  - robust workflows
+  - debugging strategies
+  - no-code agent orchestration
+sidebar_position: 7
+---
+# Best Practices
+
+> Smart habits in **Weaver** will save you late-night bug-hunts and surprise token bills.
+
+<InfoCallout title="TL;DR"> Build small ➜ test fast ➜ deploy in stages.  Everything else is icing. (There's plenty...) </InfoCallout>
+
+<Divider/>
+
+## Why Best Practices Matter
+
+Hours saved debugging ≠ hours you can spend writing release notes about how little debugging you did.  
+Tokens = money; broken flows = sad work DMs. Let’s stay happy.
+<Divider/>
+
+## How to Build, Test, and Deploy Your AI Agent Workflow
+Build small -> Test early -> Deploy to staging -> Ship to production.
+
+### Build Small
+Add **one skill at a time**. If it fails, you know the culprit instantly.
+
+### Test Early
+Toggle **Debug Mode** every run until borders turn 🟢 green.
+
+### Deploy Staging
+Push to a *dev* subdomain first; let the intern break it before customers do.
+
+<Divider/>
+
+## Embrace Modularity
+
+- Break big goals into **numbered skills** (Weaver parses lists).  
+- Use existing **Templates** (see <DocLink to="/docs/agent-templates/overview">Agent Templates</DocLink>) or remix them.
+- Keep each skill single-purpose.
+
+<Divider/>
+
+## Naming Conventions
+
+| Item | Convention | Example |
+|------|------------|---------|
+| **Agent** | Verb + Outcome | Generate SEO Article |
+| **Skill** | Action + Object | Extract Keywords |
+| **Inputs** | `snake_case` | `max_results` |
+
+<Divider/>
+
+## Performance Baseline
+<TipCallout title="Follow these simple tips">
+**Remember:** Good names, small skills, and colour-coded sanity checks = a joyous Weaver life.
+</TipCallout>
+
+| Optimise | How |
+|----------|-----|
+| **Choose models wisely** | GPT-4o mini beats full GPT-4o on price |
+| **Throttle loops** | Drop [*Sleep* Component](/docs/agent-studio/components/advanced/sleep) after 10 iterations |
+

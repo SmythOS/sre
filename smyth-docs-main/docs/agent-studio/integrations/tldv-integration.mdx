@@ -1,0 +1,276 @@
+---
+title: tl;dv Integration
+description: Connect SmythOS to tl;dv to automatically retrieve meeting recordings, transcripts, and highlights directly from your agent workflows.
+og:title: SmythOS & tl;dv - Automate Your Meeting Intelligence
+og:description: Learn to integrate tl;dv with SmythOS. Empower your agents to fetch meeting data, search transcripts, and analyze highlights to streamline your collaborative processes.
+og:image: /img/integrations/smythos_tldv.png
+keywords: [tldv SmythOS Integration, Connect tldv to SmythOS, SmythOS Meeting Transcription, Automate Meeting Notes, AI Meeting Assistant, No-Code Meeting API]
+---
+# tl;dv Integration with SmythOS
+
+> **Want to unlock the data trapped in your meetings?** Connect tl;dv to SmythOS and empower your agents to automatically fetch recordings, search transcripts, and analyze highlights from all your calls.
+
+<InfoCallout title="TL;DR">
+Securely link your tl;dv account to SmythOS using an API key. Then, use our suite of components to automate the retrieval and analysis of your meeting data, from fetching full transcripts to searching for specific keywords.
+</InfoCallout>
+
+## List of tl;dv Components
+Quickly compare tl;dv components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Get Meetings List**](#get-meetings-list) | Read | Retrieves a paginated list of all your recorded meetings. | <Badge type="required" /> `trigger`<br /><Badge type="optional" /> `page`, `limit` | `meetings` | Getting an overview of all recent calls. |
+| [**Get Meetings By Date**](#get-meetings-by-date)| Read | Retrieves all meetings within a specified date range. | <Badge type="required" /> `date_from`, `date_to`| `results` | Finding all sales calls from the last week. |
+| [**Search Meetings**](#search-meetings) | Search | Searches for meetings based on a keyword query. | <Badge type="required" /> `query` | `results` | Finding all meetings where "Project Phoenix" was mentioned. |
+| [**Get Meeting**](#get-meeting) | Read | Retrieves detailed information about a single meeting by its ID. | <Badge type="required" /> `meetingId` | `name`, `url`, `invitees` | Getting the context of a specific call. |
+| [**Get Transcript**](#get-transcript) | Read | Fetches the full text transcript of a specific meeting. | <Badge type="required" /> `meetingId` | `data` | Analyzing the content of a customer interview. |
+| [**Get Highlights**](#get-highlights) | Read | Retrieves the timestamped highlights created for a meeting. | <Badge type="required" /> `meetingId` | `data` | Quickly reviewing the key moments of a call. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate tl;dv with Your Agent?</summary>
+
+tl;dv records, transcribes, and summarizes your meetings. Integrating it with SmythOS allows you to turn those conversations into structured, actionable data for your automated workflows.
+
+- **Automate Follow-ups:** Create agents that listen for action items in a meeting transcript, and then automatically create tasks in your project management tool.
+- **Enhance CRM Data:** After a sales call, an agent can fetch the transcript, use an LLM to summarize the customer's needs, and append the summary to the contact's record in your CRM.
+- **Streamline Research:** Automatically pull transcripts from all user research calls, feed them into an AI model to extract key themes and pain points, and generate a summary report.
+- **Build a Knowledge Base:** Create a searchable database of your team's collective knowledge by having agents fetch and index the transcripts of all internal meetings.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **tl;dv account**.
+- Your tl;dv **API Key**.
+
+<Divider />
+
+## Getting Started With tl;dv
+
+The connection between SmythOS and tl;dv is configured using a secure API Key.
+
+### Step 1: Get Your tl;dv API Key
+1.  Log in to your [tl;dv account](https://tldv.io).
+2.  Navigate to your account settings or profile.
+3.  Find the **API Keys** section and generate a new API key.
+4.  Copy the key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your tl;dv API Key as the value. Give it a memorable name, like `tldv_api_key`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a tl;dv Component
+1.  In your SmythOS agent graph, drag and drop any tl;dv component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `TLDV API key` field, select the secret you saved in the Vault (e.g., `tldv_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** tl;dv component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which tl;dv Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Get a list of all recent calls** | Your entire meeting history | [Get Meetings List](#get-meetings-list) | Provides a paginated overview of all recorded meetings. |
+| **Find a specific call where a topic was discussed** | A keyword or phrase | [Search Meetings](#search-meetings) | The best way to find relevant meetings without knowing their IDs. |
+| **Get the full transcript** of a known call | A `meetingId` | [Get Transcript](#get-transcript) | Retrieves the complete, word-for-word text of a meeting. |
+| **Review the key takeaways** of a known call | A `meetingId` | [Get Highlights](#get-highlights) | Focuses only on the important moments that were highlighted during the call. |
+| **Find all meetings from last quarter** | A date range | [Get Meetings By Date](#get-meetings-by-date) | Allows for precise filtering based on when meetings occurred. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each tl;dv component.
+
+### <a name="get-meeting"></a>Get Meeting
+Retrieves detailed metadata about a single meeting using its unique ID.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `meetingId` | string | Yes | The unique identifier of the meeting you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier for the meeting. |
+| `name` | string | The name or title of the meeting. |
+| `url` | string | The URL to access the meeting recording and details. |
+| `organizer` | string | The name or email of the person who organized the meeting. |
+| `invitees`| array | A list of people who were invited to the meeting. |
+| `Response`| object | The raw JSON response from the tl;dv API. |
+
+<TipCallout title="Use Case">
+After finding a relevant meeting via search, an agent uses this component to get the meeting's name, date, and invitee list for a report.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-transcript"></a>Get Transcript
+Retrieves the full text transcript of a meeting using its ID.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `meetingId` | string | Yes | The unique identifier of the meeting whose transcript you want. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | string | The full text transcript of the meeting. |
+| `meetingId`| string | The ID of the meeting the transcript belongs to. |
+| `Response`| object | The raw JSON response from the tl;dv API. |
+
+<TipCallout title="Use Case">
+An agent is tasked with summarizing a customer call. It takes the `meetingId`, fetches the transcript with this component, and then feeds the `data` output into an LLM for summarization.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-highlights"></a>Get Highlights
+Retrieves the timestamped highlights that were created for a specific meeting.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `meetingId` | string | Yes | The unique identifier of the meeting whose highlights you want. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | array | An array of highlight objects, each containing the highlighted text and timestamp. |
+| `Response`| object | The raw JSON response from the tl;dv API. |
+
+<TipCallout title="Use Case">
+To create a "best of" reel, an agent fetches the highlights from several meetings and compiles the text into a single document.
+</TipCallout>
+
+### <a name="get-meetings-list"></a>Get Meetings List
+Retrieves a paginated list of all meetings recorded in your tl;dv account.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value to trigger the component's execution. |
+| `page` | integer | Optional | The page number of results to retrieve. Default: `1`. |
+| `limit` | integer | Optional | The number of meetings per page. Default: `50`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `meetings` | array | An array of objects, where each object represents a meeting. |
+| `Response`| object | The full, raw JSON response from the tl;dv API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A weekly agent runs this component to get the list of all meetings from the past week, then iterates through them to perform further analysis, such as fetching each transcript.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-meetings"></a>Search Meetings
+Searches for meetings in your account based on a keyword query.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The search term to find matching meetings. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of meeting objects that match the search criteria. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent needs to find all meetings where "Project Titan" was discussed. It uses this component with the query "Project Titan" to get a list of relevant recordings.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-meetings-by-date"></a>Get Meetings By Date
+Retrieves all meetings that occurred within a specified date range.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `date_from` | string | Yes | The start date for the date range in YYYY-MM-DD format. |
+| `date_to` | string | Yes | The end date for the date range in YYYY-MM-DD format. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of meeting objects that occurred within the specified date range. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+To generate a quarterly report, an agent uses this component to fetch all sales calls that happened between the start and end dates of the quarter.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your tl;dv API key in the SmythOS `Vault`.
+* **Combine Components for Powerful Workflows:** The real power of this integration comes from chaining components. For example: `Get Meetings List` -> `Loop` -> `Get Transcript` -> `AI Summarizer`.
+* **Parse Transcript Data:** The transcript data can be quite large. Use Code components or AI models to parse this text to find action items, key decisions, or customer feedback.
+* **Handle Pagination:** When using `Get Meetings List`, be aware of the `limit` and `page` parameters. If you have more meetings than the limit, you will need to build a loop in your agent that increments the `page` input to fetch all results.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, invalid, or missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your tl;dv dashboard.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `meetingId` provided is incorrect or does not exist in your tl;dv account.
+  * **Solution:** Double-check the `meetingId`. Ensure it was obtained from a valid source, like the `Get Meetings List` component.
+
+* **Empty `data` or `results` Array**
+  * **Cause:** The meeting may genuinely have no transcript or highlights, or the search/date range returned no meetings.
+  * **Solution:** Verify in the tl;dv web application that the meeting has the data you expect. Broaden your search query or date range to test the connection.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful meeting intelligence workflows with the **SmythOS tl;dv Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Retrieves the transcripts of all sales calls from the past week, combines them, and asks an LLM to identify the most common customer objections and feature requests.
+    * Monitors your calendar. After a meeting ends, it finds the corresponding tl;dv recording, fetches the transcript, identifies action items, and creates tasks in your project management tool.
+    * Creates a "meeting summary" service. You send the agent a `meetingId`, and it returns a 3-bullet summary of the transcript and a list of the key highlights.
+
+* **Explore Other Integrations:**
+    * Feed transcripts from tl;dv into the [OpenAI Whisper](/docs/agent-studio/integrations/falai-integration) or other advanced speech models for further analysis or re-transcription if needed.
+    * Log meeting summaries and action items into a [Notion](/docs/agent-studio/integrations/notion-integration) database or [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration).
+    * Send automated meeting summary emails to all participants using the [Gmail](/docs/agent-studio/integrations/google-gmail-integration) integration.

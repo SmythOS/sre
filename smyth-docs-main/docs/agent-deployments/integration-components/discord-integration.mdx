@@ -1,0 +1,122 @@
+---
+title: Use Discord with SmythOS
+description: Connect SmythOS to Discord to send automated messages to channels.
+keywords: [SmythOS, Discord, send message, Discord bot, Bot Token, API integration, channel automation, MCP, model context protocol]
+---
+
+# Use Discord with SmythOS
+
+> Send real-time updates, automate community responses, or just drop a message into a Discord server... right from your SmythOS agent.
+
+<InfoCallout>
+**TL;DR:** Add your Discord Bot Token, configure channel and message inputs, and plug the component into any workflow, including MCP deployments.
+</InfoCallout>
+
+<Divider />
+
+## Why Use Discord With Your Agent?
+
+Discord isn’t just for gamers. It’s a powerhouse for real-time conversations, communities, and automation. With the **Send Message** component, you can:
+
+- Post real-time updates from your agent
+- Push notifications from workflows and conditional logic
+- Sync backend events with your community
+- Automate community interaction from your product, CRM, or custom data store
+
+<Divider />
+
+## Prerequisites
+
+Before integrating Discord:
+
+- Create a [Discord Application](https://discord.com/developers/applications)
+- Add a bot to the application to generate a **Bot Token**
+- [Invite the bot to your server](https://discordjs.guide/preparations/adding-your-bot-to-servers.html#bot-invite-links) with `Send Messages` permission
+- Optionally configure [Vault → API Keys](/docs/agent-studio/key-concepts/vault) for securely managing your Bot Token
+
+<Divider />
+
+## Step-by-Step: Integrate Discord
+
+### Step 1: Add Your Bot Token
+
+1. Open your app in the Discord Developer Portal
+2. Go to the **Bot** tab
+3. Copy the **Bot Token**
+4. In SmythOS, paste the token into the component’s settings under **Bot Token**
+
+<InfoCallout>
+Keep your Bot Token secure in [Vault → API Keys](/docs/agent-studio/key-concepts/vault).
+</InfoCallout>
+
+<Divider />
+
+### Step 2: Configure Component Settings
+
+Inside the **Send Message** component, set:
+
+- **Bot Token**: Add from Vault or directly in settings
+
+This authorizes your bot to send messages to your target server and channel.
+
+<Divider />
+
+### Step 3: Define Inputs
+
+Here’s a sample payload:
+
+```json
+{
+  "channel_id": "123456789012345678",
+  "content": "Hello, Discord! This is your SmythOS agent speaking."
+}
+```
+
+Required:
+
+- **channel_id**: Copy this from Discord by right-clicking the target channel > **Copy ID**
+- **content**: Your message. Supports markdown, mentions, emojis (up to 2000 characters)
+
+<InfoCallout>
+Click **+ Add Input** to pass dynamic values or support logic branches.
+</InfoCallout>
+
+<Divider />
+
+### Step 4: Use the Outputs
+
+After execution, you’ll get:
+
+- **response**: JSON object with content, timestamp, bot name, and more
+- **headers**: HTTP metadata
+- **messageId**: The message’s unique ID for reference, updates, or logs
+
+You can log or reference this data in follow-up steps.
+
+<Divider />
+
+## Optional: Deploy via Model Context Protocol (MCP)
+
+If your agent is deployed using [MCP Server](//docs/agent-deployments/deployments/deploy-as-mcp-server), you can:
+
+1. Set up the Discord component in the agent canvas as usual.
+2. Expose this workflow endpoint via MCP using a route that maps to a Discord action.
+3. Use a POST request (e.g., from an app or webhook) to hit the MCP URL, and pass the required `channel_id` and `content` values.
+4. The deployed agent handles the authentication and message delivery.
+
+<InfoCallout>
+You must ensure that your bot is authorized in the server and that channel IDs passed via the API are accessible.
+</InfoCallout>
+
+This method allows external systems to trigger Discord messages without embedding the bot logic outside SmythOS.
+
+<Divider />
+
+## What’s Next?
+
+- Combine this with [Deploy as API](/docs/agent-deployments/deployments/deploy-as-api) to expose Discord actions externally
+- Create workflows that send alerts when conditions are met
+- Chain Discord outputs into custom dashboards or external tools
+- Log activity with [Agent Logs](/docs/agent-studio/manage-agents/logs)
+
+<PromptCard prompt="Connect Discord to SmythOS using Bot Token and channel_id for automated messaging. Deploy using MCP or API." />

@@ -1,0 +1,163 @@
+---
+title: Upstash Integration
+description: Connect SmythOS to Upstash to use a serverless Redis database for caching, session storage, and state management directly within your agent workflows.
+og:title: SmythOS & Upstash - Serverless Data for Your Agents
+og:description: Learn to integrate Upstash with SmythOS. Empower your agents with a high-availability, low-latency Redis database to manage state, cache data, and build scalable serverless applications.
+og:image: /docs/img/integrations/smythos_upstash.png
+keywords: [Upstash SmythOS Integration, Connect Upstash to SmythOS, SmythOS Serverless Database, Automate Redis, SmythOS Caching, No-Code Redis, Serverless Data]
+---
+# Upstash Integration with SmythOS
+
+> **Need a fast, serverless database for your agents?** Connect Upstash to SmythOS and empower your agents with a powerful Redis-compatible database for caching, state management, and real-time data storage.
+
+<InfoCallout title="TL;DR">
+Securely link your Upstash account to SmythOS using your Database ID and REST Token. Then, use our components to set, get, and delete key-value records, giving your agents a high-performance, persistent memory.
+</InfoCallout>
+
+## List of Upstash Components
+Quickly compare Upstash components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Record**](#create-record) | Write | Creates or updates a record with a specified key and value. | <Badge type="required" /> `db_id`, `db_key`, `db_value` | `result` | Caching API responses or storing user session data. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Upstash with Your Agent?</summary>
+
+Upstash provides a fully serverless Redis database, which is a perfect match for the event-driven, stateless nature of agents.
+
+- **Persistent State Management:** Give your agents a memory. An agent can store information from a conversation or workflow in Upstash and retrieve it later, allowing for multi-turn conversations and stateful operations.
+- **High-Performance Caching:** Drastically speed up your agents and reduce costs by caching the results of expensive API calls or complex computations. Before making a slow API call, the agent can first check Upstash for a recent, cached result.
+- **Real-Time Data Hub:** Use Upstash as a central, low-latency message bus or data store between multiple agents or services, enabling real-time communication and data sharing.
+- **No Infrastructure Hassle:** Get all the power of an in-memory database like Redis without ever having to manage servers, scaling, or configuration. It's the ideal database for serverless workflows.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **Upstash account** with a Redis database created.
+- Your Upstash Database's **ID** and **REST Token**.
+
+<Divider />
+
+## Getting Started With Upstash
+
+The connection between SmythOS and Upstash is configured using your database credentials.
+
+### Step 1: Get Your Upstash Database Credentials
+1.  Log in to the [Upstash Console](https://console.upstash.com/).
+2.  Select the database you want to connect to.
+3.  On the database details page, you will find the **Database ID** (`db_id`) and the **REST Token**. The REST token is the password for the REST API.
+4.  Copy both of these values.
+
+### Step 2: Store Your Credentials in SmythOS Vault
+Your REST Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Upstash REST Token as the value. Give it a memorable name, like `upstash_rest_token`. The Database ID is less sensitive but can also be stored for convenience.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure an Upstash Component
+1.  In your SmythOS agent graph, drag and drop any Upstash component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Upstash Redis Rest Token` field, select the secret you saved in the Vault (e.g., `upstash_rest_token`).
+4.  Your connection is now configured for that component. You will provide the `db_id` as a standard input.
+
+<InfoCallout title="Heads-up">You must add the REST Token from the Vault to **each** Upstash component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Upstash Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Save or update a piece of data** | A key and a value | [Set Record](#set-record) | This is the fundamental "write" operation in a key-value store like Redis/Upstash. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Upstash components. Note: "Create Record" is equivalent to the `SET` command, which creates a record if it doesn't exist or updates it if it does.
+
+### <a name="create-record"></a>Create Record (Create/Update)
+Creates a new record or updates an existing record with a specified key and value. This is the primary component for writing data to Upstash.
+
+<InfoCallout>This component requires a `REST Token` for authentication, as detailed in the [Getting Started](#getting-started-with-upstash) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `db_id` | string | Yes | The unique ID of your Upstash database. |
+| `db_key` | string | Yes | The key under which the value will be stored (e.g., `user:123:session`). |
+| `db_value` | string | Yes | The value to be stored. This can be a string, number, or JSON string. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `result` | string | A confirmation message from the API, typically "OK" on success. |
+| `Response`| object | The full, raw JSON response from the Upstash API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent caches a response from a slow, external API. It uses the API endpoint as the `db_key` and the JSON response as the `db_value`. The next time the agent needs this data, it will check Upstash first.
+</TipCallout>
+
+```json
+{
+  "component": "upstash.createRecord",
+  "db_id": "us1-shiny-snake-12345",
+  "db_key": "user:session:xyz-abc",
+  "db_value": "{\"name\": \"Jane Doe\", \"loggedIn\": true}"
+}
+```
+
+<WarningCallout title="Data Serialization">
+To store complex objects like JSON, you must first serialize them into a string before passing them to the `db_value` input.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your REST Token:** Always store your Upstash REST Token in the SmythOS `Vault`.
+* **Design a Key Naming Schema:** Plan your keys carefully. A good convention, like `object-type:id:attribute` (e.g., `user:123:profile`), makes your data easy to manage and avoids key collisions.
+* **Use JSON for Complex Data:** When storing objects or arrays, convert them to a JSON string before using `Set Record`. Remember to parse the JSON string after retrieving it with `Get Record`.
+* **Set Time-to-Live (TTL) for Caches:** When using Upstash for caching, set an expiration time on your keys to ensure stale data is automatically removed. This can be done by using more advanced Redis commands if the component supports them, or by building time-based logic into your agent.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The `Upstash Redis Rest Token` is incorrect or invalid.
+  * **Solution:** Verify that the token in your SmythOS Vault is correct and matches the REST Token for the correct database in your Upstash Console.
+
+* **Error: `404 Not Found` (when getting a record)**
+  * **Cause:** The `db_key` you are trying to retrieve does not exist in the database.
+  * **Solution:** This is expected if the key has not been set or has expired. Your agent's logic should handle cases where a cache miss occurs.
+
+* **Incorrect Data Format**
+  * **Cause:** Storing a complex object without first converting it to a JSON string, or forgetting to parse the JSON string after retrieving it.
+  * **Solution:** Always use a Code component or similar tool to `JSON.stringify()` before setting and `JSON.parse()` after getting complex data.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build high-performance, stateful agents with the **SmythOS Upstash Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages user sessions for a web application. When a user logs in, the agent creates a session record in Upstash with a short expiration time.
+    * Acts as a rate limiter. Before calling an external API, an agent checks a counter key in Upstash to ensure it hasn't exceeded its rate limit for the hour.
+    * Caches the results of expensive AI model calls. An agent can store the response from an LLM for a given prompt, so if the same prompt is received again, it can return the cached response instantly.
+
+* **Explore Other Integrations:**
+    * Combine Upstash with any API-based integration like [Ahrefs](/docs/agent-studio/integrations/ahrefs-integration) or [DataForSEO](/docs/agent-studio/integrations/dataforseo-integration). Store the results of your API calls in Upstash to avoid repeatedly fetching the same data and reduce costs.
+    * Use Upstash as a simple database for agents that interact with users via [Discord](/docs/agent-studio/integrations/discord-integration), storing user preferences or conversation history.

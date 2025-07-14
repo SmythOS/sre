@@ -1,0 +1,98 @@
+---
+title: Image Generator
+description: Generate high-quality images from text prompts or other images using advanced AI models.
+keywords: [Image Generator, image, generate, AI, DALL-E, FLUX, prompt, image-to-image]
+toc_max_heading_level: 2
+---
+
+# Image Generator Component
+
+Use the **Image Generator** component to create new images from text prompts (text-to-image) or modify existing ones (image-to-image). It leverages advanced models like DALL-E 3 and FLUX to bring your creative ideas to life.
+
+<InfoCallout title="Why this matters">
+Visual content is highly engaging. With the Image Generator, your agent can create custom graphics, illustrations, and art on the fly, opening up a world of possibilities for dynamic content creation, personalization, and enhanced user interaction.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Model and Generation Settings](#step-1-select-a-model-and-configure-settings)
+- [Define Inputs](#step-2-define-inputs)
+- [Handle the Generated Output](#step-3-handle-the-generated-output)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select a Model and Configure Settings
+
+Choose a model and fine-tune its parameters to control the style, quality, and dimensions of the generated image.
+
+| Setting        | Description                                                                                             |
+|----------------|---------------------------------------------------------------------------------------------------------|
+| **Model** | Select from available models like `GPT Image 1` (DALL-E 3), `FLUX Dev`, or `FLUX Schnell`.       |
+| **Image Dimensions**| Choose the aspect ratio and size of the output, such as `1024x1024` or `1792x1024`.           |
+| **Image Quality** | Adjust the quality level of the generated image. Higher quality may take longer to generate.        |
+| **Output Format** | Select the desired format for the output image (e.g., PNG, JPG).                                  |
+| **Strength** | (FLUX models only) Controls how much the input image influences the output in an image-to-image task. |
+| **Negative Prompt**| (FLUX models only) Specify concepts, objects, or styles to exclude from the generated image.    |
+
+<Arcade src="https://demo.arcade.software/AroFQEL8xuIPIjCGhH7H?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Image Generator | SmythOS"/>
+
+<Spacer size="md" />
+
+## Step 2: Define Inputs
+
+Provide the creative direction for the image generation through prompts and optional attachments.
+
+| Input            | Required?                   | Description                                                                                                     |
+|------------------|-----------------------------|-----------------------------------------------------------------------------------------------------------------|
+| **Prompt** | <Badge type="required">Yes</Badge> | The primary text description of the image you want to create.                                                   |
+| **Attachment** | <Badge type="optional">No</Badge>  | An optional image file (binary input) used for image-to-image generation.                                       |
+
+<TipCallout title="Dynamic Prompts">
+You can create additional text inputs for the component and reference them in the main `Prompt` field. For example, you could have an input named `subject` and write a prompt like: "An oil painting of a `{{subject}}` in a surrealist style."
+</TipCallout>
+
+<InfoCallout title="Multiple Image Inputs">
+For models that support it, you can add multiple binary inputs. The component will automatically recognize and use them in the generation process without needing to reference them explicitly in the prompt.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 3: Handle the Generated Output
+
+The component produces a single output containing the newly created image.
+
+| Output   | Description                                                     | Data Structure |
+|----------|-----------------------------------------------------------------|----------------|
+| **Output** | A reference to the generated image file, ready to be used in subsequent steps. | Binary         |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Write Detailed Prompts:** The more specific and descriptive your prompt, the better the result. Include details about the subject, style, colors, lighting, and composition.
+- **Iterate with Negative Prompts:** Use the `Negative Prompt` (on FLUX models) to refine your images by removing unwanted elements. For example, if you're getting extra limbs, add "mutated, extra limbs" to the negative prompt.
+- **Leverage Image-to-Image:** For variations on a theme or style, provide an input `Attachment`. Use the `Strength` parameter to control how closely the output resembles the input.
+- **Choose the Right Model:** `FLUX Schnell` is faster and great for rapid prototyping, while `FLUX Dev` or `GPT Image 1` may offer higher quality for final results.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your images aren't turning out right...">
+- **Generic or Uninspired Results:** Your prompt is likely too simple. Add more detail, adjectives, and artistic direction. Instead of "a dog," try "a photorealistic image of a golden retriever puppy playing in a sun-drenched meadow."
+- **Unwanted Elements Appear:** Use the `Negative Prompt` setting on compatible models to explicitly forbid those elements.
+- **Image is Too Different from Input (Image-to-Image):** Your `Strength` parameter may be set too high. Lower the value to make the output adhere more closely to the input image.
+- **Component Fails or Times Out:** Image generation can be resource-intensive. Ensure your connection is stable and check the status of the model provider if issues persist.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to generate a highly detailed image prompt, and feed that prompt into the `Image Generator`.
+- Create an [Agent Skill](/docs/agent-studio/components/base/agent-skill) that takes a user's text input, generates an image, and displays it back to them, creating an interactive "art bot".

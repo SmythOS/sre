@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "components": [
+    { "id": "1", "name": "CodeExec", "data": { "code_body": "git clone https://github.com/smythos/test-repo.git repo" } },
+    { "id": "2", "name": "CodeExec", "data": { "code_body": "echo 'change' >> repo/README.md" } },
+    { "id": "3", "name": "GitCommit", "data": { "repoPath": "repo", "message": "update" } }
+  ],
+  "connections": [
+    { "sourceId": "1", "sourceIndex": 0, "targetId": "2", "targetIndex": 0 },
+    { "sourceId": "2", "sourceIndex": 0, "targetId": "3", "targetIndex": 0 }
+  ]
+}
+

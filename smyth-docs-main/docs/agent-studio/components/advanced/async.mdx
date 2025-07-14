@@ -1,0 +1,119 @@
+---
+title: Async
+description: Manage long-running, non-blocking operations to prevent timeouts and handle background tasks.
+keywords: [Async, Await, background job, asynchronous, long-running, timeout, workflow, non-blocking]
+toc_max_heading_level: 2
+---
+
+# Async Component
+
+Use the **Async** component to run parts of your workflow in the background. It's essential for long-running tasks like processing large files or looping through thousands of records, preventing timeouts and keeping your main agent responsive.
+
+<InfoCallout title="Why this matters">
+Without `Async`, tasks that take longer than a few minutes can fail with a timeout error. `Async` offloads these heavy jobs to a separate process, ensuring your main workflow completes instantly while the background task runs to completion.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Define Inputs](#step-1-define-inputs)
+- [Understand Outputs](#step-2-understand-outputs)
+- [How to Debug](#step-3-how-to-debug-async-workflows)
+- [When to use Await](#step-4-when-to-use-the-await-component)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Define Inputs
+
+Inputs for the `Async` component are the data you need to pass to the background workflow. Each input you define here becomes available as a variable within the async branch.
+
+| Field           | Required?                   | Description                                  | Notes                                                              |
+|-----------------|-----------------------------|----------------------------------------------|--------------------------------------------------------------------|
+| **Input Name** | <Badge type="required">Yes</Badge> | A unique name for your input.                | This name becomes an output variable to use in the async flow.     |
+| **Type** | <Badge type="required">Yes</Badge> | Data type (String, Number, Array, etc.).     | Ensures data is handled correctly in the background process.       |
+| **Default Value** | <Badge type="optional">No</Badge>  | A fallback value if no input is provided.    | Useful for testing or making inputs optional.                      |
+| **Optional** | <Badge type="optional">No</Badge>  | Marks the input as not required for execution. | The workflow will proceed even if this input is not supplied.      |
+
+<TipCallout title="Parameterizing Your Job">
+Think of Async inputs as the parameters for your background job. If you're processing a list of users, you might have an input named `userList` of type `Array`.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/NmkvZboIWz4aZwjb1ruq?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Async | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Understand Outputs
+
+The `Async` component has a primary output in the main workflow and makes your inputs available within the async branch.
+
+| Output      | Description                                                                                             | Where It's Available       |
+|-------------|---------------------------------------------------------------------------------------------------------|----------------------------|
+| **JobID** | A unique reference ID for the asynchronous job that was just started.                                   | Main workflow (immediately)|
+| **(Your Inputs)** | Each input you defined in Step 1 is available as an output variable to be used in subsequent steps. | Inside the async branch only |
+
+<InfoCallout title="A Tale of Two Workflows">
+The `JobID` is returned instantly in your main workflow. It's like a receipt confirming the job was started. The actual results of the operation are only available inside the separate async branch or if you use the **Await** component to retrieve them later.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 3: How to Debug Async Workflows
+
+<InfoCallout title="Debugging is different">
+The **Debug Mode** toolbar cannot be used on the async branch because it executes as a completely separate process from the main workflow. You must use the Logs to trace its execution.
+</InfoCallout>
+
+<Steps>
+  <li>Go to **Agent Settings > Logs**.</li>
+  <li>Find the execution log for your main workflow that triggered the `Async` component.</li>
+  <li>A separate log entry will exist for the async workflow. You can find it by looking for a new run that started at the same time.</li>
+  <li>Review this separate log to see the step-by-step execution and identify any errors in your background task.</li>
+</Steps>
+
+<Spacer size="md" />
+
+## Step 4: When to Use the Await Component
+
+Use the **[Await Component](/docs/agent-studio/components/advanced/await)** only when your main workflow must pause and wait for a result from the async job before it can continue.
+
+| Use Case                                           | Use `Async` alone?                    | Use `Async` + `Await`?                   |
+|----------------------------------------------------|---------------------------------------|------------------------------------------|
+| Fire-and-forget tasks (e.g., sending notifications)| <Badge type="success">Yes</Badge>      | <Badge type="optional">No</Badge>        |
+| Solving a timeout in a long loop                   | <Badge type="success">Yes</Badge>      | <Badge type="optional">No</Badge>        |
+| Needing results back in the same user session      | <Badge type="required">No</Badge>      | <Badge type="success">Yes</Badge>        |
+
+<TipCallout>
+If you just need to solve a timeout, `Async` alone is sufficient. Only add `Await` if the main workflow depends on the background job's output.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Develop Synchronously First:** Build and debug the core logic in a standard workflow. Once it works correctly, wrap it in an `Async` component.
+- **Implement Completion Notifications:** Since the job runs in the background, have it notify you of its completion. The last step in your async branch could be a **Send Email**, **Slack Message**, or **API Call** to another system.
+- **Use for Heavy Lifting:** Reserve `Async` for truly long-running tasks: processing large datasets, complex `For Each` loops, or calling slow external APIs that would otherwise time out.
+- **Store Results Persistently:** It's often safer to have the async job save its output to a database, file storage, or a system of record rather than relying on `Await`.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your async job fails or doesn't run...">
+- **Check the Logs:** This is the most critical step. Go to **Agent Settings > Logs** and find the log for the async execution to see the exact error message and the step that failed.
+- **Verify Your Inputs:** Double-check the data being passed into the `Async` component. An incorrect data type or a `null` value can cause the background job to fail immediately.
+- **Test Logic Separately:** Temporarily move the logic out of the `Async` component and run it synchronously using **Debug Mode** to confirm the logic itself is sound.
+- **Check Permissions:** Ensure the agent has the necessary permissions for all actions within the async branch (e.g., API credentials, database access).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Combine **`Async`** with the **[Await Component](/docs/agent-studio/components/advanced/await)** to get results back in your main flow.
+- Use `Async` to wrap a **[For Each Loop](/docs/agent-studio/components/advanced/for-each)** that processes thousands of records from a database without timing out.
+- Store results from an async job in a permanent location using **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** or by calling an external database.

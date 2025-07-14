@@ -1,0 +1,277 @@
+---
+title: API Call
+description: Configure and test the API Call component to hit any HTTP endpoint.
+keywords: [API Call, HTTP, integration, component, inputs, outputs, OAuth, Vault]
+toc_max_heading_level: 2
+---
+
+# API Call Component
+
+Use **API Call** when your agent needs to hit an external HTTP endpoint: to fetch data, trigger an action, or update a system.
+
+<InfoCallout title="Why this matters">You can reach nearly any REST-style service without custom code. <br/>Define your call once, pass dynamic inputs at runtime, and inject secrets via [Vault](/docs/agent-studio/key-concepts/vault).</InfoCallout>
+
+## What You’ll Configure
+
+- [Set the Core Request](#step-1-set-the-core-request)
+- [Add Inputs](#step-2-add-inputs)
+- [Add Authentication](#step-3-add-authentication)
+- [Handle Pagination and Rate Limits](#step-4-handle-pagination-or-rate-limits)
+- [Enable Mock Mode](#step-5-enable-mock-mode)
+- [Capture Outputs](#step-6-capture-outputs)
+- [Common API Examples](#common-api-examples)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+## Step 1: Set the Core Request
+
+| Field | Required? | Purpose | Quick Tips |
+|-------|-----------|---------|------------|
+| **Method** | <Badge type="required">Yes</Badge> | HTTP verb (`GET`, `POST`, etc.) | Choose the simplest method that works |
+| **URL** | <Badge type="required">Yes</Badge> | Target endpoint | Supports variables like `{{input.userId}}`, `{{vault.token}}` |
+| **Headers** | <Badge type="optional">No</Badge> | Authorization, content-type, etc. | JSON format. Supports variables |
+| **Content-Type** | <Badge type="optional">No</Badge> | MIME type for the body | Examples: `application/json`, `form-data`, `text/plain` |
+| **Body** | <Badge type="optional">No</Badge> | Payload for methods like POST or PUT | Follows `Content-Type` and supports dynamic data |
+
+### URL Pattern Cheatsheet
+<Tabs
+  tabs={[
+    { label: 'Static', content: 'https://api.example.com/users' },
+    { label: 'Query Params', content: 'https://api.example.com/users?limit={{input.count}}' },
+    { label: 'Path Params', content: 'https://api.example.com/users/{{input.id}}' },
+    { label: 'Mixed', content: '{{vault.baseUrl}}/users/{{id}}?expand=roles' }
+  ]}
+/>
+
+<Spacer size="md" />
+
+## Step 2: Add Inputs
+
+<Steps>
+  <li>Open the <strong>Inputs</strong> tab</li>
+  <li>Select <strong>+ Add Input</strong></li>
+  <li>Define type, default value, and mark optional if needed</li>
+</Steps>
+
+| Type | Notes |
+|------|-------|
+| `string` | Basic text |
+| `number` | Integer or decimal |
+| `boolean` | `true` or `false` |
+| `array` | JSON list |
+| `object` | JSON object |
+| `binary` | Files, base64, or external URLs |
+| `date` | ISO 8601 format |
+
+<Spacer size="md" />
+
+## Step 3: Add Authentication
+
+### Use the Vault
+
+<InfoCallout>
+Store API keys in [Vault](/docs/agent-studio/key-concepts/vault) and inject them like `{{vault.api_key}}` inside headers or body.
+</InfoCallout>
+
+### Built-in OAuth 2.0
+
+| Field | Purpose |
+|-------|---------|
+| **Scopes** | Space-delimited list of access rights |
+| **Auth URL** | Where users authorize |
+| **Token URL** | Exchanges code for token |
+| **Client ID / Secret** | Credentials from your app |
+| **Callback URL** | Must match platform setup |
+
+<small>SmythOS handles automatic token refreshing when `expires_in` is present in the response.</small>
+
+### Other Auth Flows
+
+| Flow | Requirements | When to Use |
+|------|--------------|-------------|
+| **OAuth 1.0a** | Token URLs, Consumer Key/Secret, Callback | Older APIs like Twitter |
+| **Client Credentials** | Token URL, Client ID/Secret | Server-to-server, no user prompt |
+| **API Key in Header** | Header field like `Authorization` | Simple key-based access |
+| **JWT (Bearer Token)** | Encoded token in headers | Authenticated access via token sharing |
+
+<Spacer size="md" />
+
+## Step 4: Handle Pagination or Rate Limits
+
+<TipCallout title="Pagination logic">
+Loop paginated responses using a **Condition** block.
+
+```json
+{
+  "if": "Response.next_page != null",
+  "then": "repeat API Call with {{Response.next_page}}"
+}
+```
+
+Use headers like `Retry-After` or `X-RateLimit-Remaining` to control rate-limited calls.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 5: Enable Mock Mode
+
+<TipCallout>
+Mock Mode helps you simulate API responses for testing without hitting the live service.
+</TipCallout>
+
+1. Toggle <strong>Use Mock Data</strong> in the settings panel
+2. Edit the mock response JSON in the editor
+3. Use <strong>Debug</strong> to simulate how your agent will behave
+
+### Sample Success
+
+```json
+{
+  "Response": {
+    "status": "ok",
+    "data": {
+      "user": { "id": 123, "name": "Jane Doe" }
+    }
+  }
+}
+```
+
+### Sample Error
+
+```json
+{
+  "Response": {
+    "status": 429,
+    "error": "rate_limit",
+    "message": "Too many requests"
+  }
+}
+```
+
+<Image
+  src="/docs/img/components/mock-editor.png"
+  alt="Mock editor in API component"
+  bordered={true}
+  maxWidth={300}
+/>
+
+<Spacer size="md" />
+
+## Step 6: Capture Outputs
+
+| Output | Description |
+|--------|-------------|
+| **Response** | Full API response (JSON or text) |
+| **Headers** | Key-value pairs from the response |
+
+### Optional Custom Output
+
+You can extract just the part you need:
+
+```json
+{
+  "Name": "userId",
+  "Expression": "Response.data.user.id"
+}
+```
+
+<Spacer size="md" />
+
+## Common API Examples
+
+### POST to Slack (Send alert)
+
+```json
+{
+  "url": "https://hooks.slack.com/services/T000/B000/XXX",
+  "method": "POST",
+  "headers": { "Content-Type": "application/json" },
+  "body": { "text": "New signup: {{input.userName}}" }
+}
+```
+
+### GET GitHub Issues (with params)
+
+```json
+{
+  "url": "https://api.github.com/repos/{{input.owner}}/{{input.repo}}/issues?state=open&per_page=100",
+  "method": "GET",
+  "headers": { "User-Agent": "SmythOS-Agent" }
+}
+```
+
+### PUT User with If-Match Header
+
+```json
+{
+  "url": "https://api.example.com/users/{{id}}",
+  "method": "PUT",
+  "headers": {
+    "Content-Type": "application/json",
+    "If-Match": "{{input.etag}}"
+  },
+  "body": { "name": "{{input.newName}}" }
+}
+```
+
+### Upload to Imgur (multipart)
+
+```json
+{
+  "url": "https://api.imgur.com/3/upload",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Client-ID {{vault.imgur_client_id}}",
+    "Content-Type": "multipart/form-data"
+  },
+  "body": {
+    "image": "{{input.file}}",
+    "type": "file"
+  }
+}
+```
+<Spacer size="md" />
+
+## Best Practices
+
+- Test with **Debug Mode** before going live  
+- Use **Retry** and **Condition** blocks for error handling  
+- Never hardcode credentials — use [Vault](/docs/agent-studio/key-concepts/vault)  
+- Validate API URLs and tokens in Postman or curl  
+- Keep inputs and outputs named clearly  
+- Use Mock Mode during dev or rate-limited testing
+
+<Image
+  src="/docs/img/components/api-call-ui.png"
+  alt="API Call component UI"
+  bordered={true}
+  maxWidth={600}
+/>
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your call fails...">
+- Check the request headers — especially `Content-Type`  
+- Confirm that Vault keys exist and are correctly named  
+- Verify that the endpoint needs auth and you've supplied it  
+- Use Postman or curl to isolate request issues
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Combine **[API Call](/docs/agent-studio/components/advanced/api-call)** with **[Code Component](/docs/agent-studio/components/advanced/code)** to clean or validate responses  
+- Link with **[Agent Skill](/docs/agent-studio/components/base/agent-skill)** to allow natural inputs (text, voice) to trigger your call  
+- Use **Condition blocks** to handle branches like `status === 404`  
+- Store secrets in **[Vault](/docs/agent-studio/key-concepts/vault)** securely
+- Chain multiple API calls for multi-step workflows  
+- Adapt examples from the [Common Examples](#common-api-examples) above to your use case
+
+<TipCallout title="Tip">
+When copying code from API docs, just replace the dynamic values with `{{input.name}}` or `{{vault.secret}}`.
+</TipCallout>

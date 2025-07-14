@@ -1,0 +1,95 @@
+---
+title: SRE
+description: Production-ready runtime platform for building and executing AI agents.
+keywords: [SRE, AI runtime, agent, SDK, CLI, components, subsystems, connectors, security, modular]
+sidebar_position: 1
+---
+
+# Smyth Runtime Environment (SRE)
+
+[The SRE](https://github.com/SmythOS/sre) is a unified runtime inspired by operating system kernels, designed for building, running, and managing intelligent agents efficiently. It handles infrastructure so you can focus on agent logic, security, and performance at any scale.
+
+<InfoCallout title="What sets SRE apart">
+SRE simplifies agent development with a modular, unified interface for storage, computation, and AI resources. Security is foundational, not optional. The platform is open, extensible, and supports flexible workflows for every stage of agent lifecycle.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Key Features of SRE
+
+| Feature               | Description                                                      |
+|-----------------------|------------------------------------------------------------------|
+| Agent-centric design  | Tailored for agent workloads, not general-purpose computation    |
+| Unified abstraction   | One interface for storage, LLMs, cache, and more                |
+| Modular connectors    | Plug in new services or providers as needed                     |
+| Secure by default     | Access control, isolation, and credential management built in    |
+| Observable runtime    | Built-in monitoring, logging, and step-by-step debugging         |
+| Cloud-native          | Runs locally, in the cloud, or hybrid environments              |
+| Scalable architecture | Efficient from prototype to enterprise production               |
+
+<Spacer size="md" />
+
+## Building Agents: Studio, SDK, and CLI
+
+Use SRE in the way that matches your project or team:
+
+| Method                                  | Best for                          | How it works                                                   |
+|:---------------------------------------- |:---------------------------------- |:-------------------------------------------------------------- |
+| [Studio](/docs/agent-studio/overview)    | Visual prototyping, collaboration  | [Build](https://app.smythos.com/builder) and test agent workflows in the browser with drag-and-drop UI. |
+| [SDK](/docs/agent-runtime/sdk-guide)     | Developers, automation, CI/CD      | Programmatic agent creation, configuration, and extension in TypeScript. |
+| [CLI](/docs/agent-runtime/cli-guide)     | Scripting, automation, power users | Scaffold, run, and manage agents and workflows via the terminal. |
+
+For more, see [Building Agents](/docs/agent-runtime/building-agents) and [Hybrid Workflows](/docs/agent-runtime/hybrid-workflows).
+
+<Spacer size="md" />
+
+## Subsystem Overview
+
+SRE’s architecture is modular. Each subsystem handles a distinct part of the agent runtime. For architecture details, see [SRE Architecture](/docs/agent-runtime/architecture).
+
+| Subsystem      | Description & Link                                                                                   |
+|:-------------- |:----------------------------------------------------------------------------------------------------|
+| IO             | Handles [data I/O, storage, API routing, and logging](/docs/agent-runtime/architecture#io-subsystem).       |
+| LLM Manager    | Manages [access to language models, caching, usage tracking](/docs/agent-runtime/architecture#llm-manager-subsystem).   |
+| Security       | Covers [credentials, authentication, secrets, and access policies](/docs/agent-runtime/architecture#security-subsystem).|
+| Memory Manager | Maintains [agent state, multi-tier caching, and conversation context](/docs/agent-runtime/architecture#memory-manager-subsystem).  |
+| Agent Manager  | Orchestrates [execution, lifecycle, monitoring, and component flows](/docs/agent-runtime/architecture#agent-manager-subsystem).    |
+
+<Spacer size="md" />
+
+## Security and Access Control
+
+SRE applies zero-trust principles. Every resource and action is scoped to an agent identity and enforced by explicit permissions.
+
+```typescript
+const candidate = AccessCandidate.agent(agentId);
+const storage = ConnectorService.getStorageConnector().user(candidate);
+await storage.write('data.json', content);
+```
+
+For details, see [Security Model](/docs/agent-runtime/security) and explore examples at [SRE GitHub repo](https://github.com/SmythOS/sre).
+
+<Spacer size="md" />
+
+## Seamless from Development to Production
+
+You can start building agents right away. SRE is initialized automatically for local and standard development. There’s no setup required for common cases.
+
+```typescript 
+async function main() {
+    // agent logic here
+}
+main();
+```
+If you need to customize connectors for storage, security, or scaling (such as using external vaults, cloud storage, or enterprise logging), you can provide your own initialization. This unlocks advanced configuration and full control.
+
+See [Enterprise Deployment](/docs/agent-runtime/enterprise-deployment) and [SRE repo](https://github.com/SmythOS/sre) for examples and guidance on customizing your SRE setup for production workloads.
+
+<Spacer size="md" />
+
+## What's Next?
+- [Quickstat](/docs/agent-runtime/quickstart): Quickly build your first agent using SRE.
+- [Building Agents](/docs/agent-runtime/building-agents): Combine these components into agent workflows.
+- [SDK Guide](/docs/agent-runtime/sdk-guide): Programmatically add and configure components.
+- [Architecture](/docs/agent-runtime/architecture): See how these components fit into the overall SRE system.
+

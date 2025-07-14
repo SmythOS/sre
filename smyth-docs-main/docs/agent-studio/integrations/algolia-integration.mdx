@@ -1,0 +1,114 @@
+---
+title: Algolia Integration
+description: Add lightning-fast search to your agents using Algolia. Configure your Application ID and Search-Only API key to connect.
+og:title: SmythOS + Algolia
+og:description: Search, filter, and rank index data instantly using Algolia in SmythOS workflows.
+og:image: /docs/img/integrations/smythos_algolia.png
+keywords: [Algolia Search, Algolia API Integration, Search Agents, Instant Search, Algolia Application ID, Algolia Index, SmythOS Search Automation]
+---
+
+# Algolia Integration
+
+> Need to add real-time search to your agents? Algolia offers blazing-fast full-text search with typo-tolerance and instant filtering.
+
+<InfoCallout title="TL;DR">
+Secure your Algolia <code>Application ID</code> and <code>Search-Only API Key</code> from your dashboard, store them in Vault, and use the <strong>Search</strong> component to query your index.
+</InfoCallout>
+
+## List of Algolia Components
+
+| **Component** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------------|------------|------------------|--------------|
+| [**Search**](#search) | Searches your Algolia index using a user query | <code>index</code>, <code>text</code>, <code>app_id</code> | <code>results</code> | Search product listings or support docs live |
+
+<Divider />
+
+## Required Setup
+
+### API Key Access
+
+Before you begin, you'll need two credentials from your [Algolia dashboard](https://dashboard.algolia.com/account/api-keys/all):
+
+- <code>Application ID</code> (to identify your project)
+- <code>Search-Only API Key</code> (read access only)
+
+<TipCallout title="Use Vault">
+Store your API key securely in <strong>Vault</strong> so that you can use it across components and flows.
+</TipCallout>
+
+### Creating a Search Index
+
+When you first register, Algolia will prompt you to:
+- Create an application
+- Create an index (you can use their demo dataset or upload your own)
+
+Once created, your index name (e.g. <code>products</code>) is used in the component input.
+
+<Divider />
+
+## <a name="search"></a>Search Component
+
+Use this component to perform keyword searches within a specific index tied to your Algolia project.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>index</code> | <Badge type="required" /> | The name of the Algolia index you want to search |
+| <code>text</code> | <Badge type="required" /> | The user query string (e.g., "t-shirt large") |
+| <code>app_id</code> | <Badge type="required" /> | Your Algolia Application ID (from dashboard) |
+
+<Image src="/docs/img/integrations/algolia_inputs.png" alt="Algolia Inputs" />
+
+> **Note:** You can add advanced filters or custom parameters using the <code>+ Add Input</code> button.
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>results</code> | Array of objects matching the query (hits) |
+| <code>response</code> | Full JSON API response |
+| <code>headers</code> | HTTP response headers |
+
+<Image src="/docs/img/integrations/algolia_outputs.png" alt="Algolia Output" />
+
+<PromptCard prompt={`{
+  "component": "algolia.search",
+  "app_id": "LATENCY",
+  "index": "contacts",
+  "text": "emma"
+}`} />
+
+<Arcade src="https://demo.arcade.software/ekl1C55DDJ4Rvo9E9JGZ?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Algolia Search Demo" />
+
+<Divider />
+
+## Best Practices
+
+- Use <code>Vault</code> to secure all API credentials
+- Normalize input queries (lowercase, trimmed) to improve match accuracy
+- Use Algolia's relevance settings (ranking, typo-tolerance) in the dashboard to fine-tune results
+- Filter based on tags or metadata using custom parameters
+- Combine with a <strong>user message input</strong> component for dynamic end-user queries
+
+<Divider />
+
+## Troubleshooting
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| <code>403 Forbidden</code> | Invalid or missing API key | Double-check key in Vault or component settings |
+| <code>Index Not Found</code> | Mistyped or missing index name | Verify index name from Algolia dashboard |
+| <code>No Results</code> | Legitimate empty result | Check spelling or filters on the query |
+
+<Divider />
+
+## What's Next?
+
+Use Algolia in flows like:
+
+- 🔎 Instant search for products, articles, or people
+- 🧭 Multi-index search (run separate searches across indexes in parallel)
+- 💬 Natural language queries from user input → Algolia search → Doc response
+
+<Image src="/docs/img/integrations/smythos_algolia.png" alt="Algolia Integration Illustration" />

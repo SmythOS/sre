@@ -1,0 +1,442 @@
+---
+title: Klaviyo Integration
+description: Connect SmythOS to Klaviyo to automate email and SMS marketing, manage customer profiles and lists, and track campaign analytics directly from your agents.
+og:title: SmythOS & Klaviyo - Automate Your Marketing Communications
+og:description: Learn to integrate Klaviyo with SmythOS. Empower your agents to subscribe users, create and send campaigns, and query analytics to build powerful, data-driven marketing workflows.
+og:image: /docs/img/integrations/smythos_klaviyo.png
+keywords: [Klaviyo SmythOS Integration, Connect Klaviyo to SmythOS, SmythOS Klaviyo, Automate Email Marketing, Marketing Automation API, No-Code Klaviyo, E-commerce Marketing]
+---
+# Klaviyo Integration with SmythOS
+
+> **Want to automate your e-commerce marketing?** Connect Klaviyo to SmythOS and empower your agents to manage profiles, lists, and campaigns, turning your marketing data into automated action.
+
+<InfoCallout title="TL;DR">
+Securely link your Klaviyo account to SmythOS using a private API key. Then, use our extensive suite of components to automate every aspect of your email and SMS marketing, from subscribing new profiles to analyzing campaign performance.
+</InfoCallout>
+
+## List of Klaviyo Components
+Quickly compare Klaviyo components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Subscribe Profile**](#subscribe-profile) | Write | Subscribes a new email to a list, creating a profile if one doesn't exist. | <Badge type="required" /> `email`, `list_id` | `Response` | Adding users from a newsletter sign-up form. |
+| [**Add Profile to List**](#add-profile-to-list) | Write | Adds an existing profile to a specific list. | <Badge type="required" /> `profile_id`, `list_id` | `Response` | Segmenting customers based on actions. |
+| [**Create Campaign**](#create-campaign) | Write | Creates a new email campaign. | <Badge type="required" /> `name`, `list_ids` | `id` | Setting up a new promotional campaign. |
+| [**Create Campaign Send Job**](#create-campaign-send-job) | Write | Triggers an existing campaign to be sent. | <Badge type="required" /> `campaign_id` | `id`, `status` | Sending a newsletter after content is approved. |
+| [**Create Template**](#create-template) | Write | Creates a new custom HTML email template. | <Badge type="required" /> `name`, `html_content` | `id` | Programmatically creating email templates. |
+| [**Assign Campaign Message Template**](#assign-campaign-message-template)| Write | Assigns a template to a campaign message. | <Badge type="required" /> `message_id`, `template_id`| `id` | Setting the content for a newly created campaign. |
+| [**Get Profiles**](#get-profiles) | Read | Retrieves all profiles in your account. | <Badge type="required" /> `trigger` | `data` (profiles) | Syncing your customer list to an external system. |
+| [**Get List Profiles**](#get-list-profiles) | Read | Retrieves all profiles within a specific list. | <Badge type="required" /> `list_id` | `data` (profiles) | Getting all members of your "VIP Customers" list. |
+| [**Search Profile**](#search-profile) | Read | Finds a specific profile by their email address. | <Badge type="required" /> `email` | `data` (profile) | Checking if a user already exists before adding them. |
+| [**Get Lists**](#get-lists) | Read | Retrieves all lists in your account. | <Badge type="required" /> `trigger` | `lists` | Finding the correct `list_id` for a workflow. |
+| [**Query Campaign Values**](#query-campaign-values) | Read | Retrieves analytics data for campaigns over a timeframe. | <Badge type="required" /> `timeframe`, `statistics`| `results` | Generating a report on campaign revenue. |
+| [**Query Flow Values**](#query-flow-values) | Read | Retrieves analytics data for flows over a timeframe. | <Badge type="required" /> `timeframe`, `statistics`| `results` | Analyzing the performance of a welcome series. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Klaviyo with Your Agent?</summary>
+
+Klaviyo is a powerful marketing automation platform. Integrating it with SmythOS allows you to connect your customer data and marketing actions to all your other business processes.
+
+- **Automate List Management:** Build agents that automatically subscribe new customers from your e-commerce platform, segment them into lists based on their purchase history, and manage their subscription status.
+- **Trigger-Based Campaigns:** Create workflows that go beyond Klaviyo's built-in triggers. An agent can listen for an event in any connected system—a support ticket closure, a product review—and add a user to a specific, targeted campaign.
+- **Data-Driven Segmentation:** Use agents to analyze data from multiple sources (e.g., your app's database, CRM, support desk). Based on this holistic view, your agent can add or remove profiles from Klaviyo lists, ensuring your segments are always accurate and up-to-date.
+- **Automated Reporting:** Schedule agents to periodically fetch campaign or flow analytics using the query components, and then format that data into a custom report or send it to a data warehouse for deeper analysis.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Klaviyo account**.
+- A Klaviyo Private **API Key**.
+
+<Divider />
+
+## Getting Started With Klaviyo
+
+The connection between SmythOS and Klaviyo is configured using a secure, private API Key.
+
+### Step 1: Get Your Klaviyo API Key
+1.  Log in to your [Klaviyo account](https://www.klaviyo.com/login).
+2.  Click on your account name in the bottom-left corner, then go to **Settings**.
+3.  Navigate to the **API Keys** section.
+4.  If you don't have a private key, click **Create Private API Key**.
+5.  Give your key a descriptive name (e.g., "SmythOS Agent") and grant it the necessary scopes. For full functionality, you may need to grant access to Campaigns, Lists, Profiles, etc.
+6.  Copy the generated API Key.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Klaviyo API Key as the value. Give it a memorable name, like `klaviyo_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Klaviyo Component
+1.  In your SmythOS agent graph, drag and drop any Klaviyo component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Klaviyo API Key` field, select the secret you saved in the Vault (e.g., `klaviyo_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Klaviyo component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Klaviyo Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new user** to your main newsletter list | An email address | [Subscribe Profile](#subscribe-profile) | The easiest way to add a new contact and subscribe them to a list in one go. |
+| **Move an existing customer** to a "VIP" list | A `profile_id` and `list_id` | [Add Profile to List](#add-profile-to-list) | Use this when you already have the customer's profile ID and want to segment them. |
+| **Start a new promotional email blast** | A `name` and `list_ids` | [Create Campaign](#create-campaign) | This is the first step to programmatically building a new email campaign. |
+| **Send a campaign** you just created | A `campaign_id` | [Create Campaign Send Job](#create-campaign-send-job)| This component triggers the actual sending of a prepared campaign. |
+| **Get performance data** for your welcome series | A `timeframe` | [Query Flow Values](#query-flow-values) | Retrieves analytics specifically for your automated flows. |
+| **Find a customer's profile** using their email | An email address | [Search Profile](#search-profile) | The best way to get a profile ID when all you have is an email address. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Klaviyo component.
+
+### <a name="subscribe-profile"></a>Subscribe Profile
+Subscribes a new email to a list, creating a profile if one doesn't already exist.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address of the profile to be subscribed. |
+| `list_id` | string | Yes | The unique identifier of the list to which the profile will be subscribed. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The full, raw JSON response from the Klaviyo API. |
+
+<TipCallout title="Use Case">
+An agent is triggered by a new user signing up on your website. It uses **Subscribe Profile** with the user's `email` and your main newsletter `list_id` to add them to your marketing flow.
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-profile-to-list"></a>Add Profile to List
+Adds an existing profile to a specific list.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `profile_id`| string | Yes | The ID of an existing profile. |
+| `list_id` | string | Yes | The ID of the list to add the profile to. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The full, raw JSON response from the Klaviyo API. |
+
+<TipCallout title="Use Case">
+When a customer makes a high-value purchase, an agent finds their `profile_id` and uses this component to add them to a "VIP Customers" list for exclusive offers.
+</TipCallout>
+
+### <a name="create-campaign"></a>Create Campaign
+Creates a new, empty email campaign in your Klaviyo account, ready to be configured and sent.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `name` | string | Yes | The name of the campaign to be created. |
+| `list_ids`| array | Yes | An array of list IDs to which the campaign will be sent. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the newly created campaign. |
+| `Response`| object | The full, raw JSON response from the Klaviyo API. |
+
+<TipCallout title="Use Case">
+This is the first step in an automated sending flow. An agent calls this component to create the "July 2025 Newsletter" campaign shell before assigning content to it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-campaign-send-job"></a>Create Campaign Send Job
+Triggers an existing, fully configured campaign to be sent to its designated lists either immediately or at a scheduled time.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `campaign_id`| string | Yes | The unique identifier of the campaign you wish to send. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the send job. |
+| `status` | string | The current status of the send job (e.g., `queued`, `sending`). |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After a blog post is published, an agent creates a campaign, assigns a template, and then calls this component to immediately send the newsletter to subscribers.
+</TipCallout>
+
+<WarningCallout title="Prerequisites">
+Before using this component, the campaign must be fully configured with a "from" email, subject line, and content template.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="create-template"></a>Create Template
+Creates a new custom HTML email template in your Klaviyo account.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `name` | string | Yes | The name of the new template. |
+| `html_content`| string | Yes | The full HTML content for the new template. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the newly created template. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent generates a dynamic "Product of the Day" email by creating a new HTML template with today's product information, then assigns this template to a campaign.
+</TipCallout>
+
+<Divider/>
+
+### <a name="assign-campaign-message-template"></a>Assign Campaign Message Template
+Assigns an existing template to a specific campaign message, effectively setting the content for that campaign.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `message_id` | string | Yes | The ID of the campaign message to update. |
+| `template_id`| string | Yes | The ID of the template to assign. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the assigned template resource. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After creating a new campaign, an agent uses this component to set its content by assigning a pre-built "Weekly Newsletter" template to it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-profiles"></a>Get Profiles
+Retrieves a paginated list of all profiles (contacts) in your Klaviyo account.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any value to trigger the component's execution. |
+| `page_size`| integer| Optional | The number of profiles to return per page. Default: `20`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | array | An array of profile objects, each containing details like email, location, etc. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent performs a full sync of all Klaviyo profiles to an external data warehouse for deep analysis.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-list-profiles"></a>Get List Profiles
+Retrieves all profiles that are members of a specific list.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The unique identifier of the list to retrieve profiles from. |
+| `page_size`| integer| Optional| The number of profiles to return per page. Default: `20`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | array | An array of profile objects that are members of the specified list. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent needs to send a targeted message to all members of the "VIP Customers" list. It first uses this component to get all the profiles on that list.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-profile"></a>Search Profile
+Finds a specific profile in your account using their email address.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address of the profile to search for. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | object | The profile object matching the email address, if found. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before adding a new subscriber, an agent uses this component to check if a profile with that email already exists to avoid creating duplicates.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-lists"></a>Get Lists
+Retrieves all lists (also known as segments) available in your Klaviyo account.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any value to trigger the component's execution. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `lists` | array | An array of list objects, each with its name and ID. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+This is often a crucial first step. An agent calls this component to get a list of all available lists, finds the `id` for the "Monthly Newsletter" list, and uses that ID in subsequent steps.
+</TipCallout>
+
+<Divider/>
+
+### <a name="query-campaign-values"></a>Query Campaign Values
+Retrieves analytics data (e.g., revenue, clicks) for your campaigns over a specified timeframe.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `timeframe` | string | Yes | The time range for the data (e.g., `today`, `last_7_days`). |
+| `statistics`| string | Yes | Comma-separated list of metrics to retrieve (e.g., `opens,clicks`). |
+| `conversion_metric_id` | string | Yes | The ID of the metric to use for conversion tracking. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of objects containing the requested analytics data. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A weekly reporting agent uses this component to fetch the `revenue_per_recipient` and `clicks_unique` for all campaigns sent in the `last_7_days` to generate a performance summary.
+</TipCallout>
+
+<Divider/>
+
+### <a name="query-flow-values"></a>Query Flow Values
+Retrieves analytics data for your automated flows (e.g., welcome series) over a specified timeframe.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `timeframe` | string | Yes | The time range for the data. |
+| `statistics`| string | Yes | Comma-separated list of metrics to retrieve. |
+| `conversion_metric_id` | string | Yes | The ID of the conversion metric. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | An array of objects containing the requested flow analytics. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent analyzes the effectiveness of an abandoned cart flow by querying its "opens" and "revenue" statistics for the last month.
+</TipCallout>
+
+<Divider/>
+
+### <a name="unsubscribe-profile"></a>Unsubscribe Profile
+Unsubscribes a profile from email marketing for a specific list.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-klaviyo) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address of the profile to be unsubscribed. |
+| `list_id` | string | Yes | The unique identifier of the list from which the profile will be unsubscribed. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful operation returns an empty response body. |
+
+<TipCallout title="Use Case">
+An agent processes a user's request to be removed from a promotional newsletter. It takes the user's email and the newsletter's `list_id` and calls this component to unsubscribe them.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Klaviyo API key in the SmythOS `Vault`. Grant it only the permissions necessary for your agent's tasks.
+* **Understand the Data Hierarchy:** To manage your audience effectively, you'll often need to get a `list_id` from `Get Lists` or a `profile_id` from `Search Profile` before you can add a profile to a list.
+* **Use Webhooks for Real-Time Events:** While these components are great for taking action, Klaviyo's webhooks are ideal for triggering your agents in real time based on user behavior (e.g., opening an email, making a purchase).
+* **Leverage Custom Properties:** When adding or updating profiles, you can include a `properties` object to store custom data (e.g., `{"favorite_color": "blue"}`). This is essential for advanced segmentation.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized` or `403 Forbidden`**
+  * **Cause:** The API Key is incorrect, has been revoked, or does not have the required permissions (scopes) for the action you are trying to perform.
+  * **Solution:** Verify the API Key in your SmythOS Vault is correct. In your Klaviyo settings, check that the key is active and has been granted the necessary scopes (e.g., `Profiles: Write`, `Campaigns: Write`).
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect ID was provided (e.g., `list_id`, `profile_id`, `campaign_id`).
+  * **Solution:** Double-check all IDs for typos. Use the "Get" or "List" components to verify that the resource you are trying to access exists.
+
+* **Profile Not Subscribing**
+  * **Cause:** The list may be set to double opt-in, which means the user must confirm their subscription via email before they become active.
+  * **Solution:** This is expected behavior for double opt-in lists. The API call succeeds by sending the confirmation email. Check your list settings in Klaviyo.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful marketing automation workflows with the **SmythOS Klaviyo Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages customer segmentation. It connects to your e-commerce store, and when a customer makes their 5th purchase, the agent adds their profile to a "VIP Customers" list in Klaviyo.
+    * Automates re-engagement campaigns. An agent queries your database for users who haven't logged in for 90 days, adds them to a "Re-engagement" list, and then uses `Create Campaign Send Job` to trigger a special offer campaign.
+    * Creates a dynamic "Product of the Day" email. Every day, the agent selects a product, gets its details and image, creates a new template with that content using `Create Template`, and sends it to your newsletter list.
+
+* **Explore Other Integrations:**
+    * When a new user signs up in [Firebase](/docs/agent-studio/integrations/firebase-integration), trigger an agent to add them to your "Welcome Series" list in Klaviyo.
+    * Use data from [Stripe](/docs/agent-studio/integrations/stripe-integration) to segment customers. When a customer's subscription value exceeds a certain threshold, add them to a high-value customer list.
+    * After a positive customer interaction is logged in your helpdesk, add that customer to a list to receive a "Request a Review" email campaign.

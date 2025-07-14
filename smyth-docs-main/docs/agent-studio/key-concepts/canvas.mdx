@@ -1,0 +1,99 @@
+---
+title: Canvas
+description: Learn how to use the visual canvas in Studio to build, connect, and debug AI workflows.
+keywords: [canvas, visual builder, agent workflow, component, SmythOS]
+sidebar_position: 2
+---
+
+# Studio Canvas
+
+The Studio Canvas is your main workspace for building, connecting, and testing AI agent workflows. You can drag components, wire them together, configure logic, and inspect behavior—all from one interface.
+
+<Spacer size="md" />
+
+## Core Features
+
+| Feature | Purpose |
+|--------|---------|
+| [Canvas Layout](#canvas-layout) | Overview of interface zones and navigation |
+| [Building Workflows](#building-workflows) | Step-by-step guide to adding and connecting components |
+| [Deploying Agents](#deploying-agents) | Move from draft to production safely |
+| [Monitoring and Debugging](#monitoring-and-debugging) | Review execution, logs, and performance |
+| [Error Handling](#error-handling) | Catch, alert, or recover from failures |
+
+<Spacer size="md" />
+
+## Canvas Layout
+
+When you open an agent in Studio, the screen is divided into three key areas:
+
+- **Left sidebar**: Navigate tabs like Components, Agent Settings, Deployment History, and Logs.
+- **Canvas workspace**: The visual editor where you arrange and connect components.
+- **Right sidebar**: Configure individual components, test input/output, and inspect settings.
+
+<InfoCallout title="Auto-Save Enabled">
+Your work is saved automatically as a draft. Drafts don’t affect production agents until deployed.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Building Workflows
+
+You build workflows by visually connecting components. Here’s how:
+
+1. **Drag components** from the component library on the left onto the canvas.
+2. **Connect outputs to inputs** to pass data between components.
+3. **Configure settings** using the panel on the right.
+4. **Test as you build** using the built-in preview and inspect tools.
+5. **Adjust the flow** as needed—components can reference earlier results in the chain.
+6. **Connect to Agent** by adding an Agent Skill and connecting it to your workflow.
+
+> You have access to 40+ production-ready components including LLMs, APIs, RAG tools, and logic handlers. Learn more in the [Components Overview](/docs/agent-runtime/overview).
+
+<Spacer size="md" />
+
+## Deploying Agents
+
+Once you’re satisfied with your workflow:
+
+1. Click [**Deploy**](/docs/agent-deployments/overview) in the top-right.
+2. Add release notes to describe the version.
+3. Confirm to push your agent to production.
+4. Use [**version history**](/docs/agent-deployments/versioning) to roll back if needed.
+
+<Spacer size="md" />
+
+## Monitoring and Debugging
+
+Inspect lets you preview and debug workflows without deploying.
+
+- **Component preview**: Click any component to see inputs and outputs
+- **Run history**: Review previous executions and filter by success/failure
+- **Logs view**: Jump directly to detailed logs for each run
+
+> **Need Production Logs?** Visit [Agent Logs](/docs/agent-studio/manage-agents/logs) for deeper visibility into executions.
+
+<Spacer size="md" />
+
+## Error Handling
+
+You can define error handling for any step in your workflow—or globally.
+
+### Options include:
+
+- **Retry policies**: Retry a component N times on failure
+- **Fallback paths**: Provide defaults or cached data
+- **Notifications**: Alert users via email or Slack
+- **Global error handler**: Catch all uncaught errors at the workflow level
+
+<TipCallout title="Best Practice">
+Add fallback logic and alerts to reduce downtime and improve agent resilience.
+</TipCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- [Deploy Agents Locally, via Cloud, or Embed Options](/docs/agent-deployments/overview)
+- [Agent Tasks: Chat, Bulk, Scheduled](/docs/agent-studio/manage-agents/tasks)
+- [Debugging Agents in Studio](/docs/agent-studio/build-agents/debugging)

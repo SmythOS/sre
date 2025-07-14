@@ -1,0 +1,303 @@
+# Tutorial: InFlow Inventory Agent
+
+<Youtube videoId="w8FG8yaAYcE" title="SmythOS -  InFlow Inventory Agent" />
+
+## InFlow Inventory API Key Setup
+
+1. To begin, navigate to the [InFlow Inventory](https://www.inflowinventory.com/) website. If you do not have an account yet, proceed to create one by following the registration process. 
+2. Once logged in, locate your profile icon located in the top right corner of the webpage. Click on the profile icon to open the dropdown menu. From the dropdown menu, select “Integrations” to proceed. 
+
+<Image src="/docs/img/inventory_agent/Image 1.png" alt="alt text" /> 
+
+3. Scroll down the page until you reach the API Keys section. Within the API Keys section, click on the `Add New API Key` button to generate a new key.
+
+<Image src="/docs/img/inventory_agent/Image 2.png" alt="alt text" /> 
+
+4. Provide a unique name for your API Key that clearly identifies its purpose. For instance, in this case, you can name it `SmythOS Inventory Agent`.
+
+<Image src="/docs/img/inventory_agent/Image 3.png" alt="alt text" /> 
+
+5. After creating your API Key, click on the `Copy to Clipboard` button. Paste the copied API Key into a secure location to ensure you have it readily available. Remember, you can only copy it once, and it won't be visible again after closing the dialog. 
+   1. **Example:** 
+   InFlow API Key
+   54F6E81B49F94AC2820CD4B6A8165E3DAB2B8E8212C2EFE92AE79E1D2E077582
+
+<Image src="/docs/img/inventory_agent/Image 4.png" alt="alt text" /> 
+
+6. Don't forget to also copy the Company ID as well.
+   1. **Example:** 
+   InFlow Company ID 
+   eb70e172-6074-4880-89fd-6057a6817dca
+
+<Image src="/docs/img/inventory_agent/Image 5.png" alt="alt text" />
+
+## Upload Test Data to InFlow
+
+> For testing purposes, it's essential to have some mock information in your InFlow account. If you've already populated your InFlow account with relevant data, feel free to skip this section.
+
+### Upload Customer List to InFlow
+
+If you have not yet uploaded your customer list, you can proceed by following the steps below. InFlow can import spreadsheet data if it's saved as a CSV file. If your spreadsheet is not in CSV format yet, you can use Microsoft Excel or Google Sheets and save it as a CSV.
+
+If your customer list is already stored in your InFlow Account, you can skip this step.
+
+1. Navigate to the left sidebar of your InFlow account and click on `customer list`.
+
+<Image src="/docs/img/inventory_agent/Image 39.png" alt="alt text" />
+
+2. Click `Import Customers`.
+
+<Image src="/docs/img/inventory_agent/Image 40.png" alt="alt text" />
+
+3. You can drag and drop your CSV file or click to select a file.
+
+<Image src="/docs/img/inventory_agent/Image 41.png" alt="alt text" />
+
+4. Once your file is ready, click `next` to proceed.
+
+<Image src="/docs/img/inventory_agent/Image 42.png" alt="alt text" />
+
+5. Then, click `Import`.
+
+<Image src="/docs/img/inventory_agent/Image 43.png" alt="alt text" />
+
+6. Once the import process is successful, InFlow will notify you via email.
+
+<Image src="/docs/img/inventory_agent/Image 44.png" alt="alt text" />
+
+### Upload Vendor List to InFlow
+
+If you have not yet uploaded your Vendor list, you can proceed by following the steps below. InFlow can import spreadsheet data if it's saved as a CSV file. If your spreadsheet is not in CSV format yet, you can use Microsoft Excel or Google Sheets and save it as a CSV.
+If your product list is already stored in your InFlow Account, you can skip this step.
+	
+1. Navigate to the left side bar of your InFlow account and click on `Vendor List`.
+
+<Image src="/docs/img/inventory_agent/Image 45.png" alt="alt text" />
+
+2. Click `Import Vendors`.
+
+<Image src="/docs/img/inventory_agent/Image 46.png" alt="alt text" />
+
+3. You can drag and drop your CSV file or click to select a file.
+
+<Image src="/docs/img/inventory_agent/Image 47.png" alt="alt text" />
+
+4. Once your file is ready, click `next` to proceed.
+
+<Image src="/docs/img/inventory_agent/Image 48.png" alt="alt text" />
+
+5. Then, click `Import`.
+
+<Image src="/docs/img/inventory_agent/Image 49.png" alt="alt text" />
+
+6. Once the import process is successful, InFlow will notify you via email.
+
+<Image src="/docs/img/inventory_agent/Image 50.png" alt="alt text" />
+
+### Upload Product List to InFlow
+
+If you have not yet uploaded your Product list, you can proceed by following the steps below. InFlow can import spreadsheet data if it's saved as a CSV file. If your spreadsheet is not in CSV format yet, you can use Microsoft Excel or Google Sheets and save it as a CSV.
+If your product list is already stored in your InFlow Account, you can skip this step.
+	
+1. Navigate to the left sidebar of your InFlow account and click on `Product List`.
+
+<Image src="/docs/img/inventory_agent/Image 51.png" alt="alt text" />
+
+2. Click `Import Products`.
+
+<Image src="/docs/img/inventory_agent/Image 52.png" alt="alt text" />
+
+3. You can drag and drop your CSV file or click to select a file.
+
+<Image src="/docs/img/inventory_agent/Image 53.png" alt="alt text" />
+
+4. Once your file is ready, click `next` to proceed.
+
+<Image src="/docs/img/inventory_agent/Image 54.png" alt="alt text" />
+
+5. Then, click `Import`.
+
+<Image src="/docs/img/inventory_agent/Image 55.png" alt="alt text" />
+
+6. Once the import process is successful, InFlow will notify you via email.
+
+<Image src="/docs/img/inventory_agent/Image 56.png" alt="alt text" />
+
+## InFlow Inventory Template Setup
+
+1. Go to your SmythOS Dashboard and click on the Create Agent button.
+
+<Image src="/docs/img/inventory_agent/Image 6.png" alt="alt text" />
+
+2. The template for the Inventory Agent is readily available, simply select it from the drop-down menu and wait for it to initialize.
+
+<Image src="/docs/img/inventory_agent/Image 7.png" alt="alt text" />
+
+### Adding CompanyID to LLM Component
+
+1. Locate the `LLM Prompt` component.  Replace the placeholder with the InFlow Company ID generated from your InFlow Account. 
+   1. **Example:** eb70e172-6074-4880-89fd-6057a6817dca
+
+<Image src="/docs/img/inventory_agent/Image 8.png" alt="alt text" />
+
+2. Don't forget to click the check mark icon to save your configuration.
+
+### Adding API Key to the Vault
+
+> To know more about the Vault feature, please visit the following link [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+Your API Key will be needed on your API Call components.
+
+1. Navigate to the Vault section on your dashboard
+
+<Image src="/docs/img/inventory_agent/Image 9.png" alt="alt text" />
+
+2. Click the `Add Key` button to add your InFlow API Key.
+
+<Image src="/docs/img/inventory_agent/Image 10.png" alt="alt text" />
+
+3. Input the InFlow API Key generated from your InFlow account.
+   1. **Example:** 54F6E81B49F94AC2820CD4B6A8165E3DAB2B8E8212C2EFE92AE79E1D2E077582
+
+<Image src="/docs/img/inventory_agent/Image 11.png" alt="alt text" />
+
+4. Choose a unique Key name.
+   1. **Example:** InFlow Inventory API Key
+
+<Image src="/docs/img/inventory_agent/Image 12.png" alt="alt text" />
+
+5. Choose `API Call` for the Scope.
+
+<Image src="/docs/img/inventory_agent/Image 13.png" alt="alt text" />
+
+6. Click `Done` to save your API Key. Your InFlow API Key has been successfully added to your Vault and is now ready for use.
+
+<Image src="/docs/img/inventory_agent/Image 14.png" alt="alt text" />
+
+### Adding API Key to API Call Component 
+
+> To know more about the `API Call Component` please refer to the [API Call Component Documentation](https://app.smythos.com/doc/#/components/APICall).
+
+1. Look for the API Call component with a missing InFlow API Key. Click on the `Edit` button in the Headers section to input your InFlow API Key.
+
+<Image src="/docs/img/inventory_agent/Image 15.png" alt="alt text" />
+
+2. Highlight the bearer, then click on the key icon to select the InFlow API Key saved in your Vault, then click the `Save` button.
+
+<Image src="/docs/img/inventory_agent/Image 16.png" alt="alt text" />
+
+3. If you look in the Headers section, your InFlow API key has been successfully loaded. Remember to save your configuration by clicking the check mark icon.
+
+<Image src="/docs/img/inventory_agent/Image 17.png" alt="alt text" />
+
+4. When you successfully configure your API Call component, the error message will disappear.
+
+<Image src="/docs/img/inventory_agent/Image 18.png" alt="alt text" />
+
+5. Repeat this process for any remaining API call components with missing InFlow API Keys.
+
+## Test Your Agent
+
+Now that you’ve successfully configured your Agent, let’s test the agent with the following requests.
+
+### Get Category List
+
+1. Click on the Embodiment icon.
+2. Then, click the chat icon.
+
+<Image src="/docs/img/inventory_agent/Image 19.png" alt="alt text" />
+
+3. Ask the agent to get a category list.
+
+<Image src="/docs/img/inventory_agent/Image 20.png" alt="alt text" />
+
+4. The agent will now furnish you with the product categories in your InFlow inventory.
+
+<Image src="/docs/img/inventory_agent/Image 21.png" alt="alt text" />
+
+### Get Customer List
+
+1. Ask the agent to retrieve the list of customers.
+
+<Image src="/docs/img/inventory_agent/Image 22.png" alt="alt text" />
+
+2. The agent will now provide the customer list you requested. The agent can retrieve a default of 30 customers, if you want more lists just ask the agent to show more.
+
+<Image src="/docs/img/inventory_agent/Image 23.png" alt="alt text" />
+
+3. You can also view the full list of the customers with the link provided by the Agent.
+
+<Image src="/docs/img/inventory_agent/Image 24.png" alt="alt text" />
+
+### Get Customer Details
+
+1. Ask the agent to get some customer details.
+
+<Image src="/docs/img/inventory_agent/Image 25.png" alt="alt text" />
+
+2. The agent will now prompt you to provide the name of the customer for whom you would like to obtain some details.
+   1. **Example:** Chelle Fuertes
+
+<Image src="/docs/img/inventory_agent/Image 26.png" alt="alt text" />
+
+3. The Agent will provide details specifically about Chelle Fuertes. If you require information about another customer, feel free to continue asking.
+
+<Image src="/docs/img/inventory_agent/Image 27.png" alt="alt text" />
+
+### Add new products to the inventory
+
+1. Instruct the agent that you wish to add a product to the inventory.
+
+<Image src="/docs/img/inventory_agent/Image 28.png" alt="alt text" />
+
+2. The Agent will ask you to provide the following details.
+
+> **Product Name:** 
+> **SKU:** 
+> **Item Type:** StockedProduct, NonstockedProduct, Service. Ensure to select the correct item type, as this cannot be changed once it’s set.
+> **Origin Country:** Provide a 2-character country code representing the country of origin of the product. 
+> **Example:** Tropical Delight Shirt, TD2023, StockedProduct, PH
+
+<Image src="/docs/img/inventory_agent/Image 29.png" alt="alt text" />
+
+3. After providing the details of your newly added product, the agent will confirm that the Tropical Delight Shirt has been successfully added to your InFlow inventory. 
+
+<Image src="/docs/img/inventory_agent/Image 30.png" alt="alt text" />
+
+4. To access the newly added product, simply click on the link provided by the agent. This will redirect you to your InFlow account.
+
+<Image src="/docs/img/inventory_agent/Image 31.png" alt="alt text" />
+
+### Get Product List
+
+1. Ask the agent to get the product list.
+
+<Image src="/docs/img/inventory_agent/Image 32.png" alt="alt text" />
+
+2. The agent will provide the requested product list for a maximum of 30 products per inquiry.
+
+<Image src="/docs/img/inventory_agent/Image 33.png" alt="alt text" />
+
+3. You can also view the entire list by clicking on the link provided by your agent.
+
+<Image src="/docs/img/inventory_agent/Image 34.png" alt="alt text" />
+
+### Get details on a specific product
+
+1. Ask the agent to get some details on a specific product.
+
+<Image src="/docs/img/inventory_agent/Image 35.png" alt="alt text" />
+
+2. The agent will request you to provide either a product name, SKU, or any identifiable information before proceeding.
+
+> **Example:** Tropical Delight Shirt
+
+<Image src="/docs/img/inventory_agent/Image 36.png" alt="alt text" />
+
+<Image src="/docs/img/inventory_agent/Image 37.png" alt="alt text" />
+
+3. The agent will provide the details of the specific product you asked. You can also access the product details through the link provided by the agent.
+
+<Image src="/docs/img/inventory_agent/Image 38.png" alt="alt text" />
+
+Congratulations! Let us know if you have any questions.

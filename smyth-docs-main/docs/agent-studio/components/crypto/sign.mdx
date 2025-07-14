@@ -1,0 +1,93 @@
+---
+title: Sign
+description: Generate digital signatures using HMAC or RSA to authenticate and verify the integrity of data.
+keywords: [Sign, HMAC, RSA, digital signature, authentication, integrity, cryptography, webhook]
+toc_max_heading_level: 2
+---
+
+# Sign Component
+
+Use the **Sign** component to generate a digital signature for any piece of data. This component uses standard cryptographic methods like HMAC and RSA to create a unique signature, which can be used to verify the origin and integrity of a message.
+
+<InfoCallout title="Why this matters">
+Digital signatures are crucial for securing communications. They allow a receiving system to verify that a message truly came from the expected sender and that its content has not been altered in transit. This is essential for securing webhooks and authenticating API requests.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Select a Signature Method and Settings](#step-1-select-a-signature-method-and-settings)
+- [Provide Input Data](#step-2-provide-input-data)
+- [Handle the Output Signature](#step-3-handle-the-output-signature)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select a Signature Method and Settings
+
+Choose the cryptographic method, hash algorithm, and output format for your signature.
+
+| Setting          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Signature Method** | Choose the signature generation method: <br/> 1. **HMAC:** Combines a cryptographic hash function with a secret key. Best for symmetric signing where both parties share the secret. <br/> 2. **RSA:** Uses asymmetric key encryption with a valid RSA private key. Best for public-key infrastructure where the public key is used for verification. |
+| **Key/Secret** | Define the cryptographic key to use for signing. For **HMAC**, this is a secret string. For **RSA**, this must be a valid RSA private key (e.g., in PEM format). <TipCallout title="Secure Your Keys">Store your keys and secrets in the **[Vault](/docs/agent-studio/key-concepts/vault)** and reference them here as variables (e.g., `{{vault.hmac_secret}}`).</TipCallout> |
+| **Hash Type** | Select a cryptographic hash function: <br/> 1. `md5`: 128-bit (less secure). <br/> 2. `sha1`: 160-bit (deprecated). <br/> 3. `sha256`: 256-bit (secure & balanced). <br/> 4. `sha512`: 512-bit (high security, slower). |
+| **Output Encoding**| Choose the output format for the signature string: <br/> 1. `hex`: Hexadecimal string. <br/> 2. `base64`: Base64 string. <br/> 3. `base64url`: URL and filename-safe Base64. <br/> 4. `latin1`: ISO-8859-1 character set. <br/> 5. `utf8`: UTF-8 encoding. |
+
+<Arcade src="https://demo.arcade.software/vmUBVaRLHhhL5QOcpDN0?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Sign | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide Input Data
+
+The component requires the data to sign and can optionally take a key to override the one in the settings.
+
+| Input   | Required?                   | Description                                                                                                |
+|---------|-----------------------------|------------------------------------------------------------------------------------------------------------|
+| **Data**| <Badge type="required">Yes</Badge> | The content or message that you want to sign.                                                              |
+| **Key** | <Badge type="optional">No</Badge>  | A specific key to use for this operation, which will override the default **Key/Secret** in the settings. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Output Signature
+
+The component produces a single output containing the generated digital signature.
+
+| Output      | Description                                                     |
+|-------------|-----------------------------------------------------------------|
+| **Signature** | The generated signature string, formatted according to your **Output Encoding** setting. |
+
+<InfoCallout title="Verification">
+The receiving party must use the same data, secret key (for HMAC) or public key (for RSA), algorithm, and encoding to regenerate the signature and verify that it matches the one you sent.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Use HMAC-SHA256 for Webhooks:** This is a very common and secure standard for signing webhook payloads and API requests.
+- **Never Expose Private Keys:** Your HMAC secret and RSA private key should be treated like passwords. Always store them securely in the Vault.
+- **Match the Algorithm to the Requirement:** Use the signing method and hash algorithm specified by the service you are integrating with. Their documentation will tell you what they expect.
+- **Sign the Raw Payload:** When signing an API request, always sign the raw, unmodified request body before it is sent.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your signature is invalid...">
+- **Signature Mismatch:** This is the most common issue. It is almost always caused by a subtle difference in the input `Data` between the signing and verification systems. Even a single extra space, different line endings, or a different order of keys in a JSON object can produce a different signature.
+- **Incorrect Key:** Ensure you are using the exact same secret (for HMAC) or the correct private/public key pair (for RSA) on both ends.
+- **Incorrect Algorithm/Encoding:** The hash type and output encoding must match exactly between the signing and verification processes.
+- **Invalid RSA Key Format:** If using RSA, ensure your private key is in a valid format (like PEM PKCS#1 or PKCS#8) and is not corrupted.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use this component to generate a signature for an outgoing **[API Call](/docs/agent-studio/components/advanced/api-call)**, adding the signature to the request headers.
+- Create an **Agent Skill** that acts as a webhook endpoint. Use the `Sign` component to generate a signature from the incoming request body and compare it to the signature provided in the request headers to verify authenticity.
+- Take a hash generated by the **[Hash Component](/docs/agent-studio/components/crypto/hash)** and sign that hash for an extra layer of verification.

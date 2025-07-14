@@ -1,0 +1,57 @@
+# Tutorial: PDF to Text Converter Agent
+
+This agent extracts text from PDF URLs and returns the output text exactly as it is, without interpreting or altering it. Uses the PDFCrowd endpoint to extract text.
+
+  <Youtube videoId="5J3OGs0VIck" title="SmythOS -  PDF to Text Converter Agent" />
+
+## PDF Crowd API Key
+
+1. Go to https://pdfcrowd.com/user/sign_up/. If you do not have an account, proceed to create one by following the registration process.
+2. Navigate to the left sidebar and click API v2 License.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 1.png" alt="alt text" />
+
+3. Then, copy your Username and API key and store in a secure location.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 2.png" alt="alt text" />
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the `Templates` tab.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 3.png" alt="alt text" />
+
+2. You can scroll down to find the `PDF to Text Converter` Agent or simply search for it in the `Search` tab, then click the `Remix` button.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 4.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### LLM Prompt Component Setup
+
+1. Locate the `Basic Auth LLM Prompt component` that has a missing key. Click the gear icon to access its settings. 
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 5.png" alt="alt text" />
+
+2. Click on the gear icon to open the settings, then input your username and password (your password is your API key) from `PDF Crowd`. The format should be `username:APIkey` do not add anything else. Just the username and password separated by a colon (no spaces). Remember to click the check mark to save your configuration.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 6.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test the Agent
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 7.png" alt="alt text" />
+
+2. Prepare a PDF file for conversion into a text file and ask the agent to convert it.
+   1. **Sample PDF file:** *https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf*
+   2. **Content:** This is a test PDF file.
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 8.png" alt="alt text" />
+
+3. Here’s the result!
+
+<Image src="/docs/img/pdf_text_converter_agent/Image 9.png" alt="alt text" />
+

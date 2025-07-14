@@ -48,7 +48,8 @@
         "rollup-plugin-terser": "^7.0.2",
         "rollup-plugin-typescript-paths": "^1.5.0",
         "typedoc": "^0.28.5",
-        "typescript": "^5.4.5"
+        "typescript": "^5.4.5",
+        "pg-mem": "^3.0.5"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.39.0",
@@ -70,6 +71,7 @@
         "axios": "^1.7.2",
         "chokidar": "^4.0.3",
         "dayjs": "^1.11.11",
+        "dockerode": "^4.0.7",
         "dotenv": "^16.4.5",
         "eventsource": "^3.0.2",
         "express": "^4.21.2",
@@ -85,10 +87,10 @@
         "jsonrepair": "^3.8.0",
         "lodash": "^4.17.21",
         "mime": "^4.0.3",
-        "mysql2": "^3.11.3",
         "oauth-1.0a": "^2.2.6",
         "openai": "^4.103.0",
         "p-limit": "^6.1.0",
+        "pg": "^8.11.5",
         "qs": "^6.13.0",
         "readline-sync": "^1.4.10",
         "socks-proxy-agent": "^8.0.4",

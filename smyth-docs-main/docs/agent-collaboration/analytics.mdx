@@ -1,0 +1,129 @@
+---
+title: Usage & Billing
+description: Monitor and optimise your AI agent usage and cost across spaces, agents, and dates using the SmythOS Analytics dashboard.
+keywords: [analytics, LLM usage, model pricing, export usage data, agent insights, daily cost breakdown]
+sidebar_position: 6
+---
+
+# Analytics
+
+The **Analytics** dashboard helps you track how your agents are using compute. It gives you clarity on cost, efficiency, and overall performance.
+
+<InfoCallout title="Why this matters">
+Usage tracking keeps your budget clean. It helps you catch unexpected spikes, fine-tune your agent behavior, and make smarter decisions about where to deploy effort.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Dashboard Overview
+
+At a glance, you’ll see:
+
+- **Total Model Usage (in USD)** for the selected timeframe  
+- A **Daily Usage chart** that breaks down usage by task type
+
+<Image src="/docs/img/agent_collaboration/analytics-overview.jpg" alt="Model Usage Overview in SmythOS" caption="Quickly spot cost patterns or performance outliers." />
+
+<SuccessCallout title="Real-time updates">
+Analytics refresh automatically. You always get the latest numbers based on your filters.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## Filter by What Matters
+
+Use the filters at the top of the page to narrow down results:
+
+- **Space**: Filter by a specific team space or view all spaces
+- **Agent**: Focus on a single agent or all agents
+- **Date**: Pick a timeframe to review usage over time
+
+<Image src="/docs/img/agent_collaboration/analytics-filtering.jpg" alt="Analytics Filters by Space, Agent, and Date" caption="Filter usage by space, agent, or month to get the most relevant view." />
+
+<TipCallout title="Organise before you analyse">
+Use clear space and agent naming in [Space Management](/docs/account-management/spaces-management) and [Organization Settings](/docs/account-management/organization-management). It makes filtering easier and your reports cleaner.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Understanding the Usage Chart
+
+Each bar represents a day. Each colour shows a type of compute used by your agents:
+
+| Color | Category             |
+|----------------------|----------------------|
+| 🟡 `#FACC15`          | Tasks                |
+| 🟢 `#22C55E`          | Weaver               |
+| 🟢 `#10B981`          | LLM                  |
+| 🔵 `#3B82F6`          | Tools                |
+| 🔴 `#EC4899`          | Code                 |
+| 🟣 `#8B5CF6`          | Image Generation     |
+
+<Image src="/docs/img/agent_collaboration/analytics-bar-tooltip.jpg" alt="Tooltip breakdown for daily model usage" caption="Hover over a bar to view usage details by category." />
+
+<InfoCallout title="What counts as model usage?">
+Any time your agent runs an LLM, tool, code block, or image generation, it contributes to model usage. Costs are based on the compute needed to complete those actions.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Exporting Reports
+
+Click **Export** to download your usage data as a `.csv`. It reflects the filters you've applied... perfect for billing, reports, or audits.
+
+<SuccessCallout title="Pro tip: do this monthly">
+Save a copy each month so you can compare usage trends or justify costs with stakeholders.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## How to Optimise
+
+- Use filters to **identify high-cost agents**
+- Look for **spikes in usage** and track what caused them
+- Combine with [Work Schedules](/docs/agent-collaboration/agent-work-schedules) to reduce off-peak compute
+- Review [Permissions](/docs/agent-collaboration/permissions) to make sure access matches role needs
+
+<WarningCallout title="Zero usage for days?">
+If an agent is deployed but not showing usage, check its triggers or schedule. It may not be running as expected.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## FAQs
+
+### How fresh is the data?
+
+It updates in near real-time. Any new tasks, completions, or costs show up within moments of execution.
+
+### What if usage seems high?
+
+Use the filters to isolate the agent or space. Then:
+
+- Review agent logs and schedules
+- See if workflows are being retriggered too often
+- Look for changes in task volume
+
+You can also cap costs in your LLM provider settings.
+
+### Can I see analytics across multiple orgs?
+
+Not yet. Analytics works within the currently selected organization only. You can switch orgs in [Organization Management](/docs/account-management/organization-management).
+
+### What if I want exact pricing details?
+
+Head to [Model Rates](/docs/account-management/model-rates) to see a full cost breakdown by provider and action.
+
+### Can Viewers access Analytics?
+
+Only **Super Admins** and **Editors** can see the Analytics dashboard. [Check Roles](/docs/agent-collaboration/permissions) to confirm who can view what.
+
+<Spacer size="md" />
+
+## What's Next?
+
+- [View Model Rates](/docs/account-management/model-rates)
+- [Set Work Schedules](/docs/agent-collaboration/agent-work-schedules)
+- [Manage Roles and Permissions](/docs/agent-collaboration/permissions)
+- [Export Usage for Billing](/docs/account-management/subscription-management)
+- [Switch Between Orgs](/docs/account-management/organization-management)

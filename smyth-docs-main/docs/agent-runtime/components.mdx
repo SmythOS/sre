@@ -1,0 +1,196 @@
+---
+title: Components
+description: Explore the full list of SmythOS Runtime Environment components available for building AI agents, organized by category, with examples.
+keywords: [SmythOS, SRE, components, AI agents, SDK, reference, API, workflow]
+sidebar_position: 8
+---
+
+# SRE Components Reference
+
+The Smyth Runtime Environment (SRE) provides over 40 production-ready components, building blocks you can combine to create robust [AI agents](/docs/agent-runtime/building-agents).  
+Each component encapsulates a reusable function, like calling a language model, fetching web data, or filtering JSON.
+
+<InfoCallout title="How to use components">
+You can add and connect components visually in [Studio](/docs/agent-studio/overview) or programmatically in the [SDK Guide](/docs/agent-runtime/sdk-guide).  
+Most agents are built by wiring together multiple components in a workflow.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## AI & LLM Components
+
+Direct access to cutting-edge AI models and multimodal processing.
+
+**Component List:**
+
+- `GenAILLM` — Unified LLM interface (OpenAI, Anthropic, Google, etc.)
+- `VisionLLM` — Image analysis and understanding
+- `MultimodalLLM` — Text, image, audio together
+- `LLMAssistant` — Multi-turn conversational assistant
+- `HuggingFace` — Hugging Face models
+- `ImageGenerator` — Text-to-image generation
+
+**Example:**  
+```typescript
+const llm = SDK.GenAILLM({ model: 'gpt-4', prompt: 'Summarize this article' }, agent);
+const vision = SDK.VisionLLM({ image: imageBuffer }, agent);
+```
+
+<Spacer size="md" />
+
+## External Integrations
+
+Connect your agents to live web data and APIs.
+
+**Component List:**
+
+- `APICall` — HTTP(S) API requests, OAuth support
+- `WebSearch` — Live search via web engines
+- `WebScrape` — Website content extraction
+- `ZapierAction` — Zapier triggers/automations
+- `MCPClient` — Model Context Protocol client (advanced integration)
+
+**Example:**  
+```typescript
+const search = SDK.WebSearch({ query: 'SmythOS news', maxResults: 5 }, agent);
+const api = SDK.APICall({
+  url: 'https://api.example.com/data',
+  method: 'GET'
+}, agent);
+```
+
+<Spacer size="md" />
+
+## Data Processing Components
+
+Clean, index, filter, and classify your data before using it in workflows.
+
+**Component List:**
+
+- `DataSourceIndexer` — Index a batch of documents
+- `DataSourceLookup` — Fast search/lookup from index
+- `DataSourceCleaner` — Data normalization/cleaning
+- `JSONFilter` — Extract/filter from JSON structures
+- `Classifier` — Classify data by custom rules or AI
+
+**Example:**  
+```typescript
+const indexer = SDK.DataSourceIndexer({ documents: myDocs }, agent);
+const classifier = SDK.Classifier({ classes: ['finance', 'tech', 'health'] }, agent);
+classifier.in({ Input: llm.out.Reply });
+```
+
+<Spacer size="md" />
+
+## Logic & Control Flow
+
+Control agent workflow logic: branching, iteration, asynchronicity.
+
+**Component List:**
+
+- `LogicAND`, `LogicOR`, `LogicXOR` — Boolean logic
+- `LogicAtLeast`, `LogicAtMost` — Threshold-based logic
+- `ForEach` — Iterate over a list or array
+- `Async`, `Await` — Asynchronous workflow handling
+
+**Example:**  
+```typescript
+const forEach = SDK.ForEach({ items: [1,2,3] }, agent);
+// Process each item in the array through a step in your workflow
+```
+
+<Spacer size="md" />
+
+
+## Storage & File Operations
+
+Store, retrieve, and execute code or files inside your agent’s environment.
+
+**Component List:**
+
+- `FileStore` — Read/write files (local/S3)
+- `Code` — Execute code snippets dynamically
+- `ServerlessCode` — Serverless compute (cloud function-style)
+
+**Example:**  
+```typescript
+const fileStore = SDK.FileStore({ filename: 'output.txt', content: 'Hello world' }, agent);
+const code = SDK.Code({ language: 'python', source: 'print("Hi")' }, agent);
+```
+
+<Spacer size="md" />
+
+
+## System Integration
+
+Integrate agents with system or plugin-level functionality.
+
+**Component List:**
+
+- `ComputerUse` — Automate computer/system tasks
+- `GPTPlugin` — Use OpenAI-compatible plugins
+- `APIEndpoint` — Create custom HTTP endpoints in the agent
+
+**Example:**  
+```typescript
+const endpoint = SDK.APIEndpoint({ path: '/report', handler: async (req) => ({ ok: true }) }, agent);
+```
+
+<Spacer size="md" />
+
+nt Summary Table
+
+A complete overview of all available components, organized by category.
+
+| Category                 | Component Name                | Description                                |
+| :----------------------- | :---------------------------- | :------------------------------------------ |
+| **AI & LLM**             | `GenAILLM`                    | Unified interface for multiple LLMs         |
+|                          | `VisionLLM`                   | Analyze and understand images               |
+|                          | `MultimodalLLM`               | Process text, image, and audio              |
+|                          | `LLMAssistant`                | Conversational AI assistant                 |
+|                          | `HuggingFace`                 | Hugging Face model APIs                     |
+|                          | `ImageGenerator`              | Generate images from text                   |
+| **External Integration** | `APICall`                     | HTTP requests (OAuth support)               |
+|                          | `WebSearch`                   | Real-time web search                        |
+|                          | `WebScrape`                   | Extract website content                     |
+|                          | `ZapierAction`                | Zapier automations                          |
+|                          | `MCPClient`                   | Model Context Protocol client               |
+| **Data Processing**      | `DataSourceIndexer`           | Index documents for lookup                  |
+|                          | `DataSourceLookup`            | Retrieve from indexed sources               |
+|                          | `DataSourceCleaner`           | Clean and normalize input                   |
+|                          | `JSONFilter`                  | Manipulate JSON data                        |
+|                          | `Classifier`                  | Categorize content into classes             |
+| **Logic & Control Flow** | `LogicAND`, `LogicOR`, `LogicXOR` | Boolean operations                    |
+|                          | `LogicAtLeast`, `LogicAtMost` | Conditional logic by threshold              |
+|                          | `ForEach`                     | Iterate over lists                          |
+|                          | `Async`, `Await`              | Manage async steps                          |
+| **Storage & Files**      | `FileStore`                   | File operations (read, write)               |
+|                          | `Code`                        | Execute custom code                         |
+|                          | `ServerlessCode`              | Run serverless functions                    |
+| **System Integration**   | `ComputerUse`                 | Automate system-level tasks                 |
+|                          | `GPTPlugin`                   | OpenAI plugin integration                   |
+|                          | `APIEndpoint`                 | Custom API endpoints                        |
+
+<Spacer size="md" />
+
+## How to Add and Use Components
+
+You can add components to your agent either:
+
+- **Visually**: Drag and connect in [Studio](/docs/agent-studio/overview)
+- **Programmatically**: Use the [SDK Guide](/docs/agent-runtime/sdk-guide)  
+```typescript
+  import { SDK } from 'smyth-runtime';
+  const agent = new SDK.Agent({ name: 'FileBot', model: 'gpt-4' });
+  const fileStore = SDK.FileStore({ filename: 'log.txt', content: 'Test' }, agent);
+ ```
+
+See the [Building Agents](/docs/agent-runtime/building-agents) guide for more advanced patterns.
+
+<Spacer size="md" />
+
+## What's Next?
+
+- [Building Agents](/docs/agent-runtime/building-agents): Combine these components into agent workflows.
+- [SDK Guide](/docs/agent-runtime/sdk-guide): Programmatically add and configure components.
+- [Architecture](/docs/agent-runtime/architecture): See how these components fit into the overall SRE system.

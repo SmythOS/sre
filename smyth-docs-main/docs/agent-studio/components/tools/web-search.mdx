@@ -1,0 +1,97 @@
+---
+title: Web Search
+description: Perform targeted web searches, filter results, and optionally generate AI-powered answers and image results based on a query.
+keywords: [Web Search, search, find, research, web results, Google search, news search]
+toc_max_heading_level: 2
+---
+
+# Web Search Component
+
+Use the **Web Search** component to perform a targeted web search and get back a structured list of results. This component is the simplest way for your agent to find information on the internet, with advanced options to filter by time, exclude domains, and even generate an AI-powered summary of the findings.
+
+<InfoCallout title="Why this matters">
+Giving your agent the ability to search the web is a foundational step in creating a powerful and knowledgeable assistant. It can find real-time information, research topics, answer user questions with up-to-date data, and provide the source material for more complex components like the **[Web Scrape Component](/docs/agent-studio/components/tools/web-scrape)**.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Configure Search Settings](#step-1-configure-search-settings)
+- [Provide a Search Query](#step-2-provide-a-search-query)
+- [Handle the Results](#step-3-handle-the-results)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Configure Search Settings
+
+Fine-tune the search parameters to get the most relevant results for your task.
+
+| Setting                        | Description                                                                                                                                                                                            |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Sources Limit** | The maximum number of search results to return. Default is `5`.                                                                                                                                                        |
+| **Search Topic** | Choose the category for the search. `general` provides broad web results, while `news` focuses on recent articles from news outlets. Default is `general`.                                                           |
+| **Include Questions and Answers**| Enable to receive an AI-generated answer to your query based on the content of the top search results.                                                                                                    |
+| **Include Image Results** | Enable to include a list of query-related images in the response.                                                                                                                                              |
+| **Time Range** | Filter results to a specific time range from the current date. Options are `day`, `week`, `month`, or `year`.                                                                                                          |
+| **Include Raw Content** | Enable to include the cleaned HTML content of each search result page in the output. This is useful if you want to analyze the page content without a separate scrape.                                            |
+| **Exclude Domains** | Provide a comma-separated list of domains to exclude from the search results (e.g., `wikipedia.org,pinterest.com`).                                                                                                  |
+
+<Arcade src="https://demo.arcade.software/yGvNUREteuUqZ7ryFPAW?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WebSearch | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide a Search Query
+
+The component requires a single input to know what to search for.
+
+| Input         | Description                                                          |
+|---------------|----------------------------------------------------------------------|
+| **SearchQuery** | The default input field that holds the text query you want to search for. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Results
+
+The component provides several outputs to easily access the different parts of the search results.
+
+| Output    | Description                                                                                                                                    |
+|-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Output**| Contains the entire set of results as a single JSON object, including search results, images, and the AI-generated answer if those options are enabled. |
+| **Results** | A convenient output containing just the array of search results (links, titles, snippets).                                                    |
+| **Images**| If `Include Image Results` is enabled, this output will contain the list of related images.                                                     |
+| **Answer**| If `Include Questions and Answers` is enabled, this output will contain the AI-generated answer string.                                       |
+
+<TipCallout title="Convenient Outputs">
+While `Output` contains everything, using the specific `Results`, `Images`, and `Answer` outputs is often easier and cleaner, as it saves you from having to parse the main JSON object.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Use for Initial Research:** `Web Search` is excellent for the first step of a research task. Use it to find relevant URLs, then pass those URLs to the **[Web Scrape Component](/docs/agent-studio/components/tools/web-scrape)** for deep content extraction.
+- **Enable AI Answers for Quick Summaries:** The `Include Questions and Answers` option is a very efficient way to get a direct answer to a query without needing a separate LLM call.
+- **Filter for Relevance:** Use `Time Range` and `Exclude Domains` to narrow your search and improve the quality of your results. For example, when researching a recent event, set the time range to `day` or `week`.
+- **Handle No Results:** Your workflow should be able to handle cases where a search returns no results. Check if the `Results` output is empty and branch your logic accordingly.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your search isn't working as expected...">
+- **Irrelevant Results:** Your `SearchQuery` might be too broad. Try making it more specific. Also, consider using the `Exclude Domains` setting to filter out noisy or unhelpful sites.
+- **No AI Answer Generated:** The `Include Questions and Answers` feature depends on the content of the search results. If the top results do not contain a clear answer to the query, the LLM may not be able to generate one.
+- **Search Fails:** In rare cases, the search provider might be temporarily unavailable. You can build retry logic into your workflow using a **[Condition Component](/docs/agent-studio/components/logic/logical-and)** to check for an empty result and loop back if needed.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Take the `Results` array and pass it to a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)**. Inside the loop, use the **[Web Scrape Component](/docs/agent-studio/components/tools/web-scrape)** on each URL to extract its full content.
+- Use the `Answer` output and feed it directly into an **[API Output Component](/docs/agent-studio/components/base/api-output)** to create an agent that can answer questions with sourced information.
+- Use the search results to feed a RAG pipeline. Scrape the content of the top results and use **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** to add the new information to your agent's knowledge base.

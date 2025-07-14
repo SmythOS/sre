@@ -1,0 +1,114 @@
+---
+title: LLM Assistant
+description: Manage stateful, multi-turn chat conversations with a powerful language model that remembers context.
+keywords: [LLM, Assistant, chat, conversation, stateful, context, OpenAI, Claude, Vertex, Bedrock]
+toc_max_heading_level: 2
+---
+
+# LLM Assistant Component
+
+Use the **LLM Assistant** component to create stateful, multi-turn chat experiences. It automatically tracks conversation history, allowing your agent to provide coherent and context-aware responses over multiple interactions.
+
+<InfoCallout title="Why this matters">
+Unlike a standard LLM call, the `LLM Assistant` remembers previous messages in the same conversation. This is crucial for building chatbots and agents that can understand follow-up questions and maintain a natural conversational flow.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Model Selection](#step-1-select-a-model)
+- [Define Behavior](#step-2-define-the-behavior)
+- [Configure Inputs](#step-3-configure-inputs)
+- [Advanced Settings](#step-4-configure-advanced-settings)
+- [Handle the Output](#step-5-handle-the-output)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select a Model
+
+Choose the language model that will power your assistant. You can use built-in models or connect to your own.
+
+| Field          | Required?                   | Description                                                                 | Tips                                                                                                                                                                                            |
+|----------------|-----------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Model** | <Badge type="required">Yes</Badge> | The LLM used for generating responses.                                      | Defaults to SmythOS-provided models (e.g., OpenAI). You can also select other shared models like Claude or Together AI. For more, see [Model Rates](/docs/account-management/model-rates). |
+| **Custom Model** | <Badge type="optional">No</Badge>  | Connect to your own LLM provider, such as Amazon Bedrock or Google Vertex AI. | This is an enterprise feature. You will need to provide your own credentials and select a foundation model. [Contact us](https://smythos.com/talk-to-us) to enable it.                |
+
+<Arcade src="https://demo.arcade.software/feB8bIw53rxIILXr2QwP?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="LLM Assistant | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Define the Behavior
+
+The `Behavior` field acts as the system prompt, giving the assistant its core instructions, personality, and constraints.
+
+| Setting     | Required?                  | Description                                            | Default Value                             |
+|-------------|----------------------------|--------------------------------------------------------|-------------------------------------------|
+| **Behavior** | <Badge type="optional">No</Badge> | The system prompt that guides the assistant's tone and actions. | `You are a helpful assistant that helps people with their questions` |
+
+<TipCallout title="Crafting a Good Persona">
+Be specific in your behavior prompt. For example: "You are a friendly and witty support agent for an e-commerce store specializing in sneakers. Always answer in a fun and slightly informal tone."
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 3: Configure Inputs
+
+These inputs are essential for tracking the conversation and capturing the user's message.
+
+| Input            | Required?                   | Description                                                              | Notes                                                                     |
+|------------------|-----------------------------|--------------------------------------------------------------------------|---------------------------------------------------------------------------|
+| **UserId** | <Badge type="required">Yes</Badge> | A unique identifier for the end-user.                                    | Used to group all conversations for a specific user.                      |
+| **ConversationId** | <Badge type="required">Yes</Badge> | A unique identifier for a single conversation thread.                    | Allows a single user to have multiple, separate conversations.            |
+| **UserInput** | <Badge type="required">Yes</Badge> | The message or prompt submitted by the user.                             | This is what the assistant will respond to.                               |
+
+<Spacer size="md" />
+
+## Step 4: Configure Advanced Settings
+
+Fine-tune the assistant's streaming behavior.
+
+| Setting             | Description                                                                                                                                    |
+|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Passthrough Mode** | Controls how responses are streamed. When **disabled** (default), the response streams automatically. When **enabled**, you get manual control over the output, which is useful for post-processing or custom streaming logic. |
+
+<Spacer size="md" />
+
+## Step 5: Handle the Output
+
+The component produces a single output containing the assistant's reply.
+
+| Output      | Description                                          | Data Structure |
+|-------------|------------------------------------------------------|----------------|
+| **Response** | The complete message generated by the LLM Assistant. | String         |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Use Stable IDs:** Ensure that `UserId` and `ConversationId` are consistent across interactions to maintain conversation history correctly.
+- **Set a Clear Behavior:** A well-defined system prompt in the `Behavior` field is the key to a reliable and predictable assistant.
+- **Manage Context:** For very long conversations, be aware of the model's context window. The assistant will automatically handle history, but extremely long threads may eventually lose early context.
+- **Use Passthrough for Complex Logic:** If you need to validate, modify, or log the assistant's reply before showing it to the user, enable `Passthrough Mode`.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your assistant is not working as expected...">
+- **Assistant is "forgetful":** The most common cause is that the `UserId` or `ConversationId` is changing between turns. Verify you are passing the same IDs for every message in a conversation.
+- **Incorrect tone or behavior:** Your `Behavior` prompt may be too vague or is being overridden by the user's input. Make your instructions more specific and directive.
+- **No response is generated:** Check that the `UserInput` field is correctly mapped and not empty. Also, ensure your model provider (if custom) is configured correctly with valid credentials.
+- **Response isn't streaming:** Check if `Passthrough Mode` has been accidentally enabled.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use an **[Agent Skill](/docs/agent-studio/components/base/agent-skill)** to provide a user-friendly interface for your `LLM Assistant`.
+- Pass the `Response` output into a **[RAG Remember Component](/docs/agent-studio/components/rag-data/rag-remember)** to store key facts from the conversation.
+- Use a **[Classifier Component](/docs/agent-studio/components/base/classifier)** on the `UserInput` before it reaches the assistant to detect user intent and route the conversation.

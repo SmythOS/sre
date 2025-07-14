@@ -1,0 +1,96 @@
+---
+title: Logic OR
+description: Perform a logical OR operation to verify that at least one of several conditions is true.
+keywords: [Logic, OR, condition, boolean, any, at least one]
+toc_max_heading_level: 2
+---
+
+# Logic OR Component
+
+Use the **Logic OR** component to check if **at least one** of multiple conditions is met. This component acts as a gate that allows the workflow to proceed down the "Verified" path if any of its inputs evaluates to `true`.
+
+<InfoCallout title="Why this matters">
+Workflows often need to handle multiple possible success paths. The `Logic OR` component is perfect for these scenarios, allowing you to create flexible conditions like "proceed if a user provides an email OR a phone number" or "trigger a process if an order is new OR has been updated." It simplifies checking for any one of several valid conditions.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Understand the Logic](#step-1-understand-the-logic)
+- [Provide Inputs](#step-2-provide-inputs)
+- [Handle the Outputs](#step-3-handle-the-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Understand the Logic
+
+The component takes multiple inputs and provides two outputs: `Verified` and `Unverified`. The `Verified` path is triggered if **any** of the inputs are `true`. The `Unverified` path is only triggered if **all** inputs are `false`.
+
+In this context:
+- **`True`**: Any input that has a value (e.g., a non-empty string, any number, the boolean `true`, an object, an array).
+- **`False`**: Any input that is empty, `null`, `undefined`, or the boolean `false`.
+
+### Operational Rules
+
+| Input 1 | Input 2 | Verified Path (Outputs `true`) | Unverified Path (Outputs `true`) |
+|:--------|:--------|:-------------------------------|:---------------------------------|
+| `True`  | `True`  | **Active** | Inactive                         |
+| `True`  | `False` | **Active** | Inactive                         |
+| `False` | `True`  | **Active** | Inactive                         |
+| `False` | `False` | Inactive                       | **Active** |
+
+<Spacer size="md" />
+
+## Step 2: Provide Inputs
+
+You can add two or more inputs to the component. These inputs will typically be connected to the outputs of previous components in your workflow.
+
+| Action      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| **Add Input** | Click the `+` icon to add a new input field. Give it a descriptive name that reflects the condition you are checking. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Outputs
+
+The component has two output branches, allowing you to direct the workflow based on whether any of the conditions were met.
+
+| Output       | Description                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------|
+| **Verified** | This path executes if **at least one** of the inputs evaluates to `true`.                               |
+| **Unverified** | This path executes only if **all** of the inputs evaluate to `false`.                                    |
+
+<TipCallout title="Branching Your Workflow">
+Connect the `Verified` output to the steps that should run when any valid condition is met. Connect the `Unverified` output to a path that handles the case where no conditions were satisfied, which might involve ending the workflow or sending an error message.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Checking for Presence:** Use `Logic OR` to check if a user has provided at least one of several optional contact methods.
+- **Handling Multiple Success States:** If an `API Call` can return several different success codes (e.g., 200, 201, 202), you can check for each of them with an `OR` condition to proceed.
+- **Consolidating Error Conditions:** You can use `Logic OR` to check for multiple possible error states. If any of them are true, you can route the workflow to a single, centralized error-handling block.
+- **Keep Inputs Related:** For clarity, the inputs to a single `Logic OR` component should represent related conditions (e.g., checking different types of user IDs, not mixing a user ID check with a payment status check).
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your logic isn't branching as expected...">
+- **Check Your "False" Values:** Remember that an empty string (`""`), `null`, or an unassigned variable will be treated as `false`. An input you expect to be false might contain a value (like the string "false"), which evaluates to `true`.
+- **Inspect Input Data:** Use the **Debug** panel to check the exact value being passed into each input of the `Logic OR` component to confirm they are what you expect.
+- **It Only Takes One:** The `Verified` path will be taken if even a single input is true. If the workflow is unexpectedly going down the "verified" path, systematically check each input to find the one that is evaluating to `true`.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use `Logic OR` in combination with **[Logic AND](/docs/agent-studio/components/logic/logical-and)** to build complex conditional flows, such as "(Condition A is true OR Condition B is true) AND Condition C is true."
+- Use the output of a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** to check if at least one item in a list met a certain criteria.
+- Create a user validation flow that checks for an account ID OR an email address OR a phone number to identify a user.

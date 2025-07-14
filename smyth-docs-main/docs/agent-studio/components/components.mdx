@@ -1,0 +1,167 @@
+---
+title: Components
+description: Discover the powerful building blocks that make your AI agents smarter, more capable, and easier to build.
+keywords: [components, building blocks, AI agents, automation, tools, base components, advanced components, crypto, RAG, tools]
+toc_max_heading_level: 2
+sidebar_position: 3
+---
+
+In SmythOS, components are the building blocks of your agent workflows. Each one represents a single task, skill, or utility, like calling an API, running logic, filtering JSON, generating text, or storing knowledge.
+
+You build workflows by dragging components onto the canvas, connecting them visually, and configuring how data flows between them.
+
+<InfoCallout title="What Components Do">
+Components are modular logic blocks that do something specific inside an agent. You can connect them visually in the Builder, test them individually, and combine them to form powerful workflows.
+</InfoCallout>
+
+<Divider />
+
+## Designing Logic with Components
+
+Each pattern helps you control how your agent thinks and acts. You can combine components like Classifier, ForEach, or Async/Await to create dynamic, multi-step behaviors without writing code.
+
+### Sequential Flow  
+Run steps one after another.
+
+**Use when:** Each step depends on the output of the previous  
+**Example:** Generate blog → Summarize → Post to site  
+**Useful components:**  
+- [Code](/docs/agent-studio/components/advanced/code)  
+- [Sleep](/docs/agent-studio/components/advanced/sleep)
+
+### Branching Flow  
+Choose a path based on logic or classification.
+
+**Use when:** Your workflow must adapt to input data  
+**Example:** If sentiment is negative, alert support; if positive, publish  
+**Useful components:**  
+- [Classifier](/docs/agent-studio/components/base/classifier)  
+- [Code](/docs/agent-studio/components/advanced/code)
+
+### Parallel Flow  
+Run multiple tasks at the same time.
+
+**Use when:** Tasks don’t depend on each other  
+**Example:** Analyze text and extract entities in parallel  
+**Useful components:**  
+- [Async/Await](/docs/agent-studio/components/advanced/async)  
+- [ForEach](/docs/agent-studio/components/advanced/for-each)
+
+<InfoCallout title="Combine with care">
+You can nest patterns. For example: run parallel tasks that each use sequential logic, or insert conditionals after a ForEach. For smarter control, combine flow patterns with components like: - **[Classifier](/docs/agent-studio/components/base/classifier)** – routes based on user intent - **[Code](/docs/agent-studio/components/advanced/code)** – runs custom logic.
+</InfoCallout>
+<Spacer size="md" />
+
+### Choosing the Right Component  
+
+| What You Want to Do            | Use This Component                                                                   | Why It Helps                                     |
+|-------------------------------|----------------------------------------------------------------------------------------|--------------------------------------------------|
+| Loop through a list           | **[ForEach](/docs/agent-studio/components/advanced/for-each)**                       | Handles each item one by one                     |
+| Run tasks at the same time    | **[Async/Await](/docs/agent-studio/components/advanced/async)**                      | Runs branches in parallel                        |
+| Add a timed pause             | **[Sleep](/docs/agent-studio/components/advanced/sleep)**                            | Controls timing or rate limits                   |
+| Store useful facts or context | **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)**              | Saves info for later use in the workflow         |
+| Route based on input type     | **[Classifier](/docs/agent-studio/components/base/classifier)**                      | Classifies input and picks the right path        |
+| Transform or filter JSON      | **[JSON Filter](/docs/agent-studio/components/advanced/json-filter)**                | Modifies or extracts specific JSON data          |
+
+<WarningCallout title="Keep workflows manageable">
+If your flow grows large, split it into smaller Agent Skills and test each part before combining them.
+</WarningCallout>
+
+## Base Components
+These are the essential building blocks that help your agents interact, route input, and generate output.
+
+<CardGrid>
+  <Card title="Agent Skill" description="Define custom functions or actions your agent can call on demand." to="/docs/agent-studio/components/base/agent-skill" />
+  <Card title="Classifier" description="Categorize inputs using AI classification to support decision logic." to="/docs/agent-studio/components/base/classifier" />
+  <Card title="GenAI LLM" description="Prompt large language models to generate intelligent responses." to="/docs/agent-studio/components/base/gen-ai-llm" />
+  <Card title="Image Generator" description="Create AI-generated visuals from prompts using models like DALL·E." to="/docs/agent-studio/components/base/image-generator" />
+  <Card title="Note" description="Add non-functional comments and instructions inside your workflows." to="/docs/agent-studio/components/base/note" />
+</CardGrid>
+
+<TipCallout title="Start simple, scale smart">
+Use base components to outline your logic clearly before layering in complex conditionals or memory features.
+</TipCallout>
+<Divider />
+
+## Advanced Components
+
+These components support more complex logic, loops, filters, and low-level execution.
+
+<CardGrid>
+  <Card title="API Call" description="Connect to third-party services or internal APIs to fetch or send data." to="/docs/agent-studio/components/advanced/api-call" />
+  <Card title="ForEach" description="Loop over arrays or lists to perform repeated tasks." to="/docs/agent-studio/components/advanced/for-each" />
+  <Card title="JSON Filter" description="Transform, extract, or restructure JSON responses with precision." to="/docs/agent-studio/components/advanced/json-filter" />
+  <Card title="Code" description="Run JavaScript logic inline using Node.js and custom logic." to="/docs/agent-studio/components/advanced/code" />
+  <Card title="Async" description="Run multiple branches in parallel for concurrent processing." to="/docs/agent-studio/components/advanced/async" />
+  <Card title="Await" description="Pause a workflow until all async branches have completed." to="/docs/agent-studio/components/advanced/await" />
+  <Card title="LLM Assistant" description="Use large language models to generate text, analyze inputs, or assist with decision-making." to="/docs/agent-studio/components/advanced/llm-assistant" />
+  <Card title="Sleep" description="Pause execution between tasks for better timing control." to="/docs/agent-studio/components/advanced/sleep" />
+</CardGrid>
+
+<Divider />
+
+## Crypto Components
+
+Secure operations for signing, hashing, and transforming data formats.
+
+<CardGrid>
+  <Card title="Encode/Decode" description="Convert between formats like Base64 or UTF-8." to="/docs/agent-studio/components/crypto/encode-decode" />
+  <Card title="Sign" description="Generate digital signatures and verify payload integrity." to="/docs/agent-studio/components/crypto/sign" />
+  <Card title="Hash" description="Hash strings securely using algorithms like SHA256." to="/docs/agent-studio/components/crypto/hash" />
+  <Card title="Timestamp" description="Add secure or formatted timestamps to data or logs." to="/docs/agent-studio/components/crypto/timestamp" />
+</CardGrid>
+
+<Divider />
+
+## RAG (Retrieval-Augmented Generation) Components
+
+Memory-aware components for knowledge management and dynamic search.
+
+<CardGrid>
+  <Card title="RAG Remember" description="Store custom facts or content for retrieval later." to="/docs/agent-studio/components/rag-data/rag-remember" />
+  <Card title="RAG Search" description="Search stored knowledge using semantic queries." to="/docs/agent-studio/components/rag-data/rag-search" />
+  <Card title="RAG Forget" description="Delete or update parts of your agent's knowledge." to="/docs/agent-studio/components/rag-data/rag-forget" />
+</CardGrid>
+
+<Divider />
+
+## Tool Components
+
+Powerful utilities to connect with browsers, scripts, and live data.
+
+<CardGrid>
+  <Card title="Web Scrape" description="Extract and parse data from public websites and URLs." to="/docs/agent-studio/components/tools/web-scrape" />
+  <Card title="Web Search" description="Query search engines and receive summarized results." to="/docs/agent-studio/components/tools/web-search" />
+  <Card title="Computer Use" description="Trigger commands and automate desktop-level interactions." to="/docs/agent-studio/components/tools/computer-use" />
+  <Card title="MCP Client" description="Send data or trigger workflows to your external MCP setup." to="/docs/agent-studio/components/tools/mcp-client" />
+  <Card title="Node.js" description="Run native JavaScript inside the workflow." to="/docs/agent-studio/components/tools/node-js" />
+</CardGrid>
+
+<Divider />
+
+## Why Components Matter
+
+<InfoCallout title="The Power of Components">
+Components are the building blocks of intelligent agents. They allow you to:
+- Build complex workflows without writing code
+- Create modular, maintainable agent architectures
+- Leverage advanced AI capabilities through simple, controllable interfaces
+- Scale your agents' capabilities as your needs grow
+</InfoCallout>
+
+## Best Practices
+<WarningCallout title="Sensitive data handling">
+Avoid storing secrets directly in components. Use the **[Vault](/docs/agent-studio/key-concepts/vault)** for secure access to keys and credentials.
+</WarningCallout>
+
+- Use clear component names and Notes to document your logic  
+- Start simple, then layer in logic like loops or conditionals  
+- Test individual components before combining them into larger flows  
+- Use Agent Skills to break big flows into manageable pieces  
+- For memory, use RAG components to store reusable facts 
+
+## What to Try Next
+
+- Explore the **[Workflow Guide](/docs/agent-studio/build-agents/building-workflows)** to see how components come together  
+- Learn how to **[Deploy Your Agent](/docs/agent-deployments/overview)**  
+- Use a ready-made **[Agent Template](https://app.smythos.com/templates)** to build faster  

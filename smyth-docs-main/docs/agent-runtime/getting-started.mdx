@@ -1,0 +1,60 @@
+---
+title: Getting Started
+description: Install the SmythOS CLI or SDK and prepare your environment for building AI agents.
+keywords: [SRE, AI runtime, agent, SDK, CLI, getting started, installation]
+sidebar_position: 2
+---
+
+# Getting Started
+
+<InfoCallout title="Choose Your Path">
+You can start building with the Smyth Runtime Environment (SRE) using either the CLI or the SDK. Choose the method that best fits your workflow and experience.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Method 1: Using the CLI <Badge type='Recommended' />
+
+The CLI is the simplest and most guided way to create and configure new agent projects.
+
+1. Install the CLI globally:
+```bash
+npm i -g @smythos/cli
+```
+
+2. Create a new project interactively:
+```bash
+sre create
+```
+
+<InfoCallout title="Step-by-Step Guidance">
+The CLI will walk you through setting up your project and configuration, making it easy to get started quickly.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Method 2: Direct SDK Installation
+
+If you want to add SmythOS to an existing Node.js project, you can install the SDK directly:
+
+```bash
+npm install @smythos/sdk
+```
+or 
+
+```bash
+pnpm install @smythos/sdk
+```
+
+<WarningCallout title="When to Use the SDK Install">
+The direct SDK method is best if you already have a codebase or want fine-grained control over integration.  
+For new projects, the CLI is recommended.
+</WarningCallout>
+
+<Spacer size="md" />
+
+Once you’ve completed either method, you’re ready to build and run your first agent.
+
+Continue to the [Quickstart](/docs/agent-runtime/quickstart) for a complete example.
+
+<Spacer size="md" />

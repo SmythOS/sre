@@ -49,7 +49,7 @@ export type TLLMProviderInstances = {
  *
  * @example Different providers are available
  * ```typescript
- * const openai = LLM.OpenAI('gpt-4o');
+ * const openai = LLM.OpenRouter('gpt-4o');
  * const anthropic = LLM.Anthropic('claude-3-5-sonnet-20240620');
  * const google = LLM.Google('gemini-2.0-flash-001');
  * ...
@@ -58,13 +58,13 @@ export type TLLMProviderInstances = {
  *
  * @example Prompting an LLM
  * ```typescript
- * const llm = LLM.OpenAI('gpt-4o');
+ * const llm = LLM.OpenRouter('gpt-4o');
  * const response = await llm.prompt('Write a short story about a cat');
  * ```
 
  * @example Streaming response
  * ```typescript
- * const llm = LLM.OpenAI('gpt-4o');
+ * const llm = LLM.OpenRouter('gpt-4o');
  * const streamEvents = await llm.prompt('Write a short story about a cat').stream();
  * streamEvents.on(TLLMEvent.Content, (event) => {
  *     console.log(event);
@@ -80,7 +80,7 @@ export type TLLMProviderInstances = {
  * @example Chat with an LLM
  * The difference between direct prompting and chatting is that chatting will persist the conversation.
  * ```typescript
- * const llm = LLM.OpenAI('gpt-4o');
+ * const llm = LLM.OpenRouter('gpt-4o');
  * const chat = await llm.chat();
  * 
  * //Prompt and get response
@@ -102,19 +102,19 @@ export type TLLMProviderInstances = {
  * //Bellow are different ways to invoke an LLM without passing the API key
  *
  * //Using the model ID
- * const llm = LLM.OpenAI('gpt-4o');
+ * const llm = LLM.OpenRouter('gpt-4o');
  * const response = await llm.prompt('Write a short story about a cat');
  *
  * //Using the model params
- * const llm = LLM.OpenAI({ model: 'gpt-4o' });
+ * const llm = LLM.OpenRouter({ model: 'gpt-4o' });
  * const response = await llm.prompt('Write a short story about a cat');
  *
  * //Using the model params with custom settings
- * const llm = LLM.OpenAI('gpt-4o', { temperature: 0.5, maxTokens: 50 });
+ * const llm = LLM.OpenRouter('gpt-4o', { temperature: 0.5, maxTokens: 50 });
  * const response = await llm.prompt('Write a short story about a cat');
  *
  * //Using the model params with custom settings
- * const llm = LLM.OpenAI({ model: 'gpt-4o', temperature: 0.5, maxTokens: 50 });
+ * const llm = LLM.OpenRouter({ model: 'gpt-4o', temperature: 0.5, maxTokens: 50 });
  * const response = await llm.prompt('Write a short story about a cat');
  * ```
  *
@@ -123,7 +123,7 @@ export type TLLMProviderInstances = {
  * ```typescript
  *
  * //Using the model params with an API key
- * const llm = LLM.OpenAI({
+ * const llm = LLM.OpenRouter({
  *         model: 'gpt-4o',
  *         apiKey: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
  *         temperature: 0.5,
@@ -133,7 +133,7 @@ export type TLLMProviderInstances = {
  *
  *
  * //Using the model params with an API key
- * const llm = LLM.OpenAI('gpt-4o', {
+ * const llm = LLM.OpenRouter('gpt-4o', {
  *         apiKey: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
  *         temperature: 0.5,
  *         maxTokens: 50

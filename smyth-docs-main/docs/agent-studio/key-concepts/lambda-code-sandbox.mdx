@@ -1,0 +1,174 @@
+---
+title: Lambda Code Sandbox
+description: Secure, scalable code execution using the NodeJS (Serverless) component powered by AWS Lambda.
+keywords: [lambda, serverless, nodejs, sandbox, smythos, agent components, secure code execution]
+sidebar_position: 5
+---
+
+# Lambda Code Sandbox
+
+The **Lambda Code Sandbox** in SmythOS allows agents to execute custom Node.js code securely and scalably using AWS Lambda under the hood. This serverless setup offers isolated, ephemeral runtime environments ideal for integrating custom business logic, API interactions, and complex data processing into your agents.
+
+<InfoCallout title="Why Lambda Sandbox matters">
+It enables dynamic, stateless code execution directly within agent workflows—without provisioning or managing servers.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How It Works
+
+When you use the **NodeJS (Serverless)** component in a workflow:
+
+- The function is deployed into an AWS Lambda sandbox
+- It runs in an isolated, secure container
+- The code is cleaned up immediately after execution
+- Resources like CPU and memory are automatically allocated
+
+<TipCallout title="Stateless and safe">
+Each execution is fresh and independent. There's no shared memory or file system access across runs.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Code Structure and Execution
+
+Your code must be structured as an async JavaScript function. Supported packages include a wide array of popular NPM modules.
+
+```typescript
+import axios from 'axios';
+
+async function main(inputParam1, inputParam2) {
+  const response = await axios.get('https://example.com/api');
+  return { result: response.data };
+}
+```
+
+- Inputs automatically map to parameters
+- Return values are passed to subsequent components
+- Errors are logged and available for debugging
+
+<Spacer size="md" />
+
+## Infrastructure Options
+
+You can choose where your code runs:
+
+### SmythOS Infrastructure
+
+- Default for all users
+- No setup required
+- Scales automatically
+- Execution billed via SmythOS credits
+
+### Custom AWS Infrastructure
+
+Use your own AWS credentials for full control:
+
+- Configure in [Vault](/docs/agent-studio/key-concepts/vault)
+- Provide AWS Access Key, Secret, and Region
+- No credits consumed on SmythOS
+- Full access to your AWS Lambda configuration
+
+<InfoCallout title="Bring your own cloud">
+Custom infrastructure allows VPC control, custom roles, and deeper AWS integration.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Supported Operations
+
+Common uses include:
+
+- Complex data transformations
+- API orchestration
+- File parsing
+- Business rule enforcement
+- ML inference (via REST APIs)
+
+<SuccessCallout title="Everything is async">
+Built-in support for `async/await` patterns makes integrating network calls and APIs seamless.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## Input and Output Handling
+
+### Inputs
+
+Supports all major data types:
+
+- String, number, boolean, date
+- JSON objects and arrays
+- Binary (for files or images)
+
+Inputs are automatically validated and converted where needed.
+
+### Outputs
+
+- Returns must be JSON-serializable
+- Errors are captured and passed through
+- Logs are available for debugging
+
+<InfoCallout title="Output chaining">
+Return values can be routed into any downstream components for continued processing.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Performance and Limits
+
+Execution limits depend on infrastructure:
+
+| Resource      | SmythOS Infra | Custom AWS |
+|---------------|----------------|-------------|
+| Max runtime   | 15 seconds     | AWS-defined |
+| Memory        | Managed auto   | User-defined |
+| CPU           | Shared pool    | User-defined |
+| Disk          | Temporary only | Temporary only |
+
+For heavy workloads, consider using [Custom Storage](/docs/agent-collaboration/data-pool/custom-storage) and [Data Spaces](/docs/agent-collaboration/data-pool/data-spaces) to offload data and improve responsiveness.
+
+<WarningCallout title="Watch for cold starts">
+Functions not used frequently may experience longer start times. Optimize your dependencies for best performance.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- Validate and sanitize all inputs
+- Use structured, single-responsibility functions
+- Avoid unnecessary logging of sensitive data
+- Use SmythOS [Vault](/docs/agent-studio/key-concepts/vault) for secrets
+- Catch and handle errors gracefully
+
+<Spacer size="md" />
+
+## Debugging and Monitoring
+
+Use the [**Logs**](/docs/agent-studio/manage-agents/logs) tab on the component to monitor:
+
+- Execution time and memory usage
+- Stack traces for uncaught errors
+- Output values and retries
+
+<InfoCallout title="Component Logs">
+Logs can be viewed in the Studio Canvas or on the [Agent Dashboard](https://app.smythos.com/agents) in the sidebar.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Integration With Agents
+
+You can use the Lambda Code Sandbox in:
+
+- Conditional logic nodes
+- Data processing branches
+- API coordination points
+
+Works seamlessly with:
+
+- [RAG Search](/docs/agent-collaboration/data-pool/data-spaces)
+- [API Call Component](/docs/agent-studio/components/advanced/api-call)
+- [Vault-secured secrets](/docs/agent-studio/key-concepts/vault)
+- [Spaces and Workflows](/docs/agent-collaboration/spaces/)

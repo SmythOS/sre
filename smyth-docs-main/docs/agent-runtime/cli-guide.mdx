@@ -1,0 +1,167 @@
+---
+title: CLI
+description: Automate, test, and manage agents in the SmythOS Runtime Environment using the CLI for developer speed, scripting, and integrated workflows.
+keywords: [SmythOS, SRE, CLI, automation, agent management, scripting, workflows, developer tools]
+sidebar_position: 8
+toc_max_heading_level: 2
+---
+
+# CLI Guide
+
+The SmythOS CLI puts powerful agent management at your fingertips. With the CLI, you can automate project setup, run and test agents, manage builds, and bridge visual (Studio) and code-first (SDK) workflows from your terminal.
+
+<InfoCallout title="What makes the CLI different?">
+You get command-line access to every major workflow, letting you automate repetitive tasks, script custom flows, and switch seamlessly between Studio and SDK-driven projects.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Why Use the CLI?
+
+If you care about speed, automation, or repeatable developer workflows, the CLI is designed for you:
+
+- Scaffold a new project or agent in seconds
+- Run agents from SDK code or `.smyth` files exported from Studio
+- Test, debug, and build agents without boilerplate
+- Automate anything, from local scripts to CI/CD pipelines
+- Instantly swap environments and configs as you iterate
+
+<Spacer size="md" />
+
+## How to Install
+
+To get started, install the CLI globally:
+
+```bash
+npm install -g @smythos/cli
+```
+
+You’ll only need to do this once.
+
+<Spacer size="md" />
+
+## The Commands You’ll Use Most
+
+You can control every stage of your agent workflow right from your terminal:
+
+| Command             | What you can do with it                                   |
+| :------------------ | :------------------------------------------------------- |
+| `sre create`        | Interactively scaffold a new SDK agent project           |
+| `sre run`           | Run an agent (SDK code or `.smyth` file) on your device  |
+| `sre build`         | Prepare your agent for production deployment             |
+| `sre export`        | Export agent definitions for Studio or SDK use           |
+| `sre help`          | List all available CLI commands and their usage          |
+
+<TipCallout title="Mix and match your tools">
+Build in Studio and export to `.smyth` for quick testing in your terminal, or start a project with the CLI, then import to Studio for visual design. It’s all interchangeable.
+</TipCallout>
+
+<Spacer size="md" />
+
+## How You’ll Use the CLI in Practice
+
+- **Automate your agent testing:**  
+  Add `sre run` to your scripts or pipelines to catch issues early.
+- **Prototype ideas faster:**  
+  Use `sre create` to spin up projects side-by-side and try new approaches.
+- **Blend visual and code workflows:**  
+  Export agents from Studio, then run or extend them using the CLI or SDK.
+- **Streamline CI/CD:**  
+  Add CLI steps to automate validation, builds, or agent packaging in your pipeline.
+
+<Spacer size="md" />
+
+## Example: Scaffold, Run, and Test Agents
+
+### 1. Scaffold a new agent project
+
+```bash
+sre create
+```
+
+This command guides you through creating a new project with the right structure for your workflow. Choose your language (TypeScript is recommended), give your agent a name, and follow the prompts.
+
+### 2. Run a Studio agent from a `.smyth` file
+
+If you exported an agent from Studio:
+
+```bash
+sre run ./my-agent.smyth
+```
+
+You’ll see your agent load up and respond to prompts, right in your terminal.
+
+### 3. Run the main agent in your SDK project
+
+In your SDK project directory, you can run:
+
+```bash
+sre run
+```
+
+This executes your `index.ts` (or entrypoint) agent and streams the result.
+
+### 4. Export your project for use in Studio
+
+To convert your SDK agent to Studio’s visual format:
+
+```bash
+sre export
+```
+
+You’ll get a `.smyth` file ready to import in the visual builder.
+
+<InfoCallout title="No boilerplate required">
+You don’t have to write any extra code or scripts, just point the CLI to your agent and let it handle the rest.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Example: Add CLI to Your Workflow Script
+
+You can use the CLI in `package.json` scripts or shell scripts for automation.
+
+**Add this to your `package.json`:**
+```json
+"scripts": {
+  "dev": "sre run",
+  "build": "sre build",
+  "export": "sre export"
+}
+```
+Now run:
+
+```bash
+npm run dev
+```
+
+or
+
+```bash
+npm run build
+```
+You can integrate these steps into CI/CD pipelines for automated agent validation and deployment and lear nmore at the [SRE repo.](https://github.com/SmythOS/sre)
+
+<Spacer size="md" />
+
+## Troubleshooting and Help
+
+- Run `sre help` for a quick reference of all CLI commands.
+- If you run into issues or have suggestions, check [SRE GitHub Issues](https://github.com/SmythOS/sre/issues).
+- Make sure you’re running Node.js version 18 or higher.
+
+<WarningCallout title="Stay up to date">
+Update your CLI regularly for the latest features and bug fixes:
+```npm
+npm update -g @smythos/cli
+```
+</WarningCallout>
+
+<Spacer size="md" />
+
+## What's Next
+
+- [Getting Started Guide](/docs/agent-runtime/getting-started): Step-by-step setup and prerequisites
+- [Building Agents](/docs/agent-runtime/building-agents): All options for creating agents, visually or in code
+- [SDK Guide](/docs/agent-runtime/sdk-guide): Deep dive into programmatic workflows
+- [Hybrid Workflows](/docs/agent-runtime/hybrid-workflows): Combine visual and code approaches for the best of both worlds

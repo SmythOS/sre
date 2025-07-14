@@ -1,0 +1,48 @@
+    
+# Tutorial: Document Summarizer Agent
+
+This agent is responsible for extracting the content of any PDF file and creating a detailed summary from it.
+
+
+<Youtube videoId="I4PLRHQA8Vc" title="SmythOS - Document Summarizer Agent" />
+
+## PDF Crowd API Key
+
+1. Go to https://pdfcrowd.com/ and create an account if you don’t have one yet.
+2. Navigate to the left side bar and click “API v2 License”. Copy your API Key and store in a secure location, or you can add them to your SmythOS vault. Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your keys to the vault.
+
+<Image src="/docs/img/document_summarizer_agent/1.png" alt="alt text"/>
+
+## Agent Setup
+
+1. In SmythOS, navigate to the templates tab. 
+
+<Image src="/docs/img/document_summarizer_agent/2.png" alt="alt text"/>
+
+2. You can scroll down to find the `Document Summarizer` agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/document_summarizer_agent/3.png" alt="alt text"/>
+
+3. Allow the template to initialize and configure.
+
+### Agent Variables Setup
+
+1. Within the builder, click the `Agent Variables` button. These are the values that can be used across any component.
+
+<Image src="/docs/img/document_summarizer_agent/4.png" alt="alt text"/>
+
+2. Enter your PDFCrowd username and click the key icon and select your stored PDFCrowd API key from your vault.
+
+<Image src="/docs/img/document_summarizer_agent/5.png" alt="alt text"/>
+
+3. Then, click `Save` to save your configuration.
+
+<Image src="/docs/img/document_summarizer_agent/6.png" alt="alt text"/>
+
+### PDF to Text Component Setup
+
+1. In the builder, locate the Pdf to Text component. Click the gear icon to open the setting and select your stored PDFCrowd API key from your vault. Then, don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/document_summarizer_agent/7.png" alt="alt text"/>
+
+2. You’re all set!

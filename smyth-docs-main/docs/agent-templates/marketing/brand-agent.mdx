@@ -1,0 +1,396 @@
+---
+title: Brand Agent
+description: A comprehensive tutorial on setting up and testing a Brand Agent in SmythOS.
+---
+# Tutorial: Brand Agent
+
+<Youtube videoId="3tpI32BH778" title="SmythOS - Brand Agent" />
+
+## Introduction
+
+Before delving into the specifics of workflow components, we highly recommend taking a look at this [section](https://app.smythos.com/doc#/basics/workflows). This visual guide will help you gain a foundational understanding of the basic behaviors and functionalities of the components within a workflow.
+
+## Settings
+
+> **Note:** The `Brand` agent is available as a template, allowing you to use it for experimentation and exploration of its functionality and structure.
+
+<Image
+  src="/docs/img/brand_agent/agentTemplate.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+The creation process fundamentally requires two key elements: a name for the agent and a description of its function.
+
+- **Name:** Assign a unique and descriptive name to your agent, reflecting its purpose or function.
+- **Description:** Offer a brief yet clear summary of what the agent is designed to do or its primary functionalities. This step is crucial for understanding the agent’s role and capabilities swiftly.
+
+
+In this case we will use the following name and description:
+
+- **Name:** *Agent Smyth*
+- **Description:** >*This agent is specially made to give detailed and accurate answers about Smyth. Make sure to stay on topic and only respond to questions about Smyth and related issues. If the question is not about Smyth, please understand that it focuses only on topics related to Smyth. Also choose not to talk about Smyth's competitors or share information about them.*
+
+<Image
+  src="/docs/img/brand_agent/createAgent.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+## Setting Up Components
+
+### API Endpoint
+
+To initiate our setup, the first component we need to use is the **API endpoint**. This serves as the gateway, enabling our agent to communicate and interact with the external world.
+
+This component requires both a **name** and a **description**. For this example, let's assign the following details:
+
+- **Endpoint:** *smyth_questions*
+- **Description:** >*This specific endpoint is carefully made to handle and answer many different questions that are only about Smyth.*
+
+<Image
+  src="/docs/img/brand_agent/apiEndpointDetails.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+By setting up these guidelines, we make sure the agent uses this endpoint when dealing with questions about **SmythOS**.
+
+Next, we need to specify the inputs and outputs. Given that this component will solely be processing questions, let's establish an input named **question** with the following characteristics:
+
+- **Name:** *question*
+- **Description:** *This input field is designed to capture the entire range of questions posed by users.*
+
+We will keep the **Color** and **Optional** settings in their default states, as they are not mandatory for this particular example and can be left as-is.
+
+<Image
+  src="/docs/img/brand_agent/apiEndpointInputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+We don't need much when it comes to outputs. We just need to set up an output to get the **question**. Let's make an output and call it **body.question**. With this name, we can easily pull out the **question** from the **body** output. If you'd like to learn more about how **API endpoint** components work, please take a look at the [Reference](https://app.smythos.com/doc#/components/APIEndpoint) section.
+
+<Image
+  src="/docs/img/brand_agent/apiEndpointOutputs.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+### Data lookup
+
+The next important part of our setup is the **Data Lookup**. This is the main source of information that the agent uses to answer questions from users.
+
+First, we need to upload the data source, and it can be uploaded in various formats. To learn more about this, please see the [Reference](https://app.smythos.com/doc#/components/APIEndpoint) section. In our situation, we will use this document ([link to document](https://docs.google.com/document/d/1qVXm-djAgCqyuzDOYdH7CM6MSFspKS6ivrXVPcIP-5o/edit?usp=sharing)) as our data source.
+
+With the data source now integrated into **SmythOS**, we can move forward with configuring the **Data Lookup** component:
+
+- **Data Space:** Select the data source you've just uploaded.
+
+For the purpose of this example, we can leave the remaining settings in their default states. Just by choosing the appropriate Data Space, the component is adequately configured to function correctly.
+
+<Image
+  src="/docs/img/brand_agent/dataLookupSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+Next in setting up, we need to connect the parts we've just set up. We do this by taking the **question** from the **API endpoint** and putting it into the **Query** input of the **Data Lookup**. This makes the agent work, as it ensures questions sent to the **API endpoint** go straight to the **Data Lookup**. There, they can be looked at and answered using the data source we've provided.
+    
+## Leveling Up
+
+We have successfully established a basic agent and learned how to assess its performance. Now, let's take a step further to enhance our agent’s capabilities and make it slightly more intricate.
+
+### Integrating Additional Components
+
+#### Classify Questions - Classifier
+
+Right now, our **Data Lookup** component handles all the questions. We want to make this better by categorizing the questions into different groups. Here are the categories we'll concentrate on:
+
+- **Smyth Questions:** This category will include all the questions about **SmythOS**.
+- **Access:** This category covers questions about how to get access to **SmythOS** and questions about how much it costs.
+
+Let's move forward with setting up the Classifier component to better sort incoming queries.
+
+**Prompt:**
+>*Please categorize the input content based on what it's about.*
+>*If the question is about how to get Smyth or how much Smyth costs, put the question in the '**access**' variable.*
+>*If the question is about any other Smyth-related topic, put it in the '**smyth_questions**' variable.*
+>*Only fill in the variable for the right category and leave the other one empty.*
+
+<Image
+  src="/docs/img/brand_agent/classifierSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+Having specified the output variables in the prompt, we'll now proceed to create them:
+
+- **Access Output:**
+  - **Name:** *access*
+  - **Description:** *This category encompasses all other inquiries directly related to SmythOS and its wide array of features.*
+
+<Image
+  src="/docs/img/brand_agent/classifierOutputs1.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+---
+
+- **Smyth Questions Output:**
+  - **Name:** *smyth_questions*
+  - **Description:** *This category is designated for topics that pertain to gaining access to SmythOS, as well as any queries regarding the platform’s pricing details.*
+
+<Image
+  src="/docs/img/brand_agent/classifierOutputs2.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+We will place the **Classifier** component between the **API Endpoint** and the **Data Lookup** components. It will work as a middleman, getting questions from the **API Endpoint**, categorizing them by topic, and sending them to the right place. If a question is about **SmythOS** and its features, the **Classifier** will send it to the **Data Lookup** component to be answered in more detail. However, if the question is about how to get access to **SmythOS** or how much it costs, we will take a different route. Instead, we will use an **LLM Prompt** component to create a good and complete response.
+
+#### Request User Information - LLM Prompt
+
+Now, we'll proceed to set up the **LLM Prompt** component to ensure our agent effectively handles queries related to access and pricing. Here’s how we can configure it:
+
+**Model:** *Echo*
+**Prompt:**
+
+>*Ask the user a first name, last name, email address and company name as optional.*
+>*If the user provide the first name, last name and email address, provide the following information to the **notify_smyth_team** endpoint:*
+>`*first_name`: the first name of the user* >*`last_name`: the last name of the user*
+>*email: the email of the user*
+>*`company_name`: company name of the user*
+>
+>*If the user doesn't provide the first name, last name and email address, keep asking that info.*
+
+<Image
+  src="/docs/img/brand_agent/requestInfoSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+With this Prompt, we want to ask users for their email, name and the company name as optional. We will send all of this information to the **notify_smyth_team** endpoint. We are going to set up this component next.
+
+To make sure the user has a good experience and we get accurate information, the system will keep asking for the email and name until the user gives us valid and complete details.
+
+#### Catch User Information - API endpoint
+
+Moving forward with our plans, we will configure a specialized API endpoint named **notify_smyth_team**. This endpoint is crafted to take in three crucial pieces of information: the user’s name, their email address, and a concise summary of their interaction with the agent.
+
+- **Endpoint:** *notify_smyth_team*
+- **Description:** *This endpoint is meticulously designed to capture the first name, last name, email address, and company name as optional. Utilizing this essential information to promptly notify the Smyth team.*
+
+<Image
+  src="/docs/img/brand_agent/notifyEndpointSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+**Inputs:**
+
+- **Name:** `*first_name*`
+- **Description:** *This input field is designed for quick and easy collection of user first name*
+- **Name:** `*last_name*`
+- **Description:** *This input field is designed for quick and easy collection of user last name*
+- **Name:** *email*
+- **Description:** *This input field is designed for collection of user email address*
+- **Name:** `*company_name*` (optional)
+- **Description:** *This input field is designed for quick and easy collection of user company name*
+
+<Image
+  src="/docs/img/brand_agent/notifyEndpointInput4.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+**Outputs:**
+
+We’ll set up outputs to mirror the inputs, ensuring the data flows seamlessly through the endpoint:
+
+- **Name:** `*first_name*`
+- **Expression:** *body.first_name*
+- **Name:** `*last_name*`
+- **Expression:** *body.last_name*
+- **Name:** *email*
+- **Expression:** *body.email*
+- **Name:** `*company_name*`
+- **Expression:** *body.company_name*
+
+<Image
+  src="/docs/img/brand_agent/notifyEndpointOutput1.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Generate Message - LLM Prompt
+
+With the values of **name**, **email**, and **summary** at our disposal, we are set to craft a personalized message using the **LLM Prompt** component. Let’s proceed with the configuration:
+
+**Prompt:**
+>*Please compose a message to notify Smyth Team saying that a user wants to get in contact. Use the provided name and email. Use the following information.*
+>
+>- *first name = {`{{first_name}}`}*
+>- *last name = {`{{last_name}}`}*
+>- *email = {`{{email}}`}*
+>- *company name = {`{{company_name}}`}*
+
+<Image
+  src="/docs/img/brand_agent/generateMessageSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+**Inputs:**
+
+1. **Name:** `*first_name*`
+2. **Name:** `*last_name*`
+3. **Name:** *email*
+4. **Name:** `*company_name*` (Optional)
+
+**Outputs:**
+
+1. **Name:** *message* (This output captures the plain text of the generated message)
+   - **Expresion:** *Reply.message*
+
+<Image
+  src="/docs/img/brand_agent/generateMessageOutput.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Send Message via Google Chat - API call
+
+For illustrative purposes, we'll walk through the process of sending a message via Google Chat. However, it's important to note that this is just one example of the actions you can perform. Depending on your needs and preferences, you have the flexibility to initiate a variety of other complex actions, such as sending an email or executing more intricate tasks.
+
+Look up the required information on how to send messages to a Google Chat space by checking Google's documentation. Let's proceed to configure the API Call component:
+
+1. **Method:** POST
+2. **URL:** https://chat.googleapis.com/v1/spaces/UNIQUE_SPACE_IDENTIFIER/messages
+   - **Note:** Ensure to replace "UNIQUE_SPACE_IDENTIFIER" with the actual identifier of your Google Chat space.
+3. **Content-Type:** application/json
+4. **Body:**
+```json
+{
+   "text": "{{message}}"
+}
+```
+- Here, we dynamically incorporate the message input variable to transmit the content.
+
+<Image
+  src="/docs/img/brand_agent/apiCallSettings.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+**Inputs:**
+
+1. **Name:** *message*
+   - **Note:** This input is designated to receive the message generated by the LLM Prompt component, ready to be dispatched to the Google Chat space.
+
+<Image
+  src="/docs/img/brand_agent/apiCallInput.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+#### Update Agent Description
+
+The agent description has been updated to accurately reflect its enhanced capabilities:
+
+- **Description:**
+
+  > *This is extremely important to my mental health. This AI agent is expertly designed to follow these instructions:*
+  > 1. *Provide accurate responses exclusively focused on SmythOS.*
+  > 2. *Always ask a question at the end of an answer to encourage the user to consider purchasing the SmythOS product.*
+  > 3. *Always request the user's first name, last name, email address, and company name (optional) before notifying the Smyth Team.*
+  > 4. *Avoid discussing competitors or entertaining off-topic inquiries.*
+  > 5. *Do not fabricate user information.*
+  > 6. *Retain user information throughout the conversation.*
+  > 7. *Ensure each user is notified only once to prevent duplicate alerts.*
+
+#### Key Points Explained:
+
+- **Point 2:** The agent is designed to engage users by asking relevant questions at the end of each response, promoting interest in SmythOS.
+- **Point 3, 5, 6:** These guidelines ensure the agent accurately collects and remembers user information without fabrication, vital for effective communication and notification purposes.
+- **Point 7:** To maintain efficiency and avoid redundancy, the agent is programmed to send only one notification per user.
+
+These updates reinforce the agent's role in user engagement and efficient notification management within SmythOS.
+
+<Image
+  src="/docs/img/brand_agent/agentDescription.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+The principles demonstrated here can be adapted freely and applied to various other platforms and scenarios, offering you a versatile foundation for creating robust and dynamic interactions within your **SmythOS** agent.
+
+    
+## Test
+
+**SmythOS** offers these embodiment options inside the Builder so we can assess the agent behavior.
+
+- **Chatbot Embodiment:** This option transforms the agent into a web-based conversational interface, allowing for real-time interactions and responses within a chat format.
+- **API Embodiment:** This exposes the agent’s workflow as a hosted API, complete with auto-generated documentation. It facilitates direct endpoint calls or integration within applications, providing a flexible way to connect and interact with the agent’s capabilities.
+- **AI Platform Plugins Embodiment:** This enables deployment of the agent as a plugin on AI platforms like ChatGPT, seamlessly integrating its functionalities into existing systems and expanding its reach.
+
+<Image
+  src="/docs/img/brand_agent/embodiments.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+These different ways to set up **SmythOS** mean it can work well for many types of uses and what different people prefer.
+Given that we've just created a Brand Agent, utilizing the **Chatbot Embodiment** is an excellent strategy for testing the agent’s performance in real-world scenarios.
+
+<Image
+  src="/docs/img/brand_agent/chatbot.png"
+  alt="alt text"
+  maxWidth={900}
+  imgStyle={{ border: '3px solid #3efcc2', borderRadius: '10px' }}
+/>
+
+Let's proceed to activate this embodiment and observe how our agent responds to a series of questions.
+
+- **Brand-Related Questions:**
+>*What is **SmythOS**?*
+>
+>*What are the main features of **SmythOS**?*
+>
+>*Can I create multi-step conversations with **SmythOS**?*
+
+Given our setup, the agent should be well-equipped to provide accurate and relevant answers to these inquiries, as they are directly related to **SmythOS**.
+
+- **Competitor and Comparison Questions:**
+>*Are there better options than **SmythOS**?*
+>
+>*Tell me about ChatGPT*
+
+Given how we've set things up, the agent should politely avoid answering these kinds of questions. It should stick to our rule of not talking about competitors or other options.
+
+- **Off-Topic Questions:**
+>*What day is today?*
+>
+>*How is the weather?*
+
+The agent should also not answer these questions. We have set it up to only talk about **SmythOS**, keeping the conversation on-topic and relevant. By testing like this, we can check if our setup works as we want it to. This helps us make sure our Brand Agent acts right, giving us useful information and showing us where we might make it better.

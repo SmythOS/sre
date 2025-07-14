@@ -1,0 +1,111 @@
+---
+title: Use Slack with SmythOS
+description: Integrate Slack into your SmythOS agent using direct components or deploy via MCP for real-time team collaboration and notifications.
+keywords: [Slack, SmythOS, Slack Bot, Slack integration, MCP, Model Context Protocol, team chat, automation, notifications, OAuth, Send Message, Slack API]
+---
+
+# Use Slack with SmythOS
+
+> Connect your agents to Slack for real-time team communication, automated alerts, and contextual interactions via components or Model Context Protocol (MCP).
+
+<InfoCallout> **TL;DR:** Authenticate your Slack app, configure the Send Message component, or deploy using [Model Context Protocol (MCP)](//docs/agent-deployments/deployments/deploy-as-mcp-server) to route intelligent agent outputs into Slack. </InfoCallout>
+
+<Divider />
+
+## Why Use Slack With Your Agent?
+
+Slack is a core communication tool for modern teams. Integrating it with SmythOS allows you to:
+
+- Trigger alerts, summaries, or updates from automated workflows
+- Send messages based on logic, triggers, or API events
+- Send alerts or summaries directly to teams
+- Build chatOps flows for faster task execution
+- Route responses from AI agents into Slack threads
+- Customize interactions based on channel, user, or context
+
+With both direct Slack component integration **and** Model Context Protocol (MCP), you can choose how and where Slack fits in.
+
+<Divider />
+
+## Prerequisites
+
+Make sure you have:
+
+- A Slack Workspace and Slack App
+- Bot User enabled with messaging scopes
+- Your **Bot User OAuth Token**
+- Optional: Store the token in [Vault → API Keys](/docs/agent-studio/key-concepts/vault)
+
+<Divider />
+
+## Option 1: Send Slack Messages Using the Component
+
+### Step 1: Get Your Slack Bot Token
+
+1. Create a Slack App at [Slack API Console](https://api.slack.com/apps)
+2. Enable the Bot User under **App Features**
+3. Install the app under **OAuth & Permissions**
+4. Copy your **Bot User OAuth Token**
+5. Add it manually or store it in Vault
+
+<InfoCallout> Use Vault for secure, multi-agent reuse and better token management. </InfoCallout>
+
+### Step 2: Configure the Send Message Component
+
+Open the Slack **Send Message** component in your workflow.
+
+- Set authentication to use Vault key or paste token
+- Define inputs for your message
+
+```json
+{
+  "channel_id": "C12345678",
+  "text": "Your agent has completed the task."
+}
+```
+
+**Inputs Required:**
+- `channel_id`: ID of the Slack channel
+- `text`: Message content (≤ 2000 characters)
+
+### Step 3: Output Structure
+
+Once the message sends, the outputs include:
+
+- `response`: Full Slack message object
+- `headers`: Metadata from Slack API
+- `status`: HTTP status code
+- `msgObj`: Message ID, content, timestamp
+
+<Divider />
+
+## Option 2: Deploy Slack Integration via Model Context Protocol (MCP)
+
+If your agent uses memory, roles, or multi-modal workflows, deploy with [MCP](/docs/agent-deployments/deployments/deploy-as-mcp-server) to:
+
+- Route outputs to Slack after deeper context processing
+- Combine Slack notifications with email, Discord, or logging
+- Enable multi-agent collaboration across departments
+
+**Sample Payload to MCP:**
+```json
+{
+  "input": "New ticket submitted in support.",
+  "platform": "slack",
+  "channel_id": "C024BE91L"
+}
+```
+
+Follow this with a `Send Message` component for delivery.
+
+<InfoCallout> MCP is best for routing Slack messages after memory/context-based decision logic. </InfoCallout>
+
+<Divider />
+
+## What’s Next?
+
+- Attach Slack messaging to your [Chatbot Interface](/docs/agent-deployments/deployments/deploy-as-chatbot)
+- Use [Vault](/docs/agent-studio/key-concepts/vault) to manage tokens securely
+- Track delivery and failures using [Agent Logs](/docs/agent-studio/manage-agents/logs)
+
+<PromptCard prompt="Connect your SmythOS agent to Slack using a secure bot token and deliver automated updates with the Send Message component or via MCP." />

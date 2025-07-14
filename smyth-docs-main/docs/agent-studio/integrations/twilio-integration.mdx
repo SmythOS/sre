@@ -1,0 +1,324 @@
+---
+title: Twilio Integration
+description: Connect SmythOS to Twilio to programmatically send and receive SMS and WhatsApp messages, and manage communication workflows directly from your agents.
+og:title: SmythOS & Twilio - Automate Your Communication Workflows
+og:description: Learn to integrate Twilio with SmythOS. Empower your agents to send automated SMS notifications, WhatsApp messages, and manage communication services like Rate Limits.
+og:image: /img/integrations/smythos_twilio.png
+keywords: [Twilio SmythOS Integration, Connect Twilio to SmythOS, SmythOS SMS API, Automate SMS, WhatsApp API, No-Code Communication, Twilio REST API]
+---
+# Twilio Integration with SmythOS
+
+> **Want to send automated SMS or WhatsApp messages?** Connect Twilio to SmythOS and empower your agents to send transactional notifications, alerts, and messages directly from your workflows.
+
+<InfoCallout title="TL;DR">
+Securely link your Twilio account to SmythOS using your Account SID and Auth Token. These credentials must be Base64 encoded. Then, use our components to send SMS and WhatsApp messages or manage services like Rate Limits.
+</InfoCallout>
+
+## List of Twilio Components
+Quickly compare Twilio components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send SMS**](#send-sms) | Write | Sends a text message to a specified phone number. | <Badge type="required" /> `accountSID`, `twilioPhoneNumber`, `recipientPhoneNumber`, `body` | `messageSID`, `status` | Sending appointment reminders or 2FA codes. |
+| [**Send WhatsApp Message**](#send-whatsapp-message)| Write | Sends a message to a specified WhatsApp number. | <Badge type="required" /> `accountSID`, `twilioWhatsAppNumber`, `recipientWhatsAppNumber`, `body`| `messageSID`, `status` | Sending order confirmations or support updates via WhatsApp. |
+| [**Create Rate Limit**](#create-rate-limit)| Write | Creates a new rate limit for a Twilio service. | <Badge type="required" /> `serviceSID`, `description`, `uniqueName`| `rateLimitSID` | Protecting your services from abuse. |
+| [**Fetch Rate Limit**](#fetch-rate-limit) | Read | Retrieves the details of a specific rate limit. | <Badge type="required" /> `serviceSID`, `rateLimitSID`| `description`, `url` | Auditing the configuration of a specific rate limit. |
+| [**List Rate Limits**](#list-rate-limits) | Read | Retrieves a list of all rate limits for a service. | <Badge type="required" /> `serviceSID` | `rateLimits` | Getting an overview of all configured rate limits. |
+| [**Delete Rate Limit**](#delete-rate-limit) | Write | Permanently deletes a specific rate limit. | <Badge type="required" /> `serviceSID`, `rateLimitSID`| `Response` | Removing an old or unnecessary rate limit. |
+| [**Create Webhook**](#create-webhook) | Write | Creates a new webhook for a Twilio service. | <Badge type="required" /> `serviceSID`, `webhookUrl`, `friendlyName`| `webhookSID` | Configuring real-time event notifications. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Twilio with Your Agent?</summary>
+
+Twilio is a leading cloud communications platform. Integrating it with SmythOS allows you to build agents that can communicate with users and systems via SMS and WhatsApp.
+
+- **Automated Notifications:** Create agents that send real-time SMS alerts for critical system events, new sales leads, or important updates, ensuring immediate notification without relying on email.
+- **Transactional Messaging:** Automatically send order confirmations, shipping updates, or appointment reminders to customers via SMS or WhatsApp for a better customer experience.
+- **Two-Factor Authentication (2FA):** Build a secure login flow where an agent generates a one-time password and sends it to a user's phone via SMS for verification.
+- **Interactive Workflows:** While these components focus on sending, you can build agents that are triggered by incoming messages (via webhooks) to create interactive bots for customer support or information retrieval.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Twilio account** with a provisioned phone number (for SMS) or WhatsApp sender.
+- Your Twilio **Account SID** and **Auth Token**.
+
+<Divider />
+
+## Getting Started With Twilio
+
+The connection between SmythOS and Twilio is configured using your Account SID and Auth Token, which must be Base64 encoded.
+
+### Step 1: Get Your Twilio Credentials
+1.  Log in to the [Twilio Console](https://www.twilio.com/console).
+2.  On your main dashboard, you will find your **Account SID** and **Auth Token**. Copy both of them.
+
+### Step 2: Base64 Encode Your Credentials
+Twilio's API uses Basic Authentication. You need to combine your credentials and Base64 encode them.
+1.  Combine your credentials into a single string with a colon in between: `YOUR_ACCOUNT_SID:YOUR_AUTH_TOKEN`.
+2.  Use a Base64 encoding tool (like the "Encode/Decode" component in SmythOS) to encode this entire string.
+3.  Copy the resulting Base64 encoded string (e.g., `QUMxMjM0NTY...ZmRhNzg5`).
+
+### Step 3: Store Your Encoded Key in SmythOS Vault
+Your encoded key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your **Base64 encoded string** as the value. Give it a memorable name, like `twilio_base64_auth`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 4: Configure a Twilio Component
+1.  In your SmythOS agent graph, drag and drop any Twilio component.
+2.  Click the component to open its **Settings** panel.
+3.  In the authentication field (e.g., `Base64 Encoded...`), select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Base64 encoded secret from the Vault to **each** Twilio component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Twilio Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send a text message** to a customer | A phone number | [Send SMS](#send-sms) | The standard component for sending messages via the cellular network. |
+| **Send a message over the internet** to a WhatsApp user | A WhatsApp number | [Send WhatsApp Message](#send-whatsapp-message) | Specifically for interacting with users on the WhatsApp platform. |
+| **Protect a service** from too many requests | A `serviceSID` | [Create Rate Limit](#create-rate-limit) | The primary method for defining usage rules for your Twilio services. |
+| **Remove a previously set rate limit** | A `rateLimitSID` | [Delete Rate Limit](#delete-rate-limit) | The standard way to permanently remove a rate limit configuration. |
+| **Set up a URL to receive event data** | A `serviceSID` | [Create Webhook](#create-webhook) | Essential for building interactive, two-way communication agents. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Twilio component.
+
+### <a name="send-sms"></a>Send SMS
+Sends a text message from your Twilio phone number to a recipient's phone number.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `accountSID` | string | Yes | The SID of your Twilio account. |
+| `twilioPhoneNumber` | string | Yes | Your Twilio phone number in E.164 format (e.g., `+15551234567`). |
+| `recipientPhoneNumber` | string | Yes | The recipient's phone number in E.164 format. |
+| `body` | string | Yes | The text content of the SMS message. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageSID` | string | The unique identifier (SID) for the sent message. |
+| `status` | string | The delivery status of the message (e.g., `queued`, `sending`, `sent`). |
+| `Response`| object | The full, raw JSON response from the Twilio API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent sends a two-factor authentication (2FA) code to a user's phone number when they attempt to log in from a new device.
+</TipCallout>
+
+<Divider/>
+
+### <a name="send-whatsapp-message"></a>Send WhatsApp Message
+Sends a message from your Twilio WhatsApp number to a recipient's WhatsApp number.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `accountSID` | string | Yes | The SID of your Twilio account. |
+| `twilioWhatsAppNumber` | string | Yes | Your Twilio WhatsApp number, prefixed with `whatsapp:` (e.g., `whatsapp:+14155238886`). |
+| `recipientWhatsAppNumber` | string | Yes | The recipient's number, prefixed with `whatsapp:`. |
+| `body` | string | Yes | The content of the WhatsApp message. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageSID` | string | The unique identifier (SID) for the sent message. |
+| `status` | string | The delivery status of the message. |
+| `Response`| object | The full, raw JSON response from the Twilio API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An e-commerce agent sends an order confirmation and tracking link to a customer via WhatsApp for a more interactive experience.
+</TipCallout>
+
+<WarningCallout title="WhatsApp Templates">
+To initiate conversations with users, you must typically use a pre-approved WhatsApp Message Template. Direct freeform messages are usually only allowed within a 24-hour window after the user messages you first.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="create-rate-limit"></a>Create Rate Limit
+Creates a new rate limit for a Twilio service, such as Verify, to control request frequency.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `serviceSID` | string | Yes | The SID of the service to apply the rate limit to (e.g., a Verify service SID). |
+| `description`| string | Yes | A human-readable description of the rate limit. |
+| `uniqueName` | string | Yes | A unique name for the rate limit, assigned by the developer. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `rateLimitSID`| string | The unique SID of the newly created rate limit. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent uses this component to ensure that a single user cannot request more than five 2FA codes from a specific Verify service within a 10-minute window, preventing SMS spam and abuse.
+</TipCallout>
+
+### <a name="fetch-rate-limit"></a>Fetch Rate Limit
+Retrieves the details of a specific, existing rate limit.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `serviceSID` | string | Yes | The SID of the service the rate limit belongs to. |
+| `rateLimitSID`| string | Yes | The unique SID of the rate limit resource to fetch. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | The unique URL referencing the fetched rate limit. |
+| `description`| string | The description of the rate limit. |
+| `Response`| object | The raw JSON response from the API, containing all rate limit details. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An auditing agent fetches the details of a rate limit to verify its configuration and ensure it meets compliance requirements.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-rate-limits"></a>List Rate Limits
+Retrieves a list of all rate limits that have been set for a specific service.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `serviceSID` | string | Yes | The SID of the service whose rate limits you want to list. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `rateLimits`| array | An array of rate limit objects associated with the service. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A security agent runs periodically to list all rate limits on a service to ensure no unauthorized or misconfigured limits exist.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-rate-limit"></a>Delete Rate Limit
+Permanently removes a specific rate limit.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `serviceSID` | string | Yes | The SID of the service the rate limit belongs to. |
+| `rateLimitSID`| string | Yes | The unique SID of the rate limit resource to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a service is decommissioned, a cleanup agent automatically deletes all associated rate limits to keep the Twilio account tidy.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="create-webhook"></a>Create Webhook
+Creates a new webhook for a Twilio service to receive real-time event notifications.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `serviceSID` | string | Yes | The SID of the service to create the webhook for. |
+| `webhookUrl` | string | Yes | The URL that Twilio will send event data to. This must be a publicly accessible endpoint. |
+| `friendlyName`| string | Yes | A descriptive name for the webhook for easy identification. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `webhookSID`| string | The unique SID of the newly created webhook. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+To build an interactive SMS bot, an agent first uses this component to register its own webhook URL with a Twilio service. This tells Twilio where to send incoming message data, which can then trigger the agent to process the message and reply.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Your `Account SID` and `Auth Token` provide full access to your Twilio account. Always store the Base64 encoded string in the SmythOS `Vault`.
+* **Use E.164 Format:** All phone numbers should be in E.164 format (`[+][country code][phone number]`, e.g., `+14155238886`). This is the international standard and ensures reliable message delivery.
+* **Handle Message Status:** Twilio messages go through several statuses (`queued`, `sending`, `sent`, `delivered`, `failed`). For critical messages, your agent may need to poll the message status using its `messageSID` to confirm delivery.
+* **Verify Numbers:** To send SMS messages from your Twilio account to a personal number during development, you must first verify that number in your Twilio Console.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Base64 encoded `Account SID:Auth Token` string is incorrect or invalid.
+  * **Solution:** Carefully re-create the `Account SID:Auth Token` string, ensure there are no extra spaces, and re-encode it. Update the secret in your SmythOS Vault.
+
+* **Error: `21211` - Invalid 'To' Phone Number**
+  * **Cause:** The `recipientPhoneNumber` is not a valid phone number or is not in the correct E.164 format.
+  * **Solution:** Ensure the recipient's number is correct and formatted with a `+` and the country code (e.g., `+1...`).
+
+* **Error: `21610` - Unverified 'To' Number**
+  * **Cause:** You are trying to send an SMS from a trial Twilio account to a phone number that has not been verified in your Twilio Console.
+  * **Solution:** Log in to Twilio and add the recipient's number to your list of verified phone numbers.
+
+* **WhatsApp Message Fails**
+  * **Cause:** You may be trying to send a freeform message outside of the 24-hour customer service window, or your WhatsApp sender is not properly configured.
+  * **Solution:** Ensure you are using an approved Message Template if initiating a conversation. Check the status of your WhatsApp sender in the Twilio Console.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful communication workflows with the **SmythOS Twilio Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your calendar. 15 minutes before a meeting, it sends an SMS reminder to all attendees.
+    * Powers a password reset flow. A user requests a reset, and the agent generates a secure, one-time code and sends it to their phone via SMS.
+    * Monitors an e-commerce platform. When an order ships, the agent sends a WhatsApp message to the customer with their tracking number.
+
+* **Explore Other Integrations:**
+    * Combine Twilio with a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration). When a new user record is created, trigger an agent to send them a welcome SMS.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to generate a personalized message, then use Twilio to send it to a user.
+    * For two-way communication, configure a Twilio webhook to trigger a SmythOS agent when an incoming SMS is received. The agent can then process the message and reply.

@@ -1,0 +1,642 @@
+---
+title: GoHighLevel Integration
+description: Connect SmythOS to GoHighLevel to automate your marketing, sales, and CRM workflows, managing contacts and opportunities directly from your agents.
+og:title: SmythOS & GoHighLevel - Automate Your All-in-One Platform
+og:description: Learn to integrate GoHighLevel with SmythOS. Empower your agents to create and manage contacts, tasks, and sales opportunities, streamlining your entire business operations.
+og:image: /img/integrations/smythos_gohighlevel.png
+keywords: [GoHighLevel SmythOS Integration, Connect GoHighLevel to SmythOS, SmythOS GHL, Automate CRM, GoHighLevel API, No-Code Marketing Automation]
+---
+# GoHighLevel Integration with SmythOS
+
+> **Want to connect all your marketing, sales, and CRM operations?** Connect GoHighLevel to SmythOS and empower your agents to automatically create contacts, manage opportunities, and assign tasks.
+
+<InfoCallout title="TL;DR">
+Securely link your GoHighLevel account to SmythOS using a Location or Agency API key. Then, use our suite of components to automate your entire client lifecycle, from capturing new leads to managing tasks and sales pipelines.
+</InfoCallout>
+
+## List of GoHighLevel Components
+Quickly compare GoHighLevel components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Contact**](#create-contact) | Write | Creates a new contact in a specific location. | <Badge type="required" /> `email`<br/><Badge type="optional" /> `firstName` | `id` | Adding a new lead from a web form. |
+| [**Get Contact**](#get-contact) | Read | Retrieves a contact by its unique ID. | <Badge type="required" /> `contactId` | `id`, `email`| Fetching contact details for personalization. |
+| [**Get Contacts**](#get-contacts) | Read | Retrieves a list of all contacts in a location. | <Badge type="required" /> `trigger`<br/><Badge type="optional" /> `limit` | `contacts` | Syncing your contacts to an external system. |
+| [**Search Contact By Email**](#search-contact-by-email)| Search | Finds contacts by their email address. | <Badge type="required" /> `email_query` | `contacts` | Checking if a lead already exists before creating it. |
+| [**Search Contact By Phone**](#search-contact-by-phone)| Search | Finds contacts by their phone number. | <Badge type="required" /> `phone_query` | `contacts` | Finding a contact record from a caller ID. |
+| [**Update Contact**](#update-contact) | Write | Updates the fields of an existing contact. | <Badge type="required" /> `contactId`, `Body` | `id` | Updating a contact's details from a CRM. |
+| [**Delete Contact**](#delete-contact) | Write | Permanently deletes a contact by their ID. | <Badge type="required" /> `contactId`| `Response` | Handling data removal requests. |
+| [**Add Contact Tags**](#add-contact-tags) | Write | Adds one or more tags to a contact. | <Badge type="required" /> `contactId`, `tags` | `tags` | Segmenting contacts based on their actions. |
+| [**Create Note**](#create-note) | Write | Adds a note to a specific contact's record. | <Badge type="required" /> `contactId`, `body` | `id` | Logging a summary of a phone call. |
+| [**Get Contact Notes**](#get-contact-notes) | Read | Retrieves all notes associated with a contact. | <Badge type="required" /> `contactId` | `notes` | Reviewing a contact's history before an appointment. |
+| [**Update Note**](#update-note) | Write | Updates the content of an existing note. | <Badge type="required" /> `contactId`, `noteId`, `body` | `id`, `body` | Correcting or adding information to a previous note. |
+| [**Delete Note**](#delete-note) | Write | Deletes a specific note from a contact's record. | <Badge type="required" /> `contactId`, `noteId` | `Response` | Removing temporary or irrelevant notes. |
+| [**Get Contact Appointments**](#get-contact-appointments) | Read | Retrieves all appointments for a specific contact. | <Badge type="required" /> `contactId` | `Response` | Checking a client's appointment history. |
+| [**Delete Contact Campaigns**](#delete-contact-campaigns)| Write | Removes a contact from all campaigns. | <Badge type="required" /> `contactId` | `Response` | Handling a global marketing unsubscribe request. |
+| [**Create Task**](#create-task) | Write | Creates a new task and assigns it to a contact. | <Badge type="required" /> `contactId`, `title`, `dueDate` | `id` | Automatically creating a "Follow Up" task. |
+| [**Get Task**](#get-task) | Read | Retrieves a task for a contact by ID. | <Badge type="required" /> `contactId`, `taskId` | `id`, `title`| Checking if a task is complete. |
+| [**Get Contact Tasks**](#get-contact-tasks) | Read | Retrieves all tasks associated with a specific contact. | <Badge type="required" /> `contactId` | `tasks` | Reviewing all open items for a client before a call. |
+| [**Update Task**](#update-task) | Write | Updates the title, description, and due date of a task. | <Badge type="required" /> `contactId`, `taskId`, `title` | `id` | Rescheduling a task. |
+| [**Update Task Status**](#update-task-status) | Write | Updates the status of a task to complete or incomplete. | <Badge type="required" /> `contactId`, `taskId`, `status`| `id` | Marking a task as done from another system. |
+| [**Delete Task**](#delete-task) | Write | Deletes a task for a contact. | <Badge type="required" /> `contactId`, `taskId`| `Response` | Removing a cancelled task. |
+| [**Create Opportunity**](#create-opportunity) | Write | Creates a new opportunity (deal) in a pipeline. | <Badge type="required" /> `pipelineId`, `title`, `stageId`, `contactId` | `id`, `name` | Starting a new sales process for a qualified lead. |
+| [**Get Opportunity**](#get-opportunity) | Read | Retrieves a specific opportunity by its ID. | <Badge type="required" /> `pipelineId`, `opportunityId` | `id`, `name` | Getting details for a sales report. |
+| [**Get Opportunities**](#get-opportunities) | Read | Retrieves all opportunities from a specific pipeline. | <Badge type="required" /> `pipelineId` | `opportunities`| Generating a sales pipeline report. |
+| [**Update Opportunity**](#update-opportunity) | Write | Updates the properties of an existing opportunity. | <Badge type="required" /> `opportunityId`, `Body`| `id`, `name`| Moving a deal to the next stage in the pipeline. |
+| [**Delete Opportunity**](#delete-opportunity) | Write | Deletes an opportunity by its ID. | <Badge type="required" /> `pipelineId`, `opportunityId` | `Response` | Removing a lost or invalid opportunity. |
+| [**Get Pipelines**](#get-pipelines) | Read | Retrieves all sales pipelines in a location. | <Badge type="required" /> `trigger` | `pipelines`| Finding the correct pipeline ID. |
+| [**Get Workflows**](#get-workflows) | Read | Retrieves all automation workflows in a location. | <Badge type="required" /> `trigger` | `workflows`| Auditing your automated campaigns. |
+| [**Create Tag**](#create-tag) | Write | Creates a new tag that can be used on contacts. | <Badge type="required" /> `name` | `id` | Setting up a new "Q4-Promo" tag. |
+| [**Get All Tags**](#get-all-tags) | Read | Retrieves all tags available in a location. | <Badge type="required" /> `trigger` | `tags` | Finding the correct tag to apply to a contact. |
+| [**Find User by Email**](#find-user-by-email) | Search | Finds a user by their email address (requires Agency Key). | <Badge type="required" /> `email` | `id` | Finding a user's ID to assign tasks or permissions. |
+| [**Get All Agency Users**](#get-all-agency-users) | Read | Retrieves all users in an agency (requires Agency Key). | <Badge type="required" /> `trigger` | `users`| Auditing all user accounts in the agency. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate GoHighLevel with Your Agent?</summary>
+
+GoHighLevel is an all-in-one platform for marketing and sales. Integrating it with SmythOS allows you to build powerful, end-to-end automations that connect every part of your business.
+
+- **Automate Lead Capture and Nurturing:** Create agents that capture leads from any source (web forms, social media, ads) and instantly create a `Contact` in GoHighLevel, add them to a `Workflow`, and create a sales `Opportunity`.
+- **Streamline Sales Operations:** Build an agent that, when a deal is moved to a new stage in your pipeline, automatically creates and assigns a `Task` to the sales rep, such as "Send follow-up email."
+- **Data Synchronization:** Keep your GoHighLevel CRM perfectly in sync with your other business tools. An agent can update contact information in GoHighLevel whenever it changes in your accounting software or e-commerce platform.
+- **Centralized Task Management:** Use agents to create tasks in GoHighLevel based on events from other applications, ensuring all your team's to-dos are in one place.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **GoHighLevel account**.
+- A GoHighLevel **API Key** (either for a specific Location or for your entire Agency).
+
+<Divider />
+
+## Getting Started With GoHighLevel
+
+The connection between SmythOS and GoHighLevel is configured using a secure API Key.
+
+### Step 1: Get Your GoHighLevel API Key
+GoHighLevel has two types of keys. Choose the one that fits your needs:
+- **Location API Key:** For accessing data within a single sub-account.
+    1. Log in to your GoHighLevel dashboard and switch to the desired **sub-account**.
+    2. Go to **Settings** > **API Keys** (under the "Business Info" section in some views).
+    3. Click to generate or copy your Location API Key.
+- **Agency API Key:** For agency-level access across multiple sub-accounts.
+    1. From your main Agency dashboard, go to **Settings** > **API Keys**.
+    2. Here you can find your Agency API Key.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your GoHighLevel API Key as the value. Give it a memorable name, like `gohighlevel_location_key` or `gohighlevel_agency_key`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a GoHighLevel Component
+1.  In your SmythOS agent graph, drag and drop any GoHighLevel component.
+2.  Click the component to open its **Settings** panel.
+3.  In the API Key field, select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** GoHighLevel component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which GoHighLevel Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new lead** to your CRM | An email, name, and other details | [Create Contact](#create-contact) | The standard method for creating a new contact record in a location. |
+| **Find a contact** before updating them | An email or phone number | [Search Contact By Email](#search-contact-by-email) | The best way to check for duplicates and get a `contactId`. |
+| **Create a new task** for a team member | A `contactId` and a `title` | [Create Task](#create-task) | The primary method for adding to-do items related to a contact. |
+| **Start a new sales opportunity** | A `pipelineId` and `contactId` | [Create Opportunity](#create-opportunity)| Adds a new deal to your sales pipeline for tracking. |
+| **Tag a contact** after they take an action | A `contactId` and tags | [Add Contact Tags](#add-contact-tags) | Allows you to segment your contacts for targeted marketing. |
+| **Get a list of all your sales pipelines** | Your entire location | [Get Pipelines](#get-pipelines) | Necessary to find the correct `pipelineId` to create opportunities in. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each GoHighLevel component.
+
+### <a name="create-contact"></a>Create Contact
+Creates a new contact record within a specific GoHighLevel location.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address of the new contact. |
+| `firstName` | string | Optional| The contact's first name. |
+| `lastName` | string | Optional| The contact's last name. |
+| `phone` | string | Optional| The contact's phone number. |
+| `companyName`| string | Optional| The contact's company. |
+| `tags` | array | Optional| An array of strings to tag the contact with. |
+| `customField`| object | Optional| A key-value object for custom fields. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the newly created contact. |
+| `locationId`| string | The ID of the location where the contact was created. |
+| `Response`| object | The full, raw JSON response from the GoHighLevel API. |
+
+<TipCallout title="Use Case">
+An agent captures lead information from a Facebook Lead Ad and uses this component to automatically create a new contact in GoHighLevel, tagging them as "FB-Lead".
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contacts"></a>Get Contacts
+Retrieves a paginated list of all contacts within a location.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value to trigger the component's execution. |
+| `limit` | integer| Optional| The number of contacts to retrieve per page. Default: `20`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `contacts` | array | An array of contact objects. |
+| `Response`| object | The raw JSON response from the API, which includes pagination metadata. |
+
+<TipCallout title="Use Case">
+A data-sync agent runs nightly, uses this component to fetch all contacts, and updates a master customer list in an external database.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-contact-by-email"></a>Search Contact By Email
+Finds contacts by their email address.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email_query` | string | Yes | The email address to search for. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `contacts` | array | A list of contact objects matching the query. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before creating a new contact, an agent uses this component with the lead's email to check if they already exist, preventing duplicate records.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-contact-by-phone"></a>Search Contact By Phone
+Finds contacts by their phone number.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `phone_query` | string | Yes | The phone number to search for. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `contacts` | array | A list of contact objects matching the query. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent connected to a call system uses the incoming caller ID to search for an existing contact to log the call against.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contact"></a>Get Contact
+Retrieves a contact by their unique ID.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the retrieved contact. |
+| `email`| string | The email of the retrieved contact. |
+| `Response`| object | The raw JSON response from the API, containing all contact details. |
+
+<TipCallout title="Use Case">
+After finding a contact via search, an agent uses their ID with this component to get all their detailed properties before updating them.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-contact"></a>Update Contact
+Updates the fields of an existing contact by their ID.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the key-value pairs for the fields you want to update (e.g., `{"phone": "555-987-6543"}`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact to update. |
+| `email` | string | Optional | If provided in the body, will update the contact's email. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the updated contact. |
+| `email`| string | The updated email of the contact. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent detects that a customer has updated their company name in your billing system. The agent then uses this component to update the `companyName` field on their GoHighLevel contact record.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-contact"></a>Delete Contact
+Permanently deletes a contact by their ID.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the API, confirming the deletion. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a user requests their data be deleted under GDPR, an agent is triggered to remove their record from all systems, including using this component to delete their GoHighLevel contact.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action permanently deletes the contact and cannot be undone. Use with care.
+</WarningCallout>
+### <a name="add-contact-tags"></a>Add Contact Tags
+Adds one or more tags to a contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact to add tags to. |
+| `tags`| array | Yes | An array of strings representing the tags to add. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `tags`| array | The list of tags that were added to the contact. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a user signs up for a specific webinar, an agent adds a tag with the webinar's name to their contact profile for future segmentation.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-note"></a>Create Note
+Adds a new note to a specific contact's record.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId` | string | Yes | The ID of the contact you want to add a note to. |
+| `body` | string | Yes | The content of the note. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the created note. |
+| `body` | string | The content of the created note. |
+| `createdAt`| string | The date the note was created. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent summarizes a phone call transcript and uses this component to add the summary to the customer's contact record.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contact-notes"></a>Get Contact Notes
+Retrieves all notes for a contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId` | string | Yes | The ID of the contact whose notes you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `notes` | array | The list of notes associated with the contact. |
+| `Response` | object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before a sales call, an agent retrieves all recent notes for a contact to provide the sales rep with the latest context.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-note"></a>Update Note
+Updates the content of a contact's note.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact whose note you want to update. |
+| `noteId` | string | Yes | The ID of the specific note to update. |
+| `body` | string | Yes | The updated content of the note. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the updated note. |
+| `body` | string | The content of the updated note. |
+| `createdAt`| string | The date the note was updated. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent corrects a typo or adds additional information to a previously logged note on a contact's file.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-note"></a>Delete Note
+Deletes a note for a contact by its ID.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact whose note you want to delete. |
+| `noteId` | string | Yes | The ID of the specific note to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty object. |
+| `Headers` | object | HTTP headers detailing the API request-response process. |
+
+<TipCallout title="Use Case">
+A cleanup agent removes temporary or outdated notes from contact records to keep them tidy.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contact-appointments"></a>Get Contact Appointments
+Retrieves all appointments for a specific contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact whose appointments you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response containing a list of appointment objects. |
+
+<TipCallout title="Use Case">
+Before scheduling a new call, an agent checks the contact's existing appointments to avoid double-booking.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-contact-campaigns"></a>Delete Contact Campaigns
+Removes a contact from all campaigns.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact to remove from all campaigns. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a contact replies "STOP" to a marketing message, an agent is triggered to remove them from all future campaigns to honor their request.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-task"></a>Create Task
+Creates a new task for a specific contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId` | string | Yes | The ID of the contact the task is for. |
+| `title` | string | Yes | The title or subject of the task. |
+| `dueDate` | string | Yes | The due date for the task. |
+| `description`| string | Optional| A more detailed description of the task. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the created task. |
+| `title` | string | The title of the task. |
+| `isCompleted`| boolean | The initial completion status of the task (`false`). |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a new contact is created, an agent automatically creates a follow-up task for a sales representative, due in 24 hours, with the title "Call new lead: [Contact Name]".
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-task"></a>Get Task
+Retrieves a specific task for a contact by its ID.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact the task belongs to. |
+| `taskId` | string | Yes | The ID of the task to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the retrieved task. |
+| `title` | string | The title of the task. |
+| `isCompleted`| boolean | The completion status of the task. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent checks if a follow-up task is already completed before sending a reminder notification.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contact-tasks"></a>Get Contact Tasks
+Retrieves all tasks associated with a specific contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId` | string | Yes | The ID of the contact whose tasks you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `tasks` | array | A parsed list of task objects associated with the contact. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A customer success agent, before a check-in call, uses this component to retrieve all open tasks for a contact to get a full picture of ongoing activities.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-task"></a>Update Task
+Updates the title, description, and due date of a task.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact the task belongs to. |
+| `taskId` | string | Yes | The ID of the task to update. |
+| `title` | string | Yes | The new title for the task. |
+| `dueDate` | string | Yes | The new due date for the task. |
+| `description`| string | Optional | The new description for the task. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the updated task. |
+| `title` | string | The updated title of the task. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+If a meeting is rescheduled, an agent finds the related task and updates its `dueDate` to match the new meeting time.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-task-status"></a>Update Task Status
+Updates a task's status to either `completed` or `incompleted`.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact the task belongs to. |
+| `taskId` | string | Yes | The ID of the task to update. |
+| `status` | string | Yes | The new status: `completed` or `incompleted`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the updated task. |
+| `isCompleted`| boolean | The new completion status of the task. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a user replies to a follow-up email, an agent marks the corresponding "Send follow-up" task as `completed`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-task"></a>Delete Task
+Deletes a task for a contact.
+
+<InfoCallout>This component requires a `Location API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The ID of the contact the task belongs to. |
+| `taskId` | string | Yes | The ID of the task to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent deletes an automatically created reminder task once the main action has been completed.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Keys:** Always store your GoHighLevel API Keys in the SmythOS `Vault`. Remember that Location keys and Agency keys have different levels of access.
+* **Understand the GHL Hierarchy:** GoHighLevel is structured into Agencies, which contain Locations (sub-accounts). Most day-to-day operations (like managing contacts and opportunities) happen at the Location level and require a Location API Key.
+* **Use Search Before Create:** To avoid creating duplicate contacts, it's a best practice to use the `Search Contact By Email` component first. If no contact is found, then proceed to `Create Contact`.
+* **Dynamic Workflows:** Use the "Get" components (like `Get Pipelines` or `Get All Tags`) to programmatically find the IDs you need for "Create" or "Update" actions, making your agents more robust and less reliant on hardcoded IDs.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, invalid, or you are using a Location key for an Agency-level endpoint (or vice-versa).
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct. Ensure you are using the appropriate key type (Location vs. Agency) for the component you are using.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect ID was provided (e.g., `list_id`, `contactId`, `pipelineId`).
+  * **Solution:** Double-check all IDs for typos. Use the "Get" or "List" components to verify that the resource you are trying to access exists.
+
+* **Contact/Opportunity Not Created**
+  * **Cause:** A required field may be missing, or the data may be in an invalid format.
+  * **Solution:** Check all required inputs for the component. For example, the `status` for an opportunity must be one of "open", "won", or "lost". Examine the `Response` output for detailed error messages from the GoHighLevel API.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful sales and marketing automations with the **SmythOS GoHighLevel Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages the entire lead-to-customer pipeline. It captures a lead from a form, creates a `Contact`, creates an `Opportunity`, adds the contact to a `Workflow`, and creates a follow-up `Task` for a sales rep.
+    * Syncs data with your accounting software. When an opportunity's status is updated to "won" in GoHighLevel, an agent creates a new customer and a draft invoice in your accounting platform.
+    * Acts as a lead qualification bot. It engages with a new lead via an automated chat or email sequence, asks qualifying questions, and then updates the contact's custom fields and tags in GoHighLevel based on their answers.
+
+* **Explore Other Integrations:**
+    * When a new contact is created in GoHighLevel, trigger an agent to also add them to a specific email list in [Mailchimp](/docs/agent-studio/integrations/mailchimp-integration) or [Klaviyo](/docs/agent-studio/integrations/klaviyo-integration).
+    * Connect GoHighLevel to a payment processor like [Stripe](/docs/agent-studio/integrations/stripe-integration). When a new customer is created in Stripe, create or update the corresponding contact in GoHighLevel.
+    * Use a scheduling tool integration to book appointments, then create a contact and a follow-up task in GoHighLevel for that appointment.

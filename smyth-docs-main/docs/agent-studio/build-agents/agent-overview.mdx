@@ -1,0 +1,80 @@
+---
+title: Agent
+keywords: [SmythOS, agent orchestration, AI agents, workflow]
+sidebar_position: 1
+---
+
+# Agent Overview
+
+In SmythOS, an **agent** is more than just a workflow. It is a decision-making unit that uses language models to choose the right tools, actions, and responses based on the task at hand. Agents combine logic, memory, and orchestration to operate across channels such as API, chat, voice, batch, or embedded UI.
+
+<InfoCallout title="Real-time adaptability">
+Agents can route logic, call APIs, summarize documents, fetch data, and even collaborate with other agents without requiring predefined paths.
+</InfoCallout>
+
+## How Agents Work
+
+SmythOS agents are built from three key layers:
+
+| Concept     | Description |
+|-------------|-------------|
+| **Component** | A single-purpose building block. Each component performs a discrete task, like calling an API, searching the web, or running an LLM prompt. |
+| [**Skill**](/docs/agent-studio/build-agents/building-workflows)     | A complete workflow composed of components. Skills perform higher-order actions such as summarising a PDF or enriching a CRM lead. |
+| **Agent**     | A container for skills with orchestration logic, memory, prompts, and access control. The agent handles incoming queries, selects the right skill, and executes it. |
+
+<TipCallout title="Think of it like this:">
+Components are your tools, skills are your workflows, and agents are the intelligent operator.
+</TipCallout>
+
+## What Agents Enable
+
+When you publish an agent, you unlock a powerful runtime that supports both backend and user-facing experiences:
+
+| Feature                    | Why it matters |
+|----------------------------|----------------|
+| **REST and WebSocket APIs** | Call agents from any app, script, or service using simple endpoints. |
+| **Embedded Web UI**         | Every agent comes with a generated interface that you can customize, brand, and embed. |
+| **Prompt and model control** | Modify prompts, switch LLMs, and debug tokens without re-deploying. |
+| **Deployment and versioning** | Publish safely with rollback support and environment isolation. |
+| **Observability tools**     | View run logs, trace token usage, and label agent outputs. |
+
+You can configure all of these in the [Agent Settings page](/docs/agent-studio/manage-agents/overview), where you control behavior, personality, rate limits, and access policies.
+
+## What Agents Are Good At
+
+SmythOS agents are useful across a wide range of operational and product contexts:
+
+- **Customer Support**  
+  Interpret queries, fetch documentation, and return suggested replies.
+- **Marketing and Content**  
+  Generate campaign copy, product descriptions, blog drafts, and taglines.
+- **Internal Automation**  
+  Parse incoming tickets, update spreadsheets, and ping teams on Slack.
+- **Data Intelligence**  
+  Analyze files, execute code on data, and return summaries or charts.
+- **Email Assistants**  
+  Personalize and batch-send cold emails or nurture messages.
+
+Each use case combines workflows (skills) with AI tools and your custom logic.
+
+## How to Build an Agent
+
+You can create your first agent in a few steps:
+
+1. Go to your [dashboard](https://app.smythos.com) and create a new agent, or remix one from the [template gallery](/docs/agent-templates/overview).
+2. Add an [Agent Skill](/docs/agent-studio/components/base/agent-skill) to define how the agent should behave.
+3. Connect components using the [Studio Canvas](/docs/agent-studio/key-concepts/canvas) to structure your logic.
+4. Configure the prompts, inputs, and memory settings for dynamic behavior.
+
+Once your agent is ready, you can publish and interact with it using the API.
+
+```bash
+curl -X POST https://api.smythos.com/v1/agents/{agent_id}/run \
+  -H "Authorization: Bearer $SMYTH_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": {"query": "Generate five tagline ideas for SmythOS"}}'
+```
+
+<InfoCallout title="Want to test visually?">
+Use the built-in [Form Preview](/docs/agent-studio/build-agents/debugging#testing-with-form-preview) feature to simulate input and see the agent’s full response without writing any code.
+</InfoCallout>

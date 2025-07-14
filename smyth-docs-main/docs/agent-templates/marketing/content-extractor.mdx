@@ -1,0 +1,266 @@
+---
+title: "Tutorial: Content Extractor Agent"
+---
+
+# Tutorial: Content Extractor Agent
+
+This agent is capable of retrieving text content from any given URL. Simply input the URL, and the tool will promptly return the extracted text. Operating through a process known as `web scraping`, the tool accesses the provided URL, examines its structure, and retrieves the desired text content. This involves loading the webpage associated with the URL and selectively extracting the required information—in this case, textual content.
+
+<Youtube videoId="ui9_W-JXmH8" title="SmythOS - Content Extractor Agent" />
+
+
+## RapidAPI Registration
+
+`RapidAPI` provides a variety of endpoints for various purposes. Among these, the `website to text converter` endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key:
+
+1. Go to [https://rapidapi.com/](https://rapidapi.com/)
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 1.png"
+  alt="alt text"/>
+
+4. Copy your API key using the `copy` icon. You can also click the eye icon to see your API key.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 2.png"
+  alt="alt text"/>
+
+5. After your API key is copied, navigate to this [link](https://rapidapi.com/evlar-evlar-default/api/website-to-text-converter) and go to the pricing tab.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 3.png"
+  alt="alt text"/>
+
+6. Select a subscription plan from the options available: Basic (free), Pro , or Ultra Plan. The Basic plan offers 100 API requests per month at no cost. For this example, let's opt for the Basic plan.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 4.png"
+  alt="alt text"/>
+
+7. Click the `Subscribe` button.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 5.png"
+  alt="alt text"/>
+
+8. Subscription created successfully.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 6.png"
+  alt="alt text"/>
+
+## Content Extractor Agent Setup
+
+1. Go to your SmythOS Dashboard and click on the Create Agent button.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 7.png"
+  alt="alt text"/>
+
+2. The template for the `Content Extractor` is readily available. Simply select it from the drop-down menu.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 8.png"
+  alt="alt text"/>
+
+3. Click `Create` and allow the template to initialize and configure.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 9.png"
+  alt="alt text"/>
+
+## Adding Rapid API Key to the Vault
+
+Your API Key will be needed on your `WebToText` API Call component. 
+
+>To know more about the `Vault` feature, please refer [here](/docs/agent-studio/key-concepts/vault).
+
+1. Navigate to the `Vault` section on your dashboard.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 10.png"
+  alt="alt text"/>
+
+2. Click the `Add Key` button to add your Rapid API Key.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 11.png"
+  alt="alt text"/>
+
+3. Input the Rapid API Key generated from your RapidAPI account.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 12.png"
+  alt="alt text"/>
+
+4. Select a distinct Key name that you can readily differentiate whenever it is required for use.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 13.png"
+  alt="alt text"/>
+
+5. Choose `API Call` for the Scope and click `Done` to save your API Key.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 14.png"
+  alt="alt text"/>
+
+6. Your Content Extractor Rapid API Key has been successfully added to your Vault and is now ready for use.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 15.png"
+  alt="alt text"/>
+
+## WebToText API Call Setup
+
+1. Locate the `WebToText API Call` component that has a missing key component. Click on the component, then click the `Edit` button situated in the headers section.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 16.png"
+  alt="alt text"/>
+
+2. Highlight the text, then click on the `key` icon. Choose the `Content Extractor Rapid API` Key stored in your Vault, and finally, click the `Save` button.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 17.png"
+  alt="alt text"/>
+
+3. Once saved, your API key is now added in the headers section. Additionally, don’t forget to click the checkmark icon to save your configuration.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 18.png"
+  alt="alt text"/>
+
+4. The red error mark on your `WebToText API Call` Component will disappear once your API key is successfully configured.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 19.png"
+  alt="alt text"/>
+
+5. You should now be able to use this agent to extract textual content from public pages.
+
+## Test the Agent
+
+Follow the steps outlined below to evaluate the `Content Extractor` Agent.
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 20.png"
+  alt="alt text"/>
+
+2. Input your URL in the chat editor.
+
+<Image
+  src="/docs/img/content_extractor_agent/Image 21.png"
+  alt="alt text"/>
+
+
+3. **Example:** [https://blog.inkforall.com/ai-copywriting?pfrom=content-seo&fp=a6](https://blog.inkforall.com/ai-copywriting?pfrom=content-seo&fp=a6)
+
+4. Here is the extracted content from the provided URL. The outcome may vary depending on the complexity or intentional hindrances to scraping present on the website. While some sites facilitate easy extraction, others may pose challenges. Nevertheless, the tool endeavors to deliver the text content of the specified URL to the best of its ability.
+
+>Creating excellent web content may seem more challenging than ever due to increasing demand. However, the right AI copywriting tool can help scale your content creation process.
+>
+>An average AI copywriting tool can perform reading and writing tasks at a near-human level.
+>
+>Businesses use AI copywriting to save time and money.
+>
+>Copywriters that are looking to generate AI copy in record time can use INK.
+>
+>Artificial intelligence is now an essential part of our daily lives — thanks to several tech advancements.
+>
+>From chatbots to personalized advertising, businesses now rely on AI to innovate in various areas of the digital world. It’s no wonder that 37% of organizations have implemented artificial intelligence in some form.
+>
+>One exciting use of AI in marketing is in the field of copywriting.
+>
+>Yes, businesses and advertisers are already using artificial intelligence to write marketing copy. What’s more, distinguishing AI-generated text from human writing is already a challenging task.
+>
+>In this article, I’ll explore what AI copywriting means and how to use it to scale your content creation process. Let’s jump right in.
+>
+>AI copywriting involves using natural language processing (NLP) software to generate content on computers. These programs rely on deep learning models such as Open AI’s Generative Pre-trained Transformer 3 (GPT-3). As a result, an average AI copywriting tool can perform reading and writing tasks at a near-human level.
+>
+>Besides text generation, GPT-3 enables other natural language processing tasks such as:
+>
+>That’s why AI copywriting is handy. Whether you want to generate blog posts, meta descriptions, or ad headlines for your brand, artificial intelligence can help ease the process.
+>
+>But that’s not the only reason businesses use these tools.
+>
+>The first reason business owners and marketers invest in AI copywriting are to save time in writing and brainstorming.
+>
+>With a typing speed of 212 WPM, Barbara Blackburn is currently the fastest English language typist in the world. But, even Barbara would struggle to produce ten blog introductions in less than 30 seconds.
+>
+>That’s because AI copywriting doesn’t just involve churning out content. It can also expand your thought process — prompting you to consider alternatives that you may otherwise have missed.
+>
+>It’s no wonder that companies, such as JPMorgan Chase, now use AI-powered tools to improve marketing messages.
+>
+>“They made a couple of changes that made sense,” said Kristin Lemkau, the Chief Marketing Officer at JPMorgan Chase. “And I was like, ‘Why were we so dumb that we didn’t figure that out?'”
+>
+>Other benefits of using AI copywriting tools to generate content are:
+>
+>That’s right. AI content generators are not reserved for writers. Anyone can generate content using these tools — from CEOs pondering email subject lines to online retailers looking for product descriptions.
+>
+>And that brings us to another crucial question:
+>
+>The potential for AI-enabled content tools is huge. But, they still require refinement to make the writing process more efficient and consistent. So, before you start thinking about AI replacing copywriters — the answer is NO.
+>
+>To date, experts are confident that AI will work together with humans in the workplace. Yes, work together — not take our jobs or replace us.
+>
+>But if you’re not convinced, below are three reasons why AI won’t replace copywriters or any human worker for that matter.
+>
+>AI can present legible, grammatically correct sentences. While that’s indeed true, it can only process and reform existing data. In other words, machines are not yet capable of true creativity.
+>
+>As a result, AI copywriting programs can’t create compelling content — such as breaking news — that’s based on new information. Instead, they can only research and rewrite human-written content.
+>
+>As useful as computer programs are, they are still incapable of feeling or understanding human emotions. So, they can’t string words together to evoke strong emotional reactions from readers.
+>
+>Yes, it’s best to let AI handle template-like writing such as product descriptions. However, only humans can produce copy that requires a strong emotional reaction from the audience.
+>
+>Thanks to AI copywriting, it’s now easy to split-test multiple sales copy to assess which one would perform better. However, you still need a human copywriter that can evaluate the data and make decisions.
+>
+>Rather than completely replace human copywriting, AI programs will elevate your copy.
+>
+>Copywriters that are looking to generate AI copy in record time can use the INK Pro editor. It’s a distraction-free editor that combines AI cowriting and an SEO Assistant. Indeed, content with an INK score of above 97% is four times more likely to rank in the top 10 Google search results.
+>
+>I’m getting ahead of myself. So, let’s slow down a bit and take it from the beginning — theRank Candidate Theory.
+>
+>Google crawls and scrapes content to get an in-depth understanding of your page to determine if your content satisfies user intent.
+>
+>If that’s the case, Google will consider your page a rank candidate and send some traffic your way to test user satisfaction. So, your page’s search engine ranking will increase if users like the content.
+>
+>On the other hand, search rankings of irrelevant content that offers a poor user experience usually plummets. So, it’s safe to say that content relevance and user experience are vital ranking factors for Google.
+>
+>True to the Rank Candidate Theory, we built INK to achieve two primary goals:
+>
+>Improve chances to qualify as a rank candidate on Google
+>Sounds simple enough, right? No — not really.
+>
+>Our patented approach involves mapping text to meaning using a method called wordembedding. Not only is the technique unique, but it also produces an exciting result called a conceptmap.
+>
+>Think of the concept map as a Google brain scan. It provides insight into what Google considers relevant in relation to a piece of content. So, you can write based on the knowledge of what search engines expect from a relevance point of view.
+>
+>Yes, it’s a game-changing way to create content for the web. But, INK is not just an SEOeditor, it also offers an AI cowriting feature to scale the content creation process.
+>
+>As the name implies, AI cowriting involves collaborating with an AI-powered tool on a piece of content. Like autocomplete, AI cowriting uses a massive amount of human writing data to generate the next words in a text. So, the resulting content is a blend of human and AI effort.
+>
+>With that, you can enjoy all the advantages that come with AI content generation without the downsides.
+>
+>As helpful as AI copywriting is, things can quickly spiral out of control.
+>
+>An AI copywriting tool cansometimes generate blocks of text that are not relevant to the subject. That means the writer would have to continually delete and generate new text until the AI tool generates relevant text.
+>
+>That’s not the case when using a cowriting feature. Since it’s a collaboration, copywriters can retain control of their content. You only have to use the AI when you’re stuck.
+>
+>INK’s AI cowriting has “expand” and “simplify” features that makes revising your content a breeze. You only have to write a rough draft of your idea and let the AI simplify or expand the sentence.
+>	
+>That means you only have to write out your idea and then just let the AI help develop it.
+>
+>AI cowriting can introduce exciting new perspectives and elements to your copy. For example, it could help you reach new audiences with fresh content. It could also recommend alternative words and phrases to change the tone of the message for a stronger impact.
+>
+>AI copywriting can help you scale your content writing process — whether you’re a digital marketer or a business owner.
+>
+>Editors such as INK have AI cowriting that’s fun to learn and easy to use. What’s more, you can collaborate with the program to produce engaging copy that supports your content needs.
