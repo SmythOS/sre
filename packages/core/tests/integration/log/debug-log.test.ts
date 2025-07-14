@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { setupSRE } from '../utils/sre';
+import { setupSRE } from '../../utils/sre';
 import { Logger } from '@sre/helpers/Log.helper';
 
 const agentId = 'test-agent';
