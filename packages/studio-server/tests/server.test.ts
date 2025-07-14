@@ -22,12 +22,16 @@ describe('studio-server', () => {
   it('POST /execute runs workflow', async () => {
     const workflowPath = path.join(__dirname, '../workflows/echo.smyth');
     const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
+    const tmpOutput = path.join(__dirname, 'tmp-output.txt');
+    if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput);
     const res = await request(app)
       .post('/execute')
-      .send({ workflow })
+      .send({ workflow, outputPaths: { end: tmpOutput } })
       .set('Content-Type', 'application/json');
     expect(res.status).toBe(200);
     expect(res.body).toBeTypeOf('object');
     expect(Object.keys(res.body).length).toBeGreaterThan(0);
+    expect(fs.existsSync(tmpOutput)).toBe(true);
+    fs.unlinkSync(tmpOutput);
   });
 });
