@@ -7,10 +7,16 @@ import ReactFlow, {
   useNodesState,
   ReactFlowProvider,
 } from 'reactflow';
+import TextInputNode from './nodes/TextInputNode';
+import HTTPCallNode from './nodes/HTTPCallNode';
 import 'reactflow/dist/style.css';
 
 const initialNodes = [];
 const initialEdges: any[] = [];
+const nodeTypes = {
+  TextInput: TextInputNode,
+  HTTPCall: HTTPCallNode,
+};
 
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -19,6 +25,7 @@ export default function App() {
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadComponents() {
@@ -36,19 +43,25 @@ export default function App() {
     loadComponents();
   }, []);
 
-  const addNode = () => {
+  const addNode = (type: string) => {
     setNodes((nds) => [
       ...nds,
       {
         id: `${nds.length}`,
         position: { x: Math.random() * 250, y: Math.random() * 250 },
-        data: { label: `Node ${nds.length}` },
-        type: 'default',
+        data: { label: type, params: {} },
+        type,
       },
     ]);
   };
 
   const onConnect = useCallback((params: any) => setEdges((eds) => addEdge(params, eds)), []);
+
+  const updateNodeParams = (id: string, params: any) => {
+    setNodes((nds) =>
+      nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, params } } : n))
+    );
+  };
 
   const executeWorkflow = async () => {
     const workflow = { nodes, edges };
@@ -65,7 +78,11 @@ export default function App() {
     <ReactFlowProvider>
       <div style={{ display: 'flex', height: '100vh' }}>
         <div style={{ width: 150, borderRight: '1px solid #ccc', padding: 10 }}>
-          <button onClick={addNode}>Add Node</button>
+          {components.map((c) => (
+            <button key={c.name} onClick={() => addNode(c.name)} style={{ display: 'block', marginBottom: 5 }}>
+              {c.name}
+            </button>
+          ))}
           <div style={{ marginTop: 10 }}>
             <input
               type="text"
@@ -80,28 +97,66 @@ export default function App() {
           {error && (
             <div style={{ color: 'red', marginTop: 10 }}>{error}</div>
           )}
-          <ul>
-            {components.map((c) => (
-              <li key={c.name}>{c.name}</li>
-            ))}
-          </ul>
         </div>
-        <div style={{ flexGrow: 1 }}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-          >
-            <Background />
-            <Controls />
-          </ReactFlow>
-          {result && (
-            <pre style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: 200, overflow: 'auto', background: '#eee', margin: 0 }}>
-              {result}
-            </pre>
+        <div style={{ flexGrow: 1, position: 'relative', display: 'flex' }}>
+          <div style={{ flexGrow: 1 }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={(_, n) => setSelectedNodeId(n.id)}
+              nodeTypes={nodeTypes}
+              fitView
+            >
+              <Background />
+              <Controls />
+            </ReactFlow>
+            {result && (
+              <pre style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: 200, overflow: 'auto', background: '#eee', margin: 0 }}>
+                {result}
+              </pre>
+            )}
+          </div>
+          {selectedNodeId && (
+            <div style={{ width: 200, borderLeft: '1px solid #ccc', padding: 10 }}>
+              {components
+                .filter((c) => c.name === nodes.find((n) => n.id === selectedNodeId)?.type)
+                .map((c) => (
+                  <div key={c.name}>
+                    {Object.entries(c.settings || {}).map(([key, field]: any) => {
+                      const value =
+                        nodes.find((n) => n.id === selectedNodeId)?.data.params?.[key] ?? '';
+                      const inputProps = {
+                        'data-testid': `param-${key}`,
+                        value,
+                        onChange: (e: any) => {
+                          const v = field.type === 'number' ? Number(e.target.value) : field.type === 'boolean' ? e.target.checked : e.target.value;
+                          updateNodeParams(selectedNodeId, {
+                            ...(nodes.find((n) => n.id === selectedNodeId)?.data.params || {}),
+                            [key]: v,
+                          });
+                        },
+                      } as any;
+                      if (field.type === 'boolean') {
+                        return (
+                          <label key={key} style={{ display: 'block', marginBottom: 5 }}>
+                            {key}
+                            <input type="checkbox" checked={!!value} {...inputProps} />
+                          </label>
+                        );
+                      }
+                      return (
+                        <label key={key} style={{ display: 'block', marginBottom: 5 }}>
+                          {key}
+                          <input type="text" {...inputProps} />
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
+            </div>
           )}
         </div>
       </div>
