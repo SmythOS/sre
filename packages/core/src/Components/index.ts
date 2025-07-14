@@ -39,6 +39,7 @@ import { ServerlessCode } from './ServerlessCode.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
 import { MCPClient } from './MCPClient.class';
 import { OpenAPI } from './OpenAPI.class';
+import { GitCommit } from './GitCommit.class';
 
 const components = {
     Component: new Component(),
@@ -85,6 +86,7 @@ const components = {
     ImageGenerator: new ImageGenerator(),
     MCPClient: new MCPClient(),
     OpenAPI: new OpenAPI(),
+    GitCommit: new GitCommit(),
 };
 
 export const ComponentInstances = components;

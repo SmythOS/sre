@@ -5,6 +5,7 @@ import TextInputNode from './nodes/TextInputNode';
 import HTTPCallNode from './nodes/HTTPCallNode';
 import LLMPromptNode from './nodes/LLMPromptNode';
 import CodeExecNode from './nodes/CodeExecNode';
+import GitCommitNode from './nodes/GitCommitNode';
 import { serializeWorkflow } from './utils/serializeWorkflow';
 import { deserializeWorkflow } from './utils/deserializeWorkflow';
 import 'reactflow/dist/style.css';
@@ -16,6 +17,7 @@ const nodeTypes = {
     HTTPCall: HTTPCallNode,
     LLMPrompt: LLMPromptNode,
     CodeExec: CodeExecNode,
+    GitCommit: GitCommitNode,
 };
 
 export default function App() {

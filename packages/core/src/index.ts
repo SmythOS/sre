@@ -47,6 +47,7 @@ export * from './Components/TavilyWebSearch.class';
 export * from './Components/VisionLLM.class';
 export * from './Components/WebSearch.class';
 export * from './Components/ZapierAction.class';
+export * from './Components/GitCommit.class';
 export * from './Core/AgentProcess.helper';
 export * from './Core/boot';
 export * from './Core/Connector.class';
