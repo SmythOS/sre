@@ -9,6 +9,8 @@ import ReactFlow, {
 } from 'reactflow';
 import TextInputNode from './nodes/TextInputNode';
 import HTTPCallNode from './nodes/HTTPCallNode';
+import LLMPromptNode from './nodes/LLMPromptNode';
+import CodeExecNode from './nodes/CodeExecNode';
 import { serializeWorkflow } from './utils/serializeWorkflow';
 import { deserializeWorkflow } from './utils/deserializeWorkflow';
 import 'reactflow/dist/style.css';
@@ -18,6 +20,8 @@ const initialEdges: any[] = [];
 const nodeTypes = {
   TextInput: TextInputNode,
   HTTPCall: HTTPCallNode,
+  LLMPrompt: LLMPromptNode,
+  CodeExec: CodeExecNode,
 };
 
 export default function App() {

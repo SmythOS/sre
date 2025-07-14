@@ -27,4 +27,17 @@ describe('serializeWorkflow', () => {
       { sourceId: '1', sourceIndex: 0, targetId: '2', targetIndex: 0 },
     ]);
   });
+
+  it('handles LLMPrompt and CodeExec nodes', () => {
+    const nodes = [
+      { id: '1', type: 'LLMPrompt', data: { params: { text: 'hi' } } },
+      { id: '2', type: 'CodeExec', data: { params: { code: 'return 1;' } } },
+    ];
+    const edges: any[] = [];
+    const wf = serializeWorkflow(nodes, edges);
+    expect(wf.components).toEqual([
+      { id: '1', name: 'LLMPrompt', data: { text: 'hi' } },
+      { id: '2', name: 'CodeExec', data: { code: 'return 1;' } },
+    ]);
+  });
 });

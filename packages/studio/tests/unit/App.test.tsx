@@ -16,7 +16,12 @@ global.ResizeObserver = ResizeObserver;
 
 describe('App component', () => {
   it('renders component names after fetch', async () => {
-    const components = [{ name: 'TextInput' }, { name: 'HTTPCall' }];
+    const components = [
+      { name: 'TextInput' },
+      { name: 'HTTPCall' },
+      { name: 'LLMPrompt' },
+      { name: 'CodeExec' },
+    ];
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => components,
@@ -52,6 +57,31 @@ describe('App component', () => {
     expect((input as HTMLInputElement).value).toBe('hello');
     const pre = await screen.findByTestId('node-data');
     expect(pre.textContent).toContain('hello');
+  });
+
+  it('allows editing CodeExec parameters', async () => {
+    const components = [
+      { name: 'CodeExec', settings: { code: { type: 'string' } } },
+    ];
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => components,
+    }) as any;
+
+    render(<App />);
+
+    const btn = await screen.findByText('CodeExec');
+    fireEvent.click(btn);
+
+    const [, nodeEl] = await screen.findAllByText('CodeExec');
+    fireEvent.click(nodeEl);
+
+    const input = await screen.findByTestId('param-code');
+    fireEvent.change(input, { target: { value: 'console.log(1);' } });
+
+    expect((input as HTMLInputElement).value).toBe('console.log(1);');
+    const pre = await screen.findByTestId('node-data');
+    expect(pre.textContent).toContain('console.log(1);');
   });
 
   it('shows output path for terminal nodes', async () => {
