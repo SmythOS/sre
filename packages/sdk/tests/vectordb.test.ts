@@ -1,8 +1,10 @@
 import { describe, it } from 'vitest';
+
+const run = process.env.PINECONE_API_KEY && process.env.OPENROUTER_API_KEY ? it : it.skip;
 import { Model, VectorDB } from '../src/index';
 
 describe('SDK VectorDB Tests', () => {
-    it('Standalone insert doc', async () => {
+    run('Standalone insert doc', async () => {
         //const ramVectorDB = new VectorDBInstance(TVectorDBProvider.RAMVec, { namespace: 'test' });
         //const ramVectorDB = VectorDB.RAMVec('test');
         const pinecone = VectorDB.Pinecone('test', {

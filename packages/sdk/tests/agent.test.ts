@@ -2,6 +2,8 @@
 import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Model, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
+
+const run = process.env.OPENROUTER_API_KEY ? it : it.skip;
 // SRE.init({
 //     Vault: {
 //         Connector: 'JSONFileVault',
@@ -12,7 +14,7 @@ import { expect, describe, it } from 'vitest';
 // });
 
 describe('SDK Agent Tests', () => {
-    it('imported agent', async () => {
+    run('imported agent', async () => {
         const agent = Agent.import('./packages/sdk/tests/data/AgentData/crypto-info-agent.smyth', {
             model: Model.OpenRouter('gpt-4o-mini', { maxTokens: 10 }),
         });
@@ -23,7 +25,7 @@ describe('SDK Agent Tests', () => {
         console.log(result);
     });
 
-    it('Declarative Agent', async () => {
+    run('Declarative Agent', async () => {
         const agent = new Agent({
             name: 'SRE Assistant',
             behavior:
@@ -65,7 +67,7 @@ describe('SDK Agent Tests', () => {
         console.log(result2);
     });
 
-    it('Procedural Agent', async () => {
+    run('Procedural Agent', async () => {
         const agent = new Agent({ name: 'Evaluator', model: 'gpt-4o' });
 
         agent.addSkill({

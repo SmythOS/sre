@@ -3,6 +3,8 @@ import { SRE } from '@smythos/sre';
 import { LLM, LLMInstance, Agent, Component } from '../src/index';
 import { expect, describe, it } from 'vitest';
 
+const run = process.env.OPENROUTER_API_KEY ? it : it.skip;
+
 import { TLLMProvider } from '../src/types/ExportedSRETypes';
 
 declare module '../src/types/SDKTypes' {
@@ -21,7 +23,7 @@ declare module '../src/types/SDKTypes' {
 // });
 
 describe('SDK LLM Tests', () => {
-    it('LLM - Prompt from LLMInstance', async () => {
+    run('LLM - Prompt from LLMInstance', async () => {
         //initialize the LLM
         const llm = new LLMInstance(TLLMProvider.OpenRouter, { model: 'gpt-4o' });
 
@@ -32,7 +34,7 @@ describe('SDK LLM Tests', () => {
         expect(result).toContain('Paris');
     });
 
-    it('LLM - Prompt from named LLM', async () => {
+    run('LLM - Prompt from named LLM', async () => {
         const llm = LLM.OpenRouter('gpt-4o-mini', {
             temperature: 0.1,
             maxTokens: 100,
@@ -44,7 +46,7 @@ describe('SDK LLM Tests', () => {
         expect(result).toContain('Paris');
     });
 
-    it('LLM - Prompt with attachments', async () => {
+    run('LLM - Prompt with attachments', async () => {
         const llm = LLM.OpenRouter('gpt-4o-mini', {
             temperature: 0.1,
             maxTokens: 100,
@@ -56,9 +58,9 @@ describe('SDK LLM Tests', () => {
 
         expect(result).toBeDefined();
         expect(result).toContain('Paris');
-    });    
+    });
 
-    it('LLMProxy - Chat', async () => {
+    run('LLMProxy - Chat', async () => {
         const llm = LLM.OpenRouter({ model: 'gpt-4o' });
 
         const chat = llm.chat();
@@ -72,7 +74,7 @@ describe('SDK LLM Tests', () => {
         expect(result3).toContain('John Doe');
     });
 
-    it('LLM - StreamPrompt', async () => {
+    run('LLM - StreamPrompt', async () => {
         const llm = LLM.OpenRouter({ model: 'gpt-4o' });
 
         const eventEmitter = await llm.prompt('What is the capital of France?').stream();
