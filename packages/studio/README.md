@@ -1,15 +1,30 @@
 # SmythOS Studio
 
-The Studio UI fetches available components from a running instance of the Studio Server. By default the server listens on `http://localhost:3010`.
+The Studio UI fetches available components from a running instance of the Studio
+Server. By default the server listens on `http://localhost:3010`.
 
-To start the server in development run:
+1. Build the SRE and dependencies:
 
-```bash
-pnpm --filter @smythos/studio-server dev
-```
+   ```bash
+   pnpm build
+   ```
 
-Once running the Studio will load components from `http://localhost:3010/components`.
-Make sure the server remains running whenever you use the Studio; otherwise component loading will fail.
+2. Start the Studio Server:
+
+   ```bash
+   pnpm --filter @smythos/studio-server dev
+   ```
+
+3. In another terminal, run the Studio app:
+
+   ```bash
+   pnpm --filter @smythos/studio dev
+   ```
+
+Once both are running the Studio will load components from
+`http://localhost:3010/components`. Keep the server running whenever you use the
+Studio; otherwise component loading will fail. The UI is served by Vite on
+`http://localhost:5173` by default.
 
 ## Workflow Serialization
 
