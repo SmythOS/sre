@@ -1,0 +1,33 @@
+{
+  "workflow": {
+    "version": "1.0.0",
+    "id": "minimal-genai-llm-agent",
+    "name": "Minimal GenAI LLM Agent",
+    "components": [
+      {
+        "id": "LLM1",
+        "name": "GenAILLM",
+        "inputs": [
+          {
+            "name": "prompt",
+            "type": "String",
+            "optional": false
+          }
+        ],
+        "outputs": [
+          {
+            "name": "response",
+            "type": "String"
+          }
+        ],
+        "data": {
+          "model": "",
+          "prompt": "{{prompt}}"
+        }
+      }
+    ],
+    "connections": [],
+    "description": "A minimal agent that sends a prompt to OpenRouter and returns the reply using GenAILLM."
+  },
+  "prompt": "Tell me a joke."
+}

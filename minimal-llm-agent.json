@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "id": "minimal-llm-agent",
+  "name": "Minimal LLM Agent",
+  "components": [
+    {
+      "id": "LLM1",
+      "name": "LLM",
+      "type": "llm",
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "outputs": [
+        {
+          "name": "response",
+          "type": "String"
+        }
+      ],
+      "data": {
+        "model": "",
+        "models": []
+      }
+    }
+  ],
+  "connections": [],
+  "description": "A minimal agent that sends a prompt to OpenRouter and returns the reply."
+}

@@ -6,21 +6,16 @@ import os from 'os';
 import { Agent } from '@smythos/sdk';
 import { startMcpServer } from '../../cli/src/commands/agent/mcp.cmd';
 import { LocalComponentConnector, ConnectorService, AccessCandidate, SRE } from '@smythos/sre';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const WORKFLOWS_DIR = path.join(__dirname, '../workflows');
 
 async function bootSRE() {
-    if (process.env.NODE_ENV === 'test') {
-        SRE.init();
-        await SRE.ready();
-        return;
-    }
-    // Initialize SRE using startMcpServer with a minimal agent
-    const dummyAgent = {
-        version: '1.0',
-        data: { id: 'init', components: [], connections: [] },
-    };
-    await startMcpServer(dummyAgent, 'stdio', 0, {});
+    // SRE initialization is now deferred to workflow execution or agent operations.
+    return;
 }
 
 export async function createApp() {
@@ -71,8 +66,31 @@ export async function createApp() {
         const { workflow, prompt, outputPaths } = req.body || {};
         if (!workflow) return res.status(400).json({ error: 'workflow required' });
 
-        const agent = Agent.import(workflow);
         try {
+            // Fetch free models from our own endpoint
+            const freeModelsRes = await fetch('http://localhost:3010/free-models');
+            if (!freeModelsRes.ok) {
+                return res.status(502).json({ error: 'Failed to fetch free models for execution' });
+            }
+            const freeModels = await freeModelsRes.json();
+            if (!Array.isArray(freeModels) || freeModels.length === 0) {
+                return res.status(502).json({ error: 'No free models available for execution' });
+            }
+            // Select the first free model as primary, and use the rest as fallbacks
+            const modelIds = freeModels.map(m => m.id);
+
+            // Inject model(s) into the workflow/agent definition
+            // This assumes the agent expects a 'model' or 'models' property at the top level or in settings
+            // You may need to adjust this based on your agent schema
+            if (workflow.model || workflow.models) {
+                workflow.model = modelIds[0];
+                workflow.models = modelIds;
+            } else if (workflow.data) {
+                workflow.data.model = modelIds[0];
+                workflow.data.models = modelIds;
+            }
+
+            const agent = Agent.import(workflow);
             const result = await agent.prompt(prompt || '');
             if (outputPaths && typeof outputPaths === 'object') {
                 for (const id of Object.keys(outputPaths)) {
@@ -119,6 +137,37 @@ export async function createApp() {
             .filter(Boolean)
             .map((l) => JSON.parse(l));
         res.json(entries);
+    });
+
+    app.get('/free-models', async (req, res) => {
+        try {
+            const requiredParams = req.query.require_parameters
+                ? req.query.require_parameters.split(',')
+                : [];
+            const response = await fetch('https://openrouter.ai/api/v1/models', {
+                headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` }
+            });
+            if (!response.ok) {
+                return res.status(502).json({ error: 'Failed to fetch models from OpenRouter' });
+            }
+            const data = await response.json();
+            const freeModels = (data.data || []).filter(model => {
+                const isFree = [
+                    model.pricing?.prompt,
+                    model.pricing?.completion,
+                    model.pricing?.request,
+                    model.pricing?.image,
+                    model.pricing?.web_search,
+                    model.pricing?.internal_reasoning
+                ].every(val => val === '0');
+                const hasParams = requiredParams.length === 0 || requiredParams.every(p => model.supported_parameters?.includes(p));
+                return isFree && hasParams;
+            });
+            res.json(freeModels);
+        } catch (err) {
+            console.error('Failed to fetch free models', err);
+            res.status(500).json({ error: 'Failed to fetch free models' });
+        }
     });
 
     return app;
