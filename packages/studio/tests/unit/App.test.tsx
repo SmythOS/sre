@@ -53,4 +53,24 @@ describe('App component', () => {
     const pre = await screen.findByTestId('node-data');
     expect(pre.textContent).toContain('hello');
   });
+
+  it('shows output path for terminal nodes', async () => {
+    const components = [
+      { name: 'TextInput', settings: {} },
+    ];
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => components,
+    }) as any;
+
+    render(<App />);
+
+    const btn = await screen.findByText('TextInput');
+    fireEvent.click(btn);
+
+    const [, nodeEl] = await screen.findAllByText('TextInput');
+    fireEvent.click(nodeEl);
+
+    expect(await screen.findByTestId('output-path')).toBeTruthy();
+  });
 });

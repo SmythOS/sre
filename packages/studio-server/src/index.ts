@@ -72,12 +72,23 @@ app.post('/workflows/:name', (req, res) => {
 });
 
 app.post('/execute', async (req, res) => {
-  const { workflow, prompt } = req.body || {};
+  const { workflow, prompt, outputPaths } = req.body || {};
   if (!workflow) return res.status(400).json({ error: 'workflow required' });
 
   const agent = Agent.import(workflow);
   try {
     const result = await agent.prompt(prompt || '');
+    if (outputPaths && typeof outputPaths === 'object') {
+      for (const id of Object.keys(outputPaths)) {
+        const p = outputPaths[id];
+        try {
+          fs.mkdirSync(path.dirname(p), { recursive: true });
+          fs.writeFileSync(p, typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+        } catch (e) {
+          console.error('Failed to write output', e);
+        }
+      }
+    }
     res.json(result);
   } catch (err: any) {
     console.error('Failed to execute workflow', err);

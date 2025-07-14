@@ -7,7 +7,6 @@ import ReactFlow, {
   useNodesState,
   ReactFlowProvider,
 } from 'reactflow';
-import { serializeWorkflow } from './utils/serializeWorkflow';
 import TextInputNode from './nodes/TextInputNode';
 import HTTPCallNode from './nodes/HTTPCallNode';
 import 'reactflow/dist/style.css';
@@ -64,12 +63,22 @@ export default function App() {
     );
   };
 
+  const updateNodeOutputPath = (id: string, outputPath: string) => {
+    setNodes((nds) =>
+      nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, outputPath } } : n))
+    );
+  };
+
   const executeWorkflow = async () => {
     const workflow = serializeWorkflow(nodes, edges);
+    const outputPaths = nodes.reduce((acc: any, n) => {
+      if (n.data?.outputPath) acc[n.id] = n.data.outputPath;
+      return acc;
+    }, {} as Record<string, string>);
     const res = await fetch('http://localhost:3010/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workflow, prompt }),
+      body: JSON.stringify({ workflow, prompt, outputPaths }),
     });
     const data = await res.json();
     setResult(JSON.stringify(data));
@@ -157,6 +166,17 @@ export default function App() {
                     })}
                   </div>
                 ))}
+                {!edges.some((e) => e.source === selectedNodeId) && (
+                  <label style={{ display: 'block', marginTop: 5 }}>
+                    Output Path
+                    <input
+                      type="text"
+                      data-testid="output-path"
+                      value={nodes.find((n) => n.id === selectedNodeId)?.data.outputPath || ''}
+                      onChange={(e) => updateNodeOutputPath(selectedNodeId, e.target.value)}
+                    />
+                  </label>
+                )}
             </div>
           )}
         </div>
