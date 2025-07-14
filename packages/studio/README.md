@@ -13,6 +13,9 @@ Server. By default the server listens on `http://localhost:3010`.
 
 2. **Start the Studio Server**
 
+   Set `OPENROUTER_API_KEY` and any other required keys as described in the
+   [environment variables section](../studio-server/README.md#environment-variables).
+
    ```bash
    pnpm --filter @smythos/studio-server dev
    ```
