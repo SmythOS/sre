@@ -7,6 +7,7 @@ import ReactFlow, {
   useNodesState,
   ReactFlowProvider,
 } from 'reactflow';
+import { serializeWorkflow } from './utils/serializeWorkflow';
 import TextInputNode from './nodes/TextInputNode';
 import HTTPCallNode from './nodes/HTTPCallNode';
 import 'reactflow/dist/style.css';
@@ -64,7 +65,7 @@ export default function App() {
   };
 
   const executeWorkflow = async () => {
-    const workflow = { nodes, edges };
+    const workflow = serializeWorkflow(nodes, edges);
     const res = await fetch('http://localhost:3010/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
