@@ -26,11 +26,10 @@ describe('studio-server', () => {
     if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput);
     const res = await request(app)
       .post('/execute')
-      .send({ workflow, outputPaths: { end: tmpOutput } })
+      .send({ workflow, prompt: 'hello world', outputPaths: { end: tmpOutput } })
       .set('Content-Type', 'application/json');
     expect(res.status).toBe(200);
-    expect(res.body).toBeTypeOf('object');
-    expect(Object.keys(res.body).length).toBeGreaterThan(0);
+    expect(res.body.error).toBeUndefined();
     expect(fs.existsSync(tmpOutput)).toBe(true);
     fs.unlinkSync(tmpOutput);
   });
