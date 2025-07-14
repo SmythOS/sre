@@ -9,3 +9,4 @@ pnpm --filter @smythos/studio-server dev
 ```
 
 Once running the Studio will load components from `http://localhost:3010/components`.
+Make sure the server remains running whenever you use the Studio; otherwise component loading will fail.

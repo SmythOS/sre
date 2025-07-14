@@ -18,11 +18,7 @@ export default function App() {
   const [components, setComponents] = useState<any[]>([]);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState<string | null>(null);
-
-  const fallbackComponents = [
-    { name: 'TextInput' },
-    { name: 'HTTPCall' },
-  ];
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadComponents() {
@@ -32,8 +28,8 @@ export default function App() {
         const data = await res.json();
         setComponents(data);
       } catch (err) {
-        console.error('Failed to fetch components, using fallback', err);
-        setComponents(fallbackComponents);
+        console.error('Failed to fetch components', err);
+        setError('Failed to load components');
       }
     }
 
@@ -81,6 +77,9 @@ export default function App() {
               Execute
             </button>
           </div>
+          {error && (
+            <div style={{ color: 'red', marginTop: 10 }}>{error}</div>
+          )}
           <ul>
             {components.map((c) => (
               <li key={c.name}>{c.name}</li>
