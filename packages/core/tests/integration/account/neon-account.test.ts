@@ -21,7 +21,10 @@ beforeAll(async () => {
     await db.public.none(`INSERT INTO AgentSettings VALUES ('agent1', 'setting1', 'avalue1');`);
 
     const aclText = new ACL().addAccess(TAccessRole.User, 'user1', TAccessLevel.Read).serializedACL;
-    await db.public.none(`INSERT INTO ResourceACL VALUES ('res1', $1);`, [aclText]);
+    await db.public.none(
+        'INSERT INTO ResourceACL (resource_id, acl) VALUES ($1, $2)',
+        ['res1', aclText],
+    );
 
     account = new NeonAccount({ host: 'localhost' });
     (account as any).pool = new adapter.Pool();
