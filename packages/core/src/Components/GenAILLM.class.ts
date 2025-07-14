@@ -97,6 +97,145 @@ export class GenAILLM extends Component {
                 description: 'The maximum number of messages to use from this component context window (if useContextWindow is true)',
                 label: 'Maximum Context Window Length',
             },
+
+            // #region Web Search
+            useWebSearch: {
+                type: 'boolean',
+                description: 'If true, the component will use web search for additional context',
+                label: 'Use Web Search',
+            },
+            webSearchContextSize: {
+                type: 'string',
+                valid: ['high', 'medium', 'low'],
+                label: 'Web Search Context Size',
+            },
+            webSearchCity: {
+                type: 'string',
+                max: 100,
+                label: 'Web Search City',
+                allowEmpty: true,
+            },
+            webSearchCountry: {
+                type: 'string',
+                max: 2,
+                label: 'Web Search Country',
+                allowEmpty: true,
+            },
+            webSearchRegion: {
+                type: 'string',
+                max: 100,
+                label: 'Web Search Region',
+                allowEmpty: true,
+            },
+            webSearchTimezone: {
+                type: 'string',
+                max: 100,
+                label: 'Web Search Timezone',
+                allowEmpty: true,
+            },
+            // #endregion
+
+            // #region xAI Search
+            useSearch: {
+                type: 'boolean',
+                description: 'If true, the component will use xAI live search capabilities',
+                label: 'Use Search',
+                allowEmpty: true,
+            },
+            searchMode: {
+                type: 'string',
+                valid: ['auto', 'on', 'off'],
+                label: 'Search Mode',
+                allowEmpty: true,
+            },
+            returnCitations: {
+                type: 'boolean',
+                description: 'If true, include citations and sources in the response',
+                label: 'Return Citations',
+                allowEmpty: true,
+            },
+            maxSearchResults: {
+                type: 'number',
+                min: 1,
+                max: 50,
+                label: 'Max Search Results',
+                allowEmpty: true,
+            },
+            searchDataSources: {
+                type: 'array',
+                max: 4,
+                label: 'Search Data Sources',
+                allowEmpty: true,
+            },
+            searchCountry: {
+                type: 'string',
+                max: 2,
+                label: 'Search Country',
+                allowEmpty: true,
+            },
+            excludedWebsites: {
+                type: 'string',
+                max: 10000,
+                label: 'Excluded Websites',
+                allowEmpty: true,
+            },
+            allowedWebsites: {
+                type: 'string',
+                max: 10000,
+                label: 'Allowed Websites',
+                allowEmpty: true,
+            },
+            includedXHandles: {
+                type: 'string',
+                max: 1000,
+                label: 'Included X Handles',
+                allowEmpty: true,
+            },
+            excludedXHandles: {
+                type: 'string',
+                max: 1000,
+                label: 'Excluded X Handles',
+                allowEmpty: true,
+            },
+            postFavoriteCount: {
+                type: 'number',
+                min: 0,
+                max: 1000000000,
+                label: 'Post Favorite Count',
+                allowEmpty: true,
+            },
+            postViewCount: {
+                type: 'number',
+                min: 0,
+                max: 1000000000,
+                label: 'Post View Count',
+                allowEmpty: true,
+            },
+            link: {
+                type: 'string',
+                max: 5000,
+                label: 'RSS Link',
+                allowEmpty: true,
+            },
+            safeSearch: {
+                type: 'boolean',
+                description: 'If true, enable safe search filtering',
+                label: 'Safe Search',
+                allowEmpty: true,
+            },
+            fromDate: {
+                type: 'string',
+                max: 10,
+                label: 'From Date',
+                allowEmpty: true,
+            },
+            toDate: {
+                type: 'string',
+                max: 10,
+                label: 'To Date',
+                allowEmpty: true,
+            },
+            // #endregion
         },
         inputs: {
             Input: {
@@ -131,13 +270,40 @@ export class GenAILLM extends Component {
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
 
-        // #region Search
-        useWebSearch: Joi.boolean().optional().label('Use Search'),
-        webSearchContextSize: Joi.string().valid('high', 'medium', 'low').optional().label('Search Content Size'),
-        webSearchCity: Joi.string().max(100).optional().allow('').label('Search City'),
-        webSearchCountry: Joi.string().max(100).optional().allow('').label('Search Country'),
-        webSearchRegion: Joi.string().max(100).optional().allow('').label('Search Region'),
-        webSearchTimezone: Joi.string().max(100).optional().allow('').label('Search Timezone'),
+        // #region Web Search
+        useWebSearch: Joi.boolean().optional().label('Use Web Search'),
+        webSearchContextSize: Joi.string().valid('high', 'medium', 'low').optional().label('Web Search Context Size'),
+        webSearchCity: Joi.string().max(100).optional().allow('').label('Web Search City'),
+        webSearchCountry: Joi.string().max(2).optional().allow('').label('Web Search Country'),
+        webSearchRegion: Joi.string().max(100).optional().allow('').label('Web Search Region'),
+        webSearchTimezone: Joi.string().max(100).optional().allow('').label('Web Search Timezone'),
+        // #endregion
+
+        // #region xAI Search
+        useSearch: Joi.boolean().optional().allow('').label('Use Search'),
+        searchMode: Joi.string().valid('auto', 'on', 'off').optional().allow('').label('Search Mode'),
+        returnCitations: Joi.boolean().optional().allow('').label('Return Citations'),
+        maxSearchResults: Joi.number().min(1).max(100).optional().allow('').label('Max Search Results'),
+        searchDataSources: Joi.array().items(Joi.string().valid('web', 'x', 'news', 'rss')).max(4).optional().allow('').label('Search Data Sources'),
+        searchCountry: Joi.string().length(2).optional().allow('').label('Search Country'),
+        excludedWebsites: Joi.string().max(10000).optional().allow('').label('Excluded Websites'),
+        allowedWebsites: Joi.string().max(10000).optional().allow('').label('Allowed Websites'),
+        includedXHandles: Joi.string().max(1000).optional().allow('').label('Included X Handles'),
+        excludedXHandles: Joi.string().max(1000).optional().allow('').label('Excluded X Handles'),
+        postFavoriteCount: Joi.number().min(0).max(1000000000).optional().allow('').label('Post Favorite Count'),
+        postViewCount: Joi.number().min(0).max(1000000000).optional().allow('').label('Post View Count'),
+        rssLinks: Joi.string().max(10000).optional().allow('').label('RSS Link'),
+        safeSearch: Joi.boolean().optional().allow('').label('Safe Search'),
+        fromDate: Joi.string()
+            .pattern(/^\d{4}-\d{2}-\d{2}$/)
+            .optional()
+            .allow('')
+            .label('From Date'),
+        toDate: Joi.string()
+            .pattern(/^\d{4}-\d{2}-\d{2}$/)
+            .optional()
+            .allow('')
+            .label('To Date'),
         // #endregion
 
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),

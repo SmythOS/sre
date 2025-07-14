@@ -1,4 +1,4 @@
-import { ILLMContextStore } from '@smythos/sre';
+import { ILLMContextStore, TLLMModel } from '@smythos/sre';
 import { ComponentWrapper } from '../Components/ComponentWrapper.class';
 
 export type InputSettings = {
@@ -15,7 +15,7 @@ export type AgentData = {
     behavior: string;
     components: any[];
     connections: any[];
-    defaultModel: string;
+    defaultModel: string | TLLMModel;
 };
 
 export type ChatOptions = {
@@ -37,8 +37,6 @@ export type ChatOptions = {
      *
      */
     persist?: boolean | ILLMContextStore;
-
-
 };
 
 export enum Scope {

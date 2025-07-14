@@ -5,6 +5,34 @@ All notable changes to the SmythOS CORE Runtime Engine will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.5.31]
+
+### LLM & Model Support:
+
+-   Added support for new models (Claude 4, xAI/Grok 4, and more).
+-   Improved model configuration, including support for unlisted/custom models
+-   better handling of Anthropic tool calling.
+-   Enhanced multimodal and streaming capabilities for LLMs.
+
+### Components & Connectors:
+
+-   Introduced AWS Lambda code component and connector.
+-   Added serverless code component.
+-   Enhanced and unified connectors for S3, Redis, LocalStorage, and JSON vault.
+-   Added support for local storage cache and improved NKV (key-value) handling.
+
+### Fixes
+
+-   Numerous bug fixes for LLM connectors, model selection, and streaming.
+-   Fixed issues with S3 connector initialization, serverless code component, and vault key fetching.
+-   Improved error handling for binary input, file uploads, and API calls.
+-   Fixed issues with usage reporting, especially for user-managed keys and custom models.
+
+### Improvements
+
+-   Optimized build processes.
+-   Improved strong typing and code auto-completion.
+
 ## [v1.5.0] SmythOS becomes open source!
 
 ### Features

@@ -146,7 +146,12 @@ export abstract class LLMConnector extends Connector {
 
                 let response;
 
-                if (preparedParams.capabilities?.search === true && preparedParams.useWebSearch === true) {
+                if (
+                    preparedParams.capabilities?.search === true &&
+                    preparedParams.useWebSearch === true &&
+                    preparedParams.modelInfo.provider === 'OpenAI'
+                ) {
+                    // ! webSearchRequest will be removed in next update
                     response = await this.webSearchRequest(requestParams);
                 } else {
                     response = await this.streamRequest(requestParams);
@@ -333,10 +338,21 @@ export abstract class LLMConnector extends Connector {
         for (const [key, value] of Object.entries(params)) {
             let _value: any = value;
 
-            // When we have stopSequences, we need to split it into an array
-            if (key === 'stopSequences') {
-                // _value = _value ? _value?.split(',') : null;
-                _value = _value ? (Array.isArray(_value) ? _value : _value?.split(',')) : null;
+            // Array parameters that can be separated by comma or newline
+            const arrayParams = ['stopSequences', 'excludedWebsites', 'allowedWebsites', 'includedXHandles', 'excludedXHandles', 'rssLinks'];
+
+            if (arrayParams.includes(key)) {
+                if (_value && typeof _value === 'string') {
+                    // Split by comma or newline, then filter out empty strings
+                    _value = _value
+                        .split(/[,\n]/)
+                        .map((item) => item.trim())
+                        .filter((item) => item.length > 0);
+                } else if (Array.isArray(_value)) {
+                    _value = _value;
+                } else {
+                    _value = _value ? [_value] : null;
+                }
             }
 
             // When we have a string that is a number, we need to convert it to a number

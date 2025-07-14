@@ -11,6 +11,8 @@ export interface TServerlessCodeSettings {
     code_imports?: string;
     /** Code */
     code_body?: string;
+    /** Code */
+    code?: string;
     /** Deploy */
     deploy_btn?: string;
     /** AWS Access Key ID */

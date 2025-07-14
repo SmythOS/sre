@@ -1,7 +1,9 @@
-import { TCustomLLMModel, TLLMProvider, TLLMModel } from '@smythos/sre';
+import { TCustomLLMModel, TLLMProvider, TLLMModel, models, SystemEvents } from '@smythos/sre';
 
 import { adaptModelParams } from './utils';
 import { TLLMInstanceParams } from './LLMInstance.class';
+import { VectorDB } from '../VectorDB/VectorDB.class';
+import { ControlledPromise, nGramSearch } from '../utils';
 
 /**
  * Model factory functions for each LLM provider.
@@ -51,5 +53,55 @@ for (const provider of Object.keys(TLLMProvider)) {
         }
     }) as TModelFactory;
 }
+
+export function findClosestModelInfo(modelId: string) {
+    if (models[modelId]) {
+        return models[modelId];
+    }
+    const closestModelId = nGramSearch(modelId, Object.keys(models));
+    if (closestModelId) {
+        const modelInfo = JSON.parse(JSON.stringify(models[closestModelId]));
+        modelInfo.enabled = true;
+        modelInfo.modelId = modelId;
+        modelInfo.credentials = ['internal', 'vault'];
+        models[modelId] = modelInfo;
+        return modelInfo;
+    }
+    return null;
+}
+// WIP : this is a workaround to ensure that the model info is available when the model is created
+// if a model is not present we create an entry based on the closest model id
+
+// const waitPromise = new ControlledPromise<any>(() => {});
+// async function findModelInfo(modelId: string) {
+//     await waitPromise;
+//     const modelInfo = models[modelId];
+//     if (modelInfo) {
+//         return modelInfo;
+//     }
+//     const ramVec = VectorDB.RAMVec('models');
+
+//     const results = await ramVec.search(modelId, { topK: 1 });
+//     if (results.length > 0) {
+//         const modelInfo = JSON.parse(JSON.stringify(models[results[0]?.text]));
+//         modelInfo.enabled = true;
+//         modelInfo.modelId = modelId;
+//         models[modelId] = modelInfo;
+//         return modelInfo;
+//     }
+//     return null;
+// }
+
+// SystemEvents.on('SRE:Initialized', async () => {
+//     const ramVec = VectorDB.RAMVec('models');
+
+//     await ramVec.purge();
+//     const promises = [];
+//     for (let modelId in models) {
+//         promises.push(ramVec.insertDoc(modelId, modelId));
+//     }
+//     await Promise.all(promises);
+//     waitPromise.resolve(true);
+// });
 
 export { Model };

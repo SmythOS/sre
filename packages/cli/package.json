@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "0.2.21",
+    "version": "0.2.31",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",
@@ -96,7 +96,7 @@
         "inquirer": "^9.2.15",
         "log-update": "^6.1.0",
         "ora": "^8.2.0",
-        "update-notifier": "^7.0.0",        
+        "update-notifier": "^7.0.0",
         "@oclif/plugin-help": "^6.2.21",
         "@oclif/test": "^3.1.9",
         "@rollup/plugin-commonjs": "^28.0.3",

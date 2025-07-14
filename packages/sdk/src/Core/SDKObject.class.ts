@@ -31,8 +31,10 @@ export class SDKObject {
         //if the SRE instance is not initializing, initialize it with default settings
         if (!SRE.initializing) SRE.init({});
         await SRE.ready();
+
         this._readyPromise.resolve(true);
     }
+
     on(event: string, listener: (...args: any[]) => void) {
         this._eventEmitter.on(event, listener);
     }

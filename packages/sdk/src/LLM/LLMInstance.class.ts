@@ -34,17 +34,19 @@ class LLMCommand {
     private async getFiles() {
         let files = [];
         if (this._options?.files) {
-            files = await Promise.all(this._options.files.map(async (file: string) => {
-                if (isFile(file)) {
-                    // Read local file using Node.js fs API with explicit null encoding to get raw binary data
-                    const buffer = await fs.promises.readFile(file, null);
-                    const binaryInput = BinaryInput.from(buffer);
-                    await binaryInput.ready();
-                    return binaryInput;
-                } else {
-                    return BinaryInput.from(file);
-                }
-            }));
+            files = await Promise.all(
+                this._options.files.map(async (file: string) => {
+                    if (isFile(file)) {
+                        // Read local file using Node.js fs API with explicit null encoding to get raw binary data
+                        const buffer = await fs.promises.readFile(file, null);
+                        const binaryInput = BinaryInput.from(buffer);
+                        await binaryInput.ready();
+                        return binaryInput;
+                    } else {
+                        return BinaryInput.from(file);
+                    }
+                })
+            );
         }
         return files.length > 0 ? files : undefined;
     }
@@ -57,7 +59,7 @@ class LLMCommand {
 
         const result = await this._llm.requester.request(params as TLLMConnectorParams);
 
-        if (result.finishReason !== 'stop') {
+        if (result.finishReason !== 'stop' && result.finishReason !== 'end_turn') {
             this._llm.emit(
                 'error',
                 new Error('The model stopped before completing the response, this is usually due to output token limit reached.')
@@ -131,6 +133,12 @@ export type TLLMInstanceParams = {
     /** The dimensions parameter for text embeddings models */
     dimensions?: number;
 
+    /** the maximum input tokens that the model should accept (Context window size) */
+    inputTokens?: number;
+
+    /** the maximum output tokens that the model should generate */
+    outputTokens?: number;
+
     [key: string]: any;
 };
 
@@ -200,7 +208,7 @@ export class LLMInstance extends SDKObject {
      * stream.on('data', chunk => process.stdout.write(chunk));
      * ```
      */
-    public prompt(prompt: string, options?:any): LLMCommand {
+    public prompt(prompt: string, options?: any): LLMCommand {
         return new LLMCommand(this, { ...this._modelSettings, messages: [{ role: 'user', content: prompt }] }, options);
     }
 

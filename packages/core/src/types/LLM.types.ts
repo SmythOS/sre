@@ -90,6 +90,24 @@ export type TLLMParams = {
     webSearchCountry?: string;
     webSearchRegion?: string;
     webSearchTimezone?: string;
+
+    // xAI specific search parameters
+    useSearch?: boolean;
+    searchMode?: 'auto' | 'on' | 'off';
+    returnCitations?: boolean;
+    maxSearchResults?: number;
+    searchDataSources?: string[];
+    searchCountry?: string;
+    excludedWebsites?: string[];
+    allowedWebsites?: string[];
+    includedXHandles?: string[];
+    excludedXHandles?: string[];
+    postFavoriteCount?: number;
+    postViewCount?: number;
+    rssLinks?: string;
+    safeSearch?: boolean;
+    fromDate?: string;
+    toDate?: string;
     // #endregion
 
     useReasoning?: boolean;

@@ -9,6 +9,8 @@ import { AWSConfig, AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types
 import { VaultHelper } from '@sre/Security/Vault.service/Vault.helper';
 import { IAgent } from '@sre/types/Agent.types';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import * as acorn from 'acorn';
+
 export const cachePrefix = 'serverless_code';
 export const cacheTTL = 60 * 60 * 24 * 16; // 16 days
 const PER_SECOND_COST = 0.0001;
@@ -18,11 +20,10 @@ export function getLambdaFunctionName(agentId: string, componentId: string) {
 }
 
 
-export function generateCodeHash(code_body: string, code_imports: string, codeInputs: string[]) {
-    const importsHash = getSanitizeCodeHash(code_imports);
+export function generateCodeHash(code_body: string, codeInputs: string[]) {
     const bodyHash = getSanitizeCodeHash(code_body);
     const inputsHash = getSanitizeCodeHash(JSON.stringify(codeInputs));
-    return `imports-${importsHash}__body-${bodyHash}__inputs-${inputsHash}`;
+    return `body-${bodyHash}__inputs-${inputsHash}`;
 }
 
 export function getSanitizeCodeHash(code: string) {
@@ -81,49 +82,17 @@ export async function setDeployedCodeHash(agentId: string, componentId: string, 
         .set(`${cachePrefix}_${agentId}-${componentId}`, codeHash, null, null, cacheTTL);
 }
 
-
-export function extractNpmImports(code: string) {
-    const importRegex = /import\s+(?:[\w*\s{},]*\s+from\s+)?['"]([^'"]+)['"]/g;
-    const requireRegex = /require\(['"]([^'"]+)['"]\)/g;
-    const dynamicImportRegex = /import\(['"]([^'"]+)['"]\)/g;
-
-    let libraries = new Set();
-    let match;
-
-    // Function to extract the main package name
-    function extractPackageName(modulePath: string) {
-        if (modulePath.startsWith('@')) {
-            // Handle scoped packages (e.g., @babel/core)
-            return modulePath.split('/').slice(0, 2).join('/');
-        }
-        return modulePath.split('/')[0]; // Extract the first part (main package)
-    }
-    // Match static ESM imports
-    while ((match = importRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-    // Match CommonJS require() calls
-    while ((match = requireRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-    // Match dynamic import() calls
-    while ((match = dynamicImportRegex.exec(code)) !== null) {
-        libraries.add(extractPackageName(match[1]));
-    }
-
-    return Array.from(libraries);
-}
-
-
-export function generateLambdaCode(code_imports: string, code_body: string, input_variables: string[]) {
-    const lambdaCode = `${code_imports}\nexport const handler = async (event, context) => {
+export function generateLambdaCode(code: string, parameters: string[]) {
+    const lambdaCode = `
+    ${code}
+    export const handler = async (event, context) => {
       try {
         context.callbackWaitsForEmptyEventLoop = false;
         let startTime = Date.now();
-        const result = await (async () => {
-          ${input_variables && input_variables.length ? input_variables.map((variable) => `const ${variable} = event.${variable};`).join('\n') : ''}
-          ${code_body}
-        })();
+
+        ${parameters && parameters.length ? parameters.map((variable) => `const ${variable} = event.${variable};`).join('\n') : ''}
+        const result = await main(${parameters.join(', ')});
+      
         let endTime = Date.now();
         return {
             result,
@@ -386,3 +355,174 @@ export function reportUsage({ cost, agentId, teamId }: { cost: number; agentId: 
         teamId,
     });
 }
+
+export function validateAsyncMainFunction(code: string): { isValid: boolean; error?: string; parameters?: string[]; dependencies?: string[] } {
+    try {
+        // Parse the code using acorn
+        const ast = acorn.parse(code, { 
+            ecmaVersion: 'latest',
+            sourceType: 'module'
+        });
+
+        // Extract library imports
+        const libraries = new Set<string>();
+        function extractPackageName(modulePath: string): string {
+            if (modulePath.startsWith('@')) {
+                // Handle scoped packages (e.g., @babel/core)
+                return modulePath.split('/').slice(0, 2).join('/');
+            }
+            return modulePath.split('/')[0]; // Extract the first part (main package)
+        }
+
+        function processNodeForImports(node: any): void {
+            if (!node) return;
+
+            // Handle ImportDeclaration (ES6 imports)
+            if (node.type === 'ImportDeclaration') {
+                const modulePath = node.source.value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    // Skip relative imports and absolute paths
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Handle CallExpression (require() calls)
+            if (node.type === 'CallExpression' && 
+                node.callee.type === 'Identifier' && 
+                node.callee.name === 'require' &&
+                node.arguments.length > 0 &&
+                node.arguments[0].type === 'Literal') {
+                const modulePath = node.arguments[0].value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Handle dynamic import() calls
+            if (node.type === 'CallExpression' && 
+                node.callee.type === 'Import' &&
+                node.arguments.length > 0 &&
+                node.arguments[0].type === 'Literal') {
+                const modulePath = node.arguments[0].value;
+                if (modulePath && !modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+                    libraries.add(extractPackageName(modulePath));
+                }
+            }
+
+            // Recursively process child nodes
+            for (const key in node) {
+                if (node[key] && typeof node[key] === 'object') {
+                    if (Array.isArray(node[key])) {
+                        (node[key] as any[]).forEach(processNodeForImports);
+                    } else {
+                        processNodeForImports(node[key]);
+                    }
+                }
+            }
+        }
+
+        // Extract dependencies from the entire AST
+        processNodeForImports(ast);
+        const dependencies = Array.from(libraries) as string[];
+
+        // Check if there's a function declaration or function expression named 'main' at the root level
+        let hasAsyncMain = false;
+        let hasMain = false;
+        let mainParameters: string[] = [];
+
+        for (const node of ast.body) {
+            if (node.type === 'FunctionDeclaration') {
+                if (node.id?.name === 'main') {
+                    hasMain = true;
+                    if (node.async) {
+                        hasAsyncMain = true;
+                        mainParameters = extractParameters(node.params);
+                        break;
+                    }
+                }
+            } else if (node.type === 'VariableDeclaration') {
+                // Check for const/let/var main = async function() or const/let/var main = async () =>
+                for (const declarator of node.declarations) {
+                    if (declarator.id.type === 'Identifier' && declarator.id.name === 'main') {
+                        hasMain = true;
+                        if (declarator.init) {
+                            if (declarator.init.type === 'FunctionExpression' && declarator.init.async) {
+                                hasAsyncMain = true;
+                                mainParameters = extractParameters(declarator.init.params);
+                                break;
+                            } else if (declarator.init.type === 'ArrowFunctionExpression' && declarator.init.async) {
+                                hasAsyncMain = true;
+                                mainParameters = extractParameters(declarator.init.params);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else if (node.type === 'ExpressionStatement' && node.expression.type === 'AssignmentExpression') {
+                // Check for main = async function() or main = async () =>
+                if (node.expression.left.type === 'Identifier' && node.expression.left.name === 'main') {
+                    hasMain = true;
+                    const right = node.expression.right;
+                    if ((right.type === 'FunctionExpression' || right.type === 'ArrowFunctionExpression') && right.async) {
+                        hasAsyncMain = true;
+                        mainParameters = extractParameters(right.params);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!hasMain) {
+            return { 
+                isValid: false, 
+                error: 'No main function found at root level',
+                dependencies
+            };
+        }
+
+        if (!hasAsyncMain) {
+            return { 
+                isValid: false, 
+                error: 'Main function exists but is not async',
+                dependencies
+            };
+        }
+
+        return { isValid: true, parameters: mainParameters, dependencies };
+    } catch (error) {
+        return { 
+            isValid: false, 
+            error: `Failed to parse code: ${error.message}` 
+        };
+    }
+}
+
+function extractParameters(params: any[]): string[] {
+    return params.map((param: any): string => {
+        if (param.type === 'Identifier') {
+            return param.name;
+        } else if (param.type === 'AssignmentPattern' && param.left.type === 'Identifier') {
+            return param.left.name;
+        } else if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
+            return param.argument.name;
+        } else if (param.type === 'ObjectPattern') {
+            // For destructured objects, return the object name or a placeholder
+            return param.name || '[object]';
+        } else if (param.type === 'ArrayPattern') {
+            // For destructured arrays, return a placeholder
+            return '[array]';
+        }
+        return '[unknown]';
+    });
+}
+
+export function generateCodeFromLegacyComponent(code_body: string, code_imports: string, codeInputs: string[]) {
+    const code = `
+    ${code_imports}
+     async function main(${codeInputs.join(', ')}) {
+        ${code_body}
+    }
+    `
+    return code;
+}
+

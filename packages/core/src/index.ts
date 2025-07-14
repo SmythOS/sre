@@ -181,6 +181,7 @@ export * from './subsystems/LLMManager/LLM.service/connectors/OpenAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/OpenRouter.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/xAI';
 export * from './subsystems/LLMManager/ModelsProvider.service/connectors/JSONModelsProvider.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/LocalStorageCache.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/RAMCache.class';

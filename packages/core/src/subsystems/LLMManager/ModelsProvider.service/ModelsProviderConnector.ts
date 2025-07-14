@@ -95,7 +95,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             adjustMaxCompletionTokens: async (
                 model: string | TLLMModel | TCustomLLMModel,
                 maxCompletionTokens: number,
-                hasAPIKey: boolean = false,
+                hasAPIKey: boolean = false
             ) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 const modelInfo = await this.getModelInfo(candidate.readRequest, teamModels, model, hasAPIKey);
@@ -143,20 +143,26 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         acRequest: AccessRequest,
         models: TLLMModelsList,
         model: string | TLLMModel | TCustomLLMModel,
-        hasAPIKey: boolean = false,
+        hasAPIKey: boolean = false
     ): Promise<TLLMModel> {
         //model can be passed directly, in which case we do not need to look it up in the models list
+
+        let modelId, alias, aliasModelInfo, modelInfo;
+
         if (typeof model === 'object' && model.modelId) {
-            return model;
+            //return model;
+            modelId = model.modelId;
+            alias = model.alias;
+            aliasModelInfo = models?.[alias];
+            modelInfo = model;
+        } else {
+            //model can be passed as a string, in which case we need to look it up in the models list
+
+            modelId = await this.getModelId(acRequest, models, model);
+            alias = models?.[model as string]?.alias;
+            aliasModelInfo = models?.[alias];
+            modelInfo = models?.[model as string];
         }
-
-        //model can be passed as a string, in which case we need to look it up in the models list
-
-        const modelId = await this.getModelId(acRequest, models, model);
-        const alias = models?.[model as string]?.alias;
-        const aliasModelInfo = models?.[alias];
-
-        const modelInfo = models?.[model as string];
 
         const aliasKeyOptions = aliasModelInfo && hasAPIKey ? aliasModelInfo?.keyOptions : null;
 

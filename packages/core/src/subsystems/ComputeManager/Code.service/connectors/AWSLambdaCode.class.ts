@@ -5,7 +5,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { cacheTTL, createOrUpdateLambdaFunction, extractNpmImports, generateCodeHash, generateLambdaCode, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
+import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { Logger } from '@sre/helpers/Log.helper';
 
@@ -38,7 +38,7 @@ export class AWSLambdaCode extends CodeConnector {
             getDeployedCodeHash(agentId, codeUID),
         ]);
 
-        const codeHash = generateCodeHash(input.code, input.dependencies, Object.keys(input.inputs));
+        const codeHash = generateCodeHash(input.code, Object.keys(input.inputs));
         if (isLambdaExists && exisitingCodeHash === codeHash) {
             return {
                 id: functionName,
@@ -53,9 +53,11 @@ export class AWSLambdaCode extends CodeConnector {
         }
         const directory = `${baseFolder}/${functionName}__${Date.now()}`;
         try {
-            const libraries = extractNpmImports(input.dependencies);
-
-            const lambdaCode = generateLambdaCode(input.dependencies, input.code, Object.keys(input.inputs));
+            const { isValid, parameters, error, dependencies } = validateAsyncMainFunction(input.code);
+            if (!isValid) {
+                throw new Error(error || 'Invalid Code')
+            }
+            const lambdaCode = generateLambdaCode(input.code, parameters);
             // create folder
             fs.mkdirSync(directory);
             // create index.js file
@@ -63,12 +65,12 @@ export class AWSLambdaCode extends CodeConnector {
             // run command npm init
             execSync('npm init -y', { cwd: directory });
             // run command npm install
-            execSync(`npm install ${libraries.join(' ')}`, { cwd: directory });
+            execSync(`npm install ${dependencies.join(' ')}`, { cwd: directory });
 
             const zipFilePath = await zipCode(directory);
             await createOrUpdateLambdaFunction(functionName, zipFilePath, this.awsConfigs);
             await setDeployedCodeHash(agentId, codeUID, codeHash);
-            console.log('Lambda function updated successfully!');
+            console.debug('Lambda function updated successfully!');
             return {
                 id: functionName,
                 runtime: config.runtime,
@@ -78,8 +80,10 @@ export class AWSLambdaCode extends CodeConnector {
         } catch (error) {
             throw error;
         } finally {
-            fs.rmSync(`${directory}`, { recursive: true, force: true });
-            fs.unlinkSync(`${directory}.zip`);
+            try {
+                fs.rmSync(`${directory}`, { recursive: true, force: true });
+                fs.unlinkSync(`${directory}.zip`);
+            } catch (error) {}
         }
 
     }
@@ -93,8 +97,8 @@ export class AWSLambdaCode extends CodeConnector {
             const executionTime = lambdaResponse.executionTime;
             await updateDeployedCodeTTL(agentId, codeUID, cacheTTL);
             console.debug(
-                    `Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
-                    }\n`,
+                `Code result:\n ${typeof lambdaResponse.result === 'object' ? JSON.stringify(lambdaResponse.result, null, 2) : lambdaResponse.result
+                }\n`,
             );
             console.debug(`Execution time: ${executionTime}ms\n`);
 
