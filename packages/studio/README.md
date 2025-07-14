@@ -34,6 +34,8 @@ Studio; otherwise component loading will fail. The UI is served by Vite on
 - **Prompt field** lets you enter a prompt that will be passed to the workflow
   when executed.
 - **Execute** runs the current workflow with the prompt you entered.
+- **Save** stores the current workflow on the Studio Server.
+- **Load** retrieves a previously saved workflow from the server.
 
 Selecting a node opens a panel on the right where you can edit its parameters.
 If the node does not feed into any others, an **Output Path** field appears to

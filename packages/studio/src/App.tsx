@@ -9,6 +9,8 @@ import ReactFlow, {
 } from 'reactflow';
 import TextInputNode from './nodes/TextInputNode';
 import HTTPCallNode from './nodes/HTTPCallNode';
+import { serializeWorkflow } from './utils/serializeWorkflow';
+import { deserializeWorkflow } from './utils/deserializeWorkflow';
 import 'reactflow/dist/style.css';
 
 const initialNodes = [];
@@ -22,6 +24,8 @@ export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [components, setComponents] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<string[]>([]);
+  const [selectedWorkflow, setSelectedWorkflow] = useState('');
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,20 @@ export default function App() {
       }
     }
 
+    async function loadWorkflowsList() {
+      try {
+        const res = await fetch('http://localhost:3010/workflows');
+        if (res.ok) {
+          const names = await res.json();
+          setWorkflows(names);
+        }
+      } catch (err) {
+        console.error('Failed to fetch workflows', err);
+      }
+    }
+
     loadComponents();
+    loadWorkflowsList();
   }, []);
 
   const addNode = (type: string) => {
@@ -67,6 +84,35 @@ export default function App() {
     setNodes((nds) =>
       nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, outputPath } } : n))
     );
+  };
+
+  const saveWorkflow = async () => {
+    const name = window.prompt('Workflow name');
+    if (!name) return;
+    const workflow = serializeWorkflow(nodes, edges);
+    await fetch(`http://localhost:3010/workflows/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(workflow),
+    });
+    // refresh list
+    try {
+      const res = await fetch('http://localhost:3010/workflows');
+      if (res.ok) setWorkflows(await res.json());
+    } catch {}
+  };
+
+  const loadWorkflow = async (name: string) => {
+    try {
+      const res = await fetch(`http://localhost:3010/workflows/${encodeURIComponent(name)}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const { nodes: wfNodes, edges: wfEdges } = deserializeWorkflow(data);
+      setNodes(wfNodes);
+      setEdges(wfEdges);
+    } catch (err) {
+      console.error('Failed to load workflow', err);
+    }
   };
 
   const executeWorkflow = async () => {
@@ -103,6 +149,29 @@ export default function App() {
             <button onClick={executeWorkflow} style={{ display: 'block', marginTop: 5 }}>
               Execute
             </button>
+            <button onClick={saveWorkflow} style={{ display: 'block', marginTop: 5 }}>
+              Save
+            </button>
+            <div style={{ marginTop: 5 }}>
+              <select
+                value={selectedWorkflow}
+                onChange={(e) => setSelectedWorkflow(e.target.value)}
+                style={{ width: '100%', marginBottom: 5 }}
+              >
+                <option value="">Select workflow</option>
+                {workflows.map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => selectedWorkflow && loadWorkflow(selectedWorkflow)}
+                style={{ display: 'block', marginTop: 0 }}
+              >
+                Load
+              </button>
+            </div>
           </div>
           {error && (
             <div style={{ color: 'red', marginTop: 10 }}>{error}</div>
