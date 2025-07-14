@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest';
+
+const run =
+    process.env.OPENROUTER_API_KEY &&
+    process.env.ANTHROPIC_API_KEY &&
+    (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)
+        ? it
+        : it.skip;
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { setupSRE } from '../../utils/sre';
 import { models as LLM_MODELS } from '@sre/LLMManager/models';
@@ -27,7 +34,7 @@ const LLM_OUTPUT_VALIDATOR = 'Yohohohooooo!';
 const WORD_INCLUSION_PROMPT = `\nThe response must includes "${LLM_OUTPUT_VALIDATOR}".`;
 
 describe.each(Object.keys(models))('Conversation Tests: %s', (id: string) => {
-    it(
+    run(
         'runs a conversation with tool use',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -47,7 +54,7 @@ describe.each(Object.keys(models))('Conversation Tests: %s', (id: string) => {
         TIMEOUT
     );
 
-    it(
+    run(
         'runs a conversation with tool use in stream mode',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -78,7 +85,7 @@ describe.each(Object.keys(models))('Conversation Tests: %s', (id: string) => {
         TIMEOUT * 10
     );
 
-    it(
+    run(
         'handles multiple tool calls in a single conversation',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -109,7 +116,7 @@ describe.each(Object.keys(models))('Conversation Tests: %s', (id: string) => {
         TIMEOUT * 2
     );
 
-    it(
+    run(
         'handles follow-up questions correctly',
         async () => {
             const specUrl = 'https://clzddo5xy19zg3mjrmr3urtfd.agent.stage.smyth.ai/api-docs/openapi-llm.json';
@@ -129,7 +136,7 @@ describe.each(Object.keys(models))('Conversation Tests: %s', (id: string) => {
     );
 
     describe('Passthrough Mode', () => {
-        it(
+        run(
             'should passthrough responses immediately midst agent execution',
             async () => {
                 const conv = new Conversation(id, 'passthrough-llm-test');
