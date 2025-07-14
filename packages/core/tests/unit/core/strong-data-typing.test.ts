@@ -5,7 +5,7 @@ import fs from 'fs';
 import { describe, expect, it } from 'vitest';
 import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 import { setupSRE } from '../../utils/sre';
-import { loadAgentData, loadTestData } from '../../utils/test-data-manager';
+import { loadAgentData, loadTestData, testData } from '../../utils/test-data-manager';
 
 setupSRE();
 
@@ -32,7 +32,7 @@ describe('Strong Data typing Features', () => {
                     boolean: 'true',
                     array: '[1,2,3]',
                     object: '{"key":"value"}',
-                    binary: 'https://smythos.com/wp-content/themes/generatepress_child/img/smythos-light.svg',
+                    binary: `file://${testData.getDataPath('file-samples/sample.png')}`,
                     date: date.toISOString(),
                 },
             });
@@ -162,6 +162,6 @@ describe('Strong Data typing Features', () => {
         expect(outputBody.array).toEqual(['a', 'b', 'c', 'd']);
         expect(outputBody.object).toEqual({ message: 'hello world' });
         expect(outputBody.binary.size).toEqual(9);
-        expect(outputBody.date).toEqual('2024-01-19T22:00:00.000Z');
+        expect(outputBody.date).toEqual('2024-01-20T00:00:00.000Z');
     });
 });
