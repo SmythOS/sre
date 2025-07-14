@@ -82,3 +82,15 @@ The `workflow` object must include a `version` and arrays of `components` and
   ]
 }
 ```
+
+## GitCommit Node Tutorial
+
+The server includes a `GitCommit` component for saving repository changes. The node takes two settings:
+
+- `repoPath` – path to the local Git repository
+- `message` – commit message
+
+When executed the server adds all modified files and creates a commit using the Git connector.
+
+A minimal workflow demonstrating the node can be found at `packages/studio-server/workflows/git-commit.smyth`. It clones a repository, appends text to a file and then commits the update.
+
