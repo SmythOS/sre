@@ -1,0 +1,249 @@
+---
+title: Leia Inc. Integration
+description: Connect SmythOS to Leia Inc. to generate 3D animations, disparity maps, and leverage advanced Lightfield technology directly within your agents.
+og:title: SmythOS & Leia Inc. - Automate 3D Content Creation
+og:description: Learn to integrate Leia's 3D technology with SmythOS. Empower your agents to convert 2D images into immersive 3D animations and manage 3D content workflows.
+og:image: /docs/img/integrations/smythos_leia.png
+keywords: [Leia SmythOS Integration, Connect Leia to SmythOS, SmythOS 3D Animation, Automate 3D Content, Lightfield API, Disparity Map, 2D to 3D Conversion]
+---
+# Leia Inc. Integration with SmythOS
+
+> **Want to bring your images to life?** Connect Leia Inc. to SmythOS and empower your agents to automatically convert 2D images into stunning 3D animations and visuals.
+
+<InfoCallout title="TL;DR">
+Securely link your Leiapix account to SmythOS using a Client ID and Client Secret. Then, use our suite of components to generate disparity maps and 3D animations, automating the entire 2D-to-3D conversion pipeline.
+</InfoCallout>
+
+## List of Leia Inc. Components
+Quickly compare Leia components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Get Pre-Signed URL**](#get-pre-signed-url) | Setup | Obtains a temporary, secure URL for uploading files to Leia Storage. | <Badge type="required" /> `trigger` | `resultPresignedUrl` | Preparing a destination for your generated animation. |
+| [**Generate Disparity Map**](#generate-disparity-map) | Generate | Creates a depth map from a standard 2D image. | <Badge type="required" /> `inputImageUrl`, `resultPresignedImageUrl` | `disparityUrl` | The first step in converting a 2D image to 3D. |
+| [**Generate Animation**](#generate-animation) | Generate | Creates a 3D animation from a 2D image and its disparity map. | <Badge type="required" /> `inputImageUrl`, `inputDisparityUrl`, `resultPresignedUrl` | `url` | Creating the final 3D video or GIF asset. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Leia Inc. with Your Agent?</summary>
+
+Leia Inc.'s Lightfield technology provides cutting-edge 2D-to-3D conversion. Integrating it with SmythOS allows you to build powerful, automated media pipelines.
+
+- **Automate 3D Content Creation:** Build agents that can take a batch of 2D product images and automatically convert them all into engaging 3D animations for your e-commerce store or social media.
+- **Enhance Visual Marketing:** Create eye-catching, immersive 3D visuals for ad campaigns programmatically, without needing specialized 3D software or artists.
+- **Streamline Workflows:** Chain the Leia components together to create a seamless pipeline: get a URL for uploading, generate a disparity map from an image, and then use both to create the final animation, all in one automated flow.
+- **Unlock New Creative Possibilities:** Use agents to experiment with different animation styles and parameters at scale, quickly generating multiple versions of a 3D asset to find the perfect one.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Leiapix account**.
+- Your Leiapix **Client ID** and **Client Secret**.
+
+<Divider />
+
+## Getting Started With Leia Inc.
+
+The connection between SmythOS and Leia Inc. is handled via OAuth 2.0, which requires a Client ID and Client Secret.
+
+### Step 1: Get Your Leia API Credentials
+1.  Log in to your [Leiapix account](https://leiapix.com/).
+2.  Navigate to the API keys or client credentials section of your account dashboard. You can typically find it at `https://auth.leialoft.com/auth/realms/leialoft/account/client-credentials`.
+3.  Your **Client ID** and **Client Secret** will be displayed. Copy both of these values.
+
+### Step 2: Store Your Credentials in SmythOS Vault
+Your Client ID and Secret are sensitive credentials. Use the SmythOS `Vault` to store them securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret for your `Client ID` and another for your `Client Secret`. Give them memorable names, like `leia_client_id` and `leia_client_secret`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Leia Component
+1.  In your SmythOS agent graph, drag and drop any Leia component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Client ID` and `Client Secret` fields, select the corresponding secrets you saved in the Vault.
+4.  Click the `Authenticate` button to initiate the connection.
+5.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Client ID and Secret from the Vault to **each** Leia component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Leia Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Prepare a place to save your final animation** | A trigger signal | [Get Pre-Signed URL](#get-pre-signed-url) | This is the first step, creating a destination for your generated files. |
+| **Create a depth map from a 2D image** | A source image URL | [Generate Disparity Map](#generate-disparity-map) | This is the core step for adding 3D information to a flat image. |
+| **Create the final 3D video from your assets** | An image URL and a disparity map URL | [Generate Animation](#generate-animation) | This is the final step, combining the image and its depth map into an animated video or GIF. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Leia Inc. component.
+
+### <a name="get-pre-signed-url"></a>Get Pre-Signed URL
+Obtains a temporary (24-hour), secure URL from Leia Storage where you can upload a file. This is a necessary first step before generating a disparity map or animation.
+
+<InfoCallout>This component requires a `Client ID` and `Client Secret` for authentication, as detailed in the [Getting Started](#getting-started-with-leia-inc) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | string | Yes | Any value can be used to trigger the component's execution. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `resultPresignedUrl`| string | The secure, temporary URL for uploading files. |
+| `Response`| object | The full, raw JSON response from the Leia API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Before generating a disparity map or an animation, call this component to get the `resultPresignedUrl`. You will pass this URL as an input to the other components so they know where to save the output file.
+</TipCallout>
+
+```json
+{
+  "component": "leia.getPreSignedUrl",
+  "trigger": "start"
+}
+```
+
+<WarningCallout title="URL Expiration">
+The generated pre-signed URL is only valid for 24 hours. Ensure your workflow completes within this timeframe.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="generate-disparity-map"></a>Generate Disparity Map
+Generates a disparity map (depth map) from a 2D image, which is essential for creating 3D effects.
+
+<InfoCallout>This component requires a `Client ID` and `Client Secret` for authentication, as detailed in the [Getting Started](#getting-started-with-leia-inc) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Input Type:** Choose between `image2d` (for standard images) or `image360` (for 360-degree images).
+- **Output Bit Depth:** Select `uint8` (smaller file size) or `uint16` (more depth detail).
+- **Dilation:** Toggle to broaden object edges and prevent color bleeding for a cleaner result.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `inputImageUrl` | string | Yes | The public URL of the source 2D image. |
+| `resultPresignedImageUrl` | string | Yes | The pre-signed URL (obtained from the "Get Pre-Signed URL" component) where the disparity map will be saved. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `disparityUrl` | string | The pre-signed URL where the final disparity map was uploaded. This will match the input `resultPresignedImageUrl`. |
+| `Response`| object | The full JSON response from the Leia API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent takes a product photo URL, gets a pre-signed URL, and then uses this component to generate a disparity map. The output `disparityUrl` is then saved for the next step.
+</TipCallout>
+
+```json
+{
+  "component": "leia.generateDisparityMap",
+  "inputImageUrl": "[https://example.com/my-photo.jpg](https://example.com/my-photo.jpg)",
+  "resultPresignedImageUrl": "presigned-url-from-previous-step"
+}
+```
+
+<WarningCallout title="Image Accessibility">
+The `inputImageUrl` must be publicly accessible for Leia's servers to process it.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="generate-animation"></a>Generate Animation
+Creates a 3D animation (MP4 or GIF) using a source image and its corresponding disparity map.
+
+<InfoCallout>This component requires a `Client ID` and `Client Secret` for authentication, as detailed in the [Getting Started](#getting-started-with-leia-inc) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Animation Type:** `mp4` or `gif`.
+- **Animation Length:** Controls animation speed (lower is faster).
+- **Amplitude X/Y/Z:** Defines the amount of camera movement on each axis.
+- **Phase X/Y/Z:** Sets the starting point of the motion on each axis.
+- **Number of Loops:** Specifies how many times a GIF should loop.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `inputImageUrl` | string | Yes | The URL for the original source image. |
+| `inputDisparityUrl`| string | Yes | The URL for the disparity map generated in the previous step. |
+| `resultPresignedUrl` | string | Yes | A new pre-signed URL (obtained from "Get Pre-Signed URL") where the final animation will be saved. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | The pre-signed URL where the final animation has been uploaded. |
+| `Response`| object | The full JSON response from the Leia API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+This is the final step in the pipeline. An agent takes the original image URL, the disparity map URL, and a new pre-signed URL to generate the final 3D animation, ready for download or display.
+</TipCallout>
+
+```json
+{
+  "component": "leia.generateAnimation",
+  "inputImageUrl": "[https://example.com/my-photo.jpg](https://example.com/my-photo.jpg)",
+  "inputDisparityUrl": "presigned-url-of-disparity-map",
+  "resultPresignedUrl": "new-presigned-url-for-animation"
+}
+```
+
+<WarningCallout title="Chained Workflow">
+This component relies on the outputs of the other two Leia components. You must have a source image, a disparity map, and a destination URL to use it.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always use the SmythOS `Vault` to store your Leia `Client ID` and `Client Secret`.
+* **Create a Full Pipeline:** The most effective way to use this integration is to chain the three components together: 1. Get URL for disparity map. 2. Generate disparity map. 3. Get URL for animation. 4. Generate animation.
+* **Experiment with Settings:** The visual quality and style of your animation depend heavily on the settings in the "Generate Animation" component. Test different values for `Amplitude` and `Animation Length` to achieve the desired effect.
+* **Image Quality Matters:** Start with a high-quality, clear 2D image for the best results. Images with a clear foreground and background tend to produce more dramatic 3D effects.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The `Client ID` or `Client Secret` is invalid, or the authentication token has expired.
+  * **Solution:** Verify that your credentials in the SmythOS Vault are correct. Try re-authenticating the component in the settings panel.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** A required input URL (e.g., `inputImageUrl`, `resultPresignedUrl`) is missing, malformed, or inaccessible.
+  * **Solution:** Ensure all URL inputs are valid and publicly accessible. For `resultPresignedUrl` inputs, make sure you are passing a valid URL obtained from the "Get Pre-Signed URL" component.
+
+* **Animation/Disparity Map Fails to Generate**
+  * **Cause:** The source image may be too complex, in an unsupported format, or the URL may be invalid. The pre-signed URL may have expired.
+  * **Solution:** Try a different source image. Verify the image URL is correct and accessible. Ensure your entire workflow runs within the 24-hour expiration window of the pre-signed URLs.
+
+<Divider />
+
+## What's Next?
+
+You're now ready to build automated 3D content pipelines with the **SmythOS Leia Inc. Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Watches a folder in a cloud storage service. When a new 2D product image is added, the agent automatically runs the full Leia pipeline to create a 3D animation and saves it to a different "Completed" folder.
+    * Takes a list of image URLs from a Google Sheet, iterates through each one, generates a 3D animation, and writes the final animation URL back to the sheet in a new column.
+    * Connects to a social media scheduler, generates a 3D animation from a static image, and then uploads it as a new post.
+
+* **Explore Other Integrations:**
+    * Use the [ScrapingBee Integration](/docs/agent-studio/integrations/scrapingbee-integration) to find images on a website, then use Leia to convert them to 3D.
+    * Generate an image with an AI model like [Fal.ai](/docs/agent-studio/integrations/falai-integration) and then bring it to life with Leia's animation tools.
+    * Store your final animation files in [OneDrive](/docs/agent-studio/integrations/onedrive-integration) or another cloud storage service for long-term keeping.

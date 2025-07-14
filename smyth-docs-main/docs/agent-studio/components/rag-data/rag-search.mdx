@@ -1,0 +1,193 @@
+---
+title: RAG Search
+description: Perform intelligent retrieval of indexed knowledge for your agents.
+keywords: [RAG, vector search, namespace, metadata, memory, results]
+toc_max_heading_level: 2
+---
+
+# RAG Search Component
+
+Use the **RAG Search** component to fetch relevant pieces of information that your agent previously stored using the **RAG Remember** component. It enables smart memory recall across documents, notes, messages, or any other text-based content.
+
+<InfoCallout title="Why this matters">
+RAG Search allows your agent to tap into memory — just like a real assistant. It surfaces the most relevant content chunks based on vector similarity, enabling accurate, fast lookups without re-indexing.
+</InfoCallout>
+
+<Arcade
+  src="https://demo.arcade.software/AGw1jcRdkCPna3EyPyyX?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+  title="RAG Search | SmythOS"
+/>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Namespace](#namespace)
+- [Result Count](#results-count)
+- [Metadata Options](#include-metadata)
+
+<Divider />
+
+## Namespace
+
+| Field | Required? | Description |
+|-------|-----------|-------------|
+| **Namespace** | <Badge type="required">Yes</Badge> | This defines which "memory bucket" to search in. It must match the one used during indexing with RAG Remember. |
+
+<TipCallout>
+Think of namespaces like folders — your agent will only search inside the one you point it to.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Results Count
+
+| Field | Required? | Description |
+|-------|-----------|-------------|
+| **Results Count** | <Badge type="optional">No</Badge> | Set how many top results to return (usually 3–5 is ideal). Helps control what gets passed downstream. |
+
+<Spacer size="md" />
+
+## Include Metadata
+
+| Field | Required? | Description |
+|-------|-----------|-------------|
+| **Include Metadata** | <Badge type="optional">No</Badge> | Includes source info like document name, section number, author, etc.—only if metadata was added during indexing. |
+
+<InfoCallout>
+If no metadata was stored with the document originally, enabling this will have no effect.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Inputs
+
+### Query
+
+| Field | Required? | Description |
+|-------|-----------|-------------|
+| **Query** | <Badge type="required">Yes</Badge> | This is the question or phrase your agent uses to search memory. Can be natural language, keywords, or anything meaningful. |
+
+<InfoCallout>
+Use clear, concise questions like “What’s the refund policy?” instead of vague terms like “refund.”
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Outputs
+
+### Results
+
+| Output | Description |
+|--------|-------------|
+| **Results** | Returns an array of relevant content. Each item includes: <br/> - `text`: the matched content <br/> - `score`: relevance score (optional) <br/> - `metadata`: original doc info (if enabled) |
+
+<TipCallout title="How to use it">
+Send `Results` into a **GenAI LLM** block to summarize, explain, or convert it into a user-facing message. Or use conditionals to route based on the result’s metadata.
+</TipCallout>
+
+<InfoCallout>
+This component only emits one output field: `Results`. Custom outputs aren't supported.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Real-World Example: Internal Policy Lookup
+
+Let’s say your agent acts as a company helpdesk. You’ve previously indexed HR and policy documents under the namespace `company_docs`.
+
+Now your agent needs to answer a user query like:
+
+> “How do I process a customer refund?”
+
+### Your RAG Search Configuration
+
+| Setting | Value |
+|---------|-------|
+| Namespace | `company_docs` |
+| Results Count | `3` |
+| Include Metadata | `Yes` |
+
+### Example Query
+
+| Field | Value |
+|-------|-------|
+| **Query** | `Steps for processing a refund` |
+
+### Output Example
+
+```json
+[
+  {
+    "text": "Refunds must be processed through the billing portal within 7 days of the original transaction.",
+    "score": 0.94,
+    "metadata": {
+      "document": "RefundPolicy2024.pdf",
+      "section": "2.1"
+    }
+  }
+]
+```
+
+Now your agent can forward this text to a downstream LLM component to format it as a human-readable response.
+
+<Spacer size="md" />
+
+<Divider />
+
+## Real-World Example: Internal Policy Lookup
+
+Consider an enterprise helpdesk agent built with SmythOS. You’ve previously stored internal documents (HR policies, refund terms, tech protocols) using the `RAG Remember` component under the namespace `company_docs`.
+
+Now, you want your agent to intelligently retrieve responses when users ask questions like:
+
+- "How many days of paid leave do I get?"
+- "What’s the process for refunding a customer?"
+
+### Setup
+
+- **Namespace:** `company_docs`
+- **Results Count:** 3
+- **Include Metadata:** Enabled (to show document name and version)
+
+### Input
+
+| Field   | Value                          |
+|---------|--------------------------------|
+| Query   | "Steps for processing a refund" |
+
+### Output Sample
+
+```json
+[
+  {
+    "text": "Refunds must be processed through the billing portal within 7 days of the original transaction.",
+    "score": 0.94,
+    "metadata": {
+      "document": "RefundPolicy2024.pdf",
+      "section": "2.1"
+    }
+  },
+]
+```
+<TipCallout title="Tip"> Use domain-specific namespaces like `hr_docs`, `finance_2024`, or `support_guides` to keep memory modular and manageable. </TipCallout>
+
+## Best Practices
+
+- Keep your namespace naming consistent across components
+- Ask precise questions in the query field — just like you'd Google something
+- Stick to 3–5 results max unless you want a broader recall
+- Always include metadata when you want traceability or audit context
+- Use RAG Search before LLM generation to reduce hallucination and boost accuracy
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Feed `Results` into a **[GenAI LLM](/docs/agent-studio/components/base/gen-ai-llm)** for summarization
+- Index new documents with **[RAG Remember](/docs/agent-studio/components/rag-data/rag-remember)** for future retrieval
+- Use metadata to filter or route results programmatically
+
+<TipCallout>
+Chaining **RAG Search** + **GenAI LLM** is one of the most effective ways to create grounded, reliable agents in SmythOS.
+</TipCallout>

@@ -1,0 +1,13 @@
+{
+	"label": "Integrations",
+	"collapsed": true,
+	"link": {
+		"type": "generated-index",
+		"title": "Integrations",
+		"description": "Browse all available integrations for SmythOS Agent Studio",
+		"slug": "/agent-studio/integrations"
+	},
+	"customProps": {
+		"sort": "alphabetical"
+	}
+}

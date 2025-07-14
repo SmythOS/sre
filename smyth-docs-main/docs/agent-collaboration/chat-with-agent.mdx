@@ -1,0 +1,92 @@
+---
+title: Chat with Agent
+description: Send messages to your agent through a live chat interface. Perfect for quick tasks, prompt testing, or direct interaction.
+keywords: [chat, live messaging, real-time agent, prompt testing, agent interaction]
+toc_max_heading_level: 2
+sidebar_position: 2
+---
+
+# Chat with Agent
+
+Use the **Chat** interface to talk directly to your deployed agent. You can type prompts, run actions, and test how it responds, without configuring endpoints or workflows.
+
+<InfoCallout title="When to use chat">
+Chat is the fastest way to test your agent’s intelligence, explore its skills, or assign quick tasks in real time.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How to Open the Chat Panel
+
+1. Go to your **Dashboard**
+2. Find the agent you want to message
+3. Click the `Chat →` button next to it
+
+<Image 
+  src="/docs/img/agent_collaboration/chat-with-agent.jpg" 
+  alt="Open Chat Panel from Agent Dashboard in SmythOS" 
+  caption="Click the Chat button to launch the full-screen chat panel for any agent." 
+/>
+
+This opens a dedicated full-screen chat panel where you can start interacting immediately.
+
+<Image 
+  src="/docs/img/agent_collaboration/chat-with-agent-card.jpg" 
+  alt="Chat Panel from Agent Dashboard in SmythOS" 
+  caption="Chat panel showing an agent card view from the Agent Dashboard in SmythOS."
+/>
+<Spacer size="md" />
+
+## What You Can Do in Chat
+
+Inside the chat panel, you can:
+
+- Type instructions or questions (up to 8000 characters)
+- Send prompts, commands, or structured JSON
+- Upload files using the paperclip icon
+- Read responses inline, without switching views
+- Continue the thread as long as the session stays open
+<WarningCallout title="Chat history isn't saved after closing">
+Your session data is temporary. If you need to keep the outputs, copy them out before closing the panel.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Real-Time Execution
+
+Every message you send is interpreted live using the agent’s current logic stack. This lets you:
+
+- Try out phrasing and see how the agent reacts
+- Refine prompts or input formats
+- Run one-off tasks without building a full flow
+<TipCallout title="Helpful for debugging">
+If an agent isn’t behaving as expected, try breaking down your input in chat first. This often surfaces issues with prompt design or skill setup.
+</TipCallout>
+<Spacer size="md" />
+
+## Behavior and Limitations
+
+| Feature                | Details                                                           |
+|------------------------|-------------------------------------------------------------------|
+| Character Limit        | Maximum of 8000 characters per message                            |
+| Deployment Required    | The agent must be deployed to respond in chat                    |
+| Chat History           | Session history disappears when the panel is closed              |
+| Triggering Logic       | Messages pass through the agent’s full skill and action stack     |
+
+<Spacer size="md" />
+
+## Common Use Cases
+
+| Input Example                      | What the Agent Does                               |
+|-----------------------------------|----------------------------------------------------|
+| `Summarize this:` + pasted article | Uses a summarisation skill on your input          |
+| `Give me 5 SEO titles for X`       | Runs a generation skill to output headline ideas  |
+| `What happened in tech today?`     | Activates a research or content scraping skill     |
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- [Test your agent with Bulk Work](/docs/agent-collaboration/agent-bulk-work)
+- [Schedule recurring tasks](/docs/agent-collaboration/agent-work-schedules)
+- [Deploy your agent to other environments](/docs/agent-deployments/overview)

@@ -1,0 +1,180 @@
+# Tutorial: Asana Task Manager Agent
+
+This agent helps teams organize, track, and manage work. Users can seamlessly connect and synchronize their projects and tasks within custom workflows, enhancing productivity and collaboration.
+
+<Youtube videoId="jPBCl1Fy9hk" title="SmythOS - Asana Task Manager Agent" />
+
+## Asana Credentials
+
+To enable integration with Asana, you’ll need to acquire a Client ID and Client Secret. Follow these steps to set up the authentication and establish a connection.
+
+1. Go to https://asana.com/ and login. If you do not have an account, proceed to create one by following the registration process.
+2. Go to your Asana Dashboard and navigate to your profile settings.
+
+<Image src="/docs/img/asana_task_manager_agent/1.png" alt="alt text" />
+
+3. Navigate to `Apps` and click `Manage Developer Apps`.
+
+<Image src="/docs/img/asana_task_manager_agent/2.png" alt="alt text" />
+
+4. Click `Create New App`.
+
+<Image src="/docs/img/asana_task_manager_agent/3.png" alt="alt text" />
+
+5. Name your app, check the box for `Automate work in Asana`, and agree to Asana's API terms by checking the corresponding box. Then, click the `Create App` button.
+
+<Image src="/docs/img/asana_task_manager_agent/4.png" alt="alt text" />
+
+6. Your Client ID & Client Secret are now automatically generated. Store your credentials in a secure location, or you can add them to your vault. Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your API keys to the vault.
+
+<Image src="/docs/img/asana_task_manager_agent/5.png" alt="alt text" />
+
+7. Navigate to the left sidebar and click `OAuth` and click `Add Redirect URL`. 
+
+<Image src="/docs/img/asana_task_manager_agent/6.png" alt="alt text" />
+
+8. Add this link: https://app.smythos.com/oauth/oauth2/callback to allow proper authentication callbacks. Then, click the `Add` button to save your configuration.
+
+<Image src="/docs/img/asana_task_manager_agent/7.png" alt="alt text" />
+
+9. Navigate to the left sidebar and click `Manage Distribution`, then choose a distribution method. In this instance, let’s choose `Any Workspace` and click the `Save` button to save the changes.
+
+<Image src="/docs/img/asana_task_manager_agent/8.png" alt="alt text" />
+
+## Agent Setup
+
+1. In SmythOS, navigate to the templates tab.
+
+<Image src="/docs/img/asana_task_manager_agent/9.png" alt="alt text" />
+
+2. You can scroll down to find the `Asana Task Manager` agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/asana_task_manager_agent/10.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### Agent Variables Setup
+
+Individual users in Asana also have their own Global ID.
+
+1. Within the builder, click the `Agent Variables` button. These are the values that can be used across any component.
+
+<Image src="/docs/img/asana_task_manager_agent/11.png" alt="alt text" />
+
+2. We have two variables here, the `Asana Worskpace Global ID` and `Asana Project Globad ID`. We need these IDs in order to use the agent.
+
+<Image src="/docs/img/asana_task_manager_agent/12.png" alt="alt text" />
+
+Go to https://app.asana.com/api/1.0/workspaces to get your Asana Workspace Global ID. Copy your Global ID number and store it in a secure location, or you can add it to your SmythOS vault. Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your keys to the vault.
+
+Go to https://app.asana.com/api/ 1.0/projects to get your Asana Project Global ID. Use "Ctrl+F" to find the project that you want to use, e.g., SmythOS. Copy your Global ID number and store in a secure location, or you can add them to your SmythOS vault. Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your keys to the vault.
+
+3. Now, let’s input the IDs. Click the key icon and select your stored Asana Workspace Global ID from your vault.
+
+<Image src="/docs/img/asana_task_manager_agent/13.png" alt="alt text" />
+
+4. Next, click the key icon and select your stored Asana Project Global ID from your vault.
+
+<Image src="/docs/img/asana_task_manager_agent/14.png" alt="alt text" />
+
+5. Then, click `Save` to save your configuration.
+
+<Image src="/docs/img/asana_task_manager_agent/15.png" alt="alt text" />
+
+### Get Users in a Workspace Setup
+
+1. Go here https://developers.asana.com/reference/getusersforworkspace and copy the GET URL.
+
+<Image src="/docs/img/asana_task_manager_agent/16.png" alt="alt text" />
+
+2. Paste the URL into your browser and replace the area in the brackets with your Workspace Global ID. 
+https://app.asana.com/api/1.0/workspaces/{workspace_gid}/users. This will provide you with a list of all users, which you can then save as an .xml file. 
+
+> **Note:** Files accepted in SmythOS data space include .xml, .pdf, .doc, .docx, .txt, .html, or .htm formats.
+
+### Data Pool Setup
+
+Now, let's add your XML file to your Data Space.
+
+1. In SmythOS, navigate to the `Data Pool` tab and click `Add Data Space`.
+
+<Image src="/docs/img/asana_task_manager_agent/17.png" alt="alt text" />
+
+2. Enter your Data Space name and click the `Add Data Space` button.
+
+<Image src="/docs/img/asana_task_manager_agent/18.png" alt="alt text" />
+
+3. Click on the Data Space you have created.
+
+<Image src="/docs/img/asana_task_manager_agent/19.png" alt="alt text" />
+
+4. Then, click `Add Source`.
+
+<Image src="/docs/img/asana_task_manager_agent/20.png" alt="alt text" />
+
+5. Label your data source for easy identification, then upload your XML file or drag and drop it. Next, click the `Add Data Source` button.
+
+<Image src="/docs/img/asana_task_manager_agent/21.png" alt="alt text" />
+
+6. Then, wait for your data source to be fully indexed.
+
+<Image src="/docs/img/asana_task_manager_agent/22.png" alt="alt text" />
+
+### Data Lookup Component Setup
+
+In the builder, locate the Data Lookup component. Click the gear icon to open the settings, then select the list you want to use. Then, don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/asana_task_manager_agent/23.png" alt="alt text" />
+
+> **Note:** You can store your Asana member data on a Data Space and use Data look up to fetch it. You can use the List Workspace Users Asana integration to get the member data. Alternatively, you can replace this with the List Workspace Users integration component. (must add to delay if you're fetching huge data).
+
+### Asana Components Setup
+
+Perform the following actions on the Asana List Task and Asana Create Task components.
+
+1. In the builder, locate the Asana component. Click the gear icon to open the settings.
+
+<Image src="/docs/img/asana_task_manager_agent/24.png" alt="alt text" />
+
+2. In the Client ID field, click the key icon and select your stored Asana ClientID key from your vault.
+
+<Image src="/docs/img/asana_task_manager_agent/25.png" alt="alt text" />
+
+3. In the Client Secret field, click the key icon and select your stored Asana ClientSecret key from your vault.
+
+<Image src="/docs/img/asana_task_manager_agent/26.png" alt="alt text" />
+
+4. Then, don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/asana_task_manager_agent/27.png" alt="alt text" />
+
+5. After configuration, click the Authenticate button to grant Asana permission.
+
+<Image src="/docs/img/asana_task_manager_agent/28.png" alt="alt text" />
+
+6. Then, click `Allow`.
+
+<Image src="/docs/img/asana_task_manager_agent/29.png" alt="alt text" />
+
+7. In the builder, you will be notified that your OAuth authentication was successful.
+
+<Image src="/docs/img/asana_task_manager_agent/30.png" alt="alt text" />
+
+8. Repeat the process with the other Asana component.
+9. Navigate to the `List Tasks Asana component` and click the edit icon in the workspace section.
+
+<Image src="/docs/img/asana_task_manager_agent/31.png" alt="alt text" />
+
+10. Next, select `asana workspace gid` as the default value and click save.
+
+<Image src="/docs/img/asana_task_manager_agent/32.png" alt="alt text" />
+
+11. Navigate to the `Create Task Asana component` and click the edit icon in the project_gid section.
+
+<Image src="/docs/img/asana_task_manager_agent/33.png" alt="alt text" />
+
+12. Next, select `asana project gid` as the default value and click save.
+
+<Image src="/docs/img/asana_task_manager_agent/34.png" alt="alt text" />
+
+13. You're all set and ready to run the workflow in Asana.

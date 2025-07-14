@@ -1,0 +1,119 @@
+---
+title: Quickstart
+description: Step-by-step guide to deploying agents in SmythOS using Agent Cloud, including versioning, subdomains, and optional release notes.
+keywords: [SmythOS, deploy agent, agent cloud, quick start, deployment guide, versioning, subdomain, live agent]
+sidebar_position: 2
+---
+
+# Quickstart to Deployment
+
+
+This guide walks you through deploying an agent to **Agent Cloud**, the default runtime hosted by SmythOS. You’ll assign a version, pick a subdomain, and optionally add release notes from within the Builder.
+
+<InfoCallout title="Looking for other deployment options?"> 
+You can also deploy to **Enterprise** (on-prem or VPC) or **Local Runtime** (offline/local dev). See the [Deployments Overview](/docs/agent-deployments/overview) for more.
+</InfoCallout>
+<Spacer size="md" />
+
+## 1. Open Your Agent in the Studio
+
+Navigate to the agent you want to deploy and open it in the [**Studio**](/docs/agent-studio/overview).
+
+You’ll see your workflow or components already laid out.
+
+<Spacer size="md" />
+
+## 2. Click `Deploy` in the Top Right
+
+At the top of the builder, click the **Deploy** button to open the deployment panel. You can also do it from the sidebar.
+
+<Spacer size="md" />
+
+## 3. Choose Your Deployment Mode
+
+Stay on the **Agent Cloud** tab (it's the default option).
+
+> Agent Cloud runs on SmythOS-hosted infrastructure without any setup or configuration required.
+
+<Spacer size="md" />
+
+## 4. Set a Version Number
+
+Fill in the **Major** and **Minor** version fields.
+
+- Use a new version each time you deploy
+- You can’t reuse the same version number again
+
+Examples:
+- `1.0` – First release
+- `1.1` – Minor update or fix
+- `2.0` – Major changes or breaking updates
+
+Need help? See the [Versioning Guide](/docs/agent-deployments/versioning)
+
+<WarningCallout title="Versioning Rules">
+Each deployment must have a unique version number. If you're unsure how to version your changes, refer to the [Versioning Guide](/docs/agent-deployments/versioning).
+</WarningCallout>
+
+<Spacer size="md" />
+
+## 5. Enter a Subdomain
+
+Choose the subdomain you want the agent to run on.
+
+- This creates a live URL like:  
+  `youragent.agent.pstage.smyth.ai`
+
+You can also click the link in the UI to register a custom subdomain if needed.
+
+<Spacer size="md" />
+
+## 6. Add Release Notes (Optional)
+
+You can enter a short description of what changed in this version.
+
+This appears in **Agent Settings → Deployments** and is useful for tracking updates.
+
+### Good examples:
+- `Adds data cleaning step before classification`
+- `Adds PDF generation and summary step`
+- `Fixes issue with Slack API formatting`
+
+### Avoid vague notes:
+- `Update agent`
+- `Bugfix`
+- `New stuff added`
+
+<InfoCallout title="Why Release Notes Matter">
+Clear release notes help collaborators and future you understand what changed, especially across multiple deployments.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## 7. Click `Deploy`
+
+SmythOS will:
+
+- Assign the version number
+- Provision a live URL
+- Issue an SSL certificate
+- Perform basic health checks
+
+Once it’s ready, you’ll get a working, shareable agent URL.
+
+<Spacer size="md" />
+
+## What You Get After Deployment
+<TipCallout title="Deployments Are Versioned">
+Each deployment is self-contained. You can release new versions without affecting previous ones. Rollback and tracking are built-in.
+</TipCallout>
+
+- A live, HTTPS-secured URL  
+- Agent is locked to the version you deployed  
+- Entry is listed under **Agent Settings → Deployments**
+
+<InfoCallout title="What’s Next?">
+- Want to understand how agents actually run after deployment? See the [Agent Runtime Overview](/docs/agent-runtime/overview)  
+- Need to change or remove a previous deployment? Go to **Agent Settings → Deployments**  
+- Curious about enterprise or local deployment options? Check the [Deployments Overview](/docs/agent-deployments/overview)
+</InfoCallout>

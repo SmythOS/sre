@@ -1,0 +1,63 @@
+---
+title: Connect RapidAPI
+description: Learn how to integrate RapidAPI with your agents in SmythOS.
+keywords: [RapidAPI, contact scraper, integration, agent connection, API key]
+sidebar_position: 2
+---
+
+# Connect RapidAPI to Your Agent
+
+[RapidAPI](https://rapidapi.com/) gives you access to thousands of public APIs you can use inside your agents. One popular example is the **Website Contacts Scraper**.
+
+This guide walks you through setting up your RapidAPI account, retrieving your API key, and subscribing to the contact scraping endpoint.
+
+> Need help using this API inside an agent? See [Lead Contact Scraper Agent](/docs/agent-templates/sales/lead-contacts-scraper) for a full working example.
+
+<Spacer size="md" />
+
+## Step 1: Sign Up on RapidAPI
+
+1. Visit the [RapidAPI homepage](https://rapidapi.com/)  
+2. Create a new account or log in to an existing one  
+3. After login, go to your [Developer Dashboard](https://rapidapi.com/developer/apps)  
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 1.png" alt="RapidAPI dashboard" />
+
+You’ll see your **default API key**. Use the **copy** icon to copy it.  
+Click the **eye** icon if you want to view it.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 2.png" alt="API key display" />
+
+<InfoCallout title="Where to use the key">
+Use this API key when configuring your agent or connector in [Studio](/docs/agent-studio/overview) or via [Runtime](/docs/agent-runtime/overview).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 2: Subscribe to the API Endpoint
+
+We’ll use the [Website Contacts Scraper](https://rapidapi.com/letscrape-6bRBa3QguO5/api/website-contacts-scraper) for this example.
+
+1. Go to the API’s [main page](https://rapidapi.com/letscrape-6bRBa3QguO5/api/website-contacts-scraper)  
+2. Click on the **Pricing** tab  
+3. Choose a plan (the Basic plan includes 100 free monthly requests)
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 3.png" alt="Pricing tab" />
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 4.png" alt="Plan selection" />
+
+4. Click **Subscribe**
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 5.png" alt="Subscribe button" />
+
+Once you’ve subscribed, the API is ready to use in your agents.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 6.png" alt="Subscription confirmation" />
+
+<Spacer size="md" />
+
+## What’s Next?
+
+- [Template to Build an Agent That Uses RapidAPI](/docs/agent-templates/sales/lead-contacts-scraper)
+- [Explore Building Agents](/docs/agent-studio/build-agents/agent-overview)
+
+<NeedHelpCallout />

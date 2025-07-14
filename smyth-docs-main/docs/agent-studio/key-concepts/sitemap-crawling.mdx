@@ -1,0 +1,149 @@
+---
+title: Sitemap Crawling
+description: Learn how to automatically crawl and index website content from XML sitemap URLs inside SmythOS Data Spaces for use in agent RAG operations.
+keywords: [sitemap, crawling, data spaces, indexing, smythos, rag, xml]
+sidebar_position: 4
+---
+
+# Sitemap Crawling in Data Spaces
+
+[Data Spaces](/docs/agent-collaboration/data-pool/data-spaces) let you automatically ingest website content from sitemap URLs without writing any custom crawler logic. This allows agents to perform semantic search across a site’s structure using standard sitemap formats.
+
+<InfoCallout title="Why use sitemap crawling?">
+This built-in feature eliminates manual URL collection. Simply provide a sitemap URL and let SmythOS handle discovery, crawling, and indexing.
+</InfoCallout>
+
+## How it works
+
+When you add a sitemap URL to a [Data Space](/docs/agent-collaboration/data-pool/data-spaces), SmythOS:
+
+1. Fetches the sitemap XML from the specified URL
+2. Parses all listed URLs (including nested sitemaps)
+3. Crawls each page and extracts relevant content
+4. Indexes that content into the selected Data Space
+5. Makes it searchable using [RAG Search](/docs/agent-studio/components/rag-data/rag-search)
+
+<InfoCallout title="No manual upload required">
+Sitemaps must be available at an HTTP or HTTPS address. File uploads of sitemaps are not supported.
+</InfoCallout>
+
+## Setup Instructions
+
+### Step 1: Create a Data Space
+
+Follow the standard instructions in the [Data Spaces guide](/docs/agent-collaboration/data-pool/data-spaces) to create a new container.
+
+### Step 2: Add a sitemap URL
+
+1. Open your Data Space
+2. Click **Add Data Source**
+3. Choose **URL** as the source type
+4. Enter your sitemap URL (e.g., `https://example.com/sitemap.xml`)
+5. Save
+
+SmythOS begins crawling and indexing immediately. You can monitor progress from the Data Pool dashboard.
+
+## Supported sitemap formats
+
+SmythOS supports multiple types of sitemaps:
+
+- Standard: `https://example.com/sitemap.xml`, `.xml.gz`, or sitemap index files
+- News: `https://example.com/news-sitemap.xml`
+- Images: `https://example.com/image-sitemap.xml`
+- Videos: `https://example.com/video-sitemap.xml`
+- Mobile: `https://example.com/mobile-sitemap.xml`
+
+Sitemap index files are fully supported. SmythOS will crawl each child sitemap listed within them.
+
+<WarningCallout title="Only publicly accessible URLs">
+Private, password-protected, or file-based sitemap uploads are not supported. Sitemap URLs must be accessible over the public internet.
+</WarningCallout>
+
+## Working with crawled data
+
+Once indexing is complete, the content is available to agents via these components:
+
+### [RAG Search](/docs/agent-studio/components/rag-data/rag-search)
+
+Use this to retrieve semantically relevant results from the sitemap content. Configure it to query the correct Data Space, adjust result count, and toggle metadata inclusion.
+
+### RAG Remember(/docs/agent-studio/components/rag-data/rag-remember)
+
+Enhance a sitemap-based Data Space with additional content like manually written summaries or notes. This is useful when you want to enhance the crawled data.
+
+### RAG Forget(/docs/agent-studio/components/rag-data/rag-forget)
+
+Only manually added content can be removed using this component. Sitemap-crawled content is persistent and cannot be deleted through workflows.
+
+<InfoCallout title="Combine crawled and manual data">
+You can add custom inputs to enhance sitemap-based knowledge without altering the original crawled material.
+</InfoCallout>
+
+## Organising your Data Spaces
+
+### Single domain
+
+Use one Data Space for each domain and add its sitemap. Best for simple websites or small teams.
+
+### Multi-domain
+
+Use separate Data Spaces for each domain. Helps keep content clean and improves targeted search.
+
+### By content type
+
+Segment by purpose (e.g., product pages vs. blog posts) using content-specific sitemaps.
+
+<InfoCallout title="Use consistent naming">
+Name each Data Space clearly to simplify long-term management. For example: `product-sitemap`, `blog-sitemap`, `support-content`.
+</InfoCallout>
+
+## Advanced: Custom Storage
+
+For large sitemaps, enable [Custom Storage](/docs/agent-collaboration/data-pool/custom-storage) using Pinecone. This lets you scale indexing, run advanced vector searches, and handle datasets with tens of thousands of pages.
+
+| Feature | SmythOS Default | Custom Storage |
+|--------|------------------|----------------|
+| Setup | No config needed | Pinecone required |
+| Scalability | Medium | High |
+| Advanced search | Basic | Vector ops |
+| Manual tuning | Limited | Full API control |
+
+<WarningCallout title="Large sitemaps">
+If your sitemap includes more than 50,000 pages, use Custom Storage for better performance and indexing reliability.
+</WarningCallout>
+
+## Best practices
+
+- Choose the main sitemap or index if available
+- Avoid sitemap URLs that require login
+- Split very large sitemaps into category-specific ones
+- Confirm sitemap URL is valid XML and publicly accessible
+
+## Troubleshooting
+
+| Issue | Steps to Resolve |
+|-------|------------------|
+| Sitemap not processing | Verify URL is public and returns valid XML |
+| Missing pages | Wait for full indexing or check Data Space selection |
+| Poor query results | Add context via [RAG Remember](/docs/agent-studio/components/rag-data/rag-remember) |
+| Large sitemap slow | Use Custom Storage or split into smaller Data Spaces |
+
+## Using Sitemap Data in Agents
+
+Agents can access crawled content through RAG workflows:
+
+- Add the [RAG Search component](/docs/agent-studio/components/rag-data/rag-search) in a workflow
+- Link it to the sitemap-enabled [Data Space](/docs/agent-collaboration/data-pool/data-spaces)
+- Use results in chat, APIs, or forms
+
+For more, see how to [connect Data Spaces to agents](/docs/agent-collaboration/spaces/).
+
+<SuccessCallout title="Multi-source agents">
+Combine sitemap data with file uploads, URLs, and custom notes in a single workflow.
+</SuccessCallout>
+
+## What's Next?
+
+- Read more about [Data Spaces](/docs/agent-collaboration/data-pool/data-spaces)
+- Scale with [Custom Storage](/docs/agent-collaboration/data-pool/custom-storage)
+- Add crawled data to [Spaces](/docs/agent-collaboration/spaces/) for agent use

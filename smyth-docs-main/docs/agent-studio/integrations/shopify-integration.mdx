@@ -1,0 +1,341 @@
+---
+title: Shopify Integration
+description: Connect SmythOS to Shopify to automate e-commerce operations, manage products, and sync content like blog posts and articles directly from your agents.
+og:title: SmythOS & Shopify - Automate Your E-Commerce Content
+og:description: Learn to integrate Shopify with SmythOS. Empower your agents to create, update, and retrieve products, inventory, orders, and blog content to streamline your online store.
+og:image: /img/integrations/smythos_shopify.png
+keywords: [Shopify SmythOS Integration, Connect Shopify to SmythOS, SmythOS Shopify, Automate E-commerce, Shopify API, No-Code Shopify, CMS Automation]
+---
+# Shopify Integration with SmythOS
+
+> **Want to automate your e-commerce content and operations?** Connect your Shopify store to SmythOS and empower your agents to manage blogs, articles, and more, directly from your workflows.
+
+<InfoCallout title="TL;DR">
+Securely link your Shopify store to SmythOS using an Admin API access token from a private app. Then, use our suite of components to automate your entire content pipeline, from creating new blog posts to listing articles.
+</InfoCallout>
+
+## List of Shopify Components
+Quickly compare Shopify components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Blog**](#create-blog) | Write | Creates a new blog within your Shopify store (e.g., "News", "Updates"). | <Badge type="required" /> `store_name`, `title` | `id` | Setting up a new content section on your site. |
+| [**Get Blogs**](#get-blogs) | Read | Retrieves a list of all blogs in your Shopify store. | <Badge type="required" /> `store_name` | `Blogs` | Finding the correct `blog_id` to post an article to. |
+| [**Create Article**](#create-article) | Write | Creates and publishes a new article within a specified blog. | <Badge type="required" /> `store_name`, `blog_id`, `title`, `author`, `body_html` | `articleId` | Automatically publishing a new blog post. |
+| [**Create Draft Article**](#create-draft-article) | Write | Creates a new article as a draft, hidden from your live site. | <Badge type="required" /> `store_name`, `blog_id`, `title`, `author`, `body_html` | `articleId` | Staging AI-generated content for human review. |
+| [**Create Article With Image**](#create-article-with-image)| Write | Creates a new article and sets its featured image. | <Badge type="required" /> `store_name`, `blog_id`, `title`, `img_src` | `articleId` | Publishing visually rich content automatically. |
+| [**List Articles**](#list-articles) | Read | Retrieves a list of articles from a specific blog. | <Badge type="required" /> `store_name`, `blog_id` | `articles` | Getting recent posts for a "related articles" section. |
+| [**Get Article**](#get-article) | Read | Retrieves the details of a single, specific article. | <Badge type="required" /> `store_name`, `blog_id`, `article_id` | `title`, `body_html`| Fetching content for re-purposing or analysis. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Shopify with Your Agent?</summary>
+
+Your Shopify store is more than just products; it's a content platform. Integrating its content management features with SmythOS allows you to build powerful automation pipelines.
+
+- **Automated Content Creation:** Create agents that take content from any source—a Google Doc, a Notion page, or an AI model's output—and automatically create and format new blog posts in your Shopify store.
+- **Content Syndication:** Build a workflow that monitors your primary blog's RSS feed. When a new post is published, an agent can automatically re-publish it to your Shopify blog to drive engagement and SEO.
+- **Dynamic Content Updates:** Connect your Shopify blog to other data sources. An agent could update an article with real-time information, event details, or related product links automatically.
+- **Streamline Your Editorial Process:** Use agents to manage your content lifecycle. An agent can create a draft post, notify an editor in Slack for review, and once approved, another agent could potentially update the post to be published.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Shopify account** and store.
+- Permissions to create and manage **private apps** in your Shopify admin panel.
+- Your Shopify **Admin API access token**.
+
+<Divider />
+
+## Getting Started With Shopify
+
+The connection between SmythOS and Shopify is configured using an Admin API access token generated from a private app.
+
+### Step 1: Get Your Shopify API Access Token
+1.  **Log in to your Shopify Admin Panel.**
+2.  Navigate to **Apps** from the left-hand menu.
+3.  Click on **Apps and sales channel settings**.
+4.  Click **Develop apps**. If this is your first time, you may need to allow custom app development.
+5.  Click **Create an app**. Give it a name (e.g., "SmythOS Content Agent") and select an App developer.
+6.  Once the app is created, go to the **API credentials** tab. Click **Configure Admin API scopes**.
+7.  Grant the necessary permissions. For content management, you will need at least `read_blogs` and `write_blogs`.
+8.  Click **Save**, then click **Install app** in the top right.
+9.  After installing, the **Admin API access token** will be revealed. **Copy this token immediately.** It will not be shown again.
+
+### Step 2: Store Your Access Token in SmythOS Vault
+Your Admin API access token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Shopify Admin API access token as the value. Give it a memorable name, like `shopify_admin_api_token`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a Shopify Component
+1.  In your SmythOS agent graph, drag and drop any Shopify component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Access Token` field, select the secret you saved in the Vault (e.g., `shopify_admin_api_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Access Token from the Vault to **each** Shopify component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Shopify Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Post a new article** to your "Company News" blog | A `blog_id`, `title`, `content` | [Create Article](#create-article) | The standard method for publishing new content to a specific blog on your site. |
+| **Save an article for later review** | A `blog_id`, `title`, `content` | [Create Draft Article](#create-draft-article) | Creates the article but keeps it hidden from your live site until you publish it. |
+| **Get the content of a specific blog post** | A `blog_id` and `article_id` | [Get Article](#get-article) | The most direct way to retrieve a single article's full content and metadata. |
+| **Find the ID of your "News" blog** | Your `store_name` | [Get Blogs](#get-blogs) | Necessary first step to find the `blog_id` you need for creating or listing articles. |
+| **Create a new blog section** called "Case Studies" | Your `store_name` and a `title` | [Create Blog](#create-blog) | Use this to create a new, separate blog (like a category) on your site. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Shopify component.
+
+### <a name="get-blogs"></a>Get Blogs
+Retrieves a list of all blogs in your Shopify store.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Limit:** The maximum number of blogs to retrieve. Default: `50`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | The unique name of your Shopify store (e.g., `your-store.myshopify.com`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Blogs` | array | An array of blog objects, each containing details like `id` and `title`. |
+| `Response`| object | The full, raw JSON response from the Shopify API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+This is an essential first step for content automation. An agent uses this component to get a list of all blogs, finds the ID for the "Company News" blog, and uses that `id` to create new articles.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-blog"></a>Create Blog
+Creates a new blog within your Shopify store (e.g., a "News" section or a "Tutorials" section).
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | The unique identifier for your Shopify store. |
+| `title` | string | Yes | The title for your new blog. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | The unique identifier of the newly created blog. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When launching a new product line, an agent creates a dedicated blog for it called "New Product Line Announcements" to house all related content.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-articles"></a>List Articles
+Retrieves a list of articles from a specific blog, with powerful filtering options.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Limit:** Max number of articles to retrieve. Default: `50`.
+- **Published Status:** Filter by `any`, `published`, or `unpublished`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | Your Shopify store's unique identifier. |
+| `blog_id` | string | Yes | The ID of the blog to list articles from. |
+| `author` | string | Optional| Filter articles by a specific author. |
+| `tag` | string | Optional| Filter articles by a specific tag. |
+| `created_at_min`| date | Optional| Show articles created after this date (ISO 8601 format). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articles` | array | An array of article objects matching the criteria. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A "content audit" agent uses this component to retrieve all articles with the `published` status to check for broken links or outdated information.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-article"></a>Get Article
+Retrieves the details of a single, specific article from a blog.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name`| string | Yes | The unique name of your Shopify store. |
+| `blog_id` | string | Yes | The ID of the blog containing the article. |
+| `article_id` | string | Yes | The unique ID of the article to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | The title of the retrieved article. |
+| `body_html`| string | The full HTML content of the article. |
+| `tags` | string | Comma-separated tags associated with the article. |
+| `userId` | integer| The ID of the author. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent needs to update an existing article. It first uses this component to fetch the current `body_html` before making modifications.
+</TipCallout>
+
+### <a name="create-draft-article"></a>Create Draft Article
+Creates a new article but saves it as a hidden draft, not visible on your live site.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | The unique name of your Shopify store. |
+| `blog_id` | string | Yes | The ID of the blog where the draft will be created. |
+| `title` | string | Yes | The title of the draft article. |
+| `author` | string | Yes | The author's name. |
+| `tags` | string | Optional| A comma-separated list of tags. |
+| `body_html`| string | Yes | The HTML content of the article. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articleId` | integer | The unique identifier of the newly created draft article. |
+| `Response`| object | The raw JSON response from the API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An AI agent generates a first draft of a product announcement. It uses this component to save the content to Shopify as a draft, where a human marketer can review, edit, and manually publish it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-article"></a>Create Article
+Creates and immediately publishes a new article to a specified blog.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | The unique identifier for your Shopify store. |
+| `blog_id` | string | Yes | The ID of the blog where the article will be posted. |
+| `title` | string | Yes | The title of the article. |
+| `author` | string | Yes | The name of the author creating the article. |
+| `tags` | string | Optional| A comma-separated list of tags. |
+| `body_html`| string | Yes | The content of the article in HTML format. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articleId` | integer | The newly assigned unique identifier for the article. |
+| `Response`| object | The complete raw data from Shopify detailing the newly created article. |
+| `Headers` | object | Metadata related to the API response. |
+
+<TipCallout title="Use Case">
+An agent syndicates content from another platform. Once an article is approved, it uses this component to instantly publish it to the Shopify blog.
+</TipCallout>
+
+<WarningCallout title="Immediate Publication">
+This action makes the article live on your site as soon as it executes. For a staged approach, use the `Create Draft Article` component first.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="create-article-with-image"></a>Create Article With Image
+Creates and publishes a new article, including a featured image.
+
+<InfoCallout>This component requires an `Access Token` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `store_name` | string | Yes | The unique identifier of your Shopify store. |
+| `blog_id` | string | Yes | The ID of the blog where the article will be published. |
+| `title` | string | Yes | The title of the article. |
+| `author` | string | Yes | The name of the author. |
+| `tags` | string | Optional| Comma-separated tags for the article. |
+| `body_html`| string | Yes | The HTML content of the article. |
+| `img_src` | string | Yes | The public source URL for the featured image. |
+| `img_alt` | string | Optional| Alternative text for the image for SEO and accessibility. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articleId` | integer | The unique identifier assigned to the newly created article. |
+| `Response`| object | Full raw data returned from Shopify describing the composed article. |
+| `Headers` | object | Details and metadata associated with the API response. |
+
+<TipCallout title="Use Case">
+An agent generates a blog post and a relevant image with AI. It then calls this component, providing the text and the image URL, to publish a complete, visually rich article in one step.
+</TipCallout>
+
+<WarningCallout title="Public Image URL">
+The `img_src` URL must be publicly accessible for Shopify's servers to be able to download and attach it to the post.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Access Token:** Your Shopify Admin API access token grants significant permissions to your store. Always store it in the SmythOS `Vault`.
+* **Understand the Hierarchy:** To post an article, you first need to know which `blog_id` to post it to. Use the `Get Blogs` component to find the correct ID for your "News" or "Updates" blog.
+* **Use HTML for Content:** The `body_html` input requires your content to be in HTML format. Your agent should be designed to generate or convert content to HTML before passing it to the component.
+* **Manage Scopes:** When creating your private app in Shopify, grant only the permissions your agent needs. If it only manages blogs, it doesn't need access to `read_orders` or `write_products`.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Admin API access token is incorrect, has been uninstalled, or is missing the required scopes.
+  * **Solution:** Verify that the token in your SmythOS Vault is correct. In your Shopify admin panel, ensure the private app is still installed and that you have granted the necessary scopes (e.g., `write_blogs`).
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `store_name`, `blog_id`, or `article_id` is incorrect.
+  * **Solution:** Double-check your store name (it should be the `your-store.myshopify.com` domain). Use `Get Blogs` and `List Articles` to verify your IDs are correct.
+
+* **Error: `422 Unprocessable Entity`**
+  * **Cause:** The request body is malformed. This typically means a required field like `title` or `body_html` is missing when creating an article.
+  * **Solution:** Check that all required inputs are provided and correctly formatted. Ensure the `body_html` contains valid HTML.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful content automations for your Shopify store with the **SmythOS Shopify Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a content syndication engine. It monitors your primary company blog, and when a new post is published, it automatically creates a corresponding article on your Shopify blog to drive traffic.
+    * Generates product-related content. When you add a new product to your store, an agent uses an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to write a "Product Spotlight" article and saves it as a draft for your review.
+    * Connects your content and social media. After an agent creates a new article, it takes the article's URL and shares it across your social channels using the [Ayrshare Integration](/docs/agent-studio/integrations/ayrshare-integration).
+
+* **Explore Other Integrations:**
+    * Use a [Webflow](/docs/agent-studio/integrations/webflow-integration) or [WordPress.org](/docs/agent-studio/integrations/wordpress-org-integration) integration to pull content from another CMS and sync it with your Shopify blog.
+    * Keep a log of all articles published by your agents in a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) for content tracking and performance analysis.

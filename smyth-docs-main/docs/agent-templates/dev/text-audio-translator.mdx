@@ -1,0 +1,92 @@
+# Tutorial: Text to Audio Translator Agent
+
+This agent can easily translate any text into a variety of languages supported by Google Cloud Translate and have it converted into audio format. Whether you're looking to communicate across different languages or create audio versions of your documents, this agent is here to assist every step of the way.
+
+<Youtube videoId="roQRFVEbprA" title="SmythOS - Text to Audio Translator Agent" /> 
+
+## RapidAPI Key
+
+RapidAPI provides a variety of endpoints for various purposes. Among these, the Google translate endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key.
+
+1. Go to https://rapidapi.com/. If you do not have an account, proceed to create one by following the registration process.
+2. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps). Copy your API key using the `copy icon`. You can also click the eye icon to see your API key.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 1.png" alt="alt text" />
+
+### Google Translate Subscription
+
+1. Navigate to this [link](https://rapidapi.com/undergroundapi-undergroundapi-default/api/google-translate113) and go to the pricing tab.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 2.png" alt="alt text" />
+
+2. Select a subscription plan from the options available: Basic (free), Pro , Ultra Plan or Mega plan. The basic plan allows 1000 API requests per month for free.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 3.png" alt="alt text" />
+
+3. Then, click the `Subscribe` button.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 4.png" alt="alt text" />
+
+4. Subscription created successfully.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 5.png" alt="alt text" />
+
+## PlayHT Credentials
+
+1. Go to https://play.ht/signup and create your account to get your User ID and secret key. (Skip this process if you already have one.)
+2. Navigate to the left side bar and click on `API Access`.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 6.png" alt="alt text" />
+
+3. Copy your Use ID and click `Generate Secret Key` to obtain your secret key.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 7.png" alt="alt text" />
+
+4. Then, copy your Secret key.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 8.png" alt="alt text" />
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the Templates tab.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 9.png" alt="alt text" />
+
+2. You can scroll down to find the `Text to Audio Translator` Agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 10.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### LLM Prompt Component Setup
+
+1. Look for the LLM Prompt API Credentials component.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 11.png" alt="alt text" />
+
+2. Click on the gear icon to open the settings, then input your RapidAPI Key, PlayHT Secret key and PlayHT User ID - just remove the braces. Remember to click the check mark to save your configuration.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 12.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test the Agent
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/text_audio_translator_agent/Image 13.png" alt="alt text" />
+
+2. Prepare the text to be converted into audio.
+   1. **Sample Prompt:**
+      >1. Convert this text to Audio. Target language is English.
+      >2. *The cat chased the mouse around the garden, their playful antics echoing through the stillness of the afternoon.*
+
+<Image src="/docs/img/text_audio_translator_agent/Image 14.png" alt="alt text" />
+
+3. The agent has successfully converted the text into audio. You can listen to the audio by clicking the provided MP3 audio link.
+   1. **Sample result:**
+      >1. https://peregrine-results.s3.amazonaws.com/pigeon/p2I3KSa8UqGWJMr26Y_0.mp3 
+
+<Image src="/docs/img/text_audio_translator_agent/Image 15.png" alt="alt text" />

@@ -1,0 +1,100 @@
+# Tutorial: Hubspot Contacts Manager Agent
+
+This agent specializes in HubSpot contact management. It is designed to assist in creating new contacts, searching for specific contacts, fetching lists of contacts, and addressing basic inquiries regarding contact information. 
+
+<Youtube videoId="zICb8AOinDg" title="SmythOS - Hubspot Contacts Manager Agent" />
+
+## Hubspot API Key
+
+1. Go to https://www.hubspot.com/ and register if you don’t have an account yet. (You can skip this process if you already have one).
+2. You must have Super Admin permissions to access your account's API key. If you do not have these permissions, please request the API key from your Super Admin.
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the `Templates` tab.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 1.png" alt="alt text" />
+
+2. You can scroll down to find the `Hubspot Contacts Manager` Agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 2.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### LLM Prompt Component Setup
+
+1. Look for the `Hubspot API Key` component.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 3.png" alt="alt text" />
+
+2. Click on the gear icon to open the settings, then input your `Hubspot API Key` in the Prompt. Remember to click the check mark to save your configuration.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 4.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test Agent
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 5.png" alt="alt text" />
+
+### Create a Contact
+
+1. Ask the agent to create a contact, and provide the requested details. The email address is required, simply leave other fields blank if the information is not available.
+   1. **Example:**
+      1. janiceg@sample.com
+      2. Janice
+      3. Gavz
+      4. (555) 123-4567
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 6.png" alt="alt text" />
+
+2. If the agent asks about other contact details, simply type `not available`.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 7.png" alt="alt text" />
+
+3. Here’s the result!
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 8.png" alt="alt text" />
+
+4. Now, let's check Hubspot to verify the newly created contact.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 9.png" alt="alt text" />
+
+### Search a Contact
+
+1. Ask the agent to search for a contact and provide the requested details.
+   1. **Example:**
+      1. *janiceg@sample.com*
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 10.png" alt="alt text" />
+
+2. Here’s the result!
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 11.png" alt="alt text" />
+
+### Get Contacts
+
+1. Ask the agent to get contacts.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 12.png" alt="alt text" />
+
+2. Here’s the result! The agent will provide the first 30 contacts in your Hubspot account.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 13.png" alt="alt text" />
+
+### Get the Next Contacts
+
+1. Ask the agent to get the next contacts.
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 14.png" alt="alt text" />
+
+2. Here’s the result! The agent will provide the next 30 contacts in your Hubspot account. 
+
+<Image src="/docs/img/hubspot_contacts_manager_agent/Image 15.png" alt="alt text" />
+
+
+
+
+

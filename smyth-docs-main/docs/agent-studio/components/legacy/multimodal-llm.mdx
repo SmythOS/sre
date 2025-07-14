@@ -1,0 +1,113 @@
+---
+title: Multimodal LLM (Legacy)
+description: Process and analyze a combination of text, images, video, and audio inputs to generate context-aware responses.
+keywords: [Multimodal, LLM, legacy, vision, video, audio, image, text, analysis, Google]
+toc_max_heading_level: 2
+---
+
+# Multimodal LLM Component
+
+Use the **Multimodal LLM** component to understand and process a wide variety of inputs, including images, videos, audio, and text. It's designed for complex tasks that require analyzing different types of media to generate a single, context-aware output.
+
+<InfoCallout title="Why this matters">
+The world isn't just text. The Multimodal LLM allows your agent to see, hear, and read, just like a human. This unlocks advanced use cases like describing images, summarizing videos, transcribing audio, and extracting information from complex documents.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Model Selection](#step-1-select-a-model)
+- [Define Inputs](#step-2-define-inputs-prompt-and-files)
+- [Advanced Settings](#step-3-configure-advanced-settings)
+- [Define Outputs](#step-4-define-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select a Model
+
+This component currently supports Google's multimodal models.
+
+| Field   | Description                                                                                                   |
+|---------|---------------------------------------------------------------------------------------------------------------|
+| **Model** | To populate the list of available models, you must first add your Google AI API key to the **[Vault](/docs/agent-studio/key-concepts/vault)**. |
+
+<Spacer size="md" />
+
+## Step 2: Define Inputs (Prompt and Files)
+
+Provide the model with the text prompt and the media files it needs to analyze.
+
+### Prompt
+The **Prompt** is the primary instruction that tells the model what to do with the provided files.
+**Example:** `Describe the scene in the attached image.` or `Summarize the key points of the attached video.`
+
+### Inputs & Supported File Formats
+You can add multiple inputs to provide files via URL or Base64 encoding.
+
+| Type    | Supported Formats                                                                      |
+|---------|----------------------------------------------------------------------------------------|
+| **Video** | `mp4`, `mpeg`, `mov`, `avi`, `webm`, `wmv`, `3gpp`                                       |
+| **Image** | `png`, `jpeg`, `jpg`, `webp`, `heic`, `heif`                                             |
+| **Audio** | `wav`, `mp3`, `aiff`, `aac`, `ogg`, `flac`                                               |
+| **Text** | `txt`, `html`, `css`, `js`, `py`, `csv`, `md`, `json`, `xml`, `rtf`                     |
+
+<TipCallout title="Input Configuration">
+To add a file, create a new input, give it a name (e.g., `input_image`), and set its type to `Binary`. You can then pass a file URL or Base64 string from a previous step into this input.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 3: Configure Advanced Settings
+
+Currently, the primary advanced setting is for controlling the output length.
+
+| Setting                 | Description                                                                                             |
+|-------------------------|---------------------------------------------------------------------------------------------------------|
+| **Maximum Output Tokens** | Limits the total token count of the generated response. If the input is large, the output may be truncated to fit within this limit. |
+
+<Spacer size="md" />
+
+## Step 4: Define Outputs
+
+By default, the component returns the full response in the `Reply` output. You can add custom outputs to parse this and extract specific pieces of information, especially if you've instructed the model to return JSON.
+
+| Field       | Description                                                                                                                              |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| **Name** | A unique name for your custom output (e.g., `image_description`).                                                                         |
+| **Expression**| A **JSON Path** expression to extract data from the `Reply`. For example, `Reply.description` would extract the `description` field from a JSON object. |
+
+<InfoCallout title="Parsing Structured Data">
+For reliable data extraction, instruct the model in your prompt to format its response as JSON. For example: `Analyze the attached invoice and return a JSON object with "invoice_number" and "total_amount" fields.`
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Be Explicit in Your Prompt:** Clearly state what you want the model to do with each file. If you provide multiple files, refer to them in the prompt to avoid ambiguity.
+- **Use High-Quality Inputs:** The quality of the output depends heavily on the quality of the input. Use clear images and audio for best results.
+- **Combine with Other Components:** Use a **Web Scrape** tool to get an image URL and pass it to this component for analysis.
+- **Request Structured Output:** For data extraction tasks, always ask the model to return a JSON object. This makes parsing the `Reply` with custom outputs much more reliable.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your component is not working...">
+- **Model List is Empty:** This means you have not added a valid Google AI API key to the **Vault**.
+- **Analysis is Inaccurate or Vague:** Your prompt may be too generic. Provide more context and specific instructions. For images, ensure they are not too blurry or small.
+- **Fails to Process File:** Check that the file format is supported and that the URL is publicly accessible or the Base64 string is correctly formatted.
+- **Error Parsing Output:** If your custom outputs are empty, inspect the raw `Reply` in **Debug Mode** to ensure the model is returning the JSON structure you expect.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Create a workflow that accepts an image upload, uses the `Multimodal LLM` to generate a detailed description, and then uses a [GenAI LLM](/docs/agent-studio/components/base/gen-ai-llm) to write a social media post based on that description.
+- Use this component to extract structured data from a PDF (as an image) and then use that data to populate a database.
+- Transcribe an audio file and then pass the transcribed text to another LLM for summarization or analysis.

@@ -1,0 +1,258 @@
+---
+title: PDF Monkey Integration
+description: Connect SmythOS to PDF Monkey to automate the generation of data-driven PDF documents like invoices, reports, and contracts directly from your agent workflows.
+og:title: SmythOS & PDF Monkey - Automate Your PDF Generation
+og:description: Learn to integrate PDF Monkey with SmythOS. Empower your agents to automatically create beautiful, dynamic PDF documents from pre-defined templates and your data.
+og:image: /docs/img/integrations/smythos_pdfmonkey.png
+keywords: [PDF Monkey SmythOS Integration, Connect PDF Monkey to SmythOS, SmythOS PDF Generation, Automate PDF, Dynamic PDF API, No-Code PDF, Invoice Generation]
+---
+# PDF Monkey Integration with SmythOS
+
+> **Need to generate professional PDF documents automatically?** Connect PDF Monkey to SmythOS and empower your agents to create data-driven invoices, reports, and contracts from your templates.
+
+<InfoCallout title="TL;DR">
+Securely link your PDF Monkey account to SmythOS using an API Key. Then, use our components to automate the creation of draft or final PDF documents by populating your PDF Monkey templates with dynamic data.
+</InfoCallout>
+
+## List of PDF Monkey Components
+Quickly compare PDF Monkey components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Generate PDF**](#generate-pdf) | Generate | Creates a final, finalized PDF document from a template. | <Badge type="required" /> `document_template_id`, `filename`, `Body` | `document_id`, `download_url` | Generating a final customer invoice. |
+| [**Generate Draft Document**](#generate-draft-document)| Generate | Creates a draft PDF that can be regenerated later. | <Badge type="required" /> `document_template_id`, `filename`, `Body`| `document_id`, `preview_url` | Creating a report that needs review before finalizing. |
+| [**Get Document Info**](#get-document-info) | Read | Fetches metadata about a specific generated document. | <Badge type="required" /> `document_id` | `download_url`, `filename`| Checking the status or download link of a PDF. |
+| [**Delete PDF Document**](#delete-pdf-document)| Write | Permanently deletes a generated document from PDF Monkey. | <Badge type="required" /> `document_id` | `Response` | Cleaning up temporary or outdated documents. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate PDF Monkey with Your Agent?</summary>
+
+PDF Monkey is a powerful API for creating pixel-perfect PDF documents from templates and data. Integrating it with SmythOS allows you to build sophisticated document generation workflows.
+
+- **Automate Invoicing and Billing:** Create agents that automatically generate and send PDF invoices to customers when a payment is due or an order is completed.
+- **Generate Custom Reports:** Build workflows that gather data from multiple sources (like databases or other APIs), format it, and then use PDF Monkey to render a professional, branded PDF report.
+- **Contract and Agreement Automation:** When a new client is onboarded, an agent can automatically populate a contract template with their details and prepare it for a signature workflow.
+- **Personalized Document Creation:** Generate personalized certificates, tickets, or welcome letters at scale by feeding user-specific data into your PDF Monkey templates.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **PDF Monkey account** with at least one document template created.
+- Your PDF Monkey **API Key**.
+
+<Divider />
+
+## Getting Started With PDF Monkey
+
+The connection between SmythOS and PDF Monkey is configured using a secure API Key.
+
+### Step 1: Get Your PDF Monkey API Key
+1.  Log in to your [PDF Monkey Dashboard](https://dashboard.pdfmonkey.io/).
+2.  Navigate to your **Account** settings.
+3.  In the API Keys section, you will find your **Private key**. This is your API Key.
+4.  Copy the key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your PDF Monkey API Key as the value. Give it a memorable name, like `pdfmonkey_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a PDF Monkey Component
+1.  In your SmythOS agent graph, drag and drop any PDF Monkey component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `pdfmonkey_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** PDF Monkey component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which PDF Monkey Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a final PDF** that is ready to be sent | A `document_template_id` | [Generate PDF](#generate-pdf) | This component creates a finalized document that cannot be regenerated later. |
+| **Create a PDF that might need updates** | A `document_template_id` | [Generate Draft Document](#generate-draft-document) | Creates a draft version, which is ideal for multi-step review or approval workflows. |
+| **Check the status** of a generated PDF | A `document_id` | [Get Document Info](#get-document-info) | Retrieves the metadata, including the all-important `download_url`. |
+| **Permanently remove** a generated PDF | A `document_id` | [Delete PDF Document](#delete-pdf-document) | Use this to clean up temporary or sensitive documents after they've been used. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each PDF Monkey component.
+
+### <a name="generate-pdf"></a>Generate PDF
+Generates a new, finalized PDF document from a template and dynamic data.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-pdf-monkey) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the `payload` object. The keys in this object must match the variables in your PDF Monkey template.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `document_template_id` | string | Yes | The unique ID of the PDF Monkey template to use. |
+| `filename` | string | Yes | The desired filename for the output PDF (e.g., `invoice-123.pdf`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `document_id` | string | The unique ID of the generated document. |
+| `download_url`| string | The URL to download the generated PDF document. |
+| `Response`| object | The full, raw JSON response from the PDF Monkey API. |
+
+<TipCallout title="Use Case">
+An agent processes a completed order, gathers the customer's name, address, and line items, and uses this component to generate a final PDF invoice from a template.
+</TipCallout>
+
+```json
+{
+  "component": "pdfmonkey.generatePdf",
+  "document_template_id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f6g7h8",
+  "filename": "invoice-INV001.pdf",
+  "Body": {
+    "_payload": {
+      "customer_name": "John Doe",
+      "invoice_number": "INV001",
+      "amount_due": "99.99"
+    }
+  }
+}
+```
+
+<WarningCallout title="Finalized Document">
+Documents created with this component are final and cannot be regenerated. For workflows that require updates, use the `Generate Draft Document` component.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="generate-draft-document"></a>Generate Draft Document
+Creates a new draft PDF document. Drafts can be regenerated later with new data using the `Generate PDF from Draft` component.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-pdf-monkey) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor to define the initial `payload` for the draft.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `document_template_id` | string | Yes | The ID of the template to use for the draft. |
+| `filename` | string | Yes | The desired filename for the PDF. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `document_id` | string | The unique ID of the generated draft document. |
+| `preview_url`| string | A URL to preview the generated draft document. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent creates an initial draft of a contract. This draft is sent for internal review. Once approved, another agent takes the `document_id` and finalizes it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-document-info"></a>Get Document Info
+Fetches the metadata and status for a specific document that has already been generated.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-pdf-monkey) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `document_id` | string | Yes | The unique identifier of the document to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `download_url`| string | The URL to download the final PDF. Will be null if the document is still processing. |
+| `filename` | string | The filename of the document. |
+| `status` | string | The generation status of the document (e.g., `success`, `failure`). |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After starting a generation job, an agent can use this component in a loop to poll the document's status until the `download_url` becomes available.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-pdf-document"></a>Delete PDF Document
+Permanently deletes a previously generated document from PDF Monkey servers.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-pdf-monkey) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `document_id` | string | Yes | The unique identifier of the document to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent generates a temporary PDF report for a user to download. After 24 hours, another scheduled agent runs this component to delete the old file for security and privacy.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your PDF Monkey API key in the SmythOS `Vault`.
+* **Design Your Templates First:** The core of PDF Monkey is its powerful template editor. Build your HTML and CSS templates in the PDF Monkey dashboard first. Use their dynamic data syntax (e.g., `{{customer_name}}`) for all the data points you intend to populate via your agent.
+* **Master the `Body` Payload:** The `Body` setting in the `Generate PDF` and `Generate Draft` components is where you pass your data. The JSON must have a `_payload` key, and its value should be an object containing key-value pairs that match the variables in your template.
+* **Handle Asynchronous Generation:** PDF generation is not always instantaneous. For complex documents, it's best to check the document status using `Get Document Info` before trying to use the `download_url`.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, has been revoked, or is missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your PDF Monkey dashboard.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `document_template_id` or `document_id` provided is incorrect.
+  * **Solution:** Log in to your PDF Monkey dashboard and double-check the ID of the template or document you are trying to access.
+
+* **Error: `422 Unprocessable Entity`**
+  * **Cause:** The JSON payload in the `Body` is malformed, or it is missing data for a required variable in your template.
+  * **Solution:** Validate your JSON syntax. Ensure that the `_payload` object contains all the necessary keys that your template expects.
+
+* **PDF Looks Incorrect or Data is Missing**
+  * **Cause:** The keys in your JSON `_payload` do not exactly match the variable names in your PDF Monkey template (e.g., `{{customer_name}}` in the template vs. `"customerName"` in the JSON).
+  * **Solution:** Carefully check that every key in your JSON payload is an exact match for the corresponding variable in your template.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful document generation workflows with the **SmythOS PDF Monkey Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Generates monthly invoices. The agent fetches billing data from [Stripe](/docs/agent-studio/integrations/stripe-integration), populates an invoice template using `Generate PDF`, and then emails it to the customer using [SendGrid](/docs/agent-studio/integrations/sendgrid-integration).
+    * Creates personalized certificates. It reads a list of names from a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) and generates a unique PDF certificate of completion for each person.
+    * Automates legal documents. When a new client is onboarded in your CRM, an agent takes their details, generates an NDA from a template, and sends it for signature using the [SignNow Integration](/docs/agent-studio/integrations/signnow-integration).
+
+* **Explore Other Integrations:**
+    * Combine PDF Monkey with a [database integration](/docs/agent-studio/integrations/firestore-integration) to generate reports based on live application data.
+    * Use a [web scraper](/docs/agent-studio/integrations/scrapingbee-integration) to gather data, format it into an HTML report, and then use the `HTML to PDF` component from [PdfCrowd](/docs/agent-studio/integrations/pdfcrowd-integration) or a similar tool to create a final document if you don't have a template.

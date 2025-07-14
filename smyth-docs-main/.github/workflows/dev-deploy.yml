@@ -1,0 +1,22 @@
+name: 'DEV: Deploy'
+run-name: DEV - Deploy
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run build and deploy script
+        env:
+          PRIVATE_KEY: ${{ secrets.DEV_SERVER_SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.DEV_SERVER_HOST }}
+          USER: ${{ secrets.DEV_SERVER_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -i private_key.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $USER@$HOST "/opt/git/smyth-docs/deploy-docs.sh smyth-docs origin/dev"
+          rm -f private_key.pem

@@ -1,0 +1,379 @@
+---
+title: Fal.ai Integration
+description: Connect SmythOS to Fal.ai to generate AI images, animations, and speech-to-text transcriptions directly from your agents.
+og:title: SmythOS & Fal.ai - Automate Generative AI
+og:description: Learn to integrate Fal.ai with SmythOS. Empower your agents to create images from text, generate animations from prompts, and transcribe audio, unlocking powerful creative and analytical workflows.
+og:image: /docs/img/integrations/smythos_falai.png
+keywords: [Fal.ai SmythOS Integration, Connect Fal.ai to SmythOS, SmythOS AI Generation, Automate Image Generation, AI Animation, AI Speech to Text, Generative AI API]
+---
+# Fal.ai Integration with SmythOS
+
+> **Want to embed generative AI into your workflows?** Connect Fal.ai to SmythOS and empower your agents to generate images, animations, and transcribe audio using cutting-edge, serverless AI models.
+
+<InfoCallout title="TL;DR">
+Securely link your Fal.ai account to SmythOS using an API key. Then, use our suite of AI components to automate a wide range of generative tasks, from creating images and animations to transcribing speech.
+</InfoCallout>
+
+## List of Fal.ai Components
+Quickly compare Fal.ai components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Text To Image (Flux)**](#flux1-schnell-text-to-image) | Generate | Creates an image from a text prompt using a fast model. | <Badge type="required" /> `prompt`<br /><Badge type="optional" /> `num_inference_steps` | `image_url` | Rapidly generating concept art or social media images. |
+| [**Image To Image (Flux)**](#flux1-dev-image-to-image) | Generate | Transforms an existing image based on a text prompt. | <Badge type="required" /> `prompt`, `image_url`<br /><Badge type="optional" /> `strength` | `image_url` | Applying new styles or concepts to an image. |
+| [**Generate Animation**](#generate-animation) | Generate | Creates a short video animation from a text prompt. | <Badge type="required" /> `prompt`<br /><Badge type="optional" /> `num_frames`, `fps` | `video_url` | Creating simple animated clips or motion graphics. |
+| [**HQ Video Generator**](#hq-video-generator) | Generate | Animates a still image to create a short video clip. | <Badge type="required" /> `image_url`<br /><Badge type="optional" /> `motion_bucket_id` | `video_url` | Bringing static product images or photos to life. |
+| [**Whisper (Speech-to-Text)**](#whisper) | Transcribe | Converts speech from an audio file into text. | <Badge type="required" /> `audio_url` | `text` | Transcribing interviews, meetings, or voice notes. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Fal.ai with Your Agent?</summary>
+
+Fal.ai provides serverless, on-demand access to powerful generative AI models. Integrating it with SmythOS allows you to build sophisticated agents that can see, hear, and create.
+
+- **Automate Content Creation:** Generate unique images for blog posts, social media, or ad campaigns based on text descriptions. Create entire animated clips from a single prompt.
+- **Data Processing and Analysis:** Use the Whisper component to automatically transcribe audio files from meetings or customer calls, then feed the text into other components for summarization or sentiment analysis.
+- **Dynamic Visuals:** Build agents that can take an existing image and modify it based on user input or other data, allowing for personalized or data-driven image creation.
+- **Unlock Creative Workflows:** Chain components together to create powerful multimedia pipelines. For example, have an AI write a script, use Elevenlabs to generate the audio, and use Fal.ai to create a corresponding animation.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Fal.ai account**.
+- Your Fal.ai **API Key**.
+
+<Divider />
+
+## Getting Started With Fal.ai
+
+The connection between SmythOS and Fal.ai is configured using a secure API key.
+
+### Step 1: Get Your Fal.ai API Key
+1.  Log in to your [Fal.ai Dashboard](https://fal.ai/dashboard/keys).
+2.  Your API Keys will be listed on this page. You can use an existing key or click **Create Key** to generate a new one.
+3.  Copy the full key (it will look like `key-id:key-secret`).
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Fal.ai API Key as the value. Give it a memorable name, like `fal_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Fal.ai Component
+1.  In your SmythOS agent graph, drag and drop any Fal.ai component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` (or `Authentication Key`) field, select the secret you saved in the Vault (e.g., `fal_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Fal.ai component you use. This ensures all connections are secure and properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Fal.ai Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Quickly create an image from text** | A text prompt | [Text To Image (Flux.1 Schnell)](#flux1-schnell-text-to-image) | Optimized for speed, ideal for rapid prototyping and generation. |
+| **Create a high-quality, realistic image** | A text prompt | [Text To Image (Flux Realism LoRA)](#flux-realism-lora) | Specifically tuned to generate photorealistic images from text. |
+| **Change an existing image with a prompt** | An image URL and a text prompt | [Image To Image (Flux.1 Dev)](#flux1-dev-image-to-image) | Applies a new style or concept to a source image. |
+| **Create a short animation from a prompt** | A text prompt | [Generate Animation](#generate-animation) | Creates a video from scratch based on a text description. |
+| **Turn a static image into a video** | An image URL | [HQ Video Generator](#hq-video-generator) | Adds motion to a still image, bringing it to life. |
+| **Get a text transcript from an audio file** | An audio file URL | [Whisper](#whisper) | The go-to component for accurate speech-to-text conversion. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Fal.ai component.
+
+### <a name="generate-animation"></a>Generate Animation
+Creates a short video animation from a text prompt.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Video Size:** Select the output aspect ratio (e.g., `square_hd`, `portrait_16_9`).
+- **Steps:** Number of generation steps. Higher values improve quality but take longer. Default: `4`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The description of the animation to generate. |
+| `negative_prompt`| string| Optional | Describe what to avoid in the animation. |
+| `num_frames`| integer| Optional | The number of frames in the video. Default: `16`. |
+| `fps`| integer| Optional | Frames per second for the video. Default: `8`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `video_url` | string | Direct URL to the generated MP4 video file. |
+| `Response`| object | The full JSON response from the Fal.ai API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent generates a short, animated logo reveal based on the prompt "A glowing SmythOS logo slowly zooming in".
+</TipCallout>
+
+```json
+{
+  "component": "falai.generateAnimation",
+  "prompt": "a majestic dragon flying through a stormy sky",
+  "num_frames": 24,
+  "fps": 12
+}
+```
+
+<WarningCallout title="Generation Time">
+Animation generation can be resource-intensive and may take longer than image generation.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="whisper"></a>Whisper
+Transcribes speech from an audio file into text using OpenAI's Whisper model.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `audio_url`| string | Yes | A public URL to the audio file to be transcribed. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The transcribed text from the audio file. |
+| `Response`| object | The full JSON response from the Fal.ai API, which includes the text. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Create a meeting summary agent. After a meeting, it takes the audio recording URL, transcribes it using this component, and then feeds the text to an AI model for summarization.
+</TipCallout>
+
+```json
+{
+  "component": "falai.whisper",
+  "audio_url": "[https://example.com/audio/meeting_recording.mp3](https://example.com/audio/meeting_recording.mp3)"
+}
+```
+
+<WarningCallout title="URL Accessibility">
+The `audio_url` must be publicly accessible for Fal.ai's servers to retrieve and process it.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="text-to-image-models"></a>Text to Image Models
+Fal.ai offers several text-to-image models. While their inputs and outputs are similar, they are optimized for different goals.
+
+#### <a name="flux1-dev-text-to-image"></a>Flux.1[dev] Text To Image
+A powerful model for high-quality, general-purpose image generation.
+
+#### <a name="flux1-schnell-text-to-image"></a>Flux.1[Schnell] Text To Image
+A distilled, faster version of Flux.1, ideal for rapid generation.
+
+#### <a name="flux-realism-lora"></a>Flux Realism LoRA
+A model fine-tuned to produce highly photorealistic images.
+
+#### <a name="flux11-pro-text-to-image"></a>FLUX1.1 [Pro] Text To Image
+The latest version, optimized for both speed and quality.
+
+<InfoCallout>All Text-to-Image components require an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+##### Component-Specific Settings
+- **Generated Image Size:** Select the output aspect ratio (e.g., `square_hd`, `landscape_16_9`).
+
+##### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of the image you want to create. |
+| `num_inference_steps` | integer| Optional | Number of steps for generation. More steps can improve quality but take longer. Default varies by model. |
+| `guidance_scale` | float | Optional | How strongly the image should adhere to the prompt. Default varies. |
+| `enable_safety_checker` | boolean| Optional| Filters potentially unsafe content. Default: `true`. |
+
+##### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `image_url` | string | Direct URL to the generated PNG image. |
+| `request_id` | string | (FLUX1.1 Pro only) The ID of the generation request. |
+| `Response`| object | The full JSON response from the Fal.ai API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent takes a product description like "a vibrant red sports car on a winding mountain road at sunset" and uses the "Flux Realism LoRA" model to generate a photorealistic image for an ad campaign.
+</TipCallout>
+
+```json
+{
+  "component": "falai.fluxSchnellTextToImage",
+  "prompt": "a cute corgi wearing a tiny superhero cape, digital art",
+  "num_inference_steps": 8
+}
+```
+<WarningCallout title="Model Choice Matters">
+Choose the model that best fits your need. Use **Schnell** for speed, **Realism LoRA** for photos, and **Dev/Pro** for general high-quality output.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="image-to-image-models"></a>Image to Image Models
+
+#### <a name="flux1-dev-image-to-image"></a>Flux.1[Dev] Image To Image
+Transforms an existing source image based on a text prompt.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+##### Component-Specific Settings
+- **Image Size:** Select the output aspect ratio. This should generally match the input image.
+
+##### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of how to transform the image. |
+| `image_url` | string | Yes | The URL of the source image to modify. |
+| `strength`| float | Yes | How much influence the original image has. `1.0` is full influence, `0.0` is no influence. Default: `0.95`. |
+| `num_inference_steps`| integer | Yes | Number of generation steps. Default: `40`. |
+| `guidance_scale` | float | Yes | How strongly to follow the prompt. Default: `3.5`. |
+
+##### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `image_url` | string | Direct URL to the newly generated image. |
+| `Response`| object | The full JSON response from the Fal.ai API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Take a standard product photo (`image_url`) and use a prompt like "in the style of Van Gogh" to create artistic variations for marketing.
+</TipCallout>
+
+```json
+{
+  "component": "falai.fluxDevImageToImage",
+  "prompt": "make this a vibrant, colorful, pop-art painting",
+  "image_url": "[https://example.com/my-portrait.jpg](https://example.com/my-portrait.jpg)",
+  "strength": 0.8
+}
+```
+
+<Divider/>
+
+### <a name="hq-video-generator"></a>HQ Video Generator
+Generates a short, high-quality video clip by animating a still image.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Motion Bucket ID:** Controls the amount of motion in the video. Higher values mean more motion. Default: `127`.
+- **Cond Aug (Conditioning Augmentation):** Adds noise to the initial frame. Higher values create more motion but reduce resemblance to the source image. Default: `0.02`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_url`| string | Yes | The URL of the image to animate. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `video_url` | string | Direct URL to the generated MP4 video file. |
+| `Response`| object | The full JSON response from the Fal.ai API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent takes a static image of a new product and uses this component to create a short, eye-catching video with subtle motion for use in social media ads.
+</TipCallout>
+
+```json
+{
+  "component": "falai.hqVideoGenerator",
+  "image_url": "[https://example.com/product-shot.png](https://example.com/product-shot.png)"
+}
+```
+
+<WarningCallout title="Subtle Motion">
+This model is best suited for adding gentle, ambient motion to images rather than creating complex, action-filled scenes.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="flux11-pro-get-result"></a>FLUX1.1 [Pro] Get Result
+Fetches the result of an asynchronous image generation request made with the `FLUX1.1 [Pro] Text To Image` component.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-falai) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `request_id`| string | Yes | The ID returned by the `FLUX1.1 [Pro] Text To Image` component. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `image_url` | string | The URL of the generated image once the task is complete. |
+| `Response`| object | The full JSON response, which will include the status of the request. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+For long-running image generation tasks, use the `FLUX1.1 [Pro] Text To Image` component to start the job, then use this component in a loop with a delay to poll for the result.
+</TipCallout>
+
+```json
+{
+  "component": "falai.fluxProGetResult",
+  "request_id": "request-id-from-previous-step"
+}
+```
+<WarningCallout title="Asynchronous Flow">
+This component is part of a two-step process. You must first initiate a request with the corresponding "Text to Image" component to get a `request_id`.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always use the SmythOS `Vault` to store your Fal.ai API key.
+* **Experiment with Prompts:** The quality of your output is highly dependent on the quality of your prompt. Be descriptive and specific. For image generation, consider including details about style, lighting, and composition.
+* **Understand Model Differences:** Choose the right model for the job. Don't use a photorealism model if you want cartoon art, and don't use a slow, high-quality model if you need rapid results.
+* **Manage Costs:** Generative AI can be resource-intensive. Be aware of the pricing for different models on Fal.ai and monitor your usage in your Fal.ai dashboard.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API key is missing, invalid, or disabled.
+  * **Solution:** Verify that the API key in your SmythOS Vault is correct and matches the one in your Fal.ai dashboard.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** You have insufficient funds or credits in your Fal.ai account.
+  * **Solution:** Check your balance and billing status in your Fal.ai dashboard.
+
+* **Long Processing Times**
+  * **Cause:** High-resolution image/video generation, complex prompts, or high `num_inference_steps` can take time to process.
+  * **Solution:** This is expected for complex tasks. For Pro models, use the "Get Result" component to check the status asynchronously rather than waiting for the initial request to complete. For other models, consider using lower-resolution settings or fewer steps for faster results.
+
+* **Poor Quality Output**
+  * **Cause:** The prompt may be too vague, or the settings (like `guidance_scale` or `strength`) may not be optimal.
+  * **Solution:** Refine your prompt to be more descriptive. Experiment with different settings. For image-to-image tasks, a very low `strength` value can cause the output to ignore the source image.
+
+<Divider />
+
+## What's Next?
+
+You are now equipped to build powerful generative AI workflows with the **SmythOS Fal.ai Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Takes a title for a blog post, uses a Text to Image component to generate a unique featured image, and saves it to a media library.
+    * Transcribes an uploaded audio file using `Whisper`, and then uses an AI text component to summarize the transcript.
+    * Creates a product marketing video by taking a static product image (`HQ Video Generator`), generating a voiceover for a script (`Elevenlabs`), and combining them.
+
+* **Explore Other Integrations:**
+    * Combine Fal.ai with the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) to read prompts from a sheet and write the output image URLs back.
+    * Use a web scraper like [ScrapingBee](/docs/agent-studio/integrations/scrapingbee-integration) to get text content from a URL, then use Fal.ai to generate a summary image or animation.
+    * Trigger generative workflows based on incoming [Gmail](/docs/agent-studio/integrations/google-gmail-integration) or [Slack](/docs/agent-studio/integrations/slack-integration) messages.

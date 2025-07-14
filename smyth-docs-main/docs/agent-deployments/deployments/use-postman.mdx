@@ -1,0 +1,117 @@
+---
+title: Use Agent with Postman
+keywords: [SmythOS, Postman, API testing, agent integration, export endpoints, import collection]
+description: How to test and integrate your SmythOS agent using Postman collections.
+---
+
+# Use Agent with Postman
+
+> Export or import your SmythOS agent endpoints with Postman to accelerate API testing, integration, and prototyping.
+
+<InfoCallout> **TL;DR:** Export your agent's test or production endpoints as a Postman collection, or drag and drop an existing Postman collection into Builder to auto-generate agent components. </InfoCallout>
+
+<Divider />
+
+## Why Test Your Agent in Postman?
+
+Postman is a trusted tool for testing APIs and managing request workflows. By using Postman with SmythOS, you can:
+
+- Explore and verify agent endpoints before integrating
+- Reuse collections to prototype AI workflows
+- Rapidly debug, test, and update agent calls with live response previews
+- Bridge external APIs with SmythOS by importing collections
+
+This guide works best alongside [Use via API](/docs/agent-deployments/deployments/deploy-as-api), which covers endpoint structure, authentication, and request schema.
+
+<Divider />
+
+## What You Need Before You Start
+
+Before exporting or importing Postman collections:
+
+- You must have at least one deployed [(See how)](/docs/agent-deployments/overview) agent in SmythOS
+- Agent must have valid **test** or **production** subdomain
+- To import Postman collections, ensure your requests follow JSON schema compatible with SmythOS inputs
+
+<Divider />
+
+## Export Your Agent Endpoints to Postman
+
+Exporting a Postman collection lets you test your agent’s endpoints externally and share with other teams.
+
+### Test Environment Collection
+
+Use for internal or staging testing:
+
+- Available for all agents (even before full deployment)
+- Uses the **test subdomain**
+
+Example:
+```text
+https://myagent.agent.stage.smyth.ai
+```
+
+### Production Environment Collection
+
+Use once the agent is ready for production:
+
+- Requires deployed production version
+- Uses the **production subdomain**
+
+Example:
+```text
+https://myagent.agent.pstage.smyth.ai
+```
+
+> Want to configure your own custom domain or learn more about subdomains? Check out [Managing Subdomains](/docs/agent-deployments/subdomains).
+
+### Steps to Download Postman Collection
+
+1. Open your agent in **Studio**  
+2. Navigate to **Deployments → Postman**  
+3. Choose **Export Test** or **Export Production**  
+4. Download the generated `.json` Postman collection
+
+<Arcade src="https://demo.arcade.software/CI0fMYdVuulWQlXdLHHo?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Export Agent to Postman | SmythOS" />
+
+<Divider />
+
+## Import Postman Collections into SmythOS
+
+Already using Postman for API calls? Bring that logic directly into SmythOS.
+
+1. Open **Builder** from the left sidebar  
+2. Drag and drop your `.json` Postman collection file into the canvas  
+3. SmythOS automatically converts each request into an **API Call** component
+
+Use this if you:
+
+- Want to reuse complex request flows
+- Are migrating existing Postman logic into a SmythOS agent
+- Need a no-code path from external APIs to agent workflows
+
+<Arcade src="https://demo.arcade.software/GTrFqGZF3az6Z128wTrU?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Import Postman Collection | SmythOS" />
+
+<Divider />
+
+## Tips for Better Postman + SmythOS Workflow
+
+- Use Vault keys as environment variables in Postman
+- Match request payloads with the schema shown in Swagger or "Try It Out"
+- Use `stream: true` to test Server-Sent Event responses in your agent
+
+<PromptCard prompt="Drag a Postman collection into Builder to scaffold your agent from real-world API workflows." />
+
+<Divider />
+
+## What’s Next?
+
+Once you’ve verified your agent via Postman:
+
+- Head to [Use via API](/docs/agent-deployments/deployments/deploy-as-api) for more integration details
+- Monitor request logs from **Deployments → Logs**
+- Export updated collections whenever your agent logic changes
+
+Want to explore more deployment methods? Check out [Deploy as ChatGPT](/docs/agent-deployments/deployments/deploy-as-chatgpt) or [Deploy as LLM](/docs/agent-deployments/deployments/deploy-as-llm) to plug your agent into custom GPTs and OpenAI-style endpoints.
+
+<Divider />

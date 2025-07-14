@@ -1,0 +1,97 @@
+# Tutorial: Shopify Blog Manager Agent
+
+This agent is designed to streamline and manage blog content on Shopify. The key capabilities include retrieving lists of blogs and articles, creating new blog titles and articles, and setting up draft or hidden articles for later publication. The primary goal is to ensure efficiency and effectiveness in content creation and publication within the realm of Shopify blogs. 
+
+<Youtube videoId="qD4Ig_2df-g" title="SmythOS -  Shopify Blog Manager Agent" />
+
+## Shopify Store Name
+
+1. Login to your Shopify account at https://accounts.shopify.com/store-login.
+2. Locate your store name that is located in the URL of your `Shopify` account, after the `store/`.
+   1. **Example:** https://admin.shopify.com/store/62fd01-f6
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 1.png" alt="alt text" />
+
+## Shopify Access Token
+
+1. Login to your Shopify account at https://accounts.shopify.com/store-login
+2. Go to `Settings`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 2.png" alt="alt text" />
+
+3. Click `Apps and sales channels`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 3.png" alt="alt text" />
+
+4. Select `Develop apps`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 4.png" alt="alt text" />
+
+5. Click `Allow custom app development`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 5.png" alt="alt text" />
+
+6. Click `Create an app`
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 6.png" alt="alt text" />
+
+7. Add an App name and click `Create app`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 7.png" alt="alt text" />
+
+8. Click `Configure your Admin API scopes`.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 8.png" alt="alt text" />
+
+9. Look for Store content (you can scroll down or search to access it easily) in the list of Scopes and check `write_content` and `read_content` and Save.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 9.png" alt="alt text" />
+
+10. Click `Install app` to get your Admin API access token.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 10.png" alt="alt text" />
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 11.png" alt="alt text" />
+
+11. Click `Reveal token once` and copy the token. You'll only have one opportunity to reveal and copy your access token, so please ensure that you store it in a secure location.
+    1.  **Example:** `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`
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 12.png" alt="alt text" />
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the templates tab.
+
+<Image src="/docs/img/shopify_blog_manager_agent/templates.png" alt="alt text" />
+
+2. You can scroll down to find the `Shopify Agent` or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/shopify_blog_manager_agent/remix.png" alt="alt text" />
+
+3. Allow the template to initialize and configure. 
+
+### LLM Prompt (Store Name) Setup
+
+1. In `SmythOS`, look for the `LLM Prompt - Store Name` component.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 13.png" alt="alt text" />
+
+2. Click the gear icon to open the settings and paste your store name. Be sure to click the check icon to save your configuration.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 14.png" alt="alt text" />
+
+### LLM Prompt (Access Token) Setup
+
+1. In `SmythOS`, look for the `LLM Prompt - Access` component.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 15.png" alt="alt text" />
+
+2. Click the gear icon to open the settings and paste your access token. Be sure to click the check icon to save your configuration.
+
+<Image src="/docs/img/shopify_blog_manager_agent/Image 16.png" alt="alt text" />
+
+## Test the Agent
+
+Here's a glimpse of your successfully configured Agent:
+
+<Youtube videoId="vSJYKY8yW-Q" title="SmythOS - Testing the Shopify Blog Manager Agent" />

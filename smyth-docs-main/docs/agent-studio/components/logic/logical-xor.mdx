@@ -1,0 +1,95 @@
+---
+title: Logic XOR
+description: Perform a logical XOR (exclusive OR) operation to verify that exactly one of several conditions is true.
+keywords: [Logic, XOR, exclusive or, condition, boolean, one only, mutually exclusive]
+toc_max_heading_level: 2
+---
+
+# Logic XOR Component
+
+Use the **Logic XOR** (Exclusive OR) component to verify that **exactly one** of multiple conditions is met. This component is essential for scenarios where choices are mutually exclusive, ensuring that only one option is valid at a time.
+
+<InfoCallout title="Why this matters">
+Many business rules require mutual exclusivity. The `Logic XOR` component enforces this by confirming that one, and only one, condition from a set is true. It's perfect for tasks like "allow a user to sign in with a username OR a phone number, but not both" or "process a transaction if it is marked as 'new' OR 'updated', but not neither or both."
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Understand the Logic](#step-1-understand-the-logic)
+- [Provide Inputs](#step-2-provide-inputs)
+- [Handle the Outputs](#step-3-handle-the-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Understand the Logic
+
+The component takes multiple inputs and provides two outputs: `Verified` and `Unverified`. The `Verified` path is triggered only if **exactly one** input is `true`. In all other cases (zero `true` inputs, or more than one `true` input), the `Unverified` path is triggered.
+
+In this context:
+- **`True`**: Any input that has a value (e.g., a non-empty string, any number, the boolean `true`, an object, an array).
+- **`False`**: Any input that is empty, `null`, `undefined`, or the boolean `false`.
+
+### Operational Rules
+
+| Input 1 | Input 2 | Verified Path (Outputs `true`) | Unverified Path (Outputs `true`) |
+|:--------|:--------|:-------------------------------|:---------------------------------|
+| `True`  | `True`  | Inactive                       | **Active** |
+| `True`  | `False` | **Active** | Inactive                         |
+| `False` | `True`  | **Active** | Inactive                         |
+| `False` | `False` | Inactive                       | **Active** |
+
+<Spacer size="md" />
+
+## Step 2: Provide Inputs
+
+You can add two or more inputs to the component, each representing a condition to be checked for mutual exclusivity.
+
+| Action      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| **Add Input** | Click the `+` icon to add a new input field. Give it a descriptive name that reflects the condition you are checking. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Outputs
+
+The component has two output branches, allowing you to direct the workflow based on whether exactly one condition was met.
+
+| Output       | Description                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------|
+| **Verified** | This path executes if **one and only one** of the inputs evaluates to `true`.                             |
+| **Unverified** | This path executes if zero inputs are true, or if more than one input is true.                           |
+
+<TipCallout title="Branching Your Workflow">
+Connect the `Verified` output to the main success path of your workflow. Connect the `Unverified` output to a path that handles the error case, such as asking the user to correct their input or logging an invalid state.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Enforce Mutual Exclusivity:** This is the primary use case. Use it to ensure a user has selected only one option from a list, or that a data record exists in only one of several possible states.
+- **Validate Configuration:** Check that a system is configured with exactly one of several possible settings enabled.
+- **Distinguish from OR:** Do not confuse `XOR` with `OR`. `OR` succeeds if *at least one* condition is true. `XOR` succeeds only if *exactly one* condition is true.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your logic isn't branching as expected...">
+- **The Unverified Path is Taken:** Remember that `Unverified` triggers in two cases: when no inputs are true, AND when more than one input is true. Use the **Debug** panel to inspect your inputs and see which case is occurring.
+- **Check Your "False" Values:** An input you expect to be `false` might contain an unexpected value (like the string "false"), which evaluates to `true`, potentially causing more than one input to be true at once.
+- **Inputs are Not Truly Exclusive:** If the `Unverified` path is frequently taken because multiple inputs are true, it may indicate a flaw in upstream logic that is allowing a non-exclusive state to occur.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Create a sign-up flow where a user must provide either an email or a phone number, but not both, using `Logic XOR` to validate their input.
+- In a state machine, use `Logic XOR` to confirm that an item is in exactly one state (e.g., "Pending" XOR "Complete" XOR "Failed").
+- Combine with other logic components to build complex validation rules, such as "(`A` XOR `B` is true) AND `C` is also true."

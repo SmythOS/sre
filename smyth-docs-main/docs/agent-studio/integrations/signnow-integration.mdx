@@ -1,0 +1,169 @@
+---
+title: SignNow Integration
+description: Connect SmythOS to SignNow to automate document workflows, send documents for e-signature, and manage approvals directly from your agents.
+og:title: SmythOS & SignNow - Automate Your Document Workflows
+og:description: Learn to integrate SignNow with SmythOS. Empower your agents to automatically send contracts, agreements, and other documents for electronic signature.
+og:image: /docs/img/integrations/smythos_signnow.png
+keywords: [SignNow SmythOS Integration, Connect SignNow to SmythOS, SmythOS e-signature, Automate Document Signing, E-signature API, No-Code SignNow]
+---
+# SignNow Integration with SmythOS
+
+> **Want to automate your agreement and contract workflows?** Connect SignNow to SmythOS and empower your agents to automatically send documents for electronic signature.
+
+<InfoCallout title="TL;DR">
+Securely link your SignNow account to SmythOS using an Access Token. Then, use the "Send for Signature" component to automate the process of sending documents to be signed, streamlining your onboarding, sales, and legal processes.
+</InfoCallout>
+
+## List of SignNow Components
+Quickly compare SignNow components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send E-docs for Signature**](#send-for-signature)| Write | Sends a document from your SignNow account to a recipient to be signed. | <Badge type="required" /> `document_id`, `to`, `from`, `subject` | `id` | Sending a sales contract to a new client for their signature. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate SignNow with Your Agent?</summary>
+
+SignNow is a leading e-signature platform that simplifies document workflows. Integrating it with SmythOS allows you to build powerful agents that handle the entire lifecycle of your agreements.
+
+- **Automate Contract Management:** When a deal is marked "Closed-Won" in your CRM, an agent can automatically take the contract template, populate it with the client's details, and send it for signature via SignNow.
+- **Streamline HR Onboarding:** Create an agent that, when a new employee is added to your HR system, automatically sends them their employment contract and onboarding documents to be signed.
+- **Efficient Legal Processes:** Build workflows where legal agreements or NDAs are automatically sent out for signature when a new partnership or project is initiated.
+- **Reduce Manual Work:** Eliminate the need to manually download, email, and track documents. Let your agents handle the entire signature process, from sending the initial request to receiving a notification upon completion (via webhooks).
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **SignNow account**.
+- Your SignNow **Access Token**.
+- A pre-uploaded document or template in your SignNow account to get a `document_id`.
+
+<Divider />
+
+## Getting Started With SignNow
+
+The connection between SmythOS and SignNow is configured using a secure Access Token.
+
+### Step 1: Get Your SignNow Access Token
+1.  Log in to your [SignNow account](https://signnow.com/).
+2.  Navigate to the **API** section in your dashboard or account settings. The direct link is `https://app.signnow.com/webapp/api-dashboard/keys`.
+3.  In the API dashboard, you can create and manage your applications and generate an **Access Token**.
+4.  Copy the generated token to your clipboard.
+
+### Step 2: Store Your Access Token in SmythOS Vault
+Your Access Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your SignNow Access Token as the value. Give it a memorable name, like `signnow_access_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a SignNow Component
+1.  In your SmythOS agent graph, drag and drop the **Send E-docs for Signature** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Access Token` field, select the secret you saved in the Vault (e.g., `signnow_access_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Access Token from the Vault to each SignNow component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which SignNow Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send a document out for signature** | A `document_id` and a recipient's email | [Send E-docs for Signature](#send-for-signature) | This is the core component for initiating the e-signature process for a document. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the SignNow component.
+
+### <a name="send-for-signature"></a>Send E-docs for Signature
+Sends an invitation to a recipient to sign a specific document that exists in your SignNow account. (Formerly "Send E-docs for Signature").
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-signnow) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `document_id` | string | Yes | The unique ID of the document in your SignNow account that you want to send. |
+| `to` | string | Yes | The email address of the person who needs to sign the document. |
+| `from` | string | Yes | The email address the invitation will be sent from. This should be an address associated with your account. |
+| `subject` | string | Yes | The subject line for the signature invitation email. |
+| `message` | string | Yes | The body content of the invitation email. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | A unique identifier for the signature invitation transaction. |
+| `Response`| object | The full, raw JSON response from the SignNow API, confirming the invite was sent. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A sales agent closes a deal in their CRM. This triggers another agent that takes a standard contract `document_id`, populates the recipient's email in the `to` field, and uses this component to send the contract for signature.
+</TipCallout>
+
+```json
+{
+  "component": "signnow.sendEdocsForSignature",
+  "document_id": "0a1b2c3d4e5f6a7b8c9d0e1f",
+  "to": "client@example.com",
+  "from": "sales@mycompany.com",
+  "subject": "Your Service Agreement is Ready to Sign",
+  "message": "Hello, please review and sign the attached service agreement at your earliest convenience. Thank you!"
+}
+```
+
+<WarningCallout title="Document Must Exist">
+This component sends an *existing* document for signature. You must upload the document or template to your SignNow account first to get a `document_id`.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Access Token:** Always store your SignNow Access Token in the SmythOS `Vault`.
+* **Use Templates:** For documents you send frequently (like contracts or NDAs), use SignNow's template feature. You can create a template with pre-defined signature fields. Your agent can then send an invitation to sign a new copy of that template.
+* **Track Document Status with Webhooks:** While these components initiate the flow, the most powerful automation comes from using SignNow webhooks. You can configure a webhook in SignNow to call a SmythOS agent endpoint whenever a document is viewed, signed, or completed, allowing your agent to react in real-time.
+* **Dynamic Documents:** For more advanced workflows, you can use the SignNow API to first create a document from a template and merge fields with customer data (e.g., name, address), then get that new `document_id` and send it for signature, all within one agent.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Access Token is incorrect, has expired, or is missing from the request.
+  * **Solution:** Verify that the Access Token in your SmythOS Vault is correct and active. Generate a new token in your SignNow API settings if necessary and update your Vault secret.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `document_id` provided does not exist in your SignNow account.
+  * **Solution:** Log in to your SignNow account and verify the document ID is correct. Ensure the document hasn't been deleted.
+
+* **Emails Not Being Received**
+  * **Cause:** The recipient's email server may be blocking emails from SignNow, or the email may be in their spam folder. It could also be a deliverability issue with the `from` address.
+  * **Solution:** Ask the recipient to check their spam/junk folder. Ensure the `from` email address is a valid address that you control.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful document signing workflows with the **SmythOS SignNow Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages new employee onboarding. When a new employee is added to your HR system, the agent automatically sends their employment contract from a SignNow template for them to sign.
+    * Automates sales contracts. When a deal is moved to the "Contract Sent" stage in your CRM, the agent sends the contract to the client via SignNow. When the contract is signed (detected via webhook), the agent updates the CRM stage to "Closed-Won."
+    * Handles vendor agreements. Your agent can receive a new vendor agreement via email, upload it to SignNow (via a custom API call), and then use this component to send it to the appropriate manager for their signature.
+
+* **Explore Other Integrations:**
+    * Combine SignNow with a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration). When a document is sent for signature, log the invitation `id` and status in a Firestore document for auditing.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to generate a custom legal clause, add it to a contract template, and then send it for signature with SignNow.
+    * When a contract is signed, trigger an agent to create a new project in [Asana](/docs/agent-studio/integrations/asana-integration) and a new customer record in [Stripe](/docs/agent-studio/integrations/stripe-integration).

@@ -1,0 +1,91 @@
+---
+title: RAG Remember
+description: Add or update information in your agent's knowledge base, allowing it to learn and retain new data.
+keywords: [RAG, Remember, knowledge base, memory, learn, data source, namespace, vector]
+toc_max_heading_level: 2
+---
+
+# RAG Remember Component
+
+Use the **RAG Remember** component to add or update information in your agent's long-term memory. This component allows the agent to learn new facts, documents, or data, making its knowledge base expandable and dynamic.
+
+<InfoCallout title="Why this matters">
+An agent's true power comes from its knowledge. The `RAG Remember` component is how you teach your agent new things, turning it from a static tool into a learning system that can grow and adapt over time with new information.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Define the Namespace and Source Details](#step-1-define-the-namespace-and-source-details)
+- [Provide the Source Data](#step-2-provide-the-source-data)
+- [Handle the Output](#step-3-handle-the-output)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Define the Namespace and Source Details
+
+Specify where to store the information and how to identify it.
+
+| Setting             | Required?                   | Description                                                                                                                              |
+|---------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| **Namespace** | <Badge type="required">Yes</Badge> | Select the knowledge base (namespace) where this information will be stored.                                                             |
+| **Source Identifier** | <Badge type="required">Yes</Badge> | A unique ID for this piece of data. If an entry with this ID already exists, it will be updated. Otherwise, a new one will be created. |
+| **Label** | <Badge type="optional">No</Badge>  | A human-readable name or description for the data source, which can help with organization.                                              |
+| **Metadata** | <Badge type="optional">No</Badge>  | A JSON object for storing additional, structured information about the data source (e.g., `{"category": "product_docs", "version": 1.2}`). |
+
+<TipCallout title="Using Source Identifiers">
+Think of the `Source Identifier` as a filename. It gives you a way to reference, update, or delete this specific piece of knowledge later using the **[RAG Forget Component](/docs/agent-studio/components/rag-data/rag-forget)**.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/ecoKltQXUAtdueZrVaXn?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="RAG Remember | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide the Source Data
+
+This is the actual content you want the agent to remember.
+
+| Input   | Required?                   | Description                                                                                                                                                              |
+|---------|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Source**| <Badge type="required">Yes</Badge> | The data to be stored in the knowledge base. This is typically a large block of text, but can be other data types. You can also connect additional custom inputs to be stored as metadata. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Output
+
+The component provides a simple success or failure indicator.
+
+| Output    | Description                                                                   |
+|-----------|-------------------------------------------------------------------------------|
+| **Success** | Returns `true` if the data was successfully added or updated, otherwise returns an empty value. |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Keep Data Chunking in Mind:** RAG systems work best with well-structured, reasonably sized chunks of text. Instead of remembering a single 100-page document, consider breaking it into smaller sections or paragraphs and remembering each one individually with its own source identifier.
+- **Use Rich Metadata:** Good metadata is key to effective searching later on. Include relevant keywords, categories, dates, or source information to help the **[RAG Search Component](/docs/agent-studio/components/rag-data/rag-search)** find the most relevant information.
+- **Create Dynamic Learning Loops:** Have your agent take the output of a conversation or an analysis from an LLM and feed it into `RAG Remember`. This allows the agent to learn from its interactions.
+- **Structure Your Namespaces:** Use different namespaces to separate different types of knowledge (e.g., "product-manuals," "customer-faq," "internal-policies").
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your agent isn't remembering...">
+- **Check the `Success` Output:** If the `Success` output is empty, the operation failed. This could be due to invalid inputs, incorrect namespace permissions, or a problem with the underlying data store.
+- **Data Cannot Be Found Later:** Ensure you are using the correct `Namespace` when you try to search for the data. Also, check that your `Source` data is descriptive enough to be found by a search query.
+- **Updating vs. Creating:** Remember that if you use an existing `Source Identifier`, you will overwrite the previous entry. If you want to add new information, ensure you use a new, unique identifier.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- After a conversation with a user, use a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to summarize the key takeaways, and then use `RAG Remember` to store that summary in a "conversation-history" namespace.
+- Create a workflow that reads files from a folder, loops through them with **[ForEach](/docs/agent-studio/components/advanced/for-each)**, and uses `RAG Remember` to add each file's content to the knowledge base.
+- Pair this component with **[RAG Search](/docs/agent-studio/components/rag-data/rag-search)** and **[RAG Forget](/docs/agent-studio/components/rag-data/rag-forget)** to build a complete lifecycle for your agent's knowledge management.

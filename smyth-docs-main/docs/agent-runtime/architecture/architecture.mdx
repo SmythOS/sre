@@ -1,0 +1,132 @@
+---
+title: Architecture
+description: Explore the modular, secure architecture of the Smyth Runtime Environment and how its subsystems work together to power your AI agents.
+keywords: [SmythOS, SRE, architecture, boot, initialization, core services, agent manager, components, modular, secure]
+sidebar_position: 6
+---
+
+# SRE Architecture
+
+The Smyth Runtime Environment (SRE) is inspired by operating system kernels. It provides a modular, secure foundation for AI agents, with all infrastructure complexity abstracted behind clear interfaces and extensible connectors.
+
+<InfoCallout title="Core Philosophy">
+SRE follows operating system design principles. By separating core runtime services from pluggable connectors, SRE offers modularity, security, and flexibility across all agent workloads.
+</InfoCallout>
+
+<Spacer size="md" />
+
+
+## Boot Sequence Steps
+
+When SRE starts, it follows a consistent initialization flow. Each step ensures the environment is secure and ready for agents to run.
+
+1. Initialize core services, including storage, cache, vault, and logging
+2. Register the agent manager and load available [components](/docs/agent-runtime/components)
+3. Set up HTTP endpoints and routing, if needed
+4. Connect to LLM providers and vector databases
+5. Load account and access control configuration
+6. Signal readiness so agents can execute
+
+```typescript
+import { SRE } from 'smyth-runtime';
+
+const sre = SRE.init({
+  Storage: { Connector: 'S3', Settings: { bucket: 'my-bucket' } },
+  Cache: { Connector: 'Redis', Settings: { url: 'redis://prod-cluster' } },
+  Vault: { Connector: 'HashicorpVault', Settings: { url: 'https://vault.company.com' } },
+  LLM: { Connector: 'OpenAI', Settings: { apiKey: '...' } },
+});
+
+await sre.ready();
+```
+
+<Spacer size="md" />
+
+## Subsystem Architecture
+
+SRE is organized into several subsystems, each managing a distinct aspect of the runtime. Here’s how each one works:
+
+### IO Subsystem
+
+This subsystem acts as your gateway to the outside world.
+
+| Service         | Purpose                        | Example Connectors          |
+| :-------------- | :---------------------------- | :-------------------------- |
+| Storage         | File and data persistence      | Local, S3, Smyth            |
+| VectorDB        | Vector storage and retrieval   | Pinecone, SmythManaged      |
+| Log             | Activity and debug logging     | Console, Smyth              |
+| Router          | HTTP API endpoints             | Express                     |
+| NKV             | Key-value storage              | Redis                       |
+| CLI             | Command-line interface         | CLI                         |
+
+<codeblock>
+// Example: Using multiple storage connectors
+const localStorage = ConnectorService.getConnector('Storage', 'Local');
+const s3Storage = ConnectorService.getConnector('Storage', 'S3');
+</codeblock>
+
+<Spacer size="md" />
+
+### LLM Manager Subsystem
+
+This subsystem powers your agent’s AI capabilities by providing a unified interface to multiple LLM providers. It supports smart inference routing, usage tracking, and custom model configurations.
+
+Supported providers include OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity, and Hugging Face.
+
+<codeblock>
+// Example: Multi-provider LLM usage
+const openai = ConnectorService.getLLMConnector('OpenAI');
+const claude = ConnectorService.getLLMConnector('Anthropic');
+</codeblock>
+
+<Spacer size="md" />
+
+### Security Subsystem
+
+Trust is enforced at every step using secure credential storage, identity and authentication management, granular access control, and managed vault integration. Supported vault connectors include HashiCorp, AWS Secrets Manager, and JSON files.
+
+<Spacer size="md" />
+
+### Memory Manager Subsystem
+
+This subsystem manages intelligent state and resource tracking.
+
+- Provides multi-tier caching (RAM, Redis, S3, Local)
+- Maintains runtime context and agent state
+- Stores conversation history and LLM context
+- Monitors memory usage and optimizes resources
+
+<Spacer size="md" />
+
+### Agent Manager Subsystem
+
+This subsystem is the heart of agent execution.
+
+- Manages agent process lifecycles
+- Provides real-time monitoring and logging
+- Supports async operations and component workflows
+- Enables visual programming with over 40 components
+- Streams updates to clients in real time
+
+<Spacer size="md" />
+
+<InfoCallout title="Component Catalog">
+SRE ships with more than 40 production-ready components for LLMs, web APIs, data, logic, and system integration. For a complete list, visit [Components](/docs/agent-runtime/components).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Security by Design
+
+SRE is secure by default. Its Candidate and ACL model ensures all access is authorized and logged. Secrets are stored in secure vaults and access control is enforced at every layer.
+
+For security details, visit [Security Model](/docs/agent-runtime/security).
+
+<Spacer size="md" />
+
+## What's Next
+
+- [Component Reference](/docs/agent-runtime/components)
+- [SDK Guide](/docs/agent-runtime/sdk-guide)
+- [Security Model](/docs/agent-runtime/security)
+- [Deployment Options](/docs/agent-runtime/deployment)

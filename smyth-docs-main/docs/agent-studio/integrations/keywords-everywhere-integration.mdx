@@ -1,0 +1,174 @@
+---
+title: Keywords Everywhere Integration
+description: Connect SmythOS to Keywords Everywhere to fetch search volume, CPC, and competition data directly within your agent workflows.
+og:title: SmythOS & Keywords Everywhere - Automate Your Keyword Research
+og:description: Learn to integrate Keywords Everywhere with SmythOS. Empower your agents to retrieve crucial SEO metrics for any list of keywords, streamlining content strategy and market analysis.
+og:image: /docs/img/integrations/smythos_keywords_everywhere.png
+keywords: [Keywords Everywhere SmythOS Integration, Connect Keywords Everywhere to SmythOS, SmythOS Keyword Research, Automate SEO Data, SmythOS Keyword Tool, No-Code SEO, Keyword Volume API]
+---
+# Keywords Everywhere Integration with SmythOS
+
+> **Want to supercharge your keyword research?** Connect Keywords Everywhere to SmythOS and empower your agents to retrieve search volume, CPC, and competition data on demand.
+
+<InfoCallout title="TL;DR">
+Securely link your Keywords Everywhere account to SmythOS using an API key. Then, use the "Get Keyword Data" component to automate the process of fetching vital SEO and PPC metrics for any list of keywords.
+</InfoCallout>
+
+## List of Keywords Everywhere Components
+Quickly compare Keywords Everywhere components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Get Keyword Data**](#get-keyword-data) | Read | Fetches search volume, CPC, and competition data for a list of keywords. | <Badge type="required" /> `keywords`<br /><Badge type="optional" /> `country`, `dataSource` | `data` | Bulk keyword analysis, content planning. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Keywords Everywhere with Your Agent?</summary>
+
+Keywords Everywhere is a powerful tool for on-the-fly keyword analysis. Integrating its API with SmythOS allows you to move beyond manual checks and build fully automated SEO and content workflows.
+
+- **Automate Keyword Research:** Feed a list of seed ideas to an agent and have it automatically enrich them with search volume and CPC data, saving hours of manual work.
+- **Streamline Content Planning:** Build agents that analyze keywords for new content briefs, ensuring your writers target terms with the best potential from the start.
+- **Enhance Competitive Analysis:** Programmatically check the metrics for keywords your competitors are ranking for to identify strategic opportunities.
+- **Improve PPC Strategies:** Use real-time CPC and competition data to inform your advertising bids and budget allocation, ensuring you focus on the most cost-effective keywords.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Keywords Everywhere account** with available API credits.
+- Your Keywords Everywhere **API Key**.
+
+<Divider />
+
+## Getting Started With Keywords Everywhere
+
+The connection between SmythOS and Keywords Everywhere is configured using a secure API key.
+
+### Step 1: Get Your Keywords Everywhere API Key
+1.  Log in to your [Keywords Everywhere account](https://keywordseverywhere.com/).
+2.  From the dashboard menu, navigate to the **API** section.
+3.  Click the button to **Generate a new API key** (or copy your existing one).
+4.  Copy the key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Keywords Everywhere API Key as the value. Give it a memorable name, like `keywords_everywhere_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the Keywords Everywhere Component
+1.  In your SmythOS agent graph, drag and drop the **Get Keyword Data** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `keywords_everywhere_api_key`).
+4.  Optionally, select your preferred `Data Source`.
+5.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each Keywords Everywhere component you use. This ensures all connections are secure and properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Keywords Everywhere Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Get metrics for keywords** | A list of keywords | [Get Keyword Data](#get-keyword-data) | This is the core component for all keyword data retrieval from the API. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Keywords Everywhere component.
+
+### <a name="get-keyword-data"></a>Get Keyword Data
+Retrieves search volume, cost per click (CPC), and competition data for a list of keywords.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-keywords-everywhere) section.</InfoCallout>
+
+#### Component-Specific Settings
+In the component's settings panel, you can configure the `Data Source`:
+- **`gpk` (Google Keyword Planner):** Fetches data directly from Google's Keyword Planner tool. This is the standard source for most SEO and PPC research.
+- **`cli` (Clickstream Data):** Uses aggregated clickstream data to estimate metrics.
+
+For most use cases, `gpk` is recommended.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `keywords` | array | Yes | An array of strings, where each string is a keyword you want to analyze. |
+| `country` | string | Optional | Two-letter country code to get localized data (e.g., `ca` for Canada). Default: `us`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | array | Parsed array of objects, where each object contains the metrics for a corresponding keyword. |
+| `Response`| object | The full, raw JSON response from the Keywords Everywhere API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Create a content planning agent. Feed it a list of 20 blog post ideas (as keywords). The agent uses this component to fetch the search volume for each, then writes the keyword and its volume to a Google Sheet, sorted from highest to lowest volume, to help prioritize content creation.
+</TipCallout>
+
+```json
+{
+  "component": "keywordsEverywhere.getKeywordData",
+  "keywords": [
+    "no-code automation",
+    "how to build an agent",
+    "SmythOS review"
+  ],
+  "country": "gb"
+}
+```
+
+<WarningCallout title="API Credits">
+Each keyword in the `keywords` array consumes one credit from your Keywords Everywhere account. Sending large arrays will consume credits quickly.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always use the SmythOS `Vault` to store your Keywords Everywhere API key. Never expose it in plaintext.
+* **Batch Your Keywords:** To work efficiently and minimize the number of API calls, group as many keywords as you need into a single request array rather than running the component multiple times in a loop.
+* **Use the `country` Parameter:** For international SEO, always specify the target two-letter country code to get accurate, localized search volume and CPC data.
+* **Monitor Your Credits:** Keep an eye on your credit balance in your Keywords Everywhere dashboard. Build alerts into your agents if you perform very high-volume analysis.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API key is invalid, has been disabled, or is missing from the request.
+  * **Solution:** Verify that the API key in your SmythOS Vault is correct and matches the one in your Keywords Everywhere dashboard. Ensure the key is correctly selected in the component's settings.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** You have run out of API credits in your Keywords Everywhere account.
+  * **Solution:** Log in to your Keywords Everywhere dashboard to check your credit balance and purchase more credits if necessary.
+
+* **Empty `data` Array in Output**
+  * **Cause:** The keywords submitted may not have any available data, or there could be a temporary issue with the API.
+  * **Solution:** Check the keywords for typos. Test with a very common keyword (e.g., "google") to confirm the API connection is working. Examine the raw `Response` output for any specific error messages.
+
+<Divider />
+
+## What's Next?
+
+You're now ready to build powerful SEO and content workflows with the **SmythOS Keywords Everywhere Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Takes a single seed keyword, uses another AI component to generate a list of 50 related long-tail keywords, and then feeds that list into this component to analyze their potential.
+    * Monitors a competitor's sitemap, extracts new blog post URLs, guesses the target keyword, and then checks its search volume and competition level.
+    * Creates a simple internal tool where your marketing team can input a list of keywords and have an agent return a downloadable CSV file (via Google Sheets) with all the metrics.
+
+* **Explore Other Integrations:**
+    * Combine keyword data with SERP data from the [DataForSEO Integration](/docs/agent-studio/integrations/dataforseo-integration) to get a complete picture of the search landscape.
+    * Use the metrics to inform content briefs generated by AI components.
+    * Log historical keyword volume changes in the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) to track seasonality and trends.

@@ -1,0 +1,90 @@
+---
+title: Agent Schedules
+description: Automate your agent's behavior by running endpoints on a time-based schedule,either once or repeatedly.
+keywords: [agent schedules, recurring tasks, automation, timed workflows, triggers, endpoint automation]
+toc_max_heading_level: 2
+sidebar_position: 8
+---
+
+# Agent Work Schedules
+
+Use **Work Schedules** to tell your agent when to run a task. You choose the endpoint, set the input, and define when it should execute. Once it’s set up, SmythOS handles the rest with no manual triggering needed.
+
+<InfoCallout title="Hands-off agent routines">
+Great for sending daily updates, generating weekly reports, or syncing systems at regular intervals.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How to Set Up a Work Schedule
+
+1. Go to the **Agents** tab
+2. Click on your deployed agent
+3. Open the **Settings** tab
+4. Scroll down on the **Tasks** section
+5. Click **Add New** under **Schedule**
+
+<Spacer size="md" />
+
+## Run a Task Once
+
+If you want the agent to perform something just once at a later time:
+
+1. Choose the endpoint
+2. Add the required input values
+3. Set **Repeat** to `No Repeat`
+4. Pick the exact time it should run
+5. (Optional) Name the task
+6. Click **Done**
+
+That’s it. It will execute once and won’t repeat.
+
+<Spacer size="md" />
+
+## Set Up a Recurring Task
+
+To make your agent run on a repeating schedule:
+
+1. Choose the endpoint
+2. Add the input values
+3. Set **Repeat** to `Repeat`
+4. Choose:
+   - **How often** (daily, weekly, etc.)
+   - **When** (specific day/time)
+   - **End condition** (never, after X runs, or on a date)
+5. (Optional) Add a name
+6. Click **Done**
+
+The agent will follow this schedule until you change or remove it.
+
+<Spacer size="md" />
+
+## View and Manage Your Schedules
+
+Once a schedule is saved, it appears in the **Schedule** list for that agent.
+
+Click any item to view:
+
+- **Info tab**: inputs, endpoint, and next run
+- **Triggers tab**: full run history
+- **Logs tab**: links to output and system logs
+
+<Arcade src="https://demo.arcade.software/5NPb5R6hXdIqrB6Pozxc?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Scheduler | SmythOS" />
+
+<Spacer size="md" />
+
+## Common Use Cases
+
+| Task Name               | When It Runs        | What It Does                         |
+|-------------------------|---------------------|--------------------------------------|
+| `daily_digest`          | Every day at 08:00  | Gathers top news headlines           |
+| `weekly_summary_report` | Fridays at 15:00    | Sends updates to clients             |
+| `price_feed_checker`    | Every hour          | Scans product feeds for price drops  |
+
+<Spacer size="md" />
+
+## What to Do Next
+
+- [Run Bulk Tasks](/docs/agent-collaboration/agent-bulk-work)
+- [Chat with Agents](/docs/agent-collaboration/chat-with-agent)
+- [Deploy Your Agent](/docs/agent-deployments/overview)

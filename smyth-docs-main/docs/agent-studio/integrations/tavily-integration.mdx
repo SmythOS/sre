@@ -1,0 +1,277 @@
+---
+title: Tavily Integration
+description: Connect SmythOS to Tavily to perform optimized, real-time web and news searches designed for Large Language Models (LLMs) and RAG applications.
+og:title: SmythOS & Tavily - AI-Powered Search for Your Agents
+og:description: Learn to integrate Tavily with SmythOS. Empower your agents with an advanced search API that provides clean, relevant, and comprehensive data from over 20 web sources.
+og:image: /img/integrations/smythos_tavily.png
+keywords: [Tavily SmythOS Integration, Connect Tavily to SmythOS, SmythOS Search API, AI Search Engine, RAG, Retrieval-Augmented Generation, Automated Research]
+---
+# Tavily Integration with SmythOS
+
+> **Need a search engine built for AI?** Connect Tavily to SmythOS and empower your agents with a powerful, AI-optimized search API to get clean, relevant, and comprehensive data from the web.
+
+<InfoCallout title="TL;DR">
+Securely link your Tavily account to SmythOS using an API key. Then, use our suite of search components to perform basic, advanced, or news-specific searches, as well as extract content from URLs, all optimized for AI and RAG workflows.
+</InfoCallout>
+
+## List of Tavily Components
+Quickly compare Tavily components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Basic General Search**](#basic-general-search) | Search | Performs a quick, general topic search optimized for LLMs. | <Badge type="required" /> `query`<br /><Badge type="optional" /> `max_results` | `Results` | Fast answers for general knowledge questions. |
+| [**Advanced General Search**](#advanced-general-search) | Search | Performs a general search with advanced filtering like time range. | <Badge type="required" /> `query`<br /><Badge type="optional" /> `time_range` | `Results` | Researching topics within a specific recent timeframe. |
+| [**Basic News Search**](#basic-news-search) | Search | Performs a quick search focused specifically on news sources. | <Badge type="required" /> `query`<br /><Badge type="optional" /> `days` | `Results` | Getting the latest headlines on a topic. |
+| [**Advanced News Search**](#advanced-news-search) | Search | Performs a news search with more detailed filtering options. | <Badge type="required" /> `query`<br /><Badge type="optional" /> `days` | `Results` | In-depth media monitoring from specific domains. |
+| [**Extract**](#extract) | Scrape | Scrapes and extracts the main content from a list of URLs. | <Badge type="required" /> `urls` | `results` | Getting clean article text for summarization. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Tavily with Your Agent?</summary>
+
+Tavily is a search API built from the ground up for AI applications, particularly Retrieval-Augmented Generation (RAG). It doesn't just return links; it provides clean, relevant, and comprehensive information.
+
+- **AI-Optimized Results:** Tavily processes and filters search results to provide concise, relevant information, which is perfect for feeding directly into Large Language Models without extra noise.
+- **Enhanced Data Access:** Go beyond a simple Google search. Tavily aggregates data from over 20 sources, giving your agents a broader and more comprehensive view of any topic.
+- **Efficient RAG Workflows:** Tavily is ideal for RAG. An agent can perform a search to retrieve factual, up-to-date context, and then use that context to generate a more accurate and informed response with an LLM.
+- **Automated Research:** Create agents that can perform deep research on any topic. They can use the search components to find relevant sources and the `Extract` component to get the full content for analysis.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Tavily account**.
+- Your Tavily **API Key**.
+
+<Divider />
+
+## Getting Started With Tavily
+
+The connection between SmythOS and Tavily is configured using a secure API key.
+
+### Step 1: Get Your Tavily API Key
+1.  Log in to your [Tavily account](https://app.tavily.com/sign-in).
+2.  Navigate to the **API Key** section of your dashboard.
+3.  Copy your API key.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Tavily API Key as the value. Give it a memorable name, like `tavily_api_key`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a Tavily Component
+1.  In your SmythOS agent graph, drag and drop any Tavily component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Tavily API Key` field, select the secret you saved in the Vault (e.g., `tavily_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Tavily component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Tavily Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Quickly find general information** on a topic | A search query | [Basic General Search](#basic-general-search) | The fastest and most direct way to get general-purpose search results. |
+| **Find information from the last week only** | A search query and a time frame | [Advanced General Search](#advanced-general-search) | Adds time-based filtering to narrow down results to recent events. |
+| **Get the latest news headlines** for a company | A search query focused on news | [Basic News Search](#basic-news-search) | Specifically targets news sources for up-to-the-minute reporting. |
+| **Extract the text from a list of articles** | An array of URLs | [Extract](#extract) | Moves beyond search to scrape and clean the content from specific pages. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Tavily component.
+
+### <a name="basic-general-search"></a>Basic General Search
+Performs a quick, general-purpose web search optimized for providing context to LLMs.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The search keyword or phrase. |
+| `max_results` | string | Optional | The maximum number of search results to return. |
+| `include_domains`| array | Optional| A list of domains to prioritize in the search. |
+| `exclude_domains`| array | Optional| A list of domains to ignore in the search. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Results` | array | An array of objects, each containing a search result with its URL, title, and content snippet. |
+| `Response`| object | The full, raw JSON response from the Tavily API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent needs to answer a user's question, "What is Retrieval-Augmented Generation?". It uses this component with the query to get a concise, factual summary to form its answer.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/gl2G9t4NnpuWrHxkAEXx?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Tavily Basic General Search" />
+
+<Divider/>
+
+### <a name="advanced-general-search"></a>Advanced General Search
+Performs a general web search with the addition of time-based filtering.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The search keyword or phrase. |
+| `time_range`| string | Optional | Time range for results (e.g., `d` for day, `w` for week, `m` for month). Default: `m`. |
+| `max_results` | string | Optional | The maximum number of search results to return. |
+| `include_domains`| array | Optional| A list of domains to prioritize in the search. |
+| `exclude_domains`| array | Optional| A list of domains to ignore in the search. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Results` | array | An array of time-filtered search result objects. |
+| `Response`| object | The full, raw JSON response from the Tavily API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent is tasked with creating a weekly summary of news about "generative AI." It runs this component with the `time_range` set to "w" to ensure it only gets the latest information.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/bdvytN1p1AvBzy6IGycH?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Tavily Advanced General Search" />
+
+<Divider/>
+
+### <a name="basic-news-search"></a>Basic News Search
+Performs a quick search focused specifically on news sources.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The news topic or keyword to search for. |
+| `days` | string | Optional | Number of days back to search. Default: `3`. |
+| `max_results`| string | Optional | Maximum number of news articles to return. |
+| `include_domains`| array | Optional| A list of news domains to prioritize. |
+| `exclude_domains`| array | Optional| A list of news domains to ignore. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Results` | array | An array of objects, each representing a news article. |
+| `Response`| object | The full, raw JSON response from the Tavily API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A financial monitoring agent uses this component to search for a company's stock ticker every day, with `days` set to "1", to find any breaking news that might affect its price.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/oRg3xSv40FOoXrY74KCm?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Tavily Basic News Search" />
+
+<Divider/>
+
+### <a name="advanced-news-search"></a>Advanced News Search
+Performs a news search with more detailed filtering options.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | The news topic or keyword to search for. |
+| `days` | string | Optional | Number of days back to search. Default: `3`. |
+| `max_results`| string | Optional | Maximum number of news articles to return. |
+| `include_domains`| array | Optional| A list of news domains to prioritize. |
+| `exclude_domains`| array | Optional| A list of news domains to ignore. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Results` | array | An array of objects, each representing a news article. |
+| `Response`| object | The full, raw JSON response from the Tavily API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A media monitoring agent performs an advanced search for a brand name, excluding their own domain, to find external press coverage.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/wVgkhDBHgzdrNHaQja0o?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Tavily Advanced News Search" />
+
+<Divider/>
+
+### <a name="extract"></a>Extract
+Scrapes and extracts the clean, primary content from a given list of URLs.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `urls` | array | Yes | An array of URL strings to extract content from. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results`| array | An array of objects, each containing the extracted content and metadata for a successful URL. |
+| `failed_results` | array | An array of URLs that failed to be extracted. |
+| `Response`| object | The full, raw JSON response from the Tavily API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent first uses a search component to get a list of relevant URLs. It then passes this list of URLs to the **Extract** component to get the full, clean text from each page, which it then feeds to an LLM for summarization.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/cI4rN4ZVZnOJUYjNobuB?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Tavily Extract" />
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Tavily API key in the SmythOS `Vault`.
+* **Combine Search and Extract:** For the most powerful research workflows, chain the components. Use a **Search** component to discover relevant sources, then pass the output URLs to the **Extract** component to get the full content for deeper analysis.
+* **Use Domain Filters:** The `include_domains` and `exclude_domains` parameters are powerful tools for refining your search. Use them to focus on authoritative sources or to filter out known low-quality sites.
+* **Leverage for RAG:** Tavily is purpose-built for Retrieval-Augmented Generation. Use the clean content from its search or extract results as the context (`Retrieval`) for your LLM prompts to get more accurate and factual `Generated` answers.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, invalid, or missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your Tavily dashboard.
+
+* **Error: `402 Payment Required` or Quota Errors**
+  * **Cause:** You have exhausted the API credits available in your Tavily plan.
+  * **Solution:** Log in to your Tavily account to check your usage and upgrade your plan if necessary.
+
+* **Empty `Results` Array**
+  * **Cause:** The search query genuinely returned no results, or the filters (e.g., `include_domains`, `time_range`) were too restrictive.
+  * **Solution:** Broaden your query or remove filters to test the connection. Try a very common search term to ensure the component is working correctly.
+
+* **URL in `failed_results` for Extract Component**
+  * **Cause:** The website may have strong anti-scraping measures that even Tavily could not bypass, or the URL might be invalid or lead to a page with no main content.
+  * **Solution:** This is expected for some sites. Build logic in your agent to handle failed extractions gracefully, such as by logging the failed URL or trying an alternative source.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful research and data extraction agents with the **SmythOS Tavily Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a "Daily Briefing" generator. It uses the **Advanced News Search** to find the top 5 articles about your industry from the last 24 hours, uses **Extract** to get their content, and then uses an LLM to write a summary of each for a morning email.
+    * Performs automated competitor analysis. It takes a list of competitor domains, uses **Basic General Search** with `include_domains` to find recent mentions, and logs the results to a Google Sheet.
+    * Powers a fact-checking chatbot. When a user asks a question, the agent uses Tavily to find several high-quality sources, extracts their content, and uses an LLM to synthesize an answer with citations.
+
+* **Explore Other Integrations:**
+    * Combine Tavily with the [OpenRouter](/docs/agent-studio/integrations/openrouter-integration) or [Perplexity AI](/docs/agent-studio/integrations/perplexity-ai-integration) integrations to create state-of-the-art RAG pipelines.
+    * Send the results of your Tavily searches directly to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) for logging and analysis.
+    * Use the `#extract` component to get clean article text and then pass it to the [PlayHT](/docs/agent-studio/integrations/playht-integration) or [Elevenlabs](/docs/agent-studio/integrations/elevenlabs-integration) integrations to create an audio version.

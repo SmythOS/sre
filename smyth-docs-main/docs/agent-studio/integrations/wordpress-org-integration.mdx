@@ -1,0 +1,309 @@
+---
+title: WordPress.org Integration
+description: Connect SmythOS to your self-hosted WordPress.org site to automate content management, publishing, and site updates directly from your agent workflows.
+og:title: SmythOS & WordPress.org - Automate Your Self-Hosted Content
+og:description: Learn to integrate your self-hosted WordPress.org site with SmythOS. Empower agents to create, update, and retrieve posts using Application Passwords for secure, automated control.
+og:image: /img/integrations/smythos_wordpress_org.png
+keywords: [WordPress.org SmythOS Integration, Connect WordPress.org to SmythOS, SmythOS WordPress, Automate Blogging, WordPress REST API, No-Code WordPress]
+tags: [cms, blogging, content management, automation]
+---
+# WordPress.org Integration with SmythOS
+
+> **Want to automate your self-hosted WordPress site?** Connect your WordPress.org site to SmythOS and empower your agents to create, edit, and manage your posts programmatically using the WordPress REST API.
+
+<InfoCallout title="TL;DR">
+Securely link your WordPress.org site to SmythOS by generating an Application Password for a user. Then, use our components to automate your entire content lifecycle, from creating drafts with images to updating live posts.
+</InfoCallout>
+
+## List of WordPress.org Components
+Quickly compare WordPress.org components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Draft Post**](#create-draft-post) | Write | Creates a new draft post with SEO metadata. | <Badge type="required" /> `domain_name`, `title`, `content` | `id` | Staging an AI-generated article for review. |
+| [**Create Post With Image**](#create-post-with-image)| Write | Creates a new draft post with a featured image. | <Badge type="required" /> `domain_name`, `title`, `content`, `image_id` | `id` | Automating blog posts with visuals. |
+| [**Update Post**](#update-post) | Write | Edits the content of an existing post. | <Badge type="required" /> `domain_name`, `post_id`, `content` | `id`, `content` | Syncing content from an external source. |
+| [**List Posts**](#list-posts) | Read | Retrieves a list of posts from your site. | <Badge type="required" /> `domain_name`<br/><Badge type="optional" /> `per_page` | `posts` | Getting recent articles for a dashboard. |
+| [**Get Post**](#get-post) | Read | Retrieves a single post using its unique Post ID. | <Badge type="required" /> `domain_name`, `post_id` | `title`, `content` | Fetching an article for analysis or re-purposing. |
+| [**Delete Post**](#delete-post) | Write | Permanently deletes a post from your site. | <Badge type="required" /> `domain_name`, `post_id` | `Response` | Removing outdated content. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate WordPress.org with Your Agent?</summary>
+
+Your self-hosted WordPress.org site gives you full control. Integrating it with SmythOS allows you to leverage that control with powerful automation.
+
+- **Automated Content Pipelines:** Create agents that take content from any source—a Google Doc, a Notion page, an AI model, or another website—and automatically create and format draft posts in your WordPress dashboard.
+- **Content Synchronization:** Build an agent that monitors an external data source, like a product information system, and uses the `Update Post` component to keep your product pages or announcements perfectly in sync.
+- **Streamlined Publishing:** Connect your content creation and review process. An agent can create a draft, notify an editor in Slack, and once approved, another agent could potentially update its status to "publish".
+- **Programmatic Content Management:** Go beyond the WordPress dashboard. Use agents to perform bulk updates, delete old posts based on specific criteria, or manage content across multiple sites from a single interface.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A self-hosted **WordPress.org** site that is publicly accessible.
+- An **Administrator** user account on your WordPress site.
+- An **Application Password** generated for that user.
+
+<Divider />
+
+## Getting Started With WordPress.org
+
+The connection is handled via Basic Authentication, which requires a username and a special Application Password, combined and encoded in Base64 format.
+
+### Step 1: Generate an Application Password in WordPress
+1.  **Log in to your WordPress Dashboard** as an Administrator.
+2.  Navigate to **Users** > **Profile**.
+3.  Scroll down to the **Application Passwords** section.
+4.  Enter a new, descriptive name for your application (e.g., "SmythOS Agent") and click **Add New Application Password**.
+5.  **Copy the generated password immediately.** It will not be shown again. This is your `app_password`.
+
+### Step 2: Encode Your Credentials in Base64
+1.  Combine your WordPress username and the Application Password into a single string with a colon in between: `your_wp_username:your_app_password`.
+2.  Use a Base64 encoding tool (like the "Encode/Decode" component in SmythOS) to encode this string.
+3.  Copy the resulting Base64 encoded string.
+
+### Step 3: Store Your Encoded Credentials in SmythOS Vault
+Your encoded credentials are a sensitive secret. Use the SmythOS `Vault` to store them securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your **Base64 encoded string** as the value. Give it a memorable name, like `wordpress_org_auth`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 4: Configure a WordPress.org Component
+1.  In your SmythOS agent graph, drag and drop any WordPress.org component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Base 64 encoded username and app password` field, select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Base64 encoded secret from the Vault to each WordPress.org component that performs a write action (Create, Update, Delete).</InfoCallout>
+<Divider />
+
+## Which WordPress.org Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new draft post with a featured image** | `domain_name`, `title`, `image_id` | [Create Post With Image](#create-post-with-image) | The best way to create visually rich posts programmatically. |
+| **Update the body** of an existing article | `domain_name`, `post_id`, `content` | [Update Post](#update-post) | Modifies the content of an existing post without changing other attributes. |
+| **Get the content** of a specific post | `domain_name`, `post_id` | [Get Post](#get-post) | The most direct way to retrieve a single post's full content and title. |
+| **Get a list of your 10 most recent posts** | `domain_name` | [List Posts](#list-posts) | Retrieves multiple posts at once, ideal for populating feeds or dashboards. |
+| **Permanently delete** an outdated article | `domain_name`, `post_id` | [Delete Post](#delete-post) | The standard way to securely remove content from your site via the API. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each WordPress.org component.
+
+### <a name="update-post"></a>Update Post
+This component allows you to update the content of an existing post on a WordPress.org website.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name` | string | Yes | The URL of your WordPress site. |
+| `post_id` | string | Yes | The ID of the post you wish to update. |
+| `content` | string | Yes | The new text content of the post. Accepts raw text or HTML. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The unique identifier of the updated post. |
+| `content`| string | The updated content of the post. |
+| `Response`| object | The complete server response, including the updated post details. |
+
+<TipCallout title="Use Case">
+An agent monitors a product database. When a product's description changes, the agent uses this component to update the corresponding product page on the WordPress site.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/Q0ceziGGQqDljUkhmyGx?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WP.org Update Post" />
+
+<Divider/>
+
+### <a name="list-posts"></a>List Posts
+This component retrieves a collection of posts from a WordPress.org site.
+
+<InfoCallout>This component does not require authentication as it accesses public data.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | The URL of your WordPress.org site. |
+| `per_page` | integer| Optional | The number of posts to retrieve per page. Defaults to `10`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `posts` | array | A list of posts retrieved in the specified format. |
+| `Response`| object | The entire server response including data about the retrieved posts. |
+| `Headers` | object | HTTP headers containing additional metadata from the response. |
+
+<TipCallout title="Use Case">
+A "content syndication" agent uses this component to get the latest posts from a source blog to be re-published elsewhere.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/mV11AlNWcMy99D3Tl1gr?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WP.org List Posts" />
+
+<Divider/>
+
+### <a name="get-post"></a>Get Post
+Retrieve a specific post from your WordPress.org site by accessing its detailed record.
+
+<InfoCallout>This component does not require authentication as it accesses public data.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | The URL of your WordPress.org site. |
+| `post_id` | string | Yes | The unique identifier of the post you wish to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | The title of the post fetched. |
+| `content`| string | The main content or body of the post. |
+| `link` | string | Direct URL to the retrieved post. |
+| `Response`| object | Contains the full server response including metadata and post data. |
+
+<TipCallout title="Use Case">
+An agent, tasked with summarizing an article, uses this component to fetch the full `content` before passing it to an LLM.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/2MAHfE57ztLT13OcD94n?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WP.org Get Post" />
+
+<Divider/>
+
+### <a name="create-draft-post"></a>Create Draft Post
+This component allows for the creation of a draft post on your WordPress.org site.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | The full URL of your WordPress.org site. |
+| `title` | string | Yes | The title of the draft post. |
+| `content` | string | Yes | The main text content of the draft post. Accepts raw text or HTML. |
+| `meta_description`| string | Optional| A brief summary of the post for SEO. |
+| `keywords` | string | Optional| Relevant SEO keywords associated with the post, separated by commas. |
+| `categories`| integer | Optional| The ID for the WordPress post category. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The unique identifier of the newly created draft post. |
+| `Response`| object | Provides the full server response including all metadata related to the draft post created. |
+
+<TipCallout title="Use Case">
+An agent generates a first draft of a technical article using an AI model, then calls this component to save it to WordPress with relevant SEO metadata for an editor to review.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/7iSVJIIzcNmP39Ijs9UP?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WP.org Create Draft Post" />
+
+<Divider/>
+
+### <a name="create-post-with-image"></a>Create Post With Image
+This component creates a draft post with a featured image attachment on your WordPress.org site.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | The URL of your WordPress.org site. |
+| `title` | string | Yes | The title of your post. |
+| `content` | string | Yes | The body of the post (plain text or HTML). |
+| `meta_description`| string | Optional| A concise SEO-friendly description of the post. |
+| `keywords` | string | Optional| Comma-separated keywords relevant to the post for SEO. |
+| `image_id` | string | Yes | The ID of an image already uploaded to your WordPress media library. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer| The unique identifier for the newly created draft post. |
+| `Response`| object | The complete server response, including all metadata related to the created draft post with an image. |
+
+<TipCallout title="Use Case">
+An agent generates a blog post and a corresponding image. It first uploads the image to the Media Library (using a different component or process), gets the `image_id`, and then calls this component to create the draft and set the featured image in one step.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/cyBLONuB5xxkBy4JZaSG?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WPorg Create Post With Image" />
+
+<Divider/>
+
+### <a name="delete-post"></a>Delete Post
+This component facilitates the deletion of a specific post from your WordPress.org site.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `domain_name`| string | Yes | The URL of your WordPress.org site where the post exists. |
+| `post_id` | string | Yes | The unique identifier of the post you wish to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | Displays the full server response, which includes confirmation of the deletion or details about any errors encountered. |
+| `Headers` | object | Lists HTTP headers that provide additional context about the response. |
+
+<TipCallout title="Use Case">
+An agent identifies promotional posts for events that have already passed and automatically deletes them to keep the blog content current.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action permanently deletes the post. Use with caution.
+</WarningCallout>
+
+<Arcade src="https://demo.arcade.software/HWrgHHPEeyf9pwEchsrb?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="WP.org Delete Post" />
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Your `username:app_password` string is a direct login. Always Base64 encode it and store the result in the SmythOS `Vault`.
+* **Use Application Passwords:** Never use your main user password for API access. Application Passwords are revocable and specific to an application, which is much more secure.
+* **Manage Media First:** To create a post with an image, you must first ensure the image exists in your WordPress Media Library. This may require a separate agent step to upload the image via the REST API to get the `image_id`.
+* **Update Status to Publish:** The `Create Draft Post` component saves the post with a `draft` status. To publish it, you must use the `Update Post` component, providing the `post_id` and setting the `status` to `publish` in the request body.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Base64 encoded credentials are incorrect, or the user does not have sufficient permissions (must be an administrator or editor). The Application Password may have been revoked.
+  * **Solution:** Re-encode your `username:app_password` string and verify it. Ensure the user account has the appropriate role in WordPress. Generate a new Application Password if needed and update your Vault secret.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `domain_name` is incorrect, or the `post_id` does not exist.
+  * **Solution:** Check your domain for typos. Verify that the post you are trying to update or delete exists in your WordPress dashboard.
+
+* **Image Not Appearing in Post**
+  * **Cause:** The `image_id` provided to the `Create Post With Image` component is incorrect or does not exist in the Media Library.
+  * **Solution:** Confirm the image ID in your WordPress Media Library. Ensure the image was successfully uploaded before calling the component.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful content automations for your self-hosted WordPress site with the **SmythOS WordPress.org Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your [GitHub repository](/docs/agent-studio/integrations/github-integration). When you merge a new Markdown file into a specific folder, the agent automatically converts it to HTML and creates a new draft post on your WordPress site.
+    * Generates a weekly newsletter. The agent uses `List Posts` to get the titles and links of all articles published in the last 7 days, formats them into an HTML email, and sends it using [Resend](/docs/agent-studio/integrations/resend-integration).
+    * Acts as a content translation pipeline. It takes an existing English post, sends the content to the [Google Translate Integration](/docs/agent-studio/integrations/google-translate-integration), and then creates a new draft of the post in Spanish.
+
+* **Explore Other Integrations:**
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to expand a short idea into a full blog post, then use `Create Draft Post` to save it for review.
+    * After an agent creates a new post, it can take the post's title and use the [Ayrshare Integration](/docs/agent-studio/integrations/ayrshare-integration) to announce it on your social media channels.

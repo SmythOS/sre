@@ -1,0 +1,156 @@
+---
+title: OpenAPI Integration
+description: Connect SmythOS to any external tool or service that follows the OpenAPI specification by simply providing a manifest URL.
+og:title: SmythOS & OpenAPI - Integrate Any Tool, Instantly
+og:description: Learn to use the universal OpenAPI component in SmythOS. Empower your agents to connect to and reason over any third-party API with an OpenAPI manifest.
+og:image: /docs/img/integrations/smythos_openapi.png
+keywords: [OpenAPI SmythOS Integration, Connect OpenAPI to SmythOS, SmythOS Universal Connector, Automate APIs, No-Code API Integration, LLM Tool Use, OpenAPI Manifest]
+---
+# OpenAPI Integration with SmythOS
+
+> **Want to connect to a tool that isn't natively supported?** Use the OpenAPI component to instantly integrate thousands of external services into your SmythOS agents.
+
+<InfoCallout title="TL;DR">
+Simply provide the manifest URL (JSON or YAML) of any tool that follows the OpenAPI specification. SmythOS will automatically understand the tool's functions, allowing your AI-powered agents to interact with it seamlessly.
+</InfoCallout>
+
+## What Can You Do with the OpenAPI Component?
+The OpenAPI integration acts as a universal adapter. Instead of having a fixed list of components, it provides a single, powerful component that can become anything you need it to be.
+
+| **Task Example** | **Action** | **How it Works** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| **Weather API** | Fetch Data | Your agent calls the functions defined in a weather service's OpenAPI manifest. | `query`: "What's the weather in London?" | `output`: "The weather in London is 15°C and cloudy." | Getting real-time data for planning or notifications. |
+| **CRM Tool** | Manage Data | Your agent uses the CRM's OpenAPI spec to find, create, or update contacts. | `query`: "Find the contact details for Jane Doe." | `output`: "Jane Doe's email is jane@example.com." | Automating sales and customer management tasks. |
+| **Financial API** | Get Insights| Your agent interacts with a financial data provider's API to get stock prices or market news. | `query`: "Get the latest stock price for AAPL." | `output`: "The current stock price for AAPL is $175.30." | Building financial monitoring and analysis agents. |
+| **Custom Internal Tool**| Execute | Your agent interacts with your own company's internal tools that expose an OpenAPI spec. | `query`: "Reset the password for user 'test@smythos.com'." | `output`: "Password for user 'test@smythos.com' has been reset." | Automating internal IT or business processes. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Use the OpenAPI Integration?</summary>
+
+The OpenAPI specification is the industry standard for defining APIs. By leveraging it, SmythOS provides a powerful, universal way to extend your agent's capabilities.
+
+- **Infinite Extensibility:** Instantly connect to the vast ecosystem of services that provide an OpenAPI manifest, from major SaaS platforms to niche tools, without waiting for a native integration.
+- **AI-Powered Reasoning:** The component doesn't just call an API; it functions as an intelligent agent. The underlying LLM understands the tool's functions from the manifest and can decide which function to call based on your natural language `query`.
+- **Rapid Development:** Drastically reduce development time. Instead of writing custom code to handle API requests, authentication, and responses, you simply provide a URL.
+- **Enhance Existing Tools:** Add a layer of AI reasoning on top of any of your existing internal or external tools. Allow your agents to interact with complex APIs using simple, natural language.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- The **OpenAPI Manifest URL** for the tool you want to integrate. This must be a publicly accessible URL ending in `.json` or `.yaml`.
+- (Optional) An **API Key or other credentials** for the external tool, if it requires authentication.
+
+<Divider />
+
+## Getting Started With OpenAPI
+
+The connection is configured directly within the OpenAPI component in SmythOS.
+
+### Step 1: Find the OpenAPI Manifest URL
+Locate the documentation for the third-party tool you want to use. Look for a link to their "OpenAPI Specification," "Swagger UI," or "API Definition." Copy the URL for the raw JSON or YAML file.
+
+### Step 2: Configure the OpenAPI Component in SmythOS
+1.  In your SmythOS agent graph, drag and drop the **OpenAPI** component.
+2.  Click the component to open its **Settings** panel.
+3.  **Manifest URL:** Paste the OpenAPI manifest URL you copied in Step 1 into this field.
+4.  **Model Selection:** Choose the AI model that will power the component. This model will interpret your queries and decide how to use the external tool.
+5.  **Authentication (If Required):** If the external tool requires an API key, you will need to configure it. The manifest will define how authentication is handled (e.g., as a header). You will typically add the API key to the SmythOS `Vault` and reference it in the component's header settings.
+
+<InfoCallout title="Heads-up">The OpenAPI component itself doesn't have a single authentication method. It adapts to whatever the manifest file specifies for the external tool.</InfoCallout>
+<Divider />
+
+## When Should I Use the OpenAPI Component?
+
+| If you need to… | Use this Component | Why this one? |
+|-----------------|--------------------|---------------|
+| **Connect to a service not natively in SmythOS** | **OpenAPI Component** | It's the universal adapter for any tool with an OpenAPI spec. |
+| **Quickly prototype an integration** | **OpenAPI Component** | It's the fastest way to connect a new API without writing any code. |
+| **Add AI reasoning to an existing API** | **OpenAPI Component** | The component's built-in LLM can interpret natural language and intelligently call the right API functions. |
+| **Build an agent that uses multiple, disparate tools** | **Multiple OpenAPI Components** | You can have several OpenAPI components in one agent, each configured for a different external service. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the universal OpenAPI component.
+
+### <a name="openapi-component"></a>OpenAPI Universal Tool Runner
+Connects to and interacts with any external tool that provides an OpenAPI specification manifest.
+
+<InfoCallout>Authentication is determined by the external tool's manifest. You must configure it according to the specific tool's requirements.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `query` | string | Yes | A natural language request describing the task you want the agent to perform using the external tool. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `output`| string | The result from the external tool, often processed or summarized by the component's AI model. |
+| `Response`| object | The full, raw JSON response from the external tool's API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+You configure the component with the OpenAPI manifest for a flight booking API. You provide the `query`: "Find me a flight from New York to London tomorrow." The component's AI understands the request, calls the correct `searchFlights` function from the API with the right parameters (`origin: JFK`, `destination: LHR`, `date: ...`), and returns the flight options in the `output`.
+</TipCallout>
+
+```json
+{
+  "component": "openapi.toolRunner",
+  "query": "What's the current price of Bitcoin in USD?"
+}
+```
+
+<WarningCallout title="Manifest is Key">
+The success of this component is entirely dependent on a well-formed and accurate OpenAPI manifest from the third-party tool.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Choose the Right Model:** Select a powerful AI model in the component settings to ensure the agent can accurately understand your queries and the tool's functions.
+* **Secure External API Keys:** If the external tool requires an API key, always store it in the SmythOS `Vault` and reference it.
+* **Start with Simple Queries:** When testing a new tool, start with simple, unambiguous queries to ensure the connection is working and the AI understands the basic functions.
+* **Inspect the Raw Response:** The `output` field often provides a user-friendly summary. For detailed, structured data, you will need to parse the `Response` object.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `Manifest Fetch Failed` or `Invalid Manifest`**
+  * **Cause:** The Manifest URL is incorrect, inaccessible, or the file is not a valid OpenAPI (v3.x) specification.
+  * **Solution:** Verify the URL is correct and publicly accessible. Use an online validator to check if the manifest file is well-formed.
+
+* **Error: `401 Unauthorized` / `403 Forbidden` from the External Tool**
+  * **Cause:** The API key or authentication method for the external tool is incorrect or missing.
+  * **Solution:** Check the tool's documentation for its required authentication method. Ensure you have configured the correct API key, token, or OAuth credentials as specified in their manifest.
+
+* **Agent Fails to Call the Correct Function**
+  * **Cause:** The `query` may be too ambiguous, or the function descriptions in the OpenAPI manifest may be unclear. The selected AI model might not be powerful enough to reason over the tool.
+  * **Solution:** Make your `query` more specific. Try upgrading to a more advanced AI model in the component settings. If you control the manifest, improve the `description` for each function to be clearer.
+
+<Divider />
+
+## What's Next?
+
+You can now connect virtually any API to your workflows with the **SmythOS OpenAPI Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to a stock market API to get real-time data and a financial news API to get related headlines, combining both into a single report.
+    * Integrates with your company's internal IT helpdesk API to allow users to create or check the status of support tickets using natural language.
+    * Connects to a translation service (via its OpenAPI spec) to translate text, and then uses the [Elevenlabs Integration](/docs/agent-studio/integrations/elevenlabs-integration) to read the translation aloud.
+
+* **Explore the OpenAPI Ecosystem:**
+    * Browse public API directories like [APIs.guru](https://apis.guru/) to discover thousands of OpenAPI manifests for public services you can integrate instantly.
+    * If you have an internal tool without a manifest, consider creating one for it. This will allow your entire team to easily integrate it into their SmythOS agents.

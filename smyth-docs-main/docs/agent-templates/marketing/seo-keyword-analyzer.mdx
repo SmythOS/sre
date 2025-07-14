@@ -1,0 +1,60 @@
+# Tutorial: SEO Keyword Analyzer Agent
+
+This agent is designed to handle requests related to keyword analysis efficiently. It is structured to always invoke the analyze_keyword endpoint for tasks such as assessing keyword difficulty, retrieving related questions, or obtaining relevant keywords. Requests unrelated to keyword difficulty assessment are politely declined. This agent consistently returns complete outputs, including the full lists of top 10 ranking pages, top 20 relevant keywords, and top 20 related questions without alteration.
+
+## RapidAPI Credentials
+
+RapidAPI provides a variety of endpoints for various purposes. Follow the following steps to get your Rapid API Key.
+
+1. Go to https://rapidapi.com/
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/1.png" alt="alt text" /> 
+
+4. Copy your API key using the `copy icon`. You can also click the eye icon to view your API key. 
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/2.png" alt="alt text" /> 
+
+### Keyword Difficulty Checker Subscription
+
+1. Navigate to this [link](https://rapidapi.com/Glavier/api/ahrefs1) to subscribe to the Keyword Difficulty Checker.
+2. Select a subscription plan from the options available: Basic (free), Pro , Ultra & Mega. The basic plan allows 50 API requests per month for free. 
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/3.png" alt="alt text" /> 
+
+3. Then, click the `Subscribe` button to complete the subscription.
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/4.png" alt="alt text" />
+
+## Agent Setup
+
+1. In SmythOS, navigate to the templates tab. 
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/5.png" alt="alt text" />
+
+2. You can scroll down to find the `SEO Keyword Analyzer` agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/6.png" alt="alt text" />
+
+3. Allow the template to initialize and configure. 
+
+### API Call Setup
+
+Follow this process for both the `Check Keyword Difficulty` component and the `Get Relevant Keyword` component.
+
+1. Click the `gear` icon to open the settings, then click the `edit` button situated in the headers section.
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/7.png" alt="alt text" />
+
+2. Click the key icon and select your stored Rapid API Key from your vault, then click `Save` to continue.
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/8.png" alt="alt text" />
+
+> **Note:** Click [here](/docs/agent-studio/key-concepts/vault?id=keys) to learn more about adding your API keys to the vault.
+
+3. Then, don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/seo_keyword_analyzer_agent/9.png" alt="alt text" />
+
+4. You're all set!

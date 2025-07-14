@@ -1,0 +1,162 @@
+---
+title: SmythOS Agents Integration
+description: Connect SmythOS agents to other agents to build modular, reusable, and complex multi-agent systems for sophisticated automation.
+og:title: SmythOS & Subagents - Build Agents That Command Agents
+og:description: Learn to use the SmythOS Agent component to call "subagents" from within a "parent" agent, enabling powerful, hierarchical, and reusable workflow designs.
+og:image: /docs/img/integrations/smythos_agents.png
+keywords: [SmythOS Agent Integration, SmythOS Subagent, Multi-agent System, Reusable Workflows, Modular Agents, Hierarchical Agents, Agent-to-Agent Communication]
+---
+# SmythOS Agents Integration
+
+> **Want to build complex, multi-layered agents without reinventing the wheel?** Connect SmythOS Agents to each other to create powerful, modular, and scalable automations.
+
+<InfoCallout title="TL;DR">
+Use the SmythOS Agent component to call one agent from within another (a "subagent"). This allows you to reuse logic, break down complex problems, and build sophisticated, hierarchical agent systems.
+</InfoCallout>
+
+## List of SmythOS Agent Components
+The integration provides one powerful component for connecting agents together.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**SmythOS Agent**](#smythos-agent) | Execute Agent | Runs another SmythOS agent as a sub-task and returns its result. | <Badge type="required" /> `prompt` | `Response` | Creating a "manager" agent that delegates tasks. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Agents with Each Other?</summary>
+
+Connecting agents is a core concept in building advanced AI systems. It allows you to move from single-purpose automations to complex, intelligent workflows.
+
+- **♻️ Reusability:** Build a specialized agent that does one thing well (e.g., summarize text, analyze sentiment). You can then reuse that "subagent" in dozens of other "parent" agents without duplicating any logic.
+- **🧩 Modularity:** Break down a large, complex problem into smaller, manageable sub-tasks. Assign each sub-task to a dedicated subagent. This makes your main agent easier to build, debug, and maintain.
+- **📈 Scalability:** Easily extend the capabilities of a parent agent by simply building a new subagent and calling it. This allows your systems to grow in complexity without becoming unmanageable.
+- **Hierarchical Control:** Design "manager" agents that orchestrate multiple "worker" subagents. The manager can make high-level decisions and delegate the detailed work, mimicking a real-world team structure.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- At least one existing SmythOS agent that can be used as a **subagent** (the agent being called).
+- A second SmythOS agent to act as the **parent agent** (the agent that will do the calling).
+
+<Divider />
+
+## Getting Started With Subagents
+
+The process involves configuring a parent agent to call a subagent.
+
+### Step 1: Create Your Specialized Subagent
+First, build and test an agent that performs a specific, reusable task. For example, create an agent named "Sentiment Analyzer" that takes a piece of text as input and outputs "Positive," "Negative," or "Neutral."
+
+### Step 2: Create Your Parent Agent
+Next, create the agent that will orchestrate the work. For example, an agent named "Customer Feedback Processor."
+
+### Step 3: Add and Configure the SmythOS Agent Component
+1.  In your parent agent's graph ("Customer Feedback Processor"), drag and drop the **SmythOS Agent** component from the component library.
+2.  Click the component to open its **Settings** panel.
+3.  From the dropdown list, select the subagent you want to call (e.g., "Sentiment Analyzer").
+4.  Configure the `Version` settings to determine if you want to call the `Dev` or `Prod` version of the subagent.
+
+<InfoCallout title="No API Key Needed">
+Since you are connecting agents within the same SmythOS ecosystem, no external authentication like API keys is required. The connection is handled seamlessly.
+</InfoCallout>
+<Divider />
+
+## Which Component Should I Use?
+
+| If you need to… | Use this Component | Why? |
+|-----------------|--------------------|------|
+| **Make one agent perform the task of another agent** | [SmythOS Agent](#smythos-agent) | This is the dedicated component for creating parent-child relationships between agents. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the SmythOS Agent component.
+
+### <a name="smythos-agent"></a>SmythOS Agent
+Executes a specified "subagent" as part of the current agent's workflow, passing a prompt to it and receiving its final response.
+
+<InfoCallout>This is an internal integration and does not require external API keys. Configuration is handled within the component's settings.</InfoCallout>
+
+#### Component-Specific Settings
+- **Model:** Choose the AI model the parent agent will use to reason about how and when to call the subagent.
+- **Version:**
+    - `Same As Parent`: If the parent is in `Dev`, it calls the `Dev` subagent. If `Prod`, it calls `Prod`.
+    - `Dev`: Always calls the `Dev` version of the subagent, useful for testing.
+    - `Prod Latest`: Always calls the latest `Prod` version of the subagent, ensuring stability.
+- **Description for Model:** A description of what the subagent does. This is pre-filled from the subagent's `Behavior` field but can be edited. This text helps the parent agent's AI understand the subagent's capabilities.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The instruction or data passed from the parent agent to the subagent. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| any | The final output returned by the subagent. The data type depends on what the subagent is designed to produce. |
+
+<TipCallout title="Use Case" collapsible>
+A "Manager Agent" receives an email. It uses an AI model to check if the email is a sales lead or a support ticket.
+- If it's a sales lead, it calls the "Sales Lead Subagent" with the `prompt` containing the email body.
+- If it's a support ticket, it calls the "Support Ticket Subagent" with the `prompt` containing the email body.
+The Manager Agent then takes the `Response` from the subagent (e.g., a CRM entry confirmation) and archives the email.
+</TipCallout>
+
+```json
+{
+  "component": "smythos.agent",
+  "prompt": "Please analyze the sentiment of the following customer feedback: 'The new feature is incredible and so easy to use!'"
+}
+```
+
+<WarningCallout title="Version Control is Crucial">
+The `Version` setting is critical. Using "Dev" allows for safe testing, while "Prod Latest" ensures your live automations are stable. Be mindful of which version you are targeting to avoid unexpected behavior.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Design for Modularity:** Build subagents that are highly specialized and do one thing exceptionally well. A good subagent is like a good function in programming: reliable, predictable, and reusable.
+* **Write Clear Descriptions:** The "Description for Model" setting is vital. Write a clear, concise description of the subagent's purpose, inputs, and outputs. This helps the parent agent's AI make better decisions about when and how to use the subagent.
+* **Manage Versions:** Thoroughly test your subagents in their `Dev` environment. Only promote a subagent to `Prod` when it is stable. In your parent agent, use the `Dev` version setting for testing and switch to `Prod Latest` for your live workflows.
+* **Standardize Inputs/Outputs:** For easier interoperability, design your subagents to accept and return data in a consistent format, such as JSON.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Subagent Fails to Execute**
+  * **Cause:** The subagent itself might have an error, or the parent agent might be passing an improperly formatted prompt.
+  * **Solution:** Check the execution history of the *subagent* directly. Its logs will contain the specific error message. Verify that the data being passed in the `prompt` from the parent matches what the subagent expects.
+
+* **Incorrect Output from Subagent**
+  * **Cause:** The `prompt` from the parent agent may be ambiguous, or the logic within the subagent may be flawed. You might also be calling the wrong version (`Dev` vs. `Prod`).
+  * **Solution:** First, check the `Version` setting in the parent component. Ensure you are targeting the correct subagent version. Then, simplify the `prompt` to be as clear as possible. If the issue persists, debug the subagent's internal logic.
+
+* **Infinite Loops**
+  * **Cause:** Agent A calls Agent B, and Agent B calls Agent A, creating a recursive loop.
+  * **Solution:** Carefully map out your agent architecture. Avoid circular dependencies where agents call each other in a way that could lead to an infinite loop.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build sophisticated, multi-agent systems with the **SmythOS Agents Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a "Project Manager." It receives a high-level goal, breaks it down into tasks, and then calls different specialized subagents (a "Research Agent," a "Writing Agent," a "Publishing Agent") to complete each task in sequence.
+    * Functions as a customer service dispatcher. It receives all incoming messages, uses a "Language Detection Subagent," a "Sentiment Analysis Subagent," and a "Topic Classification Subagent" to triage the message, and finally routes it to the correct human department.
+
+* **Explore Other Integrations:**
+    * A parent agent can fetch data from a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration), then use a `Loop` component to pass each row to a subagent for individual processing.
+    * A subagent could be dedicated to a specific integration, like [Ahrefs](/docs/agent-studio/integrations/ahrefs-integration). This "Ahrefs Specialist" agent could be called by any parent agent that needs to perform SEO analysis.

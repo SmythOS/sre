@@ -1,0 +1,151 @@
+---
+description: Find, fix, and prevent errors in your SmythOS agents — without leaving chat.
+keywords:
+  - SmythOS
+  - Weaver
+  - agent debugging
+  - fix with AI
+  - LLM orchestration framework
+sidebar_position: 6
+sidebar_label: Debugging
+---
+
+# Debugging with Weaver
+
+> Weaver’s debugging tools keep those hiccups from becoming hair-pullers.
+
+<InfoCallout title="TL;DR"> Click the red component, read the I/O snapshot, hit **Fix with AI**, rerun. 80 % of issues disappear in less than 30 seconds. </InfoCallout>
+
+<Divider/>
+
+## 1. Recognise the Red Flags
+
+During a run, components signal status:
+
+| Border Colour | Meaning | What to Do |
+|---------------|---------|-----------|
+| 🟢 Green | Success | Celebrate |
+| 🟡 Yellow | Waiting | Upstream input missing |
+| 🔴 Red | Failed | Time to debug |
+
+<Divider/>
+
+## 2. Inspect Inputs & Outputs
+
+Click the 🔴 component. Weaver shows:
+
+- **Inputs** it received  
+- **Outputs / error** it produced  
+
+Look for obvious culprits:
+
+- Empty strings?  
+- 500-level API errors?  
+- Rate-limit messages?
+
+<Divider/>
+
+## 3. Fix with AI (The 1-Click Wonder)
+
+If the error is text-related (bad prompt, wrong params):
+
+<PromptCard prompt={`Article text exceeded 5 000 chars — trim to 800 and retry.`}/>
+
+Press **Fix with AI**. Weaver rewrites the skill’s internal prompt or parameters, re-runs the single block, and shows the diff.
+
+> If it turns green, you’re done.  
+> If still red, refine the instruction and try again.
+
+<Divider/>
+
+## 4. Multi-Select for Chain Re-runs
+
+Hold <kbd>Cmd/Ctrl</kbd> and click multiple components to:
+
+- Re-execute them in order  
+- Debug cascading failures (e.g., bad JSON bubbles downstream)
+
+<Divider/>
+
+## 5. Common Error Recipes
+
+| Symptom | Likely Fix |
+|---------|-----------|
+| **“JSON parse error”** | Add `Constraints: return pure JSON` in upstream skill. |
+| **OpenAI quota hit** | Insert “Delay 60 s” skill or upgrade plan. |
+
+<Divider/>
+
+## 6. Prevent Tomorrow’s Bugs
+
+- **Small skills > monoliths** — easier to pin-point.  
+- **Use test prompts** — keep a gallery of real-world inputs.  
+ - **Watch run logs** — <DocLink to="/docs/agent-studio/manage-agents/logs">agent activity logs</DocLink> surface slow steps early.
+> **Red borders happen.**  
+> Weaver’s debug tools turn mystery errors into 3-click fixes.
+
+<Divider/>
+
+## 7. When All Else Fails
+
+1. Press Control + Shift + E to export your AI agent instantly. Run it locally using our cross-platform runtime (Mac, Windows, Linux)
+2. Visit <DocLink to="https://discord.gg/smythos">#debugging-help on Discord</DocLink>.  
+3. Save your sanity.
+
+<InfoCallout> **Pro Tip:** Keep prompts shorter than 8 k tokens; Weaver auto-chunks, but smaller requests run (and fail) faster. </InfoCallout>
+
+<Divider/>
+## Enable Debug Mode
+
+Flip the **Debug** toggle in the top toolbar to log:
+
+- Component timelines  
+- Step through each component or run an entire workflow  
+- Request/response payloads  
+- Runtime metadata (headers, params)  
+- Structured inputs and outputs  
+
+<InfoCallout> **TL;DR:** Toggle *Debug Mode*, watch coloured borders, hit **Fix with AI** when things go red. </InfoCallout>
+
+<Divider/>
+
+## Reading Logs & Output
+
+When Debug Mode is enabled, Weaver captures detailed logs for every agent run — across all components.
+
+### What You’ll See
+
+1. **Timeline** — Execution order of each block  
+2. **Payload** — Raw input/output JSON per step  
+3. **Headers** — Full HTTP headers, user agent, IPs, custom flags  
+4. **Parsed Inputs** — Cleaned query/body/params data  
+5. **Component Logs** — Structured logs like prompts, scrapers, APIs  
+6. **Model Info** — LLM name, prompt, and reply  
+7. **Jump to Block** — Clickable trace into the visual workflow
+
+### Example Log Snapshot
+
+```plaintext
+=== Web Scrape Log ===
+Payload: {
+  "searchTopic": "general",
+  "includeQAs": true
+}
+
+=== LLM Prompt Log ===
+Model: gpt-4o
+Prompt: Analyze the following search results...
+Reply: { "primary_keywords": [...], ... }
+```
+
+### Component Status Palette
+
+| Colour / Banner | Meaning | Action |
+|-----------------|---------|--------|
+| 🟢 Green | Success | Celebrate |
+| 🟡 Yellow | Waiting for upstream | Check prior block |
+| 🟠 Orange banner | Missing required input | Drag a wire |
+| ⚪ Grey (running) | In progress | Sit tight |
+| 🔴 Red | Failed | Click → **Fix with AI** |
+
+<InfoCallout> **Takeaway:** Debug mode + coloured borders + `_error` outputs = painless troubleshooting. </InfoCallout>

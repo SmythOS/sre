@@ -1,0 +1,146 @@
+---
+title: Use WhatsApp with SmythOS
+description: Integrate WhatsApp into your SmythOS agents using MCP Server, Meta Business API, or Twilio.
+keywords: [SmythOS, WhatsApp, WhatsApp integration, WhatsApp Business API, Twilio, MCP deployment, messaging bot]
+---
+
+# Use WhatsApp with SmythOS
+
+> Bring your agents to where your users are, WhatsApp. With over 2 billion users, it's a must-have messaging channel for real-time, human-like communication.
+
+<InfoCallout title="TL;DR">Choose from three WhatsApp integration paths: MCP Server, Meta WhatsApp Business API, or Twilio. All allow your SmythOS agent to receive and send messages over WhatsApp. </InfoCallout>
+
+<Divider />
+
+## Why Use WhatsApp With Your Agent?
+
+WhatsApp is a global messaging leader trusted by individuals, businesses, and governments alike. With SmythOS:
+
+- Turn your agent into a conversational partner on WhatsApp
+- Automate customer service, order updates, reminders, and more
+- Support rich message flows, multilingual handling, and conditional responses
+
+<Divider />
+
+## Deployment Options
+
+You can deploy your WhatsApp-connected agent in three ways:
+
+1. **[MCP Server Deployment](//docs/agent-deployments/deployments/deploy-as-mcp-server):** Recommended for control, branding, and reliability.
+2. **Meta WhatsApp Business API:** Official but complex.
+3. **Twilio WhatsApp API:** Simple to set up and test, with additional service cost.
+
+<Divider />
+
+## Option 1: Deploy to MCP Server (Recommended)
+
+### Step 1: Deploy Your Agent to MCP
+
+Follow the instructions in [Deploy to MCP Server](//docs/agent-deployments/deployments/deploy-as-mcp-server) to get your agent running on a stable, serverless endpoint.
+
+<PromptCard prompt="Deploy your agent to MCP Server and use its public URL for WhatsApp webhooks." />
+
+### Step 2: Connect to WhatsApp
+
+You can now register this MCP endpoint as your **Webhook URL** with:
+
+- **Meta WhatsApp Cloud API**
+- **Twilio WhatsApp settings**
+
+This allows WhatsApp to push incoming messages directly to your agent.
+
+### Step 3: Handle WhatsApp Webhooks
+
+Create an Agent Skill (or Code Component) to:
+
+- Accept incoming messages
+- Parse fields like `sender`, `timestamp`, and `text`
+- Forward them into your agent’s reasoning and response flow
+
+### Step 4: Respond to Users with API calls
+
+Use an **API Call** component to send replies. You’ll:
+
+- Format payloads based on WhatsApp API (see examples below)
+- Use Meta’s or Twilio’s URL, depending on integration path
+
+### Key Benefits
+
+- Doesn’t require Facebook Business verification
+- Lets you use custom or regional gateways
+- Highly customizable and scalable
+- Ideal for global or regulated deployments
+
+<Divider />
+
+## Option 2: Meta WhatsApp Business API (Official)
+
+### Prerequisites
+
+- Verified [Facebook Business Manager](https://business.facebook.com/)
+- WhatsApp Business Account
+- [WhatsApp Cloud API access](https://developers.facebook.com/docs/whatsapp/)
+- Deployed MCP agent with public URL
+
+### Step-by-Step
+
+1. **Create Facebook Business Account** and verify it
+2. **Set up WhatsApp Business Account** via Business Manager
+3. **Create Meta App**, add the **WhatsApp product**
+4. **Register a phone number**, save your **Phone Number ID**
+5. **Generate Access Token** and store it in [Vault → API Keys](/docs/agent-studio/key-concepts/vault)
+6. **Configure Webhook** to point to your MCP agent’s endpoint
+7. **Create API Call Component** in SmythOS:
+
+```json
+{
+  "messaging_product": "whatsapp",
+  "to": "${recipient}",
+  "type": "text",
+  "text": {
+    "body": "${message}"
+  }
+}
+```
+
+- Endpoint: `https://graph.facebook.com/v13.0/{phone-number-id}/messages`
+- Header: `Authorization: Bearer {access-token}`
+
+<Divider />
+
+## Option 3: Twilio WhatsApp API (Easy Setup)
+
+### Prerequisites
+
+- Twilio account
+- WhatsApp sandbox setup
+- MCP agent with deployed endpoint
+
+### Step-by-Step
+
+1. **Set up WhatsApp in Twilio Console**
+2. **Copy your Account SID and Auth Token**, store in [Vault → API Keys](/docs/agent-studio/key-concepts/vault)
+3. **Configure Webhook** to MCP agent URL
+4. **Create API Call Component**:
+
+```json
+{
+  "From": "whatsapp:{your-twilio-number}",
+  "To": "whatsapp:{recipient}",
+  "Body": "${message}"
+}
+```
+
+- Endpoint: `https://api.twilio.com/2010-04-01/Accounts/{AccountSID}/Messages.json`
+- Use HTTP Basic Auth (SID + Auth Token)
+
+<Divider />
+
+## What’s Next?
+
+- Add [logging for incoming messages](/docs/agent-studio/manage-agents/logs)
+- Chain WhatsApp input into LLM-based responses or workflows
+- Use [Vault](/docs/agent-studio/key-concepts/vault) to manage auth securely
+- Deploy additional [media-based responses] for images or voice support
+
+<PromptCard prompt="Let your users message your agent directly on WhatsApp using Twilio or Meta API and an MCP-deployed webhook." />

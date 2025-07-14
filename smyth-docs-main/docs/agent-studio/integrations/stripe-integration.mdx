@@ -1,0 +1,203 @@
+---
+title: Stripe Integration
+description: Connect SmythOS to Stripe to automate customer creation, payment processing, and subscription management directly from your agent workflows.
+og:title: SmythOS & Stripe - Automate Your Payment Operations
+og:description: Learn to integrate Stripe with SmythOS. Empower your agents to create and manage customers, handle payments, and automate billing and financial workflows.
+og:image: /docs/img/integrations/smythos_stripe.png
+keywords: [Stripe SmythOS Integration, Connect Stripe to SmythOS, SmythOS Stripe API, Automate Payments, Payment Processing API, No-Code Stripe, Subscription Billing]
+---
+# Stripe Integration with SmythOS
+
+> **Want to automate your billing and payment operations?** Connect Stripe to SmythOS and empower your agents to create customers, manage payments, and streamline your entire revenue lifecycle.
+
+<InfoCallout title="TL;DR">
+Securely link your Stripe account to SmythOS using a secret API key. Then, use our components to automate customer management and payment processing, connecting your revenue operations to your other business systems.
+</InfoCallout>
+
+## List of Stripe Components
+Quickly compare Stripe components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Customer**](#create-customer) | Write | Creates a new customer record in your Stripe account. | <Badge type="required" /> `trigger`, `Body` | `customerId` | Automatically creating a Stripe customer when a new user signs up. |
+| [**Get Customer**](#get-stripe-customer) | Read | Retrieves the details of a specific customer by their ID. | <Badge type="required" /> `customer_id` | `customerId`, `customerEmail` | Fetching a customer's details to check their subscription status. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Stripe with Your Agent?</summary>
+
+Stripe is a leading platform for online payment processing. Integrating it with SmythOS allows you to build powerful agents that manage the financial aspects of your business.
+
+- **Automate Customer Creation:** When a new user signs up for your application or makes their first purchase, an agent can automatically create a corresponding customer object in Stripe, ready for billing.
+- **Streamline Billing Workflows:** Build agents that can create invoices, manage subscriptions, or process one-time charges by interacting with the Stripe API (via custom API components or future enhancements).
+- **Sync Financial Data:** Keep your internal systems up-to-date. An agent can be triggered by a new payment in Stripe (via webhooks) and then update a record in your CRM or accounting software.
+- **Automate Dunning and Collections:** Create agents that check for failed payments and automatically trigger a workflow to notify the customer via email and prompt them to update their payment information.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Stripe account**.
+- Your Stripe **Secret API Key**.
+
+<Divider />
+
+## Getting Started With Stripe
+
+The connection between SmythOS and Stripe is configured using a secure API Key.
+
+### Step 1: Get Your Stripe API Secret Key
+1.  Log in to your [Stripe Dashboard](https://dashboard.stripe.com/).
+2.  Navigate to the **Developers** section in the top-right corner.
+3.  In the left menu, click on **API Keys**.
+4.  You will see your **Standard keys**. For most integrations, you will use the **Secret key**.
+5.  Click the **Reveal live key** or **Reveal test key** button.
+6.  Copy the secret key (`sk_...`) to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Secret Key is a highly sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Stripe API Secret Key as the value. Give it a memorable name, like `stripe_secret_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Stripe Component
+1.  In your SmythOS agent graph, drag and drop any Stripe component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Secret` field, select the secret you saved in the Vault (e.g., `stripe_secret_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Secret from the Vault to **each** Stripe component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Stripe Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new billing profile** for a user | Customer data (e.g., email, name) | [Create Customer](#create-customer) | The standard method for creating a new customer object in Stripe before you can charge them. |
+| **Look up a customer's details** using their ID | A `customer_id` | [Get Customer](#get-stripe-customer) | The primary way to retrieve a specific customer's full record from Stripe. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Stripe component.
+
+### <a name="create-customer"></a>Create Customer
+Creates a new customer object in your Stripe account.
+
+<InfoCallout>This component requires an `API Secret` for authentication, as detailed in the [Getting Started](#getting-started-with-stripe) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the new customer's details, such as `email`, `name`, or `description`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value can be used to trigger the component's execution. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `customerId`| string | The unique ID of the newly created customer (e.g., `cus_...`). |
+| `Response`| object | The full, raw JSON response from the Stripe API, containing the complete customer object. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a new user signs up for a free trial on your website, an agent takes their email and name and uses this component to create a customer record in Stripe, ready for when they decide to upgrade to a paid plan.
+</TipCallout>
+
+```json
+{
+  "component": "stripe.createCustomer",
+  "trigger": "true",
+  "Body": {
+    "email": "jenny.rosen@example.com",
+    "name": "Jenny Rosen"
+  }
+}
+```
+
+<WarningCallout title="Body Schema">
+The `Body` payload must follow the structure defined in the Stripe API documentation for creating a customer. You can include many optional fields like `address`, `phone`, and `metadata`.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-stripe-customer"></a>Get Customer
+Retrieves the details of an existing customer by their unique Stripe customer ID.
+
+<InfoCallout>This component requires an `API Secret` for authentication, as detailed in the [Getting Started](#getting-started-with-stripe) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `customer_id`| string | Yes | The unique identifier of the customer to retrieve (e.g., `cus_...`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `customerId` | string | The ID of the retrieved customer. |
+| `customerEmail`| string | The email address associated with the customer's profile. |
+| `Response`| object | The raw JSON response from the Stripe API, containing the complete customer object. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A customer service agent needs to check a user's subscription status. The agent takes the user's customer ID from a CRM, uses this component to fetch their Stripe record, and then checks the subscription details within the `Response` object.
+</TipCallout>
+
+```json
+{
+  "component": "stripe.getStripeCustomer",
+  "customer_id": "cus_ABC123XYZ456"
+}
+```
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Your Stripe Secret Key grants full access to your account's data and operations. **Always** store it in the SmythOS `Vault` and never expose it.
+* **Use Test Mode:** When developing and testing your agents, use your **Test** API keys from the Stripe Dashboard. Only switch to your **Live** API keys for your production agents.
+* **Leverage Metadata:** The `metadata` field on many Stripe objects (like Customer) is a powerful tool. Use it to store your application's internal IDs (e.g., your user ID) on the Stripe object. This makes it easy to link a Stripe customer back to a user in your own database.
+* **Handle Errors Gracefully:** The Stripe API provides clear error codes and messages. Design your agents to handle common errors, such as a declined card when creating a payment, by parsing the `Response` object.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Secret Key is incorrect, has been revoked, or you are using a Test key for a Live request (or vice-versa).
+  * **Solution:** Verify that the API Secret in your SmythOS Vault is correct and active. Ensure you are using the correct key (Test vs. Live) for the environment you are targeting.
+
+* **Error: `404 Not Found`**
+  * **Cause:** The ID provided (e.g., `customer_id`) does not exist.
+  * **Solution:** Double-check the ID for typos. Ensure the customer record exists in the Stripe environment (Test or Live) that you are querying.
+
+* **Error: `400 Bad Request` / Invalid Parameter**
+  * **Cause:** The JSON `Body` for a create operation is malformed or contains an invalid value for a parameter.
+  * **Solution:** Carefully check your JSON structure against the official Stripe API documentation. For example, ensure the `email` field is a valid email address.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful financial and e-commerce automations with the **SmythOS Stripe Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages the full new user lifecycle. When a user signs up in [Firebase Auth](/docs/agent-studio/integrations/firebase-integration), the agent creates a corresponding customer in Stripe and a user profile in your [Firestore](/docs/agent-studio/integrations/firestore-integration) database.
+    * Automates invoicing. The agent retrieves a list of monthly active users, generates an invoice for each one using the Stripe API (via a custom API component), and then sends them an email notification using [Resend](/docs/agent-studio/integrations/resend-integration).
+    * Handles failed payments. When a subscription payment fails (triggered by a Stripe webhook), an agent sends a notification to the customer via SMS using [Twilio](/docs/agent-studio/integrations/twilio-integration) and creates a follow-up task in [Asana](/docs/agent-studio/integrations/asana-integration) for the customer success team.
+
+* **Explore Other Integrations:**
+    * Use Stripe as a trigger. A Stripe webhook can notify your agent of a new purchase, which then grants the user access to a specific course or product.
+    * Log every new Stripe customer or transaction to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) for custom, real-time financial reporting.
+
+> **Note:** Similar to inputs, you can add new outputs by clicking on the `+` button in the `Outputs` section. This feature can come in handy when you aim to extract specific values from the `Response`. Please refer [here](https://app.smythos.com/doc/#/components/APICall?id=example-without-authentication) to see a practical example.

@@ -1,0 +1,1016 @@
+---
+title: Google Gmail Integration
+description: Connect SmythOS to Gmail. Automate email processing, sending, and management directly from your agents.
+og:title: SmythOS & Gmail - Supercharge Your Email Workflows
+og:description: Learn to integrate Gmail with SmythOS. Empower agents to read, send, organize, and manage emails for dynamic automated communication.
+og:image: /docs/img/integrations/smythos_gmail_default.png
+keywords: [Gmail SmythOS Integration, Connect Gmail to SmythOS, SmythOS Gmail Components, Automate Gmail, Email Automation, SmythOS Email]
+tags: [output, communication, automation]
+---
+
+# Gmail Integration with SmythOS
+
+This page shows you how to connect Gmail to SmythOS and pick the right component for every email task.
+
+> **Want to put your email on autopilot (the smart way)?** Connect Gmail to SmythOS and let your agents handle email tasks, from sending and reading to organizing and automating follow-ups.
+
+<InfoCallout title="TL;DR"> Link your Google Account to SmythOS by setting up OAuth 2.0 credentials in Google Cloud Console. Then, use our Gmail components to enable your agents to automate various email tasks, such as sending, reading, and managing messages and drafts.</InfoCallout>
+
+### Why Integrate Gmail with Your Agent?
+
+Gmail is at the core of business communication. Integrating it with SmythOS lets your agents automate and streamline email tasks as part of intelligent workflows.
+
+- **Automated email handling**: Agents can send, receive, and parse emails based on triggers—no manual inbox checks needed.
+- **Workflow-driven communication**: Use incoming emails to trigger actions (e.g., create support tickets) or send replies as part of broader processes (e.g., post-order confirmations).
+- **Inbox management by agents**: Automatically label, archive, delete, or update message status—keeping your inbox organized and hands-free.
+- **Smart data extraction**: Pull order info, feedback, or queries from emails and sync with tools like CRMs or Sheets, or trigger flows in SmythOS.
+- **Follow-ups and reminders**: Schedule automated follow-up emails to improve response times and engagement.
+
+By integrating Gmail, you're turning it from a manual messaging app into a smart, responsive part of your automated operations inside SmythOS.
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Gmail with Your Agent?</summary>
+
+Gmail is at the core of business communication. Integrating it with SmythOS lets your agents automate and streamline email tasks as part of intelligent workflows.
+
+- **Automated email handling**: Agents can send, receive, and parse emails based on triggers—no manual inbox checks needed.
+- **Workflow-driven communication**: Use incoming emails to trigger actions (e.g., create support tickets) or send replies as part of broader processes (e.g., post-order confirmations).
+- **Inbox management by agents**: Automatically label, archive, delete, or update message status—keeping your inbox organized and hands-free.
+- **Smart data extraction**: Pull order info, feedback, or queries from emails and sync with tools like CRMs or Sheets, or trigger flows in SmythOS.
+- **Follow-ups and reminders**: Schedule automated follow-up emails to improve response times and engagement.
+
+</details>
+</InfoCallout>
+
+<Divider />
+
+## Prerequisites: What You'll Need to Get Started
+
+Before you begin the integration, please ensure you have the following:
+
+- An active **SmythOS account**. (If you're new to SmythOS, [you can sign up here](https://app.smythos.com/signup).)
+- A **Google Account** with Gmail enabled that you plan to integrate.
+- You will need to generate **OAuth 2.0 credentials (`Client ID` and `Client Secret`)** from the Google Cloud Console. This process also involves configuring an OAuth consent screen and enabling the Gmail API. Detailed steps are provided below.
+- The **Authorized redirect URI** for SmythOS, which is: `https://app.smythos.com/oauth/google/callback` (You'll need this when creating credentials in Google Cloud Console).
+
+<Divider />
+
+## Step-by-Step: Connecting Your Gmail Account
+
+Let's establish the connection between SmythOS and your Gmail. This involves obtaining OAuth 2.0 credentials from Google and then using them to authenticate within SmythOS. This is typically a one-time setup per Google account you wish to integrate.
+
+### Part A: Obtaining Your `Client ID` and `Client Secret` from Google Cloud Console
+
+1.  **Navigate to Google Cloud Console:**
+    * Go to `https://console.cloud.google.com/`.
+    * Sign in with the Google account associated with the Gmail account you intend to use.
+    * If you don't have a project, create a new one. Otherwise, select an existing project.
+
+2.  **Enable the Gmail API:**
+    * In the search bar at the top, type "Gmail API" and select it from the results under "Marketplace."
+    * On the Gmail API page, click the `Enable` button. If it's already enabled, you can proceed to the next step.
+
+3.  **Configure the OAuth Consent Screen:**
+    * In the left-hand navigation menu (or by searching), go to "APIs & Services" > "OAuth consent screen."
+    * **User Type:**
+        * Choose "Internal" if your app is only for users within your Google Workspace organization.
+        * Choose "External" if you want any Google user (including yourself with a personal Gmail account) to be able to authorize the app. If you select "External" and your app is not yet published, it will be in "testing" mode, and you'll need to add test users.
+    * Click `Create`.
+    * **App Information:**
+        * **App name:** Enter a descriptive name, e.g., "SmythOS Gmail Integration."
+        * **User support email:** Select your email address.
+        * **App logo (Optional):** Upload a logo if desired.
+        * **Developer contact information:** Enter your email address.
+    * Click `Save and Continue`.
+    * **Scopes:** Click `Add or Remove Scopes`.
+        * In the filter, search for "Gmail API."
+        * Select the necessary scopes based on the actions your agents will perform. Common scopes include:
+            * `https://www.googleapis.com/auth/gmail.readonly` (Read all resources and their metadata)
+            * `https://www.googleapis.com/auth/gmail.compose` (Create, read, update, and send drafts and messages)
+            * `https://www.googleapis.com/auth/gmail.send` (Send messages only)
+            * `https://www.googleapis.com/auth/gmail.modify` (All operations except permanent deletion of threads and messages)
+            * `https://mail.google.com/` (Full access to the account's mail, including permanent deletion) - Use with caution.
+        * *Best Practice: Only request scopes that are essential. For example, if an agent only sends emails, `gmail.send` might be sufficient.*
+        * Click `Update` after selecting scopes.
+    * Click `Save and Continue`.
+    * **Test Users (if "External" and in testing mode):**
+        * Click `+ Add Users`.
+        * Enter the email addresses of the Google accounts that will be used to test this integration.
+    * Click `Save and Continue`.
+    * Review the summary page and click `Back to Dashboard`.
+
+4.  **Create OAuth 2.0 Credentials:**
+    * Navigate to "APIs & Services" > "Credentials."
+    * Click `+ Create Credentials` at the top and select `OAuth client ID`.
+    * **Application type:** Select `Web application` from the dropdown.
+    * **Name:** Give your OAuth client ID a descriptive name, e.g., "SmythOS Gmail Web Client."
+    * **Authorized redirect URIs:**
+        * Click `+ Add URI`.
+        * Enter the SmythOS callback URL: `https://app.smythos.com/oauth/google/callback`
+        * *This URI must be an exact match.*
+    * Click `Create`.
+
+5.  **Copy Your Credentials:**
+    * A dialog box will appear showing **Your Client ID** and **Your Client Secret**.
+    * **Copy both of these values immediately and store them securely.** You will need them to configure the integration in SmythOS.
+    <WarningCallout title="Secure Your Credentials!"> Your `Client ID` and especially your `Client Secret` are sensitive. Treat them like passwords. SmythOS offers a `Vault` for secure credential storage. [Learn more about SmythOS Vault here.](/docs/agent-studio/key-concepts/vault) </WarningCallout>
+
+### Part B: Authenticating in SmythOS
+
+1.  **Navigate to SmythOS Integrations:** In your SmythOS dashboard, find and click on the "Integrations" section.
+2.  **Add or Configure Gmail Integration:**
+    * Look for "Gmail" in the list of available integrations and click to add or configure it.
+3.  **Enter Your OAuth Credentials:**
+    * You will see fields to input the `Client ID` and `Client Secret` that you obtained from the Google Cloud Console in Part A.
+    * Carefully paste these values into the respective fields.
+4.  **Initiate Authentication:**
+    * Click the `Authenticate` button within the SmythOS Gmail integration settings.
+5.  **Google Authorization Flow:**
+    * You will be redirected to a Google Sign-In page. Log in using the Google account you want to connect with SmythOS.
+    * Google will then display a consent screen, showing the name of your app and the permissions it's requesting. Review these permissions.
+    * Click `Allow` or `Grant` to authorize SmythOS to access your Gmail data.
+6.  **Redirection to SmythOS:**
+    * After successful authorization, you'll be redirected back to SmythOS.
+    * The Gmail integration should now indicate that it's connected. **Connection Confirmed!**
+
+<InfoCallout title="Switching Google Accounts or Reconnecting?" collapsible > If you ever need to connect a different Google Account or refresh an existing connection, you can typically find a `Sign Out`, `Disconnect`, or `Deauthenticate` button within the Gmail integration settings in SmythOS. After deauthenticating, simply repeat the authentication steps. </InfoCallout>
+
+<Divider />
+
+## Gmail Components: An Overview
+
+With your Gmail account successfully linked, you gain access to a suite of components within SmythOS designed for various email operations:
+
+| Component | Action Type | Summary |
+|----------|-------------|---------|
+| [List Drafts](#list-drafts) | Read | Retrieves a list of draft emails.<br /><Badge type="optional" /> `maxResults` |
+| [Get Draft](#get-draft) | Read | Fetches a specific draft email by its ID.<br /><Badge type="required" /> `draftId` |
+| [Update Draft](#update-draft) | Write | Replaces the content of an existing draft.<br /><Badge type="required" /> `draftId`, `body_data_base64url_encode` |
+| [Create Draft](#create-draft) | Write | Creates a new draft email.<br /><Badge type="required" /> `body_data_base64url_encode` |
+| [Send Draft](#send-draft) | Write | Sends an existing draft email.<br /><Badge type="required" /> `draftId` |
+| [Delete Draft](#delete-draft) | Write | Permanently deletes a specified draft.<br /><Badge type="required" /> `draftId` |
+| [List Messages](#list-messages) | Read | Retrieves a list of messages from the mailbox, with optional filters.<br /><Badge type="optional" /> `q`, `maxResults` |
+| [Get Message](#get-message) | Read | Fetches a specific email message by its ID.<br /><Badge type="required" /> `messageId` |
+| [Send Message](#send-message) | Write | Sends a new email message directly.<br /><Badge type="required" /> `body_data_base64url_encode` |
+| [Move to Trash](#move-to-trash) | Write | Moves a specified email message to the trash.<br /><Badge type="required" /> `id` (messageId) |
+| [Delete Message](#delete-message) | Write | Permanently deletes a specified email message.<br /><Badge type="required" /> `id` (messageId) |
+
+<InfoCallout title="Good to Know!"> The initial OAuth authentication covers all these components. You won't need to re-enter your Client ID/Secret for each one, though re-authorization might be needed if scopes change or tokens expire. </InfoCallout>
+<Divider />
+
+## Understanding Common Gmail Component I/O Fields
+
+Many Gmail components share common input and output field names or structures. This section defines these common elements.
+
+<Tabs
+  tabs={[
+    {
+      label: 'Common Inputs',
+      content: (
+        <div className="tab-content">
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th><th>Type</th><th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>userId</code></td><td>string</td><td><strong>Required for most.</strong> The user's email address or the special value <code>me</code> to indicate the authenticated user. Defaults to <code>me</code>.</td></tr>
+              <tr><td><code>messageId</code></td><td>string</td><td>The immutable ID of a message. Required for "Get Message", "Move to Trash", "Delete Message".</td></tr>
+              <tr><td><code>draftId</code></td><td>string</td><td>The immutable ID of a draft. Required for "Get Draft", "Update Draft", "Send Draft", "Delete Draft".</td></tr>
+              <tr><td><code>body_data_base64url_encode</code></td><td>string</td><td><strong>Required for Create/Update Draft, Send Message.</strong> The entire email message in RFC 2822 format, base64url encoded. This includes all headers (To, From, Subject, Content-Type) and the body.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      ),
+    },
+    {
+      label: 'Common Outputs (Message/Draft Structure)',
+      content: (
+        <div className="tab-content">
+          <p>Components returning message or draft details often include these fields (structure based on Gmail API Message resource):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th><th>Type</th><th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>string</td><td>The immutable ID of the message or draft.</td></tr>
+              <tr><td><code>threadId</code></td><td>string</td><td>The ID of the thread the message or draft belongs to.</td></tr>
+              <tr><td><code>labelIds</code></td><td>array</td><td>List of IDs of labels applied to this message/draft (e.g., <code>INBOX</code>, <code>SENT</code>, <code>DRAFT</code>, user-created labels).</td></tr>
+              <tr><td><code>snippet</code></td><td>string</td><td>A short part of the message text.</td></tr>
+              <tr><td><code>payload</code></td><td>object</td><td><em>(For Get Message/Draft with format `full` or `metadata`)</em> Contains message parts, headers, and body information. Key sub-fields:
+                <ul>
+                  <li><code>headers</code> (array of objects): Name/value pairs for headers (e.g., To, From, Subject, Date, Content-Type).</li>
+                  <li><code>body</code> (object): Contains <code>data</code> (base64url encoded body) if it's a single part message.</li>
+                  <li><code>parts</code> (array of objects): For multipart messages, each part has its own <code>mimeType</code>, <code>filename</code>, <code>headers</code>, and <code>body</code> (which might contain <code>attachmentId</code> or further nested <code>parts</code>).</li>
+                </ul>
+              </td></tr>
+              <tr><td><code>raw</code></td><td>string</td><td><em>(For Get Message/Draft with format `raw`)</em> The entire email message in RFC 2822 format as a base64url encoded string.</td></tr>
+              <tr><td><code>sizeEstimate</code></td><td>integer</td><td>Estimated size in bytes of the message.</td></tr>
+              <tr><td><code>historyId</code></td><td>string</td><td>The ID of the last history record that modified this message.</td></tr>
+              <tr><td><code>internalDate</code></td><td>string</td><td>Internal message creation timestamp (epoch ms) as a string.</td></tr>
+              <tr><td><code>message</code></td><td>object</td><td><em>(For Draft components)</em> The Message resource to be used for the draft. Contains fields like `id`, `threadId`, `labelIds`.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      ),
+    },
+    {
+      label: 'General Outputs',
+      content: (
+        <div className="tab-content">
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th><th>Type</th><th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Response</code></td><td>object</td><td>The full, raw JSON response object returned directly by the Gmail API. Useful for advanced troubleshooting or accessing details not explicitly parsed.</td></tr>
+              <tr><td><code>Headers</code></td><td>object</td><td>The HTTP headers associated with the API response.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      ),
+    },
+  ]}
+/>
+<small>
+<strong>Footnotes</strong><br/>
+1. <code>userId</code>: Using <code>me</code> is standard for the authenticated user.<br/>
+2. <code>body_data_base64url_encode</code>: Constructing a valid RFC 2822 message with correct headers (To, From, Subject, Content-Type, MIME-Version) and encoding it is crucial for sending or creating emails/drafts. For multipart messages (e.g., with attachments or HTML + plain text), the MIME structure must be correctly formatted before encoding.
+</small>
+
+<Divider />
+
+## Deep Dive into Gmail I/O Fields
+
+Switch between **Inputs** and **Outputs** below to see more detailed explanations and examples for parameters frequently used across multiple Gmail components.
+
+<Tabs
+  tabs={[
+    {
+      label: 'Inputs (Detailed)',
+      content: (
+        <Tabs
+          tabs={[
+            {
+              label: 'userId',
+              content: (
+                <div className="tab-content">
+                  <h4><code>userId</code> (string)</h4>
+                  <p><strong>Required for most components.</strong> Identifies the user's mailbox. Use <code>"me"</code> for the authenticated user.</p>
+                  <pre><code className="language-json">
+{`{
+  "userId": "me"
+}`}
+                  </code></pre>
+                  <p>You can also use an email address if the account has delegated access, but <code>"me"</code> is typical for agent flows.</p>
+                </div>
+              ),
+            },
+            {
+              label: 'messageId / draftId',
+              content: (
+                <div className="tab-content">
+                  <h4><code>messageId</code> / <code>draftId</code> (string)</h4>
+                  <p>Used to reference specific messages or drafts.</p>
+                  <ul>
+                    <li><code>messageId</code>: For actions like "Get", "Trash", or "Delete Message".</li>
+                    <li><code>draftId</code>: For "Get", "Update", "Send", or "Delete Draft".</li>
+                  </ul>
+                  <pre><code className="language-json">
+{`{
+  "messageId": "17aabc12345def67"
+}`}
+                  </code></pre>
+                  <pre><code className="language-json">
+{`{
+  "draftId": "r-abc123xyz789"
+}`}
+                  </code></pre>
+                </div>
+              ),
+            },
+            {
+              label: 'body_data_base64url_encode',
+              content: (
+                <div className="tab-content">
+                  <h4><code>body_data_base64url_encode</code> (string)</h4>
+                  <p><strong>Required for message creation, updates, or sending.</strong> Provide the full email content (RFC 2822 format), base64url encoded.</p>
+                  <p>An RFC 2822 message includes:</p>
+                  <ul>
+                    <li>Headers (e.g., <code>To</code>, <code>Subject</code>, <code>Content-Type</code>)</li>
+                    <li>A blank line</li>
+                    <li>The message body</li>
+                  </ul>
+                  <InfoCallout title="Encoding & MIME">
+                    Use MIME libraries to generate message structure and base64url encode. This differs from standard base64 by using `-` and `_`, and no `=` padding.
+                  </InfoCallout>
+                  <p>Example (before encoding):</p>
+                  <pre>
+To: recipient@example.com
+From: sender@example.com
+Subject: Hello from SmythOS Agent
+Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+
+This is the body of the email.
+                  </pre>
+                </div>
+              ),
+            },
+            {
+              label: 'q (Query for List Messages)',
+              content: (
+                <div className="tab-content">
+                  <h4><code>q</code> (string, optional)</h4>
+                  <p>A search query like in the Gmail UI. Examples:</p>
+                  <ul>
+                    <li><code>from:user@example.com</code></li>
+                    <li><code>is:unread</code></li>
+                    <li><code>subject:Important Update</code></li>
+                  </ul>
+                  <pre><code className="language-json">
+{`{
+  "q": "from:support@example.com is:unread subject:Urgent"
+}`}
+                  </code></pre>
+                  <InfoCallout title="Gmail Search Operators">
+                    See Gmail's help docs for the full list of supported search filters.
+                  </InfoCallout>
+                </div>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      label: 'Outputs (Detailed)',
+      content: (
+        <Tabs
+          tabs={[
+            {
+              label: 'Message/Draft Resource',
+              content: (
+                <div className="tab-content">
+                  <h4>Message/Draft Resource (object)</h4>
+                  <p>Returned by actions like "Get", "Send", or "Create". Key fields include:</p>
+                  <ul>
+                    <li><code>id</code>, <code>threadId</code>, <code>labelIds</code></li>
+                    <li><code>snippet</code>: short text preview</li>
+                    <li><code>payload</code>: actual message content
+                      <ul>
+                        <li><code>headers</code>: array of name/value pairs</li>
+                        <li><code>body</code>: includes base64url data and size</li>
+                        <li><code>parts</code>: for multipart messages or attachments</li>
+                      </ul>
+                    </li>
+                    <li><code>raw</code>: base64url string (RFC 2822)</li>
+                  </ul>
+                  <InfoCallout title="Parsing Email Content">
+                    Decode `body.data` or `parts[].body.data` based on `mimeType` and encoding headers to get email content.
+                  </InfoCallout>
+                </div>
+              ),
+            },
+            {
+              label: 'List Output (messages/drafts)',
+              content: (
+                <div className="tab-content">
+                  <h4>List Output (array)</h4>
+                  <p>Used in "List Messages" or "List Drafts".</p>
+                  <ul>
+                    <li><code>messages</code>: array of message IDs</li>
+                    <li><code>drafts</code>: array of draft IDs and message metadata</li>
+                  </ul>
+                  <p>Use "Get Message" or "Get Draft" for full data. Also includes:</p>
+                  <ul>
+                    <li><code>nextPageToken</code></li>
+                    <li><code>resultSizeEstimate</code></li>
+                  </ul>
+                </div>
+              ),
+            },
+            {
+              label: 'Response (raw)',
+              content: (
+                <div className="tab-content">
+                  <h4><code>Response</code> (object)</h4>
+                  <p>The full JSON response from the Gmail API—useful for debugging or when specific fields aren't parsed by default.</p>
+                </div>
+              ),
+            },
+          ]}
+        />
+      ),
+    },
+  ]}
+/>
+
+<InfoCallout> Component guides will list only extra or unique fields not covered here. Refer back to these common and standard parameter sections when working with the components. </InfoCallout>
+
+<Divider/>
+
+## Quick Reference: Gmail Components
+
+Use this table to quickly compare inputs, outputs, and typical use cases for each Gmail component.
+
+| Component | Key Input Fields (Type, Required, Description) | Key Output Fields (Type, Description) | Use Case & Details |
+|---|---|---|---|
+| **List Drafts** | `userId` (string, Yes).<br />`maxResults` (int, No). | `drafts` (array): List of draft summaries.<br />`Response` (object). | Retrieves a list of draft emails. |
+| **Get Draft** | `userId` (string, Yes).<br />`draftId` (string, Yes).<br />`format` (string, No). | `id`, `message` (object with `id`, `threadId`, `labelIds`), `payload` (if format `full`).<br />`Response` (object). | Fetches a specific draft's content and metadata. |
+| **Update Draft** | `userId` (string, Yes).<br />`draftId` (string, Yes).<br />`body_data_base64url_encode` (string, Yes): Full RFC 2822 message. | `id` (draftId), `message` (object).<br />`Response` (object). | Replaces the content of an existing draft. |
+| **Create Draft** | `userId` (string, Yes).<br />`body_data_base64url_encode` (string, Yes): Full RFC 2822 message. | `id` (draftId), `message` (object).<br />`Response` (object). | Creates a new draft email. |
+| **Send Draft** | `userId` (string, Yes).<br />`draftId` (string, Yes). | `id` (messageId), `threadId`, `labelIds`.<br />`Response` (object). | Sends an existing draft email. |
+| **Delete Draft** | `userId` (string, Yes).<br />`draftId` (string, Yes). | `Response` (object, often empty on success). | Permanently deletes a draft. |
+| **List Messages** | `userId` (string, Yes).<br />`q` (string, No): Search query.<br />`maxResults` (int, No).<br />`labelIds` (array, No). | `messages` (array): List of message summaries (ID, threadID).<br />`nextPageToken` (string).<br />`resultSizeEstimate` (int).<br />`Response` (object). | Retrieves a list of messages matching criteria. |
+| **Get Message** | `userId` (string, Yes).<br />`messageId` (string, Yes).<br />`format` (string, No). | `id`, `threadId`, `labelIds`, `snippet`, `payload`, `raw`.<br />`Response` (object). | Fetches full content and metadata of a specific message. |
+| **Send Message** | `userId` (string, Yes).<br />`body_data_base64url_encode` (string, Yes): Full RFC 2822 message. | `id` (messageId), `threadId`, `labelIds`.<br />`Response` (object). | Sends a new email directly. |
+| **Move to Trash** | `userId` (string, Yes).<br />`id` (string, Yes): Message ID. | `id` (messageId), `labelIds` (includes `TRASH`).<br />`Response` (object). | Moves a message to the trash folder. |
+| **Delete Message** | `userId` (string, Yes).<br />`id` (string, Yes): Message ID. | `Response` (object, often empty on success). | Permanently deletes a message (bypasses trash). |
+
+<Divider/>
+
+## Which Gmail Component Should I Use With My Agent?
+
+| If you need to… | Typical Target / Key Inputs | Use this Component | Why this one? |
+|-----------------|----------------------------|-------------------|---------------|
+| **Prepare an email for later review/sending** | `body_data_base64url_encode` (full email content) | [Create Draft](#create-draft) | Saves the email in Gmail's drafts folder. |
+| **Send a fully composed email immediately** | `body_data_base64url_encode` (full email content) | [Send Message](#send-message) | Sends the email directly without saving a draft first. |
+| **Modify an email you started writing earlier** | `draftId`, `body_data_base64url_encode` (new full content) | [Update Draft](#update-draft) | Replaces the entire content of an existing draft. |
+| **Send an email that was previously saved as a draft** | `draftId` | [Send Draft](#send-draft) | Takes an existing draft and sends it. |
+| **Find specific emails** (e.g., unread from a particular sender) | `q` (search query), `labelIds` | [List Messages](#list-messages) | Returns a list of message IDs matching your criteria. |
+| **Read the content of a specific email** | `messageId`, `format` (e.g., `full`) | [Get Message](#get-message) | Fetches the headers, body, and attachments of a known message. |
+| **Clean up your inbox by removing emails (recoverable)** | `id` (messageId) | [Move to Trash](#move-to-trash) | Moves messages to the trash folder, where they can be recovered for a period. |
+| **Permanently remove an email** (e.g., for sensitive data after processing) | `id` (messageId) | [Delete Message](#delete-message) | Deletes the message permanently, bypassing the trash. Use with extreme caution. |
+| **Check for any unsent drafts** | (No specific inputs beyond `userId`) | [List Drafts](#list-drafts) | Gives you a list of all current draft IDs. |
+
+<InfoCallout> Still unsure? For sending, decide if you need a review step (**Create Draft** then **Send Draft**) or direct sending (**Send Message**). For reading, **List Messages** helps you find emails, and **Get Message** retrieves their content. </InfoCallout>
+<Divider />
+
+## Detailed Component Guides
+
+This section provides detailed information for each Gmail component. Remember to refer to the [Understanding Common Gmail Component I/O Fields](#understanding-common-gmail-component-io-fields) and [Deep Dive Into Gmail I/O Fields](#deep-dive-into-gmail-io-fields) for explanations of common inputs and outputs.
+
+### <a name="list-drafts"></a>List Drafts
+
+Retrieves a list of draft emails from the user's Gmail account.
+
+<InfoCallout>
+**Use Case:** An agent periodically checks for important unsent drafts and sends a notification if any have been pending for too long.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :------------------ | :-------- | :-------- | :-------------------------------------------------------------------------- | :-------- |
+| `userId` | `string` | Yes | The user identifier. | `me` |
+| `maxResults` | `integer` | No | Maximum number of draft emails to list. | `100` |
+| `includeSpamTrash` | `boolean` | No | Whether to include drafts from spam and trash folders. | `false` |
+| `q` | `string` | No | Query string to filter drafts (similar to Gmail search). |  |
+| `pageToken` | `string` | No | Token to retrieve a specific page of results. |  |
+
+<Image src="/docs/img/gmail/screenshot2.png" title="Configuring List Drafts Inputs" />
+_Image: Example of input configuration for listing drafts._
+
+#### Outputs
+| Parameter | Type | Description |
+| :-------- | :------ | :--------------------------------------------------------------------------------------------------- |
+| `drafts` | `array` | An array of draft objects. Each object typically contains `id` (draftId) and a `message` object (with `id` (messageId), `threadId`). |
+| `nextPageToken` | `string` | Token to retrieve the next page of results, if more exist. |
+| `resultSizeEstimate` | `integer` | Estimated total number of drafts matching the query. |
+| `Response`| `object`| Delivers a detailed JSON response from Gmail. |
+| `Headers` | `object`| Displays HTTP headers received with the API response. |
+
+<Image src="/docs/img/gmail/screenshot3.png" title="List Drafts Outputs" />
+_Image: Example of outputs after listing drafts._
+
+```json
+{
+  "component": "gmail.listDrafts",
+  "userId": "me",
+  "maxResults": 10
+}
+```
+
+<WarningCallout title="Troubleshooting">
+- If `drafts` array is empty, there might be no drafts or your query `q` is too restrictive.
+- Use `pageToken` for pagination if `resultSizeEstimate` is larger than `maxResults`.
+</WarningCallout>
+
+<Divider />
+
+### <a name="get-draft"></a>Get Draft
+
+Fetches a specific draft email by its ID for review or further action.
+
+<InfoCallout>
+**Use Case:** Your agent needs to retrieve the content of a specific draft identified by its ID, perhaps to verify its content before sending it or to extract information for logging.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :-------- | :------- | :-------- | :----------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The user identifier. | `me` |
+| `draftId` | `string` | Yes | The unique identifier for the draft to be retrieved. |  |
+| `format` | `string` | No | Format to return the draft in (`minimal`, `full`, `raw`, `metadata`). | `full` |
+
+<Image src="/docs/img/gmail/screenshot5.png" title="Get Draft Inputs" />
+_Image: Input configuration for the Get Draft component._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :----------------------------------------------------------------------------------------------- |
+| `id` | `string` | The ID of the draft. |
+| `message` | `object` | The Message resource object associated with this draft. Contains `id` (messageId), `threadId`, `labelIds`, `snippet`, `payload` (with headers, body, parts if format is `full` or `metadata`). |
+| `raw` | `string` | If `format` is `raw`, this contains the base64url encoded RFC 2822 message. |
+| `Response` | `object` | Contains the full JSON response from Gmail. |
+| `Headers` | `object` | Shows headers from the API response. |
+
+<Image src="/docs/img/gmail/screenshot6.png" title="Get Draft Outputs" />
+_Image: Outputs provided by the Get Draft component._
+
+```json
+{
+  "component": "gmail.getDraft",
+  "userId": "me",
+  "draftId": "r-abc123xyz789",
+  "format": "full"
+}
+```
+
+<WarningCallout title="Parsing Content">
+To read the body, you'll need to inspect the `message.payload` (and its `parts` if multipart), then base64url decode the `body.data` field.
+</WarningCallout>
+
+<Divider />
+
+### <a name="update-draft"></a>Update Draft
+
+Replaces the content of an existing draft email. The entire draft, including headers and body, must be provided.
+
+<InfoCallout>
+**Use Case:** An agent automatically updates a standard reply draft with customer-specific information before it is reviewed and sent.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :------------------------- | :------- | :-------- | :------------------------------------------------------------------------------------------------------------ | :------ |
+| `userId` | `string` | Yes | The user's identifier. | `me` |
+| `draftId` | `string` | Yes | The unique identifier of the draft to be updated. |  |
+| `body_data_base64url_encode` | `string` | Yes | The new full email message (RFC 2822 format, including all headers like To, Subject, and body), base64url encoded. |  |
+
+<Image src="/docs/img/gmail/screenshot8.png" title="Update Draft Inputs" />
+_Image: Input configuration for updating a draft._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :-------------------------------------------------------------------------------------------------- |
+| `id` | `string` | The ID of the updated draft. |
+| `message` | `object` | The Message resource object associated with the updated draft. |
+| `Response` | `object` | A complete JSON response from Gmail. |
+| `Headers` | `object` | The HTTP headers returned from the API call. |
+
+<Image src="/docs/img/gmail/screenshot9.png" title="Update Draft Outputs" />
+_Image: Outputs after updating a draft._
+
+```json
+{
+  "component": "gmail.updateDraft",
+  "userId": "me",
+  "draftId": "r-abc123xyz789",
+  "body_data_base64url_encode": "VG86IHVzZXJAZXhhbXBsZS5jb20NCkZyb206IGFnZW50QHNteXRob3MuY29tDQpTdWJqZWN0OiBVcGRhdGVkIERyYWZ0DQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9InV0Zi04Ig0KTUlNRS1WZXJzaW9uOiAxLjANCg0KVGhpcyBpcyB0aGUgdXBkYXRlZCBkcmFmdCBjb250ZW50Lg=="
+}
+```
+*(Note: The `body_data_base64url_encode` value is an example of an encoded simple email.)*
+
+<WarningCallout title="Full Replacement">
+This operation replaces the entire existing draft. You must provide the complete new message content, including all desired headers.
+</WarningCallout>
+
+<Divider />
+
+### <a name="create-draft"></a>Create Draft
+
+Creates a new draft email in the user's Gmail account. The DRAFT label is automatically applied.
+
+<InfoCallout>
+**Use Case:** An agent needs to prepare an email based on processed data (e.g., a customer inquiry summary) and save it as a draft for a human team member to review and send later.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :------------------------- | :------- | :-------- | :---------------------------------------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `body_data_base64url_encode` | `string` | Yes | The full email message (RFC 2822 format, including all headers like To, Subject, and body), base64url encoded. |  |
+
+<Image src="/docs/img/gmail/screenshot17.png" title="Create Draft Inputs" />
+_Image: Input configuration for creating a draft._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :------------------------------------------------------------------------------------------------------ |
+| `id` | `string` | The unique identifier for the created draft (this is the `draftId`). |
+| `message` | `object` | An object containing details of the message associated with the draft, including its `id` (messageId) and `threadId`. |
+| `Response` | `object` | Returns a detailed JSON structure from Gmail. |
+| `Headers` | `object` | Lists HTTP headers from the API call. |
+
+<Image src="/docs/img/gmail/screenshot18.png" title="Create Draft Outputs" />
+_Image: Outputs after creating a draft._
+
+```json
+{
+  "component": "gmail.createDraft",
+  "userId": "me",
+  "body_data_base64url_encode": "VG86IHRlc3RAdGVzdC5jb20NCkZyb206IG1lQGV4YW1wbGUuY29tDQpTdWJqZWN0OiBOZXcgRHJhZnQgVGl0bGUNCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD0iVVRGLTgiDQpNSU1FLVZlcnNpb246IDEuMA0KDQpIZWxsbywgdGhpcyBpcyBhIG5ldyBkcmFmdCBjcmVhdGVkIGJ5IFNteXRoT1Mu"
+}
+```
+
+<WarningCallout title="RFC 2822 Format">
+Ensure the `body_data_base64url_encode` input is a correctly formatted and encoded RFC 2822 message, including headers like `To`, `From`, `Subject`, and `Content-Type`.
+</WarningCallout>
+
+<Divider />
+
+### <a name="send-draft"></a>Send Draft
+
+Sends an existing draft email.
+
+<InfoCallout>
+**Use Case:** After an agent creates or updates a draft (perhaps with personalized information), this component can be used to actually send that prepared email.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :-------- | :------- | :-------- | :----------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `draftId` | `string` | Yes | The unique identifier of the draft you intend to send. |  |
+| `body_data_base64url_encode` | `string` | No | Optional. If provided, this will update the draft with this content before sending. If omitted, the existing draft content is sent. Full RFC 2822 message, base64url encoded. | |
+
+
+<Image src="/docs/img/gmail/screenshot20.png" title="Send Draft Inputs" />
+_Image: Input configuration for sending a draft._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :-------------------------------------------------------------------------------------------------- |
+| `id` | `string` | The unique identifier of the message that was sent (this is the `messageId`). |
+| `threadId` | `string` | The thread ID associated with the message. |
+| `labelIds` | `array` | Any labels attached to the message (e.g., `SENT`). |
+| `Response` | `object` | A detailed JSON structure from Gmail confirming the send operation. |
+| `Headers` | `object` | HTTP headers associated with the API response. |
+
+<Image src="/docs/img/gmail/screenshot21.png" title="Send Draft Outputs" />
+_Image: Outputs after sending a draft._
+
+```json
+{
+  "component": "gmail.sendDraft",
+  "userId": "me",
+  "draftId": "r-abc123xyz789"
+}
+```
+
+<WarningCallout title="Draft Deletion">
+Once a draft is successfully sent, it is typically automatically deleted from the drafts folder by Gmail.
+</WarningCallout>
+
+<Divider />
+
+### <a name="delete-draft"></a>Delete Draft
+
+Permanently deletes a specified draft email.
+
+<InfoCallout>
+**Use Case:** If an agent determines a prepared draft is no longer needed or is outdated, this component can be used to clean it up.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :-------- | :------- | :-------- | :----------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `draftId` | `string` | Yes | The unique identifier of the draft you wish to delete. |  |
+
+<Image src="/docs/img/gmail/screenshot23.png" title="Delete Draft Inputs" />
+_Image: Input configuration for deleting a draft._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :--------------------------------------------------------------------------------- |
+| `Response` | `object` | Provides a detailed JSON structure confirming deletion from Gmail (often empty on success, HTTP 204). |
+| `Headers` | `object` | Displays HTTP headers from the API call. |
+
+<Image src="/docs/img/gmail/screenshot24.png" title="Delete Draft Outputs" />
+_Image: Outputs after deleting a draft._
+
+```json
+{
+  "component": "gmail.deleteDraft",
+  "userId": "me",
+  "draftId": "r-abc123xyz789"
+}
+```
+
+<WarningCallout title="Irreversible">
+This action permanently deletes the draft. It cannot be undone.
+</WarningCallout>
+
+<Divider />
+
+### <a name="list-messages"></a>List Messages
+
+Retrieves a list of messages from the user's Gmail mailbox, with options for filtering and pagination.
+
+<InfoCallout>
+**Use Case:** An agent needs to fetch recent unread emails matching certain criteria (e.g., specific sender or subject line keywords) for processing.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :------------------ | :-------- | :-------- | :---------------------------------------------------------------------------------- | :-------- |
+| `userId` | `string` | Yes | The user identifier. | `me` |
+| `maxResults` | `integer` | No | Specifies the maximum number of messages to return. | `100` |
+| `includeSpamTrash` | `boolean` | No | Indicates whether to include messages from spam and trash in the results. | `false` |
+| `q` | `string` | No | Optional query string to filter messages (e.g., `from:user@example.com is:unread`). |  |
+| `labelIds` | `array` | No | Optional array of label IDs to only return messages with all specified labels. |  |
+| `pageToken` | `string` | No | Token to retrieve a specific page of results. |  |
+
+<Image src="/docs/img/gmail/screenshot11.png" title="List Messages Inputs" />
+_Image: Input configuration for listing messages._
+
+#### Outputs
+| Parameter | Type | Description |
+| :------------- | :------- | :----------------------------------------------------------------------------------------------- |
+| `messages` | `array` | An array of message objects. Each object typically contains `id` (messageId) and `threadId`. |
+| `nextPageToken`| `string` | A token used to fetch the next page of results, if available. |
+| `resultSizeEstimate` | `integer` | Estimated total number of results matching the query. |
+| `Response` | `object` | A comprehensive JSON response from Gmail. |
+| `Headers` | `object` | HTTP headers returned with the API call. |
+
+<Image src="/docs/img/gmail/screenshot12.png" title="List Messages Outputs" />
+_Image: Outputs after listing messages._
+
+```json
+{
+  "component": "gmail.listMessages",
+  "userId": "me",
+  "q": "is:unread from:important@example.com",
+  "maxResults": 20
+}
+```
+
+<WarningCallout title="Message Details">
+This component lists message IDs. To get full message content, use the "Get Message" component with the IDs obtained here.
+</WarningCallout>
+
+<Divider />
+
+### <a name="get-message"></a>Get Message
+
+Retrieves a specific email message by its ID, providing detailed content and metadata.
+
+<InfoCallout>
+**Use Case:** After listing messages and identifying a relevant email by its ID, an agent uses this component to fetch the full content of that specific message for parsing or display.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :---------- | :------- | :-------- | :------------------------------------------------------------------------------------------------ | :-------- |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `messageId` | `string` | Yes | The unique identifier of the Gmail message to retrieve. |  |
+| `format` | `string` | No | Format to return the message in (`minimal`, `full`, `raw`, `metadata`). | `full` |
+| `metadataHeaders` | `array` | No | When `format` is `metadata`, this specifies a list of header names to be included (e.g., `["From", "To", "Subject"]`). | |
+
+<Image src="/docs/img/gmail/screenshot14.png" title="Get Message Inputs" />
+_Image: Input configuration for getting a specific message._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :------------------------------------------------------------------------------------------------ |
+| `id` | `string` | The unique identifier of the retrieved message. |
+| `threadId` | `string` | The thread ID to which this message belongs. |
+| `labelIds` | `array` | Lists all labels attached to the message. |
+| `snippet` | `string` | A short part of the message text. |
+| `payload` | `object` | Contains the parsed parts of the message, including headers, body, attachments (for `full` or `metadata` format with specified headers). |
+| `raw` | `string` | The raw, base64url encoded email message (if `format` is `raw`). |
+| `sizeEstimate` | `integer` | Estimated size of the message in bytes. |
+| `historyId` | `string` | The ID of the last history record that modified this message. |
+| `internalDate` | `string` | Internal message creation timestamp (epoch ms). |
+| `Response` | `object` | Delivers a comprehensive JSON response from Gmail. |
+| `Headers` | `object` | Provides the HTTP headers associated with the API response. |
+
+<Image src="/docs/img/gmail/screenshot15.png" title="Get Message Outputs" />
+_Image: Outputs from the Get Message component._
+
+```json
+{
+  "component": "gmail.getMessage",
+  "userId": "me",
+  "messageId": "17bcf123abc456de",
+  "format": "full"
+}
+```
+
+<WarningCallout title="Content Parsing">
+To access the email body, navigate `payload.parts` (for multipart messages) or `payload.body.data` (for simple messages) and base64url decode the `data`. Check `Content-Type` and `Content-Transfer-Encoding` headers.
+</WarningCallout>
+
+<Divider />
+
+### <a name="send-message"></a>Send Message
+
+Sends a new email message directly. This is for composing and sending in one step, unlike creating a draft first.
+
+<InfoCallout>
+**Use Case:** An agent needs to send a notification email immediately after a certain condition is met in a workflow, without first creating a draft.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :------------------------- | :------- | :-------- | :---------------------------------------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `body_data_base64url_encode` | `string` | Yes | The full email message (RFC 2822 format, including all headers like To, Subject, and body), base64url encoded. |  |
+
+<Image src="/docs/img/gmail/screenshot32.png" title="Send Message Inputs" />
+_Image: Input configuration for sending a message._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :-------------------------------------------------------------------------------------------------- |
+| `id` | `string` | The unique identifier of the message sent. |
+| `threadId` | `string` | The thread ID associated with the message, if applicable. |
+| `labelIds` | `array` | Any labels attached to the message (e.g., `SENT`). |
+| `Response` | `object` | A comprehensive JSON structure from Gmail confirming the successful dispatch. |
+| `Headers` | `object` | The HTTP headers associated with the API call. |
+
+<Image src="/docs/img/gmail/screenshot33.png" title="Send Message Outputs" />
+_Image: Outputs after sending a message._
+
+```json
+{
+  "component": "gmail.sendMessage",
+  "userId": "me",
+  "body_data_base64url_encode": "VG86IHNlbmR0b0BFeGFtcGxlLmNvbQ0KRnJvbTogbWVAc215dGhocy5jb20NClN1YmplY3Q6IERpcmVjdCBTZW5kDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9IlVURi04Ig0KTUlNRS1WZXJzaW9uOiAxLjANCg0KVGhpcyBlbWFpbCB3YXMgc2VudCBkaXJlY3RseS4="
+}
+```
+
+<WarningCallout title="MIME Message Construction">
+Properly formatting the RFC 2822 message (including `To`, `From`, `Subject`, `Content-Type`, `MIME-Version` headers and the body) before base64url encoding is critical for successful delivery.
+</WarningCallout>
+
+<Divider />
+
+### <a name="move-to-trash"></a>Move to Trash (Trash Message)
+
+Moves a specified email message to the trash bin. Trashed messages can typically be recovered for a period (usually 30 days in Gmail).
+
+<InfoCallout>
+**Use Case:** An agent identifies spam or irrelevant emails based on rules and moves them to the trash to keep the inbox clean, rather than deleting them permanently immediately.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :-------- | :------- | :-------- | :---------------------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `id` | `string` | Yes | The unique identifier of the Gmail message to move to trash (this is the `messageId`). |  |
+
+<Image src="/docs/img/gmail/screenshot26.png" title="Move to Trash Inputs" />
+_Image: Input configuration for moving a message to trash._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :------------------------------------------------------------------------------------------------------ |
+| `id` | `string` | Returns the unique identifier of the message that has been moved to trash. |
+| `labelIds` | `array` | Labels attached to the message, which will now typically include `TRASH`. |
+| `Response` | `object` | A detailed JSON response from Gmail confirming the move to trash. |
+| `Headers` | `object` | Displays the HTTP headers associated with the API response. |
+
+<Image src="/docs/img/gmail/screenshot27.png" title="Move to Trash Outputs" />
+_Image: Outputs after moving a message to trash._
+
+```json
+{
+  "component": "gmail.moveToTrash",
+  "userId": "me",
+  "id": "17defabc12345678"
+}
+```
+
+<WarningCallout title="Recovery">
+Messages moved to trash are not immediately permanently deleted and can usually be recovered from the Trash folder in Gmail.
+</WarningCallout>
+
+<Divider />
+
+### <a name="delete-message"></a>Delete Message (Untrash Message - Note: this component name in the draft seems incorrect if it's for permanent deletion. Assuming permanent delete.)
+
+Permanently deletes a specified email message from the user's mailbox. This action bypasses the trash and is generally irreversible.
+
+<InfoCallout>
+**Use Case:** An agent processes sensitive information from an email and, after successful processing and logging (if required), permanently deletes the original email to comply with data retention policies or ensure privacy.
+</InfoCallout>
+
+#### Inputs
+| Parameter | Type | Required? | Description | Default |
+| :-------- | :------- | :-------- | :---------------------------------------------------------------------------------------- | :------ |
+| `userId` | `string` | Yes | The Gmail user ID. | `me` |
+| `id` | `string` | Yes | The unique identifier of the message to delete permanently (this is the `messageId`). |  |
+
+<Image src="/docs/img/gmail/screenshot29.png" title="Delete Message Inputs" />
+_Image: Input configuration for deleting a message._
+
+#### Outputs
+| Parameter | Type | Description |
+| :--------- | :------- | :--------------------------------------------------------------------------------------------- |
+| `Response` | `object` | A detailed JSON response from Gmail confirming the message deletion (often empty on success, HTTP 204). |
+| `Headers` | `object` | Displays HTTP headers from the API response. |
+
+<Image src="/docs/img/gmail/screenshot30.png" title="Delete Message Outputs" />
+_Image: Outputs after deleting a message._
+
+```json
+{
+  "component": "gmail.deleteMessage",
+  "userId": "me",
+  "id": "17defabc12345678"
+}
+```
+
+<WarningCallout title="Permanent Deletion">
+This action permanently deletes the message. It cannot be recovered from the trash. Use with extreme caution. Requires appropriate OAuth scope (e.g., `https://mail.google.com/` or `gmail.modify` might be needed depending on API version and specifics).
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Minimal Scopes:** During OAuth setup, request only the Gmail API scopes essential for your agent's tasks (e.g., `gmail.readonly` for reading, `gmail.send` for sending). This enhances security.
+* **RFC 2822 Compliance:** When using `body_data_base64url_encode` for "Create/Update Draft" or "Send Message," ensure the raw email content strictly adheres to RFC 2822 format (including `To`, `From`, `Subject`, `Content-Type`, `MIME-Version` headers, and correct body structure, especially for multipart messages with HTML or attachments).
+* **Base64url Encoding:** Remember that email content for `body_data_base64url_encode` must be base64url encoded, not just standard base64. This means `+` becomes `-`, `/` becomes `_`, and padding `=` is often omitted.
+* **Error Handling:** Gmail API responses can include detailed error messages. Always check the `Response` object for errors and implement robust error handling in your agent workflows (e.g., retries with backoff for transient issues).
+* **Parsing Message Payloads:** When using "Get Message" (with `format: 'full'`), the `payload` object can be complex, especially for multipart emails. You'll need to iterate through `payload.parts` to find the desired content (e.g., `text/plain` or `text/html` parts) and decode their `body.data` (which is base64url encoded). Attachments will have an `attachmentId` in their part's `body`, requiring a separate API call to fetch.
+* **Rate Limiting:** Be mindful of Gmail API rate limits. If your agent performs many email operations rapidly, you might hit these limits. Design workflows to be efficient and implement delays if necessary.
+* **Query Optimization (`q` parameter):** When using "List Messages," craft your `q` parameter effectively using Gmail search operators to retrieve only relevant messages, improving performance and reducing data processing.
+* **Pagination:** For "List Messages" and "List Drafts," if `resultSizeEstimate` is larger than `maxResults`, use the `nextPageToken` from the output to fetch subsequent pages of results.
+* **Security with `Client ID` & `Secret`:** Store your OAuth credentials securely, ideally using SmythOS Vault, and never embed them directly in agent scripts or share them publicly.
+* **Test Thoroughly:** Before deploying agents that manage important email communications, test them extensively with a test Gmail account to ensure they behave as expected, especially for operations like sending, modifying, or deleting.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+Encountering an issue with your Gmail integration? Here are solutions to some common problems:
+
+* **Authentication Errors (e.g., `invalid_grant`, `redirect_uri_mismatch`, `access_denied`):**
+    * **Cause:** Incorrect `Client ID`/`Secret`, misconfigured redirect URI in Google Cloud Console, issues with user consent (e.g., not granting all requested scopes), or problems with refresh tokens.
+    * **Solution:** Verify credentials and ensure the redirect URI in Google Cloud Console is exactly `https://app.smythos.com/oauth/google/callback`. The user must grant all requested permissions during the OAuth flow. Re-authenticating the integration in SmythOS might be necessary. Ensure the authenticating user is a "Test User" in GCP if the OAuth app is "External" and in testing mode.
+* **`403 Forbidden` / Permission Denied Errors (e.g., "Insufficient Permission"):**
+    * **Cause:** The authenticated Google account lacks the necessary permissions for the requested operation (e.g., trying to send an email with only `gmail.readonly` scope), or the API scope granted does not cover the action.
+    * **Solution:** Confirm the user has adequate permissions for the Gmail account. Review and ensure the correct OAuth scopes are configured in Google Cloud Console (e.g., `gmail.send`, `gmail.compose`, `gmail.modify`) and that the user consented to them. Re-authenticate if scopes were changed.
+* **`404 Not Found` Errors (for Get/Update/Delete Draft/Message):**
+    * **Cause:** The provided `messageId` or `draftId` is incorrect, does not exist, or has already been deleted.
+    * **Solution:** Double-check the ID for typos. Confirm the item exists in the Gmail account. Use "List" components to verify current IDs if unsure.
+* **Malformed Request / `400 Bad Request` (often with `body_data_base64url_encode`):**
+    * **Cause:** The RFC 2822 formatted email content provided in `body_data_base64url_encode` is invalid (e.g., missing required headers like `To`, `From`, `Subject`, incorrect MIME structure for attachments/HTML, or improper base64url encoding).
+    * **Solution:** Carefully validate the raw email string before encoding. Ensure all necessary headers are present and correctly formatted. For multipart messages, ensure MIME boundaries are correct. Double-check the base64url encoding process.
+* **Emails Sent to Spam or Not Delivered:**
+    * **Cause:** Email content flagged by spam filters; issues with sender reputation; incorrect `From` header or SPF/DKIM/DMARC records for the sending domain (if sending as a custom `From` address).
+    * **Solution:** Review email content for spam triggers. Ensure the `From` address is valid and authorized for the authenticated account. If using a custom domain, verify DNS records (SPF, DKIM, DMARC) are correctly configured.
+* **Quota Exceeded / `429 Too Many Requests` Errors:**
+    * **Cause:** Making too many API requests to Gmail in a short period.
+    * **Solution:** Optimize agent workflows to reduce API call frequency. Implement delays or exponential backoff strategies if making frequent calls. Refer to Gmail API documentation for specific rate limits.
+* **Attachment Handling Issues:**
+    * **Cause:** Incorrectly formatting multipart MIME messages for attachments when using `body_data_base64url_encode`; issues fetching attachment data using `attachmentId`.
+    * **Solution:** Ensure the `Content-Type` is `multipart/mixed` and that each attachment part has correct `Content-Disposition` and `Content-Transfer-Encoding` headers. When fetching, use the `attachmentId` from the message payload with the correct API endpoint.
+
+<InfoCallout>
+For persistent issues, examine the full `Response` object from the component. It often contains detailed error messages or codes directly from the Gmail API that can pinpoint the problem. The SmythOS support team is also available to assist. [Link to SmythOS Support Page]
+</InfoCallout>
+
+<Divider />
+
+## What's Next?
+
+With SmythOS now integrated with your Gmail account, your agents are equipped to handle a wide array of email-based automations, streamlining your communications and workflows.
+
+Here are some ideas to inspire your next automation:
+
+* **Build an Agent That...**
+    * Monitors an inbox for customer support requests ("List Messages" with `q="label:support is:unread"`), extracts relevant details ("Get Message"), creates a ticket in a helpdesk system (via another integration), and sends an automated acknowledgment email ("Send Message").
+    * Parses incoming order confirmation emails, extracts order numbers and tracking links, and updates a Google Sheet or database.
+    * Generates personalized weekly update emails to clients by pulling data from various sources, composing the message, saving it as a draft ("Create Draft") for review, and then allowing a user to trigger the send ("Send Draft").
+    * Automatically archives or labels emails based on sender, subject, or content after a certain period to keep the inbox organized.
+* **Enhance Your Workflows by Combining Data & Actions:**
+    * Use SmythOS AI components to analyze the sentiment of incoming emails and route them differently or prioritize responses.
+    * Trigger other SmythOS agent workflows based on the content or attachments of emails (e.g., if an email contains an invoice, trigger a payment processing workflow).
+    * Combine Gmail with [Google Calendar Integration](/docs/agent-studio/integrations/google-calendar-integration) to schedule meetings based on email exchanges or create calendar events for email follow-ups.
+    * Use [Google Drive Integration](/docs/agent-studio/integrations/google-drive-integration) to save email attachments to specific folders or attach files from Drive to outgoing emails.
+
+Explore the full potential of email automation with SmythOS and Gmail!
+
+Happy Automating!
+

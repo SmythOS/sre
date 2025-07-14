@@ -1,0 +1,163 @@
+
+# Tutorial: Zendesk Leads Manager Agent
+
+This Agent is capable of  managing your leads on Zendesk. It can retrieve all of your leads or just a single one, depending upon your needs. It can also create new leads, update existing leads, or delete them if needed.
+
+<Youtube videoId="mMICXkuX4" title="SmythOS - Zendesk Leads Manager Agent" />
+
+## Personal API Token
+
+1. Go to https://www.zendesk.com/ and register if you don’t have an account yet. (You can skip this process if you already have one).
+2. In your `Zendesk dashboard`, click on the Bento icon located in the upper right corner of the page.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 1.png" alt="alt text" /> 
+
+3. Click `Sell` from the drop-down menu.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 2.png" alt="alt text" /> 
+
+4. On the left sidebar, click the gear icon to access the settings.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 3.png" alt="alt text" /> 
+
+5. Scroll down to the Integrations section, then click on OAuth.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 4.png" alt="alt text" /> 
+
+6. Click the `Add Access Token` button to generate your personal access token.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 5.png" alt="alt text" /> 
+
+7. For easy identification, add a description to your API Token, then save.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 6.png" alt="alt text" /> 
+
+8. Remember to copy and securely store your generated token as it will not be displayed again after clicking the `Save` button.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 7.png" alt="alt text" /> 
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the templates tab.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 8.png" alt="alt text" /> 
+
+2. You can scroll down to find the `Zendesk Leads Manager` Agent or simply search for it in the Search tab, then click the `Remix` button.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 9.png" alt="alt text" /> 
+
+3. Allow the template to initialize and configure. 
+
+### LLM Prompt Component Setup
+
+1. Look for the Zendesk Personal Token component.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 10.png" alt="alt text" /> 
+
+2. Click on the gear icon to open the settings, then input your Zendesk Token in the Prompt. Remember to click the check mark to save your configuration.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 11.png" alt="alt text" /> 
+
+3. You’re all set!
+
+## Test the Agent
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 12.png" alt="alt text" /> 
+### Create a Lead
+
+1. Ask the agent to create a lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 13.png" alt="alt text" /> 
+
+2. The agent will then ask for the following information.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 14.png" alt="alt text" /> 
+
+3. **Sample lead**
+   >1. Smith
+   >2. Evergreen Solutions Inc.
+   >3. evergreen.com
+   >4. jsmith@gmail.com
+   >5. (555) 123-4567
+
+4. The agent has successfully created the lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 15.png" alt="alt text" /> 
+
+5. Now, let's verify your Zendesk dashboard to confirm the creation of the new lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 16.png" alt="alt text" /> 
+
+### Retrieve a Single Lead
+
+1. Ask the agent to retrieve a single lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 17.png" alt="alt text" /> 
+
+2. Provide the Lead ID that you want to retrieve.
+   1. **Sample**
+      >1. 2190326053 (This is the lead ID for Smith - Evergreen Solutions)
+
+3. Here’s the result!
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 18.png" alt="alt text" /> 
+
+### Retrieve all Leads
+
+1. Ask the agent to retrieve all leads. Currently, we have 4 leads in our sample account.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 19.png" alt="alt text" /> 
+2. Here’s the result!
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 20.png" alt="alt text" /> 
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 21.png" alt="alt text" />
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 22.png" alt="alt text" /> 
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 23.png" alt="alt text" /> 
+### Update a Lead
+
+1. Ask the agent to update a lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 24.png" alt="alt text" /> 
+
+2. Let’s update Johnson’s information.
+   1. Johnson’s old information.
+      >1. 2190325344
+      >2. Johnson
+      >3. FreshStart Services
+      >4. freshstartsvc.com
+      >5. johnson@freshstart.com
+      >6. (555) 555-7834
+   2. Let’s update with the following new information.
+      >1. 2190325344
+      >2. Johnson
+      >3. Fresh Services
+      >4. fresh.com
+      >5. johnson@fresh.com
+      >6. (555) 555-7835
+
+3. Here’s the result!
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 25.png" alt="alt text" /> 
+ 
+4. Now, let's check your Zendesk dashboard to confirm the update of Johnson's account.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 26.png" alt="alt text" /> 
+
+### Delete a Lead
+
+1. Ask the agent to delete a lead.
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 27.png" alt="alt text" /> 
+
+2. For instance, let’s delete `Smith - Evergreen Solutions - ID: 2190326053`
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 28.png" alt="alt text" /> 
+
+3. Here’s the result!
+
+ <Image src="/docs/img/zendesk_leads_manager_agent/Image 29.png" alt="alt text" /> 

@@ -1,0 +1,143 @@
+---
+title: Logs
+description: Learn how to access and interpret execution logs for your agents.
+keywords: [logs, execution logs, debugging, agent diagnostics, log viewer]
+sidebar_position: 4
+---
+
+# Logs
+You can use logs to trace your agent’s behavior, troubleshoot issues, monitor performance, and audit activity. Logs show what ran, when it ran, and what happened at each step.
+Logs help you:
+- Diagnose agent failures
+- Understand logic breakdowns
+- Monitor API calls and data flows
+- Track performance and execution timelines
+
+<Spacer size="md" />
+
+<WarningCallout title="Log Retention by Plan">
+Logs are automatically deleted based on your plan tier:
+- **Free**: 7 days  
+- **Builder / Startup**: 30 days  
+- **Scaleup**: 90 days  
+</WarningCallout>
+
+<Arcade src="https://demo.arcade.software/LgSaen05m0QOdQhRmQNr?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Logs | SmythOS" />
+
+<Spacer size="md" />
+
+## Where to Find Logs
+
+You can access logs from two places:
+
+- **From the Agent Dashboard**  
+  Click on an agent card. This opens **Agent Settings**. From there, go to the **Logs** tab.
+
+- **From Studio Canvas**  
+  Click **Edit** on the agent card to open the Studio Canvas. In the left sidebar, go to **Settings → Logs**.
+
+<Spacer size="md" />
+
+<InfoCallout>
+Each log represents a complete run of an endpoint. Use it to trace the flow of data and decisions through your agent.
+</InfoCallout>
+
+<Spacer size="md" />
+## Log Types
+
+SmythOS captures several categories of logs:
+
+| Log Type           | Description                                | Use Case                    |
+|--------------------|--------------------------------------------|-----------------------------|
+| **Execution Logs** | Step-by-step breakdown of agent workflows  | Debug workflow logic        |
+| **Performance Logs** | Timing and resource usage metrics       | Optimize agent efficiency   |
+| **Error Logs**     | Failures and stack traces                  | Troubleshoot breakdowns     |
+| **API Logs**       | Records of outgoing API calls              | Monitor third-party calls   |
+| **Security Logs**  | Access attempts and auth activity          | Audit user access and roles |
+
+<Spacer size="md" />
+
+## What You’ll See
+
+Each log entry includes:
+
+- **Timestamp** of execution  
+- **Endpoint** that was called  
+- **Input** data submitted  
+- **Tags**, if triggered from the [Scheduler](/docs/agent-studio/manage-agents/tasks#scheduled-tasks)  
+- **Execution Steps** showing each component, input, and output
+
+Logs are shown in reverse chronological order.
+
+<Spacer size="md" />
+
+## View a Specific Run
+
+Click on any log row to open a detailed trace.
+
+Each step will show:
+
+- Component name  
+- Type of component (e.g., API call, GenAI)  
+- Input payload  
+- Output payload  
+
+You can download this log as a JSON file using the **Download Log** button.
+
+<Spacer size="md" />
+
+## Visualize the Call Tree
+
+To see how your agent executed step-by-step, use the **Show Call Tree** option.
+
+1. Open a log entry
+2. Click **Show Call Tree** in the first segment
+3. A new window will show a visual map of your agent’s execution path
+
+<TipCallout title="Tip">
+Use the Call Tree to find silent failures or skipped branches in complex workflows.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Debug With Logs
+
+Logs work seamlessly with [Debug Mode](/docs/agent-studio/build-agents/debugging) on the canvas. Together, they help you:
+
+- Verify agent logic  
+- Compare expected vs actual outputs  
+- Track component behavior across runs  
+
+<InfoCallout>
+For scheduled or bulk runs, follow the log link directly from the [Agent Tasks](/docs/agent-studio/manage-agents/tasks) tab.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Example API Log Request
+
+You can test logs by triggering a run using an API request with a bearer token. Here’s a basic example:
+
+```bash
+curl https://your-agent.smythos.com/api/v1/chat \
+  -H "Authorization: Bearer abc123xyz789" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "hello"}'
+```
+
+<Spacer size="md" />
+
+<small>
+Logs are especially useful when paired with analytics. For more details, visit [Analytics](/docs/agent-collaboration/analytics).
+</small>
+
+<TipCallout title="Debug faster">
+Use the call tree to quickly locate where logic breaks or unexpected outputs occur.
+</TipCallout>
+
+<Spacer size="md" />
+
+## What to Explore Next
+
+- [Debugging Agents](/docs/agent-studio/build-agents/debugging)
+- [Manage Agents](/docs/agent-studio/manage-agents/overview)

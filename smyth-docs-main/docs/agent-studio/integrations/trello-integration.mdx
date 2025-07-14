@@ -1,0 +1,524 @@
+---
+title: Trello Integration
+description: Connect SmythOS to Trello to automate creating and managing cards, lists, and boards, streamlining your project management workflows from your agents.
+og:title: SmythOS & Trello - Automate Your Project Boards
+og:description: Learn to integrate Trello with SmythOS. Empower your agents to create tasks, update cards, and manage your Trello boards, connecting your project management to any other tool.
+og:image: /docs/img/integrations/smythos_trello.png
+keywords: [Trello SmythOS Integration, Connect Trello to SmythOS, SmythOS Trello, Automate Project Management, Trello API, No-Code Trello, Kanban Automation]
+---
+# Trello Integration with SmythOS
+
+> **Want to automate your project boards?** Connect Trello to SmythOS and empower your agents to create cards, update lists, and manage your entire project workflow automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your Trello account to SmythOS using an API Key and Access Token generated from a Trello Power-Up. Then, use our suite of components to automate every aspect of your Trello boards.
+</InfoCallout>
+
+## List of Trello Components
+Quickly compare Trello components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create a Board**](#create-a-board) | Write | Creates a new Trello board. | <Badge type="required" /> `name` | `boardId`, `boardUrl`| Starting a new project board automatically. |
+| [**Get a Board**](#get-a-board) | Read | Retrieves detailed information about a single board. | <Badge type="required" /> `board_id` | `boardId`, `boardUrl`| Checking the details of a project board. |
+| [**Update a Board**](#update-a-board) | Write | Updates the properties (e.g., name) of an existing board. | <Badge type="required" /> `board_id`, `name` | `boardId` | Renaming a project board after its scope changes. |
+| [**Create Board List**](#create-board-list) | Write | Creates a new list (column) on a specified board. | <Badge type="required" /> `board_id`, `name` | `listId` | Adding a "QA Review" stage to a project board. |
+| [**Get a List**](#get-a-list) | Read | Retrieves detailed information about a single list. | <Badge type="required" /> `list_id` | `listId`, `boardId`| Verifying a list exists before adding a card. |
+| [**Update a List**](#update-a-list) | Write | Updates the name of an existing list. | <Badge type="required" /> `list_id`, `name` | `listId` | Renaming a workflow stage. |
+| [**Create a Card**](#create-a-card) | Write | Creates a new card in a specified list. | <Badge type="required" /> `list_id`, `name` | `cardId`, `cardUrl`| Creating a new task from a customer email. |
+| [**Get a Card**](#get-a-card) | Read | Retrieves all details for a single card. | <Badge type="required" /> `card_id` | `cardId`, `listId` | Fetching a task's description before processing it. |
+| [**Update a Card**](#update-a-card) | Write | Updates the name or other properties of an existing card. | <Badge type="required" /> `card_id`, `name` | `cardId` | Renaming a task when its scope changes. |
+| [**Add a New Comment to a Card**](#add-a-new-comment-to-a-card)| Write | Posts a new comment to a specific card. | <Badge type="required" /> `card_id`, `text` | `commentId` | Logging automated status updates on a task. |
+| [**Create Board Label**](#create-board-label) | Write | Creates a new colored label on a board. | <Badge type="required" /> `board_id`, `name`, `color` | `labelId` | Setting up standard labels like "Bug" or "Urgent". |
+| [**Get an Action**](#get-an-action) | Read | Retrieves details about a specific action (event) in Trello. | <Badge type="required" /> `action_id` | `actionId`, `actionData` | Auditing a specific change made to a card or board. |
+| [**Update an Action**](#update-an-action) | Write | Updates the text of an action, typically a comment. | <Badge type="required" /> `action_id`, `text` | `actionId` | Correcting a typo in an automated comment. |
+| [**Get the Board for an Action**](#get-the-board-for-an-action)| Read | Finds the board associated with a specific action. | <Badge type="required" /> `action_id` | `boardId` | Determining which board a comment was made on. |
+| [**Get the List for an Action**](#get-the-list-for-an-action)| Read | Finds the list associated with a specific action. | <Badge type="required" /> `action_id` | `listId` | Determining which list a card was moved to. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Trello with Your Agent?</summary>
+
+Trello is a simple yet powerful tool for visual project management. Integrating it with SmythOS allows you to connect your Kanban boards to your other business processes, creating a central hub for automated task management.
+
+- **Automated Task Creation:** Build agents that listen for triggers—a new email, a form submission, a new customer in your CRM—and automatically create a corresponding card in the "To Do" list on your Trello board.
+- **Dynamic Workflow Management:** Create agents that move cards between lists based on external events. When a GitHub pull request is merged, an agent can find the related Trello card and move it from "In Review" to "Done".
+- **Real-Time Status Updates:** Use agents to post comments on Trello cards with updates from other systems. For example, an agent can post a comment with a link to a deployment log when a feature is pushed to production.
+- **Bridge Communication Gaps:** When a new card is created in a "Bugs" list on Trello, an agent can automatically create a corresponding, linked issue in a tool like Jira for the engineering team.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Trello account**.
+- A Trello **API Key** and **Access Token**.
+
+<Divider />
+
+## Getting Started With Trello
+
+The connection between SmythOS and Trello is configured using an API Key and an Access Token, which you can get by generating a Trello Power-Up.
+
+### Step 1: Get Your Trello API Key and Token
+1.  **Get API Key:** Log in to your Trello account, then visit `https://trello.com/power-ups/admin`. Create a new Power-Up for your workspace. Give it a name, select your workspace, and an API key will be generated for you.
+2.  **Generate Token:** From the same page, or by visiting `https://trello.com/app-key`, you will find your key. Below your key, there is a link to manually generate a Token. Click it, and on the next page, click "Allow" to authorize the token generation.
+3.  **Copy Both Credentials:** Copy both the **API Key** and the generated **Token**.
+
+### Step 2: Store Your Credentials in SmythOS Vault
+Your API Key and Token are sensitive credentials. Use the SmythOS `Vault` to store them securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create new secrets for your `API Key` and `Access Token`, giving them memorable names like `trello_api_key` and `trello_access_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Trello Component
+1.  In your SmythOS agent graph, drag and drop any Trello component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` and `Access Token` fields, select the corresponding secrets you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key and Access Token from the Vault to **each** Trello component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Trello Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new task** on a board | A `list_id` and a `name`| [Create a Card](#create-a-card) | This is the standard method for adding a new task to a specific column on your board. |
+| **Start a new project** or workflow | A `name` for the board | [Create a Board](#create-a-board) | The first step for any new, large-scale project. |
+| **Add a new stage** to your workflow (e.g., "QA") | A `board_id` and a `name` | [Create Board List](#create-board-list) | The correct way to add a new column to an existing board. |
+| **Change the name** of an existing card | A `card_id` and a new `name` | [Update a Card](#update-a-card) | Modifies the properties of an existing card. |
+| **Post an update** on a task | A `card_id` and `text` | [Add a New Comment to a Card](#add-a-new-comment-to-a-card)| Adds a comment without changing the card's title or description. |
+| **Get all the details** of a specific task | A `card_id` | [Get a Card](#get-a-card) | The most direct way to retrieve all information about a single card. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Trello component.
+
+### <a name="create-a-board"></a>Create a Board
+Creates a new Trello board in your account.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `name` | string | Yes | The name for the new Trello board. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `boardId` | string | The unique ID of the newly created board. |
+| `boardUrl`| string | The direct URL to the new Trello board. |
+| `organizationId` | string | The ID of the organization/workspace the board was created in. |
+| `Response`| object | The full, raw JSON response from the Trello API. |
+
+<TipCallout title="Use Case">
+When a new major project is approved, an agent automatically creates a new Trello board named after the project, ready for the team to start adding lists and cards.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-a-board"></a>Get a Board
+Accesses comprehensive details of a single board.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `board_id` | string | Yes | The unique ID of the board to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `boardId` | string | The unique identifier for the Trello board that has been retrieved. |
+| `boardUrl` | string | The direct URL to the accessed Trello board. |
+| `Response`| object | The raw JSON response from the API, containing all board details. |
+
+<TipCallout title="Use Case">
+Before creating a new list, an agent uses this component to verify the `board_id` is correct and retrieve the board's name for logging purposes.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-a-board"></a>Update a Board
+Updates the properties of an existing board, such as its name.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `board_id` | string | Yes | The unique ID of the board to update. |
+| `name` | string | Yes | The new name for the board. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `boardId` | string | The ID of the updated board. |
+| `boardUrl` | string | The direct URL to the updated board. |
+| `Response`| object | The raw JSON response from the API, containing the full updated board object. |
+
+<TipCallout title="Use Case">
+If a project's codename changes, an agent automatically finds the corresponding Trello board and uses this component to update its name to match.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-board-list"></a>Create Board List
+Creates a new list (column) on a specified board.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `board_id` | string | Yes | The ID of the board where the new list will be created. |
+| `name` | string | Yes | The name for the new list (e.g., "To Do", "In Progress"). Formerly `list_name`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `listId` | string | The unique ID of the newly created list. |
+| `boardId`| string | The ID of the board the list was added to. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+To customize a new project board, an agent first creates the board, then uses this component multiple times to add standard lists like "Backlog," "In Progress," "In Review," and "Done."
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-a-list"></a>Get a List
+Accesses detailed information about a specific list (column).
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The unique ID of the list to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `listId` | string | The unique identifier for the retrieved list. |
+| `boardId` | string | The ID of the board that the list belongs to. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before creating a new card, an agent gets the details of the target list to confirm its name and board ID.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-a-list"></a>Update a List
+Updates the properties of an existing list, such as its name.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The ID of the list you want to update. |
+| `name` | string | Yes | The new name for the list. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `listId` | string | The ID of the updated list. |
+| `boardId`| string | The ID of the board containing the list. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent renames a workflow stage from "In Review" to "In QA" by updating the corresponding Trello list.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-a-card"></a>Create a Card
+Creates a new card in a specified list on a Trello board.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The ID of the list where the new card will be created. |
+| `name` | string | Yes | The title of the new card. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `cardId`| string | The unique ID of the newly created card. |
+| `cardUrl`| string | The direct URL to the new card. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent receives an email about a new task. It parses the email subject and uses it as the `name` to create a new card in the "Inbox" list on the team's Trello board.
+</TipCallout>
+### <a name="get-a-card"></a>Get a Card
+Effortlessly obtain detailed information about a specific card using the `Get a Card` component.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `card_id` | string | Yes | Specify the unique identifier (ID) of the card you wish to retrieve details for. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `cardId`| string | The unique identifier for the Trello card retrieved. |
+| `boardId`| string | The identifier for the board on which the card resides. |
+| `listId` | string | The unique identifier of the list that contains the card. |
+| `cardUrl`| string | The direct URL to the card within the Trello web interface. |
+| `Response`| object | The raw JSON response from the API, containing all card details. |
+
+<TipCallout title="Use Case">
+To provide more context for an AI agent, it first fetches a card's full description and current attachments before generating a summary or a comment.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-a-card"></a>Update a Card
+Effortlessly update a card using the `Update Card` component.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `card_id` | string | Yes | Specify the unique identifier (ID) of the card you want to update. |
+| `name` | string | Yes | Specify the new name for the card. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `cardId`| string | The unique identifier pertaining to the Trello card that was updated. |
+| `cardUrl`| string | The URL that directly links to the updated Trello card. |
+| `boardId`| string | The unique identifier for the board that the card is part of. |
+| `list_id` | string | The unique identifier of the list in which the card resides post-update. |
+| `Response`| object | The raw JSON response from the API, containing the full updated card object. |
+
+<TipCallout title="Use Case">
+When a task's priority is escalated in another system, an agent finds the corresponding Trello card and updates its name to include "[URGENT]".
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-a-new-comment-to-a-card"></a>Add a New Comment to a Card
+Effortlessly add a new comment to a card using the `Add New Comment to Card` component.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `card_id` | string | Yes | Specify the unique identifier (ID) of the card where you want to add the new comment. |
+| `text` | string | Yes | Specify the text of the new comment. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `commentId`| string | The unique identifier that Trello assigns to the newly created comment. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After a CI/CD pipeline successfully deploys a feature, an agent posts a comment on the related Trello card with a link to the production environment.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-board-label"></a>Create Board Label
+Initiate the creation of a new label on a board with the `Create Board Label` component.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `board_id` | string | Yes | Specify the unique identifier (ID) of the board where you want to create the new label. |
+| `name` | string | Yes | Specify the name for the new label. |
+| `color` | string | Yes | Specify the color for the new label. Valid values: `yellow`, `purple`, `blue`, `red`, `green`, `orange`, `black`, `sky`, `pink`, `lime`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `labelId` | string | The unique identifier given to the label by Trello. |
+| `boardId` | string | The unique identifier of the board to which the new label has been added. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When setting up a new project board, an agent uses this component to pre-populate it with standard labels like "Bug", "Feature Request", and "Infrastructure".
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-an-action"></a>Get an Action
+Provides effortless access to the details of a specific action (event) within Trello.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `action_id` | string | Yes | Specify the unique identifier (ID) of the action you wish to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `actionId`| string | The unique identifier assigned to the specific action within Trello. |
+| `actionData`| object | The actual data associated with the action, such as the entities involved (cards, lists). |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+For auditing purposes, an agent can be triggered by a webhook that provides an `action_id`. The agent then uses this component to fetch the full details of what change occurred.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-an-action"></a>Update an Action
+Updates the text content of an action, which is typically a comment.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `action_id` | string | Yes | Specify the unique identifier (ID) of the comment action you want to update. |
+| `text` | string | Yes | Specify the new text for the comment. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `actionId`| string | The unique identifier of the modified action. |
+| `actionData`| object | Data associated with the updated action. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+If an automated comment posted by an agent contains a typo or outdated link, another process can trigger an agent to correct it using this component.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-the-board-for-an-action"></a>Get the Board for an Action
+Finds and retrieves the board associated with a specific action ID.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `action_id` | string | Yes | The ID of the action for which you want to find the board. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `boardId` | string | The unique identifier of the board where the action occurred. |
+| `boardUrl` | string | The direct URL to the associated Trello board. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent is triggered by a Trello webhook but only receives an `action_id`. It uses this component to determine which project board the action took place on before proceeding.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-the-list-for-an-action"></a>Get the List for an Action
+Finds and retrieves the list (column) associated with a specific action ID.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `action_id` | string | Yes | The ID of the action for which you want to find the list. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `listId` | string | The unique identifier for the list involved in the action. |
+| `boardId` | string | The ID of the board containing the list. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a webhook fires for a "moveCard" action, an agent uses this component to get the ID of the destination list to determine the card's new status.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-the-card-for-an-action"></a>Get the Card for an Action
+Finds and retrieves the card associated with a specific action ID.
+
+<InfoCallout>This component requires an `API Key` and `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-trello) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `action_id` | string | Yes | The ID of the action for which you want to retrieve the associated card. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `card_id` | string | The unique identifier for the Trello card associated with the action. |
+| `cardUrl`| string | The direct URL to the Trello card. |
+| `boardId`| string | The identifier for the board on which the card is located. |
+| `listId` | string | The unique identifier of the list in which the card resides. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A monitoring agent receives a webhook notification with an `action_id` for a new comment. It uses this component to get the `card_id` and `cardUrl` to include in a Slack notification.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Your Trello API Key and Access Token provide access to your boards. Always store them securely in the SmythOS `Vault`.
+* **Understand the Trello Hierarchy:** The core structure is **Board -> List -> Card**. To create a card, you first need the `list_id`. To create a list, you first need the `board_id`. Use the "Get" components to find these IDs programmatically.
+* **Use Webhooks for Real-Time Actions:** For the most responsive workflows, set up a Trello webhook. You can configure it to trigger your SmythOS agent whenever an action happens (e.g., a card is moved to the "Done" list), allowing your agent to react instantly.
+* **Markdown in Comments and Descriptions:** Remember that Trello card descriptions and comments support Markdown for formatting. Your agent can generate formatted text for clearer communication.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized` / "invalid key" or "invalid token"**
+  * **Cause:** Your API Key or Access Token is incorrect or has been revoked.
+  * **Solution:** Verify that the credentials in your SmythOS Vault are correct. Go to `trello.com/app-key` to check your key and re-generate a token if necessary.
+
+* **Error: `404 Not Found` / "board not found" or "card not found"**
+  * **Cause:** The `board_id`, `list_id`, or `card_id` you provided is incorrect or does not exist.
+  * **Solution:** Double-check all IDs for typos. Ensure the board, list, or card has not been deleted or archived.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** A required input is missing (e.g., you tried to create a card without a `name`), or a parameter is invalid.
+  * **Solution:** Check that all required inputs for the component are provided and are in the correct format.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful project management automations with the **SmythOS Trello Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates a full project setup. When a new project is initiated, the agent calls `Create a Board`, then calls `Create Board List` multiple times to build the "To Do," "In Progress," and "Done" lists, and finally calls `Create a Card` to add a set of standard starting tasks.
+    * Acts as a GitHub-to-Trello bridge. When a new issue is created in a [GitHub repository](/docs/agent-studio/integrations/github-integration), the agent automatically creates a corresponding card on a "Development" Trello board.
+    * Manages your content calendar. An agent reads a list of blog post ideas from a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) and creates a Trello card for each one in an "Ideas" list.
+
+* **Explore Other Integrations:**
+    * When a card is moved to the "Done" list on Trello (detected via webhook), trigger an agent to send a completion notification to a [Slack](/docs/agent-studio/integrations/slack-integration) or [Discord](/docs/agent-studio/integrations/discord-integration) channel.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a customer email, then create a Trello card with the summary as the description.
+    * When a new client is added in [HubSpot](/docs/agent-studio/integrations/hubspot-integration), create a new Trello card to track their onboarding process.

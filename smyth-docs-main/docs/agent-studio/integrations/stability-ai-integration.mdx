@@ -1,0 +1,511 @@
+---
+title: Stability AI Integration
+description: Connect SmythOS to Stability AI to generate and edit images with state-of-the-art models like Stable Diffusion, directly from your agent workflows.
+og:title: SmythOS & Stability AI - Automate AI Image Generation & Editing
+og:description: Learn to integrate Stability AI with SmythOS. Empower your agents to perform text-to-image, image-to-image, inpainting, and upscaling tasks using powerful generative AI.
+og:image: /img/integrations/smythos_stabilityai.png
+keywords: [Stability AI SmythOS Integration, Connect Stability AI to SmythOS, SmythOS Image Generation, Automate AI Art, Stable Diffusion API, No-Code AI, Generative AI]
+tags: [ai, image generation, creative, automation]
+---
+# Stability AI Integration with SmythOS
+
+> **Want to embed cutting-edge image generation into your workflows?** Connect Stability AI to SmythOS and empower your agents to create and edit images with state-of-the-art models like Stable Diffusion.
+
+<InfoCallout title="TL;DR">
+Securely link your Stability AI account to SmythOS using an API key. Then, use our suite of components to automate a wide range of generative image tasks, from text-to-image and image-to-image to inpainting, outpainting, and upscaling.
+</InfoCallout>
+
+## List of Stability AI Components
+Quickly compare Stability AI components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Text-to-Image SD 1.6**](#text-to-image-sd-16) | Generate | Creates an image from a text prompt using Stable Diffusion 1.6. | <Badge type="required" /> `prompt_text` | `url` | Generating stylized images with various presets. |
+| [**Inpaint**](#inpaint) | Edit | Edits a masked area of an image based on a prompt. | <Badge type="required" /> `image_binary`, `prompt`| `url` | Removing or adding objects in a photo. |
+| [**Image to Image Upscale**](#image-to-image-upscale)| Enhance | Increases the resolution of an image using ESRGAN. | <Badge type="required" /> `image_binary`, `width` | `url` | Improving low-quality user-uploaded photos. |
+| [**Outpaint**](#outpaint) | Edit | Extends the borders of an image with AI-generated content. | <Badge type="required" /> `image_binary`<br/><Badge type="optional" /> `prompt` | `url` | Changing an image's aspect ratio. |
+| [**SD3 Text to Image**](#sd3-text-to-image) | Generate | Generates an image from a prompt using the advanced SD3 model. | <Badge type="required" /> `prompt` | `url` | Creating high-quality, coherent images. |
+| [**SD3 Image to Image**](#sd3-image-to-image) | Generate | Transforms a source image based on a text prompt using SD3. | <Badge type="required" /> `image_binary`, `prompt` | `url` | Applying new styles to existing images. |
+| [**SD3 Turbo Text to Image**](#sd3-turbo-text-to-image)| Generate | Rapidly generates an image from a prompt using the fast SD3 Turbo model. | <Badge type="required" /> `prompt` | `url` | Quick prototyping of visual concepts. |
+| [**Stable Image Core**](#stable-image-core) | Generate | A core text-to-image generator with various style presets. | <Badge type="required" /> `prompt` | `url` | Creating stylized images like `comic-book` or `3d-model`. |
+| [**SD3 Turbo Image to Image**](#sd3-turbo-image-to-image)| Generate | Transforms an existing image based on a prompt using the fast SD3 Turbo. | <Badge type="required" /> `image_binary`, `prompt` | `url` | Quickly applying artistic styles to photos. |
+| [**Creative Upscale**](#creative-upscale) | Enhance | Intelligently enhances and upscales degraded images. | <Badge type="required" /> `image_binary`, `prompt` | `id` | Restoring old photos or low-resolution art. |
+| [**Get Creative Upscale Result**](#get-creative-upscale-result)| Fetch | Retrieves the result of an asynchronous Creative Upscale job. | <Badge type="required" /> `id` | `url` | The second step for the Creative Upscale workflow. |
+| [**Search and Replace**](#search-and-replace) | Edit | Finds an object in an image and replaces it based on a prompt. | <Badge type="required" /> `image_binary`, `search_prompt`, `prompt` | `url` | Swapping products in a lifestyle photo. |
+| [**Remove Background**](#remove-background) | Edit | Automatically removes the background from an image. | <Badge type="required" /> `image_binary` | `url` | Creating product cutouts for e-commerce. |
+| [**Image to Video**](#image-to-video) | Generate | Creates a short video by animating a still image. | <Badge type="required" /> `image_binary` | `id` | Adding subtle motion to static images for ads. |
+| [**Get Image to Video Result**](#get-image-to-video-result)| Fetch | Retrieves the result of an asynchronous Image to Video job. | <Badge type="required" /> `id` | `url` | The second step for the Image to Video workflow. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Stability AI with Your Agent?</summary>
+
+Stability AI is at the forefront of open-source generative AI. Integrating its models with SmythOS allows you to build powerful, automated visual content pipelines.
+
+- **Automate Content Creation:** Generate unique, high-quality images for blog posts, social media, or ad campaigns on the fly, based on text descriptions or other data.
+- **Dynamic Image Editing:** Build agents that can programmatically edit images. Automate tasks like removing backgrounds from product photos, replacing objects in lifestyle shots, or upscaling entire image libraries.
+- **Enhance User-Generated Content:** Create workflows that automatically improve the quality of images uploaded by users, using upscaling and restoration models.
+- **Unlock Creative Exploration:** Rapidly prototype visual concepts. Use agents to generate dozens of variations of an image based on different prompts, styles, or seeds, helping you find the perfect creative direction faster.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Stability AI Platform account**.
+- Your Stability AI **API Key**.
+
+<Divider />
+
+## Getting Started With Stability AI
+
+The connection between SmythOS and Stability AI is configured using a secure API Key.
+
+### Step 1: Get Your Stability AI API Key
+1.  Log in to your [Stability AI Platform account](https://platform.stability.ai/).
+2.  Navigate to your account page and click on the **API Keys** section. You can go there directly via `https://platform.stability.ai/account/keys`.
+3.  Copy your API key. If you don't have one, create one first.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Stability AI API Key as the value. Give it a memorable name, like `stability_api_key`.
+3.  For more details, see the [Vault Documentation](https://app.smythos.com/doc/#/vault/keysManagement).
+
+### Step 3: Configure a Stability AI Component
+1.  In your SmythOS agent graph, drag and drop any Stability AI component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `stability_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Stability AI component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Stability AI Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create an image** from a description | A text prompt | [SD3 Text to Image](#sd3-text-to-image) | The latest generation model for high-quality, coherent images. |
+| **Quickly generate a concept image** | A text prompt | [SD3 Turbo Text to Image](#sd3-turbo-text-to-image) | Optimized for speed, perfect for rapid prototyping. |
+| **Modify an existing image** with a prompt | An image file and a text prompt | [SD3 Image to Image](#sd3-image-to-image) | Applies new styles or concepts to a source image using the powerful SD3 model. |
+| **Remove a distracting object** from a photo | An image file and a mask | [Inpaint](#inpaint) | Offers precise control over which part of the image to regenerate. |
+| **Make a low-resolution image sharp** | An image file | [Image to Image Upscale](#image-to-image-upscale) | A fast and effective way to double the resolution of an image. |
+| **Add subtle motion** to a static picture | An image file | [Image to Video](#image-to-video) | Creates an engaging short video clip from a single frame. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Stability AI component.
+
+### <a name="text-to-image-sd-16"></a>Text-to-Image SD 1.6
+Utilizes the Stable Diffusion 1.6 model for text-to-image generation with a wide range of style presets.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Component-Specific Settings
+- **Clip Guidance Preset:** Controls how strictly the model follows the prompt.
+- **Sampler:** Selects the diffusion sampling method (e.g., `K_EULER`, `DDIM`).
+- **Style Preset:** Choose a predefined style like `photographic`, `anime`, or `cinematic`.
+- **Image Dimensions:** Set the `Height` and `Width` of the output image.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt_text` | string | Yes | The text prompt for the image. |
+| `prompt_weight` | string | Optional | Adjusts the influence of the prompt. |
+| `seed` | integer | Optional| A number for reproducible results. Default: `0` (random). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct URL to the generated image. |
+| `Response`| object | The raw JSON response from the Stability AI API. |
+
+<TipCallout title="Use Case">
+An agent generates a "thought of the day" quote, then passes it to this component with a prompt like "A beautiful, serene landscape with the quote '{`quote`}' elegantly written, digital art" to create a shareable social media image.
+</TipCallout>
+
+<Divider/>
+
+### <a name="inpaint"></a>Inpaint
+Modifies a specific, masked area of an image based on a text prompt.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The source image file for modification. |
+| `prompt` | string | Yes | A description of the desired changes or additions. |
+| `mask_image_binary`| binary | Optional| A black and white mask image where white areas will be inpainted. |
+| `negative_prompt`| string | Optional| Describe elements to exclude from the final image. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct URL to the modified image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent takes a product photo, programmatically creates a mask around a distracting background element, and uses this component with the prompt "a clean, white studio background" to remove it.
+</TipCallout>
+
+<Divider/>
+
+### <a name="image-to-image-upscale"></a>Image to Image Upscale
+Enhances the resolution of images using the ESRGAN x2 upscaler.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The source image file that needs upscaling. |
+| `width` | integer | Yes | The desired width for the output image (e.g., `1024`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the upscaled image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent takes a low-resolution user avatar, runs it through this component with a target `width` of 1024, and updates the user's profile with the new high-resolution version.
+</TipCallout>
+
+<Divider/>
+
+### <a name="outpaint"></a>Outpaint
+Extends the borders of an image by generating new content that seamlessly blends with the original.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The source image to be extended. |
+| `prompt` | string | Optional| A text prompt to guide the content of the extension. |
+| `left`, `right`, `up`, `down`| integer| Optional| The number of pixels to extend on each side. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | The URL of the newly generated, extended image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent takes a portrait-oriented photo and uses outpainting to extend the sides, converting it into a landscape-oriented image suitable for a website banner.
+</TipCallout>
+
+<Divider/>
+
+### <a name="sd3-text-to-image"></a>SD3 Text to Image
+Generates an image from a text prompt using the advanced Stable Diffusion 3 model.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A detailed description of the image to generate. |
+| `aspect_ratio`| string | Optional| The desired aspect ratio (e.g., `1:1`, `16:9`). Default: `1:1`. |
+| `negative_prompt`| string | Optional| Elements to avoid in the image. |
+| `output_format`| string | Optional| The format of the output image. Default: `png`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the generated image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+To create a hero image for a blog post, an agent uses this component with a highly descriptive prompt like "photorealistic image of a vintage typewriter on a wooden desk next to a steaming cup of coffee, warm morning light."
+</TipCallout>
+
+### <a name="sd3-image-to-image"></a>SD3 Image to Image
+Transforms a source image based on a text prompt using the Stable Diffusion 3 model.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The initial image file to be transformed. |
+| `prompt` | string | Yes | A detailed description of the desired output image. |
+| `strength` | float | Yes | Controls the influence of the original image. `0.0` is no influence, `1.0` is full influence. Default: `0.5`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the transformed image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent takes a simple line drawing of a character and uses this component with the prompt "highly detailed fantasy art, epic, cinematic lighting" to render it into a full-color illustration.
+</TipCallout>
+
+<Divider/>
+
+### <a name="sd3-turbo-text-to-image"></a>SD3 Turbo Text to Image
+Rapidly generates an image from a text prompt using the fast SD3 Turbo model.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of the desired image. |
+| `aspect_ratio`| string | Optional| The aspect ratio of the output image. Default: `1:1`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the generated image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+For a real-time chatbot application, an agent uses this component to quickly generate preview images based on a user's description.
+</TipCallout>
+
+<Divider/>
+
+### <a name="stable-image-core"></a>Stable Image Core
+A primary text-to-image generator with a wide variety of creative style presets.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | A description of the image to generate. |
+| `style_preset`| string | Optional| A styling preset (e.g., `comic-book`, `low-poly`, `fantasy-art`). Default: `3d-model`. |
+| `aspect_ratio`| string | Optional| The aspect ratio for the output image. Default: `1:1`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the generated image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent generates assets for a game prototype, using this component with the `pixel-art` style preset to create character sprites.
+</TipCallout>
+
+<Divider/>
+
+### <a name="sd3-turbo-image-to-image"></a>SD3 Turbo Image to Image
+Transforms an existing image based on a text prompt using the fast SD3 Turbo model.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The source image file. |
+| `prompt` | string | Yes | A description of the desired transformation. |
+| `strength` | float | Yes | The influence of the original image. Default: `0.5`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the processed image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent allows a user to upload a photo and quickly apply different artistic styles by calling this component with prompts like "in the style of a watercolor painting" or "as a pencil sketch."
+</TipCallout>
+
+<Divider/>
+
+### <a name="creative-upscale"></a>Creative Upscale
+Intelligently enhances and upscales degraded or low-resolution images by up to 40x. This is an asynchronous job.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The image file to be enhanced. |
+| `prompt` | string | Yes | A description to guide the enhancement process. |
+| `creativity`| float | Optional| The level of creative freedom for the model. Default: `0.3`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the asynchronous upscale job. Use this with "Get Creative Upscale Result". |
+| `Response`| object | The raw JSON response from the API confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent takes a historical, low-quality scanned photo and uses this component to restore it to a high-resolution, clean version.
+</TipCallout>
+
+<WarningCallout title="Asynchronous Job">
+This component only starts the job. You must use the `Get Creative Upscale Result` component with the output `id` to get the final image URL.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-creative-upscale-result"></a>Get Creative Upscale Result
+Retrieves the final result of an asynchronous Creative Upscale job.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `id` | string | Yes | The unique identifier of the upscale job, obtained from the "Creative Upscale" component. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | The URL to the final, processed image. |
+| `Response`| object | The raw JSON response from the API, containing the job status and result. |
+
+<TipCallout title="Use Case">
+This is the mandatory second step for the Creative Upscale workflow. An agent calls this component in a loop with a delay until the job status is successful.
+</TipCallout>
+
+<Divider/>
+
+### <a name="search-and-replace"></a>Search and Replace
+Identifies an object in an image based on a search prompt and replaces it based on a replacement prompt.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The original image file. |
+| `search_prompt`| string | Yes | A description of the object to find and replace (e.g., "the blue car"). |
+| `prompt` | string | Yes | A description of what to replace the object with (e.g., "a red sports car"). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the modified image. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A marketing agent takes a lifestyle photo and replaces a generic coffee cup with a branded mug using this component.
+</TipCallout>
+
+<Divider/>
+
+### <a name="remove-background"></a>Remove Background
+Segments the foreground subject and removes the background from an image.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The image file from which to remove the background. |
+| `output_format`| string | Optional| The format of the output image. Default: `png` (to preserve transparency). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A direct link to the image with the background removed. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An e-commerce agent processes a batch of new product photos, using this component to automatically remove their backgrounds to create clean images for the store.
+</TipCallout>
+
+<Divider/>
+
+### <a name="image-to-video"></a>Image to Video
+Transforms a static image into a short video clip using Stable Video Diffusion. This is an asynchronous job.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `image_binary` | binary | Yes | The source image to animate. |
+| `motion_bucket_id`| integer| Optional| Controls the intensity of the motion. Default: `127`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier for the video generation job. |
+| `Response`| object | The raw JSON response from the API confirming the job has started. |
+
+<TipCallout title="Use Case">
+An agent takes a static product image and uses this component to create a short, eye-catching video with subtle motion for use in social media ads.
+</TipCallout>
+
+<WarningCallout title="Asynchronous Job">
+This component only starts the job. You must use the `Get Image to Video Result` component with the output `id` to get the final video URL.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-image-to-video-result"></a>Get Image to Video Result
+Retrieves the final result of an asynchronous Image to Video job.
+
+<InfoCallout>This component requires an `API Key` for authentication.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `id` | string | Yes | The unique identifier of the video generation job. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | The direct link to the final, generated video file. |
+| `Response`| object | The raw JSON response from the API, containing the job status and result. |
+
+<TipCallout title="Use Case">
+This is the mandatory second step for the Image to Video workflow. An agent calls this component after a delay to fetch the final video.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Your Stability AI Secret Key grants access to your account and credits. Always store it in the SmythOS `Vault`.
+* **Master Prompting:** For all generative tasks, the prompt is the most important input. Be descriptive. Include details about subject, style, lighting, and composition. Use the `negative_prompt` to exclude unwanted elements.
+* **Understand Asynchronous Workflows:** For `Creative Upscale` and `Image to Video`, you must build a two-step process in your agent. A simple approach is to add a delay after the first call, then call the "Get Result" component. For more robust workflows, use a loop to poll the result until the status is "succeeded".
+* **Manage Credits:** Image and video generation consume credits from your Stability AI account. Be aware of the cost of different models and operations, and monitor your usage in your Stability AI dashboard.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, missing, or invalid.
+  * **Solution:** Verify the API Key in your SmythOS Vault is correct and active in your Stability AI account.
+
+* **Error: `400 Bad Request` / Validation Error**
+  * **Cause:** An input is missing, has the wrong data type, or is outside the allowed range (e.g., image dimensions not divisible by 64).
+  * **Solution:** Carefully check all inputs against the component's requirements. For image generation, ensure dimensions are valid. For image editing, ensure the `image_binary` is a valid file.
+
+* **Asynchronous Job Fails or Times Out**
+  * **Cause:** The generation task may have failed on Stability AI's end due to a complex prompt or resource issue, or the job is taking a very long time.
+  * **Solution:** Check the status of the job via the raw `Response` from the "Get Result" component. If it remains in a "processing" state for an extended period or fails, try the request again with a simpler prompt or different settings. Check Stability AI's status page for any ongoing issues.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful visual automation workflows with the **SmythOS Stability AI Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Automatically generates featured images for new blog posts based on the post's title and a summary.
+    * Creates a product personalization tool. A user uploads a photo of their room, and the agent uses `Search and Replace` to show how a new piece of furniture would look in their space.
+    * Monitors a folder for new product photos, automatically removes the background, upscales the image, and then creates a short animated video of the product for social media.
+
+* **Explore Other Integrations:**
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to generate creative, detailed prompts to feed into Stability AI's text-to-image components.
+    * Generate an image with Stability AI and then use a voice from [Elevenlabs](/docs/agent-studio/integrations/elevenlabs-integration) to describe it.
+    * Create a workflow where users can describe an image in a chat, and the agent generates it and sends it back via [Slack](/docs/agent-studio/integrations/slack-integration).

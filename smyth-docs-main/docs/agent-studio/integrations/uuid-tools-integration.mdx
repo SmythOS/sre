@@ -1,0 +1,178 @@
+---
+title: UUID Tools Integration
+description: Connect SmythOS to the UUID Tools API to generate unique identifiers (UUIDs and GUIDs) on-the-fly for testing, tracking, and data management.
+og:title: SmythOS & UUID Tools - Generate Unique IDs Instantly
+og:description: Learn to use the UUID Tools integration with SmythOS. Empower your agents to create version 1, 3, 4, and 5 UUIDs instantly, with no authentication required.
+og:image: /docs/img/integrations/smythos_uuid_tools.png
+keywords: [UUID SmythOS Integration, SmythOS UUID Generator, Unique ID Automation, No-Code UUID, GUID Generator, API for UUID]
+---
+# UUID Tools Integration with SmythOS
+
+> **Need unique identifiers for your records or tracking?** Use the UUID Tools integration to empower your agents to generate universally unique identifiers (UUIDs) instantly and without any configuration.
+
+<InfoCallout title="TL;DR">
+Use the "Generate UUID" or "Generate Multiple UUIDs" components to create unique IDs on-the-fly. No authentication or API key is required, making this one of the simplest integrations to use.
+</InfoCallout>
+
+## List of UUID Tools Components
+Quickly compare UUID Tools components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Generate UUID**](#generate-uuid) | Generate | Creates a single, unique version 4 UUID. | <Badge type="required" /> `trigger` | `uuid` | Generating a unique ID for a new database record. |
+| [**Generate Multiple UUIDs**](#generate-multiple-uuids)| Generate | Creates a batch of unique version 4 UUIDs. | <Badge type="required" /> `trigger`<br/><Badge type="optional" /> `count` | `uuids` | Creating unique session IDs for a batch of new users. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate UUID Tools with Your Agent?</summary>
+
+Universally Unique Identifiers (UUIDs) are a standard for generating random IDs. Using this integration provides a simple, reliable way for your agents to create them.
+
+- **Ensure Data Uniqueness:** When an agent creates new records in a database (like Firestore or Upstash), use this component to generate a unique primary key, preventing collisions and ensuring data integrity.
+- **Tracking and Correlation:** Generate a unique ID at the start of a complex workflow. This "correlation ID" can be passed between different agents and services, making it easy to track a single process from start to finish in your logs.
+- **Simplify Development:** Offload the task of UUID generation to a reliable, dedicated service. There's no need to implement custom code or manage libraries for creating unique IDs.
+- **Testing and Mocking:** Quickly generate large batches of UUIDs for populating test databases or creating mock data for your development environments.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, you only need one thing:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+
+That's it! This API requires no authentication.
+
+<Divider />
+
+## Getting Started With UUID Tools
+
+This integration is one of the easiest to use as it requires **no API key or authentication setup**.
+
+### Step 1: Add a UUID Tools Component
+1.  In your SmythOS agent graph, drag and drop either the **Generate UUID** or **Generate Multiple UUIDs** component.
+2.  That's it! The component is ready to use immediately.
+
+<InfoCallout title="No Configuration Needed">
+There are no settings to configure for this integration. You can start using the components right away to generate unique identifiers in your workflows.
+</InfoCallout>
+<Divider />
+
+## Which UUID Tools Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create just one unique ID** | A single operation | [Generate UUID](#generate-uuid) | The simplest way to get a single, random UUID. |
+| **Create a batch of unique IDs at once** | Multiple items | [Generate Multiple UUIDs](#generate-multiple-uuids) | More efficient for creating up to 100 UUIDs in a single API call. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each UUID Tools component.
+
+### <a name="generate-uuid"></a>Generate UUID
+Generates a single, standard version 4 UUID.
+
+<InfoCallout>This component is ready to use and does not require any authentication or settings configuration.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value can be used to trigger the component's execution. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuid` | string | The generated unique identifier (e.g., `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`). |
+| `Response`| string | The raw response from the UUID Tools API, which is the UUID itself. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent is designed to log events. For each new event, it calls this component to generate a unique `uuid` to serve as the event's primary key before writing it to a database.
+</TipCallout>
+
+```json
+{
+  "component": "uuidTools.generateUuid",
+  "trigger": "true"
+}
+```
+
+<WarningCallout title="Simplicity">
+This component is designed for one purpose: to return a single v4 UUID. For other versions or multiple IDs, use a different tool or component.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="generate-multiple-uuids"></a>Generate Multiple UUIDs
+Generates a batch of unique version 4 UUIDs in a single API call.
+
+<InfoCallout>This component is ready to use and does not require any authentication or settings configuration.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value to trigger the execution. |
+| `count` | integer| Optional | The number of UUIDs to generate (from 1 to 100). Default: `10`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `uuids` | array | An array of strings, where each string is a unique identifier. |
+| `Response`| object | The full, raw JSON response from the UUID Tools API, containing the `uuids` array. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent needs to create 10 new user accounts for a test environment. It calls this component with `count` set to 10 to get a list of unique IDs to assign to each test user.
+</TipCallout>
+
+```json
+{
+  "component": "uuidTools.generateMultipleUuids",
+  "trigger": "true",
+  "count": 50
+}
+```
+
+<WarningCallout title="Batch Limit">
+You can generate a maximum of 100 UUIDs per call with this component. If you need more, you will need to call it multiple times.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Use as Primary Keys:** UUIDs are excellent candidates for primary keys in distributed systems because they are globally unique, meaning you can generate them anywhere without risk of collision.
+* **Idempotency Keys:** Use a generated UUID as an idempotency key when making requests to other APIs. This can prevent duplicate operations if an agent accidentally runs the same request twice.
+* **No Secrets Needed:** One of the main benefits of this integration is its simplicity. There are no API keys to manage or rotate, reducing your security overhead.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `429 Too Many Requests`**
+  * **Cause:** You have exceeded the API's rate limit of 60 requests per minute from your IP address.
+  * **Solution:** Add a delay in your agent if you are calling the component in a rapid loop. Consolidate requests using the "Generate Multiple UUIDs" component where possible.
+
+* **Network Errors**
+  * **Cause:** A temporary connectivity issue between SmythOS and the UUID Tools API.
+  * **Solution:** This is rare, but possible with any external API call. Build retry logic into your agent to handle transient network failures.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to generate unique identifiers in any workflow with the **SmythOS UUID Tools Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates new user records in a [Firebase](/docs/agent-studio/integrations/firebase-integration) or [Firestore](/docs/agent-studio/integrations/firestore-integration) database, using a freshly generated UUID as the document ID for each new user.
+    * Generates a unique tracking ID for a customer support ticket and includes it in the subject line of all subsequent email correspondence related to that ticket.
+    * Processes a batch of items from a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration), generates a unique ID for each one, and writes the data along with the new ID to a database.
+
+* **Explore Other Integrations:**
+    * The UUID Tools integration is a fundamental utility. Think of it as a building block that can be combined with almost any other integration that requires the creation of new, unique data records.

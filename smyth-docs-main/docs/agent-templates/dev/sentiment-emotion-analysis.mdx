@@ -1,0 +1,161 @@
+# Tutorial: Sentiment and Emotion Analysis Agent
+
+This agent is capable of analyzing text content for sentiments and emotions. This thorough examination helps in understanding the subtle emotional connotations conveyed within a particular content.
+
+<Youtube videoId="3vBinvVJZvE" title="SmythOS -  Sentiment and Emotion Analysis Agent" />
+
+## RapidAPI Registration
+
+`RapidAPI` provides a variety of endpoints for various purposes. Among these, the `sentiment and emotion analysis` endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key:
+
+1. Go to [https://rapidapi.com/](https://rapidapi.com/)
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 1.png" alt="alt text" />
+
+4. Copy your API key using the `copy` icon. You can also click the eye icon to see your API key.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 2.png" alt="alt text" />
+
+### Sentiment Analysis Subscription
+
+1. Navigate to this [link](https://rapidapi.com/twinword/api/sentiment-analysis) and go to the pricing tab.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 3.png" alt="alt text" />
+
+2. Select a subscription plan from the options available: Basic (free), Pro , or Ultra Plan. The Basic plan offers 9000 Sentiment Analysis requests/month.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 4.png" alt="alt text" />
+
+3. Upon clicking the subscribe button, you'll need to input your card details, even for the basic plan. These details will be securely stored for future purchases and subscription renewals. RapidAPI will validate your card by initiating a temporary authorization hold of $0.50. This hold will be automatically released after a few minutes or hours.
+   
+4. Once you've input your card details, simply click on `Add Card`.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 5.png" alt="alt text" />
+
+5. Once your card details have been successfully added, the `Subscribe` button will become clickable. Simply click on it to complete the subscription process.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 6.png" alt="alt text" />
+
+6. You’re all set.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 7.png" alt="alt text" />
+
+### Emotion Analysis Subscription
+
+1. Navigate to this [link](https://rapidapi.com/twinword/api/emotion-analysis) and go to the pricing tab.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 8.png" alt="alt text" />
+
+2. Select a subscription plan from the options available: Basic (free), Pro , or Ultra Plan. The Basic plan offers 2000 Emotion Analysis requests/month.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 9.png" alt="alt text" />
+
+3. Upon clicking the subscribe button, you'll need to input your card details, even for the basic plan. These details will be securely stored for future purchases and subscription renewals. RapidAPI will validate your card by initiating a temporary authorization hold of $0.50. This hold will be automatically released after a few minutes or hours.
+   
+4. Once you've input your card details, simply click on `Add Card`.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 10.png" alt="alt text" />
+
+5. Once your card details have been successfully added, the `Subscribe` button will become clickable. Simply click on it to complete the subscription process.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 11.png" alt="alt text" />
+
+6. You’re all set.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 12.png" alt="alt text" />
+
+## Agent Setup
+
+1. Go to your SmythOS Dashboard and click on the `Create Agent` button.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 13.png" alt="alt text" />
+
+2. The template for the `Sentiment & Emotion Analysis Agent` is readily available. Simply select it from the drop-down menu.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 14.png" alt="alt text" />
+
+3. Click `Create` and allow the template to initialize and configure.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 15.png" alt="alt text" />
+
+### LLM Prompt Setup
+
+1. In SmythOS, locate the `LLM Prompt` component then click on the gear icon to access its settings.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 16.png" alt="alt text" />
+
+2. Input your `RapidAPI` key in the Prompt section. Remember to click on the check mark icon to confirm and save your configuration.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 17.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test the Agent
+
+Follow the steps outlined below to evaluate the Sentiment & Emotion Analysis Agent.
+
+1. Open the ChatBot embodiment and click on the chat icon.
+   
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 18.png" alt="alt text" />
+
+2. Ask the agent to analyze your content. Along with the text, specify whether you want to perform a sentiment analysis, emotion analysis, or both. In this example, let’s do both.
+
+<Image src="/docs/img/sentiment_emotion_analysis_agent/Image 19.png" alt="alt text" />
+
+3. Enter your content in the embodiment editor.
+
+### Example
+
+>Title: "A Day at the Beach"
+>
+>As the morning sun peeked over the horizon, Sarah eagerly packed her beach bag with sunscreen, towels, and snacks. Today was the day she had been looking forward to for weeks – a relaxing day at the beach with her closest friends.
+>
+>As Sarah arrived at the shore, the salty breeze tousled her hair, and the rhythmic sound of waves crashing against the shore filled her ears. She couldn't help but smile as she watched children building sandcastles and families laughing together.
+>
+>Setting up their spot on the soft, warm sand, Sarah's friends joined her, bringing a cooler filled with cold drinks and delicious sandwiches. They wasted no time diving into the crystal-clear water, laughing and splashing each other like carefree children.
+>As the day wore on, the sun climbed higher in the sky, casting a golden hue over everything it touched. Sarah felt a sense of peace wash over her as she closed her eyes, basking in the warmth of the sun and the company of her friends.
+>
+>But as the afternoon turned to evening, Sarah couldn't shake the feeling of melancholy creeping in. The realization that this perfect day would soon come to an end weighed heavily on her heart. She wished she could freeze time, preserving this moment of joy and camaraderie forever.
+>
+>Reluctantly, Sarah and her friends gathered their belongings as the sun dipped below the horizon, casting the sky in a brilliant array of colors. As they made their way back home, Sarah couldn't help but feel grateful for the memories they had created together – memories that would warm her heart long after the sun had set on their day at the beach.
+
+### Results
+
+>**Sentiment Analysis:**
+>
+>The overall sentiment of the text is predominantly positive, with a score of 0.14. This score suggests a generally positive outlook and attitude in the text’s content. However, there are elements of negative sentiment as well.
+>Negative sentiments in the text are primarily due to words such as:
+>
+>1. "Melancholy"
+>2. "Crash"
+>3. "Wasted"
+>4. "Cold"
+>
+>These words contribute to a slightly more negative score.
+>Positive sentiments in the text are primarily due to words such as:
+>
+>1. "Friend"
+>2. "Warm"
+>3. "Brilliant"
+>4. "Grateful"
+>5. "Joy"
+>6. "Perfect"
+>7. "Carefree"
+>8. "Golden"
+>
+>These words contribute to the overall positive score of the text, indicating joyful and pleasant sentiments.
+>
+>**Emotion Analysis:**
+>
+>The primary emotion detected in the text is Joy, with a score of 0.18. This suggests a sense of happiness and pleasure in the described circumstances. It’s no surprise considering the text documents an enjoyable day at the beach with friends. However, there are traces of sadness, surprise, and a smidgen of fear detected.
+>
+>**Contextual Analysis:**
+>
+>The text tells the story of Sarah and her day at the beach with her friends. It includes preparations for the day, the joyful play at the beach, the serene moments, followed by melancholy as the day ends, and finally, a feeling of gratitude for the shared memories. This pattern of storytelling creates an ethos of relatability and familiarity for the reader, engaging emotions of joy, melancholy, and gratefulness.
+>
+>In summary, the overarching sentiment in the text is positive, featuring an emotional palette primarily colored by joy and happiness, with undertones of sadness and nostalgia captured towards the end of the day. The text beautifully encapsulates a universally relatable experience of a joyful day spent with friends.
+

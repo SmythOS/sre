@@ -1,0 +1,586 @@
+---
+title: OneDrive Integration
+description: Connect SmythOS to Microsoft OneDrive. Automate file management, sharing, and collaboration directly from your agents.
+og:title: SmythOS & OneDrive - Automate Your Cloud Storage!
+og:description: Learn to integrate OneDrive with SmythOS. Empower your agents to list, read, and manage files and folders in user and group drives, turning OneDrive into a core part of your automated workflows.
+og:image: /docs/img/integrations/smythos_onedrive.png
+keywords: [OneDrive SmythOS Integration, Connect OneDrive to SmythOS, SmythOS OneDrive Components, Automate OneDrive, SmythOS File Management, No-Code OneDrive, Cloud Storage Automation]
+tags: [knowledge, database, collaboration]
+---
+# OneDrive Integration
+
+> **Want to put your cloud storage to work?** Connect Microsoft OneDrive to SmythOS and let your agents manage files, list directories, and automate your document workflows in real time.
+
+<InfoCallout title="TL;DR">
+Link your Microsoft 365 Account to SmythOS via OAuth2. Register an application in Microsoft Entra to get a `Client ID` and `Client Secret`, then use our OneDrive components to empower agents to automate file and folder operations for users and groups.
+</InfoCallout>
+
+## List of OneDrive Components
+Quickly compare OneDrive components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|----------------|----------------|----------------|
+| [**List Drives**](#list-drives) | Read | Retrieves all drives for a specific user. | <Badge type="required" /> `userId` | `drives` | Find all available drives for a user. |
+| [**Get User OneDrive**](#get-user-onedrive) | Read | Retrieves a user's default OneDrive drive. | <Badge type="required" /> `userId` | `driveId` | Get the primary storage location for a user. |
+| [**Get Drive**](#get-drive) | Read | Retrieves a specific drive by its unique ID. | <Badge type="required" /> `driveId` | `driveId`, `name` | Verify a specific drive exists before proceeding. |
+| [**List Root Items**](#list-root-items) | Read | Fetches all files and folders in the root of a user's drive. | <Badge type="required" /> `userId` | `items` | Get a list of top-level folders and files. |
+| [**Get Item by ID**](#get-item-by-id) | Read | Retrieves a file or folder using its unique item ID. | <Badge type="required" /> `userId`, `itemId` | `itemId`, `webUrl` | Access a specific, known file or folder. |
+| [**Get Item by Path**](#get-item-by-path) | Read | Retrieves a file or folder using its relative path. | <Badge type="required" /> `userId`, `item-path` | `itemId`, `webUrl` | Access a file when you know its path but not its ID. |
+| [**List Drive Item Children**](#list-drive-item-children) | Read | Retrieves the contents (files/folders) of a specific folder. | <Badge type="required" /> `userId`, `itemId` | `children` | List all files within a specific project folder. |
+| [**List Group Drives**](#list-group-drives) | Read | Retrieves all drives associated with a specific Microsoft 365 Group. | <Badge type="required" /> `groupId` | `drives` | Find all shared libraries for a specific team. |
+| [**Get Group's Document Library**](#get-groups-document-library) | Read | Retrieves the default document library (drive) for a group. | <Badge type="required" /> `groupId` | `driveId` | Access a team's primary shared document space. |
+| [**Get Group's Item By ID**](#get-groups-item-by-id) | Read | Retrieves a specific file/folder from a group drive by its ID. | <Badge type="required" /> `groupId`, `itemId` | `itemId`, `webUrl` | Access a specific file in a shared team folder. |
+| [**Get Group's Item By Path**](#get-groups-item-by-path) | Read | Retrieves a specific file/folder from a group drive by its path. | <Badge type="required" /> `groupId`, `item-path` | `itemId`, `webUrl` | Access a shared file using its known path. |
+| [**List Group's Item Children**](#list-groups-item-children) | Read | Retrieves the contents of a folder within a group drive. | <Badge type="required" /> `groupId`, `itemId` | `children` | List all documents in a shared project directory. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate OneDrive with Your Agent?</summary>
+
+Microsoft OneDrive is a cornerstone of modern document management. Integrating it with SmythOS unlocks powerful automation capabilities:
+
+- **Automated File Organization:** Agents can automatically create folders, move files, and maintain a structured directory for projects, reports, or client records.
+- **Seamless Collaboration:** Programmatically manage file sharing and permissions to ensure team members always have access to the latest documents.
+- **Centralized Data Hub:** Use OneDrive as the single source of truth for documents generated or processed by your agents, from invoices to analytical reports.
+- **Enhanced Productivity:** Eliminate manual file handling by letting agents fetch, update, and manage your cloud storage, freeing up your team to focus on higher-value work.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Microsoft 365 Account** with administrative permissions to register applications in Microsoft Entra.
+- Necessary permissions (e.g., `Files.ReadWrite.All`, `Group.Read.All`) granted to your application in Microsoft Entra.
+
+<Divider />
+
+## Getting Started With OneDrive
+
+Authentication is handled via OAuth2, which requires you to register an application within the Microsoft Entra portal. This is a one-time setup.
+
+### Step 1: Register an Application in Microsoft Entra
+1.  Navigate to the [Microsoft Entra Portal](https://entra.microsoft.com/).
+2.  Go to **Identity** > **Applications** > **App registrations** and click **+ New registration**.
+3.  **Configure your application:**
+    * **Name:** Give it a descriptive name (e.g., "SmythOS OneDrive Integration").
+    * **Supported account types:** Choose the option that best fits your organization's needs.
+    * **Redirect URI:** Select **Web** from the dropdown and enter `https://app.smythos.com/oauth/oauth2/callback`.
+4.  Click **Register**.
+
+### Step 2: Obtain Client ID and Client Secret
+1.  **Client ID:** From your new application's **Overview** page, copy the **Application (client) ID**. This is your `Client ID`.
+2.  **Client Secret:**
+    * In your application's menu, navigate to **Certificates & secrets**.
+    * Under the **Client secrets** tab, click **+ New client secret**.
+    * Add a description, choose an expiration period, and click **Add**.
+    * **Immediately copy the `Value` of the new secret.** This is your `Client Secret` and it will be hidden after you leave this page.
+
+### Step 3: Configure API Permissions
+1.  In your app registration menu, go to **API permissions**.
+2.  Click **+ Add a permission**, select **Microsoft Graph**, and choose **Delegated permissions**.
+3.  Search for and add the necessary permissions for the components you intend to use. Common permissions include:
+    * `Files.ReadWrite.All`
+    * `Sites.Read.All`
+    * `User.Read`
+    * `Group.Read.All`
+4.  Click **Add permissions**. If prompted, click the **Grant admin consent for [Your Directory]** button to finalize permissions.
+
+### Step 4: Authenticate in SmythOS
+1.  In your SmythOS agent graph, drag any OneDrive component onto the canvas.
+2.  Click the component to open its **Settings** panel.
+3.  Enter the `Client ID` and `Client Secret` you obtained. For best security practices, store these credentials in the **SmythOS Vault** and reference them here.
+4.  Click the blue **Authenticate** button. You will be redirected to a Microsoft sign-in page to authorize the connection.
+
+<InfoCallout title="Heads-up">Once you authenticate, the connection is saved for your SmythOS account. You won't need to re-enter credentials for other OneDrive components. Use the **Sign Out** button in the component settings if you need to switch accounts or re-authenticate.</InfoCallout>
+<Divider />
+
+## Which OneDrive Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **List all files** in a personal folder | A user's folder ID | [List Drive Item Children](#list-drive-item-children) | Directly retrieves contents of a known folder. |
+| **Get a specific file** by path | A known file path | [Get Item by Path](#get-item-by-path) | Easiest way to access a file without knowing its ID. |
+| **List all drives** for a team | A group ID | [List Group Drives](#list-group-drives) | Shows all SharePoint libraries associated with a team. |
+| **Find a team's main folder** | A group ID | [Get Group's Document Library](#get-groups-document-library) | Directly accesses the primary shared drive for a group. |
+| **Get a user's main drive** | A user ID | [Get User OneDrive](#get-user-onedrive) | The simplest way to get to a user's personal OneDrive. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each OneDrive component.
+
+### <a name="list-drives"></a>List Drives
+Retrieves a list of all drives (both personal OneDrive and SharePoint document libraries) that a user has access to.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The unique ID of the user whose drives you want to list. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `drives`| An array of drive objects associated with the user. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Determine which SharePoint sites a user is a member of by listing all their available drives.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.listDrives",
+  "userId": "user-guid-from-entra"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+If the `drives` array is empty, ensure the user has access to at least one drive and that your app has `Sites.Read.All` permissions.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-user-onedrive"></a>Get User OneDrive
+Retrieves the user's default OneDrive drive, which is their personal cloud storage.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The ID of the user whose default OneDrive you want to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `driveId` | The unique ID of the user's default OneDrive. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Get the `driveId` for a user's personal OneDrive to use in subsequent steps, like listing root items or creating folders.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getUserOneDrive",
+  "userId": "user-guid-from-entra"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error can occur if the user does not have a OneDrive provisioned for their account.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-drive"></a>Get Drive
+Retrieves a specific drive by its unique ID. This is useful for accessing both personal drives and SharePoint document libraries.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `driveId` | <Badge type="required" /> | The unique ID of the drive to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `driveId` | The ID of the retrieved drive. |
+| `name` | The name of the retrieved drive. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+After listing all of a user's drives, use this component with a specific `driveId` to verify its name before performing further actions.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getDrive",
+  "driveId": "drive-id-from-previous-step"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error indicates an invalid `driveId` or that the authenticated user lacks permission to access it.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-root-items"></a>List Root Items
+Fetches the collection of files and folders in the root directory of a user's default OneDrive.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The ID of the user whose root items you want to list. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `items` | An array of item objects (files and folders) in the root. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent needs to check for a specific configuration file or a "Reports" folder in the top level of a user's OneDrive.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.listRootItems",
+  "userId": "user-guid-from-entra"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+Ensure your app has at least `Files.Read.All` permission. If the `items` list is unexpectedly empty, verify files exist in the root of the user's drive.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-item-by-id"></a>Get Item by ID
+Retrieves a file or folder from a user's drive using its unique item ID.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The ID of the user who owns the item. |
+| `itemId` | <Badge type="required" /> | The unique ID of the item to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `itemId` | The ID of the retrieved item. |
+| `name` | The name of the retrieved item. |
+| `webUrl` | The web URL to access the item. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Access a specific, known file or folder when you have its ID from a previous step, such as listing a folder's children.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getItemById",
+  "userId": "user-guid-from-entra",
+  "itemId": "item-id-from-previous-step"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error means the `itemId` is incorrect or does not belong to the specified `userId`.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-item-by-path"></a>Get Item by Path
+Retrieves a file or folder from a user's drive using its relative path from the root.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The ID of the user who owns the item. |
+| `item-path`| <Badge type="required" /> | The path of the item, e.g., `/Documents/Report.docx`. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `itemId` | The ID of the retrieved item. |
+| `name` | The name of the retrieved item. |
+| `webUrl` | The web URL to access the item. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Access a file when you know its location and name but not its ID, such as fetching `/Attachments/invoice.pdf`.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getItemByPath",
+  "userId": "user-guid-from-entra",
+  "item-path": "/Documents/Q3-Report.docx"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+The path must be URL-encoded and start with a `/`. A `404 Not Found` error indicates the path is incorrect.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-drive-item-children"></a>List Drive Item Children
+Retrieves the contents (files and folders) of a specific folder by its item ID.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `userId` | <Badge type="required" /> | The ID of the user who owns the parent item. |
+| `itemId` | <Badge type="required" /> | The ID of the folder whose children you want to list. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `children`| An array of item objects representing the folder's contents. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+After finding a "Project Alpha" folder, use this component to list all the documents inside it to process them one by one.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.listDriveItemChildren",
+  "userId": "user-guid-from-entra",
+  "itemId": "folder-item-id-from-previous-step"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error means the `itemId` is incorrect or the item is a file, not a folder.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-group-drives"></a>List Group Drives
+Retrieves all drives (SharePoint document libraries) associated with a specific Microsoft 365 Group.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `groupId` | <Badge type="required" /> | The ID of the group whose drives you want to list. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `drives` | An array of drive objects associated with the group. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Find all shared libraries for the "Marketing Team" group to search for assets across all their document repositories.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.listGroupDrives",
+  "groupId": "group-guid-from-entra"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+Requires `Group.Read.All` and `Sites.Read.All` permissions. An empty response may mean the group has no SharePoint sites.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-groups-document-library"></a>Get Group's Document Library
+Retrieves the default document library (drive) for a given Microsoft 365 Group.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `groupId` | <Badge type="required" /> | The ID of the group whose document library you want to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `driveId` | The ID of the group's default drive. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Directly access a team's primary shared folder, often named "Documents," without needing to list all their drives first.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getGroupDocumentLibrary",
+  "groupId": "group-guid-from-entra"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error can occur if the `groupId` is invalid or the group does not have a provisioned document library.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-groups-item-by-id"></a>Get Group's Item By ID
+Retrieve a specific item from a group's drive by ID.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `groupId` | <Badge type="required" /> | The ID of the group. |
+| `itemId` | <Badge type="required" /> | The ID of the item to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `itemId` | The ID of the retrieved item. |
+| `name` | The name of the retrieved item. |
+| `webUrl` | The web URL to access the item. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Access a specific file in a shared team folder when you have its unique ID.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getGroupItemById",
+  "groupId": "group-guid-from-entra",
+  "itemId": "item-id-from-group-drive"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+Ensure the `itemId` corresponds to an item within one of the specified group's drives.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-groups-item-by-path"></a>Get Group's Item By Path
+Retrieve a group's OneDrive item by its path within the group's default document library.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `groupId` | <Badge type="required" /> | The ID of the group. |
+| `item-path`| <Badge type="required" /> | The relative path of the item from the root of the default document library. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `itemId` | The ID of the retrieved item. |
+| `name` | The name of the retrieved item. |
+| `webUrl` | The web URL to access the item. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Fetch a shared team document like `/General/Project-Plan.xlsx` when you know its path.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.getGroupItemByPath",
+  "groupId": "group-guid-from-entra",
+  "item-path": "/Shared Documents/Q3-Marketing-Plan.pptx"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+The path must be relative to the group's default document library root. A `404 Not Found` error means the path is incorrect.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-groups-item-children"></a>List Group's Item Children
+Retrieve the children of an item within a group's drive.
+
+<InfoCallout>This component uses a standard OAuth2 authentication flow detailed in the [Getting Started](#getting-started-with-onedrive) section.</InfoCallout>
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `groupId` | <Badge type="required" /> | The ID of the group. |
+| `itemId` | <Badge type="required" /> | The ID of the parent folder in the group drive. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `children`| An array of item objects in the folder. |
+| `response`| The raw JSON response from the OneDrive API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+List all proposals located in the `/Proposals/2025/` folder within a sales team's shared drive.
+</TipCallout>
+
+```json
+{
+  "component": "onedrive.listGroupItemChildren",
+  "groupId": "group-guid-from-entra",
+  "itemId": "group-folder-item-id"
+}
+```
+
+<WarningCallout title="Troubleshooting">
+A `404 Not Found` error can occur if the `itemId` does not belong to the specified `groupId` or is not a folder.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Use the SmythOS Vault:** Never hardcode your `Client ID` or `Client Secret` directly in your components. Always store them securely in the SmythOS Vault and reference them.
+* **Principle of Least Privilege:** In the Microsoft Entra portal, only grant the API permissions that your agent absolutely needs to function. Avoid overly broad permissions like `Files.ReadWrite.All` if your agent only needs to read files.
+* **Manage IDs Dynamically:** Chain components together. Use the `driveId` or `itemId` from the output of one component as the input for another. This makes your workflows robust and adaptable.
+* **Error Handling:** Always check the `response` output for error codes or messages. Build conditional logic in your agent to handle potential failures gracefully, such as by sending a notification or retrying the operation.
+* **Group vs. User Components:** Be mindful of which components you are using. Operations on shared team libraries require the "Group" components and a `groupId`, while personal files use the standard user components and a `userId`.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `403 Forbidden` or `PERMISSION_DENIED`**
+  * **Cause:** The application is missing the required API permissions in Microsoft Entra, or admin consent has not been granted.
+  * **Solution:** Go to your app registration's **API permissions** page. Verify that you have added and granted admin consent for all necessary permissions (e.g., `Files.ReadWrite.All`, `Sites.Read.All`).
+
+* **Error: `404 Not Found`**
+  * **Cause:** The `userId`, `groupId`, `driveId`, or `itemId` is incorrect. It could also be that the path in a `Get Item by Path` component is wrong.
+  * **Solution:** Double-check all IDs being passed into the component. Ensure they are correct and that the authenticated user has access. For path-based lookups, verify the full path is correct and URL-encoded.
+
+* **Error: `401 Unauthorized` or Authentication Issues**
+  * **Cause:** The `Client ID` or `Client Secret` is incorrect, or the OAuth token has expired.
+  * **Solution:**
+    1.  Verify that the `Client ID` and `Client Secret` in the component settings match the values in Microsoft Entra.
+    2.  Use the **Sign Out** button in the component settings, then click **Authenticate** again to refresh the connection and obtain a new token.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful automations with the **SmythOS OneDrive Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Automatically saves email attachments to a specific "Attachments" folder in your personal OneDrive.
+    * Watches a "New Invoices" folder in a team's shared drive and, upon detecting a new file, processes it and sends a notification to the finance channel in Slack.
+    * Generates a monthly report, saves it as a PDF, and uploads it to a "Monthly Reports" folder in a SharePoint document library.
+
+* **Explore Other Integrations:** Combine OneDrive with other SmythOS connectors. For example, use the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) to read data for a report, then use OneDrive components to save the final document.
+

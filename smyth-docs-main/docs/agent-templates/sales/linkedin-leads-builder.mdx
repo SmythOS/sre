@@ -1,0 +1,67 @@
+
+# Tutorial: LinkedIn Leads Builder Agent
+
+This agent is designed to help you scrape publicly available information from LinkedIn profiles using RapidAPI API integration. Additionally, this agent assists in securely uploading the scraped data to designated Airtable databases.
+
+## RapidAPI Registration
+
+RapidAPI provides a variety of endpoints for various purposes. Among these, the LinkedIn BULK data scraper endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key.
+
+1. Go to https://rapidapi.com/
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 1.png" alt="alt text" />
+
+4. Copy your API key using the `copy` icon. You can also click the eye icon to see your API key. 
+5. After your API key is copied, navigate to this link and go to the pricing tab.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 2.png" alt="alt text" />
+
+6. Select a subscription plan from the options available: Basic (free), Pro , Ultra Plan or Mega plan. The basic plan allows 150 API requests per month for free.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 3.png" alt="alt text" />
+
+7. Click the `Subscribe` button.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 4.png" alt="alt text" />
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the templates tab.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 5.png" alt="alt text" />
+
+2. You can scroll down to find the LinkedIn Leads Builder or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 6.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### Crawl a LinkedIn Profile Setup
+
+1. Locate the `Crawl a LinkedIn` API call component. Click the gear icon to open the settings.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 7.png" alt="alt text" />
+
+2. Replace the `X-RapidAPI-Key` value on the API call header with your RapidAPI key. 
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 8.png" alt="alt text" />
+
+3. Click `Save` and don’t forget to click the check icon to save your configuration.
+
+### Crawl a Multiple Profile Setup
+
+1. Locate the `Crawl a Multiple Linkedin Profiles` API call component. Click the gear icon to open the settings.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 9.png" alt="alt text" />
+
+2. Replace the `X-RapidAPI-Key` value on the API call header with your RapidAPI key.
+
+<Image src="/docs/img/linkedin_leads_builder_agent/Image 10.png" alt="alt text" />
+
+3. Click `Save` and don’t forget to click the check icon to save your configuration.
+
+4. You’re all set!

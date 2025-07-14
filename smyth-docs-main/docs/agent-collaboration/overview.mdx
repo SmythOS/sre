@@ -1,0 +1,94 @@
+---
+title: Collaboration
+description: Build, share, and manage agents as a team. Use Project Spaces, a secure Vault, and role-based permissions to collaborate securely and efficiently.
+keywords: [collaboration, teams, sharing, permissions, roles, vault, projects, spaces]
+sidebar_position: 1
+---
+
+# Agent Collaboration
+
+SmythOS provides a full suite of tools for solo builders AND enterprise teams to help you build, share, and manage AI agents securely with your team, clients, and stakeholders.
+
+<InfoCallout title="TL;DR">Use [Spaces](/docs/agent-collaboration/spaces/) to organize your projects, the [Vault](/docs/agent-studio/key-concepts/vault) to share secrets securely, and granular [Roles](/docs/agent-collaboration/permissions) to manage team access. </InfoCallout>
+
+<Divider/>
+
+## Understanding Collaboration
+
+Effective collaboration is key to scaling your automation efforts in [SmythOS](https://smythos.com):
+
+-   **Organize Everything:** Keep projects for different clients or departments completely separate in isolated workspaces.
+-   **Control Access:** Ensure team members and stakeholders can only see or edit what they're supposed to.
+-   **Share Securely:** Distribute sensitive [API keys and credentials](/docs/agent-studio/key-concepts/vault) without ever exposing the raw secret values.
+-   **Work Together:** Enable multiple builders to work on agents in tandem and [manage workflows](/docs/agent-studio/build-agents/building-workflows) without overriding each other's progress.
+
+<Divider/>
+
+## Core Collaboration Features
+
+| Feature                   | What It Is                                                               | Who It's For                                           | Key Benefit                                                 |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------- |
+| **[Spaces](/docs/agent-collaboration/spaces/)** | Isolated workspaces for your agents, data, and teams.                  | Agencies, consultants, and teams with multiple projects. | Keep client work and internal projects neatly separated.      |
+| **[The Vault](/docs/agent-studio/key-concepts/vault)** | A centralized, encrypted store for API keys & secrets.                   | All teams, especially those using third-party APIs.      | Share credentials required by agents securely.                |
+| **[Roles & Permissions](/docs/agent-collaboration/permissions)** | Granular access control for users and agents.                          | Teams of any size, especially those with stakeholders.   | Give everyone the exact level of access they need.        |
+| **[Sharing & Exporting](/docs/agent-collaboration/sharing-agents)** | Tools to share agents and manage workflow files.                       | Collaborative builders and developers.                 | Easily distribute your work or [import from Postman](/docs/agent-collaboration/import-export-postman). |
+| **[White Labeling](/docs/agent-collaboration/spaces/white-labeling)** | Tools to replace SmythOS branding with your own.                         | Agencies and enterprise clients.                       | Deliver a fully branded experience to your end-users.     |
+
+<Divider/>
+
+## Getting Started: A 3-Step Guide for Teams
+
+Setting up your team for collaboration is simple. This journey ensures your workspace is organized and secure from day one.
+
+1.  **Create a Space**
+    Every collaborative project starts within a [Space](/docs/agent-collaboration/spaces/). This acts as a container for your agents, data, and team members. Create a new Space for each client or internal project to keep everything organized.
+
+2.  **Invite Team Members & Assign Roles**
+    Once your Space is ready, [invite your colleagues](/docs/account-management/organization-management) or clients. As they join, assign them specific [Roles and Permissions](/docs/agent-collaboration/permissions) like `Admin`, `Editor`, or `Viewer` to define exactly what they can do within that Space.
+
+3.  **Share Credentials with The Vault**
+    If your agents need to connect to third-party services like OpenAI or Google, add the necessary API keys to the [Vault](/docs/agent-studio/key-concepts/vault). This allows team members to build powerful agents without ever needing to handle sensitive credentials directly.
+
+<Divider/>
+
+## Essential Pages
+
+Explore the core features of collaboration in SmythOS with these detailed guides.
+
+<CardGrid>
+  <Card
+    title="Spaces and Organization"
+    description="Learn how to create and manage isolated workspaces for your projects and teams."
+    to="/docs/agent-collaboration/spaces/"
+  />
+  <Card
+    title="Roles and Permissions"
+    description="Master access control by defining what each user can see and do within a space."
+    to="/docs/agent-collaboration/permissions"
+  />
+  <Card
+    title="The Vault for API Keys"
+    description="Securely store and share API keys, access tokens, and other secrets with your team."
+    to="/docs/agent-studio/key-concepts/vault"
+  />
+  <Card
+    title="Sharing & Exporting Agents"
+    description="Easily share agents with collaborators or import/export workflows with Postman."
+    to="/docs/agent-collaboration/sharing-agents"
+  />
+    <Card
+    title="White Labeling"
+    description="Replace SmythOS branding with your own for a fully custom user experience."
+    to="/docs/agent-collaboration/spaces/white-labeling"
+  />
+    <Card
+    title="Automating Agent Tasks"
+    description="Run agents on a schedule or process data in bulk with multiple users."
+    to="/docs/agent-studio/manage-agents/tasks"
+  />
+  <Card
+  title="Invite teammates to your agent"
+  description="Add, remove, or update collaborator roles directly from an agent’s settings."
+  to="/docs/agent-collaboration/adding-users"
+  />
+</CardGrid>  

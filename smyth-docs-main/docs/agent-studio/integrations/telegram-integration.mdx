@@ -1,0 +1,205 @@
+---
+title: Telegram Integration
+description: Connect SmythOS to Telegram to send messages, audio, and notifications to chats and channels directly from your agent workflows.
+og:title: SmythOS & Telegram - Automate Your Instant Messaging
+og:description: Learn to integrate Telegram with SmythOS. Empower your agents to send automated messages and audio files to any chat or channel, streamlining notifications and communication.
+og:image: /docs/img/integrations/smythos_telegram.png
+keywords: [Telegram SmythOS Integration, Connect Telegram to SmythOS, SmythOS Telegram Bot, Automate Telegram, Telegram API, No-Code Telegram Bot, Messaging Automation]
+---
+# Telegram Integration with SmythOS
+
+> **Want to send notifications and messages via a secure, fast messaging app?** Connect a Telegram Bot to SmythOS and empower your agents to send real-time text and audio messages directly to your chats and channels.
+
+<InfoCallout title="TL;DR">
+Securely link your Telegram Bot to SmythOS by getting a Bot Token from the BotFather. Then, use our components to automate sending messages and audio files to any chat ID.
+</InfoCallout>
+
+## List of Telegram Components
+Quickly compare Telegram components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send Message**](#send-message) | Write | Sends a text message to a specified chat or channel. | <Badge type="required" /> `chat_id`, `text` | `messageId` | Sending system alerts or daily status updates. |
+| [**Send Audio**](#send-audio) | Write | Sends an audio file to a specified chat or channel from a URL. | <Badge type="required" /> `chat_id`, `audio_url` | `messageId` | Sharing audio notes or podcast clips. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Telegram with Your Agent?</summary>
+
+Telegram is a popular and secure messaging platform. Integrating it with SmythOS allows you to build powerful agents that communicate effectively and deliver information instantly.
+
+- **Automated Alerting:** Create agents that monitor your systems, applications, or websites. When a critical event occurs (like a server going down), the agent can instantly send an alert to a dedicated Telegram channel for your on-call team.
+- **Centralized Notifications:** Consolidate notifications from various tools. Instead of checking multiple dashboards, have your agents send updates from your CRM, project management tool, and CI/CD pipeline into a single, organized Telegram chat.
+- **Content Distribution:** Build an agent that monitors your blog's RSS feed. When a new article is published, it can automatically send a message with the title and link to your public Telegram channel.
+- **Interactive Workflows:** While these components focus on sending, you can build agents that are triggered by incoming messages via a webhook, allowing you to create interactive bots for support, Q&A, or internal tools.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Telegram account**.
+- A Telegram **Bot Token**.
+
+<Divider />
+
+## Getting Started With Telegram
+
+The connection between SmythOS and Telegram is configured using a secure Bot Token, which you get from a special bot called the BotFather.
+
+### Step 1: Create a Telegram Bot and Get Your Token
+1.  **Start a chat with BotFather:** Open your Telegram app and search for the user `@BotFather` (it will have a blue checkmark). Start a chat with it.
+2.  **Create a new bot:** Type the command `/newbot` and send it.
+3.  **Name your bot:** BotFather will ask for a name for your bot (e.g., "SmythOS Notifier").
+4.  **Choose a username:** Next, choose a username for your bot. It must be unique and end in "bot" (e.g., `SmythOSNotifierBot`).
+5.  **Copy your Bot Token:** BotFather will congratulate you and provide you with a token. It will look something like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`. **Copy this token immediately.**
+
+### Step 2: Store Your Bot Token in SmythOS Vault
+Your Bot Token is a highly sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Telegram Bot Token as the value. Give it a memorable name, like `telegram_bot_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Telegram Component
+1.  In your SmythOS agent graph, drag and drop any Telegram component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Bot Token` field, select the secret you saved in the Vault (e.g., `telegram_bot_token`).
+4.  Your connection is now configured.
+
+### Step 4: Get Your Chat ID
+To send a message, you need the ID of the chat, group, or channel you want to send it to.
+- **For a person or group:** Add your bot to the group or start a chat with it. You can then use a tool or another bot like `@userinfobot` to find the chat ID.
+- **For a channel:** Add your bot as an administrator to the channel. The chat ID will be the channel's username, prefixed with `@` (e.g., `@mychannel`).
+
+<InfoCallout title="Heads-up">You must add the Bot Token from the Vault to **each** Telegram component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Telegram Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send a text-based notification** or alert | A `chat_id` and text | [Send Message](#send-message) | The standard component for all text communication. |
+| **Share a voice note** or audio clip | A `chat_id` and audio URL | [Send Audio](#send-audio) | Specifically designed to send audio files. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Telegram component.
+
+### <a name="send-message"></a>Send Message
+Sends a text message to a specified chat, group, or channel.
+
+<InfoCallout>This component requires a `Bot Token` for authentication, as detailed in the [Getting Started](#getting-started-with-telegram) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `chat_id` | string | Yes | The unique identifier for the target chat or the username of a channel (e.g., `@channelname`). |
+| `text` | string | Yes | The text content of the message. Supports Markdown and HTML formatting. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageId`| integer| The unique identifier for the sent message. |
+| `Response`| object | The full, raw JSON response from the Telegram API, containing the complete message object. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A monitoring agent detects a server is down. It uses this component to send an urgent message to the `#devops-alerts` group: `🚨 **CRITICAL ALERT:** Server db-prod-01 is unresponsive!`
+</TipCallout>
+
+```json
+{
+  "component": "telegram.sendMessage",
+  "chat_id": "-100123456789",
+  "text": "A new lead has been assigned to you. Please check the CRM."
+}
+```
+
+<WarningCallout title="Formatting">
+You can use either Markdown or HTML for formatting by adding a `parse_mode` input to the component (`MarkdownV2` or `HTML`).
+</WarningCallout>
+
+<Divider/>
+
+### <a name="send-audio"></a>Send Audio
+Sends an audio file to a specified chat, group, or channel from a public URL.
+
+<InfoCallout>This component requires a `Bot Token` for authentication, as detailed in the [Getting Started](#getting-started-with-telegram) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `chat_id` | string | Yes | The unique identifier for the target chat or channel username. |
+| `audio_url`| string | Yes | A public HTTP URL to an audio file. Telegram will download and send this file. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageId`| integer| The unique identifier for the sent audio message. |
+| `Response`| object | The full, raw JSON response from the Telegram API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent generates a personalized audio summary of a user's day. It hosts the MP3 file at a temporary URL and uses this component to send it directly to the user in a private chat.
+</TipCallout>
+
+```json
+{
+  "component": "telegram.sendAudioWithTelegram",
+  "chat_id": "987654321",
+  "audio_url": "[https://example.com/audio/daily_briefing.mp3](https://example.com/audio/daily_briefing.mp3)"
+}
+```
+<WarningCallout title="Public URL Required">
+The `audio_url` must be publicly accessible for Telegram's servers to be able to download and send the file.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Bot Token:** Your Bot Token grants full control over your bot. Always store it in the SmythOS `Vault`. If it's ever exposed, revoke it immediately via BotFather.
+* **Understand Chat IDs:** A positive `chat_id` is for a private chat with a user. A negative `chat_id` is for a group or supergroup. For public channels, you can use the `@channelusername` format.
+* **Use Formatting for Readability:** Leverage Markdown or HTML in your messages to make them clearer and more engaging. Use bold text for alerts, create lists for summaries, and embed links for more context.
+* **Bot Permissions:** If sending to a group or channel, ensure your bot has been added as a member (and as an admin if necessary) and has permission to send messages.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Bot Token is incorrect, invalid, or has been revoked.
+  * **Solution:** Verify that the token in your SmythOS Vault is correct. If needed, use the `/revoke` command in BotFather to invalidate the old token and generate a new one.
+
+* **Error: `400 Bad Request` / "chat not found"**
+  * **Cause:** The `chat_id` is incorrect, or the bot is not a member of the target chat/channel.
+  * **Solution:** Verify the `chat_id` is correct. For groups, ensure you have invited the bot to the group. For private chats, the user must have initiated a conversation with the bot first.
+
+* **Error: `403 Forbidden` / "bot was kicked from the group chat"**
+  * **Cause:** The bot was removed from the group or channel it's trying to post to.
+  * **Solution:** Re-invite the bot to the target group or channel.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful notification and communication workflows with the **SmythOS Telegram Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates a daily weather report. It fetches data from a weather API and sends a formatted summary to a family group chat on Telegram.
+    * Monitors a stock price. If the price drops below a certain threshold, the agent sends an urgent alert to a private channel for traders.
+    * Generates a weekly podcast summary. The agent transcribes a podcast using a speech-to-text service, uses an LLM to summarize it, and sends the summary along with a link to the audio file to a subscriber channel.
+
+* **Explore Other Integrations:**
+    * Combine Telegram with a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration). When a new high-priority item is added to the database, trigger an agent to send a notification to the relevant team on Telegram.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to draft a social media post, then send it to a private Telegram channel for approval before it's published with [Ayrshare](/docs/agent-studio/integrations/ayrshare-integration).
+    * Connect your e-commerce store. When a new order ships, send the customer a shipping confirmation and tracking number via a Telegram message.

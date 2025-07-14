@@ -1,0 +1,407 @@
+---
+title: HubSpot Integration
+description: Connect SmythOS to HubSpot to automate CRM tasks like managing contacts, deals, and tickets directly from your agent workflows.
+og:title: SmythOS & HubSpot - Automate Your CRM and Sales Pipeline
+og:description: Learn to integrate HubSpot with SmythOS. Empower your agents to create and manage contacts, deals, and tickets, streamlining your entire sales and support process.
+og:image: /docs/img/integrations/smythos_hubspot.png
+keywords: [HubSpot SmythOS Integration, Connect HubSpot to SmythOS, SmythOS HubSpot CRM, Automate CRM, HubSpot API, No-Code HubSpot, Sales Automation]
+---
+# HubSpot Integration with SmythOS
+
+> **Want to automate your sales, marketing, and service processes?** Connect HubSpot to SmythOS and empower your agents to manage contacts, deals, and tickets automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your HubSpot account to SmythOS using a private app Access Token. Then, use our suite of components to automate your entire customer lifecycle, from creating new contacts to managing support tickets.
+</InfoCallout>
+
+## List of HubSpot Components
+Quickly compare HubSpot components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Contact**](#create-contact) | Write | Creates a new contact record in your CRM. | <Badge type="required" /> `email`<br/><Badge type="optional" /> `firstName`, `company` | `id` | Automatically adding a new lead from a web form. |
+| [**List Contacts**](#list-contacts) | Read | Retrieves a list of all contacts from your HubSpot account. | <Badge type="required" /> `trigger`<br/><Badge type="optional" /> `limit` | `results`, `pagingNextAfter` | Syncing your contact list to another application. |
+| [**Get Contact**](#get-contact) | Read | Retrieves the details of a single contact by their ID. | <Badge type="required" /> `contactId` | `id`, `email`, `firstName` | Fetching a customer's details before a call. |
+| [**Create Deal**](#create-deal) | Write | Creates a new deal in a specified pipeline. | <Badge type="required" /> `dealname`, `dealstage`, `pipeline` | `id` | Creating a new sales opportunity when a lead shows interest. |
+| [**List Deals**](#list-deals) | Read | Retrieves a list of all deals from your HubSpot account. | <Badge type="required" /> `trigger`<br/><Badge type="optional" /> `limit` | `results`, `pagingNextAfter` | Generating a weekly sales pipeline report. |
+| [**Get Deal**](#get-deal) | Read | Retrieves the details of a single deal by its ID. | <Badge type="required" /> `deal_id` | `id`, `dealName` | Checking the stage and amount of a specific deal. |
+| [**Create Ticket**](#create-ticket) | Write | Creates a new customer support ticket. | <Badge type="required" /> `subject`<br/><Badge type="optional" /> `content`, `pipeline` | `id` | Automatically creating a support ticket from an email. |
+| [**List Tickets**](#list-tickets) | Read | Retrieves a list of all support tickets. | <Badge type="required" /> `trigger`<br/><Badge type="optional" /> `limit` | `results`, `pagingNextAfter` | Auditing open support tickets. |
+| [**Get Ticket**](#get-ticket) | Read | Retrieves the details of a single ticket by its ID. | <Badge type="required" /> `ticket_id` | `id`, `subject`, `content` | Getting context on a support issue before responding. |
+| [**Import File**](#import-file) | Write | Uploads a file to your HubSpot file manager. | <Badge type="required" /> `file_url`, `folderPath`, `name` | `id` | Attaching a signed contract to a customer's record. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate HubSpot with Your Agent?</summary>
+
+HubSpot is a central CRM for managing the entire customer lifecycle. Integrating it with SmythOS allows you to build powerful agents that connect your sales, marketing, and service operations to all your other systems.
+
+- **Automate Lead Management:** Create agents that capture leads from website forms, social media, or other channels and automatically create new contact and deal records in HubSpot.
+- **Streamline Sales Processes:** Build an agent that, when a deal is moved to a new stage in HubSpot, automatically sends a follow-up email, schedules a meeting, and creates a task for the sales representative.
+- **Enhance Customer Service:** When a customer submits a support request via email or chat, an agent can automatically create a new ticket in the HubSpot Service Hub, assign it to the right team, and send an automated confirmation to the customer.
+- **Data Synchronization:** Keep your HubSpot data in sync with other platforms. An agent can update contact properties in HubSpot when they change in your e-commerce platform or billing system.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **HubSpot account** with permissions to create private apps.
+- A HubSpot Private App **Access Token**.
+
+<Divider />
+
+## Getting Started With HubSpot
+
+The connection between SmythOS and HubSpot is configured using a secure Access Token from a private app.
+
+### Step 1: Get Your HubSpot Access Token
+1.  Log in to your [HubSpot account](https://app.hubspot.com/).
+2.  Navigate to **Settings** (the gear icon in the top navigation).
+3.  In the left menu, go to **Integrations** > **Private Apps**.
+4.  Click **Create a private app**.
+5.  On the **Basic Info** tab, give your app a name (e.g., "SmythOS Agent") and description.
+6.  Go to the **Scopes** tab and grant the necessary permissions. For full functionality, you may need scopes like `crm.objects.contacts.write`, `crm.objects.deals.read`, `tickets`, etc.
+7.  Click **Create app**. A dialog will appear with your **Access Token**.
+8.  **Copy this token immediately.** It will not be shown again.
+
+### Step 2: Store Your Access Token in SmythOS Vault
+Your Access Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your HubSpot Access Token as the value. Give it a memorable name, like `hubspot_access_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a HubSpot Component
+1.  In your SmythOS agent graph, drag and drop any HubSpot component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `HubSpot Access Token` field, select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Access Token from the Vault to **each** HubSpot component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which HubSpot Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Add a new sales lead** to your CRM | An email, name, and company | [Create Contact](#create-contact) | The standard method for creating a new contact record. |
+| **Start a new sales opportunity** | A deal name and pipeline stage | [Create Deal](#create-deal) | The primary way to add a new deal to your sales pipeline. |
+| **Log a new customer issue** | A subject and description | [Create Ticket](#create-ticket) | The correct way to create a new ticket in the Service Hub. |
+| **Get a list of all your customers** | Your entire contact database | [List Contacts](#list-contacts) | Retrieves all contacts, perfect for syncing or bulk operations. |
+| **Find a specific contact** by their email | An email address | Use the Search CRM endpoint via a custom API call. | This allows you to find a contact ID before updating their record. |
+| **Get all deals** in your sales pipeline | Your entire deals database | [List Deals](#list-deals) | Retrieves all deals, which can then be filtered in your agent. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each HubSpot component.
+
+### <a name="create-contact"></a>Create Contact
+Creates a new contact record in your HubSpot CRM.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `email` | string | Yes | The email address of the contact. |
+| `firstName` | string | Yes | The first name of the contact. |
+| `lastName` | string | Yes | The last name of the contact. |
+| `phone` | string | Optional| The phone number of the contact. |
+| `company` | string | Optional| The company the contact is associated with. |
+| `website` | string | Optional| The website URL for the contact or their company. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the newly created contact. |
+| `Response`| object | The full, raw JSON response from the HubSpot API. |
+
+<TipCallout title="Use Case">
+An agent is connected to a "Contact Us" form. When a new form is submitted, the agent uses this component to automatically create a new contact record in HubSpot and assign it to a sales representative.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-contacts"></a>List Contacts
+Retrieves a list of all contacts from your HubSpot CRM.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | string | Yes | Any value to initiate the component's execution. |
+| `limit` | integer| Optional| The number of contact records to retrieve. Default: `10`. |
+| `archived`| boolean| Optional| Whether to include archived contacts. Default: `false`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | A list of contact objects, each with detailed information. |
+| `pagingNextAfter`| string | An identifier used for pagination to fetch the next page of results. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A marketing agent runs weekly, uses this component to fetch all new contacts, and syncs them to a separate email marketing platform.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-contact"></a>Get Contact
+Retrieves detailed information about a specific contact by their ID.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `contactId`| string | Yes | The unique identifier for the contact you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier for the contact. |
+| `email` | string | Email address of the contact. |
+| `firstName` | string | First name of the contact. |
+| `lastName` | string | Last name of the contact. |
+| `phone` | string | Phone number of the contact. |
+| `company` | string | Company associated with the contact. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+Before sending a personalized email, an agent uses this component to fetch the contact's `firstName` and `company` to include in the message.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-deal"></a>Create Deal
+Creates a new deal (sales opportunity) in a specified pipeline.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `dealname` | string | Yes | The name of the deal (e.g., "ACME Corp - Website Redesign"). |
+| `amount` | string | Yes | The monetary value of the deal. |
+| `dealstage`| string | Yes | The ID of the deal stage (e.g., `appointmentscheduled`). |
+| `pipeline`| string | Yes | The ID of the pipeline the deal belongs to (e.g., `default`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the newly created deal. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After an initial discovery call, an agent creates a new deal in the "Sales Pipeline" with the stage set to "Qualified to Buy," including the estimated deal amount.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-deals"></a>List Deals
+Retrieves a list of deals from your HubSpot account.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | string | Yes | Any value to initiate the execution. |
+| `limit` | integer| Optional| The maximum number of deals to return. Default: `10`. |
+| `archived`| boolean| Optional| Whether to include archived deals. Default: `false`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | A list of deal objects in a structured format. |
+| `pagingNextAfter`| string | A token to retrieve the next page of results if pagination is required. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A sales manager agent runs every Monday morning, uses `List Deals` to get all deals in the "Negotiation" stage, and sends a summary to a leadership channel in Microsoft Teams.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-deal"></a>Get Deal
+Retrieves detailed information about a specific deal by its ID.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `deal_id` | string | Yes | The unique identifier for the deal you want to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the deal. |
+| `amount` | string | The monetary value of the deal. |
+| `dealName` | string | The name associated with the deal. |
+| `dealStage`| string | The current stage of the deal in the sales process. |
+| `pipeline`| string | The sales pipeline the deal is part of. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a deal is about to close, an agent fetches its details using this component to prepare a contract with the correct `dealName` and `amount`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-ticket"></a>Create Ticket
+Creates a new support ticket in the HubSpot Service Hub.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `subject` | string | Yes | The title or subject line of the ticket. |
+| `content` | string | Optional| The detailed description of the issue. Default: `NOT AVAILABLE`. |
+| `pipeline`| string | Yes | The ID of the support pipeline. Default: `0`. |
+| `pipeline_stage`| string | Yes | The ID of the initial stage (e.g., `1` for "New"). |
+| `ticket_priority`| string | Optional| The priority of the ticket. Default: `HIGH`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the newly created ticket. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent monitors a support email inbox. When a new email arrives, it parses the subject and body and uses this component to create a new ticket in the "Customer Support" pipeline.
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-tickets"></a>List Tickets
+Retrieves a list of ticket records from HubSpot.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | string | Yes | Any value to initiate the execution. |
+| `limit` | integer| Optional| Sets the maximum number of tickets to retrieve. Default: `10`. |
+| `archived`| boolean| Optional| Whether to include archived tickets. Default: `false`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | array | A list of ticket objects with their details. |
+| `pagingNextAfter`| string | A token used to fetch the next page of results. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A support manager agent runs daily to list all tickets with "High" priority that haven't been updated in 24 hours and sends a notification.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-ticket"></a>Get Ticket
+Retrieves detailed information about a specific support ticket.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `ticket_id`| string | Yes | The unique identifier for the ticket you want to fetch. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ticket's unique identifier. |
+| `content` | string | The detailed description of the ticket. |
+| `subject` | string | The subject line of the ticket. |
+| `pipeline`| string | The pipeline the ticket belongs to. |
+| `pipelineStage`| string | The stage of the ticket within the pipeline. |
+| `ticketPriority`| string | The priority level assigned to the ticket. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a customer replies to a support email, an agent uses the ticket ID to fetch the full context with this component before drafting a response.
+</TipCallout>
+
+<Divider/>
+
+### <a name="import-file"></a>Import File
+Uploads a file to the HubSpot File Manager.
+
+<InfoCallout>This component requires an `Access Token` for authentication, as detailed in the [Getting Started](#getting-started-with-hubspot) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Access:** Define the file's privacy: `PUBLIC_INDEXABLE`, `PUBLIC_NOT_INDEXABLE`, `PRIVATE`, etc.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `file_url` | string | Yes | A public URL where the file is currently hosted. |
+| `folderPath`| string | Yes | The path within the HubSpot File Manager to store the file (e.g., `/contracts`). |
+| `name` | string | Yes | The name to assign to the file in HubSpot. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique identifier of the uploaded file in HubSpot. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+After a contract is signed via an e-signature platform, an agent takes the URL of the signed PDF and uses this component to upload and attach it to the corresponding contact's record in HubSpot.
+</TipCallout>
+
+<WarningCallout title="Public URL Required">
+The `file_url` must be publicly accessible for HubSpot's servers to be able to download it.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Access Token:** Your HubSpot Access Token grants broad access to your CRM data. Always store it in the SmythOS `Vault`.
+* **Use Minimal Scopes:** When creating your private app in HubSpot, grant only the permissions your agent needs. If it only manages contacts, it doesn't need access to deals or tickets.
+* **Handle Pagination:** For all `List` components, the API returns paginated results. To get all records, you must build a loop that uses the corresponding `Next ... Page` component, passing the `pagingNextAfter` token from the previous call until it is no longer returned.
+* **Understand the HubSpot Object Model:** To associate objects (e.g., linking a deal to a contact), you will typically need to create or get one object first to retrieve its ID, then use that ID when creating the second object. This may require advanced use of the component's `Body` setting if not available as a direct input.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Access Token is incorrect, has been revoked, or is missing.
+  * **Solution:** Verify that the Access Token in your SmythOS Vault is correct and active. Generate a new token in your HubSpot private app settings if necessary.
+
+* **Error: `403 Forbidden`**
+  * **Cause:** The private app's Access Token does not have the required scopes for the action you are trying to perform (e.g., trying to create a contact without `crm.objects.contacts.write` scope).
+  * **Solution:** Go to your private app's settings in HubSpot, navigate to the **Scopes** tab, and ensure all necessary permissions are checked.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect ID was provided (e.g., `contactId`, `deal_id`).
+  * **Solution:** Double-check all IDs for typos. Use a `List` or `Search` component to verify that the resource you are trying to access exists.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful sales, marketing, and service automations with the **SmythOS HubSpot Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Manages the entire lead lifecycle. It captures a lead from a form, creates a `Contact` in HubSpot, creates a `Deal`, and then assigns a `Task` to a sales rep to follow up.
+    * Syncs data from your e-commerce platform. When a new customer makes a purchase on [Shopify](/docs/agent-studio/integrations/shopify-integration), the agent finds or creates a `Contact` in HubSpot and updates a custom property with their total order value.
+    * Automates support. It receives an email, uses an [LLM](/docs/agent-studio/integrations/openrouter-integration) to determine if it's a bug report, and if so, creates a new `Ticket` in the Service Hub.
+
+* **Explore Other Integrations:**
+    * When a new contact is created, trigger a workflow to add them to a specific marketing list in [Mailchimp](/docs/agent-studio/integrations/mailchimp-integration) or [Klaviyo](/docs/agent-studio/integrations/klaviyo-integration).
+    * When a deal is marked "Closed-Won," trigger an agent to create a new client record in your accounting software and a new project in [Asana](/docs/agent-studio/integrations/asana-integration).
+    * Use the [Twilio Integration](/docs/agent-studio/integrations/twilio-integration) to send an SMS notification to a sales rep when a high-priority deal is created for them.

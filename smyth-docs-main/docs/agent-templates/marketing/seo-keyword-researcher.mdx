@@ -1,0 +1,99 @@
+# Tutorial: SEO Keyword Researcher Agent
+
+This agent can provide users with comprehensive keyword data, including search volume, Cost Per Click (CPC), and competition levels for specific sets of keywords. To aid in devising strategies that boost web traffic, improve user engagement, and enhance overall online presence. Whether you're interested in content, industry, audience, niche, or SEO targeting, this agent will ensure you have the precise data to make informed decisions.
+
+<Youtube videoId="17XGx6tDRWs" title="SmythOS -  SEO Keyword Researcher Agent" />
+
+## Keywords Everywhere API Key
+
+1. Navigate to [https://keywordseverywhere.com/first-install-addon.html](https://keywordseverywhere.com/first-install-addon.html).
+2. Click `Get API Key`
+
+<Image src="/docs/img/keyword_researcher_agent/Image 1.png" alt="alt text" />
+
+3. Enter your email address. After agreeing to the Terms of Service, click the `Email Me The API Key` button to receive your API Key.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 2.png" alt="alt text" />
+
+4. Check your email and open Key Everywhere’s email.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 3.png" alt="alt text" />
+
+5. Click the `API Key` link.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 4.png" alt="alt text" />
+
+6. Next, click the copy button and securely store your API Key in a safe location.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 5.png" alt="alt text" />
+
+## Agent Setup
+
+1. In SmythOS, navigate to the `Templates` tab.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 6.png" alt="alt text" />
+
+2. You can scroll down to find the `SEO Keyword Researcher` or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 7.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+## LLM Prompt Setup
+
+1. In `SmythOS`, locate the `LLM Prompt KE API Key` component then click on the gear icon to access its settings.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 8.png" alt="alt text" />
+
+2. Input your `Keywords Everywhere API key` in the `Prompt` section. Remember to click on the check mark icon to confirm and save your configuration.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 9.png" alt="alt text" />
+
+3. You’re all set!
+
+## Test the Agent
+
+>**Notes to remember:**
+>
+> - Specify the country of your target audience because search volume and competition can vary greatly from country to country or leave blank for a global result.
+> - Determine the currency you want to use. This is especially important for CPC (Cost Per Click) data. Example: usd, gbp, aud, nzd (leaving this value blank defaults to USD).
+> - Provide a list of keywords, separated by comma, that you want to analyze. You could be interested in one specific keyword or a combination of several. You can list/query up to 100 keywords at a time.
+> - Indicate your data source. You might have a preferred SEO tool or database from where you want to pull the data. Select either gkp or cli.
+>   - gkp = shows data from Google Keyword Planner
+>   - cli = shows data from Google Keyword Planner and Clickstream
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 10.png" alt="alt text" />
+
+2. Ask the agent to get keyword data.
+   1. **Sample Prompt:** Get data for these keywords organic skincare, natural beauty products, vegan cosmetics for the UK market. Also use Clickstream data.
+
+<Image src="/docs/img/keyword_researcher_agent/Image 11.png" alt="alt text" />
+
+3. Here’s the result!
+
+<Image src="/docs/img/keyword_researcher_agent/Image 12.png" alt="alt text" />
+
+4. Here is the data for the keywords you have requested analysed with Clickstream:
+   1. **Keyword: Organic Skincare**
+      1. Monthly Search Volume: 5400
+      2. Cost Per Click (CPC): £0.61
+      3. Competition: High (0.99)
+      4. Month over Month Trend: Fluctuates around 4400 to 5400
+   2. **Keyword: Natural Beauty Products**
+      1. Monthly Search Volume: 4400
+      2. Cost Per Click (CPC): £0.26
+      3. Competition: High (0.97)
+      4. Month over Month Trend: Mostly consistent at 4400 with a peak at 5400 in April and December 2023, dips to 3600 in July 2023.
+   3. **Keyword: Vegan Cosmetics**
+      1. Monthly Search Volume: 2900
+      2. Cost Per Click (CPC): £0.16
+      3. Competition: High (0.96)
+      4. Month over Month Trend: Fluctuates from 2400 (in July, August, and September 2023) and peaks at 6600 in April 2023.
+
+5. In terms of SEO targeting, these keywords have high competition which indicates that many businesses are bidding on these keywords. The trends show steady interest in these topics with noticeable peaks, these could be due to seasonal demand or increased consumer interest during those months.
+
+
+
+

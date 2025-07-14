@@ -1,0 +1,234 @@
+---
+title: PdfCrowd Integration
+description: Connect SmythOS to PdfCrowd to automate document conversions, such as HTML to PDF, PDF to Text, and Image to PDF, directly from your agent workflows.
+og:title: SmythOS & PdfCrowd - Automate Your Document Conversions
+og:description: Learn to integrate the PdfCrowd API with SmythOS. Empower your agents to programmatically convert web pages, images, and PDF documents with a secure and reliable service.
+og:image: /docs/img/integrations/smythos_pdfcrowd.png
+keywords: [PdfCrowd SmythOS Integration, Connect PdfCrowd to SmythOS, SmythOS PDF Conversion, Automate PDF, HTML to PDF API, No-Code Document Conversion]
+---
+# PdfCrowd Integration with SmythOS
+
+> **Need to convert documents and web pages within your workflows?** Connect PdfCrowd to SmythOS and empower your agents to automatically convert HTML, images, and PDFs with a professional, cloud-based service.
+
+<InfoCallout title="TL;DR">
+Securely link your PdfCrowd account to SmythOS by providing a Base64 encoded string of your `username:api_key`. Then, use our components to automate all your document conversion needs.
+</InfoCallout>
+
+## List of PdfCrowd Components
+Quickly compare PdfCrowd components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**HTML to PDF**](#html-to-pdf) | Convert | Converts a live webpage or HTML file into a PDF document. | <Badge type="required" /> `webpage/file_url` | `url` | Archiving a webpage or generating a PDF report from an HTML template. |
+| [**Image to PDF**](#image-to-pdf) | Convert | Converts an image file (e.g., JPG, PNG) into a PDF document. | <Badge type="required" /> `file_url` | `url` | Combining multiple scanned image receipts into a single PDF expense report. |
+| [**PDF to Text**](#pdf-to-text) | Extract | Extracts the plain text content from a PDF document. | <Badge type="required" /> `file_url` | `Response` (text) | Analyzing the content of a PDF for keywords or summarization. |
+| [**PDF to HTML**](#pdf-to-html) | Convert | Converts a PDF document back into an HTML file. | <Badge type="required" /> `file_url` | `Response` (HTML) | Making the content of a PDF web-viewable or easier to parse. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate PdfCrowd with Your Agent?</summary>
+
+PdfCrowd is a robust API for handling document conversions. Integrating it with SmythOS allows you to build powerful agents that can create, process, and extract information from various document formats.
+
+- **Automate Report Generation:** Create agents that gather data, render it into an HTML template, and then use the `HTML to PDF` component to generate a professional, shareable PDF report.
+- **Content Archiving:** Build a workflow that takes a list of important URLs and automatically creates PDF snapshots of each page for a permanent, offline archive.
+- **Data Extraction:** Use the `PDF to Text` component to extract text from invoices, contracts, or research papers. An agent can then parse this text to find key information, feed it into a database, or pass it to an LLM for analysis.
+- **Streamline Document Workflows:** Automatically convert user-uploaded images into a standardized PDF format for consistent document management and storage.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **PdfCrowd account**.
+- Your PdfCrowd **Username** and **API Key**.
+
+<Divider />
+
+## Getting Started With PdfCrowd
+
+The connection between SmythOS and PdfCrowd is configured using your Username and API Key, which must be Base64 encoded.
+
+### Step 1: Get Your PdfCrowd Credentials
+1.  Sign up for a [PdfCrowd account](https://pdfcrowd.com/user/sign-up/).
+2.  Your **Username** is the email you used to register.
+3.  Navigate to your [Account page](https://pdfcrowd.com/user/account/change-api-key/) to find your **API Key**.
+
+### Step 2: Base64 Encode Your Credentials
+The API uses Basic Authentication. You need to combine your credentials and Base64 encode them.
+1.  Combine your credentials into a single string with a colon in between: `YOUR_USERNAME:YOUR_API_KEY`.
+2.  Use a Base64 encoding tool (like the "Encode/Decode" component in SmythOS) to encode this entire string.
+3.  Copy the resulting Base64 encoded string.
+
+### Step 3: Store Your Encoded Key in SmythOS Vault
+Your encoded key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your **Base64 encoded string** as the value. Give it a memorable name, like `pdfcrowd_base64_auth`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 4: Configure a PdfCrowd Component
+1.  In your SmythOS agent graph, drag and drop any PdfCrowd component.
+2.  Click the component to open its **Settings** panel.
+3.  In the authentication field (e.g., `Base64 Encoded Username and API Key`), select the secret you saved in the Vault.
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Base64 encoded secret from the Vault to **each** PdfCrowd component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which PdfCrowd Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a PDF snapshot** of a website | A URL | [HTML to PDF](#html-to-pdf) | The standard way to convert any live webpage into a PDF document. |
+| **Combine images** into a single PDF | An image file URL | [Image to PDF](#image-to-pdf) | Specifically designed to take image formats and convert them to PDF. |
+| **Extract all the text** from a PDF report | A PDF file URL | [PDF to Text](#pdf-to-text) | The best way to get clean, plain text from a PDF for further processing. |
+| **Make a PDF's content editable** as HTML | A PDF file URL | [PDF to HTML](#pdf-to-html) | Converts the PDF structure back into HTML code. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each PdfCrowd component.
+
+### <a name="html-to-pdf"></a>HTML to PDF
+Converts a webpage or raw HTML file, accessible via a URL, into a PDF document.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-pdfcrowd) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `webpage/file_url` | string | Yes | The public URL of the webpage or HTML file to convert. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A temporary URL to download the generated PDF file. |
+| `size` | integer | The size of the generated PDF in bytes. |
+| `mimetype`| string | The MIME type of the output file (`application/pdf`). |
+| `Response`| object | The raw JSON response from the PdfCrowd API. |
+
+<TipCallout title="Use Case">
+An agent generates a dynamic invoice using an HTML template, hosts it temporarily, and then uses this component to convert that HTML page into a final PDF invoice to be sent to a customer.
+</TipCallout>
+
+```json
+{
+  "component": "pdfcrowd.htmlToPdf",
+  "webpage/file_url": "[https://www.example.com](https://www.example.com)"
+}
+```
+
+<Divider/>
+
+### <a name="image-to-pdf"></a>Image to PDF
+Converts an image file, accessible via a URL, into a PDF document.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-pdfcrowd) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `file_url` | string | Yes | The public URL of the image file (e.g., PNG, JPG) to convert. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | A temporary URL to download the generated PDF file. |
+| `size` | integer | The size of the generated PDF in bytes. |
+| `mimetype`| string | The MIME type of the output file (`application/pdf`). |
+| `Response`| object | The raw JSON response from the PdfCrowd API. |
+
+<TipCallout title="Use Case">
+An agent processes user-submitted ID photos. It uses this component to convert each JPG photo into a separate, standardized PDF file for archival.
+</TipCallout>
+
+<Divider/>
+
+### <a name="pdf-to-text"></a>PDF to Text
+Extracts plain text content from a PDF document accessible via a URL.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-pdfcrowd) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `file_url` | string | Yes | The public URL of the PDF file to extract text from. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| string | The extracted plain text content from the PDF. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent receives a PDF invoice via email attachment. It gets the file URL, uses this component to extract the text, and then parses the text to find the invoice number, amount, and due date.
+</TipCallout>
+
+<Divider/>
+
+### <a name="pdf-to-html"></a>PDF to HTML
+Converts a PDF document, accessible via a URL, into an HTML document.
+
+<InfoCallout>This component requires Base64 encoded credentials for authentication, as detailed in the [Getting Started](#getting-started-with-pdfcrowd) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `file_url` | string | Yes | The public URL of the PDF file to convert. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| string | The converted HTML content. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+To make a legacy PDF manual searchable on a website, an agent uses this component to convert the PDF to HTML, which can then be indexed or embedded into a webpage.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always store your Base64-encoded `username:api_key` string in the SmythOS `Vault`.
+* **Use Public URLs:** All input URLs (`file_url`, `webpage/file_url`) must be publicly accessible over the internet for PdfCrowd's servers to be able to fetch them.
+* **Handle Large Files:** Document conversion, especially for large or complex files, can take time. Design your agent workflows to account for potential delays.
+* **Error Handling:** Check the `Headers` output for HTTP status codes. A `200 OK` indicates success, while codes like `400` or `500` indicate an error. The `Response` body will often contain a detailed error message.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Base64 encoded credentials are incorrect, or your PdfCrowd account has an issue (e.g., out of credits).
+  * **Solution:** Carefully re-create and re-encode your `username:api_key` string. Log in to your PdfCrowd account to check your status and credit balance.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** The input `file_url` is invalid, inaccessible, or points to an unsupported file type.
+  * **Solution:** Verify that the URL is correct and publicly accessible. You can test this by trying to open the URL in an incognito browser window. Ensure the file format is supported by the specific conversion component.
+
+* **Conversion Fails or Times Out**
+  * **Cause:** The source file may be extremely large, complex, or corrupted. There could also be a temporary issue with the PdfCrowd service.
+  * **Solution:** Try converting a smaller, simpler file to confirm your setup is correct. Check the PdfCrowd status page for any reported outages.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful document processing pipelines with the **SmythOS PdfCrowd Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a "Webpage Archiver." It takes a URL from a user, uses the `HTML to PDF` component to create a PDF snapshot, and then saves the file to [OneDrive](/docs/agent-studio/integrations/onedrive-integration).
+    * Creates a "Report Summarizer." The agent receives a PDF report, uses `PDF to Text` to extract the content, and then feeds the text to an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to generate a concise summary.
+    * Manages receipts. An agent takes user-submitted photos of receipts, uses the `Image to PDF` component to standardize them, and then stores them for expense reporting.
+
+* **Explore Other Integrations:**
+    * Combine PdfCrowd with a [web scraping tool](/docs/agent-studio/integrations/scrapingbee-integration). Scrape data from multiple pages, have your agent format it into a single HTML report, and then use `HTML to PDF` to create a final document.
+    * After converting a document, use the [SendGrid Integration](/docs/agent-studio/integrations/sendgrid-integration) to email the generated PDF or text file as an attachment.

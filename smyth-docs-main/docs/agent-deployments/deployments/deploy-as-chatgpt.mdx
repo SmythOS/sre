@@ -1,0 +1,165 @@
+---
+title: Deploy as ChatGPT
+description: How to deploy your SmythOS agent as a custom GPT inside ChatGPT using OpenAPI.
+keywords: [SmythOS, ChatGPT, custom GPT, deploy GPT, OpenAPI, GPT Builder, AI agents]
+---
+
+# Deploy as ChatGPT
+
+> **Built in SmythOS. Published to ChatGPT.**  
+> Use this guide to connect your SmythOS agent to GPT Builder via OpenAPI. Fast. Flexible. No rewrites.
+
+<InfoCallout>
+**TL;DR:** Deploy your agent → copy its OpenAPI URL → import it into GPT Builder as an Action. Done.
+</InfoCallout>
+
+<Divider/>
+
+## Why Connect Your SmythOS Agent to ChatGPT?
+
+If you want to:
+
+- Let users interact with your agent inside ChatGPT
+- Avoid duplicating agent logic
+- Control updates, access, and visibility
+
+... then you’re in the right place.
+
+This method uses SmythOS’s OpenAPI output + GPT Builder’s Action system.
+
+<Divider/>
+
+## Prerequisites
+
+- A deployed agent in SmythOS (**Test or Production**)
+- Access to [OpenAI GPT Builder](https://chat.openai.com/gpts/editor) (**Pro or higher plan**)
+
+<Divider/>
+
+## Step 1: Get the OpenAPI URL
+
+3. Go to **Agent Settings → Deployments**  
+4. Scroll to **Environment URLs** and locate:
+   - **Test subdomain** (for development use)  
+   - **Production subdomain** (for stable releases)
+
+Example subdomains:
+
+```text
+https://salesbot.agent.stage.smyth.ai (Test)
+https://salesbot.agent.pstage.smyth.ai (Production)
+```
+
+You’ll use these to form your OpenAPI URL by appending `/api-docs/openapi-llm.json` to your subdomain:
+
+```text
+https://salesbot.agent.pstage.smyth.ai/api-docs/openapi-llm.json
+```
+
+General format:
+
+```text
+https://<subdomain>/api-docs/openapi-llm.json
+```
+
+<PromptCard prompt="Use the production subdomain for stable GPTs and test subdomain when you're actively iterating." />
+
+<Divider/>
+
+## Step 2: Create and Configure Your Custom GPT
+
+### 1. Open GPT Builder
+[Click here to open GPT Builder](https://chat.openai.com/gpts/editor)
+
+### 2. Set Basic Configuration
+Click the **Configure** tab.
+
+### 3. Add Name, Instructions, and Welcome Message
+Fill in:
+- **Name** – the public-facing name of your GPT
+- **Instructions** – paste your SmythOS agent behavior or prompt config
+- **Welcome message** – what users see on launch
+
+<InfoCallout>
+**Tip:** Copy your SmythOS agent behavior directly into the Instructions field for consistent results.
+</InfoCallout>
+
+### 4. Add an Action to Use the Agent
+Scroll to **Actions**, then click **Create new action**.
+
+### 5. Import the OpenAPI URL
+Depending on your use case:
+
+#### For Test Agent:
+```text
+https://<test-subdomain>/api-docs/openapi-llm.json
+```
+
+#### For Production Agent:
+```text
+https://<prod-subdomain>/api-docs/openapi-llm.json
+```
+
+Paste the correct URL based on your chosen environment, then click **Import**.
+
+<InfoCallout>
+Import your OpenAPI actions directly from `https://<subdomain>/api-docs/openapi-llm.json`
+</InfoCallout>
+
+### 6. Finalize the Setup
+Click **Create** in the top right corner to save the custom action.
+
+### 7. Test or Customize Further
+You’re ready to use the GPT... or customize it further if needed.
+
+<InfoCallout>
+If you’re using the test URL, your GPT will reflect your agent’s latest edits. In debug mode, requests wait for manual execution in Studio.
+</InfoCallout>
+
+<Divider/>
+
+## Keeping Your GPT Synced
+
+- **Re-deploy** your agent after edits
+- **Re-check** your subdomain to ensure it’s unchanged
+- **Re-import** the OpenAPI URL in GPT Builder to sync new logic
+
+<PromptCard prompt="Reimport your OpenAPI URL after every significant agent update or version bump." />
+
+<Divider/>
+
+<InfoCallout>
+Every time your agent logic changes, re-deploy and re-import the updated OpenAPI file.
+</InfoCallout>
+
+<Divider/>
+
+## Troubleshooting Common Issues
+
+| Issue                          | Fix                                                                 |
+|-------------------------------|----------------------------------------------------------------------|
+| 401 Unauthorized              | Double-check auth token format and value                            |
+| Import fails                  | Visit URL in browser... if it redirects, use the final `.json` link  |
+| GPT doesn't see new endpoints | Re-import OpenAPI file after changes                                |
+| `('openapi',): Input should be '3.1.0'` | Change OpenAPI version from 3.0.1 to 3.1.0 in the schema  |
+
+<Divider/>
+
+## What’s Next?
+
+Great! Your SmythOS agent is now live and available inside ChatGPT as a custom GPT.
+
+- Build different GPTs using the same backend logic
+- Route traffic by versioning your agent and updating GPT URLs
+- Monitor usage from **Settings → Deployments → Analytics** in SmythOS
+
+You can now:
+- Avoid duplicate workflows  
+- Get versioned, testable GPT behavior  
+- Control how and when users interact with your logic
+
+<PromptCard prompt="Connect a SmythOS agent to a new GPT using OpenAPI URL and auth key." />
+
+> Need more? Build multiple GPTs from one agent. Use different prompts, auth setups, or endpoint sets. SmythOS keeps the backend clean.
+
+<Divider/>

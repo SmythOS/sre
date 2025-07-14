@@ -1,0 +1,177 @@
+---
+title: Perplexity AI Integration
+description: Connect SmythOS to Perplexity AI to leverage conversational search and access up-to-date, web-connected language models directly within your agents.
+og:title: SmythOS & Perplexity AI - Power Your Agents with Conversational Search
+og:description: Learn to integrate Perplexity AI with SmythOS. Empower your agents with models that can access the internet for real-time, sourced answers and perform advanced NLP tasks.
+og:image: /docs/img/integrations/smythos_perplexity.png
+keywords: [Perplexity AI SmythOS Integration, Connect Perplexity AI to SmythOS, SmythOS Conversational Search, AI Chatbot API, SmythOS LLM, No-Code AI, Llama 3 API]
+---
+# Perplexity AI Integration with SmythOS
+
+> **Want to build agents with access to real-time web knowledge?** Connect Perplexity AI to SmythOS and empower them with conversational search models that provide up-to-date, sourced answers.
+
+<InfoCallout title="TL;DR">
+Securely link your Perplexity AI account to SmythOS using an API key. Then, use the "Conversational Search" component to run a variety of powerful language models, including online models that can browse the web.
+</InfoCallout>
+
+## List of Perplexity AI Components
+The Perplexity AI integration provides a single, powerful component for accessing their suite of language models.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Conversational Search**](#conversational-search)| AI Task | Runs chat and text generation on various models, including web-connected ones. | <Badge type="required" /> `prompt`<br /><Badge type="optional" /> `model` | `message_content`| Research, fact-checking, content creation. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Perplexity AI with Your Agent?</summary>
+
+Perplexity AI specializes in providing accurate, sourced information through conversational search. Integrating it with SmythOS allows you to build agents that are not just creative, but also factual and current.
+
+- **Real-Time, Web-Connected Answers:** Use "online" models (e.g., `llama-3-sonar-large-32k-online`) to give your agents the ability to browse the internet to answer questions about recent events or topics.
+- **Factual and Sourced Information:** Perplexity's models are optimized to provide answers with citations, making them ideal for research, fact-checking, and creating trustworthy content.
+- **Powerful Conversational AI:** Leverage state-of-the-art Llama 3 and Mixtral models for a wide range of NLP tasks, from drafting emails to complex problem-solving.
+- **Optimized for Cost and Speed:** Choose from a range of models, from the fast and efficient Sonar Small to the powerful Sonar Large, allowing you to pick the right tool for any task and budget.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Perplexity AI account**.
+- Your Perplexity AI **API Key**.
+
+<Divider />
+
+## Getting Started With Perplexity AI
+
+The connection between SmythOS and Perplexity AI is configured using a secure API key.
+
+### Step 1: Get Your Perplexity AI API Key
+1.  Log in to your [Perplexity AI account](https://www.perplexity.ai/).
+2.  Navigate to your account settings and click on the **API** section, or go directly to `https://www.perplexity.ai/settings/api`.
+3.  Click **Generate** to create a new API key.
+4.  Copy the key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Perplexity AI API Key as the value. Give it a memorable name, like `perplexity_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure the Perplexity AI Component
+1.  In your SmythOS agent graph, drag and drop the **Perplexity AI Conversational Search** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `perplexity_api_key`).
+4.  Select your desired `Model` from the dropdown list.
+5.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each Perplexity AI component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Perplexity AI Model Should I Use?
+
+| If you need to… | Task Type | Recommended Model (Example) | Why this one? |
+|-----------------|-----------|-----------------------------|---------------|
+| **Answer questions about recent events** | Real-time Search | `llama-3-sonar-large-32k-online` | Provides the best reasoning with live web access. |
+| **Perform a quick, cost-effective task** | General Purpose | `llama-3-sonar-small-32k-chat` | A fast and efficient model for standard NLP tasks. |
+| **Write high-quality, creative content** | Creative Writing | `llama-3-70b-instruct` | A powerful instruction-tuned model for creative and complex generation. |
+| **Balance performance and cost** | Balanced | `mixtral-8x7b-instruct` | A strong mixture-of-experts model with excellent performance for its cost. |
+
+<TipCallout>
+The "online" models are unique to Perplexity and can access the internet. The "instruct" models are fine-tuned for following commands.
+</TipCallout>
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Perplexity AI component.
+
+### <a name="conversational-search"></a>Conversational Search
+Provides a unified interface to send prompts to Perplexity's suite of powerful and web-connected language models.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-perplexity-ai) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Model:** Choose your desired AI model from the dropdown list in the settings panel. Options range from fast, small models to large, web-connected ones.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `prompt` | string | Yes | The text input, question, or instruction to send to the language model. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `message_content` | string | The text content of the AI's generated response. |
+| `id` | string | The unique identifier for the Conversational Search request. |
+| `Response`| object | The full, raw JSON response from the Perplexity AI API, including usage data. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Create a "Fact-Checker" agent. The agent takes a statement as a `prompt`, sends it to the `llama-3-sonar-large-32k-online` model, and asks it to "Verify this statement and provide sources." The agent can then parse the sourced response to confirm the statement's accuracy.
+</TipCallout>
+
+```json
+{
+  "component": "perplexityai.chatCompletion",
+  "prompt": "What were the main announcements from the latest Apple event?",
+  "model": "llama-3-sonar-large-32k-online"
+}
+```
+
+<WarningCallout title="Model Costs and Capabilities">
+The different Perplexity models have varying costs and capabilities. "Online" models are great for current events but may be more expensive. Choose the model that best fits your task and budget.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always use the SmythOS `Vault` to store your Perplexity AI API key.
+* **Choose the Right Model:** The key to this integration is model selection. Use "online" models for questions that require up-to-date information. Use "chat" or "instruct" models for creative tasks, summarization, or general conversation where live web access isn't needed.
+* **Craft Clear Prompts:** For the best results, especially with "online" models, frame your `prompt` as a clear question or instruction. This helps the model understand when and how to search the web.
+* **Check the `Response` for Sources:** When using an "online" model, the full `Response` object may contain a list of sources the model used to generate the answer. You can parse this for fact-checking and citation.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API key is missing, invalid, or disabled.
+  * **Solution:** Verify that the API key in your SmythOS Vault is correct and matches the one in your Perplexity AI dashboard.
+
+* **Error: `402 Payment Required`**
+  * **Cause:** You may have exceeded your plan's limits or have a billing issue with your Perplexity AI account.
+  * **Solution:** Check your account status and billing information on the Perplexity AI website.
+
+* **Error: `404 Not Found`**
+  * **Cause:** This can happen if the API endpoint is incorrect or the specified model name is not valid.
+  * **Solution:** Ensure you have selected a valid model from the component's dropdown list. If the issue persists, check Perplexity's API documentation for any recent changes.
+
+* **Error: `429 Too Many Requests`**
+  * **Cause:** You have exceeded the rate limit for your Perplexity AI account or for the specific model you are using.
+  * **Solution:** Add a delay in your agent between frequent calls. Check the Perplexity API documentation for specific rate limit information.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build intelligent, fact-aware agents with the **SmythOS Perplexity AI Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Acts as a research assistant. It takes a topic, uses an "online" model to gather sourced information, and then uses a standard "chat" model to format that information into a structured report.
+    * Monitors social media for questions about your product. When a question is found, the agent uses an "online" model to search your public documentation or recent blog posts to find the answer and drafts a reply.
+    * Creates daily news summaries. Every morning, the agent asks an "online" model, "What are the top 3 headlines in the tech industry today?" and sends the summary to a Slack channel.
+
+* **Explore Other Integrations:**
+    * Combine Perplexity AI with a text-to-speech service like [Elevenlabs](/docs/agent-studio/integrations/elevenlabs-integration) to create an audio news briefing.
+    * Use Perplexity to research a topic, then use the [Fal.ai Integration](/docs/agent-studio/integrations/falai-integration) to generate a relevant image for the content.
+    * Feed the output from Perplexity into a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) to build a repository of sourced facts and research.

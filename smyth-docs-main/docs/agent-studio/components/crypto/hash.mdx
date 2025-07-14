@@ -1,0 +1,92 @@
+---
+title: Hash
+description: Generate a secure, fixed-size hash from input data using various cryptographic algorithms to ensure data integrity.
+keywords: [Hash, cryptography, security, integrity, checksum, md5, sha1, sha256, blake2]
+toc_max_heading_level: 2
+---
+
+# Hash Component
+
+Use the **Hash** component to generate a secure, fixed-size cryptographic hash from any input data. It's a fundamental tool for verifying data integrity, creating checksums, and securing information without needing to store it in a reversible format.
+
+<InfoCallout title="Why this matters">
+Hashing is essential for security and data verification. It allows you to confirm that data has not been tampered with (integrity) and to securely store representations of sensitive information (like passwords) without storing the information itself. This component makes generating these hashes simple and accessible.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Select an Algorithm and Encoding](#step-1-select-an-algorithm-and-encoding)
+- [Provide Input Data](#step-2-provide-input-data)
+- [Handle the Output Hash](#step-3-handle-the-output-hash)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select an Algorithm and Encoding
+
+Choose the cryptographic algorithm to use for hashing and the format for the final output string.
+
+| Setting          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Hash Algorithm** | Select a hash algorithm to determine the cryptographic method for generating hash values: <br/> 1. `md5` - Less secure, widely recognized. <br/> 2. `sha1` - Commonly used in security applications. <br/> 3. `sha224` - 224-bit truncated SHA-256. <br/> 4. `sha256` - Robust 256-bit SHA-2 algorithm. <br/> 5. `sha384` - 384-bit truncated SHA-512. <br/> 6. `sha512` - Strong 512-bit SHA-2. <br/> 7. `sha3-224` - 224-bit SHA-3 family. <br/> 8. `sha3-256` - 256-bit SHA-3. <br/> 9. `sha3-384` - 384-bit SHA-3. <br/> 10. `sha3-512` - 512-bit SHA-3. <br/> 11. `shake128` - Customizable-length hash. <br/> 12. `shake256` - Stronger security variant of `shake128`. <br/> 13. `blake2b512` - Fast, secure 512-bit Blake2. <br/> 14. `blake2s256` - 256-bit Blake2, optimized for 32-bit.                                                                                                |
+| **Output Encoding**| Choose the format for the generated hash value: <br/> 1. `hex` - Hexadecimal string, highly readable. <br/> 2. `base64` - Base64 string, suitable for binary-unsafe mediums. <br/> 3. `base64url` - URL and filename safe Base64. <br/> 4. `latin1` - Western European Latin-1 character set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+<TipCallout title="Which Algorithm Should I Use?">
+For new applications requiring strong security, default to `sha256` or `sha512`. The `blake2` family offers excellent performance and high security. Avoid `md5` and `sha1` for security-critical tasks as they are considered cryptographically weak.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/l8ZresAi5lORcDtYKQBN?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Hash | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide Input Data
+
+The component requires a single input: the data you wish to hash.
+
+| Input   | Required?                   | Description                                                                 |
+|---------|-----------------------------|-----------------------------------------------------------------------------|
+| **Data**| <Badge type="required">Yes</Badge> | The input data to be hashed. This can be a string, number, or binary data. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Output Hash
+
+The component produces a single output containing the calculated hash value.
+
+| Output   | Description                                                     |
+|----------|-----------------------------------------------------------------|
+| **Hash** | The resulting hash value, encoded in the format you specified in the settings. |
+
+<InfoCallout>
+A key property of a hash is that the same input data will always produce the exact same output hash. However, the hash is a one-way function; you cannot reverse it to get the original data back.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Use for Integrity Checks:** A common use case is to hash a file upon upload, store the hash, and then re-hash the file upon download to ensure it has not been corrupted or modified.
+- **Do Not Use for Encryption:** Hashing is a one-way process. It is not encryption. If you need to securely store data and retrieve it later, you must use encryption methods, not hashing.
+- **Choose the Right Algorithm:** Your choice of algorithm matters. For password hashing, use a strong, modern algorithm. For simple checksums where security is not a concern, `md5` might be sufficient.
+- **Salt Your Hashes:** For password storage, always add a unique, random "salt" to each password before hashing it. This prevents rainbow table attacks. You can do this by combining the password with a random string in a **Code Component** before passing it to the Hash component.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your hash is incorrect...">
+- **Mismatching Hashes:** The most common reason for a hash mismatch is a subtle change in the input data. Even a single extra space, a different character encoding, or a newline character will result in a completely different hash. Ensure the input data is identical.
+- **Choosing the Wrong Encoding:** Make sure the system you are comparing the hash against is using the same output encoding (`hex`, `base64`, etc.). A hash encoded in `hex` will not match the same hash encoded in `base64`.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- After hashing data, use the **[Encode/Decode Component](/docs/agent-studio/components/crypto/encode-decode)** to further transform the hash if required by an external system.
+- Create a file integrity checker: accept a file upload, generate a `sha256` hash of it, and compare it against a known, trusted hash value.
+- Use this component to generate a unique but consistent ID for a piece of data by hashing its contents.

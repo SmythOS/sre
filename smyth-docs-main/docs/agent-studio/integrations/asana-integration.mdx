@@ -1,0 +1,284 @@
+---
+title: Asana Integration
+description: Connect SmythOS to Asana to automate project and task management, create and update goals, and streamline your team's workflows directly from your agents.
+og:title: SmythOS & Asana - Automate Your Project Management
+og:description: Learn to integrate Asana with SmythOS. Empower your agents to create projects, manage tasks, and track goals, turning Asana into an active part of your automated workflows.
+og:image: /docs/img/integrations/smythos_asana.png
+keywords: [Asana SmythOS Integration, Connect Asana to SmythOS, SmythOS Asana, Automate Project Management, Asana API, No-Code Asana, Task Automation]
+---
+# Asana Integration with SmythOS
+
+> **Want to put your project management on autopilot?** Connect Asana to SmythOS and empower your agents to create projects, manage tasks, and track goals automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your Asana account to SmythOS by creating an application in the Asana Developer Console to get a Client ID and Secret. Then, use our suite of components to automate your entire project and task lifecycle.
+</InfoCallout>
+
+## List of Asana Components
+Quickly compare Asana components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Project**](#create-project) | Write | Creates a new project in a specified workspace or team. | <Badge type="required" /> `workspace_gid`, `name` | `gid` | Starting a new project when a client signs a contract. |
+| [**Create Task**](#create-task) | Write | Creates a new task within a workspace. | <Badge type="required" /> `workspace_gid`, `name` | `gid` | Automatically creating a "Follow Up" task after a sales call. |
+| [**Update Task**](#update-task) | Write | Updates the details of an existing task. | <Badge type="required" /> `task_gid`, `Body` | `gid` | Marking a task as complete from another system. |
+| [**Delete Task**](#delete-task) | Write | Permanently deletes a specific task. | <Badge type="required" /> `task_gid` | `Response` | Cleaning up tasks that are no longer relevant. |
+| [**Get Task**](#get-task) | Read | Retrieves the full details of a single task. | <Badge type="required" /> `task_gid` | `gid`, `name` | Fetching task details to provide context to an agent. |
+| [**List Project Tasks**](#list-project-tasks) | Read | Retrieves a list of all tasks within a specific project. | <Badge type="required" /> `project_gid` | `tasks` | Generating a daily summary of all open tasks for a project. |
+| [**Get Project**](#get-project) | Read | Retrieves detailed information about a specific project. | <Badge type="required" /> `project_gid` | `gid`, `name` | Checking a project's status or members. |
+| [**Update Goal**](#update-goal) | Write | Updates the details of an existing goal. | <Badge type="required" /> `goal_gid`, `Body` | `gid`, `name` | Updating the progress of a quarterly company goal. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Asana with Your Agent?</summary>
+
+Asana is a central tool for coordinating team work. Integrating it with SmythOS allows you to connect your project management directly to your other business processes and data sources.
+
+- **Automated Task Creation:** Build agents that listen for triggers—a new email, a form submission, a customer support ticket—and automatically create corresponding tasks in the right Asana project, assigned to the right person.
+- **Dynamic Project Scaffolding:** When a new client is onboarded or a new initiative begins, an agent can automatically create a new Asana project from a template, complete with standard sections and introductory tasks.
+- **Real-Time Progress Syncing:** Keep Asana in sync with your other tools. An agent can monitor a GitHub repository and, when an issue is closed, find and mark the corresponding task in Asana as complete.
+- **Automated Reporting:** Schedule agents to run daily or weekly, fetch all tasks for a specific project or user, and generate a progress report that can be sent to stakeholders via email or Slack.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **Asana account**.
+- **OAuth 2.0 credentials (`Client ID` and `Client Secret`)** from the Asana Developer Console.
+
+<Divider />
+
+## Getting Started With Asana
+
+The connection is handled via OAuth 2.0. This requires a one-time setup in the Asana Developer Console to get your credentials.
+
+### Step 1: Get Your OAuth 2.0 Credentials
+1.  **Go to the Developer Console:** Log in to your Asana account and navigate to the [Asana Developer Console](https://app.asana.com/0/my-apps).
+2.  **Create a New App:** Click on **+ New App**.
+3.  **Fill in Application Details:**
+    * Give your application a **Name** (e.g., "SmythOS Workflow Agent").
+    * **Redirect URL:** Enter the SmythOS callback URL: `https://app.smythos.com/oauth/oauth2/callback`.
+4.  **Copy Your Credentials:** Once created, you will be taken to the app's settings page. Here you will find your **Client ID** and **Client Secret**. Copy both values immediately.
+
+### Step 2: Store Your Credentials in SmythOS Vault
+Your Client ID and Secret are sensitive credentials. Use the SmythOS `Vault` to store them securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create new secrets for your `Client ID` and `Client Secret`, giving them memorable names like `asana_client_id` and `asana_client_secret`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure an Asana Component
+1.  In your SmythOS agent graph, drag and drop any Asana component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Client ID` and `Client Secret` fields, select the secrets you saved in the Vault.
+4.  Click **Authenticate**. You will be redirected to Asana to authorize the connection.
+5.  Your connection is now ready to use across all Asana components.
+
+<InfoCallout title="Heads-up">The OAuth authentication flow connects your Asana account to SmythOS. You only need to complete this process once.</InfoCallout>
+<Divider />
+
+## Which Asana Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new task** for a team member | A `workspace_gid` and task name | [Create Task](#create-task) | The primary method for adding new to-do items to Asana. |
+| **Update the due date** of a task | A `task_gid` | [Update Task](#update-task) | Modifies specific fields of an existing task without overwriting it. |
+| **Get all tasks** for a specific project | A `project_gid` | [List Project Tasks](#list-project-tasks) | Retrieves multiple tasks at once, scoped to a single project. |
+| **Start a new project** from scratch | A `workspace_gid` and project name | [Create Project](#create-project) | The standard way to create a new project board, list, or timeline. |
+| **Get the names and IDs** of all users in your workspace | A `workspace_gid` | **List Workspace Users** | Useful for finding the correct GID to assign tasks to a user. |
+| **Delete a task** that is no longer needed | A `task_gid` | [Delete Task](#delete-task) | Permanently removes a task from Asana. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Asana component.
+
+### <a name="create-project"></a>Create Project
+Creates a new project within a specified team or workspace.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-asana) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Default View:** Select the project's layout: `list`, `board`, `calendar`, or `timeline`.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `workspace_gid` | string | Yes | The Globally Unique Identifier (GID) of the workspace. |
+| `name` | string | Yes | The name of the new project. |
+| `team_gid` | string | Optional | The GID of the team to create the project in. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `gid` | string | The GID of the newly created project. |
+| `Response`| object | The full, raw JSON response from the Asana API. |
+
+<TipCallout title="Use Case">
+When a new client is signed in your CRM, an agent automatically creates a new Asana project for them, using the client's name as the project `name`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="create-task"></a>Create Task
+Creates a new task in a workspace, optionally assigning it to a project.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-asana) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Resource Subtype:** Classify the task as `default_task`, `milestone`, `section`, or `approval`.
+- **Approval Status:** If it's an approval task, set its status (`pending`, `approved`, etc.).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `workspace_gid` | string | Yes | The GID of the workspace for the task. |
+| `name` | string | Yes | The name/title of the task. |
+| `notes` | string | Optional | The description or body of the task. |
+| `due_on` | string | Optional | The due date in YYYY-MM-DD format. |
+| `project_gid` | string | Optional | The GID of the project to add this task to. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `gid` | string | The GID of the newly created task. |
+| `Response`| object | The raw JSON response, containing the full new task object. |
+
+<TipCallout title="Use Case">
+An agent receives an email flagged as urgent. It creates a new task in Asana with the email's subject as the `name` and the body as the `notes`, and assigns it to the support project.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-task"></a>Update Task
+Updates specific fields of an existing task.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-asana) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you define the fields to update (e.g., `{"notes": "New note.", "completed": true}`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_gid` | string | Yes | The GID of the task to update. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `task_gid` | string | The GID of the updated task. |
+| `permalink_url`| string | A direct URL to the task in the Asana app. |
+| `Response`| object | The raw JSON response, containing the full updated task object. |
+
+<TipCallout title="Use Case">
+When a developer closes a related issue in GitHub, an agent finds the corresponding task in Asana and uses this component to update its status to `completed: true`.
+</TipCallout>
+
+<WarningCallout title="Body Schema is Key">
+The JSON `Body` payload must follow the structure defined in the Asana API documentation. You only need to include the fields you wish to change.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="list-and-get-components"></a>List & Get Components
+Includes a wide range of components like **Get Project**, **Get Task**, **List Project Tasks**, **List Workspace Users**, etc. These components are used to retrieve information from your Asana account.
+
+<InfoCallout>These components use the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-asana) section.</InfoCallout>
+
+#### Common Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `project_gid`| string | Varies | The GID of a project. |
+| `task_gid` | string | Varies | The GID of a task. |
+| `section_gid`| string | Varies | The GID of a section. |
+| `workspace_gid`| string | Varies | The GID of a workspace. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` / `tasks` / etc. | array | An array of the requested resource objects (e.g., a list of tasks). |
+| `gid`, `name` | any | (For Get components) Specific details of a single retrieved resource. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case: Listing Tasks">
+A manager agent runs every morning. It uses **List Project Tasks** to get all tasks for a high-priority project, then formats the list and sends it as a daily briefing to a Microsoft Teams channel.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-task"></a>Delete Task
+Permanently deletes a specific task.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-asana) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_gid` | string | Yes | The GID of the task to be deleted. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response. |
+| `Headers` | object | HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a project is archived, a cleanup agent runs, finds all incomplete tasks within that project, and deletes them to keep the workspace tidy.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone. Use with caution.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always store your Asana `Client ID` and `Client Secret` in the SmythOS `Vault`.
+* **Use GIDs:** Asana uses "Globally Unique Identifiers" (GIDs) for everything. You will often need to use a `List` component (e.g., `List Workspace Users`) to find the correct GID for a resource (like a user or project) before you can use it in another component.
+* **Understand the Data Model:** Asana's structure is hierarchical: Organizations contain Workspaces and Teams, which contain Projects, which contain Sections and Tasks. Understanding this structure is key to using the right GIDs in the right places.
+* **Use the `Body` for Updates:** For `Update Task` and `Update Goal` components, you must construct the JSON payload in the `Body` setting. Refer to the official Asana API documentation for the correct schema.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized` / Authentication Errors**
+  * **Cause:** Your `Client ID` or `Client Secret` is incorrect, or the OAuth token has expired or been revoked.
+  * **Solution:** Verify your credentials in the SmythOS Vault. Try re-authenticating the integration in the component settings to get a new token.
+
+* **Error: `403 Forbidden`**
+  * **Cause:** The authenticated user does not have permission to perform the action on the specified resource (e.g., trying to create a task in a project they are not a member of).
+  * **Solution:** Check the user's permissions directly in Asana. Ensure they are a member of the relevant workspace, team, and project.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect GID (`project_gid`, `task_gid`, etc.) was provided.
+  * **Solution:** Double-check all GIDs for typos. Use a `List` component to verify that the resource you are trying to access exists and you have its correct GID.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** The JSON `Body` for a create/update operation is malformed, missing required fields, or contains invalid values.
+  * **Solution:** Carefully validate your JSON structure against the official Asana API documentation. For example, when creating a task, `workspace` and `name` are typically required.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful project management automations with the **SmythOS Asana Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your helpdesk software. When a new bug report is filed, it automatically creates a new task in your "Engineering Bugs" project in Asana and assigns it to the appropriate developer.
+    * Manages client onboarding. When a new client signs up, the agent creates a new Asana project for them from a template, complete with all standard kickoff tasks.
+    * Syncs with your calendar. The agent reads your [Microsoft Calendar](/docs/agent-studio/integrations/microsoft-calendar-integration) and creates Asana tasks for all upcoming meetings with a specific client.
+
+* **Explore Other Integrations:**
+    * When a task is marked as "complete" in Asana, trigger an agent to send a notification to a [Microsoft Teams](/docs/agent-studio/integrations/microsoft-teams-integration) or [Slack](/docs/agent-studio/integrations/slack-integration) channel.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a long email thread, and then create a new task in Asana with the summary in the notes.
+    * When a new row is added to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration), create a corresponding task in an Asana project.

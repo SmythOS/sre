@@ -1,0 +1,176 @@
+---
+title: Slack Integration
+description: Connect SmythOS to Slack to send messages, notifications, and alerts to your team's channels directly from your agent workflows.
+og:title: SmythOS & Slack - Automate Your Team Communication
+og:description: Learn to integrate Slack with SmythOS. Empower your agents to send automated messages to any channel, streamlining notifications for development, sales, and support.
+og:image: /docs/img/integrations/smythos_slack.png
+keywords: [Slack SmythOS Integration, Connect Slack to SmythOS, SmythOS Slack Bot, Automate Slack Messages, Slack API, No-Code Slack Bot, Team Communication]
+---
+# Slack Integration with SmythOS
+
+> **Want to bring your automations into your team's conversations?** Connect Slack to SmythOS and empower your agents to send real-time messages and alerts directly to your channels.
+
+<InfoCallout title="TL;DR">
+Securely link your Slack workspace to SmythOS by creating a Slack App and getting a Bot User OAuth Token. Then, use the "Send Message" component to automate all your team notifications.
+</InfoCallout>
+
+## List of Slack Components
+Quickly compare Slack components by what they do and their key I/O.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send Message**](#send-message) | Write | Sends a message to a specified public or private channel. | <Badge type="required" /> `channel_id`, `text` | `status`, `msgObj`| Posting automated alerts or daily reports. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Slack with Your Agent?</summary>
+
+Slack is the digital headquarters for countless teams. Integrating it with SmythOS allows you to build powerful agents that communicate and deliver information where your team is already working.
+
+- **Automated Alerting:** Create agents that monitor your infrastructure, applications, or support queues. When a critical event occurs, the agent can instantly post a detailed alert to the appropriate `#alerts` or `#devops` channel.
+- **Centralized Notifications:** Instead of relying on email, have your agents send all their notifications—from new sales leads to project status updates—into dedicated Slack channels. This keeps information organized and accessible.
+- **Reporting and Summaries:** Schedule an agent to run daily or weekly, gather data from various sources like Google Analytics or your CRM, and post a concise summary report in a leadership channel.
+- **Streamline Workflows:** Use Slack as the final step in a workflow. An agent can process data, generate a result, and deliver that result directly to a user or channel, closing the loop on an automated task.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Slack workspace** where you have permission to install apps.
+- A Slack **Bot User OAuth Token**.
+
+<Divider />
+
+## Getting Started With Slack
+
+The connection between SmythOS and Slack is configured using a secure Bot Token, which you get by creating a Slack App.
+
+### Step 1: Create a Slack App and Get Your Token
+1.  Navigate to the [Slack API dashboard](https://api.slack.com/apps) and click **Create New App**.
+2.  Choose **From scratch**.
+3.  Give your app a name (e.g., "SmythOS Notifier") and select the workspace you want to install it in. Click **Create App**.
+4.  You will be taken to the app's basic information page. In the left menu, click on **OAuth & Permissions**.
+5.  Scroll down to the **Scopes** section. Under "Bot Token Scopes," click **Add an OAuth Scope**.
+6.  Add the `chat:write` scope. This allows your app to post messages in channels it's a member of. You may need other scopes like `channels:read` or `users:read` for more advanced components.
+7.  Scroll back to the top of the "OAuth & Permissions" page and click **Install to Workspace**.
+8.  Follow the prompts to authorize the app.
+9.  After authorization, the page will reload, and you will see a **Bot User OAuth Token** (it starts with `xoxb-`). **Copy this token immediately.**
+
+### Step 2: Store Your Bot Token in SmythOS Vault
+Your Bot Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Slack Bot User OAuth Token as the value. Give it a memorable name, like `slack_bot_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Slack Component
+1.  In your SmythOS agent graph, drag and drop the **Send Message** component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Bot User OAuth Token` field, select the secret you saved in the Vault (e.g., `slack_bot_token`).
+4.  Your connection is now configured.
+
+### Step 4: Add the Bot to a Channel
+For your bot to post messages in a channel, it must be a member of that channel.
+1.  In Slack, go to the channel where you want to post messages.
+2.  Type `/invite @[Your Bot's Name]` and press Enter.
+3.  Your bot is now ready to post in that channel.
+
+<Divider />
+
+## Which Slack Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send a notification** to your team | A `channel_id` and `text` | [Send Message](#send-message) | This is the core component for all communication tasks in Slack. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for the Slack component.
+
+### <a name="send-message"></a>Send Message
+Posts a message to a specified public or private channel in your Slack workspace.
+
+<InfoCallout>This component requires a `Bot User OAuth Token` for authentication, as detailed in the [Getting Started](#getting-started-with-slack) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `channel_id` | string | Yes | The ID of the channel, private group, or user to send the message to. |
+| `text` | string | Yes | The text content of the message. Supports Slack's `mrkdwn`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | A descriptor of the operation's success or failure (e.g., "ok"). |
+| `msgObj` | object | The message object containing details of the sent message, including its timestamp (`ts`). |
+| `Response`| object | The full, raw JSON response from the Slack API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A deployment agent monitors a GitHub workflow. When the deployment to production is successful, it uses this component to send a message to the `#engineering` channel: `✅ Production deployment of v2.5.1 was successful.`
+</TipCallout>
+
+```json
+{
+  "component": "slack.sendMessage",
+  "channel_id": "C012AB3CD4E",
+  "text": "Heads up team, a new high-priority support ticket has just been created."
+}
+```
+
+<WarningCallout title="Finding the Channel ID">
+To get a channel's ID, open Slack, right-click on the channel name in the sidebar, and select "Copy Link". The ID is the string of characters that starts with `C` (for public channels) or `G` (for private channels).
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Bot Token:** Your Bot User OAuth Token can post messages and perform actions as your bot. Always store it in the SmythOS `Vault`.
+* **Use `mrkdwn` for Formatting:** The `text` input supports Slack's `mrkdwn` syntax. Use it to make your messages more readable with *bold*, _italic_, `code`, and > blockquotes.
+* **Master Block Kit for Rich Messages:** For more advanced formatting than `mrkdwn`, you can construct a `blocks` array in a custom API call. Block Kit allows you to build messages with buttons, images, and complex layouts.
+* **Use Dedicated Channels:** For automated notifications, it's a best practice to create dedicated channels (e.g., `#alerts`, `#deployments`, `#new-leads`) to keep conversations organized and prevent clutter in general channels.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `not_in_channel`**
+  * **Cause:** The bot you are using to post the message has not been invited to the specified `channel_id`.
+  * **Solution:** In the target Slack channel, type `/invite @[Your Bot's Name]` to add it to the channel.
+
+* **Error: `invalid_auth`**
+  * **Cause:** The Bot User OAuth Token is incorrect, invalid, or has been revoked.
+  * **Solution:** Verify that the token in your SmythOS Vault is correct. If needed, generate a new one in your Slack App settings and update the Vault secret.
+
+* **Error: `channel_not_found`**
+  * **Cause:** The `channel_id` provided is incorrect or does not exist.
+  * **Solution:** Double-check the channel ID by right-clicking the channel in Slack and selecting "Copy Link".
+
+* **Error: `missing_scope`**
+  * **Cause:** The Bot Token does not have the required permissions (scopes) to perform the action.
+  * **Solution:** Go to your Slack App's settings in the Slack API dashboard, navigate to **OAuth & Permissions**, and add the necessary Bot Token Scopes (e.g., `chat:write`). You will need to reinstall the app to your workspace after changing scopes.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful notification and communication workflows with the **SmythOS Slack Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates a daily "digest" of all new tasks created in [Asana](/docs/agent-studio/integrations/asana-integration) or [Trello](/docs/agent-studio/integrations/trello-integration) and posts it in a project channel.
+    * Monitors your company's Twitter mentions. When a negative tweet is detected (using a sentiment analysis model), it sends an urgent alert to the `#pr-crisis` channel with a link to the tweet.
+    * Connects to your e-commerce store. When a new order over $500 is placed, it posts a celebratory message with a GIF in the `#sales-wins` channel.
+
+* **Explore Other Integrations:**
+    * Combine Slack with a database integration like [Firestore](/docs/agent-studio/integrations/firestore-integration). When a new critical error is logged, trigger an agent to post the details to Slack.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a long document, then post the summary to a Slack channel for the team to review.
+    * When a new lead is created in [HubSpot](/docs/agent-studio/integrations/hubspot-integration), notify the assigned sales representative via a direct message in Slack.

@@ -1,0 +1,72 @@
+---
+title: Timestamp
+description: Get the current server timestamp in Unix epoch milliseconds for logging, tracking, and time synchronization.
+keywords: [Timestamp, time, date, epoch, Unix, log, synchronization]
+toc_max_heading_level: 2
+---
+
+# Timestamp Component
+
+Use the **Timestamp** component to get the current server time at the exact moment it is executed in a workflow. It provides a precise, standardized timestamp essential for logging, measuring durations, and creating time-based records.
+
+<InfoCallout title="Why this matters">
+Accurate timing is fundamental for many automated processes. Whether you need to log when an event occurred, calculate how long a process took, or generate a unique, time-based identifier, this component provides a reliable and simple way to get a server-authoritative timestamp.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [How It Works](#step-1-how-it-works)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: How It Works
+
+The Timestamp component is straightforward. It has no settings to configure; it simply activates when triggered by the workflow and provides a single output.
+
+### Input
+| Input     | Required?                   | Description                                                                 |
+|-----------|-----------------------------|-----------------------------------------------------------------------------|
+| **Trigger** | <Badge type="required">Yes</Badge> | Initiates the component's operation. Any value connected to this input will trigger it. |
+
+### Output
+| Output      | Description                                                                                             |
+|-------------|---------------------------------------------------------------------------------------------------------|
+| **Timestamp** | The server timestamp, formatted as a Unix epoch timestamp in milliseconds (e.g., `1713523863530`).       |
+
+<TipCallout title="What is a Unix Timestamp?">
+A Unix timestamp represents the number of milliseconds that have elapsed since midnight (00:00:00 UTC) on January 1, 1970. It is a universal standard for representing time that is independent of time zones.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/mTvAvyGNFG0qRlPddWTr?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Timestamp | SmythOS"/>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Create Timestamps for Logs:** Place this component at key stages of your workflow to log when specific events happen.
+- **Measure Durations:** Place one `Timestamp` component at the beginning of a process and another at the end. Use a **Code Component** to subtract the start time from the end time to calculate the duration.
+- **Generate Unique IDs:** Combine the `Timestamp` output with other data to create unique identifiers for transactions, records, or filenames.
+- **Record Event Times:** When an event occurs (like an API call is received), use the `Timestamp` component immediately to capture the precise time of the event.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your timestamp seems incorrect...">
+- **It's in UTC:** The timestamp is generated from the server's clock, which is set to Coordinated Universal Time (UTC). It is not the user's local time. If you need to display it in a local time zone, you will need to convert it using a **Code Component**.
+- **It's a Large Number:** The output is in *milliseconds*, which results in a long number (e.g., 13 digits). This is the standard format. If a system requires seconds, you will need to divide the value by 1000.
+- **Component Doesn't Run:** The component must be triggered. Ensure its `Trigger` input is connected to the output of a preceding component in the workflow.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use a **[Code Component](/docs/agent-studio/components/advanced/code)** to format the raw millisecond timestamp into a human-readable date string (e.g., "2024-10-26 at 5:30 PM").
+- Log the `Timestamp` output to a database or a Google Sheet alongside other event data to create an audit trail.
+- Combine the timestamp with a user ID and hash it using the **[Hash Component](/docs/agent-studio/components/crypto/hash)** to create a unique, reproducible session identifier.

@@ -1,0 +1,413 @@
+---
+title: ClickUp Integration
+description: Connect SmythOS to ClickUp to automate task and project management, track goals, and streamline your team's workflows directly from your agents.
+og:title: SmythOS & ClickUp - Automate Your Productivity
+og:description: Learn to integrate ClickUp with SmythOS. Empower your agents to create, update, and retrieve tasks and projects, turning ClickUp into an active component of your automated systems.
+og:image: /docs/img/integrations/smythos_clickup.png
+keywords: [ClickUp SmythOS Integration, Connect ClickUp to SmythOS, SmythOS ClickUp, Automate Project Management, Task Management API, No-Code ClickUp]
+---
+# ClickUp Integration with SmythOS
+
+> **Want to put your project management on autopilot?** Connect ClickUp to SmythOS and empower your agents to create, update, and manage tasks and projects automatically.
+
+<InfoCallout title="TL;DR">
+Securely link your ClickUp account to SmythOS using a personal API Token. Then, use our suite of components to automate your entire project lifecycle, from creating new tasks from external triggers to updating their status.
+</InfoCallout>
+
+## List of ClickUp Components
+Quickly compare ClickUp components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Add Task**](#add-task) | Write | Creates a new task in a specified list. | <Badge type="required" /> `list_id`, `name`<br/><Badge type="optional" /> `description` | `id`, `url` | Automatically creating a task from a new email. |
+| [**Update Task**](#update-task) | Write | Updates the properties of an existing task. | <Badge type="required" /> `task_id`<br/><Badge type="optional" /> `status`, dates | `id`, `url` | Marking a task as "Complete" from another system. |
+| [**Get Task**](#get-a-task) | Read | Retrieves the full details of a single task. | <Badge type="required" /> `task_id` | `id`, `name`, `status` | Checking the status of a task before taking action. |
+| [**Get Tasks**](#get-tasks) | Read | Retrieves a list of tasks from a specified list. | <Badge type="required" /> `list_id`<br/><Badge type="optional" /> `page` | `tasks` | Generating a daily summary of all tasks in a list. |
+| [**Add Task To List**](#add-task-to-list) | Write | Adds an existing task to an additional list. | <Badge type="required" /> `list_id`, `task_id` | `Response` | Cross-listing a task in both a team and a personal list. |
+| [**Add Assignee To Task**](#add-assignee-to-task) | Write | Assigns a user to a specific task. | <Badge type="required" /> `task_id`, `assignee_id` | `assignees` | Auto-assigning tasks based on a round-robin system. |
+| [**Delete Task**](#delete-clickup-task) | Write | Permanently deletes a task. | <Badge type="required" /> `task_id` | `Response` | Cleaning up automatically created tasks. |
+| [**Get Lists**](#get-clickup-lists) | Read | Retrieves all Lists within a specific Folder. | <Badge type="required" /> `folder_id` | `lists` | Finding the correct List ID to create a task in. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate ClickUp with Your Agent?</summary>
+
+ClickUp is a powerful "do-it-all" productivity platform. Integrating it with SmythOS allows you to connect your project management hub to any other tool or workflow.
+
+- **Automated Task Creation:** Build agents that listen for triggers—a new customer in your CRM, a new bug report in your helpdesk, a new form submission—and automatically create corresponding tasks in the right ClickUp list, assigned to the right person.
+- **Dynamic Project Management:** Keep ClickUp in sync with the real world. An agent can monitor a GitHub repository and, when an issue is closed, find and update the corresponding task's status in ClickUp.
+- **Streamlined Workflows:** Use ClickUp as the source of truth for your agents. An agent can fetch its to-do list for the day from a specific ClickUp list, perform each task, and then update the task status as it completes its work.
+- **Automated Reporting:** Schedule agents to run daily or weekly, fetch all tasks for a specific project using `Get Tasks`, and generate a custom progress report to be sent to stakeholders via email or Slack.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **ClickUp account**.
+- Your personal ClickUp **API Token**.
+
+<Divider />
+
+## Getting Started With ClickUp
+
+The connection between SmythOS and ClickUp is configured using a secure, personal API Token.
+
+### Step 1: Get Your ClickUp API Token
+1.  Log in to your [ClickUp account](https://clickup.com).
+2.  Click on your profile avatar in the bottom-left corner to open the User Menu.
+3.  Select **Apps**.
+4.  Your personal **API Token** is displayed at the top of this page. Click the **Generate** button if one doesn't exist, or click **Copy** to copy your existing token.
+
+### Step 2: Store Your API Token in SmythOS Vault
+Your API Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your ClickUp API Token as the value. Give it a memorable name, like `clickup_api_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a ClickUp Component
+1.  In your SmythOS agent graph, drag and drop any ClickUp component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `ClickUp API Token` field, select the secret you saved in the Vault (e.g., `clickup_api_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Token from the Vault to **each** ClickUp component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which ClickUp Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Create a new to-do item** | A `list_id` and task name | [Add Task](#add-task) | The primary method for programmatically creating new tasks. |
+| **Mark a task as "Done"** | A `task_id` | [Update Task Status](#update-task-status) | Specifically designed to change a task's status (e.g., "To Do", "In Progress", "Complete"). |
+| **Get all details for one task** | A `task_id` | [Get A Task](#get-a-task) | Retrieves the full record for a single, known task. |
+| **See all tasks in a project list** | A `list_id` | [Get Tasks](#get-tasks) | Fetches multiple tasks at once, perfect for reporting or processing in a loop. |
+| **Assign a task to someone** | A `task_id` and `assignee_id` | [Add Assignee To Task](#add-assignee-to-task) | The correct way to assign a user to a task. |
+| **Find the ID for a specific List** | A `folder_id` | [Get ClickUp Lists](#get-clickup-lists) | Necessary for finding the `list_id` required by many other components. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each ClickUp component.
+
+### <a name="add-task"></a>Add Task
+Creates a new task in a specified List.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The unique ID of the List where the task will be added. |
+| `name` | string | Yes | The name or title of the task. |
+| `description`| string | Optional| A detailed description of the task. |
+| `priority`| integer| Optional| The priority level (1-4, where 1 is Urgent). Default: `3`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The unique ID of the newly created task. |
+| `url` | string | A direct URL to view the task in the ClickUp app. |
+| `list_id`| string | The ID of the list the task was added to. |
+| `Response`| object | The full, raw JSON response from the ClickUp API. |
+
+<TipCallout title="Use Case">
+An agent processes a new customer support email. It extracts the subject and body and uses this component to create a new task in the "Support Tickets" list in ClickUp.
+</TipCallout>
+
+```json
+{
+  "component": "clickup.addTask",
+  "list_id": "901200_abcde",
+  "name": "Fix login button on homepage",
+  "description": "A user reported that the login button is unresponsive on the Chrome browser.",
+  "priority": 1
+}
+```
+
+<Divider/>
+
+### <a name="update-task-status"></a>Update Task Status
+Updates the status of an existing task (e.g., from "To Do" to "In Progress").
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_id` | string | Yes | The unique ID of the task to update. |
+| `status` | string | Yes | The new status for the task. Must match an existing status in the list. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `task_id` | string | The ID of the updated task. |
+| `status`| object | An object containing the new status name and color. |
+| `url` | string | A direct URL to the updated task. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When a developer merges a pull request in GitHub, an agent finds the linked ClickUp task and uses this component to automatically update its status to "Done".
+</TipCallout>
+
+<WarningCallout title="Case-Sensitive Status">
+The `status` input is case-sensitive and must be an exact match for a status available in the task's List.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-tasks"></a>Get Tasks
+Retrieves a list of tasks from a specific List.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The ID of the List from which to retrieve tasks. |
+| `page` | integer | Optional | The page number for paginated results. Default: `0`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `tasks` | array | An array of task objects from the specified list. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+A reporting agent runs every morning, uses this component to fetch all tasks from the "Team To-Dos" list, and sends a summary to a manager.
+</TipCallout>
+
+### <a name="get-a-task"></a>Get A Task
+Retrieves detailed information about a single, specific task by its ID.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_id` | string | Yes | The unique identifier of the task to retrieve. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | The ID of the retrieved task. |
+| `name` | string | The name of the task. |
+| `status`| object | An object containing the current status of the task (e.g., name, color). |
+| `due_date`| string | The due date of the task as a Unix timestamp. |
+| `assignees`| array | A list of user objects assigned to the task. |
+| `url` | string | A direct URL to view the task in the ClickUp app. |
+| `Response`| object | The full, raw JSON response from the API, containing all task details. |
+
+<TipCallout title="Use Case">
+Before an agent updates a task, it first uses this component to fetch the task's current description and assignees to provide context for the update.
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-task-to-list"></a>Add Task To List
+Adds an existing task to an additional List. A task can live in multiple Lists in ClickUp.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The ID of the destination List to add the task to. |
+| `task_id` | string | Yes | The ID of the existing task to add. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the ClickUp API, confirming the action. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A task created in a personal "To-Do" list also needs to be visible on the main "Team Project" list. An agent uses this component to cross-list the task.
+</TipCallout>
+
+<Divider/>
+
+### <a name="remove-task-from-list"></a>Remove Task From List
+Removes a task from a List. If the task only exists in one List, this will not delete the task but will move it to an "orphaned" state.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `list_id` | string | Yes | The ID of the List from which the task will be removed. |
+| `task_id` | string | Yes | The ID of the task to remove. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful removal returns an empty JSON response. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+When a task is moved from a team's backlog to a specific sprint list, an agent uses this component to remove it from the general backlog list to avoid clutter.
+</TipCallout>
+
+<Divider/>
+
+### <a name="add-assignee-to-task"></a>Add Assignee To Task
+Assigns a user to a specific task.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_id` | string | Yes | The unique ID of the task to update. |
+| `assignee_id`| string | Yes | The numeric ID of the user to assign to the task. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `assignees`| array | The updated list of user objects assigned to the task. |
+| `Response`| object | The full, raw JSON response containing the updated task details. |
+
+<TipCallout title="Use Case">
+An agent implements a round-robin system. When a new unassigned task is created, it finds the next person in the rotation and uses this component to assign them.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-clickup-task"></a>Delete Task
+Permanently deletes a task from ClickUp.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `task_id` | string | Yes | The unique identifier of the task to be deleted. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response body. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+A cleanup agent runs weekly and finds any tasks that were created for testing purposes (e.g., with "[TEST]" in the title) and uses this component to delete them.
+</TipCallout>
+
+<WarningCallout title="Irreversible Action">
+This action is permanent and cannot be undone. Use with caution.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-clickup-lists"></a>Get Lists
+Retrieves all the Lists contained within a specific Folder.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `folder_id` | string | Yes | The unique identifier of the Folder to retrieve lists from. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `lists` | array | An array of list objects found within the folder. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+To create a task in the "Q4 Bugs" list, an agent first needs the list's ID. It uses this component on the "Engineering" folder to find the correct list and get its ID.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-folders"></a>Get Folders
+Retrieves all Folders within a specific Space.
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `space_id` | string | Yes | The unique identifier of the Space to retrieve folders from. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `folders` | array | An array of folder objects found within the space. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+This is often the second step in a workflow. After getting a `space_id`, an agent uses this to find the correct `folder_id` to then get a `list_id`.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-spaces"></a>Get Spaces
+Retrieves all Spaces within a specific Workspace (Team).
+
+<InfoCallout>This component requires an `API Token` for authentication, as detailed in the [Getting Started](#getting-started-with-clickup) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `workspace_id`| string | Yes | The unique identifier of the Workspace (Team) to retrieve spaces from. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `spaces` | array | An array of space objects found within the workspace. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+This is often the first step in a workflow that needs to navigate the ClickUp hierarchy. An agent gets the list of all spaces to find the `space_id` for the "Engineering" space.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Token:** Always store your ClickUp API token in the SmythOS `Vault`.
+* **Understand the Hierarchy:** ClickUp's structure is key: **Workspace > Space > Folder > List > Task**. To create a task in the right place, you often need to find the `list_id` first. Use components like `Get Spaces`, `Get Folders`, and `Get Lists` to navigate the hierarchy programmatically.
+* **Use Custom Fields:** For advanced workflows, you can create Custom Fields in ClickUp (e.g., "Ticket ID," "Customer Email"). While not directly supported by default inputs, you can often update these fields by constructing a custom JSON payload in the `Body` of the `Update Task` component.
+* **Pagination:** When using `Get Tasks` or other list components, remember that the API returns paginated results. You may need to build a loop that increments the `page` input to fetch all tasks if a list contains more than the default limit.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Token is incorrect, has been revoked, or is missing.
+  * **Solution:** Verify that the API Token in your SmythOS Vault is correct and active. Generate a new token in your ClickUp Apps settings if necessary and update your Vault secret.
+
+* **Error: `404 Not Found`**
+  * **Cause:** An incorrect ID was provided (e.g., `list_id`, `task_id`, `folder_id`).
+  * **Solution:** Double-check all IDs for typos. Use the "Get" components (e.g., `Get Lists`) to verify that the resource you are trying to access exists and you have its correct ID.
+
+* **Error: `OAUTH_025` or `OAUTH_046`**
+  * **Cause:** This often relates to permissions. The user whose personal API token is being used may not have access to the specific Space, Folder, or List you are trying to interact with.
+  * **Solution:** Ensure the user associated with the API token has been invited to and has the necessary permissions for the target resources within ClickUp.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful project management automations with the **SmythOS ClickUp Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Functions as a helpdesk. It takes incoming support emails, creates a new task in a "Support" list in ClickUp using `Add Task`, and then assigns it to a team member using `Add Assignee To Task`.
+    * Manages client onboarding. When a new client is added to your CRM, an agent creates a new List for them in a "Clients" folder, and populates it with a standard set of onboarding tasks.
+    * Syncs with your calendar. The agent reads your [Microsoft Calendar](/docs/agent-studio/integrations/microsoft-calendar-integration) and creates a ClickUp task for every meeting scheduled for the next day.
+
+* **Explore Other Integrations:**
+    * When a task is updated to "In Review" in ClickUp, trigger an agent to send a notification to a [Microsoft Teams](/docs/agent-studio/integrations/microsoft-teams-integration) channel.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a long project brief, then create a new parent task in ClickUp with the summary as the description.
+    * Connect to a form builder. When a user submits a bug report through a form, create a new, high-priority task in your "Bugs" list.

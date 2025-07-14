@@ -1,0 +1,109 @@
+---
+title: Add or Remove User
+description: Invite or remove users from your agent, manage their space access, and understand how roles and permissions apply when sharing agents.
+keywords: [add agent user, remove user, share agent, invite team, manage members, smythos collaboration, agent access, space access, default roles]
+sidebar_position: 3
+---
+
+You can invite people to your agent either from the **Share** button inside Studio or by adding them directly to the space. Both paths work, but each one affects roles and access differently.
+
+<InfoCallout title="Sharing agents adds users to the space">
+When you invite someone to an agent, they are automatically added to the [space](/docs/agent-collaboration/spaces/) that owns that agent.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Add Users from Studio
+
+Use the Share button inside the agent builder when you want to quickly bring someone in.
+
+1. Open the agent in Studio
+2. Click **Share** in the top-right
+3. Enter the user’s **email**
+4. Click **Add More** if needed
+5. Click **Send Invitations**
+
+<Image src="/docs/img/agent_collaboration/share-agent-modal.jpg" alt="Agent Share Modal" caption="Sharing an agent gives space-level access. Invitations are tied to your seat limits." />
+
+<WarningCallout title="Seat limits apply">
+You’ll see how many seats remain. If all are used, inviting someone will add $39/month to your bill. [See what each plan includes](/docs/account-management/overview).
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Add Users from the Space
+
+If you want to assign a role up front or manage more than one agent, use the space-level invite flow.
+
+1. Go to the [space dashboard](/docs/agent-collaboration/spaces/)
+2. Click **Invite Members**
+3. Add their **email**
+4. Select their **role**
+5. Click **Send Invite**
+
+<InfoCallout title="Invites are space-specific">
+Users must be invited into each space they need access to. They must also be part of your [organization](/docs/account-management/organization-management) before being added to a space.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Remove Users
+
+To revoke access from an agent or space:
+
+1. Open [Space Settings](/docs/agent-collaboration/spaces/)
+2. Click **Manage Members**
+3. Find the user
+4. Click **Remove** or change their **role**
+
+<WarningCallout title="Removing users from a space removes all agent access">
+Since agent access is tied to the space, removing someone from the space will remove their access to every agent inside it.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Default Role Behavior
+
+When someone is invited and no role is selected, SmythOS assigns a default.
+
+- In a [space](/docs/agent-collaboration/spaces/), the default role is always **Super Admin**
+- In an [organization](/docs/account-management/organization-management), the default is whatever role is selected under [Permissions](/docs/agent-collaboration/permissions)
+- If no role is defined in the Roles settings, **Super Admin** is used by default
+
+<InfoCallout title="Control default roles">
+To change who gets what by default, go to the [Roles](/docs/agent-collaboration/permissions) page and set the default there.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## FAQs
+
+### What happens if I invite someone to an agent?
+
+They’re added to the agent and the space. You’ll manage their role from the [space settings](/docs/agent-collaboration/spaces/).
+
+### Can I set the role when inviting from the agent?
+
+No. If you need to control the role, use the invite option from the space instead.
+
+### How do I check how many seats I have left?
+
+Seat usage and limits are shown in the Share modal. You can also compare limits in [Compare Plans and Features](/docs/account-management/overview).
+
+### Can I remove someone from a specific agent?
+
+No. To remove them from an agent, you’ll need to remove them from the space it belongs to.
+
+<InfoCallout title="See what your plan includes">
+View side-by-side feature limits, API caps, and seat allocations → [Compare Plans and Features](/docs/account-management/overview).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What's Next?
+
+- [Invite Members to a Space](/docs/agent-collaboration/spaces/invite-members)
+- [Space Settings and Roles](/docs/agent-collaboration/spaces/)
+- [Organization Management](/docs/account-management/organization-management)
+- [Permissions Overview](/docs/agent-collaboration/permissions)
+- [Roles and Defaults](/docs/agent-collaboration/permissions)

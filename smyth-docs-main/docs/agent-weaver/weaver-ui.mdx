@@ -1,0 +1,109 @@
+---
+description: Learn the panels, shortcuts, and AI actions that power Weaver’s chat-first agent builder.
+keywords:
+  - SmythOS
+  - Weaver
+  - UI tour
+  - chat-driven builder
+  - no-code agent orchestration
+sidebar_position: 4
+---
+
+# Weaver Interface
+
+Weaver’s chat-first UI is a full-blown **AI workflow builder** that thinks, plans, and asks questions before it creates anything.
+<InfoCallout title="How Weaver Thinks"> Weaver pauses between prompts to "think aloud," sharing why it's asking a particular question. This gives you more transparency and control during the build process. </InfoCallout>
+
+| Panel | What lives here |
+|-------|-----------------|
+| **Chat Panel** | This is where you describe your goal, chat with Weaver, view its thinking process, and answer clarifying questions. Logs, prompts, and test runs also appear here. |
+| **Planned Workflows and Skill Suggestions** | Weaver proposes what the agent should do (e.g. blog writing, research) and suggests components for each step. These are context-aware and based on your responses. |
+| **Component canvas** *(auto-generated)* | A live visual preview of the wired agent: includes skills, ports, and connections. |
+
+<Divider/>
+
+## Planned Workflows
+Weaver begins by understanding your end goal. Based on that, it maps out a complete workflow. For example if you asked it to help you write a blog, you might see:
+
+- **Generate Blog Structure** *(outline with title, headings, and subheadings)*
+- **Write Complete Blog Content**
+- **Research Topics** *(gather relevant information)*
+- **Blog Publishing** *(optional step)
+
+Before Weaver assembles the agent, it may ask clarifying questions like:
+
+- **What type of blogs do you want to write?** (Technical, lifestyle, marketing, etc.)  
+- **What’s the typical length of blogs you need?** (Short-form, long-form, word count range)
+
+This ensures the final agent reflects your exact needs.
+
+<Divider/>
+
+## Selecting Components
+
+-Click once to open a component’s inspector.
+- Ctrl/Cmd + click to multi-select (ideal for batch editing or re-running chains).
+- Shift + click empty grid to clear your selection.
+<Divider/>
+
+## Attach Images & Diagrams
+
+You can drag and drop PNG, JPG, or SVG files directly into the chat. Weaver will automatically:
+
+- Read and extract text from diagrams (OCR).
+- Interpret arrows as possible data flow.
+- Suggest components that match what’s shown in the image.
+
+<TipCallout title="Quick Sketches Welcome">Snap a photo of a whiteboard sketch or hand-drawn diagram. Weaver will interpret it and turn your ideas into useful suggestions in seconds. </TipCallout>
+<Divider/>
+
+## Contextual Actions
+
+| Button | When it appears | What it does |
+|--------|--------------|-----------|
+| **Fix with AI** | When a component shows red or orange | Opens a prompt box pre-filled with error context. |
+| **Explain Component** | Any time| Summarizes what the block does, including inputs and outputs. |
+| **Trash** | On hover | 	Deletes the component and automatically re-routes connections when possible. |
+
+<TipCallout title="Pro Tip">Status colours are your early-warning radar. </TipCallout>
+
+ <details>
+<summary>Keyboard Shortcuts (click to expand)</summary>
+
+<Tabs
+  tabs={[
+    {
+      label: 'macOS',
+      content: (
+        <ul>
+          <li><kbd>⌘</kbd> + <kbd>Scroll Up</kbd> – Zoom in</li>
+          <li><kbd>⌘</kbd> + <kbd>Scroll Down</kbd> – Zoom out</li>
+          <li><kbd>⌘</kbd> + <kbd>Left Click</kbd> + <kbd>Drag</kbd> – Select multiple components</li>
+          <li><kbd>⌘</kbd> + <kbd>C</kbd>, <kbd>⌘</kbd> + <kbd>V</kbd> – Duplicate selected components</li>
+          <li><kbd>Delete</kbd> – Delete selected components</li>
+          <li><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> – Export agent</li>
+          <li><kbd>Drag & Drop</kbd> .smyth file – Import agent</li>
+          <li><kbd>⌘</kbd> + <kbd>Z</kbd> – Undo</li>
+          <li><kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> – Redo</li>
+        </ul>
+      ),
+    },
+    {
+      label: 'Windows / Linux',
+      content: (
+        <ul>
+          <li><kbd>Ctrl</kbd> + <kbd>Scroll Up</kbd> – Zoom in</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Scroll Down</kbd> – Zoom out</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Left Click</kbd> + <kbd>Drag</kbd> – Select multiple components</li>
+          <li><kbd>Ctrl</kbd> + <kbd>C</kbd>, <kbd>Ctrl</kbd> + <kbd>V</kbd> – Duplicate selected components</li>
+          <li><kbd>Delete</kbd> – Delete selected components</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> – Export agent</li>
+          <li><kbd>Drag & Drop</kbd> .smyth file – Import agent</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Z</kbd> – Undo</li>
+          <li><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> – Redo</li>
+        </ul>
+      ),
+    },
+  ]}
+/>
+</details>

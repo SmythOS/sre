@@ -1,0 +1,66 @@
+---
+title: Sleep
+description: Introduce a timed pause into a workflow to manage rate limits, wait for external processes, or control timing.
+keywords: [sleep, delay, wait, pause, timing, rate limit, synchronization, throttle]
+toc_max_heading_level: 2
+---
+
+# Sleep Component
+
+Use the **Sleep** component to intentionally pause a workflow for a specific duration. It's an essential tool for managing timing, handling API rate limits, and synchronizing actions with external systems.
+
+<InfoCallout title="Why this matters">
+Many workflows need to interact with external services that have strict usage policies (rate limits). The `Sleep` component prevents your agent from making too many requests too quickly. It's also vital for waiting for slow, asynchronous processes to complete before continuing.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Set the Delay Duration](#step-1-set-the-delay-duration)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Set the Delay Duration
+
+The only setting to configure is the amount of time, in seconds, that the workflow should pause before proceeding to the next step.
+
+| Setting | Required?                   | Description                                                              | Tips                                                                     |
+|---------|-----------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| **Delay** | <Badge type="required">Yes</Badge> | The length of the pause in seconds.                                      | Default: `1`. Max: `3600` (1 hour). You can use a dynamic value from a previous step. |
+
+<TipCallout title="Dynamic Delays">
+You can set the delay using a variable. For example, an API response might include a `Retry-After` header. You can extract that value and pass it to the `Sleep` component to wait for the exact required duration.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/T5ojKEEAC1y7ciCqaPRg?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Sleep | SmythOS" />
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Manage Rate Limits:** This is the most common use case. Place a `Sleep` component inside a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** when calling an API to ensure you don't exceed the service's request limit.
+- **Wait for External Processes:** If you trigger an external process (like a file write or a database update), use `Sleep` to add a short pause, giving the system time to complete the action before your workflow tries to access the result.
+- **Create Natural Cadence:** In a chatbot, a short `Sleep` before a response can simulate a "typing" delay, making the interaction feel more natural.
+- **Avoid Very Long Delays:** For pauses longer than a few minutes, it's better to use an **[Async](/docs/agent-studio/components/advanced/async)** and **[Await](/docs/agent-studio/components/advanced/await)** pattern. The `Sleep` component is designed for short-term delays.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your workflow seems stuck or delayed...">
+- **Check the Delay Value:** The most likely cause is that a long delay was set, either manually or through a dynamic variable that contained an unexpectedly large number.
+- **Ensure Proper Placement:** Make sure the `Sleep` component is placed correctly in the sequence of your workflow. The workflow will pause at this component before executing any subsequent steps.
+- **It's a Minimum Delay:** The `Sleep` component guarantees a *minimum* pause. The actual time might be slightly longer depending on overall agent load and workflow complexity, though this is rare.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Place a `Sleep` inside a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** that makes an **[API Call](/docs/agent-studio/components/advanced/api-call)** on each iteration to process a list without getting rate-limited.
+- Use a **[Code Component](/docs/agent-studio/components/advanced/code)** to calculate a dynamic delay based on business logic, and pass the result to the `Sleep` component.
+- Create a more human-like chatbot by using a `Sleep` component to add a pause before the **[LLM Assistant](/docs/agent-studio/components/advanced/llm-assistant)** generates a response.

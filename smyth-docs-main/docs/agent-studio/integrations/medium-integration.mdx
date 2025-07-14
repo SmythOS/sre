@@ -1,0 +1,201 @@
+---
+title: Medium Integration
+description: Connect SmythOS to Medium to automate publishing articles and retrieving user details directly from your agent workflows.
+og:title: SmythOS & Medium - Automate Your Content Publishing
+og:description: Learn to integrate Medium with SmythOS. Empower your agents to automatically publish blog posts to your profile or publications, streamlining your content pipeline.
+og:image: /docs/img/integrations/smythos_medium.png
+keywords: [Medium SmythOS Integration, Connect Medium to SmythOS, SmythOS Medium, Automate Blogging, Content Publishing API, No-Code Medium]
+---
+# Medium Integration with SmythOS
+
+> **Want to automate your content distribution on Medium?** Connect Medium to SmythOS and empower your agents to publish articles directly to your profile or publications.
+
+<InfoCallout title="TL;DR">
+Securely link your Medium account to SmythOS using an Integration Token. Then, use our components to automate the entire publishing process, turning your ideas and drafts into live articles.
+</InfoCallout>
+
+## List of Medium Components
+Quickly compare Medium components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Publish Blog Post**](#publish-blog) | Write | Publishes an article directly to a user's profile or publication. | <Badge type="required" /> `title`, `content`<br/><Badge type="optional" /> `userId` | `blogId`, `blogUrl` | Syndicating content from another blog. |
+| [**Get User Details**](#get-user-details)| Read | Retrieves the profile details of the authenticated user. | <Badge type="required" /> `trigger` | `userId` | Verifying the authenticated user's ID. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Medium with Your Agent?</summary>
+
+Medium is a major platform for sharing ideas and stories. Integrating it with SmythOS allows you to programmatically manage your content publishing and streamline your writing workflow.
+
+- **Automate Content Syndication:** Create an agent that monitors your primary blog's RSS feed. When a new post is published, the agent can automatically re-publish it to your Medium account to reach a different audience.
+- **Streamline Your Writing Workflow:** Build an agent that takes a completed article from a Google Doc, Notion page, or a Markdown file in a GitHub repository and publishes it directly to Medium, complete with tags.
+- **Content Generation Pipelines:** Use an AI model to generate a draft article. An agent can then take this content, format it correctly, and publish it to Medium, turning ideas into live posts in seconds.
+- **Connect Your Tools:** Bridge the gap between your content creation tools and your publishing platform. Let agents handle the tedious copy-paste work of moving content from one place to another.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Medium account**.
+- Your Medium **Integration Token**.
+
+<Divider />
+
+## Getting Started With Medium
+
+The connection between SmythOS and Medium is configured using a secure Integration Token.
+
+### Step 1: Get Your Medium Integration Token
+1.  Log in to your [Medium account](https://medium.com/).
+2.  Navigate to your **Settings** by clicking your profile picture.
+3.  In the "Security and apps" section, find the **Integration tokens** area. The direct link is `https://medium.com/me/settings/security`.
+4.  Enter a description for your token (e.g., "SmythOS Agent") and click **Get integration token**.
+5.  Medium will generate a token for you. Copy it to your clipboard.
+
+### Step 2: Store Your Token in SmythOS Vault
+Your Integration Token is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Medium Integration Token as the value. Give it a memorable name, like `medium_integration_token`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Medium Component
+1.  In your SmythOS agent graph, drag and drop any Medium component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Integration Token` field, select the secret you saved in the Vault (e.g., `medium_integration_token`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the Integration Token from the Vault to each Medium component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Medium Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Publish a new article** | A title and content | [Publish Blog Post](#publish-blog) | The core component for programmatically publishing content to Medium. |
+| **Confirm which user is authenticated** | Your own account | [Get User Details](#get-user-details) | A simple way to verify your connection and retrieve your own user ID. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Medium component.
+
+### <a name="publish-blog"></a>Publish Blog Post
+Publishes a new post to the authenticated user's profile or, if a `publicationId` is provided, to a specific publication.
+
+<InfoCallout>This component requires an `Integration Token` for authentication, as detailed in the [Getting Started](#getting-started-with-medium) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Content Format:** Select the format of your `content` input.
+    - `html`: For content written with HTML tags.
+    - `markdown`: For content written in Markdown.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `title` | string | Yes | The title of the post. This is used for SEO but will not appear in the post body itself. |
+| `content` | string | Yes | The body of the post. To have a title appear on the page, you must include it here (e.g., as an `<h1>` tag or `#` heading). |
+| `userId` | string | Optional| The ID of the user to publish as. You must get this from the "Get User Details" component first. Defaults to the authenticated user. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `blogId` | string | The unique ID of the newly published post. |
+| `blogUrl`| string | The direct URL to the live post on Medium. |
+| `Response`| object | The full, raw JSON response from the Medium API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent takes a Markdown file from a GitHub repository, reads its content, and uses this component to syndicate the article to Medium.
+</TipCallout>
+
+```json
+{
+  "component": "medium.publishBlog",
+  "title": "My New Post on AI Agents",
+  "content": "# My New Post on AI Agents\\n\\nThis is the first paragraph of my amazing new article.",
+  "userId": "1a2b3c4d5e6f"
+}
+```
+
+<WarningCallout title="Title Behavior">
+Medium's API uses the `title` for metadata and SEO. It will **not** be displayed as a title in your post. You must include the title within the `content` field (e.g., `# My Title`) for it to be visible to readers.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="get-user-details"></a>Get User Details
+Retrieves the profile information of the user authenticated by the Integration Token.
+
+<InfoCallout>This component requires an `Integration Token` for authentication, as detailed in the [Getting Started](#getting-started-with-medium) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `trigger` | any | Yes | Any input value can be used to trigger the component's execution. It does not affect the output. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | string | The unique identifier for the authenticated user. |
+| `Response`| object | The full, raw JSON response from the Medium API, containing username, name, URL, and image URL. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+This component is primarily used as a first step to get your `userId`, which you can then pass into the `Publish Blog Post` component to explicitly set the author.
+</TipCallout>
+
+```json
+{
+  "component": "medium.getUserDetails",
+  "trigger": "get my id"
+}
+```
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Integration Token:** Always store your Medium Integration Token in the SmythOS `Vault`.
+* **Content Formatting:** Decide whether you want to provide your content as HTML or Markdown and set the "Content Format" setting accordingly. For blog posts, Markdown is often easier to generate and manage.
+* **Include the Title in the Body:** This is the most common point of confusion. Remember to add your article's title as a heading (e.g., `# My Title`) at the top of your `content` input if you want it to be visible on the published page.
+* **Publishing to Publications:** To publish to a specific Medium Publication you own or contribute to, you first need to get that publication's ID. You can do this by using a custom API call to list the user's publications, then passing that ID into an advanced input field for the `Publish Blog Post` component.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The Integration Token is incorrect, has been revoked, or is missing.
+  * **Solution:** Verify that the token in your SmythOS Vault is correct and active. Generate a new token in your Medium settings if necessary and update your Vault secret.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** A required field like `title` or `content` is missing from the request.
+  * **Solution:** Check that all required inputs are provided and are not empty strings.
+
+* **Article is Published Without a Title**
+  * **Cause:** The title was provided in the `title` input but was not included in the `content` input.
+  * **Solution:** Add the title as a Markdown heading (`# My Title`) or an HTML tag (`<h1>My Title</h1>`) at the beginning of the `content` string.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful content automation pipelines with the **SmythOS Medium Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your [Dev.to account](/docs/agent-studio/integrations/devto-integration). When you publish an article there, an agent is triggered to re-publish the same content to Medium.
+    * Generates a weekly "Best of" digest. The agent finds your top-performing blog posts from the past, combines them into a new summary article, and publishes it to Medium.
+
+* **Explore Other Integrations:**
+    * After an agent publishes a new article to Medium, it can take the `blogUrl` output and share it across your social media channels using the [Ayrshare Integration](/docs/agent-studio/integrations/ayrshare-integration).
+    * Keep a log of all published articles by having your agent write the `blogId` and `blogUrl` to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration) or [Notion](/docs/agent-studio/integrations/notion-integration) database.

@@ -1,0 +1,177 @@
+---
+title: SharePoint Integration
+description: Connect Microsoft SharePoint with SmythOS to enable seamless document access, file listing, and collaboration features in your agent workflows.
+og:title: SmythOS & SharePoint - Supercharge Your Content Workflows
+og:description: Learn how to integrate Microsoft SharePoint with SmythOS. Enable your agents to access, search, and manage files within your SharePoint environment.
+og:image: /docs/img/integrations/smythos_sharepoint.png
+keywords: [SharePoint SmythOS Integration, Connect SharePoint to SmythOS, Microsoft 365 Workflow Automation, SharePoint API No Code, Document Management Agents]
+---
+# SharePoint Integration
+
+> **Want to access and manage SharePoint content in your workflows?** Use our SharePoint components to securely connect your tenant, list files, retrieve sites, and automate document-based processes.
+
+<InfoCallout title="TL;DR">Connect to SharePoint via Microsoft Entra OAuth. Use the SmythOS Vault to store sensitive credentials like `Client ID` and `Client Secret`, then power agents with components like `Get Root Site`, `List Drive Items`, and `Search Site`. </InfoCallout>
+
+## List of SharePoint Components
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Get Root Site**](#get-root-site) | Read | Retrieves the root site of your SharePoint tenant. | <Badge type="required" /> `tenant-name` | `id`, `displayName`, `name` | Identify root site metadata to anchor other calls. |
+| [**Search Site**](#search-site) | Query | Searches for a team site using a query. | <Badge type="required" /> `query` | `value` | Locate a team site by keyword or group ID. |
+| [**List All Sites**](#list-all-sites) | Read | Lists all SharePoint sites in the tenant. | <Badge type="required" /> `trigger` | `sites` | Display site options for downstream selection. |
+| [**List Site Drive Items**](#list-site-drive-items) | Read | Lists files/folders in a SharePoint drive. | <Badge type="required" /> `site_id` | `items` | Retrieve and manage content from a drive. |
+
+<Divider />
+
+## Getting Started with SharePoint
+
+### Step 1: Register in Microsoft Entra
+1. Go to the [Microsoft Entra Portal](https://entra.microsoft.com/)
+2. Navigate to **Azure Active Directory > App registrations**
+3. Click **New registration**
+4. Fill in:
+   - **Name:** e.g., `SmythOS Agent Access`
+   - **Redirect URI:** `https://app.smythos.com/oauth/oauth2/callback`
+5. After registration:
+   - Copy the **Client ID**
+   - Go to **Certificates & secrets > New client secret**
+   - Copy the generated secret
+
+### Step 2: Assign Microsoft Graph API Permissions
+- Go to **API Permissions**
+- Add:
+  - `Sites.Read.All`
+  - `Sites.ReadWrite.All`
+
+<WarningCallout title="Required Permissions">
+Missing or incorrect Graph API permissions will prevent your agents from interacting with SharePoint.
+</WarningCallout>
+
+### Step 3: Store Your Credentials in Vault
+1. Go to SmythOS **Vault**
+2. Create a new secret for `Client ID` and `Client Secret`
+   - Name them something like `sharepoint_client_id`, `sharepoint_client_secret`
+
+<Divider />
+
+## Component Reference
+
+### <a name="get-root-site"></a>Get Root Site
+
+Retrieves your tenant’s root SharePoint site.
+
+#### Inputs
+| Field | Required | Description |
+|-------|----------|-------------|
+| `tenant-name` | <Badge type="required" /> | Microsoft 365 tenant name. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `id` | Root site ID |
+| `displayName` | Friendly name of the site |
+| `name` | Internal SharePoint site name |
+| `response`, `headers` | Raw API output and metadata |
+
+<Image src="/docs/img/sharepoint/screenshot1.png" alt="Get Root Site Inputs" />
+
+<TipCallout title="Use Case" collapsible> Start all SharePoint document operations by determining the root site ID. </TipCallout>
+
+<Divider />
+
+### <a name="search-site"></a>Search Site
+
+Query team sites using keywords.
+
+#### Inputs
+| Field | Required | Description |
+|-------|----------|-------------|
+| `query` | <Badge type="required" /> | Name or keyword for the site you're searching for. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `value` | Matching site(s) metadata |
+| `response`, `headers` | Raw API output and metadata |
+
+<Image src="/docs/img/sharepoint/screenshot5.png" alt="Search Site Input" />
+
+<WarningCallout title="Token Errors">
+Use the "Sign Out" → "Authenticate" cycle when tokens expire or become invalid.
+</WarningCallout>
+
+<Divider />
+
+### <a name="list-all-sites"></a>List All Sites
+
+Lists all sites under the authenticated tenant.
+
+#### Inputs
+| Field | Required | Description |
+|-------|----------|-------------|
+| `trigger` | <Badge type="required" /> | Trigger flag to initiate fetch. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `sites` | Array of SharePoint site objects |
+| `response`, `headers` | Raw API response |
+
+<Image src="/docs/img/sharepoint/screenshot9.png" alt="All Sites Output" />
+
+<TipCallout>
+Use this to populate dropdowns or enable conditional logic based on selected site.
+</TipCallout>
+
+<Divider />
+
+### <a name="list-site-drive-items"></a>List Site Drive Items
+
+Lists folders/files from the root directory of a SharePoint site.
+
+#### Inputs
+| Field | Required | Description |
+|-------|----------|-------------|
+| `site_id` | <Badge type="required" /> | SharePoint site ID from which to list contents. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `items` | Array of files/folders |
+| `response`, `headers` | Full API response |
+
+<Image src="/docs/img/sharepoint/screenshot12.png" alt="Drive Items Output" />
+
+<WarningCallout title="Missing Site ID">
+Always run `Get Root Site` or `Search Site` to obtain a valid `site_id` before using this component.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Tips
+
+- Always store credentials using **Vault**.
+- Use `Search Site` before referencing team-specific drives.
+- Handle token refresh using "Sign Out" → "Authenticate" cycle.
+- Paginate `List Site Drive Items` if result set exceeds 200 items.
+- Secure Graph API access with least privilege scopes.
+
+<Divider />
+
+## Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `401 Unauthorized` | Expired or missing token | Re-authenticate using the sign-out flow. |
+| `403 Forbidden` | Permission scope not set | Confirm `Sites.Read.All` is granted/admin-consented. |
+| `Invalid site_id` | Missing or incorrect site | Use `Search Site` or `Get Root Site` to get a valid ID. |
+
+<Divider />
+
+<Image src="/docs/img/integrations/smythos_sharepoint.png" alt="SharePoint integration diagram" />
+## What’s Next?
+
+Explore these automation ideas:
+- Sync weekly folders from SharePoint to Google Drive.
+- Let users search across SharePoint team sites and preview results.
+- Route uploaded files for processing (e.g., OCR, tagging).

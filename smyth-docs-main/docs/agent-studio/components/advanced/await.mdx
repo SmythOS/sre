@@ -1,0 +1,118 @@
+---
+title: Await
+description: Pause a workflow to wait for one or more background jobs to complete before continuing.
+keywords: [Await, Async, wait, job, results, synchronous, asynchronous, workflow]
+toc_max_heading_level: 2
+---
+
+# Await Component
+
+Use the **Await** component to pause your main workflow until one or more background jobs, started by the **[Async Component](/docs/agent-studio/components/advanced/async)**, have finished. This allows you to retrieve results from asynchronous tasks and use them in your main flow.
+
+<InfoCallout title="Why this matters">
+`Await` bridges the gap between your main workflow and background processes. It's the key to making a workflow wait for a long-running task to complete so you can use its output in subsequent steps, like showing results to a user or making decisions based on the processed data.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Set Wait Conditions](#step-1-set-wait-conditions)
+- [Provide Job IDs](#step-2-provide-job-ids)
+- [Handle the Results](#step-3-handle-the-results)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Set Wait Conditions
+
+Define the criteria for when the `Await` component should stop waiting and allow the workflow to resume. The component proceeds as soon as either of these conditions is met.
+
+| Field                     | Required?                   | Description                                                              | Tips                                                                     |
+|---------------------------|-----------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| **Minimum Jobs Count** | <Badge type="optional">No</Badge> | The number of async jobs that must be complete before continuing.        | Default is `1`. Set this to the number of results you need to proceed.   |
+| **Maximum Wait Time** | <Badge type="optional">No</Badge> | The maximum number of seconds to wait before resuming, even if jobs aren't done. | Default is `1`. Use this as a timeout to prevent your workflow from waiting forever. |
+
+<TipCallout title="Race Condition">
+The workflow resumes as soon as the *first* condition is met. If `Minimum Jobs Count` is 5 and `Maximum Wait Time` is 30 seconds, the flow continues at 30 seconds even if only 3 jobs have finished.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/Zm414J05Em9ruNick1Uy?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Await | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide Job IDs
+
+The `Await` component needs to know which background jobs to monitor. You must provide the `JobID`s from one or more `Async` components.
+
+| Input | Required?                   | Description                                                        | Notes                                                     |
+|-------|-----------------------------|--------------------------------------------------------------------|-----------------------------------------------------------|
+| **Jobs** | <Badge type="required">Yes</Badge> | An array of `JobID` strings returned by the `Async` component. | You can pass a single `JobID` or a list of them.        |
+
+<InfoCallout title="Passing Job IDs">
+The `Jobs` input expects an array. If you are awaiting a single job, pass its `JobID` like `[{{async.JobID}}]`. If you are awaiting multiple jobs, you will need to collect the `JobID`s into an array first.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Step 3: Handle the Results
+
+Once the wait conditions are met, the `Await` component outputs the results from all the completed jobs it was monitoring.
+
+| Output    | Description                                                                                                   | Data Structure                                                                          |
+|-----------|---------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| **Results** | An array containing the full output objects from each completed async job.                                     | `[{ "jobId": "...", "output": { ... } }, { ... }]`                                        |
+
+```json
+// Example Results Output
+[
+  {
+    "jobId": "job_12345",
+    "output": {
+      "status": "completed",
+      "processed_data": { "key": "value" }
+    }
+  },
+  {
+    "jobId": "job_67890",
+    "output": {
+      "status": "completed",
+      "processed_data": { "another_key": "another_value" }
+    }
+  }
+]
+```
+
+<TipCallout title="Accessing Data">
+To access data from the first result, you would use an expression like `Results[0].output.processed_data`.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Set a Realistic Timeout:** Always configure the `Maximum Wait Time` to a reasonable value to prevent your workflow from getting stuck indefinitely.
+- **Handle Partial Results:** If your workflow might time out before all jobs are complete, add a **Condition** block after `Await` to check if `Results.length` matches the number of jobs you expected.
+- **Use for User-Facing Workflows:** `Await` is perfect for scenarios where a user is actively waiting for a result, such as data processing or report generation.
+- **Combine with For Each:** After awaiting multiple jobs, use a **[For Each Loop](/docs/agent-studio/components/advanced/for-each)** to process the `Results` array.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If Await isn't working...">
+- **Check the JobID:** Ensure you are passing the correct `JobID` variable from the `Async` component. It should be a string or an array of strings.
+- **Inspect Async Job Logs:** If `Await` times out, the problem is likely in the background job itself. Go to **Agent Settings > Logs** to find and debug the async workflow's execution log. `Await` can only get results from jobs that complete successfully.
+- **Verify Data Structure:** The `Results` output is always an array, even if only one job completes. Make sure your downstream logic handles an array (e.g., accessing `Results[0]`).
+- **Increase Maximum Wait Time:** If the async job is simply taking longer than expected, try increasing the `Maximum Wait Time`.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use a **[Code Component](/docs/agent-studio/components/advanced/code)** after `Await` to parse the `Results` array and transform it into a more usable format.
+- Feed the output from `Await` into a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to summarize the results from multiple background jobs.
+- Add a **Condition** block to check for empty `Results` and handle cases where no jobs were completed before the timeout.

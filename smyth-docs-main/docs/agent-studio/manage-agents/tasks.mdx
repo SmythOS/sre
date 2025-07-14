@@ -1,0 +1,150 @@
+---
+title: Tasks
+description: Learn how to interact with your agents through chat, bulk operations, and scheduled tasks.
+keywords: [agents, chat, bulk, schedule, tasks, SmythOS]
+sidebar_position: 3
+---
+
+# Agent Tasks
+
+You can interact with your agents in three main ways: chat in real time, run bulk jobs, or schedule tasks for later. This page walks you through each option and when to use it.
+
+<Spacer size="md" />
+
+## Task Interaction Methods
+
+| Method | Description |
+|--------|-------------|
+| [**Chat Interface**](#chat-interface) | Talk to your agent in real time. Test prompts, debug logic, and review outputs directly. |
+| [**Bulk Operations**](#bulk-operations) | Run multiple tasks with one configuration using CSV upload or manual input. |
+| [**Scheduled Tasks**](#scheduled-tasks) | Set your agent to run at specific intervals or times automatically. |
+
+<Spacer size="md" />
+
+## Chat Interface
+
+Use the built-in chat to talk to your deployed agent.
+
+<InfoCallout title="Heads-up">
+Chat history is not saved. Copy anything important before ending the session.
+</InfoCallout>
+
+### Requirements
+
+- Agent must be deployed
+- Chat button must be enabled
+- Max 8000 characters per message
+
+<TipCallout title="Tip">
+You can send long prompts, test different inputs, and get syntax-highlighted responses. Copy results using the built-in clipboard icon.
+</TipCallout>
+
+<Arcade
+  src="https://demo.arcade.software/6WzsfgFB0IBL2m7V6o3f?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+  title="Chat with Agent | SmythOS"
+/>
+
+<Spacer size="lg" />
+
+## Bulk Operations
+
+Use this when you want to send multiple items to the same endpoint for processing.
+
+### Single Task
+
+1. Open Agent Settings  
+2. Select an endpoint  
+3. Click `Call`  
+4. Enter your input  
+5. Click `Call Endpoint`
+
+### Run in Bulk
+
+1. Open the same endpoint in Agent Settings  
+2. Click `Bulk Work`  
+3. Choose data input method:
+   - `Add Row` for manual entry
+   - Upload `.csv` file for batch processing  
+4. Run operations:
+   - Use `Run` for one row
+   - Use `Run in Bulk` for all
+
+<InfoCallout title="CSV Format">
+Column headers must match your endpoint input names exactly.
+
+| query                     | max_results |
+|--------------------------|-------------|
+| digital marketing trends | 5           |
+| AI in healthcare         | 10          |
+</InfoCallout>
+
+<Arcade
+  src="https://demo.arcade.software/AqIFSwVYbUUxd2ndStlu?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+  title="Bulk Processing | SmythOS"
+/>
+
+<Spacer size="lg" />
+
+## Scheduled Tasks
+
+Automate task execution using the built-in scheduler.
+
+<InfoCallout>
+See the [Deployment Guide](/docs/agent-deployments/overview) if your agent hasn’t been deployed yet.
+</InfoCallout>
+
+### Requirements
+
+- Agent must be deployed  
+- Endpoint must be correctly configured  
+- Permissions must be in place
+
+### Create a Routine
+
+#### One-Time
+
+1. Go to Agent Settings  
+2. Click `Add New` under the Schedule section  
+3. Choose an endpoint and set inputs  
+4. Choose `No Repeat`  
+5. Click `Done`
+
+#### Repeating
+
+1. Follow the same steps  
+2. Select `Repeat`  
+3. Define schedule:
+   - Repeat Every
+   - Repeat On (days)
+   - End Condition  
+4. Name your routine or leave as-is  
+5. Click `Done`
+
+<Arcade
+  src="https://demo.arcade.software/5NPb5R6hXdIqrB6Pozxc?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+  title="Scheduler | SmythOS"
+/>
+
+<Spacer size="md" />
+
+### Routine Details
+
+Select a routine to review key data:
+
+- **Info Tab**: Name, endpoint, next run  
+- **Triggers Tab**: Run history  
+- **Logs Tab**: Opens in [Logs Explorer](/docs/agent-studio/manage-agents/logs)
+
+<TipCallout title="Stay Consistent">
+Check on your routines regularly to avoid silent failures or missed runs.
+</TipCallout>
+
+<Spacer size="lg" />
+
+## What’s Next
+
+Once you’ve explored task interaction options:
+
+- Learn how to [debug your agents](/docs/agent-studio/build-agents/debugging)
+- Review [Logs](/docs/agent-studio/manage-agents/logs) to trace workflows and errors
+- See how to [deploy agents to different surfaces](/docs/agent-deployments/overview)

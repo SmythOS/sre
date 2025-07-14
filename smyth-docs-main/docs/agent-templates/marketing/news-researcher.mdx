@@ -1,0 +1,72 @@
+    
+# Tutorial: News Researcher Agent
+
+<Youtube videoId="SgJCK41SzJg" title="SmythOS - News Researcher Agent" />
+
+## Introduction
+
+Welcome to your personalized news assistant – an intelligent companion committed to keeping you well-informed. This friendly assistant kicks off conversations with a warm greeting and a curiosity about your preferred news topic.
+
+To get started, the assistant kindly asks for essential details such as the keyword or topic of interest and the desired start and end dates for the news search. While sorting by popularity, relevance, or newest is optional, the assistant encourages users to specify their preference.
+
+With a meticulous approach, the assistant emphasizes the importance of the keyword or topic and the mandatory start and end dates, ensuring a tailored news experience. Once equipped with this information, the assistant adeptly conducts a news search, presenting the top 20 articles and providing the option to explore further for more results upon user request.
+
+## News Researcher Agent Setup
+
+SmythOS provides a convenient `News Researcher Agent` template that allows you to quickly set up an agent for researching news. Here's a step-by-step guide:
+
+1. Navigate to your SmythOS Dashboard and locate the `Create Agent` button.
+
+<Image src="/docs/img/news_research_agent/setup1.png" alt="alt text" />
+
+2. In the agent creation interface, choose the `News Researcher Agent` template from the available options in the drop-down menu.
+
+<Image src="/docs/img/news_research_agent/setup2.png" alt="alt text" />
+
+3. Click the `Create` button to complete the process.
+
+<Image src="/docs/img/news_research_agent/setup3.png" alt="alt text" />
+
+4. Wait for the template to initialize and configure itself.
+
+## `NewsAPI` API Key Setup
+
+To enable the News Researcher Agent's functionality, follow these steps to obtain and integrate your `NewsAPI` API Key:
+
+1. Visit `https://newsapi.org/` and click on the `Get API Key` button.
+
+<Image src="/docs/img/news_research_agent/setup4.png" alt="alt text" />
+
+2. Complete the registration form to create an account.
+
+<Image src="/docs/img/news_research_agent/setup5.png" alt="alt text" />
+
+3. Copy the provided API Key.
+
+<Image src="/docs/img/news_research_agent/setup6.png" alt="alt text" />
+  
+4. Return to SmythOS and locate the `NEWSAPI.ORG KEY` component.
+5. Replace the API Key placeholder with your obtained `NewsAPI` API Key.
+
+<Image src="/docs/img/news_research_agent/setup7.png" alt="alt text" />
+
+By completing these steps, your News Researcher Agent will be configured to seamlessly fetch news information using the `NewsAPI` service.
+
+# Test the Agent
+
+To evaluate the capabilities of the News Researcher Agent, follow these steps:
+
+1. Open the ChatBot embodiment.
+2. Pose the following request:
+
+> Research news about AI by popularity, from Feb 18 to Feb 19, 2024
+
+<Image src="/docs/img/news_research_agent/setup8.png" alt="alt text" />
+
+3. Examine the response to ensure that the agent successfully retrieves news articles related to the specified keyword within the defined time frame.
+
+<Image src="/docs/img/news_research_agent/setup9.png" alt="alt text" />
+
+By conducting this test, you can verify the News Researcher Agent's effectiveness in delivering relevant and timely news information.
+
+

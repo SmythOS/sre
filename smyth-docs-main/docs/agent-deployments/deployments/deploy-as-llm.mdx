@@ -1,0 +1,209 @@
+---
+title: Deploy as LLM
+keywords: [SmythOS, LLM deployment, OpenAI endpoint, /chat/completions, Vault key, custom AI endpoint, agent as LLM, GPT integration]
+description: How to deploy your SmythOS agent as an OpenAI-compatible LLM endpoint with /chat/completions.
+---
+
+# Deploy Your Agent as LLM
+
+> **No extra logic. No extra servers.** SmythOS lets you expose any agent through a drop-in OpenAI-compatible interface.
+
+<InfoCallout>
+**TL;DR:** Flip the LLM toggle, grab a Vault key, and point your code to `/chat/completions`. You’ve got yourself an LLM.
+</InfoCallout>
+
+<Divider />
+
+## Why Deploy Your Agent as an LLM Endpoint?
+
+Instead of juggling multiple functions or setting up complex routing, deploy your SmythOS agent as a **single, unified LLM endpoint**. It works like a drop-in replacement for OpenAI.
+
+You get built-in context handling, version control, and intelligent workflow selection without rewriting your frontend.
+
+The Agent LLM embodiment lets you:
+
+- Connect your agent to any OpenAI-compatible SDK or tool
+- Stream responses in real-time
+- Route messages to multiple workflows behind one endpoint
+
+All while your agent handles everything under the hood:
+
+- Ask about coverage → routes to `car_policy_questions`
+- Ask about eligibility → runs `loan_questions`
+- Ask anything → it chooses the right workflow
+
+You just send the prompt and SmythOS handles the rest.
+
+<Divider />
+
+## Prerequisites to Enable LLM Deployment
+
+Make sure you have these ready before making your first call:
+
+- Your agent is **deployed** (test, production, or versioned)
+- **LLM toggle** is switched on in **Settings**
+- A valid **Vault API key** from `Vault → API Keys → + Add Key`
+- The **Agent ID** from your deployment (e.g., `cmb5b4js00fmjh6333d0foxjr`)
+
+To get your agent's ID, extract the prefix from your URL:
+
+```text
+https://cmb5b4js00fmjh6333d0foxjr.agent.stage.smyth.ai
+```
+
+Here, the agent ID is:
+
+```text
+cmb5b4js00fmjh6333d0foxjr
+```
+
+- The **model name** from your deployment → Agent ID + tag (e.g., `cmb5b4js00fmjh6333d0foxjr@prod`)
+
+<Divider />
+
+## Step-by-Step: Deploy Your Agent as an LLM
+
+### Step 1: Enable LLM Access
+
+1. Go to **Agent Settings**  
+2. Scroll to the **LLM** section  
+3. Toggle on LLM access for your agent
+
+<InfoCallout>
+You won’t see an API key here... because that’s managed via Vault.
+</InfoCallout>
+
+<Divider />
+
+### Step 2: Create a Vault API Key
+
+1. Navigate to the **Vault** in the left sidebar  
+2. Click **API Keys → + Add Key**  
+3. Choose the agent, assign scopes, and copy the generated token
+
+<InfoCallout>
+Use a test-scoped token while you’re developing, and a production-scoped key when ready to ship.
+</InfoCallout>
+
+<Divider />
+
+### Step 3: Send OpenAI-Compatible Requests
+
+All requests go through the SmythOS proxy endpoint:
+
+```text
+POST https://llm.emb-stg.smyth.ai/_openai/v1/chat/completions
+```
+
+Use the following fields:
+
+| Field           | Required | Purpose                                                   |
+|----------------|----------|-----------------------------------------------------------|
+| `model`        | ✅        | Your agent ID + version tag (e.g. `@prod`, `@dev`)        |
+| `messages`     | ✅        | Standard OpenAI-style message array                       |
+| `Authorization`| ✅        | `Bearer YOUR_VAULT_KEY`                                   |
+| `stream`       | Optional | `true` to enable Server-Sent Events for live response     |
+
+<Tabs
+  tabs={[
+    {
+      label: 'cURL',
+      content: (
+        <pre><code>{`curl https://llm.emb-stg.smyth.ai/_openai/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_VAULT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "cmb5b4js00fmjh6333d0foxjr@prod",
+    "messages": [
+      {"role": "user", "content": "What's the refund policy?"}
+    ]
+  }'`}</code></pre>
+      )
+    },
+    {
+      label: 'Python',
+      content: (
+        <pre><code>{`from openai import OpenAI
+import os
+
+client = OpenAI(
+    api_key=os.environ["SMYTHOS_AGENTLLM_KEY"],
+    base_url="https://llm.emb‑stg.smyth.ai/_openai/v1",
+)
+
+resp = client.chat.completions.create(
+    model="cmb5b4js00fmjh6333d0foxjr@1.0",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+
+print(resp.choices[0].message.content)`}</code></pre>
+      )
+    },
+    {
+      label: 'Node.js',
+      content: (
+        <pre><code>{`import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.VAULT_KEY,
+  baseURL: "https://llm.emb-stg.smyth.ai/_openai/v1",
+});
+
+const response = await openai.chat.completions.create({
+  model: "cmb5b4js00fmjh6333d0foxjr@prod",
+  messages: [
+    { role: "user", content: "What's the refund policy?" }
+  ]
+});`}</code></pre>
+      )
+    }
+  ]}
+/>
+
+<PromptCard prompt='Use /chat/completions with model cmb5b4js00fmjh6333d0foxjr@prod and your Vault key to talk to your agent.' />
+
+<Divider />
+
+## Example Request Format
+
+```json
+{
+  "model": "cmb5b4js00fmjh6333d0foxjr@prod",
+  "messages": [
+    {"role": "user", "content": "What’s the status of my claim?"}
+  ],
+  "stream": true
+}
+```
+
+Header:
+
+```http
+Authorization: Bearer <your-vault-api-key>
+```
+
+<PromptCard prompt="Call /chat/completions with your model version and Vault API key to trigger workflows via prompt." />
+
+<Divider/>
+
+## Common Use Cases for LLM Deployment
+
+- **Build LLM chat tools** without extra server logic
+- **Power frontend interfaces** with smart agent routing
+- **Integrate with LangChain / LlamaIndex / Autogen** using OpenAI-compatible SDKs
+- **Test prompt variants** while keeping workflows centralized
+
+<Divider/>
+
+## What's Next?
+
+Now that your agent is serving as an LLM endpoint:
+
+- Test locally using `curl` or Postman
+- Monitor requests in **Settings → Deployments → Logs**
+- Roll out new versions by deploying and switching the version tag in your request
+- Combine this with a UI layer for a fully custom AI assistant experience
+
+Looking to connect your LLM to ChatGPT? Check out [Deploy as ChatGPT](/docs/agent-deployments/deployments/deploy-as-chatgpt) to plug this same agent into GPT Builder.
+
+<Divider />

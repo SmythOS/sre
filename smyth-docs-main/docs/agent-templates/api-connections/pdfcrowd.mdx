@@ -1,0 +1,67 @@
+---
+title: Connect PDFCrowd API 
+description: Learn how to connect your agents to PDFCrowd for HTML-to-PDF conversion.
+keywords: [PDFCrowd, API, SmythOS, PDF generation, HTML to PDF, document rendering]
+sidebar_position: 6
+---
+
+# Connect PDFCrowd API 
+
+<InfoCallout title="What is PDFCrowd?">
+[PDFCrowd](https://pdfcrowd.com/) is an API-based service that converts HTML content into high-quality PDF documents. Use it to automate document rendering in your agents.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## How to Get Your API Key
+
+Follow these steps to obtain and securely store your PDFCrowd credentials:
+
+1. Visit [pdfcrowd.com](https://pdfcrowd.com/) and **create an account** if you don’t already have one.
+2. After logging in, go to the left sidebar and click **“API v2 License.”**
+3. Locate your **API Key** on that page.
+4. **Copy your API Key** and store it somewhere safe.
+
+<TipCallout title="Use Vault for secure storage">
+We recommend storing your API key in the [SmythOS Vault](/docs/agent-studio/key-concepts/vault) for secure, managed access across your agents.
+→ [How to store keys in Vault](/docs/agent-studio/key-concepts/vault?id=keys)
+</TipCallout>
+
+<Spacer size="md" />
+
+## Example Usage in Agent Configuration
+
+```yaml
+
+pdfcrowd:
+  Connector: HttpRequest
+  Settings:
+    url: https://api.pdfcrowd.com/convert/5.0/html-to-pdf
+    method: POST
+    headers:
+      Authorization: Basic YOUR_BASE64_ENCODED_KEY
+    body:
+      html: <p>Hello, PDFCrowd!</p>
+```
+<WarningCallout title="Note on Authentication">
+PDFCrowd uses **Basic Auth**. You need to base64-encode your `username:apikey` pair and use that in the `Authorization` header.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Agents That Commonly Use This
+
+- Document generators  
+- HTML to PDF reporting tools  
+- Invoice or export utilities  
+- Resume or webpage capture agents  
+
+→ See [Studio Visual Builder](/docs/agent-studio/overview) to set this up visually  
+
+<Spacer size="md" />
+
+## Need Help?
+
+If you're having trouble setting up PDFCrowd or integrating it with your agent:
+
+→ [Contact Support](https://smythos.com/contact-us) for help with setup, encoding, or debugging.

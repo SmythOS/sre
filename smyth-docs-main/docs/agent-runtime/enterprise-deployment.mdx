@@ -1,0 +1,84 @@
+---
+title: Enterprise Deployment
+description: Configure and deploy the Smyth Runtime Environment for production using custom connectors and secure infrastructure.
+keywords: [SRE, deployment, production, connectors, vault, storage, sdk, cloud]
+sidebar_position: 10
+---
+
+# Enterprise and Production Deployment
+
+The **Smyth Runtime Environment (SRE)** supports enterprise-scale workloads. You can deploy SRE to any environment you control by supplying your own connectors for caching, storage, secrets, and logging.
+
+<InfoCallout title="Why configure for enterprise?">
+Choose enterprise deployment when you need strict control over data, security, and infrastructure or want to run SRE inside your own cloud, on-premises servers, or containers.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Configuration and Custom Connectors
+
+SRE can be initialized with connectors that match your production environment. Use the [Smyth SDK](/docs/agent-runtime/sdk-guide) to set up these connectors. This example shows a typical production setup.
+
+```typescript
+// Production-ready SRE configuration
+import { SRE } from 'smyth-runtime';
+
+const sre = SRE.init({
+  Cache: {
+    Connector: 'Redis',
+    Settings: {
+      url: 'redis://your-cluster',
+      maxMemory: '10gb',
+    },
+  },
+  Storage: {
+    Connector: 'S3',
+    Settings: {
+      bucket: 'your-prod-bucket',
+      region: 'us-east-1',
+    },
+  },
+  Vault: {
+    Connector: 'HashicorpVault',
+    Settings: {
+      url: 'https://vault.company.com',
+      token: process.env.VAULT_TOKEN,
+    },
+  },
+});
+```
+You only need to adjust this configuration to match your environment. Your agent business logic and workflows remain unchanged across environments.
+
+<InfoCallout title="Separation of logic and configuration">
+Switch between local development and enterprise infrastructure by changing connector configuration, not your agent code.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Supported Environments
+
+SRE supports a range of production environments:
+
+- Private servers and virtual machines
+- Cloud providers, such as AWS, Azure, and Google Cloud
+- Containers and orchestration systems
+
+For Docker and Kubernetes deployment patterns, see the [SRE GitHub repository](https://github.com/SmythOS/sre).
+
+<Spacer size="md" />
+
+## Security Integration
+
+Integrate SRE with your organization's existing security and access policies:
+
+- Use [Vaults](/docs/agent-studio/key-concepts/vault) to manage secrets and credentials
+- Apply [Roles and Permissions](/docs/agent-collaboration/permissions) for fine-grained runtime control
+
+<Spacer size="md" />
+
+## Next Steps
+
+- [SDK Guide](/docs/agent-runtime/sdk-guide) for code-first configuration details
+- [SRE Security Model](/docs/agent-runtime/security) for best practices
+- [Building Agents](/docs/agent-runtime/building-agents) to design agents for any environment
+

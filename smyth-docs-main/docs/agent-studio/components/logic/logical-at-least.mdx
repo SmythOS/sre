@@ -1,0 +1,91 @@
+---
+title: Logic At Least
+description: Verify that at least a minimum number of conditions are met before proceeding in a workflow.
+keywords: [Logic, At Least, condition, boolean, minimum, some]
+toc_max_heading_level: 2
+---
+
+# Logic At Least Component
+
+Use the **Logic At Least** component to check if a specific minimum number of inputs are `true`. This provides more flexibility than a simple AND or OR gate, allowing a workflow to proceed if a certain threshold of conditions is met.
+
+<InfoCallout title="Why this matters">
+Some decisions are not all-or-nothing. This component is perfect for scenarios where you need partial success, such as "proceed if at least 2 of 3 identity checks pass" or "trigger an alert if at least 5 of 10 servers are reporting errors." It allows you to build more nuanced and resilient workflows.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Set the Minimum Requirement](#step-1-set-the-minimum-requirement)
+- [Provide Inputs](#step-2-provide-inputs)
+- [Handle the Outputs](#step-3-handle-the-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Set the Minimum Requirement
+
+This is the core setting of the component. You define the minimum number of inputs that must be `true` for the "Verified" path to be taken.
+
+| Setting          | Description                                                                                             |
+|------------------|---------------------------------------------------------------------------------------------------------|
+| **Minimum Inputs** | Define the minimum number of inputs (from 0 to 9) that must have a `true` value to trigger the `Verified` output. |
+
+### How Inputs are Evaluated
+- **`True`**: Any input that has a value (e.g., a non-empty string, any number, the boolean `true`, an object, an array).
+- **`False`**: Any input that is empty, `null`, `undefined`, or the boolean `false`.
+
+<Spacer size="md" />
+
+## Step 2: Provide Inputs
+
+You can add multiple inputs to the component, each representing a condition to be checked.
+
+| Action      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| **Add Input** | Click the `+` icon to add a new input field. Give it a descriptive name that reflects the condition you are checking. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Outputs
+
+The component has two output branches, allowing you to direct the workflow based on whether the minimum threshold was met.
+
+| Output       | Description                                                                                             |
+|--------------|---------------------------------------------------------------------------------------------------------|
+| **Verified** | This path executes if **at least** the specified minimum number of inputs evaluates to `true`.         |
+| **Unverified** | This path executes if the number of `true` inputs is **less than** the specified minimum.              |
+
+<TipCallout title="Branching Your Workflow">
+Connect the `Verified` output to the steps that should run when the threshold is met. Connect the `Unverified` output to an alternative path or an error-handling flow.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Check for Optional Data:** Use this component to verify that a user has submitted at least one of several optional pieces of information (e.g., "user provided at least a phone number OR an email address").
+- **Tallying Approvals:** In a workflow that requires multiple approvals, you can use `Logic At Least` to proceed once a minimum number of approvers have responded positively.
+- **Scoring and Thresholds:** Use this to check if a set of data meets a minimum quality score. For example, if you run 5 different validation checks, you might decide to proceed if at least 4 of them pass.
+- **Set Minimum to 1 for an OR Gate:** If you set **Minimum Inputs** to `1`, this component behaves exactly like a **[Logic OR](/docs/agent-studio/components/logic/logical-or)** component.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your logic isn't branching as expected...">
+- **Check the Minimum Setting:** Ensure the `Minimum Inputs` setting is correct. A common mistake is an "off-by-one" error where the number is one higher or lower than intended.
+- **Inspect Your Inputs:** Use the **Debug** panel to check the actual values being passed to each input. An input you believe is `true` might actually be empty or `null`, causing it to be evaluated as `false`.
+- **Verified vs. Unverified Path:** Make sure you have connected your downstream components to the correct output path (`Verified` or `Unverified`).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use this component to check if at least one of several possible contact methods (email, phone, SMS) provided by a user is valid.
+- Combine this with a **[ForEach Loop](/docs/agent-studio/components/advanced/for-each)** to process a list of items and then check if at least a certain number of them returned a successful result.
+- Chain multiple logic components together, for example, using a `Logic AND` to ensure critical inputs are present, and then a `Logic At Least` for optional ones.

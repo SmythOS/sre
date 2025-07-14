@@ -1,0 +1,197 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #3c89f9; 
+  --ifm-color-primary-dark: #1355b6; 
+  --ifm-color-primary-darker: #104aad;
+  --ifm-color-primary-darkest: #0c3986; 
+  --ifm-color-primary-light: #5f9aff;
+  --ifm-color-primary-lighter: #6ea6ff; 
+  --ifm-color-primary-lightest: #8cbaff; 
+  --ifm-code-font-size: 95%;
+  --smyth-font-ui: "Inter", sans-serif;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+html {
+  scroll-behavior: smooth;
+}
+.header {
+  position: relative !important;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #5f9aff; 
+  --ifm-color-primary-dark: #3c89f9;
+  --ifm-color-primary-darker: #2a7df8;
+  --ifm-color-primary-darkest: #106aeb;
+  --ifm-color-primary-light: #8cbaff;
+  --ifm-color-primary-lighter: #9ac4ff;
+  --ifm-color-primary-lightest: #beddff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.credit-note {
+  border-left: 6px solid var(--ifm-color-success);
+  padding-left: 1rem;
+  font-style: italic;
+}
+.credit-note strong {
+  font-weight: 600;
+  font-style: normal;
+}
+
+hidden {
+display: none !important;
+}
+.theme-doc-sidebar-container {
+  border-right: none !important;
+}
+
+
+
+.markdown a {
+  color: #3c89f9;
+  text-decoration: none;
+  font-weight: 500; 
+}
+
+.markdown a:hover {
+  color: #2a6fd0;
+  text-decoration: underline;
+}
+
+
+.markdown .admonition a,
+.markdown table a,
+.markdown ul a,
+.markdown p a {
+  color: #3c89f9;
+}
+
+.markdown .admonition a:hover,
+.markdown table a:hover,
+.markdown ul a:hover,
+.markdown p a:hover {
+  color: #2a6fd0;
+}
+
+/* hides the sidebar links of categroy
+a.menu__link[href="/docs/agent-studio/overview"].menu__link--active,
+a.menu__link[href="/docs/agent-weaver/overview"].menu__link--active,
+a.menu__link[href="/docs/agent-runtime/overview"].menu__link--active,
+a.menu__link[href="/docs/agent-deployments/overview"].menu__link--active,
+a.menu__link[href="/docs/agent-templates/overview"].menu__link--active,
+a.menu__link[href="/docs/agent-collaboration/overview"].menu__link--active
+ {
+  display: none;
+} */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-300.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("https://smythos.com/wp-content/themes/generatepress_child/fonts/inter-v12-latin-900.woff2") format("woff2");
+}
+
+html *,
+body * {
+  font-family: "Inter", sans-serif !important;
+}
+
+/* 
+[class*="sidebar"] {
+  width: 360px !important;        
+  min-width: 0 !important;
+  max-width: 380px !important;   
+  position: relative !important;
+  overflow: visible !important;
+}
+
+[class*="sidebarSearch"] {
+  position: relative !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+[class*="dropdownMenu"] {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  top: calc(100% + 8px) !important;
+  z-index: 9999 !important;
+  background: #fff !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.14) !important;
+  border-radius: 10px !important;
+  border: 1px solid #ececec !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: pre-line !important;
+  padding: 14px 18px !important; 
+} */
+
+.searchBar_RVTs .dropdownMenu_qbY6 {
+  left: unset !important;
+  right: unset !important;
+}
+
+
+/* offset panel so it sits under the navbar instead of cut off */
+.DocSearch-Container {
+  top: 80px !important; 
+}
+
+/* Let the panel spill outside the navbar if it ever sits inside it */
+.navbar {
+  overflow: visible;
+}

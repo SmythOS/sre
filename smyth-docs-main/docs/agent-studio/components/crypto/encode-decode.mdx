@@ -1,0 +1,90 @@
+---
+title: Encode/Decode
+description: Transform data to and from various encoded formats for data storage, communication, and web development.
+keywords: [Encode, Decode, Base64, Hex, Base64URL, Latin1, data transformation, security]
+toc_max_heading_level: 2
+---
+
+# Encode/Decode Component
+
+Use the **Encode/Decode** component to transform data into various standard encoding formats and back again. It's essential for ensuring data integrity, compatibility with different systems, and preparing data for safe transmission.
+
+<InfoCallout title="Why this matters">
+Many systems, especially web APIs, require data to be in a specific format (like Base64) to be transmitted correctly. This component allows your agent to seamlessly convert data, making it compatible with a wide range of services without custom code.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Select an Action and Encoding Method](#step-1-select-an-action-and-encoding-method)
+- [Provide Input Data](#step-2-provide-input-data)
+- [Handle the Output Data](#step-3-handle-the-output-data)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Select an Action and Encoding Method
+
+First, choose whether you want to `Encode` or `Decode` data. Then, select the specific encoding format to use.
+
+| Setting   | Description                                                                 |
+|-----------|-----------------------------------------------------------------------------|
+| **Action**| Choose `Encode` to convert data into a new format, or `Decode` to revert it back to its original form. |
+| **Encoding**| Select the specific method: `hex`, `base64`, `base64url`, or `latin1`.    |
+
+<TipCallout title="Which Encoding Should I Use?">
+- **`base64`**: The most common format for including binary data (like images) in text-based contexts like JSON payloads.
+- **`base64url`**: A URL-safe version of Base64, ideal for including in URL parameters without issues.
+- **`hex`**: Useful for cryptographic applications or when a human-readable binary representation is needed.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/XtK3v1kwwcyRrVmGvT1R?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Encode/Decode | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide Input Data
+
+The component has a single input field to receive the data you want to process.
+
+| Input   | Required?                   | Description                                                |
+|---------|-----------------------------|------------------------------------------------------------|
+| **Data**| <Badge type="required">Yes</Badge> | The data to be encoded or decoded. Can be a string or binary data. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Output Data
+
+A single output field provides the result of the transformation.
+
+| Output   | Description                                                     |
+|----------|-----------------------------------------------------------------|
+| **Output** | The processed data, either newly encoded or returned to its original decoded state. |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Match the Action to the Data:** Ensure you are using `Decode` on data that is actually encoded, and `Encode` on raw data. Applying the wrong action will result in an error or garbage output.
+- **Prepare Data for APIs:** Use this component to encode data right before passing it to an **API Call** that requires a specific format.
+- **Handle Different Character Sets:** Be mindful of character sets. `latin1` is useful for certain legacy systems, but `base64` is generally more universal for handling complex data.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your transformation fails...">
+- **Decoding Error:** The most common issue is trying to decode a string that is not a valid representation of the selected encoding format (e.g., trying to `base64` decode a regular sentence). Verify your input data is correctly formatted.
+- **Incorrect Output:** Double-check that you have selected the correct `Encoding` method. For example, `base64` and `base64url` are similar but not identical, and decoding with the wrong one will fail.
+- **Binary Data Issues:** If you are encoding binary data (like an image file), ensure it is being passed correctly to the `Data` input field before the encoding step.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Take the output from an **[Image Generator](/docs/agent-studio/components/base/image-generator)**, `base64` encode it, and send it as part of a JSON payload in an **[API Call](/docs/agent-studio/components/advanced/api-call)**.
+- Receive a `base64url` encoded token from an API response, decode it, and then use a **[JSON Filter](/docs/agent-studio/components/advanced/json-filter)** to parse the resulting JSON object.
+- Use the **[Hash Component](/docs/agent-studio/components/crypto/hash)** on a piece of data, then `hex` encode the resulting hash for display or storage.

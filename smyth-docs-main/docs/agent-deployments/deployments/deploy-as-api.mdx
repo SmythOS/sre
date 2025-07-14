@@ -1,0 +1,97 @@
+---
+title: Use Agent via API
+keywords: [SmythOS, API deployment, Swagger, OpenAPI, agent API, HTTP integration, OpenAPI URL, chat integration, LLM API]
+description: How to use your SmythOS agent via direct API calls using Swagger UI and the OpenAPI schema.
+---
+
+# Use Agent via API
+
+> **Direct. Documented. Developer-friendly.** Access your agent's endpoints with Swagger UI and OpenAPI.
+
+<InfoCallout>
+**TL;DR:** Open your agent’s API embodiment, grab the OpenAPI URL, and use the Swagger interface to test, verify, and integrate.
+</InfoCallout>
+
+<Divider />
+
+## Why Access Your Agent via API?
+
+This method is ideal if you want to:
+
+- Send HTTP requests directly to your agent
+- Test behavior and payloads in Swagger before deploying to production
+- Integrate with other tools, backends, or systems without using UI elements
+- Reuse agent logic across internal apps, CRMs, dashboards, or mobile apps
+
+<Divider />
+
+## What You Need Before You Start
+
+Before interacting with the API embodiment, make sure:
+
+- Your agent is deployed (test, production, or versioned)
+- You have a Vault API key with the correct scopes
+- You know your environment’s [subdomain](/docs/agent-deployments/subdomains) URL (`stage` or `pstage`)
+
+<Divider />
+
+## Step-by-Step: Use the SmythOS Agent API
+
+### Step 1: Open the API Embodiment in Your Dashboard
+
+1. Navigate to your agent’s **Deployments** tab  
+2. Find and click on the **API** embodiment in the Environment section  
+3. A Swagger UI will load with all available endpoints
+
+<InfoCallout>
+Each endpoint maps to a callable block or function in your agent logic.
+</InfoCallout>
+
+<Divider />
+
+### Step 2: Get the OpenAPI URL for Your Agent
+
+The OpenAPI schema is located at:
+
+```text
+https://<your-agent-subdomain>/api-docs/openapi.json
+```
+
+Examples:
+
+```text
+Test: https://salesbot.agent.stage.smyth.ai/api-docs/openapi.json  
+Prod: https://salesbot.agent.pstage.smyth.ai/api-docs/openapi.json
+```
+
+You can import this URL into third-party tools like Postman or [GPT Builder](/docs/agent-deployments/deployments/deploy-as-chatgpt).
+
+<PromptCard prompt="Paste your OpenAPI URL into tools like Swagger, Postman, or GPT Builder to explore endpoints." />
+
+<Divider />
+
+### Step 3: Test and Explore Endpoints with Swagger
+
+1. Select your **Server** from the dropdown (e.g., test or production)  
+2. Click on any endpoint to expand it  
+3. Click **Try it out** to activate edit mode  
+4. Modify the payload as needed  
+5. Click **Execute** to send the request and view the response
+
+<WarningCallout>
+Swagger does not support multi-line JSON by default. Keep payloads single-line or escape newline characters.
+</WarningCallout>
+
+<Divider />
+
+## What Comes After API Integration?
+
+Now that your API is live:
+
+- Monitor usage from **Deployments → Logs**
+- Use the same OpenAPI URL in SDKs or GPT Builder
+- Combine this embodiment with LLM or ChatBot deployment to serve multiple access channels
+
+Want to make it conversational? Learn how to [Deploy as ChatBot](/docs/agent-deployments/deployments/deploy-as-chatbot) and embed the same logic into your site’s UI.
+
+<Divider />

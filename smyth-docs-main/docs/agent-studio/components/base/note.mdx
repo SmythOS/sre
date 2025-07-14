@@ -1,0 +1,69 @@
+---
+title: Note
+description: Add annotations, comments, and documentation directly within your workflows to improve clarity and organization.
+keywords: [Note, comment, documentation, annotation, description, workflow, organization]
+toc_max_heading_level: 2
+---
+
+# Note Component
+
+Use the **Note** component to add comments, instructions, and documentation directly onto your workflow canvas. It's a simple but powerful tool for keeping your workflows organized, understandable, and easy for collaborators to follow.
+
+<InfoCallout title="Why this matters">
+As workflows grow in complexity, they can become difficult to understand at a glance. Notes provide context where it's needed most, explaining complex logic, leaving instructions for teammates, or simply labeling different sections of your agent's process.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Customize Content and Appearance](#step-1-customize-content-and-appearance)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Customize Content and Appearance
+
+The Note component is configured directly from its settings panel. There are no functional inputs or outputs; it is purely for documentation.
+
+| Setting             | Description                                                                 |
+|---------------------|-----------------------------------------------------------------------------|
+| **Title** | The main header for your note. To edit, hover over the title on the component itself and click the edit icon. |
+| **Description** | The main body content of the note. This is where you write your detailed comments or instructions. |
+| **Text Color** | Sets the color of the title and description text using a hex code color picker. |
+| **Background Color**| Sets the background color of the note card using a hex code color picker.   |
+
+<TipCallout title="Color Coding">
+Use different background colors to visually categorize your notes. For example, use red for warnings, blue for general information, and green for completed sections.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/hdAKAVEkIS3MP7JEZmin?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Note | SmythOS" />
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Document Complex Logic:** Place a Note next to a **Code** component or a complex **ForEach Loop** to explain what it does, why it's there, and what its inputs/outputs are.
+- **Leave Instructions:** If you're collaborating, use Notes to leave messages for your teammates, such as "TODO: Connect this to the production database" or "Warning: Do not change this API key."
+- **Create Visual Sections:** Use large Notes with just a title as headers to break your workflow into logical sections (e.g., "Step 1: Ingest Data," "Step 2: Process Records," "Step 3: Send Notifications").
+- **Ensure Readability:** Choose a `Text Color` and `Background Color` with sufficient contrast to make your notes easy to read.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="Having trouble with a Note?">
+- **Cannot Edit Title:** The title is edited on the component itself, not in the settings panel. Hover your mouse over the note's title in the workflow, and an edit (pencil) icon will appear.
+- **Note is Hard to Read:** The contrast between your chosen text and background colors is likely too low. Adjust the colors in the settings panel to improve readability.
+- **Component has no connectors:** This is by design. The Note component is purely for documentation and does not process or pass data, so it has no input or output nodes to connect.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Place a `Note` next to an **[API Call](/docs/agent-studio/components/advanced/api-call)** component to document the endpoint's purpose and expected response format.
+- Use several `Note` components to create a "storyboard" for your workflow, outlining each major step before you build the logic.
+- Create a "Key" or "Legend" at the top of your workflow using Notes to explain the color-coding system you've used for other notes.

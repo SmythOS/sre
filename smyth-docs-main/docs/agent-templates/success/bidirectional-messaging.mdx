@@ -1,0 +1,46 @@
+# Tutorial: Bidirectional Messaging Agent
+
+This agent is designed to send and receive messages via the Twilio API.
+
+<Youtube videoId="x7b99ekK9oA" title="SmythOS -  Bidirectional Messaging Agent" />
+
+## Twilio Credentials
+
+1. Signup for a Twilio account [here](https://www.twilio.com/)
+
+> - Learn more [here](https://app.smythos.com/doc/#/components/integrations/twilio?id=send-sms) on how to get your Twilio send SMS credentials.
+> - Learn more [here](https://app.smythos.com/doc/#/components/integrations/twilio?id=send-whatsapp-message) on how to get your Twilio WhatsApp credentials.
+
+## Agent Setup
+
+1. In `SmythOS`, navigate to the templates tab. 
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 1.png" alt="alt text" />
+
+2. You can scroll down to find the `Bidirectional Messaging` Agent or simply search for it in the Search tab, then click the `Remix` button.
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 2.png" alt="alt text" />
+
+3. Allow the template to initialize and configure.
+
+### Twilio Send SMS Setup
+
+Configure your messaging webhook. Add your agent's API endpoint URL as webhook (A message comes in).
+
+1. Locate the `Twilio Send SMS` component. Click the gear icon to open the settings.
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 3.png" alt="alt text" />
+
+2. Click on the key icon, and choose your saved `Twilio Based64 Auth` Key. Don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 4.png" alt="alt text" />
+
+### Airtable Create a Record Setup
+
+1. Locate the `Create a Record` component and click the gear icon to open the settings.
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 5.png" alt="alt text" />
+
+2. Create an Airtable base with the following fields: `sender_number`, `sender_message`, `smsSID`. Click the key icon to select your Airtable API Key. Lastly, don’t forget to click the check icon to save your configuration.
+
+<Image src="/docs/img/bidirectional_messaging_agent/Image 6.png" alt="alt text" />

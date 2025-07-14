@@ -1,0 +1,185 @@
+---
+title: Google Docs Integration
+description: Connect Google Docs to your agents to create, append, and retrieve live documents directly in your workflows.
+og:title: SmythOS + Google Docs
+og:description: Automate document generation and updates with live Google Docs actions inside SmythOS.
+og:image: /docs/img/integrations/smythos_googledocs.png
+keywords: [Google Docs Integration, Google Docs API, Google Docs Automation, SmythOS Google Docs, Append Text Google Docs, Create Document Agents]
+---
+
+# Google Docs Integration
+
+> Want to automate document workflows inside agents? Use this integration to create, read, or edit Google Docs programmatically in SmythOS.
+
+<InfoCallout title="TL;DR">
+Use your Google OAuth credentials to connect Docs to SmythOS, then use components to create, append, or read documents inside agents.
+</InfoCallout>
+
+## List of Google Docs Components
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|--------------|
+| [**Get Document**](#get-document) | Retrieve | Pulls full document structure + metadata | <code>documentId</code> | <code>title</code>, <code>content</code> | Ingest content into an agent |
+| [**Append Text**](#append-text) | Write | Adds text to a document | <code>documentId</code>, <code>text</code> | <code>documentId</code> | Auto-log output into a running doc |
+| [**Create Document**](#create-document) | Create | Starts a new blank document | <code>title</code> | <code>documentId</code> | Generate a report or note in real-time |
+
+<Divider />
+
+## OAuth Setup for Google Docs
+
+You’ll need to create a Google Cloud OAuth App:
+
+### 1. Go to Google Developer Console
+Visit [console.developers.google.com](https://console.developers.google.com/) and create or select a project.
+
+### 2. Enable Google Docs API
+Go to **Library**, search for "Google Docs API", and enable it.
+
+### 3. Configure Consent Screen
+Fill out the app name, user support email, and scope (Docs API scope).
+
+### 4. Create OAuth Credentials
+Go to **Credentials → Create Credentials → OAuth client ID**, and:
+- Choose “Web application”
+- Set redirect URI to:  
+  <code>https://app.smythos.com/oauth/google/callback</code>
+
+### 5. Save Credentials in SmythOS
+Copy the <code>Client ID</code> and <code>Client Secret</code> and store in Vault or paste into the integration settings.
+
+<TipCallout title="Use Vault">
+Always store your Client ID and Secret in <strong>Vault</strong> for secure reuse across components.
+</TipCallout>
+
+<Arcade url="https://app.smythos.com/demo/google-auth" />
+
+<Divider />
+
+## <a name="get-document"></a>Get Document
+
+Fetch a Google Doc’s full JSON representation, including title and structured body content.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>documentId</code> | <Badge type="required" /> | Unique ID from the Google Docs URL |
+
+<Image src="/docs/img/google_docs/screenshot2.png" alt="Get Document Input" />
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>title</code> | The document’s current title |
+| <code>content</code> | The full document structure (paragraphs, elements) |
+| <code>response</code> | Full JSON body |
+| <code>headers</code> | HTTP metadata from the API |
+
+<Image src="/docs/img/google_docs/screenshot3.png" alt="Get Document Output" />
+
+<PromptCard prompt={`{
+  "component": "docs.getDocument",
+  "documentId": "1Z3Xy_a2Nd0fTqx..."
+}`} />
+
+<Divider />
+
+## <a name="append-text"></a>Append Text
+
+Add raw text content to the end of an existing Google Document.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>documentId</code> | <Badge type="required" /> | The target document’s ID |
+| <code>text</code> | <Badge type="required" /> | The string to append to the doc |
+
+<Image src="/docs/img/google_docs/screenshot5.png" alt="Append Text Inputs" />
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>documentId</code> | Echoes the document ID |
+| <code>requiredRevisionId</code> | Tracks the revision before the edit |
+| <code>response</code> | Full Google Docs API response |
+| <code>headers</code> | HTTP metadata for diagnostics |
+
+<Image src="/docs/img/google_docs/screenshot6.png" alt="Append Output" />
+
+<PromptCard prompt={`{
+  "component": "docs.appendText",
+  "documentId": "1ABCDeFg1234",
+  "text": "Generated summary here."
+}`} />
+
+<TipCallout title="Use Case" collapsible>
+Append meeting notes, user summaries, or GPT responses directly to a shared doc during a session.
+</TipCallout>
+
+<Divider />
+
+## <a name="create-document"></a>Create Document
+
+Creates a new blank Google Doc with a given title.
+
+#### Inputs
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| <code>title</code> | <Badge type="required" /> | The new document’s display title |
+
+<Image src="/docs/img/google_docs/screenshot8.png" alt="Create Doc Input" />
+
+#### Outputs
+
+| Field | Description |
+|-------|-------------|
+| <code>documentId</code> | ID of the new Google Doc |
+| <code>response</code> | JSON body of doc metadata |
+| <code>headers</code> | API response headers |
+
+<Image src="/docs/img/google_docs/screenshot9.png" alt="Create Output" />
+
+<PromptCard prompt={`{
+  "component": "docs.createDocument",
+  "title": "Meeting Notes – June 2025"
+}`} />
+
+<Divider />
+
+## Best Practices
+
+- 🔐 Always use <strong>Vault</strong> to store sensitive client credentials.
+- 🧠 Use <code>Get Document</code> before <code>Append Text</code> to avoid content duplication.
+- ✍🏼 Style and format using Docs batch update methods (upcoming support).
+- 📄 Treat the document structure as an editable tree—parse with care.
+
+<Divider />
+
+## Troubleshooting
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+| <code>PERMISSION_DENIED</code> | Not authorized or no access | Confirm OAuth scopes and document sharing |
+| <code>INVALID_ARGUMENT</code> | Malformed input | Ensure IDs and payloads are correctly formatted |
+| <code>NOT_FOUND</code> | Document doesn’t exist | Double-check <code>documentId</code> value |
+| <code>QUOTA_EXCEEDED</code> | Daily limit hit | Upgrade project quota or retry next day |
+
+<InfoCallout>
+You can inspect <code>response.error</code> in outputs to capture error messages directly inside flows.
+</InfoCallout>
+
+<Divider />
+
+## Example Flows
+
+Try these agent use cases:
+
+- Auto-generate call summaries into a doc after each customer session
+- Team updates bot that logs check-ins to a shared Google Doc
+- Invoice generation that writes line items into templated Docs
+
+<Image src="/docs/img/integrations/smythos_googledocs.png" alt="Google Docs agent demo" />

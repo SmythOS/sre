@@ -1,0 +1,135 @@
+# Tutorial: Lead Contacts Scraper Agent
+
+This agent is capable of scraping and extract email addresses, phone numbers, and social media profile links from a website domain in real-time. Can also retrieve data from major social platforms including Facebook, Instagram, TikTok, Twitter, LinkedIn, Youtube, Snapchat, Pinterest, and Github. In order to do this, you have to provide a valid URL to start the process.
+
+<Youtube videoId="RuRIS6a4ANU" title="SmythOS - Lead Contacts Scraper Agent" />
+
+## RapidAPI Registration
+
+`RapidAPI` provides a variety of endpoints for various purposes. Among these, the `website contacts scraper` endpoint is utilized by this agent.
+
+Follow the following steps to get your Rapid API key:
+
+1. Go to [https://rapidapi.com/](https://rapidapi.com/)
+2. If you do not have an account, proceed to create one by following the registration process.
+3. After completing the sign up process, you will be assigned a default API key that you can access [here](https://rapidapi.com/developer/apps).
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 1.png" alt="alt text" />
+
+4. Copy your API key using the `copy` icon. You can also click the eye icon to see your API key.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 2.png" alt="alt text" />
+
+5. After your API key is copied, navigate to this [link](https://rapidapi.com/letscrape-6bRBa3QguO5/api/website-contacts-scraper) and go to the pricing tab.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 3.png" alt="alt text" />
+
+6. Select a subscription plan from the options available: Basic (free), Pro , or Ultra Plan. The Basic plan offers 100 API requests per month at no cost. For this example, let's opt for the Basic plan.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 4.png" alt="alt text" />
+
+7. Click the `Subscribe` button.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 5.png" alt="alt text" />
+
+8. Subscription created successfully.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 6.png" alt="alt text" />
+
+## Lead Scraper Agent Setup
+
+1. Go to your SmythOS Dashboard and click on the `Create Agent` button.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 7.png" alt="alt text" />
+
+2. The template for the `Lead Contacts Scraper` is readily available. Simply select it from the drop-down menu.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 8.png" alt="alt text" />
+
+3. Click `Create` and allow the template to initialize and configure.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 9.png" alt="alt text" />
+
+## Adding Rapid API Key to the Vault
+
+Your API Key will be needed on your `Website Contacts Scraper` API Call component. 
+
+>To know more about the `Vault` feature, please refer [here](/docs/agent-studio/key-concepts/vault).
+
+1. Navigate to the `Vault` section on your dashboard.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 10.png" alt="alt text" />
+
+2. Click the `Add Key` button to add your Rapid API Key.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 11.png" alt="alt text" />
+
+3. Input the Rapid API Key generated from your RapidAPI account.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 12.png" alt="alt text" />
+
+4. Select a distinct Key name that you can readily differentiate whenever it is required for use.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 13.png" alt="alt text" />
+
+5. Choose `API Call` for the Scope and click `Done` to save your API Key.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 14.png" alt="alt text" />
+
+6. Your Lead Scraper Rapid API Key has been successfully added to your Vault and is now ready for use.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 15.png" alt="alt text" />
+
+## Lead Scraper API Call Setup
+
+1. Locate the `Website Contacts Scraper API Call` component that has a missing key component. Click on the component, then click the `Edit` button situated in the headers section.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 16.png" alt="alt text" />
+
+2. Highlight the text, then click on the `key` icon. Choose the `Lead Scraper Rapid API` Key stored in your Vault, and finally, click the `Save` button.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 17.png" alt="alt text" />
+
+3. Once saved, your API key is now added in the headers section. Additionally, don’t forget to click the checkmark icon to save your configuration.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 18.png" alt="alt text" />
+
+4. The red error mark on your `Website Contacts Scraper API Call` Component will disappear once your API key is successfully configured.
+
+<Image src="/docs/img/lead_contacts_scraper_agent/Image 19.png" alt="alt text" />
+
+5. You should now be able to use this agent to extract Emails, Phone Numbers, and Social URLs (Facebook, TikTok, Instagram, Twitter, LinkedIn and others) from a website in real-time.
+
+## Test the Agent
+
+Follow the steps outlined below to evaluate the `Lead Contacts Scraper` Agent.
+
+1. Open the ChatBot embodiment and click on the chat icon.
+
+<Image src="/docs/img/content_extractor_agent/Image 20.png" alt="alt text" />
+
+2. Provide a valid URL of the website that you want to scrape data from.
+
+<Image src="/docs/img/content_extractor_agent/Image 21.png" alt="alt text" />
+
+3. Here’s the result!
+
+>Here are the contact details and social media profiles I have found from the domain you provided:
+>
+>Emails:
+>- info@openweathermap.org
+>
+>Phone Numbers:
+>- 1661857200
+>- 1661871600
+>- 1594353335
+>- 1594382400
+>- 1594412149
+>- 62022083111
+>
+>Social Media Profiles:
+>- Facebook
+>- Twitter
+>- LinkedIn
+>- Pinterest
+>- There are no available links for Instagram, Tiktok, Snapchat, Youtube, and Github.

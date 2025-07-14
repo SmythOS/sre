@@ -1,0 +1,103 @@
+---
+title: Subdomains
+description: Learn how to add, verify, and manage subdomains for agent deployments in SmythOS.
+keywords: [SmythOS, subdomains, agent hosting, custom domain, CNAME, DNS verification, deployment]
+sidebar_position: 3
+---
+
+# Subdomains
+
+Use subdomains to host your agents on custom, branded URLs. SmythOS supports custom subdomain verification through DNS and lets you connect verified domains directly during deployment.
+
+<InfoCallout title="TL;DR – Custom Domains in SmythOS">
+You can connect your own subdomains (like `support.yourdomain.com`) to host agents deployed via SmythOS.  
+Add a subdomain → Verify it via DNS → Use it during deployment to serve your agent on a branded URL.
+</InfoCallout>
+
+
+<Arcade src="https://demo.arcade.software/cmbVrrFyqmQPGI049spB?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Subdomains | SmythOS" />
+
+<Spacer size="md" />
+
+## Add a New Subdomain
+
+To link a custom subdomain to your agent:
+
+1. **Click `Add Subdomain`**  
+   - You'll find this in the **Subdomains** section of your workspace.
+
+2. **Enter the Subdomain**  
+   - Input the subdomain you'd like to use (e.g. `support.yourcompany.com`)  
+   - Click `Next` to move to the DNS verification step.
+
+3. **Register a CNAME Record**  
+   - Copy the CNAME and target values shown.  
+   - Add them to your DNS provider's dashboard.
+
+<InfoCallout title="DNS Propagation Time">
+DNS changes can take up to **24 hours** to propagate. During this time, verification may temporarily fail.
+</InfoCallout>
+
+4. **Verify**  
+   - After saving the DNS record, return to SmythOS and click `Verify`.  
+   - If successful, your subdomain will be listed as "Verified".
+
+<WarningCallout title="Cloudflare Users">
+If you're using **Cloudflare** for DNS, set the Proxy status to **DNS Only** (gray cloud) instead of **Proxied** (orange cloud).  
+Proxied records will prevent domain verification from working.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Use a Verified Subdomain for Deployment
+
+Once verified, your subdomain can be selected when deploying any agent.
+
+1. Go to your agent’s **Deploy** screen.  
+2. Choose a version and fill out the details.  
+3. In the domain dropdown, select your verified subdomain.  
+4. Complete the deployment.
+
+Your agent will now be live on your custom URL.
+
+<InfoCallout title="Need Help Deploying?">
+See the [Deployment Quickstart](/docs/agent-deployments/quickstart) for step-by-step deployment instructions.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Delete a Subdomain
+
+1. **Click `Delete`**  
+   - Found next to the subdomain in the list.
+
+2. **Confirm**  
+   - Type the subdomain name when prompted and click `Delete` again to confirm removal.
+
+<Spacer size="md" />
+
+## Best Practices
+
+### Naming Conventions
+
+To stay organized, use descriptive and structured naming:
+
+- Use a consistent pattern, e.g.:
+ `{agent-name}.agents.yourdomain.com`
+
+- Keep names short but clear.
+
+### Multi-Agent Workspaces
+<InfoCallout title="One DNS Zone, Many Subdomains">
+Managing many agents under one domain is supported. Just verify each subdomain individually within your DNS zone.
+</InfoCallout>
+
+- You can verify and use multiple subdomains in a single SmythOS workspace.  
+- Each subdomain must be added and verified separately, even if they share a root domain.
+
+<Spacer size="md" />
+
+## What’s Next?
+
+- [Deploy an agent using your subdomain](/docs/agent-deployments/quickstart)  
+- [Learn about how agents run in the SmythOS Runtime](/docs/agent-runtime/overview)  

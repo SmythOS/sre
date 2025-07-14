@@ -1,0 +1,121 @@
+---
+title: Agent Skill
+description: Define reusable capabilities for an agent, enabling complex workflows and enhancing functionality without code.
+keywords: [Agent Skill, skill, capability, function, workflow, parameter, AI, endpoint]
+toc_max_heading_level: 2
+---
+
+# Agent Skill Component
+
+Use the **Agent Skill** component to define a reusable capability or function for your agent. Think of a skill as a self-contained tool that the agent can learn to use, allowing you to build modular, powerful, and easily maintainable workflows.
+
+<InfoCallout title="Why this matters">
+Agent Skills are the building blocks of a sophisticated agent. Instead of creating one massive, monolithic workflow, you can break down complex logic into smaller, named skills (e.g., `check_inventory`, `process_refund`). This makes your agent easier to debug, update, and scale.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Core Skill Definition](#step-1-define-the-skills-core-details)
+- [Input Parameters](#step-2-define-input-parameters)
+- [Advanced Options](#step-3-configure-advanced-options)
+- [Outputs](#step-4-understand-the-outputs)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Define the Skill's Core Details
+
+Give your skill a clear name and a detailed description so that both you and the AI understand its purpose.
+
+| Setting         | Required?                   | Description                                                                                                   | Example                                                                          |
+|-----------------|-----------------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| **Skill Name** | <Badge type="required">Yes</Badge> | A unique, descriptive name for the skill.                                                                     | `check_product_availability`                                                     |
+| **Instructions**| <Badge type="required">Yes</Badge> | A detailed description of what the skill does, which is used by the AI to understand when and how to use it. | `This skill checks the inventory level for a given product ID and returns the stock count.` |
+
+<TipCallout title="AI-Friendly Instructions">
+Write instructions as if you're explaining the skill to another developer or an LLM. The more detailed and clear the description, the better the AI will be at using the skill correctly.
+</TipCallout>
+
+<Spacer size="md" />
+
+## Step 2: Define Input Parameters
+
+Parameters are the inputs your skill needs to perform its function.
+
+| Field               | Required?                   | Description                                                       |
+|---------------------|-----------------------------|-------------------------------------------------------------------|
+| **Name** | <Badge type="required">Yes</Badge> | A unique name for the parameter (e.g., `product_id`).             |
+| **Type** | <Badge type="required">Yes</Badge> | The data type (e.g., String, Number, Boolean, Array, Object).     |
+| **Description** | <Badge type="optional">No</Badge>  | A clear explanation of what the parameter is for.                 |
+| **Optional** | <Badge type="optional">No</Badge>  | Mark as true if the parameter is not always required.             |
+| **Default Value** | <Badge type="optional">No</Badge>  | A fallback value to use if no input is provided.                  |
+
+<Arcade src="https://demo.arcade.software/kwsoTMnZP38yLMH1LD3b?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Agent Skill | SmythOS"/>
+
+<Spacer size="md" />
+
+## Step 3: Configure Advanced Options
+
+These settings control the skill's visibility to AI and can transform it into an API-like endpoint for more technical control.
+
+| Setting                 | Description                                                                                                                                                                                                   |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Exposed to AI** | Enabled by default. When on, the skill is visible to AI models (like an LLM Assistant), which can then decide to use this skill autonomously based on the conversation.                                           |
+| **Description** | An internal documentation field for developers to add notes about the skill. This is not visible to the AI.                                                                                                       |
+| **Advanced Request Parts**| Disabled by default. Enabling this **permanently** transforms the skill to behave like an API endpoint, giving you access to HTTP methods (`GET`/`POST`), headers, body, and query parameters. Use this for building skills that need to be triggered by external webhooks or services. |
+
+<InfoCallout title="Warning: Advanced Request Parts">
+Once you enable **Advanced Request Parts**, you cannot disable it. Only use this feature if you specifically need to build a skill that functions as a callable API endpoint.
+</InfoCallout>
+
+<Arcade src="https://demo.arcade.software/EgJNBKCbaY7QJhBkBSl2?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Advanced Settings | SmythOS"/>
+
+<Spacer size="md" />
+
+## Step 4: Understand the Outputs
+
+The outputs of an Agent Skill depend on whether "Advanced Request Parts" is enabled.
+
+### Standard Outputs
+By default, for every input parameter you create, a corresponding output with the same name is automatically generated. This allows you to easily pass the input data through to the components inside the skill.
+
+### Advanced Request Parts Outputs
+When enabled, you get access to standard HTTP request components and can define custom outputs using JSON Path.
+
+| Output      | Description                                                                |
+|-------------|----------------------------------------------------------------------------|
+| **Headers** | Contains metadata from the incoming request (e.g., `Content-Type`).        |
+| **Body** | The main content of the request, typically for `POST` methods.             |
+| **Query** | The URL query parameters from the request, for `GET` methods.              |
+| **Custom** | Define your own outputs by providing a name and a JSON Path expression to extract specific data from the `body` or `headers` (e.g., `body.user.id`). |
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Keep Skills Focused:** Each skill should do one thing well. Avoid creating a single, monolithic skill that handles many different tasks.
+- **Use Clear Naming:** Use a consistent naming convention for your skills (e.g., `verb_noun`) and parameters (`productId`, `userName`) to keep your agent organized.
+- **Write Excellent Instructions:** The quality of the `Instructions` field directly impacts how well the AI can use your skill. Be explicit about what it does, what it needs, and what it returns.
+- **Expose to AI Intentionally:** Only keep `Exposed to AI` enabled for skills you want an LLM to be able to trigger on its own. Turn it off for internal "helper" skills.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your skill isn't working...">
+- **AI isn't using the skill:** Your `Instructions` might be unclear, or the skill's parameters may not match what the AI thinks it needs. Try rephrasing the instructions to be more direct.
+- **Input data is missing:** Check that the components *calling* the skill are correctly mapped to its input parameters. Use the **Debug** panel to inspect the data being passed in.
+- **Advanced Request Parts issues:** If you enabled this mode, treat the skill like an API endpoint. Use a tool like Postman to test it and ensure you are sending the correct method, headers, and body.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Connect an **[LLM Assistant Component](/docs/agent-studio/components/advanced/llm-assistant)** to your agent and have it use the skills you've built based on natural language commands.
+- Create a "main" workflow that uses an **[Agent Skill Component](/docs/agent-studio/components/base/agent-skill)** to call other, more specialized skills, creating a modular architecture.
+- Use the **[API Output Component](/docs/agent-studio/components/base/api-output)** at the end of a skill to define a standardized JSON response, especially if you have enabled Advanced Request Parts.

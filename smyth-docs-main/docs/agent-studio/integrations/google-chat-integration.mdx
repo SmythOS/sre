@@ -1,0 +1,301 @@
+---
+title: Google Chat Integration
+description: Connect SmythOS to Google Chat to send and manage messages, automate notifications, and build interactive bots directly within your agent workflows.
+og:title: SmythOS & Google Chat - Automate Your Team Communication
+og:description: Learn to integrate Google Chat with SmythOS. Empower your agents to send, receive, list, update, and delete messages in Google Chat spaces for powerful, automated collaboration.
+og:image: /docs/img/integrations/smythos_google_chat.png
+keywords: [Google Chat SmythOS Integration, Connect Google Chat to SmythOS, SmythOS Google Chat Bot, Automate Chat, Google Workspace API, No-Code Chat Bot]
+---
+# Google Chat Integration with SmythOS
+
+> **Want to integrate your automations directly into your team's conversations?** Connect Google Chat to SmythOS and empower your agents to send, read, and manage messages in your chat spaces.
+
+<InfoCallout title="TL;DR">
+Securely link your Google Workspace account to SmythOS by setting up OAuth 2.0 credentials in the Google Cloud Console. Then, use our suite of Google Chat components to automate notifications, create bots, and manage conversations.
+</InfoCallout>
+
+## List of Google Chat Components
+Quickly compare Google Chat components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Create Message**](#create-message) | Write | Posts a new message to a specified Google Chat space. | <Badge type="required" /> `spaceId`, `text` | `name`, `createTime`| Sending automated alerts or notifications. |
+| [**List Messages**](#list-messages) | Read | Retrieves a history of messages from a specific space. | <Badge type="required" /> `spaceId`<br/><Badge type="optional" /> `pageSize` | `messages` | Providing conversation history to an AI. |
+| [**Get Message**](#get-message) | Read | Fetches the details of a single, specific message. | <Badge type="required" /> `message_name` | `text`, `sender_name`| Reading the content of a message that triggered a workflow. |
+| [**Update Message**](#update-message)| Write | Edits the content of an existing message. | <Badge type="required" /> `message_name`<br/><Badge type="optional" /> `Body` | `text`, `thread_name`| Updating a status message with new information. |
+| [**Delete Message**](#delete-message)| Write | Permanently deletes a specific message. | <Badge type="required" /> `spaceId`, `messageId`| `Response` | Retracting a message sent in error. |
+| [**Send Webhook Message**](#send-webhook-message)| Write | Sends a message to a space using a simple incoming webhook URL. | <Badge type="required" /> `webhookUrl`, `text`| `Response` | A quick and easy way to post notifications. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Google Chat with Your Agent?</summary>
+
+Google Chat is a central communication tool for teams using Google Workspace. Integrating it with SmythOS allows you to build powerful, collaborative automations.
+
+- **Automated Notifications & Alerts:** Create agents that monitor your applications, databases, or external services and post real-time alerts to a dedicated Google Chat space, ensuring your team is immediately aware of critical events.
+- **Streamlined Workflows:** Use Google Chat as a user interface for your agents. A user could type a command in a chat space, and an agent can read the message, perform a task (like looking up data), and post the result back into the chat.
+- **Centralized Reporting:** Schedule agents to gather data from various sources (like Google Analytics or your CRM) and post daily, weekly, or monthly summary reports directly into a team's chat space.
+- **Interactive Bots:** Build custom bots that can guide users through a process, answer frequently asked questions, or collect information, all within the familiar environment of Google Chat.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Google Workspace Account** with access to Google Chat.
+- A **Google Cloud Platform (GCP) Project**.
+- The **Google Chat API** enabled in your GCP project.
+- **OAuth 2.0 credentials (`Client ID` and `Client Secret`)** from the Google Cloud Console.
+
+<Divider />
+
+## Getting Started With Google Chat
+
+The connection is handled via OAuth 2.0. This requires a one-time setup in the Google Cloud Console to get your credentials.
+
+### Step 1: Get Your OAuth 2.0 Credentials from Google
+1.  **Go to Google Cloud Console:** Navigate to `https://console.cloud.google.com/` and select or create a project.
+2.  **Enable the Google Chat API:** In the search bar, find "Google Chat API" and **Enable** it for your project.
+3.  **Configure OAuth Consent Screen:**
+    * Go to **APIs & Services > OAuth consent screen**.
+    * Choose **External** for User Type and click `Create`.
+    * Fill in the required app information (App name, User support email, Developer contact).
+    * **Scopes:** Click `Add or Remove Scopes`, and add the scopes you need. For full message functionality, you'll need:
+        * `https://www.googleapis.com/auth/chat.messages`
+        * `https://www.googleapis.com/auth/chat.spaces.readonly` (for listing spaces/messages)
+    * **Test Users:** Add the email addresses of the Google accounts that will authenticate.
+4.  **Create OAuth Client ID:**
+    * Go to **APIs & Services > Credentials**.
+    * Click `+ Create Credentials` and select `OAuth client ID`.
+    * For **Application type**, select `Web application`.
+    * Under **Authorized redirect URIs**, click `+ Add URI` and enter `https://app.smythos.com/oauth/google/callback`.
+    * Click `Create`.
+
+5.  **Copy Your Credentials:**
+    * A dialog will appear with **Your Client ID** and **Your Client Secret**. Copy both values immediately.
+
+    <WarningCallout title="Secure Your Credentials!">
+    Your `Client ID` and `Client Secret` are sensitive. Store them securely in the SmythOS `Vault`.
+    </WarningCallout>
+
+### Step 2: Authenticate in SmythOS
+1.  **Store Credentials:** Add your `Client ID` and `Client Secret` to the SmythOS **Vault**.
+2.  **Add a Component:** Drag any Google Chat component onto your agent graph.
+3.  **Connect:** Open the component's **Settings**, select your credentials from the Vault, and click **Authenticate**. You will be redirected to Google to sign in and grant consent.
+
+<Divider />
+
+## Which Google Chat Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Send a quick notification** without complex setup | A webhook URL | [Send Webhook Message](#send-webhook-message) | The simplest way to post messages. Doesn't require OAuth setup. |
+| **Post a message as a bot** and be able to edit or delete it later | A `spaceId` and `text` | [Create Message](#create-message) | The standard method for creating messages that your agent "owns". |
+| **Read the conversation history** in a space | A `spaceId` | [List Messages](#list-messages) | Fetches multiple messages, essential for providing context to an AI. |
+| **Edit a status message** your agent previously posted | A `message_name` | [Update Message](#update-message) | Allows you to change the content of an existing message. |
+| **Remove a message** your agent sent | A `spaceId` and `messageId` | [Delete Message](#delete-message) | Permanently deletes a message from a space. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Google Chat component.
+
+### <a name="create-message"></a>Create Message
+Posts a new message to a specified Google Chat space.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-chat) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `spaceId` | string | Yes | The unique ID of the space where the message will be posted. |
+| `text` | string | Yes | The text content of the message. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | The unique resource name of the created message (e.g., `spaces/SPACE_ID/messages/MESSAGE_ID`). |
+| `createTime` | string | The ISO 8601 timestamp of when the message was created. |
+| `text`| string | The content of the message that was sent. |
+| `Response`| object | The full, raw JSON response from the Google Chat API. |
+
+<TipCallout title="Use Case">
+A CI/CD agent posts a message to the `#deployments` space: "Build v1.5.2 has been successfully deployed to production."
+</TipCallout>
+
+<Divider/>
+
+### <a name="list-messages"></a>List Messages
+Retrieves a list of messages from a Google Chat space.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-chat) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Order By:** Sort messages by `createTime ASC` (oldest first) or `createTime DESC` (newest first).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `spaceId` | string | Yes | The unique ID of the space to retrieve messages from. |
+| `pageSize`| integer| Optional | The maximum number of messages to return per page. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | array | An array of message objects from the space. |
+| `nextPageToken`| string | A token to retrieve the next page of results, if available. |
+| `Response`| object | The full, raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+An agent retrieves the last 20 messages from a support space to provide conversational history as context for an LLM to generate a helpful response.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-message"></a>Get Message
+Retrieves the details of a single, specific message.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-chat) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `message_name`| string | Yes | The unique resource name of the message, in the format `spaces/{space}/messages/{message}`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The text content of the retrieved message. |
+| `sender_name`| string | The resource name of the message sender. |
+| `createTime` | string | The timestamp of when the message was created. |
+| `Response`| object | The raw JSON response from the API. |
+
+<TipCallout title="Use Case">
+When an agent is triggered by a reply in a thread, it uses this component with the parent message's name to fetch its original content.
+</TipCallout>
+
+<Divider/>
+
+### <a name="update-message"></a>Update Message
+Edits the text content of a message that was previously sent by the same authenticated app/bot.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-chat) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Body:** A JSON editor where you provide the new `text` for the message.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `message_name`| string | Yes | The resource name of the message to update (`spaces/{space}/messages/{message}`). |
+| `updateMask`| string | Optional| The fields to update. To change the text, set this to `text`. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `text` | string | The updated text content of the message. |
+| `Response`| object | The raw JSON response, containing the full updated message object. |
+
+<TipCallout title="Use Case">
+An agent posts a "Build in progress..." message. Once the build completes, it uses this component to update the original message to "Build successful!"
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-message"></a>Delete Message
+Permanently deletes a message.
+
+<InfoCallout>This component uses the OAuth 2.0 flow detailed in the [Getting Started](#getting-started-with-google-chat) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `spaceId` | string | Yes | The ID of the space containing the message. |
+| `messageId` | string | Yes | The ID of the message to delete. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | A successful deletion returns an empty response. |
+| `Headers` | object | HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent posts a temporary alert message. Once the underlying issue is resolved, it automatically deletes the alert message to clean up the chat space.
+</TipCallout>
+
+<Divider/>
+
+### <a name="send-webhook-message"></a>Send Webhook Message
+Sends a message to a Google Chat space using an incoming webhook URL. This is a simpler method that does not require OAuth.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `webhookUrl` | string | Yes | The incoming webhook URL configured for the chat space. |
+| `text` | string | Optional| The text content of the message. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `Response`| object | The raw JSON response from the webhook endpoint. |
+| `Headers` | object | The HTTP headers from the response. |
+
+<TipCallout title="Use Case">
+For simple, one-way notifications, a webhook is the fastest way to get set up. An agent can send a quick "Task Completed" message to a space without needing user authentication.
+</TipCallout>
+
+<WarningCallout title="Webhook Limitations">
+Messages sent via webhooks are posted by the "Webhook App" and cannot be updated or deleted via the API. For full message control, use the OAuth-based `Create Message` component.
+</WarningCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Credentials:** Always use the SmythOS `Vault` to store your `Client ID`, `Client Secret`, and any webhook URLs.
+* **Use OAuth for Full Control:** While webhooks are easy for simple notifications, the OAuth method is necessary if you need your agent to read messages, update its own messages, or perform actions as a specific bot user.
+* **Master Message Formatting:** Google Chat messages support simple HTML-like formatting (bold, italic, links, etc.). Use this to make your agent's messages clearer and more professional.
+* **Use Threading:** When replying to messages or posting a series of related updates, use the `thread` property in your message payload to keep conversations organized.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Authentication Errors (`invalid_client`, `redirect_uri_mismatch`):**
+    * **Cause:** Incorrect `Client ID`/`Secret` or a misconfigured redirect URI in your Google Cloud Console.
+    * **Solution:** Verify your credentials. Ensure the redirect URI is exactly `https://app.smythos.com/oauth/google/callback`.
+
+* **`403 Forbidden` / Permission Denied:**
+    * **Cause:** The app is missing the required API permissions (scopes) in Google Cloud, or the user has not granted consent.
+    * **Solution:** Go to your App Registration in the Google Cloud Console, check **API permissions**, and ensure scopes like `https://www.googleapis.com/auth/chat.messages` have been added and granted admin consent.
+
+* **`404 Not Found`:**
+    * **Cause:** An incorrect `spaceId` or `message_name` was provided.
+    * **Solution:** Double-check that the ID is correct and that the authenticated user or bot is a member of that space.
+
+* **Webhook Fails to Post**
+    * **Cause:** The `webhookUrl` is incorrect, has been revoked, or the message body is malformed.
+    * **Solution:** Generate a new webhook URL from your Google Chat space settings and update your component. Check the JSON payload for syntax errors.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful collaborative workflows with the **SmythOS Google Chat Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Monitors a GitHub repository. When a new pull request is opened, it posts a summary and a link to the PR in the relevant engineering team's chat space.
+    * Acts as a daily stand-up bot. It asks each team member for their updates in a direct message, then compiles all the responses and posts a summary in the main team space.
+    * Connects to your calendar. When a new meeting is scheduled with an external client, it creates a temporary group chat with all internal attendees to coordinate before the call.
+
+* **Explore Other Integrations:**
+    * Combine Google Chat with the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration). An agent can read tasks from a sheet and send reminders to the assigned person in a direct message.
+    * Use an [LLM component](/docs/agent-studio/integrations/openrouter-integration) to summarize a long document, then post the summary to a Google Chat space for quick consumption by the team.
+    * When a new high-priority support ticket is created in your helpdesk system, create a new chat with the on-call team and post the ticket details.

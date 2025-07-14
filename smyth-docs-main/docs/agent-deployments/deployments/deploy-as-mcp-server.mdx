@@ -1,0 +1,119 @@
+---
+title: Use via MCP
+keywords: [SmythOS, MCP, Model Context Protocol, AI integration, agent interoperability, smythos agent MCP, smythos integrations]
+description: How to deploy your SmythOS agent using the Model Context Protocol (MCP) to integrate with MCP-compatible tools and platforms.
+---
+
+# Use Your Agent via MCP Server
+
+> **MCP makes your agent interoperable.** Integrate with tools, editors, or systems that speak the same open protocol.
+
+<InfoCallout>
+**TL;DR:** Enable MCP in your agent settings, copy the development or production MCP URL, and plug it into your MCP-compatible platform.
+</InfoCallout>
+
+<Divider />
+
+## Why Enable MCP Support for Your Agent?
+
+MCP is an open standard that enables AI agents to access context, data, and tools across different systems and environments. When deployed as an MCP server:
+
+- Your agent can be called by any MCP-enabled app
+- It can maintain multi-turn context across tools
+- It can execute workflows and respond using live data
+
+This is ideal for:
+
+- AI development teams using workbenches
+- IDE or toolchain integrations
+- Enterprise systems requiring protocol-based interoperability
+
+<Divider />
+
+## Prerequisites
+
+Before connecting your agent to an MCP interface, ensure:
+
+- Your agent is deployed (test or production)
+- MCP is enabled in **Agent Settings**
+- You have the correct MCP endpoint URL for your environment
+
+<InfoCallout>
+**Reminder:** Test environments use the format:  
+`https://<agent-id>.agent.stage.smyth.ai`  
+Production environments use:  
+`https://<agent-id>.agent.psatge.smyth.ai`
+</InfoCallout>
+
+<Divider />
+
+## Step-by-Step: Enable and Integrate MCP
+
+### Step 1: Toggle MCP in Agent Settings
+
+1. Open your agent in **Studio**  
+2. Click **Settings**  
+3. Find the **MCP** section  
+4. Toggle MCP **on**
+
+This will generate unique MCP URLs for test and production.
+
+<Divider />
+
+### Step 2: Copy Your MCP Endpoint URL
+
+After enabling MCP, scroll to the **Environment** section under **Deployments** to copy your URLs.
+
+- **Test environment:**  
+  `https://<agent-id>.agent.stage.smyth.ai/mcp/sse`
+
+- **Production environment:**  
+  `https://<agent-id>.agent.psatge.smyth.ai/mcp/sse`
+
+Choose based on your integration stage:
+- Use the test URL while developing
+- Switch to the production URL when ready for live deployment
+
+<PromptCard prompt="Use the test MCP URL during development, and switch to production (psatge) for stable launches." />
+
+<Divider />
+
+## Security Considerations for MCP Endpoints
+
+MCP currently lacks a built-in authentication standard.
+
+<WarningCallout>
+If your SmythOS agent uses [OAuth](/docs/agent-studio/manage-agents/authentication) or other authentication layers, it will reject unauthenticated MCP requests.
+</WarningCallout>
+
+To add auth protection, use:
+- A custom proxy layer
+- Third-party middleware
+
+Always secure your production MCP endpoints appropriately.
+
+<Divider />
+
+## Common Use Cases for MCP Integration
+
+- Connect your agent to VS Code or an AI workbench
+- Integrate with internal AI dashboards or tools
+- Add protocol-level context-awareness to enterprise platforms
+
+<PromptCard prompt="Paste your MCP URL into any compatible platform. Your agent will begin responding contextually." />
+
+<Divider />
+
+## What’s Next?
+
+With MCP enabled, your SmythOS agent becomes a first-class participant in any system using the Model Context Protocol. From here, you can:
+
+- View logs and debug via **Settings → Deployments → Logs**
+- [Deploy as LLM](/docs/agent-deployments/deployments/deploy-as-llm) to expose it via `/chat/completions`
+- [Deploy as ChatGPT](/docs/agent-deployments/deployments/deploy-as-chatgpt) to integrate with GPT Builder
+
+Same agent, multiple endpoints. Maximum reusability.
+
+<PromptCard prompt="Enable MCP on your SmythOS agent, grab the appropriate URL, and integrate with your preferred MCP-ready platform." />
+
+<Divider />

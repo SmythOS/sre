@@ -1,0 +1,62 @@
+---
+title: Authentication Types
+description: Secure your agents with authentication and access control in SmythOS.
+keywords: [authentication, security, access control, api keys, oauth, jwt]
+---
+
+# Authentication Types
+
+You can secure your agents and their integrations using multiple authentication methods in SmythOS. These help control access, protect sensitive data, and ensure authorized usage.
+
+<InfoCallout title="Why it matters">
+Use authentication to safeguard your agent workflows, API access, and user interactions. Always store secrets in the [Vault](/docs/agent-studio/key-concepts/vault) and configure token-based systems properly.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Authentication Methods
+
+Choose the right method based on your use case. All authentication types rely on the [Vault](/docs/agent-studio/key-concepts/vault) to securely store and inject credentials into workflows.
+
+### API Key Authentication
+
+Use for simple integrations with services that require static tokens.
+
+1. Add your API key to the [Vault](/docs/agent-studio/key-concepts/vault)
+2. Reference it inside your agent’s [API components](/docs/agent-studio/components/base/api-output)
+3. SmythOS injects it automatically when the workflow runs
+
+### OAuth Authentication
+
+Use for secure, delegated user access via providers like Google, Microsoft, or custom IDPs.
+
+1. Register your application with the identity provider  
+2. Add the client ID and secret to the Vault  
+3. Configure OAuth in your agent using the [Authentication Settings](/docs/agent-studio/manage-agents/authentication)
+
+You’ll also need to define a secure callback URL. See the [OAuth setup guide](/docs/agent-studio/manage-agents/authentication) for required fields and structure.
+
+### JWT Authentication
+
+Use for stateless and secure token verification, often in internal systems.
+
+1. Add your JWT secret or public key to the Vault  
+2. Configure JWT logic in your agent  
+3. Validate tokens passed with incoming requests
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Do not hardcode secrets** in your agent’s logic  
+- **Use the Vault** for all credentials and keys  
+- **Rotate keys regularly** to reduce security risk  
+- **Minimize scope** when generating API keys or access tokens  
+- **Audit logs** and monitor [agent logs](/docs/agent-studio/manage-agents/logs) to detect misuse
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Learn how to manage secrets in the [Vault](/docs/agent-studio/key-concepts/vault)  
+- Add secure [API requests to your agents](/docs/agent-studio/components/base/api-output)

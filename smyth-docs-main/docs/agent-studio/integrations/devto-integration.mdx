@@ -1,0 +1,205 @@
+---
+title: Dev.to Integration
+description: Connect SmythOS to Dev.to to automate publishing articles and creating drafts directly from your agent workflows.
+og:title: SmythOS & Dev.to - Automate Your Content Publishing
+og:description: Learn to integrate Dev.to with SmythOS. Empower your agents to automatically publish blog posts or save them as drafts, streamlining your content creation pipeline.
+og:image: /docs/img/integrations/smythos_devto.png
+keywords: [Dev.to SmythOS Integration, Connect Dev.to to SmythOS, SmythOS Dev.to, Automate Blogging, Content Publishing API, No-Code Dev.to]
+---
+# Dev.to Integration with SmythOS
+
+> **Want to automate your content publishing workflow?** Connect Dev.to to SmythOS and empower your agents to publish articles and create drafts directly on the popular developer community platform.
+
+<InfoCallout title="TL;DR">
+Securely link your Dev.to account to SmythOS using an API key. Then, use our components to automate the entire publishing process, from creating a draft to publishing a final article.
+</InfoCallout>
+
+## List of Dev.to Components
+Quickly compare Dev.to components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Publish Blog**](#publish-blog) | Write | Publishes an article directly to Dev.to. | <Badge type="required" /> `title`, `body`, `description`<br/><Badge type="optional" /> `tags` | `articleId`, `articleUrl` | Automating content distribution. |
+| [**Create Draft**](#create-draft) | Write | Saves an article as a draft in your Dev.to account for later review. | <Badge type="required" /> `title`, `body`, `description`<br/><Badge type="optional" /> `tags` | `articleId`, `articleUrl` | Staging content from other systems. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Dev.to with Your Agent?</summary>
+
+Dev.to is a massive community for developers. Integrating it with SmythOS allows you to programmatically manage your content and engage with the community more efficiently.
+
+- **Automate Content Syndication:** Create an agent that monitors your personal blog's RSS feed. When a new post is published, the agent can automatically re-publish it to your Dev.to account to reach a wider audience.
+- **Streamline Your Writing Workflow:** Build an agent that takes a Markdown file from a GitHub repository, adds the necessary frontmatter (like title and tags), and saves it as a draft on Dev.to, ready for your final review.
+- **Content Generation Pipelines:** Use an AI model to generate a technical article or tutorial. An agent can then take this generated content and directly create a draft in your Dev.to account.
+- **Backup and Archiving:** While not a primary use case for these components, you could build agents to fetch your existing articles (using a custom API component) and back them up elsewhere.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- A **Dev.to account**.
+- Your Dev.to **API Key**.
+
+<Divider />
+
+## Getting Started With Dev.to
+
+The connection between SmythOS and Dev.to is configured using a secure API Key.
+
+### Step 1: Get Your Dev.to API Key
+1.  Log in to your [Dev.to account](https://dev.to/).
+2.  Click on your profile picture in the top-right corner and go to **Settings**.
+3.  In the left menu, navigate to **Account** > **API Keys**. The direct link is `https://dev.to/settings/extensions`.
+4.  In the "Forem API Keys" section, give your key a description (e.g., "SmythOS Agent") and click **Generate API Key**.
+5.  Copy the generated key to your clipboard.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Dev.to API Key as the value. Give it a memorable name, like `devto_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure a Dev.to Component
+1.  In your SmythOS agent graph, drag and drop any Dev.to component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `API Key` field, select the secret you saved in the Vault (e.g., `devto_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to each Dev.to component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Dev.to Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Immediately publish** an article for everyone to see | A complete article | [Publish Blog](#publish-blog) | This component makes the article live on the Dev.to platform as soon as it's executed. |
+| **Save an article for later editing** and publishing | An incomplete or final draft | [Create Draft](#create-draft) | This allows you to programmatically get content into Dev.to without making it public immediately. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Dev.to component.
+
+### <a name="publish-blog"></a>Publish Blog
+Publishes an article directly to the Dev.to platform, making it live and visible to the community.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-devto) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `title` | string | Yes | The title of the article. |
+| `body` | string | Yes | The main content of the article, written in Markdown. |
+| `description`| string | Yes | A short summary of the article. |
+| `tags` | Array of strings | Optional| A list of up to four tags for the article (e.g., `["javascript", "webdev"]`). |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articleId` | integer | The unique ID of the newly published article. |
+| `articleUrl`| string | The direct URL to the live article on Dev.to. |
+| `Response`| object | The full, raw JSON response from the Dev.to API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent takes the final, approved version of a blog post from a Notion database and uses this component to publish it directly to Dev.to, cross-posting it for a wider audience.
+</TipCallout>
+
+```json
+{
+  "component": "devto.publishBlog",
+  "title": "A Guide to Building AI Agents",
+  "body": "## Introduction\\n\\nBuilding AI agents is easier than ever...",
+  "description": "Learn the fundamentals of creating powerful AI agents with this step-by-step guide.",
+  "tags": ["ai", "development", "tutorial"]
+}
+```
+
+<WarningCallout title="Immediate Publication">
+This action is immediate. As soon as the component runs successfully, your article will be live on Dev.to. For a staged approach, use the "Create Draft" component first.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="create-draft"></a>Create Draft
+Saves an article as a private draft in your Dev.to account. It will not be visible to the public until you manually publish it.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-devto) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `title` | string | Yes | The title of the article draft. |
+| `body` | string | Yes | The Markdown content for the draft. |
+| `description`| string | Yes | A short summary for the draft. |
+| `tags` | Array of strings | Optional| A list of tags to associate with the draft. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `articleId` | integer | The unique ID of the newly created draft. |
+| `articleUrl`| string | The direct URL to view and edit the draft in your Dev.to dashboard. |
+| `Response`| object | The full, raw JSON response from the Dev.to API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case">
+An agent generates a first draft of a technical tutorial using an AI model. It then saves this content to Dev.to as a draft, allowing a human editor to review, refine, and manually publish it later.
+</TipCallout>
+
+```json
+{
+  "component": "devto.createDraft",
+  "title": "DRAFT: Understanding Serverless Computing",
+  "body": "Serverless computing is a cloud execution model...",
+  "description": "A draft exploring the pros and cons of serverless.",
+  "tags": ["serverless", "cloud", "architecture"]
+}
+```
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Dev.to API key in the SmythOS `Vault`.
+* **Use Markdown:** The `body` input for both components uses Markdown. Your agent can be designed to generate or format content into Markdown before passing it to the component.
+* **Frontmatter:** The Dev.to API uses a JSON payload. However, if you were to structure your `body` input with YAML frontmatter (the metadata at the top of a Markdown file), the API can often parse it to set the title, tags, and other properties, which can be an alternative way to structure your input.
+* **Update Articles:** To update an existing article, you would need to use a `PUT` request to the `/api/articles/{id}` endpoint. This would require a custom API call component in SmythOS where you provide the `articleId` obtained from creating the article.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, has been revoked, or is missing from the request header.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and active. Ensure it is correctly selected in the component settings.
+
+* **Error: `422 Unprocessable Entity`**
+  * **Cause:** The request body is malformed. This typically means the `title` or `body` is missing, or the `tags` are not in the correct format (e.g., not an array of strings).
+  * **Solution:** Check that all required inputs are provided and correctly formatted. Ensure the `body` contains valid Markdown.
+
+* **Article Appears with "Invalid User"**
+  * **Cause:** This can sometimes happen if the API key is invalid or has issues.
+  * **Solution:** Regenerate your API key on Dev.to and update the secret in your SmythOS Vault.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build powerful content automation pipelines with the **SmythOS Dev.to Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Connects to your [GitHub](/docs/agent-studio/integrations/github-integration) repository. When you merge a new Markdown file into your `blog` folder, the agent automatically takes the content and creates a draft on Dev.to.
+    * Generates a weekly "Top 5 AI News" summary using an [LLM component](/docs/agent-studio/integrations/openrouter-integration) and a [search tool](/docs/agent-studio/integrations/tavily-integration), then publishes the summary as a blog post.
+
+* **Explore Other Integrations:**
+    * After an agent publishes a new article using `Publish Blog`, it can take the `articleUrl` and share it across all your social channels using the [Ayrshare Integration](/docs/agent-studio/integrations/ayrshare-integration).
+    * Keep a log of all published articles by having your agent write the `articleId` and `articleUrl` to a [Google Sheet](/docs/agent-studio/integrations/google-sheets-integration).

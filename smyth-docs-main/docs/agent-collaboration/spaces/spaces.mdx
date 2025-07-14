@@ -1,0 +1,119 @@
+---
+title: Spaces
+description: Create and manage workspaces in SmythOS. Each space helps teams organise agents, data, permissions, and branding in a secure, self-contained environment.
+keywords: [spaces, team dashboard, workspace, create space, invite team, permissions, branding, white labeling, organization]
+sidebar_position: 1
+---
+
+# Spaces
+
+A **Space** in SmythOS is a self-contained workspace where teams can manage their agents, data, workflows, and access independently. Spaces are ideal for separating clients, departments, environments, or use cases.
+
+<InfoCallout title="Why use spaces?">
+Spaces provide isolation. They keep agents, data, permissions, and branding scoped to a specific context, giving you clean separation across your workstreams.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Creating a space
+
+To create a new space:
+
+1. Click your [organization name](/docs/account-management/organization-management) in the top-right corner of the dashboard  
+2. Select **Create New Space**
+3. Enter a name for your space
+4. (Optional) [Invite members](/docs/agent-collaboration/spaces/invite-members) and assign their [roles](/docs/agent-collaboration/permissions)
+
+<Image src="/docs/img/agent_collaboration/create-space.jpg" alt="Create Space form in SmythOS" caption="Each space functions like a secure workspace for agents and data." />
+<Image src="/docs/img/agent_collaboration/space-created-modal.jpg" alt="Create Space form in SmythOS" caption="Each space functions like a secure workspace for agents and data." />
+
+<SuccessCallout title="You're now in your Team Dashboard">
+After creation, you'll be redirected to the dashboard. Here, you can manage agents, invite members, view analytics, and configure settings.
+</SuccessCallout>
+
+<Spacer size="md" />
+
+## Managing members
+
+From the **Team Dashboard** or **Space Settings**, you can:
+
+- Invite team members by email
+- Assign them roles (Viewer, Editor, Admin, or Super Admin)
+- Use filters to sort members by name, email, or role
+
+<Image src="/docs/img/agent_collaboration/space-invite-members.jpg" alt="Space Settings Member Management" caption="Manage roles, branding, and member permissions from Space Settings." />
+<WarningCallout title="Space creators cannot be removed">
+Only the space creator can delete it. Creators cannot be removed by other members.
+</WarningCallout>
+
+<Spacer size="md" />
+
+## Customizing your space branding
+
+You can apply custom logos to a space to reflect your client or company branding:
+
+1. Open **Space Settings**
+2. Under **Company Branding**, click **Change Logo**
+3. Upload your custom logo
+
+<Image src="/docs/img/agent_collaboration/space-settings.jpg" alt="Upload company logo in SmythOS" caption="Customize each space’s appearance to match your client or team identity." />
+
+<InfoCallout title="Looking for full white labeling?">
+To completely white-label the experience, including agent UI, subdomain, and email identity... see [White Labeling Your Agents](/docs/agent-collaboration/spaces/white-labeling).
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Deleting a space
+
+Only the creator can delete a space. Before deletion:
+
+1. Remove all agents, data spaces, and members
+2. Open **Space Settings**
+3. Click **Delete Space** (this option appears once the space is clean)
+
+<InfoCallout title="No recovery after deletion">
+Deleted spaces and their contents cannot be restored. Make sure to export anything important before proceeding.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Permissions overview
+
+Spaces operate on role-based access control. Roles are assigned per user per space.
+
+| Role         | What They Can Do                                                           |
+|--------------|-----------------------------------------------------------------------------|
+| Super Admin  | Full access to agents, vault, analytics, settings, roles, and members      |
+| Admin        | Manage all space content and members, but not organization billing         |
+| Editor       | Create, edit, and deploy agents, access data pool and templates            |
+| Viewer       | View and interact with agents, no edit or configuration rights             |
+
+To configure global role templates and set defaults, visit [Organization Management](/docs/account-management/organization-management).
+
+<Spacer size="md" />
+
+## Comparing spaces vs organizations
+
+| Feature                    | Spaces (Scoped)                                                      | Organization (Global)                                                  |
+|----------------------------|----------------------------------------------------------------------|------------------------------------------------------------------------|
+| Access Scope               | Per project or team                                                  | All spaces in the org                                                  |
+| Roles                     | Assigned per space                                                   | Managed globally in [Organization Management](/docs/account-management/organization-management) |
+| Agents                    | Belong to a specific space                                           | Not shared across spaces                                               |
+| Branding                  | Custom per space                                                     | Default logo and theme                                                 |
+| Billing and Subscription  | Not editable from the space                                          | Managed centrally by org owner                                         |
+| User Invitation           | Invite members to a specific space                                   | Org-level users must exist first before joining spaces                 |
+
+<TipCallout title="Structure for clarity">
+Use one space per client, product, or internal team. Keep sandbox/test spaces separate from live environments.
+</TipCallout>
+
+<Spacer size="md" />
+
+## What’s next?
+
+- **Set global permissions and defaults** → [Go to Organization Management](/docs/account-management/organization-management)
+- **Invite teammates to a space** → [Go to Invite Members](/docs/agent-collaboration/spaces/invite-members)
+- **Configure detailed permissions** → [Go to Permissions](/docs/agent-collaboration/permissions)
+- **Apply full white labeling** → [Go to White Labeling Guide](/docs/agent-collaboration/spaces/white-labeling)
+- **Build and test your first agent** → [Go to Agents Overview](/docs/agent-studio/build-agents/agent-overview)

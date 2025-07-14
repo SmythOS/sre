@@ -1,0 +1,143 @@
+---
+title: JSON Filter
+description: Selectively keep specific fields from a JSON object to simplify data and reduce token usage.
+keywords: [JSON, filter, select, data, api, response, token, context window, clean]
+toc_max_heading_level: 2
+---
+
+# JSON Filter Component
+
+Use the **JSON Filter** component to reduce large JSON objects to only the fields you need. It's an essential tool for cleaning up noisy API responses, simplifying data for downstream components, and preventing context window overloads with LLMs.
+
+<InfoCallout title="Why this matters">
+APIs often return far more data than you need. Sending a massive JSON object to an LLM wastes tokens and risks hitting context limits. The `JSON Filter` lets you surgically remove the noise, ensuring only relevant data is passed on.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Define Filter Parameters](#step-1-define-filter-parameters)
+- [Provide the JSON Input](#step-2-provide-the-json-input)
+- [Handle the Filtered Output](#step-3-handle-the-filtered-output)
+- [Example Usage](#step-4-example-usage)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Define Filter Parameters
+
+Specify the exact keys you want to keep from the original JSON object. All other keys will be discarded.
+
+| Setting               | Required?                   | Description                                                              | Notes                                                                    |
+|-----------------------|-----------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| **Filter Parameters** | <Badge type="required">Yes</Badge> | A comma-separated list of keys to retain in the output.                  | To keep a nested key, you must also include all of its parent keys.      |
+
+<TipCallout title="Nested Keys">
+To keep a nested field like `user.profile.email`, you must include all parent keys in the list: `user, user.profile, user.profile.email`.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/WJpOVfU9Ll9F6NrOtjnv?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="JSON Filter | SmythOS" />
+
+<Spacer size="md" />
+
+## Step 2: Provide the JSON Input
+
+This component requires a single input: the JSON object you want to filter.
+
+| Input   | Required?                   | Description                                          | Notes                                                             |
+|---------|-----------------------------|------------------------------------------------------|-------------------------------------------------------------------|
+| **Input** | <Badge type="required">Yes</Badge> | The JSON object or array of objects to be filtered. | Can be passed from an **API Call**, **Code** component, or any other step. |
+
+<Spacer size="md" />
+
+## Step 3: Handle the Filtered Output
+
+The component outputs a new, smaller JSON object containing only the keys you specified.
+
+| Output    | Description                                                     | Data Structure                                    |
+|-----------|-----------------------------------------------------------------|---------------------------------------------------|
+| **Output** | The new JSON object containing only the retained fields.        | A valid JSON object.                              |
+
+<Spacer size="md" />
+
+## Step 4: Example Usage
+
+Imagine you get a large user object from an API call, but you only need the user's name and their shipping address.
+
+**Original JSON Input:**
+```json
+{
+  "user": {
+    "id": "usr_12345",
+    "name": "Jane Doe",
+    "profile": {
+      "email": "jane.doe@example.com",
+      "phone": "555-123-4567",
+      "avatar_url": "[https://example.com/avatar.jpg](https://example.com/avatar.jpg)"
+    },
+    "address": {
+      "shipping": {
+        "street": "123 Main St",
+        "city": "Anytown"
+      },
+      "billing": {
+        "street": "456 Oak Ave",
+        "city": "Someplace"
+      }
+    },
+    "metadata": {
+      "last_login": "2024-01-01T12:00:00Z",
+      "account_tier": "gold"
+    }
+  }
+}
+```
+
+**Filter Parameters Setting:**
+`user, user.name, user.address, user.address.shipping`
+
+**Filtered JSON Output:**
+```json
+{
+  "user": {
+    "name": "Jane Doe",
+    "address": {
+      "shipping": {
+        "street": "123 Main St",
+        "city": "Anytown"
+      }
+    }
+  }
+}
+```
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Filter Early:** Place the `JSON Filter` component immediately after an **API Call** to reduce the data size for all subsequent steps.
+- **Be Specific:** Only filter for the data you absolutely need. This keeps your agent's memory usage low and processing fast.
+- **Use for LLM Prep:** Always filter large JSON objects before passing them to a **GenAI LLM** to save on token costs and improve model focus.
+- **Test with Debug Mode:** Use the **Debug** panel to inspect the input and output, ensuring your filter parameters are correct.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your filter isn't working...">
+- **Check Parameter Paths:** The most common issue is an incorrect path to a key. `user.shipping` will not work if the correct path is `user.address.shipping`.
+- **Include All Parent Keys:** If your output is an empty object (`{}`), you likely forgot to include the parent keys of the nested field you want.
+- **Verify Input is JSON:** Ensure the `Input` is a valid JSON object. Use a **Note** or **Code** component to log the input and verify its structure.
+- **Look for Typos:** A simple typo in a key name within the **Filter Parameters** will cause that key to be excluded.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Chain an **[API Call](/docs/agent-studio/components/advanced/api-call)** into a `JSON Filter` to immediately clean the response.
+- Pass the filtered `Output` to a **[GenAI LLM Component](/docs/agent-studio/components/base/gen-ai-llm)** to have it summarize only the essential information.
+- Use the filtered object as the input for a **[ForEach Component](/docs/agent-studio/components/advanced/for-each)** to loop through a cleaned list of items.

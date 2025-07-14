@@ -1,0 +1,119 @@
+---
+title: Use ElevenLabs with SmythOS
+description: Learn how to connect your SmythOS Agent as a custom tool in ElevenLabs to activate workflows through voice commands.
+keywords: [ElevenLabs, SmythOS, voice agent, agent integration, custom tool, speech-to-action, webhook, API]
+---
+
+# Use ElevenLabs with SmythOS
+
+> This tutorial shows you how to connect a SmythOS Agent to ElevenLabs as a custom voice-activated tool. Once set up, you can speak to your ElevenLabs Agent and trigger complex SmythOS workflows using just your voice.
+
+<InfoCallout title="What you’ll achieve">
+You’ll link a voice command in ElevenLabs to a live API endpoint in SmythOS, enabling speech-to-action workflows like `"Search today's tech news"`.
+</InfoCallout>
+
+<Divider />
+
+## Prerequisites
+
+Before you begin, you will need:
+
+- An **ElevenLabs** account with access to the **Agents** feature.
+- A deployed **SmythOS Agent** that is ready to receive API calls.
+- Your Agent’s specific **API Endpoint URL**, which is the target for your voice commands.
+
+<InfoCallout title="How to find your API URL">
+1.  Go to your agent's **Deployments** tab in the SmythOS Studio.
+2.  Click the **API** embodiment to open its interactive Swagger UI documentation.
+3.  This page contains the exact URL, method, and request structure you will need for the setup below. Copy the full endpoint URL.
+</InfoCallout>
+
+<PromptCard prompt="Open your agent’s Swagger UI now and copy the endpoint for the action you want to trigger by voice." />
+
+<Divider />
+
+## 1. Create a New Agent in ElevenLabs
+
+First, set up the agent that will listen for your voice commands.
+
+1.  Go to the **Agents** section in your ElevenLabs dashboard.
+2.  Click **Create New Agent**.
+3.  Assign a name and personality. This Agent will act as your primary voice interface.
+
+<Divider />
+
+## 2. Add a Custom Tool
+
+Next, you'll teach your new agent about the SmythOS workflow it can trigger.
+
+1.  Inside the ElevenLabs Agent’s configuration page, scroll to the **Tools** section.
+2.  Click **Add Tool** and choose **Custom Tool** from the options. This opens the webhook configuration tab.
+
+<Divider />
+
+## 3. Configure the SmythOS Endpoint
+
+This is the core of the integration. Fill in the fields using the information from your SmythOS agent's Swagger UI documentation.
+
+- **Name**: A short, descriptive name for the action.
+  - **Example**: `smythos_web_search`
+- **Description**: A clear instruction for the ElevenLabs agent. This is critical for it to understand when to use this tool.
+  - **Example**: `"Triggers the SmythOS Agent to perform a web search based on the user's spoken input."`
+
+### API Request Details
+
+- **Method**: Set the HTTP method to match the endpoint's requirement.
+  - **Value**: `POST`
+- **URL**: Paste the full API endpoint URL you copied from your SmythOS agent's Swagger page.
+  - **Example**: `https://cmbrxuq2w1c9rembjghyo9h16.agent.a.smyth.ai/api/web_search`
+- **Headers**: Define the necessary headers for the request.
+  - Click **Add header** and set `Content-Type` to `application/json`.
+  - If your SmythOS endpoint requires authentication, add an `Authorization` header here.
+
+### Request Payload
+
+This section defines the JSON data that ElevenLabs will send to your SmythOS agent.
+
+1.  In the request body section, you need to map the user's voice input to the JSON payload structure that your SmythOS agent expects.
+2.  Use the variable format provided by the ElevenLabs UI (e.g., `{{user_input}}`) to represent the dynamic spoken phrase. This tells ElevenLabs to insert the user's speech into the `search_query` field when it calls the API.
+
+```json
+{
+  "search_query": "{{user_input}}"
+}
+```
+
+<Divider />
+
+## 4. Test the Integration
+
+1.  Save your Custom Tool setup in the ElevenLabs interface.
+2.  Speak a test phrase to your ElevenLabs Agent that matches the tool's purpose, such as:
+
+`"Search for the latest Formula 1 updates."`
+
+Your ElevenLabs Agent will now:
+- Recognize the intent to search and trigger the `smythos_web_search` tool.
+- Send a `POST` request to your SmythOS Agent's URL.
+- Include a JSON body like `{ "search_query": "the latest Formula 1 updates" }`.
+- Your SmythOS agent will then execute the search workflow.
+
+<PromptCard prompt="Say 'Search for today’s cybersecurity news' to trigger your SmythOS Agent." />
+
+<Divider />
+
+## Outcome
+
+You’ve successfully enabled voice-triggered workflows between ElevenLabs and SmythOS. You can now create powerful, hands-free automation flows that connect your spoken commands to your agent's backend logic.
+
+<SuccessCallout title="Success">
+Your voice assistant is now wired to execute real actions via SmythOS. Try more commands and expand your voice toolkit.
+</SuccessCallout>
+
+<Divider />
+
+## Next Steps
+
+- **Add more tools** for different SmythOS agent tasks (e.g., `send_email`, `Tasks/Reminders`, `update_crm`).
+- **Explore handling responses**: Teach your ElevenLabs agent to speak back with the output from the SmythOS workflow.
+- **Learn more** about how to [use the Agent API](/docs/agent-deployments/deployments/deploy-as-api) for other types of advanced integrations.

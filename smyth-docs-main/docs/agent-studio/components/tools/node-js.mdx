@@ -1,0 +1,130 @@
+---
+title: NodeJS
+description: Execute custom JavaScript and NodeJS code with NPM packages in a serverless environment to extend your agent's capabilities.
+keywords: [NodeJS, JavaScript, Code, serverless, Lambda, AWS, custom logic, script]
+toc_max_heading_level: 2
+---
+
+# NodeJS Component
+
+Use the **NodeJS** component to execute custom JavaScript and NodeJS code, complete with NPM package support, directly within your workflows. This component runs your code in a secure, serverless environment, giving you an infinitely flexible tool for any logic that goes beyond the standard components.
+
+<InfoCallout title="Why this matters">
+The NodeJS component is your ultimate escape hatch. When you need to perform complex data transformations, connect to a non-standard API, or implement any custom logic, this component provides the full power of a programming environment without you needing to manage servers. By default, code runs on SmythOS infrastructure, with an advanced option to use your own AWS account.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What You’ll Configure
+
+- [Write Your NodeJS Code](#step-1-write-your-nodejs-code)
+- [Configure Inputs](#step-2-configure-inputs)
+- [Handle Outputs](#step-3-handle-the-outputs)
+- [Configure Advanced Settings (Custom AWS)](#step-4-configure-advanced-settings-custom-aws)
+- [Best Practices](#best-practices)
+- [Troubleshooting Tips](#troubleshooting-tips)
+- [What to Try Next](#what-to-try-next)
+
+<Spacer size="md" />
+
+## Step 1: Write Your NodeJS Code
+
+The component requires your code to be structured within an `async function main`. The inputs you define in the UI are automatically passed as arguments to this function.
+
+### Code Structure
+```javascript
+// You can import public NPM packages
+import axios from 'axios';
+
+// Inputs from the UI are passed as arguments here, in order.
+async function main(input1, input2) {
+  // Your code logic goes here
+  // For example, make an API call using an imported package
+  try {
+    const response = await axios.get(`https://api.example.com/data?param=${input1}`);
+    const processedData = {
+      ...response.data,
+      customField: input2
+    };
+    
+    // The value you return will be available in the "Output" port
+    return processedData;
+  } catch (error) {
+    // Errors can be handled and will be available in the "Error" port
+    console.error('An error occurred:', error.message);
+    throw error; // Re-throwing the error makes it available in the Error output
+  }
+}
+```
+
+<TipCallout title="NPM Package Support">
+You can import any publicly available NPM package directly in your code. The environment will automatically fetch and install the required dependencies when the function is executed.
+</TipCallout>
+
+<Arcade src="https://demo.arcade.software/nGmhHgytddwjdFCedz9R?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="SmythOS | Serverless Code"/>
+
+<Spacer size="md" />
+
+## Step 2: Configure Inputs
+
+For every piece of data your code needs, you will add a corresponding input. These inputs are passed as parameters to your `main` function in the order they are created.
+
+| Action      | Description                                                                                                                                                                                                                            |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Add Input** | Click the `+` icon to add a new input. Give it a descriptive name (e.g., `user_id`, `api_data`). The value passed to `user_id` will be the first argument to `main`, the next input will be the second, and so on. |
+
+<Spacer size="md" />
+
+## Step 3: Handle Outputs
+
+The component provides default `Output` and `Error` ports, and allows for custom outputs to easily parse a JSON response.
+
+| Output   | Description                                                                                                                                                           |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Output** | This port contains the value returned by your `main` function. If you return a JSON object, you can parse it using custom outputs.                                       |
+| **Error**| If your code throws an error, this port will contain the error object, which is useful for debugging and error handling in your workflow.                                |
+| **Custom Outputs**| If your function returns a JSON object (e.g., `{ "status": "success", "data": {...} }`), you can add custom outputs named `status` and `data` to extract those fields directly without needing a separate parsing step. |
+
+<Spacer size="md" />
+
+## Step 4: Configure Advanced Settings (Custom AWS)
+
+For greater control, you can configure the component to run the code in your own AWS account instead of the managed SmythOS infrastructure.
+
+| Setting                 | Description                                                                                                                                                                                                                           |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Use Custom Cloud Keys** | Toggle this on to use your own AWS Lambda environment.                                                                                                                                                                                |
+| **AWS Access Key ID** | Your AWS Access Key ID. Required when using your own AWS account.                                                                                                                                                                     |
+| **AWS Secret Key** | Your AWS Secret Key. Required when using your own AWS account.                                                                                                                                                                          |
+| **AWS Region** | The AWS region where the function should be deployed (e.g., `us-east-1`).                                                                                                                                                                     |
+
+<TipCallout title="Store Your Keys Securely">
+Never paste your AWS keys directly into these fields. Always store them securely in the **[Vault](/docs/agent-studio/key-concepts/vault)** and reference them here as variables (e.g., `{{vault.aws_access_key}}`).
+</TipCallout>
+
+<Spacer size="md" />
+
+## Best Practices
+
+- **Return Structured JSON:** Instead of returning a simple string or number, always have your function `return` a structured JSON object. This makes it much easier to use the data in downstream components via custom outputs.
+- **Handle Errors Gracefully:** Use `try...catch` blocks within your code to handle potential errors (like failed API calls). You can log the error and `throw` it to make it available in the `Error` output port for proper workflow error handling.
+- **Keep Code Focused:** This component is best for single, specific tasks. For very complex, multi-step logic, consider breaking it down into several `NodeJS` components or chaining them with other SmythOS components.
+- **Manage Dependencies:** While any public NPM package can be used, be mindful of their size and cold start times, as very large dependencies can increase execution latency.
+
+<Spacer size="md" />
+
+## Troubleshooting Tips
+
+<InfoCallout title="If your code isn't running correctly...">
+- **Syntax Errors:** Check your code for common JavaScript syntax errors. The `Error` output port will often contain detailed information about where the error occurred.
+- **Timeout Errors:** The serverless environment has a maximum execution time. If your code is performing a very long-running task, it may time out. Optimize your code or break the task into smaller parts.
+- **Package Import Fails:** Ensure the NPM package name is spelled correctly in your `import` statement and that it is a public package. Private packages are not supported in the default environment.
+- **Custom AWS Permissions:** If you are using your own AWS account, ensure the IAM user associated with your keys has sufficient permissions to create and invoke Lambda functions (`lambda:CreateFunction`, `lambda:InvokeFunction`, etc.) and any other AWS services your code interacts with.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## What to Try Next
+
+- Use this component to connect to a service that doesn't have a dedicated integration by making requests with `axios` or `node-fetch`.
+- Connect this to the output of an **[API Call Component](/docs/agent-studio/components/advanced/api-call)** to perform a custom transformation on the response data that is too complex for a simple filter.

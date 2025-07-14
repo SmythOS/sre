@@ -1,0 +1,289 @@
+---
+title: Ayrshare Integration
+description: Connect SmythOS to Ayrshare to automate social media posting, scheduling, and management across multiple platforms like Twitter, LinkedIn, and Facebook.
+og:title: SmythOS & Ayrshare - Automate Your Social Media Empire
+og:description: Learn to integrate Ayrshare with SmythOS. Empower your agents to automatically post text, images, and videos to all your social channels from a single workflow.
+og:image: /docs/img/integrations/smythos_ayrshare.png
+keywords: [Ayrshare SmythOS Integration, Connect Ayrshare to SmythOS, SmythOS Social Media API, Automate Social Media, Social Media Scheduling, No-Code Social Media]
+---
+# Ayrshare Integration with SmythOS
+
+> **Want to put your social media on autopilot?** Connect Ayrshare to SmythOS and empower your agents to schedule and publish content across all your social platforms from a single, unified workflow.
+
+<InfoCallout title="TL;DR">
+Securely link your Ayrshare account to SmythOS using an API key. Then, use our suite of components to automate posting text, images, and videos to platforms like Twitter, LinkedIn, Facebook, and YouTube.
+</InfoCallout>
+
+## List of Ayrshare Components
+Quickly compare Ayrshare components by what they do and their key I/O. Click any component name to jump directly to its detailed guide.
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|---------------|------------|------------------|------------|------------------|---------------|
+| [**Send a Post**](#send-a-post) | Write | Publishes a text-based post to one or more social platforms. | <Badge type="required" /> `post`<br /><Badge type="optional" /> `platforms` | `id`, `status` | Posting daily announcements or text updates. |
+| [**Send Post With Media**](#send-post-with-media)| Write | Publishes a post that includes images or videos. | <Badge type="required" /> `post`, `mediaUrls` | `id`, `status` | Sharing visual content like infographics or ads. |
+| [**Send YouTube Post**](#send-youtube-post) | Write | Uploads and publishes a video specifically to YouTube. | <Badge type="required" /> `post`, `mediaUrls`, `title` | `id`, `status` | Automating video content distribution. |
+| [**Get a Post**](#get-a-post) | Read | Retrieves the status and details of a previously sent post. | <Badge type="required" /> `id` | `status`, `postIds`| Checking if a scheduled post was successful. |
+| [**Delete a Post**](#delete-a-post) | Write | Removes a specific post from social media platforms. | <Badge type="required" /> `postId` | `status` | Retracting a post made in error. |
+
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Ayrshare with Your Agent?</summary>
+
+Ayrshare is a powerful API for social media management. Integrating it with SmythOS allows you to build sophisticated content distribution and social media monitoring agents.
+
+- **Automate Content Calendars:** Create an agent that reads from a Google Sheet or Notion database and automatically schedules and publishes social media posts according to your content calendar.
+- **Cross-Platform Distribution:** Publish content everywhere at once. An agent can take a single blog post summary and post it to Twitter, LinkedIn, and Facebook simultaneously.
+- **Content Curation and Sharing:** Build an agent that monitors RSS feeds for interesting articles. When a new article is found, the agent can summarize it with an LLM and share the link and summary to your social channels.
+- **Data-Driven Social Media:** Connect your analytics or business intelligence tools to SmythOS. When a key milestone is reached (e.g., a new sales record), an agent can automatically generate and post a celebratory message.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin, please ensure you have the following:
+
+- An active **SmythOS account**. ([Sign up here](https://app.smythos.com/signup)).
+- An **Ayrshare account**.
+- Your Ayrshare **API Key**.
+
+<Divider />
+
+## Getting Started With Ayrshare
+
+The connection between SmythOS and Ayrshare is configured using a secure API Key.
+
+### Step 1: Get Your Ayrshare API Key
+1.  Log in to your [Ayrshare Dashboard](https://app.ayrshare.com/api).
+2.  Your API Key is displayed on this page. Click to copy it.
+
+### Step 2: Store Your API Key in SmythOS Vault
+Your API Key is a sensitive credential. Use the SmythOS `Vault` to store it securely.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Ayrshare API Key as the value. Give it a memorable name, like `ayrshare_api_key`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Configure an Ayrshare Component
+1.  In your SmythOS agent graph, drag and drop any Ayrshare component.
+2.  Click the component to open its **Settings** panel.
+3.  In the `Ayrshare API key` field, select the secret you saved in the Vault (e.g., `ayrshare_api_key`).
+4.  Your connection is now configured for that component.
+
+<InfoCallout title="Heads-up">You must add the API Key from the Vault to **each** Ayrshare component you use. This ensures all your API calls are properly authenticated.</InfoCallout>
+<Divider />
+
+## Which Ayrshare Component Should I Use?
+
+| If you need to… | Target | Use this Component | Why this one? |
+|-----------------|--------|--------------------|---------------|
+| **Post a simple text update** | Twitter, Facebook, etc. | [Send a Post](#send-a-post) | The most direct way to publish text-only content to multiple platforms. |
+| **Share an image or video clip** | Instagram, LinkedIn, etc. | [Send Post With Media](#send-post-with-media) | Specifically designed to handle media URLs along with your text. |
+| **Upload a video to your YouTube channel** | YouTube | [Send YouTube Post](#send-youtube-post) | Includes YouTube-specific fields like `title`, `tags`, and `playlistId`. |
+| **Check if a scheduled post went live** | A post `id` from a previous step | [Get a Post](#get-a-post) | The primary method for retrieving the status and live URLs of a post. |
+| **Remove a post that was published by mistake** | A `postId` from Ayrshare | [Delete a Post](#delete-a-post) | The standard way to programmatically delete content. |
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Ayrshare component.
+
+### <a name="send-a-post"></a>Send a Post
+Publishes a text-based post to your chosen social media platforms.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ayrshare) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Platforms:** Select which social media platforms to post to from a dropdown list (e.g., `twitter`, `linkedin`, `facebook`, or `all`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `post` | string | Yes | The text content to be published. URLs will be automatically shortened. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | A unique ID for the Ayrshare post job. Use this with "Get a Post" to check status. |
+| `status` | string | The status of the request (e.g., `success`, `error`). |
+| `postIds` | array | An array of objects containing the ID of the live post on each platform. |
+| `Response`| object | The full, raw JSON response from the Ayrshare API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent monitors an RSS feed for your company blog. When a new article is published, it takes the title and link and uses this component to share it on Twitter and LinkedIn.
+</TipCallout>
+
+```json
+{
+  "component": "ayrshare.sendPost",
+  "platforms": ["twitter", "linkedin"],
+  "post": "New blog post alert! Check out our latest guide to building AI agents: [https://example.com/blog/ai-agents](https://example.com/blog/ai-agents)"
+}
+```
+
+<Divider/>
+
+### <a name="send-post-with-media"></a>Send Post With Media
+Publishes a post that includes one or more images or videos.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ayrshare) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Platforms:** Select which social media platforms to post to.
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `post` | string | Yes | The text content for the post. |
+| `mediaUrls` | array | Yes | An array of strings, where each string is a public URL to an image or video file. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | A unique ID for the Ayrshare post job. |
+| `status` | string | The status of the request (e.g., `success`). |
+| `postIds` | array | An array containing the live post IDs for each platform. |
+| `Response`| object | The full, raw JSON response from the Ayrshare API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent generates a new marketing image using an AI model. It then uploads the image to a storage service to get a URL and uses this component to post the image to Instagram and Facebook with a caption.
+</TipCallout>
+
+```json
+{
+  "component": "ayrshare.sendPostWithMedia",
+  "platforms": ["facebook", "instagram"],
+  "post": "Check out our new feature! #AI #Automation",
+  "mediaUrls": ["[https://example.com/images/new-feature.jpg](https://example.com/images/new-feature.jpg)"]
+}
+```
+<WarningCallout title="Public URLs Required">
+The URLs in the `mediaUrls` array must be publicly accessible for Ayrshare's servers to download them.
+</WarningCallout>
+
+<Divider/>
+
+### <a name="send-youtube-post"></a>Send YouTube Post
+Uploads and publishes a video specifically to a YouTube channel.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ayrshare) section.</InfoCallout>
+
+#### Component-Specific Settings
+- **Visibility:** Set the video's visibility on YouTube (`public`, `unlisted`, or `private`).
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `post` | string | Yes | The description for the YouTube video. |
+| `mediaUrls` | array | Yes | An array containing one public URL to the video file. |
+| `title` | string | Yes | The title of the YouTube video. |
+| `thumbNailUrl`| string | Optional| URL of the video's custom thumbnail image. |
+| `playlistId`| string | Optional| The ID of a YouTube playlist to add the video to. |
+| `tags` | array | Optional| An array of string tags for the video. |
+| `categoryId`| string | Optional| The YouTube category ID for the video. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | A unique ID for the Ayrshare post job. |
+| `status` | string | The status of the request. |
+| `postIds`| array | Contains the post ID for the published YouTube video. |
+| `Response`| object | The full, raw JSON response from the Ayrshare API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent that manages a video production workflow is triggered when a final video render is complete. It takes the video file URL, title, and description, and uses this component to automatically upload and publish it to the company's YouTube channel.
+</TipCallout>
+
+<Divider/>
+
+### <a name="get-a-post"></a>Get a Post
+Retrieves the current status and details of a post previously sent via Ayrshare.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ayrshare) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `id` | string | Yes | The unique ID of the post job, obtained from the output of a "Send Post" component. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | The current status of the post (e.g., `success`, `error`, `scheduled`). |
+| `postIds` | array | An array of objects containing the live post ID and URL for each platform where the post was successful. |
+| `Response`| object | The full, raw JSON response from the Ayrshare API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+After an agent schedules a post for the future, a separate "monitor" agent can periodically use this component with the post `id` to check if it has been successfully published.
+</TipCallout>
+
+<Divider/>
+
+### <a name="delete-a-post"></a>Delete a Post
+Removes a specific post from your social media platforms.
+
+<InfoCallout>This component requires an `API Key` for authentication, as detailed in the [Getting Started](#getting-started-with-ayrshare) section.</InfoCallout>
+
+#### Inputs
+| Field | Type | Required | Notes |
+|-------|------|----------|-------------|
+| `postId` | string | Yes | The unique identifier of the post to be deleted. This ID comes from the `postIds` output of a "Send Post" component. |
+
+#### Outputs
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | The status of the deletion request (e.g., `success`). |
+| `Response`| object | The raw JSON response from the Ayrshare API. |
+| `Headers` | object | The HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+If an agent posts an announcement with a typo, a user could trigger another agent with the `postId` to quickly remove the incorrect post from all platforms.
+</TipCallout>
+
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your API Key:** Always store your Ayrshare API Key in the SmythOS `Vault`.
+* **Use a URL Shortener:** While Ayrshare shortens URLs, for advanced tracking and analytics, consider using a dedicated URL shortener service first and including the shortened link in your `post` text.
+* **Scheduling Posts:** To schedule a post for the future, include a `scheduleDate` parameter in the `Body` of your request. This is an advanced input you can add. The date should be in ISO 8601 format.
+* **Check Post Status:** After sending a post, it's good practice to use the returned `id` with the `Get a Post` component after a short delay to confirm that it was published successfully on all platforms.
+
+<Divider />
+
+## Troubleshooting Common Issues
+
+* **Error: `401 Unauthorized`**
+  * **Cause:** The API Key is incorrect, invalid, or missing.
+  * **Solution:** Verify that the API Key in your SmythOS Vault is correct and matches the one in your Ayrshare dashboard.
+
+* **Error: `400 Bad Request`**
+  * **Cause:** A required input is missing (e.g., no `post` text), a `mediaUrls` link is invalid or not publicly accessible, or the post violates a platform's rules (e.g., text is too long for Twitter).
+  * **Solution:** Check all inputs. Ensure media URLs are public and direct links to the media file. Check the `Response` object for a more detailed error message from Ayrshare.
+
+* **Post Fails on One Platform but Not Others**
+  * **Cause:** The social media account for that platform may have become disconnected, or the content violates a specific rule for that platform.
+  * **Solution:** Log in to your Ayrshare dashboard to check the status of your linked social accounts. Re-link any that show an error. Adjust your content to meet the specific platform's guidelines.
+
+<Divider />
+
+## What's Next?
+
+You are now ready to build a powerful social media automation engine with the **SmythOS Ayrshare Integration**!
+
+Consider these ideas:
+* **Build an Agent That...**
+    * Creates a "content machine." It uses an AI model from [OpenRouter](/docs/agent-studio/integrations/openrouter-integration) to write a short social media tip, generates a relevant background image with [Stability AI](/docs/agent-studio/integrations/stability-ai-integration), and posts the final image and text to Instagram and LinkedIn.
+    * Monitors an RSS feed of your company's press releases. When a new one is published, it posts the title and a link to your corporate Twitter account.
+    * Connects to your e-commerce platform. When a new 5-star product review is submitted, it formats the review into a nice graphic and posts it to Facebook.
+
+* **Explore Other Integrations:**
+    * Use the [Google Sheets Integration](/docs/agent-studio/integrations/google-sheets-integration) to create a simple content calendar. Your agent can read rows from the sheet daily and post the content via Ayrshare.
+    * Connect to [Ahrefs](/docs/agent-studio/integrations/ahrefs-integration) or another SEO tool. When your website earns a new, high-quality backlink, post a "Thank You" message mentioning the linking site on Twitter.

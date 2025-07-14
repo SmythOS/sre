@@ -1,0 +1,359 @@
+---
+title: Notion Integration
+description: Connect SmythOS to Notion. Automate creating pages, updating databases, and managing comments directly from your agents to make your workspace truly intelligent.
+og:title: SmythOS & Notion - Supercharge Your Workspace Automation!
+og:description: Learn to integrate Notion with SmythOS. Empower your agents to read, write, and manage pages, databases, and comments, turning Notion into a dynamic part of your automated workflows.
+og:image: /docs/img/integrations/smythos_notion.png
+keywords: [Notion SmythOS Integration, Connect Notion to SmythOS, SmythOS Notion Components, Automate Notion, SmythOS Workspace Automation, No-Code Notion, Productivity Automation]
+tags: [knowledge, database, collaboration]
+---
+# Notion Integration
+
+> **Want your Notion workspace to do the work for you?** Connect Notion to SmythOS and let your agents create pages, update databases, and manage content in real time.
+
+<InfoCallout title="TL;DR"> Securely link your Notion account to SmythOS using an Integration Secret. Then, use our suite of Notion components to empower your agents to automate a wide range of workspace tasks, from creating pages and databases to searching for content and adding comments.</InfoCallout>
+
+## List of Notion Components
+Quickly compare Notion components by what they do, how to use them, and their key I/O. Click any component name to jump directly to its detailed guide. Here’s what's available:
+
+| **Component** | **Action** | **What it Does** | **Inputs** | **Key Outputs** | **Use Case** |
+|--------------|------------|------------------|------------|------------------|---------------|
+| [**List Users**](#list-users) | Read | Retrieves a list of all users in the workspace. | <Badge type="required" /> `trigger` | `users`, `response` | Get a list of team members to assign tasks. |
+| [**Search by Title**](#search-by-title) | Search | Finds pages or databases by their title. | <Badge type="required" /> `query` | `results`, `response` | Find a specific project page before updating it. |
+| [**Fetch Page**](#fetch-page) | Read | Retrieves a complete Page object by its ID. | <Badge type="required" /> `page_id` | `pageId`, `pageUrl`, `response` | Get the full content of a page for processing. |
+| [**Retrieve Database**](#retrieve-database) | Read | Gets the structure and properties of a database. | <Badge type="required" /> `database_id` | `databaseId`, `response` | Check database schema before adding new entries. |
+| [**Query Database**](#query-database) | Search | Filters and sorts pages within a database. | <Badge type="required" /> `database_id`<br /><Badge type="optional" /> `body` | `results`, `response` | Find all tasks assigned to a specific user. |
+| [**Retrieve Comments**](#retrieve-comments) | Read | Fetches unresolved comments from a page or block. | <Badge type="required" /> `block_id` | `results`, `response` | Monitor feedback or questions on a project brief. |
+| [**Create Page**](#create-page) | Write | Creates a new page inside a parent page. | <Badge type="required" /> `page_id`, `title` | `pageId`, `pageUrl` | Automatically create a new meeting notes page. |
+| [**Create Database**](#create-database) | Write | Creates a new database as a sub-page. | <Badge type="required" /> `page_id`, `title`<br /><Badge type="optional" /> `body` | `databaseId`, `databaseUrl` | Generate a new project tracker database from a template. |
+| [**Create Comment**](#create-comment) | Write | Adds a comment to a page or discussion thread. | <Badge type="required" /> `page_id`, `text` | `commentId`, `discussionId` | Have an agent post automated status updates. |
+| [**Update Database**](#update-database) | Write | Modifies the title or properties of a database. | <Badge type="required" /> `database_id`<br /><Badge type="optional" /> `body` | `databaseId`, `databaseUrl` | Rename a database or add a new property column. |
+
+<InfoCallout>
+<details>
+  <summary>Why Integrate Notion with Your Agent?</summary>
+
+Notion is a uniquely flexible workspace. By connecting it to SmythOS, you transform it from a passive documentation tool into an active, automated hub for your operations.
+
+- **Automate Content Creation:** Agents can generate new pages for meeting notes, project briefs, or reports, pre-filled with relevant data from other systems.
+- **Dynamic Database Management:** Keep your Notion databases in sync with other tools. Log sales leads, track project tasks, or update inventory automatically.
+- **Streamline Workflows:** Use Notion as a trigger or a destination. An agent can watch for a new entry in a database and kick off a workflow, or it can conclude a process by summarizing the results on a Notion page.
+- **Centralize Information:** Agents can gather information from emails, Slack, and other apps, then organize and store it in a structured way within your Notion workspace.
+
+Essentially, this integration allows your SmythOS agents to use Notion as their own memory and collaboration space, reducing manual data entry and keeping your entire team updated automatically.
+
+</details>
+</InfoCallout>
+<Divider />
+
+## Prerequisites
+
+Before you begin the integration, please ensure you have the following:
+
+- An active **SmythOS account**. (If you're new to SmythOS, [you can sign up here](https://app.smythos.com/signup).)
+- A **Notion Account** with permission to create integrations.
+- The Notion pages or databases you want to automate must be **shared with your integration**.
+
+<Divider />
+
+## Getting Started With Notion
+
+The connection between SmythOS and Notion is configured using a secure token.
+
+### Step 1: Create a Notion Integration & Get Your Secret
+
+1.  In your Notion workspace, go to **Settings & Members** > **Integrations**.
+2.  Click **Develop your own integrations**.
+3.  Click **+ New integration**. Give it a name (e.g., "SmythOS Agent") and associate it with your workspace.
+4.  On the next screen, you will see your **Internal Integration Secret**. Click **Show** and then **Copy** this token. This is the key you'll use in SmythOS.
+
+    <Image src="https://developers.notion.com/images/getting-started/integration-secret.png" alt="Finding the Notion Integration Secret" />
+
+### Step 2: Store Your Secret in SmythOS Vault
+
+Treat your Integration Secret like a password. SmythOS provides a secure `Vault` for this.
+
+1.  In your SmythOS dashboard, navigate to the **Vault**.
+2.  Create a new secret and paste your Notion Integration Secret as the value. Give it a memorable name, like `notion_secret`.
+3.  For more details, see the [Vault Documentation](/docs/agent-studio/key-concepts/vault).
+
+### Step 3: Share Your Pages/Databases with the Integration
+
+For SmythOS to access a page or database, you must share it with the integration you created.
+
+1.  Navigate to the Notion page or database you want your agent to access.
+2.  Click the **Share** button in the top-right corner.
+3.  Click the input field and find your integration by the name you gave it (e.g., "SmythOS Agent").
+4.  Click **Invite**. The integration now has permission to edit (or view) that page and any child pages within it.
+
+    <Image src="https://developers.notion.com/images/getting-started/share-a-database-with-your-integration.png" alt="Sharing a Notion page with an integration" />
+
+### Step 4: Configure a Notion Component
+
+1.  In your SmythOS agent graph, drag and drop any Notion component.
+2.  Click the component to open its settings.
+3.  In the `Integration Secret` field, select the secret you saved in the Vault (e.g., `notion_secret`).
+4.  Your connection is now configured for that component!
+
+<WarningCallout title="Important">You must add the Integration Secret from the Vault to **each** Notion component you use in your agent. This ensures maximum security and control.</WarningCallout>
+
+<Divider/>
+
+## Component Details
+
+This section provides detailed information for each Notion component.
+
+### <a name="list-users"></a>List Users — Read Workspace Users
+
+Retrieves a paginated list of all users associated with the Notion workspace.
+
+<Arcade src="https://demo.arcade.software/UeiRPqBeysePn4uiJoJp?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion List Users" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `trigger` | <Badge type="required" /> | Any value can be used to trigger the component's execution. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `users` | An array containing the list of user objects from the workspace. |
+| `response` | Full raw response returned by the Notion API for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Fetch a list of all team members at the start of a workflow to dynamically assign tasks or send notifications later on.
+</TipCallout>
+
+### <a name="create-comment"></a>Create Comment — Add a Comment
+
+Creates a new comment on a page or within an existing discussion thread.
+
+<Arcade src="https://demo.arcade.software/Lb1MgVQa4vqqD315UVAv?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Create Comment" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `page_id` | <Badge type="required" /> | The ID of the page where the comment should be added. |
+| `text` | <Badge type="required" /> | The rich text content of the comment. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `commentId` | The unique ID of the newly created comment. |
+| `discussionId`| The ID of the discussion thread the comment belongs to. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent completes a task and automatically posts a comment on the relevant project page: "Data analysis complete. Report is ready for review."
+</TipCallout>
+
+### <a name="create-page"></a>Create Page — Add a New Page
+
+Creates a new page as a child of a specified parent page.
+
+<Arcade src="https://demo.arcade.software/eDoLXMF4EACp0KuE4L0l?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Create Page" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `page_id` | <Badge type="required" /> | The ID of the parent page under which the new page will be created. |
+| `title` | <Badge type="required" /> | The title of the new page to be created. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `pageId` | The unique ID of the newly created page. Essential for future steps. |
+| `pageUrl`| A direct URL to the newly created Notion page. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+When a new calendar event is detected, an agent can automatically create a new meeting notes page under a "Meetings" parent page.
+</TipCallout>
+
+### <a name="fetch-page"></a>Fetch Page — Read a Page
+
+Retrieves a full Page object, including its properties and content, using its unique ID.
+
+<Arcade src="https://demo.arcade.software/Z6VEVRNZWdlOTrL7ek2N?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Fetch Page" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `page_id` | <Badge type="required" /> | The unique identifier of the page you want to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `pageId` | The ID of the retrieved page. |
+| `pageUrl`| The direct URL to the retrieved page. |
+| `response` | Full raw Page object from the Notion API. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Before updating a project brief, an agent can first fetch the page to check its current content or properties.
+</TipCallout>
+
+### <a name="retrieve-database"></a>Retrieve Database — Get Database Schema
+
+Retrieves the structure of a database, including its properties (columns), title, and description.
+
+<Arcade src="https://demo.arcade.software/xEGKj7jhKQcd4TY2e0qc?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Retrieve Database" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `database_id` | <Badge type="required" /> | The unique identifier of the database you want to retrieve. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `databaseId` | The ID of the retrieved database. |
+| `response` | The full raw Database object from the Notion API, detailing its schema. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent needs to add an entry to a tasks database. It first retrieves the database to understand its properties (like "Status", "Assignee", "Due Date") before creating a new page.
+</TipCallout>
+
+### <a name="create-database"></a>Create Database — Add a New Database
+
+Creates a new database as a subpage within a specified parent page.
+
+<Arcade src="https://demo.arcade.software/s7NK5ifIfqyzljeVthgu?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Create Database" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `page_id` | <Badge type="required" /> | The ID of the parent page for the new database. |
+| `title` | <Badge type="required" /> | The title of the new database. |
+| `body` | <Badge type="optional" /> | JSON object defining the properties (columns) of the new database. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `databaseId` | The unique ID of the newly created database. |
+| `databaseUrl`| A direct URL to the new database. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+At the start of a new quarter, an agent creates a fresh "Q3 OKR Tracker" database with predefined columns for objectives, key results, and status.
+</TipCallout>
+
+### <a name="retrieve-comments"></a>Retrieve Comments — Get Unresolved Comments
+
+Retrieves a list of all unresolved comment threads from a specific page or block.
+
+<Arcade src="https://demo.arcade.software/VznBfq7mr7sB6CELtcdg?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Retrieve Comments" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `block_id` | <Badge type="required" /> | The ID of the page or block from which to retrieve comments. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `results` | An array of unresolved comment objects. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent runs daily to check a "Project Proposal" page for any new, unresolved comments and sends a summary notification to the project manager.
+</TipCallout>
+
+### <a name="query-database"></a>Query Database — Search a Database
+
+Retrieves a list of pages from a database, with optional filters and sorting criteria.
+
+<Arcade src="https://demo.arcade.software/LOJdW372zgA0bY5DleLI?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Query Database" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `database_id` | <Badge type="required" /> | The ID of the database to query. |
+| `body` | <Badge type="optional" /> | A JSON object containing `filter` and/or `sorts` conditions. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `results` | An array of page objects that match the query criteria. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+Query a "Tasks" database to find all pages where the "Status" property is "To Do" and the "Assignee" is a specific user.
+</TipCallout>
+
+### <a name="update-database"></a>Update Database — Modify a Database
+
+Modifies the attributes of an existing database, such as its title, description, or properties.
+
+<Arcade src="https://demo.arcade.software/MBuwxwM8v5aR0CjQjznu?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Update Database" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `database_id` | <Badge type="required" /> | The unique ID of the database you wish to update. |
+| `body` | <Badge type="optional" /> | Payload containing new database details (e.g., `title`, `description`). |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `databaseId` | The ID of the updated database. |
+| `databaseUrl`| The URL to the updated database. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+An agent archives a project by renaming the project's database from "Active Project X" to "Archived - Project X".
+</TipCallout>
+
+### <a name="search-by-title"></a>Search by Title — Find Pages or Databases
+
+Searches all pages and databases that have been shared with the integration to find matches for a query string.
+
+<Arcade src="https://demo.arcade.software/Hr6G92t5U7Kec1bGwXUB?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true" title="Notion Search Title" />
+
+#### Inputs
+| Field | Required | Notes |
+|-------|----------|-------|
+| `query` | <Badge type="required" /> | The text to compare against page and database titles. |
+
+#### Outputs
+| Field | Description |
+|-------|-------------|
+| `results` | An array of page or database objects that match the title query. |
+| `response` | Raw API payload for debugging. |
+| `headers` | HTTP headers from the API response. |
+
+<TipCallout title="Use Case" collapsible>
+A user asks an agent to find the "Q3 Marketing Plan". The agent uses this component to search for the page and return a direct link.
+</TipCallout>
+<Divider />
+
+## Best Practices & Advanced Tips
+
+* **Secure Your Integration Secret:** Always use the SmythOS `Vault` to store your Notion Integration Secret. Never hardcode it directly in your components.
+* **Manage Permissions Carefully:** In Notion, only share the specific pages and databases that your agent needs to access. This follows the principle of least privilege and enhances security.
+* **Use Dynamic IDs:** Instead of hardcoding `page_id` or `database_id`, use outputs from previous steps. For example, use the `pageId` from a "Create Page" component as the input for a "Create Comment" component.
+* **Master Database Queries:** The "Query Database" component is extremely powerful. Invest time in learning the [Notion filter syntax](https://developers.notion.com/reference/post-database-query-filter) to build highly specific and efficient automations.
+* **Handle Errors Gracefully:** Check component outputs for errors. The `response` object often contains detailed error messages from the Notion API that are crucial for debugging.
+* **Understand the Notion Data Model:** Familiarize yourself with how Notion structures data (pages, blocks, databases, properties). This knowledge will help you construct the correct JSON `body` for components like "Create Database" and "Query Database".
+
+<Divider />
+
+## What's Next?
+
+Congratulations! You've successfully set up the **SmythOS Notion integration**. You're now ready to build intelligent agents that can manage your workspace, automate content, and streamline your workflows.
+
+Consider these next steps:
+
+* **Build an Agent That...**
+    * Monitors a Slack channel for requests and creates corresponding tasks in a Notion database.
+    * Receives an email with an attachment, summarizes its content using an AI component, and creates a new page in Notion with the summary and a link to the attachment.
+    * Reads a list of new blog post ideas from a Google Sheet, then creates a draft page for each one in your Notion content calendar.
+* **Explore Other Integrations:** Combine the power of Notion with other SmythOS connectors like [Google Calendar](/docs/agent-studio/integrations/google-calendar-integration), [Slack](/docs/agent-studio/integrations/slack-integration), or [Gmail](/docs/agent-studio/integrations/google-gmail-integration) to create end-to-end automation solutions.

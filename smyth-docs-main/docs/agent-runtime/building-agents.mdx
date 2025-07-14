@@ -1,0 +1,152 @@
+---
+title: Building Agents
+description: Use the visual editor, SDK, CLI, and custom components to design, monitor, and extend agents in the Smyth Runtime Environment.
+keywords: [SmythOS, SRE, SDK, CLI, Studio, agent building, custom components, observability]
+sidebar_position: 4
+toc_max_heading_level: 2
+---
+
+# Building Agents with SRE
+
+The Smyth Runtime Environment (SRE) gives you a powerful, flexible foundation for building sophisticated AI agents. You can interface with the runtime using the high-level **Studio** for visual design, the **Smyth SDK** for programmatic control, or the **SRE CLI** for project scaffolding and local execution.
+
+<InfoCallout title="Why this matters">
+SRE gives you full control and flexibility to design agents the way you want. Rapid prototyping, deep customization, and live debugging are all supported across multiple workflows.
+</InfoCallout>
+
+<Spacer size="md" />
+
+## Pick Your Workflow
+
+You can build agents using the visual **Studio**, the code-first **SDK**, the command-line **CLI**, or combine them for maximum flexibility.
+
+<TipCallout title="Advanced patterns from the SRE repo">
+For advanced patterns, sample projects, and the latest updates, see the official [SRE GitHub repository](https://github.com/SmythOS/sre).
+</TipCallout>
+
+### Studio (Visual Builder)
+
+-   Drag and drop [components](/docs/agent-runtime/components) to build flows
+-   Ideal for low-code teams and rapid prototyping
+-   Includes built-in testing and monitoring tools
+
+ **Explore [Agent Studio](/docs/agent-studio/overview)**
+
+### SDK (Code-first)
+
+-   Write and connect components using TypeScript for full control
+-   Build advanced workflows with custom logic and integrations
+-   Type-safe, version-controlled, and CI/CD friendly
+
+ **See the [SDK Guide](/docs/agent-runtime/sdk-guide)**
+
+### CLI (Command-Line Interface)
+
+-   Scaffold new SDK projects from the terminal
+-   Run agents exported from Studio locally for testing
+-   Prompt and chat with agents directly from your command line
+
+ **CLI usage examples and details are available in the [Getting Started](/docs/agent-runtime/getting-started) guide**
+
+<Spacer size="md" />
+
+## Building Programmatically with the SDK
+
+The SDK is for builders who want full control in code.
+
+### Key Benefits
+
+-   TypeScript-based and fully type-safe
+-   Supports advanced logic, async ops, and [custom components](/docs/agent-runtime/components)
+-   Integrates seamlessly with your existing dev stack
+
+### SDK Workflow Example
+
+Create a workflow by instantiating components and wiring them together:
+
+```typescript
+import { Component, Agent } from '@smythos/sdk';
+
+const agent = new Agent({ name: 'MyAgent', model: 'gpt-4' });
+
+// Create component instances
+const llm = Component.GenAILLM({ model: 'gpt-4' }, agent);
+const classifier = Component.Classifier({ classes: ['positive', 'negative'] }, agent);
+
+// Wire them together
+classifier.in({ Input: llm.out.Reply });
+```
+
+ **Read more in the [SDK Guide](/docs/agent-runtime/sdk-guide)**
+
+<Spacer size="md" />
+
+## Custom Components and Skills
+
+Extend SRE with your own custom logic.
+
+### Custom Components
+
+Create reusable logic blocks by extending the base <code>Component</code> class.
+
+```typescript
+import { Component } from '@smythos/sdk';
+
+export class MyCustomComponent extends Component {
+  async process(input, config, agent) {
+    // Your custom logic here
+    return { result: processedData };
+  }
+}
+```
+
+ **See how [Components](/docs/agent-runtime/components) work**
+
+### Agent Skills (Tools)
+
+Expose custom functions as callable skills that agents can use at runtime.
+
+```typescript
+const weatherSkill = agent.addSkill({
+  name: 'getWeather',
+  description: 'Get current weather for a location',
+  ai_exposed: true,
+  process: async (location) => {
+    // Your weather API logic here...
+    return { temperature: 72, condition: 'sunny' };
+  },
+});
+```
+
+<Spacer size="md" />
+
+## Real-time Monitoring & Debugging
+
+No matter how you build, SRE helps you see what’s going on inside your agents:
+
+-   Live updates via Server-Sent Events (SSE)
+-   Logs and detailed execution traces per component
+-   A step-by-step debug mode
+-   Performance metrics for memory, tokens, and timing
+
+<Spacer size="md" />
+
+## Hybrid Workflows
+
+You don’t have to choose between code and canvas. Use both seamlessly.
+
+-   Start building in Studio, then export to extend with the SDK
+-   Use Studio for high-level workflows and the SDK for complex custom skills
+-   Import an SDK project into Studio for visualization and debugging
+
+ **Learn more in the [Hybrid Workflow Guide](/docs/agent-runtime/hybrid-workflows)**
+
+<Spacer size="md" />
+
+## What’s Next
+
+-   [Launch your first agent in Studio](/docs/agent-studio/quickstart)
+-   [Understand the SRE Architecture](/docs/agent-runtime/architecture)
+-   [Read source code and real examples on GitHub](https://github.com/SmythOS/sre)
+
+<Spacer size="md" />

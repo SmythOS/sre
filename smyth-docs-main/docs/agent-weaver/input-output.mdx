@@ -1,0 +1,78 @@
+---
+description: Learn how data flows through Agent Weaver — from required inputs to advanced error handling — using the no-code agent orchestration tools in SmythOS.
+keywords:
+  - Agent Weaver
+  - AI workflow builder
+  - no-code agent orchestration
+  - build AI agents SmythOS
+  - prompt-based agent creation
+  - AI automation designer
+  - drag-and-drop AI tool
+  - LLM orchestration framework
+  - workflow composer for agents
+  - SmythOS AI design environment
+sidebar_position: 8
+---
+# Weaver I/O
+<InfoCallout title="TL;DR"> ● = required data, ○ = optional.  Blue ports carry data forward; red means “feed me first.” </InfoCallout>
+
+## Data Flows in Agent Weaver
+
+Learning how inputs and outputs work in Weaver is essential to building reliable agents. 
+
+<Divider/>
+
+## 1. What Each I/O Port Typically Means
+
+| Symbol | Colour | Meaning |
+|--------|--------|---------|
+| **● Solid** | Red input | Required — the agent pauses until this is filled |
+| **○ Hollow** | Red input | Optional — executes only if input is passed |
+| **● Solid** | Blue output | Main output — passed to the next block |
+| **○ Hollow** | Blue output | Derived or secondary output |
+
+<Divider/>
+
+## 2. Input Types 
+
+Agent Weaver supports several **drag-and-drop AI tool** input types:
+
+| Category | Description |
+|----------|-------------|
+| **Text** | Freeform entry, LLM prompts |
+| **Image** | Upload or pass image files (JPG, PNG) |
+| **Audio** | Voice/audio inputs |
+| **Video** | Short video clips or references |
+| **Others** | Advanced structured types (JSON, boolean, etc.) |
+
+### Subtypes (under “Others”)
+
+| Subtype | Example | Notes |
+|---------|---------|-------|
+| `string` | `"Write a haiku"` | Common for prompt-based agent creation |
+| `number` | `3.14` | Float or decimal input |
+| `integer` | `42` | Whole numbers only |
+| `boolean` | `true`, `false` | Used for toggles |
+| `array` | `["one", "two"]` | Great for batching LLM calls |
+| `object` | `{ "key": "value" }` | Structured payloads |
+| `binary` | PNG, CSV | Stored in object store; returns signed URL |
+| `date` | `2025-01-01` | ISO 8601 format |
+| `any` | Flexible fallback (not validated) |
+
+Inputs can also be styled using color labels for better workflow clarity.
+
+<PromptCard prompt={`Goal: Summarise weekly_sales.csv then email report\n\nSkills:\n1. Read file from S3 (file input)\n2. Summarise table (json output)\n3. Email summary (string input)`} />
+
+<Divider/>
+## 3. Chaining Outputs to Inputs
+
+**Rule of thumb:** blue → red only.
+- Drag from blue output ports to red input ports
+
+## 4. When Components Run (or Don’t)
+
+- **Runs** → all mandatory inputs connected  
+- **Waits** → mandatory inputs unresolved  
+- **Skips** → mandatory input missing → Weaver bypasses
+
+Knowing this will help you keep the **no-code AI agent creation** smooth.
