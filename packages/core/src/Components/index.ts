@@ -37,6 +37,7 @@ import { ServerlessCode } from './ServerlessCode.class';
 import { ImageGenerator } from './ImageGenerator.class'; // Legacy
 import { MCPClient } from './MCPClient.class';
 import { OpenAPI } from './OpenAPI.class';
+import { ECMASandbox } from './ECMASandbox.class';
 
 const components = {
     Component: new Component(),
@@ -82,6 +83,7 @@ const components = {
     ImageGenerator: new ImageGenerator(),
     MCPClient: new MCPClient(),
     OpenAPI: new OpenAPI(),
+    ECMASandbox: new ECMASandbox(),
 };
 
 export const ComponentInstances = components;
