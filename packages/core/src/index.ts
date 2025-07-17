@@ -56,6 +56,7 @@ export * from './Core/SystemEvents';
 export * from './helpers/AWSLambdaCode.helper';
 export * from './helpers/BinaryInput.helper';
 export * from './helpers/Conversation.helper';
+export * from './helpers/ECMASandbox.helper';
 export * from './helpers/JsonContent.helper';
 export * from './helpers/LocalCache.helper';
 export * from './helpers/Log.helper';
@@ -149,6 +150,7 @@ export * from './subsystems/AgentManager/AgentData.service/connectors/LocalAgent
 export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentData.class';
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
+export * from './subsystems/ComputeManager/Code.service/connectors/ECMASandbox.class';
 export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVLocalStorage.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRAM.class';
