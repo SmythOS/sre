@@ -22,6 +22,10 @@ export interface TImageGeneratorSettings {
     outputFormat?: 'PNG' | 'JPEG' | 'WEBP' | 'auto' | 'jpeg' | 'png' | 'webp';
     /** Size */
     size?: string;
+    /** Aspect Ratio */
+    aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+    /** Person Generation */
+    personGeneration?: 'dont_allow' | 'allow_adult' | 'allow_all';
 }
 
 export type TImageGeneratorInputs = {

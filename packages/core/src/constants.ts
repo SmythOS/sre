@@ -76,6 +76,7 @@ export const SUPPORTED_MIME_TYPES_MAP = {
     },
     GoogleAI: {
         image: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'],
+        imageGen: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
         video: [
             'video/mp4',
             'video/mpeg',

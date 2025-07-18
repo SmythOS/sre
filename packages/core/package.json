@@ -60,6 +60,7 @@
         "@faker-js/faker": "^9.8.0",
         "@google-cloud/vertexai": "^1.7.0",
         "@google/generative-ai": "^0.14.1",
+        "@google/genai": "^1.10.0",
         "@huggingface/inference": "^2.8.0",
         "@modelcontextprotocol/sdk": "^1.10.1",
         "@pinecone-database/pinecone": "^3.0.0",

@@ -5,7 +5,7 @@ import { OpenAI } from 'openai';
 
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { LLMInference } from '@sre/LLMManager/LLM.inference';
-import { IAgent as Agent } from '@sre/types/Agent.types';
+import { IAgent } from '@sre/types/Agent.types';
 import { APIKeySource, GenerateImageConfig } from '@sre/types/LLM.types';
 import Joi from 'joi';
 import { Component } from './Component.class';
@@ -13,7 +13,6 @@ import { Component } from './Component.class';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
-import appConfig from '@sre/config';
 import { BUILT_IN_MODEL_PREFIX, SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { normalizeImageInput } from '@sre/utils/data.utils';
@@ -45,6 +44,12 @@ const IMAGE_GEN_COST_MAP = {
     },
 };
 
+// Imagen 4 cost map - fixed cost per image
+const IMAGEN_4_COST_MAP = {
+    'imagen-4': 0.04, // Standard Imagen 4
+    'imagen-4-ultra': 0.06, // Imagen 4 Ultra
+};
+
 export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
@@ -73,12 +78,17 @@ export class ImageGenerator extends Component {
         // #region GPT model
         size: Joi.string().optional().allow('').max(100).label('Size'),
         // #endregion
+
+        // #region Google AI model
+        aspectRatio: Joi.string().valid('1:1', '3:4', '4:3', '9:16', '16:9').optional().allow('').label('Aspect Ratio'),
+        personGeneration: Joi.string().valid('dont_allow', 'allow_adult', 'allow_all').optional().allow('').label('Person Generation'),
+        // #endregion
     });
     constructor() {
         super();
     }
     init() {}
-    async process(input, config, agent: Agent) {
+    async process(input, config, agent: IAgent) {
         await super.process(input, config, agent);
 
         const logger = this.createComponentLogger(agent, config);
@@ -134,6 +144,7 @@ enum MODEL_FAMILY {
     GPT = 'gpt',
     RUNWARE = 'runware',
     DALL_E = 'dall-e',
+    IMAGEN = 'imagen',
 }
 
 const imageGenerator = {
@@ -319,6 +330,75 @@ const imageGenerator = {
             await runware.disconnect();
         }
     },
+    [MODEL_FAMILY.IMAGEN]: async ({ model, prompt, config, logger, agent, input }) => {
+        try {
+            const llmInference: LLMInference = await LLMInference.getInstance(model, AccessCandidate.agent(agent.id));
+
+            // if the llm is undefined, then it means we removed the model from our system
+            if (!llmInference.connector) {
+                return {
+                    _error: `The model '${model}' is not available. Please try a different one.`,
+                    _debug: logger.output,
+                };
+            }
+
+            const files: any[] = parseFiles(input, config);
+
+            // Imagen models only support image generation, not image editing
+            if (files.length > 0) {
+                throw new Error('Google AI Image Generation Error: Image editing is not supported. Imagen models only support image generation.');
+            }
+
+            let args: GenerateImageConfig & {
+                aspectRatio?: string;
+                numberOfImages?: number;
+                personGeneration?: string;
+            } = {
+                model,
+                aspectRatio: config?.data?.aspectRatio || config?.data?.size || '1:1',
+                numberOfImages: config?.data?.numberOfImages || 1,
+                personGeneration: config?.data?.personGeneration || 'allow_adult',
+            };
+
+            const response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
+
+            // Calculate fixed cost for Imagen 4
+            const modelName = model.replace(BUILT_IN_MODEL_PREFIX, '');
+            const cost = IMAGEN_4_COST_MAP[modelName];
+
+            if (cost && cost > 0) {
+                // Multiply by number of images generated
+                const numberOfImages = args.numberOfImages || 1;
+                const totalCost = cost * numberOfImages;
+
+                // Report fixed cost usage
+                imageGenerator.reportUsage(
+                    { cost: totalCost },
+                    {
+                        modelEntryName: model,
+                        keySource: model.startsWith(BUILT_IN_MODEL_PREFIX) ? APIKeySource.Smyth : APIKeySource.User,
+                        agentId: agent.id,
+                        teamId: agent.teamId,
+                    }
+                );
+            }
+
+            let output = response?.data?.[0]?.b64_json;
+
+            if (output) {
+                const binaryInput = BinaryInput.from(output);
+                const agentId = typeof agent == 'object' && agent.id ? agent.id : agent;
+                const smythFile = await binaryInput.getJsonData(AccessCandidate.agent(agentId));
+                return { output: smythFile };
+            } else {
+                // Handle URL response format
+                output = response?.data?.[0]?.url;
+                return { output };
+            }
+        } catch (error: any) {
+            throw new Error(`Google AI Image Generation Error: ${error?.message || JSON.stringify(error)}`);
+        }
+    },
     reportTokenUsage(usage: TokenUsage, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -361,6 +441,7 @@ const imageGenerator = {
 enum PROVIDERS {
     OPENAI = 'OpenAI',
     RUNWARE = 'Runware',
+    GOOGLEAI = 'GoogleAI',
 }
 
 /**
@@ -368,10 +449,11 @@ enum PROVIDERS {
  * @param model The model identifier
  * @returns The model family or null if not recognized
  */
-async function getModelFamily(model: string, agent: Agent): Promise<string | null> {
+async function getModelFamily(model: string, agent: IAgent): Promise<string | null> {
     if (await isGPTModel(model)) return MODEL_FAMILY.GPT;
     if (await isRunwareModel(model, agent)) return MODEL_FAMILY.RUNWARE;
     if (await isDallEModel(model)) return MODEL_FAMILY.DALL_E;
+    if (await isGoogleAIModel(model, agent)) return MODEL_FAMILY.IMAGEN;
 
     return null;
 }
@@ -380,13 +462,22 @@ function isGPTModel(model: string) {
     return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.GPT);
 }
 
-async function isRunwareModel(model: string, agent: Agent): Promise<boolean> {
+async function isRunwareModel(model: string, agent: IAgent): Promise<boolean> {
     const provider = await agent.modelsProvider.getProvider(model);
-    return provider === PROVIDERS.RUNWARE || provider.toLowerCase() === PROVIDERS.RUNWARE.toLowerCase();
+    return provider === PROVIDERS.RUNWARE || provider?.toLowerCase() === PROVIDERS.RUNWARE.toLowerCase();
 }
 
 function isDallEModel(model: string) {
     return model?.replace(BUILT_IN_MODEL_PREFIX, '')?.startsWith(MODEL_FAMILY.DALL_E);
+}
+
+async function isGoogleAIModel(model: string, agent: IAgent): Promise<boolean> {
+    const provider = await agent.modelsProvider.getProvider(model);
+    return (
+        provider === PROVIDERS.GOOGLEAI ||
+        provider?.toLowerCase() === PROVIDERS.GOOGLEAI.toLowerCase() ||
+        model?.replace(BUILT_IN_MODEL_PREFIX, '')?.includes('imagen')
+    );
 }
 
 function parseFiles(input: any, config: any) {

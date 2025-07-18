@@ -137,7 +137,7 @@ export abstract class LLMConnector extends Connector {
                         modelEntryName: preparedParams.modelEntryName,
                         agentId: preparedParams.agentId,
                         teamId: preparedParams.teamId,
-                        isUserKey: preparedParams.isUserKey,
+                        isUserKey: (preparedParams.credentials as any)?.isUserKey || preparedParams.isUserKey,
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
@@ -168,7 +168,7 @@ export abstract class LLMConnector extends Connector {
                     body: preparedParams.body,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
-                        isUserKey: preparedParams.isUserKey,
+                        isUserKey: (preparedParams.credentials as any)?.isUserKey || preparedParams.isUserKey,
                         agentId: preparedParams.agentId,
                         teamId: preparedParams.teamId,
                         hasFiles: preparedParams.files?.length > 0,
@@ -187,7 +187,7 @@ export abstract class LLMConnector extends Connector {
                     body: preparedParams.body,
                     context: {
                         modelEntryName: preparedParams.modelEntryName,
-                        isUserKey: preparedParams.isUserKey,
+                        isUserKey: (preparedParams.credentials as any)?.isUserKey || preparedParams.isUserKey,
                         agentId: preparedParams.agentId,
                         teamId: preparedParams.teamId,
                         hasFiles: preparedParams.files?.length > 0,

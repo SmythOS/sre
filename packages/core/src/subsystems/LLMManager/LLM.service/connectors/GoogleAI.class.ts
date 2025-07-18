@@ -5,6 +5,7 @@ import fs from 'fs';
 
 import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata } from '@google/generative-ai';
 import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
+import { GoogleGenAI } from '@google/genai';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -197,8 +198,57 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('Web search is not supported for Google AI');
     }
 
+    // #region Image Generation, will be moved to a different subsystem/service
+    protected async imageGenRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
+        try {
+            const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+            if (!apiKey) throw new Error('Please provide an API key for Google AI');
+
+            const model = body.model || 'imagen-3.0-generate-001';
+
+            // Use Imagen models via GoogleGenAI
+            const ai = new GoogleGenAI({ apiKey });
+
+            // Prepare the configuration for image generation
+            const config = {
+                numberOfImages: body.n || 1,
+                aspectRatio: body.aspect_ratio || body.size || '1:1',
+                personGeneration: body.person_generation || 'allow_adult',
+            };
+
+            // Generate images using the SDK
+            const response = await ai.models.generateImages({
+                model,
+                prompt: body.prompt,
+                config,
+            });
+
+            // Transform the response to match OpenAI format for compatibility
+            return {
+                created: Math.floor(Date.now() / 1000),
+                data:
+                    response.generatedImages?.map((generatedImage: any) => ({
+                        url: generatedImage.image.imageBytes ? `data:image/png;base64,${generatedImage.image.imageBytes}` : undefined,
+                        b64_json: generatedImage.image.imageBytes,
+                        revised_prompt: body.prompt,
+                    })) || [],
+            };
+        } catch (error: any) {
+            throw error;
+        }
+    }
+
+    protected async imageEditRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
+        throw new Error('Image editing is not supported for Google AI. Imagen models only support image generation.');
+    }
+
     protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
         const model = params?.model;
+
+        // Check if this is an image generation request based on capabilities
+        if (params?.capabilities?.imageGeneration) {
+            return this.prepareBodyForImageGenRequest(params) as any;
+        }
 
         const messages = await this.prepareMessages(params);
 
@@ -563,6 +613,15 @@ export class GoogleAIConnector extends LLMConnector {
         //#endregion Separate system message and add JSON response instruction if needed
 
         return prompt;
+    }
+
+    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<any> {
+        return {
+            prompt: params.prompt,
+            model: params.model,
+            aspectRatio: (params as any).aspectRatio,
+            personGeneration: (params as any).personGeneration,
+        };
     }
 
     // Add this helper method to sanitize function names
