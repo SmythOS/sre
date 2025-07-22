@@ -4,9 +4,9 @@ import Joi from 'joi';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { calculateExecutionCost, generateCodeFromLegacyComponent, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class ServerlessCode extends Component {
-
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
@@ -25,10 +25,10 @@ export class ServerlessCode extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
 
     async process(input, config, agent: Agent) {
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
         try {
@@ -61,42 +61,45 @@ export class ServerlessCode extends Component {
             logger.debug(`\nInput Variables: \n${JSON.stringify(codeInputs, null, 2)}\n`);
 
             let codeConnector = ConnectorService.getCodeConnector();
-            let codeCredentials: AWSCredentials & AWSRegionConfig & { isUserProvidedKeys: boolean } =
-                await getLambdaCredentials(agent, config);
+            let codeCredentials: AWSCredentials & AWSRegionConfig & { isUserProvidedKeys: boolean } = await getLambdaCredentials(agent, config);
 
             if (codeCredentials.isUserProvidedKeys) {
                 codeConnector = codeConnector.instance({
                     region: codeCredentials.region,
                     accessKeyId: codeCredentials.accessKeyId,
                     secretAccessKey: codeCredentials.secretAccessKey,
-                })
+                });
             }
             let code = config?.data?.code;
             if (!code) {
-                code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs))
+                code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs));
             }
             // Deploy lambda function if it doesn't exist or the code hash is different
-            await codeConnector.agent(agent.id)
-                .deploy(config.id, {
+            await codeConnector.agent(agent.id).deploy(
+                config.id,
+                {
                     code,
                     inputs: codeInputs,
-                }, {
+                },
+                {
                     runtime: 'nodejs',
-                });
+                }
+            );
 
             try {
                 const executionResponse = await codeConnector.agent(agent.id).execute(config.id, codeInputs);
                 const executionTime = executionResponse.executionTime;
                 logger.debug(
-                    `Code result:\n ${typeof executionResponse.output === 'object' ? JSON.stringify(executionResponse.output, null, 2) : executionResponse.output
-                    }\n`,
+                    `Code result:\n ${
+                        typeof executionResponse.output === 'object' ? JSON.stringify(executionResponse.output, null, 2) : executionResponse.output
+                    }\n`
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
 
                 const cost = calculateExecutionCost(executionTime);
                 if (!codeCredentials.isUserProvidedKeys) {
                     const accountConnector = ConnectorService.getAccountConnector();
-                    const agentTeam = await accountConnector.getCandidateTeam(agent.id);
+                    const agentTeam = await accountConnector.getCandidateTeam(AccessCandidate.agent(agent.id));
                     reportUsage({ cost, agentId: agent.id, teamId: agentTeam });
                 }
 
