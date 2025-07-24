@@ -390,7 +390,7 @@ export class GenAILLM extends Component {
             logger.debug(` Prompt\n`, prompt, '\n');
 
             if (!isEcho) {
-                logger.debug(' Files\n', await Promise.all(files.map((file) => formatDataForDebug(file))));
+                logger.debug(' Files\n', await Promise.all(files.map((file) => formatDataForDebug(file, AccessCandidate.agent(agent.id)))));
             }
 
             // default to json response format

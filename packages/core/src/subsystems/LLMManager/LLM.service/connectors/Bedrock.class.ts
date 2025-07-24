@@ -11,7 +11,6 @@ import EventEmitter from 'events';
 
 import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import {
-    TLLMParams,
     ToolData,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
@@ -21,9 +20,9 @@ import {
     BedrockCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
-    TLLMConnectorParams,
     ILLMRequestContext,
     TCustomLLMModel,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { isJSONString } from '@sre/utils/general.utils';
@@ -195,11 +194,7 @@ export class BedrockConnector extends LLMConnector {
         }
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search is not supported for Bedrock');
-    }
-
-    protected async reqBodyAdapter(params: TLLMParams): Promise<ConverseCommandInput> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<ConverseCommandInput> {
         const customModelInfo = params.modelInfo;
 
         let systemPrompt;

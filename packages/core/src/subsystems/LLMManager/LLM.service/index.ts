@@ -3,7 +3,7 @@
 import { ConnectorService, ConnectorServiceProvider } from '@sre/Core/ConnectorsService';
 import { TConnectorService } from '@sre/types/SRE.types';
 import { EchoConnector } from './connectors/Echo.class';
-import { OpenAIConnector } from './connectors/OpenAI.class';
+import { OpenAIConnector } from './connectors/openai/OpenAIConnector.class';
 import { GoogleAIConnector } from './connectors/GoogleAI.class';
 import { AnthropicConnector } from './connectors/Anthropic.class';
 import { GroqConnector } from './connectors/Groq.class';

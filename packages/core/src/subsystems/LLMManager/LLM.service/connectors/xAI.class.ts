@@ -266,11 +266,6 @@ export class xAIConnector extends LLMConnector {
         return emitter;
     }
 
-    // TODO: will be removed when we merge with interface support of OpenAI
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Not implemented');
-    }
-
     protected async reqBodyAdapter(params: TLLMParams): Promise<ChatCompletionParams> {
         const messages = params?.messages || [];
         const modelName = params.model as string;

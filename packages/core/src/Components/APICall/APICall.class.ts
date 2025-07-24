@@ -11,6 +11,7 @@ import { parseArrayBufferResponse } from './ArrayBufferResponse.helper';
 import { extractAdditionalParamsForOAuth1, handleOAuthHeaders as generateOAuthHeaders } from './OAuth.helper';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { formatDataForDebug } from '@sre/utils/data.utils';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
 export class APICall extends Component {
     protected schema = {
@@ -92,7 +93,7 @@ export class APICall extends Component {
             if (data) {
                 reqConfig.data = data;
 
-                dataForDebug = await formatDataForDebug(data);
+                dataForDebug = await formatDataForDebug(data, AccessCandidate.agent(agent.id));
             }
 
             reqConfig.headers = (await parseHeaders(input, config, agent)).concat({ ...headers });

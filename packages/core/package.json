@@ -51,7 +51,7 @@
         "typescript": "^5.4.5"
     },
     "dependencies": {
-        "@anthropic-ai/sdk": "^0.39.0",
+        "@anthropic-ai/sdk": "^0.56.0",
         "@aws-sdk/client-bedrock-runtime": "^3.826.0",
         "@aws-sdk/client-iam": "^3.835.0",
         "@aws-sdk/client-lambda": "^3.835.0",

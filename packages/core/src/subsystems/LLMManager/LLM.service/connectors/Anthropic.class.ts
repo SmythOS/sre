@@ -5,7 +5,6 @@ import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import {
-    TLLMParams,
     ToolData,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
@@ -17,6 +16,7 @@ import {
     BasicCredentials,
     TAnthropicRequestBody,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
@@ -203,11 +203,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
-        throw new Error('Web search requests are not supported by Anthropic');
-    }
-
-    protected async reqBodyAdapter(params: TLLMParams): Promise<TAnthropicRequestBody> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TAnthropicRequestBody> {
         const body = await this.prepareBody(params);
 
         const shouldUseThinking = await this.shouldUseThinkingMode(params);
@@ -224,7 +220,7 @@ export class AnthropicConnector extends LLMConnector {
 
     protected reportUsage(
         usage: Anthropic.Messages.Usage & { cache_creation_input_tokens?: number; cache_read_input_tokens?: number },
-        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string },
+        metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
@@ -355,7 +351,7 @@ export class AnthropicConnector extends LLMConnector {
             } else if (Array.isArray(message?.content)) {
                 if (Array.isArray(message.content)) {
                     const toolBlocks = message.content.filter(
-                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result'),
+                        (item) => typeof item === 'object' && 'type' in item && (item.type === 'tool_use' || item.type === 'tool_result')
                     );
 
                     if (toolBlocks?.length > 0) {
@@ -407,7 +403,7 @@ export class AnthropicConnector extends LLMConnector {
         return _messages;
     }
 
-    private async prepareBody(params: TLLMParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
+    private async prepareBody(params: TLLMPreparedParams): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         let messages = await this.prepareMessages(params);
 
         let body: Anthropic.MessageCreateParamsNonStreaming = {
@@ -479,7 +475,7 @@ export class AnthropicConnector extends LLMConnector {
     }): Promise<Anthropic.MessageCreateParamsNonStreaming> {
         // Remove the assistant message with the prefill text for JSON response, it's not supported with thinking
         let messages = body.messages.filter(
-            (message) => message?.role !== TLLMMessageRole.Assistant && message?.content !== PREFILL_TEXT_FOR_JSON_RESPONSE,
+            (message) => !(message?.role === TLLMMessageRole.Assistant && message?.content === PREFILL_TEXT_FOR_JSON_RESPONSE)
         );
 
         let budget_tokens = Math.min(maxThinkingTokens, body.max_tokens);
@@ -523,7 +519,7 @@ export class AnthropicConnector extends LLMConnector {
         return thinkingBody;
     }
 
-    private async prepareMessages(params: TLLMParams) {
+    private async prepareMessages(params: TLLMPreparedParams) {
         const messages = params?.messages || [];
 
         const files: BinaryInput[] = params?.files || [];
@@ -556,7 +552,10 @@ export class AnthropicConnector extends LLMConnector {
         return messages;
     }
 
-    private async prepareSystemPrompt(systemMessage: TLLMMessageBlock, params: TLLMParams): Promise<string | Array<Anthropic.TextBlockParam>> {
+    private async prepareSystemPrompt(
+        systemMessage: TLLMMessageBlock,
+        params: TLLMPreparedParams
+    ): Promise<string | Array<Anthropic.TextBlockParam>> {
         let systemPrompt = systemMessage?.content;
 
         if (typeof systemPrompt === 'string') {
@@ -584,7 +583,7 @@ export class AnthropicConnector extends LLMConnector {
     /**
      * Determines if thinking mode should be used based on model capabilities and parameters.
      */
-    private async shouldUseThinkingMode(params: TLLMParams): Promise<boolean> {
+    private async shouldUseThinkingMode(params: TLLMPreparedParams): Promise<boolean> {
         // Legacy thinking models always use thinking mode
         if (LEGACY_THINKING_MODELS.includes(params.modelEntryName)) {
             return true;
@@ -614,7 +613,7 @@ export class AnthropicConnector extends LLMConnector {
 
     private async getImageData(
         files: BinaryInput[],
-        agentId: string,
+        agentId: string
     ): Promise<
         {
             type: string;
