@@ -115,7 +115,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return {
                 content,
-                finishReason,
+                finishReason: finishReason.toLowerCase(),
                 useTool,
                 toolsData,
                 message: { content, role: 'assistant' },
