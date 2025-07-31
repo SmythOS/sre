@@ -1,0 +1,318 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>connectors\account | SmythOS Core</title><meta name="description" content="Documentation for SmythOS Core"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body>
+        <script>
+          // Function to force the theme to light.
+          const forceLightTheme = () => {
+            if (document.documentElement.dataset.theme !== 'light') {
+              document.documentElement.dataset.theme = 'light';
+            }
+          };
+
+          // Set the theme immediately to prevent a flash of the wrong theme.
+          forceLightTheme();
+
+          // Create an observer to watch for changes to the data-theme attribute.
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+              if (mutation.attributeName === 'data-theme') {
+                forceLightTheme();
+              }
+            });
+          });
+
+          // Start observing the document element for attribute changes.
+          observer.observe(document.documentElement, { attributes: true });
+        </script>
+      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS Core</a><div id="tsd-toolbar-links"><a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">connectors\account</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="account-connectors" class="tsd-anchor-link">Account Connectors<a href="#account-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The Account subsystem provides user authentication, authorization, and account management functionality. It handles user identity, permissions, and access control for the SRE system.</p>
+<h2 id="available-connectors" class="tsd-anchor-link">Available Connectors<a href="#available-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="dummyaccount" class="tsd-anchor-link">DummyAccount<a href="#dummyaccount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Development account connector<br>
+<strong>Summary</strong>: Provides a simplified account system for development and testing. Always returns a default user without actual authentication, useful for prototyping and local development.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultUser</code></td>
+<td>object</td>
+<td>No</td>
+<td><code>{id: 'dev-user', name: 'Developer'}</code></td>
+<td>Default user object</td>
+</tr>
+<tr>
+<td><code>permissions</code></td>
+<td>array</td>
+<td>No</td>
+<td><code>['*']</code></td>
+<td>Default permissions for the user</td>
+</tr>
+<tr>
+<td><code>allowAnonymous</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code></td>
+<td>Allow anonymous access</td>
+</tr>
+<tr>
+<td><code>logAccess</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code></td>
+<td>Log account access attempts</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;DummyAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">defaultUser:</span><span class="hl-1"> {</span><br/><span class="hl-1">                </span><span class="hl-2">id:</span><span class="hl-1"> </span><span class="hl-3">&#39;admin&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Admin User&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">email:</span><span class="hl-1"> </span><span class="hl-3">&#39;admin@example.com&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            },</span><br/><span class="hl-1">            </span><span class="hl-2">permissions:</span><span class="hl-1"> [</span><span class="hl-3">&#39;read&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;write&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;admin&#39;</span><span class="hl-1">],</span><br/><span class="hl-1">            </span><span class="hl-2">allowAnonymous:</span><span class="hl-1"> </span><span class="hl-5">false</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">logAccess:</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Development and testing environments</li>
+<li>Prototyping applications</li>
+<li>Local development without authentication overhead</li>
+<li>Testing access control logic</li>
+<li>Demo applications</li>
+</ul>
+<hr>
+<h3 id="awsaccount" class="tsd-anchor-link">AWSAccount<a href="#awsaccount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: AWS IAM-based account connector<br>
+<strong>Summary</strong>: Provides authentication and authorization using AWS Identity and Access Management (IAM). Integrates with AWS services for enterprise-grade identity management.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>region</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>-</td>
+<td>AWS region for IAM operations</td>
+</tr>
+<tr>
+<td><code>accessKeyId</code></td>
+<td>string</td>
+<td>No</td>
+<td>-</td>
+<td>AWS access key ID (can use IAM roles)</td>
+</tr>
+<tr>
+<td><code>secretAccessKey</code></td>
+<td>string</td>
+<td>No</td>
+<td>-</td>
+<td>AWS secret access key (can use IAM roles)</td>
+</tr>
+<tr>
+<td><code>userPoolId</code></td>
+<td>string</td>
+<td>No</td>
+<td>-</td>
+<td>Cognito User Pool ID if using Cognito</td>
+</tr>
+<tr>
+<td><code>clientId</code></td>
+<td>string</td>
+<td>No</td>
+<td>-</td>
+<td>Cognito App Client ID</td>
+</tr>
+<tr>
+<td><code>roleArn</code></td>
+<td>string</td>
+<td>No</td>
+<td>-</td>
+<td>IAM role ARN for assume role operations</td>
+</tr>
+<tr>
+<td><code>sessionDuration</code></td>
+<td>number</td>
+<td>No</td>
+<td><code>3600</code></td>
+<td>Session duration in seconds</td>
+</tr>
+<tr>
+<td><code>mfaRequired</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>false</code></td>
+<td>Require multi-factor authentication</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;AWSAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">region:</span><span class="hl-1"> </span><span class="hl-3">&#39;us-east-1&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">userPoolId:</span><span class="hl-1"> </span><span class="hl-3">&#39;us-east-1_XXXXXXXXX&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">clientId:</span><span class="hl-1"> </span><span class="hl-3">&#39;your-cognito-client-id&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">roleArn:</span><span class="hl-1"> </span><span class="hl-3">&#39;arn:aws:iam::123456789012:role/SREUserRole&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">sessionDuration:</span><span class="hl-1"> </span><span class="hl-11">7200</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">mfaRequired:</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Production environments using AWS infrastructure</li>
+<li>Enterprise applications requiring compliance</li>
+<li>Multi-service AWS deployments</li>
+<li>Applications with strict security requirements</li>
+<li>Integration with existing AWS identity systems</li>
+</ul>
+<hr>
+<h3 id="jsonfileaccount" class="tsd-anchor-link">JSONFileAccount<a href="#jsonfileaccount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: File-based account connector<br>
+<strong>Summary</strong>: Provides user management using a local JSON file for storing user accounts and permissions. Suitable for small applications with simple user management needs.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>usersFile</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>./.smyth/users.json</code></td>
+<td>Path to users JSON file</td>
+</tr>
+<tr>
+<td><code>encryptPasswords</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code></td>
+<td>Encrypt stored passwords</td>
+</tr>
+<tr>
+<td><code>hashAlgorithm</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>bcrypt</code></td>
+<td>Password hashing algorithm</td>
+</tr>
+<tr>
+<td><code>saltRounds</code></td>
+<td>number</td>
+<td>No</td>
+<td><code>10</code></td>
+<td>Salt rounds for bcrypt</td>
+</tr>
+<tr>
+<td><code>sessionTimeout</code></td>
+<td>number</td>
+<td>No</td>
+<td><code>3600</code></td>
+<td>Session timeout in seconds</td>
+</tr>
+<tr>
+<td><code>maxLoginAttempts</code></td>
+<td>number</td>
+<td>No</td>
+<td><code>5</code></td>
+<td>Maximum failed login attempts</td>
+</tr>
+<tr>
+<td><code>lockoutDuration</code></td>
+<td>number</td>
+<td>No</td>
+<td><code>900</code></td>
+<td>Account lockout duration in seconds</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;JSONFileAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">usersFile:</span><span class="hl-1"> </span><span class="hl-3">&#39;./config/users.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">encryptPasswords:</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">hashAlgorithm:</span><span class="hl-1"> </span><span class="hl-3">&#39;bcrypt&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">saltRounds:</span><span class="hl-1"> </span><span class="hl-11">12</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">sessionTimeout:</span><span class="hl-1"> </span><span class="hl-11">7200</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">maxLoginAttempts:</span><span class="hl-1"> </span><span class="hl-11">3</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">lockoutDuration:</span><span class="hl-1"> </span><span class="hl-11">1800</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Small to medium applications</li>
+<li>Internal tools and dashboards</li>
+<li>Applications with simple user management</li>
+<li>Situations requiring user persistence without external services</li>
+<li>Development environments with realistic user data</li>
+</ul>
+<h2 id="account-operations" class="tsd-anchor-link">Account Operations<a href="#account-operations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All account connectors support these standard operations:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>authenticate(credentials)</code></td>
+<td>Verify user credentials</td>
+</tr>
+<tr>
+<td><code>authorize(user, resource, action)</code></td>
+<td>Check user permissions</td>
+</tr>
+<tr>
+<td><code>getCurrentUser()</code></td>
+<td>Get current authenticated user</td>
+</tr>
+<tr>
+<td><code>createUser(userData)</code></td>
+<td>Create new user account</td>
+</tr>
+<tr>
+<td><code>updateUser(userId, userData)</code></td>
+<td>Update user information</td>
+</tr>
+<tr>
+<td><code>deleteUser(userId)</code></td>
+<td>Remove user account</td>
+</tr>
+<tr>
+<td><code>getUserPermissions(userId)</code></td>
+<td>Get user permissions</td>
+</tr>
+<tr>
+<td><code>setUserPermissions(userId, permissions)</code></td>
+<td>Update user permissions</td>
+</tr>
+</tbody>
+</table>
+<h2 id="user-object-structure" class="tsd-anchor-link">User Object Structure<a href="#user-object-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Standard user object format across all connectors:</p>
+<pre><code class="typescript"><span class="hl-5">interface</span><span class="hl-1"> </span><span class="hl-8">User</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-2">id</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-2">name</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-2">email</span><span class="hl-1">?: </span><span class="hl-8">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-2">permissions</span><span class="hl-1">: </span><span class="hl-8">string</span><span class="hl-1">[];</span><br/><span class="hl-1">    </span><span class="hl-2">metadata</span><span class="hl-1">?: </span><span class="hl-8">Record</span><span class="hl-1">&lt;</span><span class="hl-8">string</span><span class="hl-1">, </span><span class="hl-8">any</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-2">createdAt</span><span class="hl-1">?: </span><span class="hl-8">Date</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-2">lastLogin</span><span class="hl-1">?: </span><span class="hl-8">Date</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-2">active</span><span class="hl-1">: </span><span class="hl-8">boolean</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="security-best-practices" class="tsd-anchor-link">Security Best Practices<a href="#security-best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="general-guidelines" class="tsd-anchor-link">General Guidelines<a href="#general-guidelines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Always use HTTPS for authentication endpoints</li>
+<li>Implement proper session management</li>
+<li>Use strong password policies</li>
+<li>Enable account lockout mechanisms</li>
+<li>Regular audit user accounts and permissions</li>
+<li>Implement proper logging for security events</li>
+</ul>
+<h3 id="jsonfileaccount-security" class="tsd-anchor-link">JSONFileAccount Security<a href="#jsonfileaccount-security" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Store user files outside of web-accessible directories</li>
+<li>Use strong password hashing (bcrypt with high salt rounds)</li>
+<li>Set restrictive file permissions (600)</li>
+<li>Regular backup user data</li>
+<li>Consider encryption for sensitive user data</li>
+</ul>
+<h3 id="awsaccount-security" class="tsd-anchor-link">AWSAccount Security<a href="#awsaccount-security" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Use IAM roles instead of access keys when possible</li>
+<li>Implement least-privilege access policies</li>
+<li>Enable CloudTrail for audit logging</li>
+<li>Use AWS Cognito for user pool management</li>
+<li>Implement proper MFA policies</li>
+<li>Regular review IAM policies and roles</li>
+</ul>
+<h2 id="integration-examples" class="tsd-anchor-link">Integration Examples<a href="#integration-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="environment-based-configuration" class="tsd-anchor-link">Environment-Based Configuration<a href="#environment-based-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">env</span><span class="hl-1">.</span><span class="hl-6">NODE_ENV</span><span class="hl-1"> === </span><span class="hl-3">&#39;production&#39;</span><span class="hl-1"> ? </span><span class="hl-3">&#39;AWSAccount&#39;</span><span class="hl-1"> : </span><span class="hl-3">&#39;DummyAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><br/><span class="hl-1">            </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">env</span><span class="hl-1">.</span><span class="hl-6">NODE_ENV</span><span class="hl-1"> === </span><span class="hl-3">&#39;production&#39;</span><br/><span class="hl-1">                ? {</span><br/><span class="hl-1">                      </span><span class="hl-2">region:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">env</span><span class="hl-1">.</span><span class="hl-6">AWS_REGION</span><span class="hl-1">,</span><br/><span class="hl-1">                      </span><span class="hl-2">userPoolId:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">env</span><span class="hl-1">.</span><span class="hl-6">COGNITO_USER_POOL_ID</span><span class="hl-1">,</span><br/><span class="hl-1">                  }</span><br/><span class="hl-1">                : {</span><br/><span class="hl-1">                      </span><span class="hl-2">defaultUser:</span><span class="hl-1"> { </span><span class="hl-2">id:</span><span class="hl-1"> </span><span class="hl-3">&#39;dev&#39;</span><span class="hl-1">, </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Developer&#39;</span><span class="hl-1"> },</span><br/><span class="hl-1">                  },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="multi-connector-setup" class="tsd-anchor-link">Multi-Connector Setup<a href="#multi-connector-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">// Development</span><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;JSONFileAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">usersFile:</span><span class="hl-1"> </span><span class="hl-3">&#39;./dev-users.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">sessionTimeout:</span><span class="hl-1"> </span><span class="hl-11">86400</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">// Production</span><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Account:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;AWSAccount&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">region:</span><span class="hl-1"> </span><span class="hl-3">&#39;us-east-1&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">userPoolId:</span><span class="hl-1"> </span><span class="hl-3">&#39;prod-user-pool&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">mfaRequired:</span><span class="hl-1"> </span><span class="hl-5">true</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#account-connectors"><span>Account <wbr/>Connectors</span></a><ul><li><a href="#available-connectors"><span>Available <wbr/>Connectors</span></a></li><li><ul><li><a href="#dummyaccount"><span>Dummy<wbr/>Account</span></a></li><li><a href="#awsaccount"><span>AWS<wbr/>Account</span></a></li><li><a href="#jsonfileaccount"><span>JSON<wbr/>File<wbr/>Account</span></a></li></ul></li><li><a href="#account-operations"><span>Account <wbr/>Operations</span></a></li><li><a href="#user-object-structure"><span>User <wbr/>Object <wbr/>Structure</span></a></li><li><a href="#security-best-practices"><span>Security <wbr/>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#general-guidelines"><span>General <wbr/>Guidelines</span></a></li><li><a href="#jsonfileaccount-security"><span>JSON<wbr/>File<wbr/>Account <wbr/>Security</span></a></li><li><a href="#awsaccount-security"><span>AWS<wbr/>Account <wbr/>Security</span></a></li></ul></li><li><a href="#integration-examples"><span>Integration <wbr/>Examples</span></a></li><li><ul><li><a href="#environment-based-configuration"><span>Environment-<wbr/>Based <wbr/>Configuration</span></a></li><li><a href="#multi-connector-setup"><span>Multi-<wbr/>Connector <wbr/>Setup</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS Core</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

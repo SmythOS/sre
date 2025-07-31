@@ -1,0 +1,218 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>connectors\llm | SmythOS Core</title><meta name="description" content="Documentation for SmythOS Core"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body>
+        <script>
+          // Function to force the theme to light.
+          const forceLightTheme = () => {
+            if (document.documentElement.dataset.theme !== 'light') {
+              document.documentElement.dataset.theme = 'light';
+            }
+          };
+
+          // Set the theme immediately to prevent a flash of the wrong theme.
+          forceLightTheme();
+
+          // Create an observer to watch for changes to the data-theme attribute.
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+              if (mutation.attributeName === 'data-theme') {
+                forceLightTheme();
+              }
+            });
+          });
+
+          // Start observing the document element for attribute changes.
+          observer.observe(document.documentElement, { attributes: true });
+        </script>
+      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS Core</a><div id="tsd-toolbar-links"><a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">connectors\llm</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="llm-connectors" class="tsd-anchor-link">LLM Connectors<a href="#llm-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The LLM (Large Language Model) subsystem provides access to various language models from different providers. It supports text generation, chat completions, embeddings, and model management with unified interfaces across providers.</p>
+<h2 id="architecture-overview" class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Important</strong>: LLM connectors work differently from other SRE connectors. They <strong>do not have constructor settings</strong>. Instead, configuration is managed through:</p>
+<ol>
+<li><strong>Model Configuration</strong>: Via <code>ModelsProvider</code> (typically <code>JSONModelsProvider</code> using <code>models.json</code>)</li>
+<li><strong>Credentials Management</strong>: API keys stored in Vault and retrieved dynamically per request</li>
+<li><strong>Request-Time Configuration</strong>: Settings passed with each API call</li>
+</ol>
+<h2 id="available-connectors" class="tsd-anchor-link">Available Connectors<a href="#available-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="echo" class="tsd-anchor-link">Echo<a href="#echo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Development and testing LLM connector<br>
+<strong>Summary</strong>: Provides a simple echo service that returns the input prompt. Useful for testing workflows without consuming API credits or requiring external services.</p>
+<p><strong>Configuration</strong>: No constructor settings. Configured through models.json.</p>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;echo-test&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Echo Test Model&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Echo&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;None&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Development and testing</li>
+<li>Workflow validation without API costs</li>
+<li>Integration testing</li>
+<li>Debugging prompt flows</li>
+</ul>
+<hr>
+<h3 id="openai" class="tsd-anchor-link">OpenAI<a href="#openai" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: OpenAI API connector (GPT-3.5, GPT-4, etc.)<br>
+<strong>Summary</strong>: Provides access to OpenAI's language models including GPT-3.5-turbo, GPT-4, and embedding models with full feature support.</p>
+<p><strong>Configuration</strong>: No constructor settings. Requires API key in vault and model configuration.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>openai:apiKey</code> - OpenAI API key</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;gpt-4&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;GPT-4&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;OpenAI&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;gpt-4&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Internal&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;baseURL&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;https://api.openai.com/v1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;params&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">            </span><span class="hl-9">&quot;temperature&quot;</span><span class="hl-1">: </span><span class="hl-11">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-9">&quot;max_tokens&quot;</span><span class="hl-1">: </span><span class="hl-11">4096</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Production applications requiring high-quality text generation</li>
+<li>Chat applications and conversational AI</li>
+<li>Content creation and writing assistance</li>
+<li>Code generation and analysis</li>
+<li>Advanced reasoning tasks</li>
+</ul>
+<hr>
+<h3 id="deepseek" class="tsd-anchor-link">DeepSeek<a href="#deepseek" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: DeepSeek API connector<br>
+<strong>Summary</strong>: Provides access to DeepSeek's language models using OpenAI-compatible API interface. Uses the OpenAI connector internally.</p>
+<p><strong>Configuration</strong>: No constructor settings. Uses OpenAI connector with custom baseURL.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>deepseek:apiKey</code> - DeepSeek API key</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;deepseek-chat&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;DeepSeek Chat&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;DeepSeek&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;deepseek-chat&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Internal&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;baseURL&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;https://api.deepseek.com/v1&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h3 id="googleai" class="tsd-anchor-link">GoogleAI<a href="#googleai" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Google AI (Gemini) connector<br>
+<strong>Summary</strong>: Provides access to Google's Gemini models with support for multimodal inputs, function calling, and Google's advanced AI capabilities.</p>
+<p><strong>Configuration</strong>: No constructor settings.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>googleai:apiKey</code> - Google AI API key</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;gemini-pro&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Gemini Pro&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;GoogleAI&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;gemini-pro&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Internal&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h3 id="anthropic" class="tsd-anchor-link">Anthropic<a href="#anthropic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Anthropic Claude connector<br>
+<strong>Summary</strong>: Provides access to Anthropic's Claude models with strong performance in reasoning, analysis, and safe AI interactions.</p>
+<p><strong>Configuration</strong>: No constructor settings.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>anthropic:apiKey</code> - Anthropic API key</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;claude-3-sonnet&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Claude 3 Sonnet&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Anthropic&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;claude-3-sonnet-20240229&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Internal&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h3 id="groq" class="tsd-anchor-link">Groq<a href="#groq" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Groq high-speed inference connector<br>
+<strong>Summary</strong>: Provides ultra-fast inference using Groq's specialized hardware. Supports various open-source models with exceptional speed performance.</p>
+<p><strong>Configuration</strong>: No constructor settings.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>groq:apiKey</code> - Groq API key</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;llama-3-70b&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Llama 3 70B&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Groq&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;llama3-70b-8192&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Internal&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h3 id="bedrock" class="tsd-anchor-link">Bedrock<a href="#bedrock" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Amazon Bedrock connector<br>
+<strong>Summary</strong>: Provides access to various foundation models through AWS Bedrock service with enterprise security and compliance features.</p>
+<p><strong>Configuration</strong>: No constructor settings.</p>
+<p><strong>Required Vault Entries:</strong></p>
+<ul>
+<li><code>aws:accessKeyId</code> - AWS access key ID</li>
+<li><code>aws:secretAccessKey</code> - AWS secret access key</li>
+<li><code>aws:region</code> - AWS region</li>
+</ul>
+<p><strong>Example Model Entry:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;claude-bedrock&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Claude 3 on Bedrock&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Bedrock&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;anthropic.claude-3-sonnet-20240229-v1:0&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;BedrockVault&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;region&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;us-east-1&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h3 id="additional-connectors" class="tsd-anchor-link">Additional Connectors<a href="#additional-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>VertexAI</strong>: Google Cloud Vertex AI connector for enterprise deployments</li>
+<li><strong>xAI</strong>: Integration with xAI's Grok models</li>
+<li><strong>Perplexity</strong>: Access to Perplexity's search-augmented models</li>
+<li><strong>TogetherAI</strong>: Community models (uses OpenAI connector)</li>
+</ul>
+<h2 id="model-configuration" class="tsd-anchor-link">Model Configuration<a href="#model-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Models are configured through the <code>ModelsProvider</code> (typically <code>JSONModelsProvider</code>):</p>
+<h3 id="model-entry-structure" class="tsd-anchor-link">Model Entry Structure<a href="#model-entry-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-9">&quot;model-name&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;label&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;Human readable name&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;llm&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;ConnectorName&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;modelId&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;actual-model-id&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;credentials&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;CredentialType&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;baseURL&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;api-endpoint&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-9">&quot;params&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">            </span><span class="hl-9">&quot;temperature&quot;</span><span class="hl-1">: </span><span class="hl-11">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-9">&quot;max_tokens&quot;</span><span class="hl-1">: </span><span class="hl-11">4096</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="credential-types" class="tsd-anchor-link">Credential Types<a href="#credential-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;None&quot;</code></td>
+<td>No credentials required (Echo connector)</td>
+</tr>
+<tr>
+<td><code>&quot;Internal&quot;</code></td>
+<td>API key from vault (most providers)</td>
+</tr>
+<tr>
+<td><code>&quot;BedrockVault&quot;</code></td>
+<td>AWS credentials for Bedrock</td>
+</tr>
+<tr>
+<td><code>&quot;VertexAIVault&quot;</code></td>
+<td>Google Cloud credentials for Vertex AI</td>
+</tr>
+</tbody>
+</table>
+<h2 id="modelsprovider-configuration" class="tsd-anchor-link">ModelsProvider Configuration<a href="#modelsprovider-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>JSONModelsProvider</code> connector has constructor settings:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>models</code></td>
+<td>string | TLLMModelsList</td>
+<td>No</td>
+<td>Built-in models</td>
+<td>Directory path to models.json or models object</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>&quot;merge&quot;</code></td>
+<td>How to handle custom models: <code>&quot;merge&quot;</code> or <code>&quot;replace&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-10">ModelsProvider</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-10">Connector</span><span class="hl-1">: </span><span class="hl-3">&#39;JSONModelsProvider&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-10">Settings</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-10">models</span><span class="hl-1">: </span><span class="hl-3">&#39;./config/models.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-10">mode</span><span class="hl-1">: </span><span class="hl-3">&#39;merge&#39;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="credential-management" class="tsd-anchor-link">Credential Management<a href="#credential-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="vault-key-format" class="tsd-anchor-link">Vault Key Format<a href="#vault-key-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Credentials are stored in the vault using this format:</p>
+<ul>
+<li><code>{provider}:apiKey</code> - For most providers (e.g., <code>openai:apiKey</code>)</li>
+<li><code>aws:accessKeyId</code>, <code>aws:secretAccessKey</code>, <code>aws:region</code> - For AWS services</li>
+</ul>
+<h3 id="example-vault-setup" class="tsd-anchor-link">Example Vault Setup<a href="#example-vault-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">// Store credentials in vault</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">vault</span><span class="hl-1">.</span><span class="hl-7">set</span><span class="hl-1">(</span><span class="hl-3">&#39;openai:apiKey&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;sk-...&#39;</span><span class="hl-1">);</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">vault</span><span class="hl-1">.</span><span class="hl-7">set</span><span class="hl-1">(</span><span class="hl-3">&#39;anthropic:apiKey&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;sk-ant-...&#39;</span><span class="hl-1">);</span><br/><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">vault</span><span class="hl-1">.</span><span class="hl-7">set</span><span class="hl-1">(</span><span class="hl-3">&#39;groq:apiKey&#39;</span><span class="hl-1">, </span><span class="hl-3">&#39;gsk_...&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="usage-examples" class="tsd-anchor-link">Usage Examples<a href="#usage-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="basic-usage" class="tsd-anchor-link">Basic Usage<a href="#basic-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">LLM</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">llm</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-7">LLM</span><span class="hl-1">();</span><br/><br/><span class="hl-4">// Model name references models.json entry</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">response</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">llm</span><span class="hl-1">.</span><span class="hl-7">chat</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">messages:</span><span class="hl-1"> [{ </span><span class="hl-2">role:</span><span class="hl-1"> </span><span class="hl-3">&#39;user&#39;</span><span class="hl-1">, </span><span class="hl-2">content:</span><span class="hl-1"> </span><span class="hl-3">&#39;Hello!&#39;</span><span class="hl-1"> }],</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="custom-model-configuration" class="tsd-anchor-link">Custom Model Configuration<a href="#custom-model-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">// In models.json</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-3">&quot;custom-gpt&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-3">&quot;label&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-3">&quot;Custom GPT-4&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-3">&quot;llm&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-3">&quot;OpenAI&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-3">&quot;modelId&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-3">&quot;gpt-4&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-3">&quot;credentials&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-3">&quot;Internal&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-3">&quot;params&quot;</span><span class="hl-2">:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">&quot;temperature&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-11">0.1</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-3">&quot;max_tokens&quot;</span><span class="hl-2">:</span><span class="hl-1"> </span><span class="hl-11">8192</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-4">// Usage</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">response</span><span class="hl-1"> = </span><span class="hl-0">await</span><span class="hl-1"> </span><span class="hl-2">llm</span><span class="hl-1">.</span><span class="hl-7">chat</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;custom-gpt&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">messages:</span><span class="hl-1"> [{ </span><span class="hl-2">role:</span><span class="hl-1"> </span><span class="hl-3">&#39;user&#39;</span><span class="hl-1">, </span><span class="hl-2">content:</span><span class="hl-1"> </span><span class="hl-3">&#39;Hello!&#39;</span><span class="hl-1"> }]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="configuration-best-practices" class="tsd-anchor-link">Configuration Best Practices<a href="#configuration-best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ol>
+<li><strong>Use the built-in models</strong> as a starting point</li>
+<li><strong>Store API keys securely</strong> in the vault, never in code</li>
+<li><strong>Use descriptive model names</strong> in your models.json</li>
+<li><strong>Set appropriate default parameters</strong> for your use case</li>
+<li><strong>Use environment-specific models.json</strong> files for different deployments</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#llm-connectors"><span>LLM <wbr/>Connectors</span></a><ul><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><a href="#available-connectors"><span>Available <wbr/>Connectors</span></a></li><li><ul><li><a href="#echo"><span>Echo</span></a></li><li><a href="#openai"><span>Open<wbr/>AI</span></a></li><li><a href="#deepseek"><span>Deep<wbr/>Seek</span></a></li><li><a href="#googleai"><span>Google<wbr/>AI</span></a></li><li><a href="#anthropic"><span>Anthropic</span></a></li><li><a href="#groq"><span>Groq</span></a></li><li><a href="#bedrock"><span>Bedrock</span></a></li><li><a href="#additional-connectors"><span>Additional <wbr/>Connectors</span></a></li></ul></li><li><a href="#model-configuration"><span>Model <wbr/>Configuration</span></a></li><li><ul><li><a href="#model-entry-structure"><span>Model <wbr/>Entry <wbr/>Structure</span></a></li><li><a href="#credential-types"><span>Credential <wbr/>Types</span></a></li></ul></li><li><a href="#modelsprovider-configuration"><span>Models<wbr/>Provider <wbr/>Configuration</span></a></li><li><a href="#credential-management"><span>Credential <wbr/>Management</span></a></li><li><ul><li><a href="#vault-key-format"><span>Vault <wbr/>Key <wbr/>Format</span></a></li><li><a href="#example-vault-setup"><span>Example <wbr/>Vault <wbr/>Setup</span></a></li></ul></li><li><a href="#usage-examples"><span>Usage <wbr/>Examples</span></a></li><li><ul><li><a href="#basic-usage"><span>Basic <wbr/>Usage</span></a></li><li><a href="#custom-model-configuration"><span>Custom <wbr/>Model <wbr/>Configuration</span></a></li></ul></li><li><a href="#configuration-best-practices"><span>Configuration <wbr/>Best <wbr/>Practices</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS Core</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

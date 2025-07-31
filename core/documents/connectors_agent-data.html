@@ -1,0 +1,148 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>connectors\agent-data | SmythOS Core</title><meta name="description" content="Documentation for SmythOS Core"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body>
+        <script>
+          // Function to force the theme to light.
+          const forceLightTheme = () => {
+            if (document.documentElement.dataset.theme !== 'light') {
+              document.documentElement.dataset.theme = 'light';
+            }
+          };
+
+          // Set the theme immediately to prevent a flash of the wrong theme.
+          forceLightTheme();
+
+          // Create an observer to watch for changes to the data-theme attribute.
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+              if (mutation.attributeName === 'data-theme') {
+                forceLightTheme();
+              }
+            });
+          });
+
+          // Start observing the document element for attribute changes.
+          observer.observe(document.documentElement, { attributes: true });
+        </script>
+      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS Core</a><div id="tsd-toolbar-links"><a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">connectors\agent-data</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="agentdata-connectors" class="tsd-anchor-link">AgentData Connectors<a href="#agentdata-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The AgentData subsystem manages agent-specific data persistence and state.</p>
+<h2 id="available-connectors" class="tsd-anchor-link">Available Connectors<a href="#available-connectors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="local" class="tsd-anchor-link">Local<a href="#local" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Local agent data storage<br>
+<strong>Summary</strong>: Stores agent data on the local filesystem with JSON serialization and file-based organization.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>devDir</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>-</td>
+<td>Directory path for development agent data</td>
+</tr>
+<tr>
+<td><code>prodDir</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>-</td>
+<td>Directory path for production agent data</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">AgentData:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;Local&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">devDir:</span><span class="hl-1"> </span><span class="hl-3">&#39;./agents/dev&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">prodDir:</span><span class="hl-1"> </span><span class="hl-3">&#39;./agents/prod&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>File-based agent storage</li>
+<li>Environment-specific agent configurations</li>
+<li>Local development workflows</li>
+<li>Agent data versioning</li>
+<li>Simple agent management</li>
+</ul>
+<hr>
+<h3 id="cli" class="tsd-anchor-link">CLI<a href="#cli" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: Command-line agent data provider<br>
+<strong>Summary</strong>: Provides agent data integration for CLI applications with interactive prompts and file-based workflows.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>args</code></td>
+<td>Record&lt;string, any&gt;</td>
+<td>Yes</td>
+<td>-</td>
+<td>Command-line arguments object</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">AgentData:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;CLI&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">args:</span><span class="hl-1"> </span><span class="hl-2">process</span><span class="hl-1">.</span><span class="hl-2">argv</span><span class="hl-1">, </span><span class="hl-4">// or custom args object</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>CLI applications</li>
+<li>Command-line agent execution</li>
+<li>Interactive agent selection</li>
+<li>Development tools</li>
+<li>Script automation</li>
+</ul>
+<hr>
+<h3 id="nullagentdata" class="tsd-anchor-link">NullAgentData<a href="#nullagentdata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Role</strong>: No-operation agent data connector<br>
+<strong>Summary</strong>: Provides a null implementation for agent data operations. Used when agent persistence is not required.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Type</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>args</code></td>
+<td>Record&lt;string, any&gt;</td>
+<td>Yes</td>
+<td>-</td>
+<td>Arguments object (ignored but required)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">AgentData:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;NullAgentData&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">args:</span><span class="hl-1"> {},</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Testing environments</li>
+<li>Stateless applications</li>
+<li>External agent management</li>
+<li>Debugging agent issues</li>
+<li>Minimal deployments</li>
+</ul>
+<h2 id="data-format" class="tsd-anchor-link">Data Format<a href="#data-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="agent-data-files" class="tsd-anchor-link">Agent Data Files<a href="#agent-data-files" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Agent data files should be in <code>.smyth</code> format (JSON) and contain:</p>
+<ul>
+<li><code>id</code>: Agent identifier</li>
+<li><code>components</code>: Component configuration</li>
+<li>Other agent-specific settings</li>
+</ul>
+<h3 id="file-organization" class="tsd-anchor-link">File Organization<a href="#file-organization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Development and production environments use separate directories</li>
+<li>Each agent has its own data file</li>
+<li>Settings and configurations are indexed by agent ID</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#agentdata-connectors"><span>Agent<wbr/>Data <wbr/>Connectors</span></a><ul><li><a href="#available-connectors"><span>Available <wbr/>Connectors</span></a></li><li><ul><li><a href="#local"><span>Local</span></a></li><li><a href="#cli"><span>CLI</span></a></li><li><a href="#nullagentdata"><span>Null<wbr/>Agent<wbr/>Data</span></a></li></ul></li><li><a href="#data-format"><span>Data <wbr/>Format</span></a></li><li><ul><li><a href="#agent-data-files"><span>Agent <wbr/>Data <wbr/>Files</span></a></li><li><a href="#file-organization"><span>File <wbr/>Organization</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS Core</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
