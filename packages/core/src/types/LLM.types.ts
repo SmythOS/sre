@@ -45,10 +45,47 @@ export type ILLMConnectorCredentials = BasicCredentials | BedrockCredentials | V
 export type TOpenAIResponseToolChoice = OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
 export type TLLMToolChoice = OpenAI.ChatCompletionToolChoiceOption;
 
+export type TOpenAIToolsInfo = {
+    webSearch: {
+        enabled: boolean;
+        contextSize: TSearchContextSize;
+        city?: string;
+        country?: string;
+        region?: string;
+        timezone?: string;
+    };
+};
+
+export type TxAIToolsInfo = {
+    search: {
+        enabled: boolean;
+        mode?: 'auto' | 'on' | 'off';
+        returnCitations?: boolean;
+        maxResults?: number;
+        dataSources?: string[];
+        country?: string;
+        excludedWebsites?: string[];
+        allowedWebsites?: string[];
+        includedXHandles?: string[];
+        excludedXHandles?: string[];
+        postFavoriteCount?: number;
+        postViewCount?: number;
+        rssLinks?: string;
+        safeSearch?: boolean;
+        fromDate?: string;
+        toDate?: string;
+    };
+};
+
+export type TToolsInfo = {
+    openai: TOpenAIToolsInfo;
+    xai: TxAIToolsInfo;
+};
+
+export type TSearchContextSize = 'low' | 'medium' | 'high';
+
 export type TLLMParams = {
     model: TLLMModel | string;
-    modelEntryName?: string; // for usage reporting
-    credentials?: ILLMConnectorCredentials;
 
     prompt?: string;
     messages?: any[]; // TODO [Forhad]: apply proper typing
@@ -84,14 +121,15 @@ export type TLLMParams = {
     maxThinkingTokens?: number;
 
     // #region Search
+    // Web search parameters (will be organized into toolsInfo.webSearch internally)
     useWebSearch?: boolean;
-    webSearchContextSize?: 'high' | 'medium' | 'low';
+    webSearchContextSize?: TSearchContextSize;
     webSearchCity?: string;
     webSearchCountry?: string;
     webSearchRegion?: string;
     webSearchTimezone?: string;
 
-    // xAI specific search parameters
+    // xAI specific search parameters (consider moving to toolsInfo.xaiSearch)
     useSearch?: boolean;
     searchMode?: 'auto' | 'on' | 'off';
     returnCitations?: boolean;
@@ -111,7 +149,14 @@ export type TLLMParams = {
     // #endregion
 
     useReasoning?: boolean;
+    max_output_tokens?: number;
+    abortSignal?: AbortSignal;
+};
 
+export type TLLMPreparedParams = TLLMParams & {
+    body: any;
+    modelEntryName?: string; // for usage reporting
+    credentials?: ILLMConnectorCredentials;
     isUserKey?: boolean;
     capabilities?: {
         search?: boolean;
@@ -119,43 +164,7 @@ export type TLLMParams = {
         imageGeneration?: boolean;
         imageEditing?: boolean;
     };
-    max_output_tokens?: number;
-
-    abortSignal?: AbortSignal;
-};
-
-export type TLLMParamsV2 = {
-    model: string;
-    modelEntryName: string;
-    messages: any[];
-    toolsConfig?: {
-        tools?: OpenAI.Responses.Tool[];
-        tool_choice?: OpenAI.Responses.ToolChoiceOptions | OpenAI.Responses.ToolChoiceTypes | OpenAI.Responses.ToolChoiceFunction;
-    };
-    baseURL?: string;
-    stream?: boolean;
-    responseFormat?: any;
-    credentials?: {
-        apiKey?: string;
-        isUserKey?: boolean;
-    };
-    max_output_tokens?: number;
-    temperature?: number;
-    top_p?: number;
-    top_k?: number;
-    frequency_penalty?: number;
-    presence_penalty?: number;
-    teamId?: string;
-    files?: BinaryInput[];
-
-    // #region Search
-    useWebSearch?: boolean;
-    webSearchContextSize?: 'high' | 'medium' | 'low';
-    webSearchCity?: string;
-    webSearchCountry?: string;
-    webSearchRegion?: string;
-    webSearchTimezone?: string;
-    // #endregion
+    toolsInfo?: TToolsInfo;
 };
 
 export type TLLMConnectorParams = Omit<TLLMParams, 'model'> & {
@@ -207,6 +216,12 @@ export type TLLMModel = {
     //models can come with predefined params
     //this can also be used to pass a preconfigured model object
     params?: TLLMParams;
+    /**
+     * Specifies the API interface type to use for this model
+     * Examples: 'chat.completions', 'responses'
+     * This determines which OpenAI API endpoint and interface implementation to use
+     */
+    interface?: 'chat.completions' | 'responses';
 };
 
 // #region [ Handle extendable LLM Providers ] ================================================
@@ -269,16 +284,47 @@ export type ToolData = {
     error?: string; // for Bedrock
 };
 
-export interface AnthropicToolDefinition {
+/**
+ * Base tool definition interface - only truly common properties
+ * All provider-specific tool definitions extend from this
+ */
+export interface ToolDefinition {
     name: string;
     description: string;
+}
+
+/**
+ * OpenAI-specific tool definition
+ * Extends base with OpenAI's parameter format
+ */
+export interface OpenAIToolDefinition extends ToolDefinition {
+    parameters: {
+        type: 'object';
+        properties: Record<string, unknown>;
+        required?: string[];
+    };
+}
+
+/**
+ * Anthropic-specific tool definition
+ * Extends base with Anthropic's input_schema format
+ */
+export interface AnthropicToolDefinition extends ToolDefinition {
     input_schema: {
         type: 'object';
         properties: Record<string, unknown>;
         required: string[];
     };
 }
-export type ToolDefinition = OpenAI.ChatCompletionTool | AnthropicToolDefinition;
+
+/**
+ * Legacy tool definition for backward compatibility
+ * @deprecated Use provider-specific definitions instead
+ */
+export interface LegacyToolDefinition extends ToolDefinition {
+    properties?: Record<string, unknown>;
+    requiredFields?: string[];
+}
 export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingMode;
 
 export interface ToolsConfig {
@@ -397,6 +443,7 @@ export interface ILLMRequestContext {
     hasFiles?: boolean;
     modelInfo: TCustomLLMModel | TLLMModel;
     credentials: ILLMConnectorCredentials;
+    toolsInfo?: TToolsInfo;
 }
 
 // Generic interface that can be extended by specific providers

@@ -3,20 +3,20 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
-import {
-    TLLMParams,
+import type {
     TLLMConnectorParams,
     TLLMMessageBlock,
     TLLMToolResultMessageBlock,
     ToolData,
     APIKeySource,
     TLLMModel,
-    TLLMCredentials,
-    TBedrockSettings,
-    TVertexAISettings,
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TLLMRequestBody,
+    TOpenAIToolsInfo,
+    TxAIToolsInfo,
+    TLLMPreparedParams,
+    TToolsInfo,
 } from '@sre/types/LLM.types';
 import EventEmitter from 'events';
 import { Readable } from 'stream';
@@ -44,13 +44,10 @@ export interface ILLMConnectorRequest {
 
 export class LLMStream extends Readable {
     private dataQueue: any[];
-    private toolsData: any[];
-    private hasData: boolean;
     isReading: boolean;
     constructor(options?) {
         super(options);
         this.dataQueue = [];
-        this.toolsData = [];
         this.isReading = true;
     }
 
@@ -83,7 +80,6 @@ export abstract class LLMConnector extends Connector {
 
     protected abstract request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse>;
     protected abstract streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
-    protected abstract webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter>;
 
     protected abstract reqBodyAdapter(params: TLLMConnectorParams): Promise<TLLMRequestBody>;
     protected abstract reportUsage(usage: any, metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }): any;
@@ -111,6 +107,8 @@ export abstract class LLMConnector extends Connector {
             request: async (params: TLLMConnectorParams) => {
                 const preparedParams = await this.prepareParams(candidate, params);
 
+                const provider = preparedParams.modelInfo.provider;
+
                 const response = await this.request({
                     acRequest: candidate.readRequest,
                     body: preparedParams.body,
@@ -122,6 +120,9 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
+                        toolsInfo: {
+                            [provider]: preparedParams.toolsInfo[provider],
+                        } as TToolsInfo,
                     },
                 });
 
@@ -129,6 +130,8 @@ export abstract class LLMConnector extends Connector {
             },
             streamRequest: async (params: TLLMConnectorParams) => {
                 const preparedParams = await this.prepareParams(candidate, params);
+
+                const provider = preparedParams.modelInfo.provider?.toLowerCase();
 
                 const requestParams = {
                     acRequest: candidate.readRequest,
@@ -141,21 +144,13 @@ export abstract class LLMConnector extends Connector {
                         hasFiles: preparedParams.files?.length > 0,
                         modelInfo: preparedParams.modelInfo,
                         credentials: preparedParams.credentials,
+                        toolsInfo: {
+                            [provider]: preparedParams.toolsInfo[provider],
+                        } as TToolsInfo,
                     },
                 };
 
-                let response;
-
-                if (
-                    preparedParams.capabilities?.search === true &&
-                    preparedParams.useWebSearch === true &&
-                    preparedParams.modelInfo.provider === 'OpenAI'
-                ) {
-                    // ! webSearchRequest will be removed in next update
-                    response = await this.webSearchRequest(requestParams);
-                } else {
-                    response = await this.streamRequest(requestParams);
-                }
+                const response = await this.streamRequest(requestParams);
 
                 return response;
             },
@@ -244,7 +239,7 @@ export abstract class LLMConnector extends Connector {
             };
         }
     }
-    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto' }) {
+    public formatToolsConfig({ type = 'function', toolDefinitions, toolChoice = 'auto', modelInfo = null }) {
         throw new Error('This model does not support tools');
     }
 
@@ -262,7 +257,7 @@ export abstract class LLMConnector extends Connector {
         return messages; // if a LLM connector does not implement this method, the messages will not be modified
     }
 
-    private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMConnectorParams & { body: any }> {
+    private async prepareParams(candidate: AccessCandidate, params: TLLMConnectorParams): Promise<TLLMPreparedParams> {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
         // Assign file from the original parameters to avoid overwriting the original constructor
         const files = params?.files;
@@ -271,7 +266,7 @@ export abstract class LLMConnector extends Connector {
         const clonedParams = JSON.parse(JSON.stringify(params)); // Avoid mutation of the original params
 
         // Format the parameters to ensure proper type of values
-        const _params: TLLMConnectorParams = this.formatParamValues(clonedParams);
+        const _params: TLLMPreparedParams = this.formatParamValues(clonedParams);
 
         const model = _params.model;
         const teamId = await this.getTeamId(candidate);
@@ -291,10 +286,6 @@ export abstract class LLMConnector extends Connector {
                 }
             }
         }
-
-        const isStandardLLM = await modelProviderCandidate.isStandardLLM(model);
-
-        const llmProvider = await modelProviderCandidate.getProvider(model);
 
         _params.credentials = await getLLMCredentials(candidate, modelInfo);
 
@@ -324,11 +315,115 @@ export abstract class LLMConnector extends Connector {
             imageGeneration: features.includes('image-generation'),
         };
 
+        // * We may have other tools info like file search, image generation, etc.
+        // Organize web search parameters from both flat and nested structures
+        _params.toolsInfo = {
+            openai: await this.prepareOpenAIToolsInfo(_params),
+            xai: await this.prepareXAIToolsInfo(_params),
+        };
+
         // The input adapter transforms the standardized parameters into the specific format required by the target LLM provider
         _params.agentId = candidate.id;
         const body = await this.reqBodyAdapter(_params);
 
         return { ..._params, body };
+    }
+
+    private async prepareOpenAIToolsInfo(params: TLLMPreparedParams) {
+        const openAIToolsInfo: TOpenAIToolsInfo = {
+            webSearch: {
+                enabled: params?.useWebSearch && params.capabilities.search === true,
+                contextSize: params?.webSearchContextSize || 'medium',
+            },
+        };
+
+        if (params?.webSearchCity) {
+            openAIToolsInfo.webSearch.city = params?.webSearchCity;
+        }
+
+        if (params?.webSearchCountry) {
+            openAIToolsInfo.webSearch.country = params?.webSearchCountry;
+        }
+
+        if (params?.webSearchRegion) {
+            openAIToolsInfo.webSearch.region = params?.webSearchRegion;
+        }
+
+        if (params?.webSearchTimezone) {
+            openAIToolsInfo.webSearch.timezone = params?.webSearchTimezone;
+        }
+
+        return openAIToolsInfo;
+    }
+
+    private async prepareXAIToolsInfo(params: TLLMPreparedParams) {
+        const xaiToolsInfo: TxAIToolsInfo = {
+            search: {
+                enabled: params?.useSearch === true && params.capabilities.search === true,
+            },
+        };
+
+        if (params?.searchMode) {
+            xaiToolsInfo.search.mode = params?.searchMode;
+        }
+
+        if (params?.returnCitations) {
+            xaiToolsInfo.search.returnCitations = params?.returnCitations;
+        }
+
+        if (params?.maxSearchResults) {
+            xaiToolsInfo.search.maxResults = params?.maxSearchResults;
+        }
+
+        if (params?.searchDataSources) {
+            xaiToolsInfo.search.dataSources = params?.searchDataSources;
+        }
+
+        if (params?.searchCountry) {
+            xaiToolsInfo.search.country = params?.searchCountry;
+        }
+
+        if (params?.excludedWebsites) {
+            xaiToolsInfo.search.excludedWebsites = params?.excludedWebsites;
+        }
+
+        if (params?.allowedWebsites) {
+            xaiToolsInfo.search.allowedWebsites = params?.allowedWebsites;
+        }
+
+        if (params?.includedXHandles) {
+            xaiToolsInfo.search.includedXHandles = params?.includedXHandles;
+        }
+
+        if (params?.excludedXHandles) {
+            xaiToolsInfo.search.excludedXHandles = params?.excludedXHandles;
+        }
+
+        if (params?.postFavoriteCount) {
+            xaiToolsInfo.search.postFavoriteCount = params?.postFavoriteCount;
+        }
+
+        if (params?.postViewCount) {
+            xaiToolsInfo.search.postViewCount = params?.postViewCount;
+        }
+
+        if (params?.rssLinks) {
+            xaiToolsInfo.search.rssLinks = params?.rssLinks;
+        }
+
+        if (params?.safeSearch) {
+            xaiToolsInfo.search.safeSearch = params?.safeSearch;
+        }
+
+        if (params?.fromDate) {
+            xaiToolsInfo.search.fromDate = params?.fromDate;
+        }
+
+        if (params?.toDate) {
+            xaiToolsInfo.search.toDate = params?.toDate;
+        }
+
+        return xaiToolsInfo;
     }
 
     // TODO [Forhad]: apply proper typing for _value and return value

@@ -21,13 +21,12 @@ import {
     TLLMToolResultMessageBlock,
     APIKeySource,
     TLLMEvent,
-    TLLMParams,
     BasicCredentials,
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TGoogleAIRequestBody,
-    TLLMConnectorParams,
     ILLMRequestContext,
+    TLLMPreparedParams,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -193,11 +192,6 @@ export class GoogleAIConnector extends LLMConnector {
             throw error;
         }
     }
-
-    protected async webSearchRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<any> {
-        throw new Error('Web search is not supported for Google AI');
-    }
-
     // #region Image Generation, will be moved to a different subsystem/service
     protected async imageGenRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
         try {
@@ -242,7 +236,7 @@ export class GoogleAIConnector extends LLMConnector {
         throw new Error('Image editing is not supported for Google AI. Imagen models only support image generation.');
     }
 
-    protected async reqBodyAdapter(params: TLLMParams): Promise<TGoogleAIRequestBody> {
+    protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
         const model = params?.model;
 
         // Check if this is an image generation request based on capabilities
@@ -459,7 +453,7 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
-    private async prepareMessages(params: TLLMParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
+    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
         let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
 
         const files: BinaryInput[] = params?.files || [];
@@ -475,7 +469,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages;
     }
 
-    private async prepareMessagesWithFiles(params: TLLMParams): Promise<string> {
+    private async prepareMessagesWithFiles(params: TLLMPreparedParams): Promise<string> {
         const model = params.model;
 
         let messages: string | TLLMMessageBlock[] = params?.messages || '';
@@ -544,7 +538,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMParams): Promise<GenerateContentRequest> {
+    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<GenerateContentRequest> {
         let formattedMessages: TLLMMessageBlock[];
         let systemInstruction = '';
 
@@ -579,7 +573,7 @@ export class GoogleAIConnector extends LLMConnector {
         return toolsPrompt;
     }
 
-    private async prepareMessagesWithTextQuery(params: TLLMParams): Promise<string> {
+    private async prepareMessagesWithTextQuery(params: TLLMPreparedParams): Promise<string> {
         const model = params.model;
         let systemInstruction = '';
         let prompt = '';
@@ -615,7 +609,7 @@ export class GoogleAIConnector extends LLMConnector {
         return prompt;
     }
 
-    private async prepareBodyForImageGenRequest(params: TLLMParams): Promise<any> {
+    private async prepareBodyForImageGenRequest(params: TLLMPreparedParams): Promise<any> {
         return {
             prompt: params.prompt,
             model: params.model,

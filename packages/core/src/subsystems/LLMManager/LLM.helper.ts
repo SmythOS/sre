@@ -65,25 +65,36 @@ export class LLMHelper {
      * 2. Calculating tokens for each image in the prompt based on its dimensions.
      * 3. Summing up text and image tokens to get the total token count.
      *
+     * IMPORTANT: This returns the base token calculation for rate limiting and quota management.
+     * The actual tokens charged by OpenAI may differ significantly:
+     * - GPT-4o: Uses base calculation (matches this result)
+     * - GPT-4o-mini: Intentionally inflates image tokens by ~33x (e.g., 431 → 14,180 tokens)
+     * - GPT-4.1 series: Uses different patch-based calculations with various multipliers
+     *
+     * For consistent user limits regardless of model choice, use this base calculation.
+     * For billing estimates, refer to OpenAI's pricing calculator or API response.
+     *
+     * @see https://platform.openai.com/docs/guides/images-vision?api-mode=responses#calculating-costs
+     *
      * @example
      * const prompt = [
      *   { type: 'text', text: 'Describe this image:' },
      *   { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }
      * ];
      * const tokenCount = await countVisionPromptTokens(prompt);
-     * console.log(tokenCount); // e.g., 150
+     * console.log(tokenCount); // e.g., 150 (base calculation for rate limiting)
      */
     public static async countVisionPromptTokens(prompt: any): Promise<number> {
         let tokens = 0;
 
-        const textObj = prompt?.filter((item) => item.type === 'text');
+        const textObj = prompt?.filter((item) => ['text', 'input_text'].includes(item.type));
         const textTokens = encode(textObj?.[0]?.text).length;
 
-        const images = prompt?.filter((item) => item.type === 'image_url');
+        const images = prompt?.filter((item) => ['image_url', 'input_image'].includes(item.type));
         let imageTokens = 0;
 
         for (const image of images) {
-            const imageUrl = image?.image_url?.url;
+            const imageUrl = image?.image_url?.url || image?.image_url; // image?.image_url?.url for 'chat.completions', image?.image_url for 'responses' interface
             const { width, height } = await this.getImageDimensions(imageUrl);
             const tokens = this.countImageTokens(width, height);
             imageTokens += tokens;
@@ -124,7 +135,7 @@ export class LLMHelper {
                 throw new Error('Please provide a valid image url!');
             }
 
-            const dimensions =  imageSize(buffer);
+            const dimensions = imageSize(buffer);
 
             return {
                 width: dimensions?.width || 0,
@@ -145,40 +156,59 @@ export class LLMHelper {
      * @returns {number} The number of tokens required to process the image.
      *
      * @description
-     * This method estimates the token count for image processing based on the image dimensions and detail mode.
-     * It uses a tiling approach to calculate the token count, scaling the image if necessary.
+     * This method calculates the token count for image processing based on OpenAI's official documentation:
      *
-     * - If detailMode is 'low', it returns a fixed token count of 85.
-     * - For other modes, it calculates based on the image dimensions:
-     *   - Scales down images larger than 2048 pixels in any dimension.
-     *   - Adjusts the scaled dimension to fit within a 768x1024 aspect ratio.
-     *   - Calculates the number of 512x512 tiles needed to cover the image.
-     *   - Returns the total token count based on the number of tiles.
+     * For 'low' detail mode: Returns 85 tokens regardless of image size.
+     *
+     * For 'high' detail mode (default):
+     * 1. Scale image to fit within 2048x2048 square (maintaining aspect ratio)
+     * 2. Scale image so shortest side is 768px (if both dimensions > 768px)
+     * 3. Calculate number of 512x512 tiles needed
+     * 4. Return 85 + (170 * number_of_tiles)
      *
      * @example
      * const tokenCount = countImageTokens(1024, 768);
      * console.log(tokenCount); // Outputs the calculated token count
      */
     public static countImageTokens(width: number, height: number, detailMode: string = 'auto'): number {
-        if (detailMode === 'low') return 85;
-
-        const maxDimension = Math.max(width, height);
-        const minDimension = Math.min(width, height);
-        let scaledMinDimension = minDimension;
-
-        if (maxDimension > 2048) {
-            scaledMinDimension = (2048 / maxDimension) * minDimension;
-        }
-        scaledMinDimension = Math.floor((768 / 1024) * scaledMinDimension);
-
-        let tileSize = 512;
-        let tiles = Math.ceil(scaledMinDimension / tileSize);
-
-        if (minDimension !== scaledMinDimension) {
-            tiles *= Math.ceil((scaledMinDimension * (maxDimension / minDimension)) / tileSize);
+        // For low detail mode, always return 85 tokens
+        if (detailMode === 'low') {
+            return 85;
         }
 
-        return tiles * 170 + 85;
+        // Step 1: Scale to fit within 2048x2048 square (maintaining aspect ratio)
+        if (width > 2048 || height > 2048) {
+            const aspectRatio = width / height;
+            if (aspectRatio > 1) {
+                width = 2048;
+                height = Math.floor(2048 / aspectRatio);
+            } else {
+                height = 2048;
+                width = Math.floor(2048 * aspectRatio);
+            }
+        }
+
+        // Step 2: Scale such that shortest side is 768px (if both dimensions > 768px)
+        if (width > 768 && height > 768) {
+            const aspectRatio = width / height;
+            if (aspectRatio > 1) {
+                // height is shorter, scale to 768px
+                height = 768;
+                width = Math.floor(768 * aspectRatio);
+            } else {
+                // width is shorter, scale to 768px
+                width = 768;
+                height = Math.floor(768 / aspectRatio);
+            }
+        }
+
+        // Step 3: Calculate number of 512x512 tiles needed
+        const tilesWidth = Math.ceil(width / 512);
+        const tilesHeight = Math.ceil(height / 512);
+        const totalTiles = tilesWidth * tilesHeight;
+
+        // Step 4: Calculate total tokens (85 base + 170 per tile)
+        return 85 + 170 * totalTiles;
     }
 
     /**

@@ -7,6 +7,7 @@ import { isBinaryFileSync } from 'isbinaryfile';
 import { fileTypeFromBuffer } from 'file-type';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { identifyMimetypeFromString } from './string.utils';
+import { IAccessCandidate } from '@sre/types/ACL.types';
 
 // Helper function to convert stream to buffer
 export async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -250,7 +251,7 @@ export async function getMimeType(data: any): Promise<string> {
 
 // Mask data like Buffer, FormData, etc. in debug output
 // TODO [Forhad]: Need to get the size of FormData
-export async function formatDataForDebug(data: any) {
+export async function formatDataForDebug(data: any, candidate: IAccessCandidate) {
     let dataForDebug;
 
     if (!data) {
@@ -259,7 +260,7 @@ export async function formatDataForDebug(data: any) {
 
     try {
         if (data.constructor?.name === 'BinaryInput') {
-            const jsonData = await data.getJsonData();
+            const jsonData = await data.getJsonData(candidate);
             dataForDebug = `[BinaryInput size=${jsonData?.size}]`;
         } else if (isBuffer(data)) {
             dataForDebug = `[Buffer size=${data.byteLength}]`;
