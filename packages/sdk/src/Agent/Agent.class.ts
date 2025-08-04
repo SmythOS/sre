@@ -33,6 +33,7 @@ import { LLMInstance, TLLMInstanceParams } from '../LLM/LLMInstance.class';
 import { AgentData, ChatOptions, Scope } from '../types/SDKTypes';
 import { MCP, MCPSettings, MCPTransport } from '../MCP/MCP.class';
 import { findClosestModelInfo } from '../LLM/Model';
+import { A2A } from '../A2A/A2A.class';
 
 const console = SDKLog;
 
@@ -57,7 +58,7 @@ const console = SDKLog;
  * ```
  */
 class AgentCommand {
-    constructor(private prompt: string, private agent: Agent, private _options?: any) {}
+    constructor(private prompt: string, private agent: Agent, private _options?: any) { }
 
     /**
      * Execute the command and return the result as a promise.
@@ -647,14 +648,14 @@ export class Agent extends SDKObject {
             const body =
                 method === 'POST'
                     ? {
-                          ...input,
-                      }
+                        ...input,
+                    }
                     : undefined;
             const query =
                 method === 'GET'
                     ? {
-                          ...input,
-                      }
+                        ...input,
+                    }
                     : undefined;
 
             const agent = AgentProcess.load(filteredAgentData);
@@ -773,4 +774,10 @@ export class Agent extends SDKObject {
         const instance = new MCP(this);
         return await instance.start({ transport, port });
     }
+
+    public async a2a(port: number = 41241, clients: string[] = []) {
+        const instance = new A2A(this, port, clients);
+        return await instance.start();
+    }
+
 }

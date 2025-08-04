@@ -367,6 +367,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@a2a-js/sdk':
+        specifier: ^0.2.4
+        version: 0.2.4
       '@modelcontextprotocol/sdk':
         specifier: ^1.13.0
         version: 1.13.0
@@ -394,6 +397,9 @@ importers:
       pdfjs-dist:
         specifier: ^4.0.379
         version: 4.10.38
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@rollup/plugin-json':
         specifier: ^6.1.0
@@ -436,6 +442,10 @@ importers:
         version: 5.8.3
 
 packages:
+
+  '@a2a-js/sdk@0.2.4':
+    resolution: {integrity: sha512-s9wEF5SUswhaAeAERA3tIBcrYEqWfkf+B3yiofxFX8+wnJMQL2l6bT6e7LZqjFf8sup0IRqFtGbckBPDLQymjw==}
+    engines: {node: '>=18'}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -1921,6 +1931,9 @@ packages:
 
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
+
+  '@types/cors@2.8.19':
+    resolution: {integrity: sha512-mFNylyeyqN93lfe/9CSxOGREz8cpzAhH+E93xJ4xWQf62V8sQ/24reV2nyzUWM6H6Xji+GGHpkbLe7pVoUEskg==}
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
@@ -4925,6 +4938,10 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
+
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
@@ -5215,6 +5232,17 @@ packages:
     resolution: {integrity: sha512-rd6eEF3BTNvQnR2e2wwolfTmUTnp70aUTqr0oaGbHifzC3BKJsoV+Gat8vxUMR1hwOKBs6El+qWehrHbCpW6SQ==}
 
 snapshots:
+
+  '@a2a-js/sdk@0.2.4':
+    dependencies:
+      '@types/cors': 2.8.19
+      '@types/express': 4.17.23
+      body-parser: 2.2.0
+      cors: 2.8.5
+      express: 4.21.2
+      uuid: 11.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@ampproject/remapping@2.3.0':
     dependencies:
@@ -7725,6 +7753,10 @@ snapshots:
   '@types/configstore@6.0.2': {}
 
   '@types/connect@3.4.38':
+    dependencies:
+      '@types/node': 20.19.0
+
+  '@types/cors@2.8.19':
     dependencies:
       '@types/node': 20.19.0
 
@@ -11058,6 +11090,8 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utils-merge@1.0.1: {}
+
+  uuid@11.1.0: {}
 
   uuid@8.3.2: {}
 

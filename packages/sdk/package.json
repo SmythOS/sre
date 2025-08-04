@@ -59,6 +59,7 @@
         "knip": "knip"
     },
     "dependencies": {
+        "@a2a-js/sdk": "^0.2.4",
         "@modelcontextprotocol/sdk": "^1.13.0",
         "@smythos/sre": "workspace:*",
         "@types/mime-types": "^3.0.1",
@@ -67,7 +68,8 @@
         "express": "^4.21.2",
         "mammoth": "^1.9.1",
         "mime-types": "^3.0.1",
-        "pdfjs-dist": "^4.0.379"
+        "pdfjs-dist": "^4.0.379",
+        "uuid": "^11.1.0"
     },
     "devDependencies": {
         "@rollup/plugin-json": "^6.1.0",

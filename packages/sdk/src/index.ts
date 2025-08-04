@@ -6,6 +6,8 @@
 export { version } from '../package.json';
 
 
+export * from './A2A/A2A.class';
+export * from './A2A/Executor.class';
 export * from './Agent/Agent.class';
 export * from './Components/Components.index';
 export * from './Components/ComponentWrapper.class';
@@ -31,6 +33,7 @@ export * from './utils/help';
 export * from './utils/index';
 export * from './VectorDB/VectorDB.class';
 export * from './VectorDB/VectorDBInstance.class';
+export * from './A2A/helpers/a2a.helper';
 export * from './Components/generated/APICall';
 export * from './Components/generated/APIOutput';
 export * from './Components/generated/Await';
