@@ -149,6 +149,12 @@ export type TLLMParams = {
     // #endregion
 
     useReasoning?: boolean;
+    /**
+     * Controls the level of effort the model will put into reasoning
+     * For GPT-OSS models (20B, 120B): "low" | "medium" | "high"
+     * For Qwen 3 32B: "none" | "default"
+     */
+    reasoningEffort?: 'none' | 'default' | 'low' | 'medium' | 'high';
     max_output_tokens?: number;
     abortSignal?: AbortSignal;
 };

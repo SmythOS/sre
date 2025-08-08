@@ -36,11 +36,6 @@ export class GenAILLM extends Component {
                 min: 1,
                 label: 'Maximum Tokens',
             },
-            maxThinkingTokens: {
-                type: 'number',
-                min: 1,
-                label: 'Maximum Thinking Tokens',
-            },
             stopSequences: {
                 type: 'string',
                 max: 400,
@@ -236,6 +231,25 @@ export class GenAILLM extends Component {
                 allowEmpty: true,
             },
             // #endregion
+
+            // #region Reasoning
+            useReasoning: {
+                type: 'boolean',
+                description: 'If true, the component will use reasoning capabilities for complex problem-solving',
+                label: 'Use Reasoning',
+            },
+            reasoningEffort: {
+                type: 'string',
+                valid: ['none', 'default', 'low', 'medium', 'high'],
+                description: 'Controls the level of effort the model will put into reasoning',
+                label: 'Reasoning Effort',
+            },
+            maxThinkingTokens: {
+                type: 'number',
+                min: 1,
+                label: 'Maximum Thinking Tokens',
+            },
+            // #endregion
         },
         inputs: {
             Input: {
@@ -306,8 +320,11 @@ export class GenAILLM extends Component {
             .label('To Date'),
         // #endregion
 
+        // #region Reasoning
         useReasoning: Joi.boolean().optional().label('Use Reasoning'),
-        maxThinkingTokens: Joi.number().min(1).label('Maximum Thinking Tokens'),
+        reasoningEffort: Joi.string().valid('none', 'default', 'low', 'medium', 'high').optional().allow('').label('Reasoning Effort'),
+        maxThinkingTokens: Joi.number().min(1).optional().label('Maximum Thinking Tokens'),
+        // #endregion
     });
     constructor() {
         super();

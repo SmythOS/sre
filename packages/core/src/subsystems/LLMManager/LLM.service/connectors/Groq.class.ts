@@ -23,6 +23,7 @@ import { SystemEvents } from '@sre/Core/SystemEvents';
 type ChatCompletionCreateParams = {
     model: string;
     messages: any;
+    max_completion_tokens?: number;
     max_tokens?: number;
     temperature?: number;
     stop?: string[];
@@ -30,6 +31,7 @@ type ChatCompletionCreateParams = {
     tools?: any;
     tool_choice?: string;
     stream?: boolean;
+    reasoning_effort?: 'none' | 'default' | 'low' | 'medium' | 'high';
 };
 
 export class GroqConnector extends LLMConnector {
@@ -44,113 +46,105 @@ export class GroqConnector extends LLMConnector {
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
-        try {
-            const groq = await this.getClient(context);
-            const result = await groq.chat.completions.create(body);
-            const message = result?.choices?.[0]?.message;
-            const finishReason = result?.choices?.[0]?.finish_reason;
-            const toolCalls = message?.tool_calls;
-            const usage = result.usage;
-            this.reportUsage(usage, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
-            });
+        const groq = await this.getClient(context);
+        const result = await groq.chat.completions.create(body);
+        const message = result?.choices?.[0]?.message;
+        const finishReason = result?.choices?.[0]?.finish_reason;
+        const toolCalls = message?.tool_calls;
+        const usage = result.usage;
+        this.reportUsage(usage, {
+            modelEntryName: context.modelEntryName,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+            agentId: context.agentId,
+            teamId: context.teamId,
+        });
 
-            let toolsData: ToolData[] = [];
-            let useTool = false;
+        let toolsData: ToolData[] = [];
+        let useTool = false;
 
-            if (toolCalls) {
-                toolsData = toolCalls.map((tool, index) => ({
-                    index,
-                    id: tool.id,
-                    type: tool.type,
-                    name: tool.function.name,
-                    arguments: tool.function.arguments,
-                    role: TLLMMessageRole.Assistant,
-                }));
-                useTool = true;
-            }
-
-            return {
-                content: message?.content ?? '',
-                finishReason,
-                useTool,
-                toolsData,
-                message,
-                usage,
-            };
-        } catch (error: any) {
-            throw error;
+        if (toolCalls) {
+            toolsData = toolCalls.map((tool, index) => ({
+                index,
+                id: tool.id,
+                type: tool.type,
+                name: tool.function.name,
+                arguments: tool.function.arguments,
+                role: TLLMMessageRole.Assistant,
+            }));
+            useTool = true;
         }
+
+        return {
+            content: message?.content ?? '',
+            finishReason,
+            useTool,
+            toolsData,
+            message,
+            usage,
+        };
     }
 
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
         const usage_data = [];
 
-        try {
-            const groq = await this.getClient(context);
-            const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
+        const groq = await this.getClient(context);
+        const stream = await groq.chat.completions.create({ ...body, stream: true, stream_options: { include_usage: true } });
 
-            let toolsData: ToolData[] = [];
+        let toolsData: ToolData[] = [];
 
-            (async () => {
-                for await (const chunk of stream as any) {
-                    const delta = chunk.choices[0]?.delta;
-                    const usage = chunk['x_groq']?.usage || chunk['usage'];
+        (async () => {
+            for await (const chunk of stream as any) {
+                const delta = chunk.choices[0]?.delta;
+                const usage = chunk['x_groq']?.usage || chunk['usage'];
 
-                    if (usage) {
-                        usage_data.push(usage);
-                    }
-                    emitter.emit('data', delta);
+                if (usage) {
+                    usage_data.push(usage);
+                }
+                emitter.emit('data', delta);
 
-                    if (delta?.content) {
-                        emitter.emit('content', delta.content);
-                    }
-
-                    if (delta?.tool_calls) {
-                        delta.tool_calls.forEach((toolCall, index) => {
-                            if (!toolsData[index]) {
-                                toolsData[index] = {
-                                    index,
-                                    id: toolCall.id,
-                                    type: toolCall.type,
-                                    name: toolCall.function?.name,
-                                    arguments: toolCall.function?.arguments,
-                                    role: 'assistant',
-                                };
-                            } else {
-                                toolsData[index].arguments += toolCall.function?.arguments || '';
-                            }
-                        });
-                    }
+                if (delta?.content) {
+                    emitter.emit('content', delta.content);
                 }
 
-                if (toolsData.length > 0) {
-                    emitter.emit(TLLMEvent.ToolInfo, toolsData);
-                }
-
-                usage_data.forEach((usage) => {
-                    // probably we can acc them and send them as one event
-                    this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
+                if (delta?.tool_calls) {
+                    delta.tool_calls.forEach((toolCall, index) => {
+                        if (!toolsData[index]) {
+                            toolsData[index] = {
+                                index,
+                                id: toolCall.id,
+                                type: toolCall.type,
+                                name: toolCall.function?.name,
+                                arguments: toolCall.function?.arguments,
+                                role: 'assistant',
+                            };
+                        } else {
+                            toolsData[index].arguments += toolCall.function?.arguments || '';
+                        }
                     });
+                }
+            }
+
+            if (toolsData.length > 0) {
+                emitter.emit(TLLMEvent.ToolInfo, toolsData);
+            }
+
+            usage_data.forEach((usage) => {
+                // probably we can acc them and send them as one event
+                this.reportUsage(usage, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
                 });
+            });
 
-                setTimeout(() => {
-                    emitter.emit('end', toolsData);
-                }, 100);
-            })();
+            setTimeout(() => {
+                emitter.emit('end', toolsData);
+            }, 100);
+        })();
 
-            return emitter;
-        } catch (error: any) {
-            throw error;
-        }
+        return emitter;
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<ChatCompletionCreateParams> {
@@ -172,13 +166,26 @@ export class GroqConnector extends LLMConnector {
         }
         //#endregion Handle JSON response format
 
-        if (params.maxTokens !== undefined) body.max_tokens = params.maxTokens;
+        const isReasoningModel = params.useReasoning && params.capabilities?.reasoning;
+
+        if (params.maxTokens !== undefined) {
+            if (isReasoningModel) {
+                body.max_completion_tokens = params.maxTokens;
+            } else {
+                body.max_tokens = params.maxTokens;
+            }
+        }
         if (params.temperature !== undefined) body.temperature = params.temperature;
         if (params.topP !== undefined) body.top_p = params.topP;
         if (params.stopSequences?.length) body.stop = params.stopSequences;
 
         if (params.toolsConfig?.tools) body.tools = params.toolsConfig?.tools;
         if (params.toolsConfig?.tool_choice) body.tool_choice = params.toolsConfig?.tool_choice as any;
+
+        // Apply user-specified reasoning parameters
+        if (isReasoningModel) {
+            if (params.reasoningEffort !== undefined) body.reasoning_effort = params.reasoningEffort;
+        }
 
         return body;
     }
