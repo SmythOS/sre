@@ -75,9 +75,6 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     public handleStream(stream: Stream<OpenAI.Responses.ResponseStreamEvent>, context: ILLMRequestContext): EventEmitter {
         const emitter = new EventEmitter();
-        const usage_data: any[] = [];
-        const reportedUsage: any[] = [];
-        let finishReason = 'stop';
 
         // Process stream asynchronously while returning emitter immediately
         (async () => {
@@ -85,12 +82,13 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
             try {
                 // Step 1: Process the stream
-                const streamResult = await this.processStream(stream, emitter, usage_data);
+                const streamResult = await this.processStream(stream, emitter);
                 finalToolsData = streamResult.toolsData;
-                finishReason = streamResult.finishReason;
+                const finishReason = streamResult.finishReason || 'stop';
+                const usageData = streamResult.usageData;
 
                 // Step 2: Report usage statistics
-                this.reportUsageStatistics(usage_data, context, reportedUsage);
+                const reportedUsage = this.reportUsageStatistics(usageData, context);
 
                 // Step 3: Emit final events
                 this.emitFinalEvents(emitter, finalToolsData, reportedUsage, finishReason);
@@ -107,11 +105,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
      */
     private async processStream(
         stream: Stream<OpenAI.Responses.ResponseStreamEvent>,
-        emitter: EventEmitter,
-        usage_data: any[]
-    ): Promise<{ toolsData: ToolData[]; finishReason: string }> {
+        emitter: EventEmitter
+    ): Promise<{ toolsData: ToolData[]; finishReason: string; usageData: any[] }> {
         let toolsData: ToolData[] = [];
         let finishReason = 'stop';
+        const usageData = [];
 
         for await (const part of stream) {
             // Handle different event types from the Responses API stream
@@ -190,11 +188,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
             // Handle usage statistics from response object
             if ('response' in part && (part as any).response?.usage) {
-                usage_data.push((part as any).response.usage);
+                usageData.push((part as any).response.usage);
             }
         }
 
-        return { toolsData: this.extractToolCalls(toolsData), finishReason };
+        return { toolsData: this.extractToolCalls(toolsData), finishReason, usageData };
     }
 
     /**
@@ -214,17 +212,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     /**
      * Report usage statistics
      */
-    private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext, reportedUsage: any[]): void {
+    private reportUsageStatistics(usage_data: any[], context: ILLMRequestContext): any[] {
+        let reportedUsage: any[] = [];
+
         // Report normal usage
         usage_data.forEach((usage) => {
-            // Convert ResponseUsage to CompletionUsage format for compatibility
-            const convertedUsage = {
-                completion_tokens: usage.completion_tokens || 0,
-                prompt_tokens: usage.prompt_tokens || 0,
-                total_tokens: usage.total_tokens || 0,
-                ...usage,
-            };
-            const reported = this.deps.reportUsage(convertedUsage, this.buildUsageContext(context));
+            const reported = this.deps.reportUsage(usage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         });
 
@@ -234,6 +227,8 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
             const reported = this.deps.reportUsage(searchUsage, this.buildUsageContext(context));
             reportedUsage.push(reported);
         }
+
+        return reportedUsage;
     }
 
     /**
@@ -270,10 +265,13 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     /**
      * Calculate search tool usage with cost
+     *
+     * Note: This only calculates the per-call cost for web search.
+     * Search content tokens are included in the main usage report as input_tokens.
      */
     private calculateSearchToolUsage(context: ILLMRequestContext) {
         const modelName = context.modelEntryName?.replace('smythos/', '');
-        const cost = this.getSearchToolCost(modelName, context.toolsInfo?.openai?.webSearch?.contextSize);
+        const cost = this.getSearchToolCost(modelName);
 
         return {
             cost,
@@ -308,6 +306,11 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         if (params?.topP !== undefined) {
             body.top_p = params.topP;
+        }
+
+        // Handle verbosity
+        if (params?.verbosity !== undefined && params?.verbosity !== null) {
+            (body as any).verbosity = params.verbosity;
         }
 
         let tools: OpenAI.Responses.Tool[] = [];
@@ -833,19 +836,20 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
-     * Get search tool cost for a specific model and context size
+     * Get search tool cost for a specific model
+     * @returns Cost per call (not per 1000 calls)
      */
-    private getSearchToolCost(modelName: string, contextSize: string): number {
+    private getSearchToolCost(modelName: string): number {
         const normalizedModelName = modelName?.replace('smythos/', '');
 
-        // Check normal models first
-        if (SEARCH_TOOL_COSTS.normalModels[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.normalModels[normalizedModelName][contextSize] || 0;
+        // Check gpt-4 models (gpt-4o, gpt-4.1 and their mini variants)
+        if (SEARCH_TOOL_COSTS.gpt4Models[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.gpt4Models[normalizedModelName];
         }
 
-        // Check mini models
-        if (SEARCH_TOOL_COSTS.miniModels[normalizedModelName]) {
-            return SEARCH_TOOL_COSTS.miniModels[normalizedModelName][contextSize] || 0;
+        // Check gpt-5 models
+        if (SEARCH_TOOL_COSTS.gpt5Models[normalizedModelName]) {
+            return SEARCH_TOOL_COSTS.gpt5Models[normalizedModelName];
         }
 
         return 0;

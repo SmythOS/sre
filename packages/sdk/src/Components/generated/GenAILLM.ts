@@ -36,6 +36,8 @@ export interface TGenAILLMSettings {
     useContextWindow?: boolean;
     /** The maximum number of messages to use from this component context window (if useContextWindow is true) */
     maxContextWindowLength?: number;
+    /** Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses. */
+    verbosity?: 'low' | 'medium' | 'high';
     /** If true, the component will use web search for additional context */
     useWebSearch?: boolean;
     /** Web Search Context Size */

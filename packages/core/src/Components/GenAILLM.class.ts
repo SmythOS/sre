@@ -97,6 +97,14 @@ export class GenAILLM extends Component {
                 description: 'The maximum number of messages to use from this component context window (if useContextWindow is true)',
                 label: 'Maximum Context Window Length',
             },
+            verbosity: {
+                type: 'string',
+                valid: ['low', 'medium', 'high'],
+                description:
+                    "Constrains the verbosity of the model's response. Lower values will result in more concise responses, while higher values will result in more verbose responses.",
+                label: 'Verbosity',
+                allowEmpty: true,
+            },
 
             // #region Web Search
             useWebSearch: {
@@ -269,6 +277,7 @@ export class GenAILLM extends Component {
         useSystemPrompt: Joi.boolean().optional().label('Use System Prompt'),
         useContextWindow: Joi.boolean().optional().label('Use Context Window'),
         maxContextWindowLength: Joi.number().optional().min(0).label('Maximum Context Window Length'),
+        verbosity: Joi.string().valid('low', 'medium', 'high').optional().allow('').label('Verbosity'),
 
         // #region Web Search
         useWebSearch: Joi.boolean().optional().label('Use Web Search'),

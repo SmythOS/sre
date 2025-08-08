@@ -150,6 +150,7 @@ export type TLLMParams = {
 
     useReasoning?: boolean;
     max_output_tokens?: number;
+    verbosity?: 'low' | 'medium' | 'high';
     abortSignal?: AbortSignal;
 };
 

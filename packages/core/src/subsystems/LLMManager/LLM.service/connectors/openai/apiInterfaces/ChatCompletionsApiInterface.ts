@@ -172,6 +172,11 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
             body.stop = params.stopSequences;
         }
 
+        // Handle verbosity
+        if (params?.verbosity) {
+            body.verbosity = params.verbosity;
+        }
+
         // Handle tools configuration
         if (params?.toolsConfig?.tools && params?.toolsConfig?.tools?.length > 0) {
             body.tools = params?.toolsConfig?.tools as OpenAI.ChatCompletionTool[];
