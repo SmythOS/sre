@@ -23,37 +23,114 @@ SystemEvents.on('SRE:Booted', () => {
 
 export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig = {}) {
     let additionalParams = {};
-    // Parse URL parameters using URL and URLSearchParams
-    const url = new URL(reqConfig.url);
-    const searchParams = url.searchParams;
-    additionalParams = Object.fromEntries(searchParams.entries());
 
-    // Check content type and add required parameters for OAuth 1 signature
-    const contentType = reqConfig.headers?.['Content-Type'] || '';
-    if (contentType === REQUEST_CONTENT_TYPES.urlEncodedFormData) {
+    // Validate URL doesn't contain unresolved template variables
+    if (reqConfig.url && (reqConfig.url.includes('{{') || reqConfig.url.includes('${{'))) {
+        console.warn('Warning: URL contains unresolved template variables for OAuth1 signature:', reqConfig.url);
+    }
+
+    // Parse URL parameters
+    try {
+        const url = new URL(reqConfig.url);
+        const searchParams = url.searchParams;
+        additionalParams = Object.fromEntries(searchParams.entries());
+
+        // Log if we have query parameters for debugging
+        if (searchParams.toString()) {
+            console.debug('OAuth1: Found query parameters:', Object.keys(additionalParams));
+        }
+    } catch (error) {
+        console.warn('Failed to parse URL for OAuth1 parameters:', error);
+    }
+
+    // Get the content type, handling different header formats
+    const headers = reqConfig.headers || {};
+    let contentType = '';
+
+    // Headers might be an object or array of objects
+    if (Array.isArray(headers)) {
+        const contentTypeHeader = headers.find(h =>
+            Object.keys(h).some(k => k.toLowerCase() === 'content-type')
+        );
+        if (contentTypeHeader) {
+            const key = Object.keys(contentTypeHeader).find(k => k.toLowerCase() === 'content-type');
+            contentType = contentTypeHeader[key];
+        }
+    } else {
+        contentType = headers['Content-Type'] || headers['content-type'] || '';
+    }
+
+    // Extract body parameters based on content type
+    const method = (reqConfig.method || 'GET').toUpperCase();
+
+    if (contentType.includes(REQUEST_CONTENT_TYPES.urlEncodedFormData)) {
         // For form data, include the form parameters in the signature
-        if (typeof reqConfig.data === 'string') {
-            const formData = new URLSearchParams(reqConfig.data);
-            additionalParams = { ...additionalParams, ...Object.fromEntries(formData) };
-        }
-    } else if (contentType === REQUEST_CONTENT_TYPES.json) {
-        // For JSON data, include a hash of the request body
         if (reqConfig.data) {
-            const hash = crypto.createHash('sha1').update(JSON.stringify(reqConfig.data)).digest('base64');
-            additionalParams['oauth_body_hash'] = hash;
-        }
-    } else if (contentType === REQUEST_CONTENT_TYPES.multipartFormData) {
-        const formData = reqConfig.data as FormData;
-        for (const [key, value] of formData.entries()) {
-            // Exclude binary form data (File, Blob, etc.)
-            if (typeof value === 'object' && value !== null && 'size' in value && 'type' in value) {
-                continue;
+            let formParams = {};
+            if (typeof reqConfig.data === 'string') {
+                // Check for unresolved template variables in form data
+                if (reqConfig.data.includes('{{') || reqConfig.data.includes('${{')) {
+                    console.warn('Warning: Form data contains unresolved template variables for OAuth1 signature');
+                }
+                const formData = new URLSearchParams(reqConfig.data);
+                formParams = Object.fromEntries(formData.entries());
+            } else if (reqConfig.data instanceof URLSearchParams) {
+                formParams = Object.fromEntries(reqConfig.data.entries());
+            } else if (typeof reqConfig.data === 'object') {
+                // Handle plain object
+                formParams = reqConfig.data;
             }
-
-            additionalParams[key] = value;
+            console.debug('OAuth1: Including form parameters in signature:', Object.keys(formParams));
+            additionalParams = { ...additionalParams, ...formParams };
+        }
+    } else if (contentType.includes(REQUEST_CONTENT_TYPES.json) ||
+        contentType.includes('application/') ||
+        contentType.includes('text/')) {
+        // For JSON and other non-form data, use oauth_body_hash
+        if (reqConfig.data && method !== 'GET' && method !== 'HEAD') {
+            let bodyString = '';
+            if (typeof reqConfig.data === 'string') {
+                bodyString = reqConfig.data;
+            } else {
+                bodyString = JSON.stringify(reqConfig.data);
+            }
+            // Check for unresolved template variables
+            if (bodyString.includes('{{') || bodyString.includes('${{')) {
+                console.warn('Warning: Request body contains unresolved template variables for OAuth1 signature');
+            }
+            const hash = crypto.createHash('sha1').update(bodyString).digest('base64');
+            additionalParams['oauth_body_hash'] = hash;
+            console.debug('OAuth1: Added oauth_body_hash for', contentType);
+        }
+    } else if (contentType.includes(REQUEST_CONTENT_TYPES.multipartFormData)) {
+        // For multipart form data, only include text fields
+        if (reqConfig.data && typeof reqConfig.data === 'object' && 'entries' in reqConfig.data) {
+            const formData = reqConfig.data as FormData;
+            for (const [key, value] of formData.entries()) {
+                // Only include string values, exclude Files/Blobs
+                if (typeof value === 'string') {
+                    additionalParams[key] = value;
+                } else if (typeof value === 'object' && value !== null &&
+                    ('size' in value || 'type' in value)) {
+                    // Skip binary data (Files, Blobs, etc.)
+                    continue;
+                } else {
+                    // Include other simple values
+                    additionalParams[key] = String(value);
+                }
+            }
+        }
+    } else if (!contentType && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+        // No content type specified but has data
+        if (reqConfig.data) {
+            const bodyString = typeof reqConfig.data === 'string' ?
+                reqConfig.data : JSON.stringify(reqConfig.data);
+            const hash = crypto.createHash('sha1').update(bodyString).digest('base64');
+            additionalParams['oauth_body_hash'] = hash;
         }
     }
 
+    console.debug('OAuth1: Total parameters for signature:', Object.keys(additionalParams).length);
     return additionalParams;
 }
 
@@ -69,20 +146,37 @@ export const buildOAuth1Header = (url, method, oauth1Credentials, additionalPara
         },
     });
 
-    // Include additional parameters if necessary (e.g., for non-standard providers)
+    // OAuth1 requires the base URL without query parameters for signature
+    // The query parameters should be included separately in additionalParams
+    let baseUrl = url;
+    try {
+        const urlObj = new URL(url);
+        // Remove query parameters from URL for signature base
+        baseUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+        console.debug('OAuth1: Base URL for signature:', baseUrl);
+    } catch (error) {
+        console.warn('Failed to parse URL for OAuth1 signature:', error);
+    }
+
+    // Include additional parameters in the request data
     const requestData = {
-        url,
-        method,
-        ...additionalParams,
+        url: baseUrl,
+        method: method.toUpperCase(),
+        data: additionalParams, // Parameters should be in data field for oauth-1.0a library
     };
-    const signedRequest = oauth.authorize(requestData, { key: oauth1Credentials.token, secret: oauth1Credentials.tokenSecret });
+
+    const token = oauth1Credentials.token && oauth1Credentials.token !== '' ?
+        { key: oauth1Credentials.token, secret: oauth1Credentials.tokenSecret || '' } :
+        null;
+
+    const signedRequest = oauth.authorize(requestData, token);
     return oauth.toHeader(signedRequest);
 };
 
 export const retrieveOAuthTokens = async (agent, config) => {
     let tokenKey: any = null;
     try {
-        tokenKey = `OAUTH_${config.componentId ?? config.id}_TOKENS`;
+        tokenKey = config?.data?.oauth_con_id;
 
         try {
             const result: any = await managedVault.user(AccessCandidate.agent(agent.id)).get(tokenKey);
@@ -92,22 +186,40 @@ export const retrieveOAuthTokens = async (agent, config) => {
                 throw new Error('Failed to retrieve OAuth tokens from vault. Please authenticate ...');
             }
 
-            const primaryToken = tokensData.primary; // accessToken or token
-            const secondaryToken = tokensData.secondary; // refreshToken or tokenSecret
-            const type = tokensData.type; // oauth || oauth2
+            // Check if it's new structure (has auth_data and auth_settings) or old structure
+            const isNewStructure = tokensData.auth_data !== undefined && tokensData.auth_settings !== undefined;
+
+            // Extract tokens based on structure
+            const primaryToken = isNewStructure
+                ? tokensData.auth_data?.primary
+                : tokensData.primary;
+            const secondaryToken = isNewStructure
+                ? tokensData.auth_data?.secondary
+                : tokensData.secondary;
+            const expiresIn = isNewStructure
+                ? tokensData.auth_data?.expires_in
+                : tokensData.expires_in;
+
+            // Extract settings based on structure
+            const type = isNewStructure
+                ? tokensData.auth_settings?.type
+                : (tokensData.type || tokensData.oauth_info?.type);
+            const service = isNewStructure
+                ? tokensData.auth_settings?.service
+                : tokensData.oauth_info?.service;
 
             // Add warning logs for OAuth2
-            if (type === 'oauth2' && config.data.oauthService !== 'OAuth2 Client Credentials') {
+            if (type === 'oauth2' && service !== 'oauth2_client_credentials') {
                 if (!secondaryToken) {
                     console.warn('Warning: refresh_token is missing for OAuth2');
                 }
-                if (!tokensData.expires_in) {
+                if (!expiresIn) {
                     console.warn('Warning: expires_in is missing for OAuth2.');
                 }
             }
 
             // sometimes refreshToken is not available . e.g in case of linkedIn. so only add check for primary token
-            if (config.data.oauthService !== 'OAuth2 Client Credentials') {
+            if (service !== 'oauth2_client_credentials') {
                 if (!primaryToken) {
                     throw new Error('Retrieved OAuth tokens do not exist, invalid OR incomplete. Please authenticate ...');
                 }
@@ -117,23 +229,37 @@ export const retrieveOAuthTokens = async (agent, config) => {
                 primaryToken,
                 secondaryToken,
                 type,
+                service,
             };
 
             if (type === 'oauth') {
-                // Check and assign if present
-                if ('consumerKey' in tokensData) responseData.consumerKey = tokensData.consumerKey;
-                if ('consumerSecret' in tokensData) responseData.consumerSecret = tokensData.consumerSecret;
-                responseData.team = tokensData.team;
+                // Extract OAuth1 credentials based on structure
+                if (isNewStructure) {
+                    responseData.consumerKey = tokensData.auth_settings?.consumerKey;
+                    responseData.consumerSecret = tokensData.auth_settings?.consumerSecret;
+                    responseData.tokenURL = tokensData.auth_settings?.tokenURL;
+                } else {
+                    responseData.consumerKey = tokensData.consumerKey || tokensData.oauth_info?.consumerKey;
+                    responseData.consumerSecret = tokensData.consumerSecret || tokensData.oauth_info?.consumerSecret;
+                    responseData.tokenURL = tokensData.tokenURL || tokensData.oauth_info?.tokenURL;
+                }
+                responseData.team = tokensData.team || agent.teamId;
             } else if (type === 'oauth2') {
-                // Check and assign if present
-                responseData.tokenURL = tokensData.tokenURL;
-                if ('clientID' in tokensData) responseData.clientID = tokensData.clientID;
-                if ('clientSecret' in tokensData) responseData.clientSecret = tokensData.clientSecret;
-                responseData.expiresIn = tokensData.expires_in ?? 0; // Optional property, default to 0 if not present. time to expire access token
-                responseData.team = tokensData.team;
+                // Extract OAuth2 credentials based on structure
+                if (isNewStructure) {
+                    responseData.tokenURL = tokensData.auth_settings?.tokenURL;
+                    responseData.clientID = tokensData.auth_settings?.clientID;
+                    responseData.clientSecret = tokensData.auth_settings?.clientSecret;
+                } else {
+                    responseData.tokenURL = tokensData.tokenURL || tokensData.oauth_info?.tokenURL;
+                    responseData.clientID = tokensData.clientID || tokensData.oauth_info?.clientID;
+                    responseData.clientSecret = tokensData.clientSecret || tokensData.oauth_info?.clientSecret;
+                }
+                responseData.expiresIn = expiresIn ?? 0; // Optional property, default to 0 if not present
+                responseData.team = tokensData.team || agent.teamId;
             }
 
-            return { responseData, data: tokensData, keyId: tokenKey };
+            return { responseData, tokensData, keyId: tokenKey, isNewStructure };
         } catch (error) {
             throw new Error(`Failed to parse retrieved tokens: ${error}`);
         }
@@ -143,33 +269,33 @@ export const retrieveOAuthTokens = async (agent, config) => {
     }
 };
 
-export const handleOAuthHeaders = async (agent, config, reqConfig, logger, additionalParams = {}, rootUrl) => {
+export const handleOAuthHeaders = async (agent, config, reqConfig, logger, additionalParams = {}) => {
     let headers = {}; // Initialize headers as an empty object
-    const { responseData: oauthTokens, data, keyId } = await retrieveOAuthTokens(agent, config);
+    const { responseData: oauthTokens, tokensData, keyId, isNewStructure } = await retrieveOAuthTokens(agent, config);
 
     try {
-        // Extract template variable key IDs for consumerKey, consumerSecret, clientID, and clientSecret
-        const keys = ['consumerKey', 'consumerSecret', 'clientID', 'clientSecret'];
+        // Build OAuth config string with template support
         let oAuthConfigString = JSON.stringify({
-            consumerKey: config.data.consumerKey,
-            consumerSecret: config.data.consumerSecret,
-            clientID: config.data.clientID,
-            clientSecret: config.data.clientSecret,
-            tokenURL: config.data.tokenURL,
+            consumerKey: oauthTokens.consumerKey || '',
+            consumerSecret: oauthTokens.consumerSecret || '',
+            clientID: oauthTokens.clientID || '',
+            clientSecret: oauthTokens.clientSecret || '',
+            tokenURL: oauthTokens.tokenURL || '',
         });
 
         oAuthConfigString = await TemplateString(oAuthConfigString).parseTeamKeysAsync(oauthTokens.team || agent.teamId).asyncResult;
 
         const oAuthConfig = JSON.parse(oAuthConfigString);
-
-        if (oAuthConfig.oauthService === 'OAuth2 Client Credentials') {
-            const accessToken = await getClientCredentialToken(data, logger, keyId, oauthTokens, config, agent);
+        console.log('oAuthConfig', oAuthConfig);
+        if (oauthTokens.service === 'oauth2_client_credentials') {
+            const accessToken = await getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure);
             headers['Authorization'] = `Bearer ${accessToken}`;
         } else {
             if (oauthTokens.type === 'oauth') {
                 // For OAuth1, generate and replace the signature in headers
+                // Use the full URL (with path but without query params) for OAuth1
                 const oauthHeader = buildOAuth1Header(
-                    rootUrl,
+                    reqConfig.url,
                     reqConfig.method,
                     {
                         consumerKey: oAuthConfig.consumerKey,
@@ -177,7 +303,7 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                         token: oauthTokens.primaryToken,
                         tokenSecret: oauthTokens.secondaryToken,
                     },
-                    additionalParams,
+                    additionalParams
                 );
 
                 headers = { ...reqConfig.headers, ...oauthHeader };
@@ -191,10 +317,11 @@ export const handleOAuthHeaders = async (agent, config, reqConfig, logger, addit
                     oAuthConfig.tokenURL,
                     oauthTokens.expiresIn,
                     oauthTokens.primaryToken,
-                    data,
+                    tokensData,
                     keyId,
                     logger,
                     agent,
+                    isNewStructure
                 );
 
                 const accessToken = await accessTokenManager.getAccessToken();
@@ -223,15 +350,16 @@ const getKeyIdsFromTemplateVars = (str: string): string[] => {
     return keyIds;
 };
 
-async function getClientCredentialToken(data, logger, keyId, oauthTokens, config, agent) {
+async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure = false) {
+
+
     const logAndThrowError = (message) => {
         logger.debug(message);
         throw new Error(message);
     };
 
     try {
-        data = data[keyId] || {};
-        const { clientID, clientSecret, tokenURL } = config.data;
+        const { clientID, clientSecret, tokenURL } = oauthTokens;
         const currentTime = new Date().getTime();
         // Check for token expiration
         if (!oauthTokens.expiresIn || currentTime >= Number(oauthTokens.expiresIn)) {
@@ -257,30 +385,47 @@ async function getClientCredentialToken(data, logger, keyId, oauthTokens, config
             const expiresInMilliseconds = response.data.expires_in * 1000;
             const expirationTimestamp = currentTime + expiresInMilliseconds;
 
-            // Set data if it's empty
-            if (Object.keys(data).length === 0) {
-                data = {
-                    primary: '',
-                    secondary: '',
-                    type: 'oauth2',
-                    tokenURL,
-                    expires_in: '',
-                    team: agent.teamId,
-                    oauth_info: {
-                        oauth_keys_prefix: `OAUTH_${config.componentId ?? config.id}`,
-                        service: 'oauth2_client_credentials',
+            // Maintain the same structure format when saving
+            let updatedData;
+            if (isNewStructure) {
+                // Maintain new structure format
+                updatedData = {
+                    auth_data: {
+                        primary: newAccessToken,
+                        expires_in: expirationTimestamp.toString()
+                    },
+                    auth_settings: tokensData.auth_settings || {
+                        type: 'oauth2',
                         tokenURL,
                         clientID,
                         clientSecret,
-                    },
+                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1]}`,
+                        service: 'oauth2_client_credentials'
+                    }
                 };
+            } else {
+                // Maintain old structure format
+                updatedData = {
+                    ...tokensData,
+                    primary: newAccessToken,
+                    expires_in: expirationTimestamp.toString()
+                };
+                // Ensure required fields are present for old structure
+                if (!updatedData.type) updatedData.type = 'oauth2';
+                if (!updatedData.tokenURL) updatedData.tokenURL = tokenURL;
+                if (!updatedData.team) updatedData.team = agent.teamId;
+                if (!updatedData.oauth_info) {
+                    updatedData.oauth_info = {
+                        oauth_keys_prefix: `OAUTH_${config?.data?.oauth_con_id?.split('_')[1]}`,
+                        service: 'oauth2_client_credentials',
+                        tokenURL,
+                        clientID,
+                        clientSecret
+                    };
+                }
             }
 
-            data.primary = newAccessToken;
-            data.expires_in = expirationTimestamp.toString();
-            //const oauthTeamSettings = new OauthTeamSettings();
-            //const save = await oauthTeamSettings.update({ keyId: keyId, data: data });
-            await managedVault.user(AccessCandidate.agent(agent.id)).set(keyId, data);
+            await managedVault.user(AccessCandidate.agent(agent.id)).set(keyId, JSON.stringify(updatedData));
 
             return newAccessToken;
         } else {

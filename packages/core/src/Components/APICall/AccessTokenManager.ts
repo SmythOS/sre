@@ -19,10 +19,11 @@ class AccessTokenManager {
     private secondaryToken: string; // refreshToken || tokenSecret
     private tokenUrl: string; // tokenURL to refresh accessToken
     private expires_in: any;
-    private data: any; // value of key(keyId) in teamSettings that needs to be updated if required
-    private keyId: any; // key of object  in teamSettings
+    private tokensData: any; // Full tokens data object
+    private keyId: any; // key of object in teamSettings
     private logger: any; // Use to log console in debugger
     private agent: Agent;
+    private isNewStructure: boolean;
     constructor(
         clientId: string,
         clientSecret: string,
@@ -30,10 +31,11 @@ class AccessTokenManager {
         tokenUrl: string,
         expires_in: any,
         primaryToken: string,
-        data: any,
+        tokensData: any,
         keyId: any,
         logger: any,
         agent: Agent,
+        isNewStructure: boolean = false,
     ) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -41,10 +43,11 @@ class AccessTokenManager {
         this.secondaryToken = secondaryToken;
         this.tokenUrl = tokenUrl;
         this.expires_in = expires_in;
-        this.data = data;
+        this.tokensData = tokensData;
         this.keyId = keyId;
         this.logger = logger;
         this.agent = agent;
+        this.isNewStructure = isNewStructure;
     }
 
     async getAccessToken(): Promise<string> {
@@ -105,12 +108,34 @@ class AccessTokenManager {
             this.logger.debug('Access token refreshed successfully.');
             const expiresInMilliseconds: number = response?.data?.expires_in ? response?.data?.expires_in * 1000 : response?.data?.expires_in;
             const expirationTimestamp: number = expiresInMilliseconds ? new Date().getTime() + expiresInMilliseconds : expiresInMilliseconds;
-            this.data.primary = newAccessToken;
-            this.data.expires_in = expirationTimestamp ? expirationTimestamp?.toString() : expirationTimestamp;
-            //const oauthTeamSettings = new OauthTeamSettings();
-            //const save: any = await oauthTeamSettings.update({ keyId: this.keyId, data: this.data });
 
-            const save: any = await managedVault.user(AccessCandidate.agent(this.agent.id)).set(this.keyId, JSON.stringify(this.data));
+            // Maintain the same structure format when saving
+            let updatedData;
+            if (this.isNewStructure) {
+                // Maintain new structure format
+                updatedData = {
+                    ...this.tokensData,
+                    auth_data: {
+                        ...this.tokensData.auth_data,
+                        primary: newAccessToken,
+                        secondary: this.secondaryToken,
+                        expires_in: expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp
+                    }
+                };
+            } else {
+                // Maintain old structure format
+                updatedData = {
+                    ...this.tokensData,
+                    primary: newAccessToken,
+                    expires_in: expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp
+                };
+                // Keep secondary token if it exists
+                if (this.secondaryToken) {
+                    updatedData.secondary = this.secondaryToken;
+                }
+            }
+
+            const save: any = await managedVault.user(AccessCandidate.agent(this.agent.id)).set(this.keyId, JSON.stringify(updatedData));
             if (save && save.status === 200) {
                 console.log('Access token value is updated successfully.');
                 this.logger.debug('Access token value is updated successfully.');
@@ -118,6 +143,12 @@ class AccessTokenManager {
                 console.log('Warning: new access token value is not updated.');
                 this.logger.debug('Warning: new access token value is not updated.');
             }
+
+            // Update internal tokensData reference
+            this.tokensData = updatedData;
+            this.primaryToken = newAccessToken;
+            this.expires_in = expirationTimestamp ? expirationTimestamp.toString() : expirationTimestamp;
+
             return newAccessToken;
         } catch (error) {
             console.error('Failed to refresh access token:', error);

@@ -59,12 +59,13 @@ export class APICall extends Component {
         consumerSecret: Joi.string().allow('').label('Consumer Secret'),
         oauth1CallbackURL: Joi.string().allow('').label('OAuth1 Callback URL'),
         authenticate: Joi.string().allow('').label('Authenticate'),
+        oauth_con_id: Joi.string().allow('').label('OAuth Connection ID'),
     });
     constructor() {
         super();
     }
 
-    init() {}
+    init() { }
 
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
@@ -113,10 +114,9 @@ export class APICall extends Component {
             let Headers: any = {};
             let _error: any = undefined;
             try {
-                if (config?.data?.oauthService && config?.data?.oauthService !== 'None') {
-                    const rootUrl = new URL(reqConfig.url).origin;
+                if (config?.data?.oauth_con_id !== '' && config?.data?.oauth_con_id !== 'None') {
                     const additionalParams = extractAdditionalParamsForOAuth1(reqConfig);
-                    const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams, rootUrl);
+                    const oauthHeaders = await generateOAuthHeaders(agent, config, reqConfig, logger, additionalParams);
                     //reqConfig.headers = { ...reqConfig.headers, ...oauthHeaders };
                     reqConfig.headers = reqConfig.headers.concat({ ...oauthHeaders });
                 }
