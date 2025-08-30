@@ -1,6 +1,6 @@
 import express from 'express';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { ConnectorService, AgentProcess, SRE } from '@smythos/sre';
+import { ConnectorService } from '@smythos/sre';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import fs from 'fs';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -9,27 +9,6 @@ import { Agent } from '@smythos/sdk';
 const clientTransports = new Map<string, { transport: SSEServerTransport; server: Server }>();
 const defaultPort = 3388;
 export const startMcpServer = async (agentData, serverType, port, flags): Promise<void> => {
-    const sreConfigs: any = {};
-    if (flags.vault) {
-        sreConfigs.Vault = {
-            Connector: 'JSONFileVault',
-            Settings: {
-                file: flags.vault,
-            },
-        };
-    }
-    if (flags.models) {
-        sreConfigs.ModelsProvider = {
-            Connector: 'JSONModelsProvider',
-            Settings: {
-                models: flags.models,
-                mode: 'merge',
-            },
-        };
-    }
-    SRE.init(sreConfigs);
-    await SRE.ready();
-
     if (serverType.toLowerCase() === 'stdio') {
         await getMCPServer(agentData, serverType, null);
         return;
