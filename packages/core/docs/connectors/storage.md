@@ -81,3 +81,50 @@ SRE.init({
 -   Store credentials securely using environment variables or AWS Secrets Manager
 -   Configure appropriate bucket policies and CORS settings
 -   Enable encryption at rest and in transit for sensitive data
+
+---
+
+### GCS
+
+**Role**: Google Cloud Storage connector  
+**Summary**: Provides scalable cloud storage using Google Cloud Storage, suitable for production deployments requiring high availability and durability on Google Cloud Platform.
+
+| Setting       | Type   | Required | Default | Description                                     |
+| ------------- | ------ | -------- | ------- | ----------------------------------------------- |
+| `projectId`   | string | Yes      | -       | Google Cloud Project ID where the bucket is located |
+| `clientEmail` | string | Yes      | -       | Service account email address                   |
+| `privateKey`  | string | Yes      | -       | Service account private key                     |
+| `bucket`      | string | Yes      | -       | GCS bucket name for storing files               |
+
+**Example Configuration:**
+
+```typescript
+import { SRE } from '@smythos/sre';
+
+SRE.init({
+    Storage: {
+        Connector: 'GCS',
+        Settings: {
+            projectId: 'my-project-id',
+            clientEmail: process.env.GCP_CLIENT_EMAIL,
+            privateKey: process.env.GCP_PRIVATE_KEY,
+            bucket: 'my-app-storage',
+        },
+    },
+});
+```
+
+**Use Cases:**
+
+-   Production environments requiring scalability on Google Cloud Platform
+-   Multi-region deployments within GCP infrastructure
+-   Applications with high availability requirements
+-   Integration with Google Cloud ecosystem
+-   Large-scale data storage and processing
+
+**Security Notes:**
+
+-   Use service accounts with minimal required permissions
+-   Store credentials securely using environment variables or Google Secret Manager
+-   Configure appropriate bucket policies and IAM settings
+-   Enable encryption at rest and in transit for sensitive data
