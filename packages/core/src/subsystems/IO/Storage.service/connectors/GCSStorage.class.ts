@@ -11,7 +11,6 @@ import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/GCSCache.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 const console = Logger('GCSStorage');
@@ -98,15 +97,8 @@ export class GCSStorage extends StorageConnector {
             return;
         }
 
-        try {
-            await checkAndInstallLifecycleRules(this.bucketName, this.storage);
-            this.isInitialized = true;
-        } catch (error) {
-            console.error('Failed to initialize GCSStorage:', error);
-            // Reset the initialization promise so it can be retried
-            this.initializationPromise = null;
-            throw error;
-        }
+        // No initialization needed - bucket lifecycle rule should be configured externally
+        this.isInitialized = true;
     }
 
     /**
@@ -130,21 +122,7 @@ export class GCSStorage extends StorageConnector {
 
             const [metadata] = await file.getMetadata();
             
-            // Check for expiration using custom metadata
-            if (metadata.metadata && metadata.metadata['expiry-date']) {
-                const expiryDateValue = metadata.metadata['expiry-date'];
-                if (typeof expiryDateValue === 'string') {
-                    const expirationDate = new Date(expiryDateValue);
-                    const currentDate = new Date();
-
-                    if (currentDate > expirationDate) {
-                        await file.delete();
-                        return undefined;
-                    }
-                }
-            }
-
-            // Download and return the file content
+          
             const [buffer] = await file.download();
             return buffer;
         } catch (error) {
@@ -193,7 +171,7 @@ export class GCSStorage extends StorageConnector {
      * @returns {Promise<void>} - A promise that resolves when the object has been written.
      */
     @SecureConnector.AccessControl
-    async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata): Promise<void> {
+    async write(acRequest: AccessRequest, resourceId: string, value: StorageData, acl?: IACL, metadata?: StorageMetadata, ttl?: number): Promise<void> {
         await this.ensureInitialized();
 
         const accessCandidate = acRequest.candidate;
@@ -214,6 +192,11 @@ export class GCSStorage extends StorageConnector {
 
             if (gcsMetadata['ContentType']) {
                 uploadOptions.metadata.contentType = gcsMetadata['ContentType'];
+            }
+            
+            if (ttl) {
+                const deleteAt = new Date(Date.now() + ttl * 1000);
+                uploadOptions.metadata.customTime = deleteAt.toISOString();
             }
 
             await file.save(value, uploadOptions);
@@ -314,23 +297,18 @@ export class GCSStorage extends StorageConnector {
     async expire(acRequest: AccessRequest, resourceId: string, ttl: number) {
         await this.ensureInitialized();
 
-        const expiryDays = ttlToExpiryDays(ttl);
-        const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + expiryDays);
-
-        // Set expiry date in custom metadata
-        let gcsMetadata = await this.getGCSMetadata(resourceId);
-        if (!gcsMetadata) gcsMetadata = {};
-        gcsMetadata['expiry-date'] = expirationDate.toISOString();
+        const deleteAt = new Date(Date.now() + ttl * 1000);
         
-        await this.setGCSMetadata(resourceId, gcsMetadata);
-
-        // Also add a suffix to the file name for lifecycle management
-        const expiryMetadata = generateExpiryMetadata(expiryDays);
         const file = this.bucket.file(resourceId);
         
-        // We can't rename files in GCS directly, but we can use labels for lifecycle management
-        // For now, we'll rely on the custom metadata expiry-date for expiration logic
+        try {
+            await file.setMetadata({
+                customTime: deleteAt.toISOString()
+            });
+        } catch (error) {
+            console.error(`Error setting expiration for ${resourceId}:`, error);
+            throw error;
+        }
     }
 
     private migrateMetadata(metadata: Record<string, string>): Record<string, any> {

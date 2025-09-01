@@ -65,6 +65,7 @@ export * from './helpers/JsonContent.helper';
 export * from './helpers/LocalCache.helper';
 export * from './helpers/Log.helper';
 export * from './helpers/OpenApiParser.helper';
+export * from './helpers/S3Cache.helper';
 export * from './helpers/SmythURI.helper';
 export * from './helpers/Sysconfig.helper';
 export * from './helpers/TemplateString.helper';
