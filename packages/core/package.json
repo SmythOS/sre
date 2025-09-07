@@ -61,6 +61,8 @@
         "@aws-sdk/client-s3": "^3.826.0",
         "@aws-sdk/client-secrets-manager": "^3.826.0",
         "@faker-js/faker": "^9.8.0",
+        "@google-cloud/bigquery": "^7.0.0",
+        "@google-cloud/storage": "^7.10.0",
         "@google-cloud/vertexai": "^1.7.0",
         "@google/genai": "^1.10.0",
         "@google/generative-ai": "^0.14.1",
