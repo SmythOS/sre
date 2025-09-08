@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "type": "commonjs",
-   "scripts": {
+  "scripts": {
     "dev": "node index.js",
     "redis:up": "docker rm -f redis 2>/dev/null || true && docker run -d --name redis -p 6379:6379 --restart unless-stopped redis:7-alpine",
     "redis:ping": "docker exec -it redis redis-cli ping",
     "redis:cache-check": "ts-node scripts/redis-cache-check.ts",
     "test:redis": "node -r ts-node/register --test test/redis.test.ts",
-    "lint": "eslint . --ext .ts,.js || true"
+    "lint": "eslint . --ext .ts,.js || true",
+    "agent:demo": "ts-node scripts/demo-agent.ts",
+    "agent:demo:prompt": "ts-node scripts/demo-agent.ts \"Summarize the value of caching with Redis in agent workflows\""
   },
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",
@@ -22,6 +24,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@smythos/sdk": "^1.0.33",
     "chalk": "^5.4.1",
     "redis": "^5.8.2"

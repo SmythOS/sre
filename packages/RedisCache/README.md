@@ -1,147 +1,118 @@
-📘 Redis Cache Connector (SmythOS SRE)
+🚀 Redis Cache Connector for SmythOS
 
-This contribution adds a small, typed Redis cache utility for agents:
+This contribution adds a Redis cache connector for SmythOS SRE projects, plus a demo AI agent that shows how caching improves agent workflows.
 
-API: set(key, val, ttl?), get(key), del(key), keys(pattern), flushNamespace(), quit()
+✨ Features
 
-Features: namespacing (NAMESPACE:key), TTL, optional TLS via rediss://, simple retry/backoff.
+set/get/del/keys/flushNamespace/quit API
 
-⚡ Quick start (local)
+JSON auto-serialization & parsing
 
-Requirements:
+TTL support (per key and global default)
+
+Namespacing to prevent collisions across agents
+
+Retries with exponential backoff for transient Redis errors
+
+TLS support (rediss:// or REDIS_TLS=true)
+
+Demo agent shows [CACHE MISS] / [CACHE HIT] in real time
+
+📦 Requirements
 
 Docker Desktop
 
-Node.js 18+ (or later)
+Node.js v18+
 
-# 1) start Redis in Docker
+(Optional) API keys for OpenAI or Google Gemini if you want to use real LLMs
+
+⚡ Quick Start
+1. Start Redis
 npm run redis:up
 npm run redis:ping   # expect "PONG"
 
-# 2) (optional) set environment variables in .env.local
-# REDIS_URL=redis://127.0.0.1:6379
-# REDIS_NAMESPACE=sre:dev
-# REDIS_TLS=false
-
-# 3) run connector smoke test
+2. Run connector smoke test
 npm run redis:cache-check
 
-# expect output like:
-# get(hello) -> world
-# get(obj)  -> { a: 1, b: 'x' }
-# keys(*)   -> [ 'sre:check:hello', 'sre:check:obj' ]
-# after del(hello) -> null
-# ✅ Connector smoke passed
 
-# 4) run tests
+Expected output:
+
+get(hello) -> world
+get(obj) -> { a: 1, b: 'x' }
+keys(*) -> [ 'sre:check:hello', 'sre:check:obj' ]
+after del(hello) -> null
+✅ Connector smoke passed
+
+3. Run automated tests
 npm run test:redis
 
-🔧 Usage
-import { createRedisCacheFromEnv } from "./src/connectors/redis";
 
-async function main() {
-  const cache = createRedisCacheFromEnv();
+✅ All 5 tests should pass.
 
-  // store an object for 60 seconds
-  await cache.set("foo", { bar: 1 }, 60);
+🤖 AI Agent Demo with Redis Cache
 
-  // retrieve it back
-  const v = await cache.get("foo");   // -> { bar: 1 }
-  console.log("value:", v);
+The included demo agent wraps an LLM (OpenAI, Google Gemini, or a mock fallback) with the Redis cache connector. It shows how caching avoids recomputation.
 
-  // delete it
-  await cache.del("foo");
+Run demo
+npm run agent:demo:prompt
 
-  // close connection
-  await cache.quit();
-}
+Example output
+first: 420.123ms
+[CACHE MISS] key=demo-llm:v1:abc123 → querying model...
+[CACHE STORE] key=demo-llm:v1:abc123 → saved with TTL=120s
+OUT 1: MOCK_SUMMARY: Summarize the value of caching with Redis in agent workflows
 
-main().catch(console.error);
+second: 2.345ms
+[CACHE HIT] key=demo-llm:v1:abc123
+OUT 2: MOCK_SUMMARY: Summarize the value of caching with Redis in agent workflows
+
+✅ Demo complete (second call should be faster due to cache).
 
 
-👉 The API is deliberately simple and mirrors Redis:
+OUT 1 → cache miss (model queried, slower)
 
-set(key, value, ttlSeconds?) → stores string, Buffer, or JSON object
+OUT 2 → cache hit (from Redis, instant)
 
-get(key) → auto-parses JSON if possible, otherwise returns string
+👉 This proves the benefit of caching in agent workflows: speed + cost savings + reliability.
 
-del(key) → removes a key
+🔧 Configuration
 
-keys(pattern) → list matching keys (supports wildcards)
-
-flushNamespace() → deletes all keys in the current namespace
-
-quit() → closes the connection
-
-⚙️ Configuration
-
-The connector reads configuration from environment variables:
+Set via .env.local or environment variables:
 
 Variable	Default	Notes
 REDIS_URL	redis://127.0.0.1:6379	Use rediss:// for TLS
 REDIS_NAMESPACE	sre:dev	Prefix added to all keys
-REDIS_TLS	false	Force TLS, useful if URL doesn’t use rediss://
-REDIS_USERNAME	(none)	Only if Redis ACL is enabled
-REDIS_PASSWORD	(none)	Password for Redis auth
-REDIS_DEFAULT_TTL	(none)	TTL in seconds for all set calls if not overridden
-📝 Notes
+REDIS_TLS	false	Force TLS if needed
+REDIS_USERNAME	(none)	Redis ACL username
+REDIS_PASSWORD	(none)	Redis password
+REDIS_DEFAULT_TTL	(none)	Global TTL (seconds)
+OPENAI_API_KEY	(none)	Enables OpenAI adapter
+GOOGLEAI_API_KEY	(none)	Enables Google Gemini adapter
+OPENAI_MODEL	gpt-4o-mini	Optional override
+GOOGLEAI_MODEL	gemini-1.5-flash	Optional override
 
-TLS: If you provide a rediss:// URL, TLS is used automatically. You can also force it with REDIS_TLS=true.
+If no API keys are provided, the demo uses a MockAdapter that produces deterministic fake summaries.
 
-Retries: All Redis calls are wrapped in a retry/backoff helper, so transient disconnects don’t crash the agent.
-
-Namespacing: Prevents key collisions when multiple agents share the same Redis.
-Example:
-
-REDIS_NAMESPACE=agent1
-set("foo", 42)  → stored as "agent1:foo"
-
-📂 Folder layout
+📂 Project Structure
 src/
   connectors/
     redis/
-      index.ts          # main connector
+      index.ts          # Redis connector
   utils/
     retry.ts            # retry/backoff helper
+  agents/
+    cached-llm.ts       # Redis-cached wrapper for LLMs
+    adapters.ts         # OpenAI, Google, and Mock adapters
 scripts/
-  redis-cache-check.ts  # smoke test script
+  redis-cache-check.ts  # connector smoke test
+  demo-agent.ts         # AI agent demo with cache
 test/
-  redis.test.ts         # Node test file
+  redis.test.ts         # automated tests
 
-🚀 Future Extensions
+🔮 Future Extensions
 
-Potential next steps (if someone wants to expand this connector):
+Batch methods (mget/mset) for efficiency
 
-Batch methods: Add mget/mset for efficiency when working with multiple keys.
+Cache metrics (hit/miss counters, logging hooks)
 
-Metrics: Add cache hit/miss counters + logging hooks for observability.
-
-Iteration: Add scan()-based async iterator for very large keyspaces.
-
-🧪 Example script (optional)
-
-You can also create scripts/redis-example.ts to play with the connector:
-
-import { createRedisCacheFromEnv } from "../src/connectors/redis";
-
-async function main() {
-  const cache = createRedisCacheFromEnv();
-
-  await cache.set("demo", { hello: "world" }, 30);
-  console.log("get(demo) ->", await cache.get("demo"));
-
-  await cache.del("demo");
-  console.log("after del(demo) ->", await cache.get("demo"));
-
-  await cache.quit();
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
-
-
-Run with:
-
-ts-node scripts/redis-example.ts
+Async iterator with SCAN for large keyspaces
