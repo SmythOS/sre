@@ -81,3 +81,48 @@ SRE.init({
 -   Store credentials securely using environment variables or AWS Secrets Manager
 -   Configure appropriate bucket policies and CORS settings
 -   Enable encryption at rest and in transit for sensitive data
+
+-----
+
+### Azure Blob Storage
+
+**Role**: Microsoft Azure Blob Storage cloud connector
+**Summary**: Provides highly scalable and secure cloud storage using Azure Blob Storage, ideal for production workloads integrated with the Microsoft Azure ecosystem.
+
+| Setting                   | Type   | Required | Default | Description                                  |
+|:--------------------------|:-------|:---------|:--------|:---------------------------------------------|
+| `storageAccountName`      | string | Yes      | -       | The name of your Azure Storage Account       |
+| `storageAccountAccessKey` | string | Yes      | -       | Access key for the storage account           |
+| `blobContainerName`       | string | Yes      | -       | The container name for storing blobs (files) |
+
+
+**Example Configuration:**
+
+```typescript
+import { SRE } from '@smythos/sre';
+
+SRE.init({
+    Storage: {
+        Connector: 'AzureBlobStorage',
+        Settings: {
+            storageAccountName: 'myappstorageaccount',
+            storageAccountAccessKey: process.env.AZURE_STORAGE_ACCESS_KEY,
+            blobContainerName: 'my-app-blobs',
+        },
+    },
+});
+```
+
+**Use Cases:**
+
+  * Production environments, especially those hosted on Microsoft Azure
+  * Applications requiring durable, high-availability, and geo-redundant storage
+  * Integration with the Azure ecosystem (Azure Functions, Logic Apps, etc.)
+  * Storing large-scale unstructured data like images, videos, and documents
+
+**Security Notes:**
+
+  * Use Managed Identities when running on Azure infrastructure for the most secure, keyless authentication.
+  * Store credentials securely using environment variables or Azure Key Vault.
+  * Configure container access policies and use Shared Access Signatures (SAS) for fine-grained, temporary access.
+  * Enable encryption at rest and in transit for sensitive data.

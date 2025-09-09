@@ -60,6 +60,7 @@
         "@aws-sdk/client-lambda": "^3.835.0",
         "@aws-sdk/client-s3": "^3.826.0",
         "@aws-sdk/client-secrets-manager": "^3.826.0",
+        "@azure/storage-blob": "^12.28.0",
         "@faker-js/faker": "^9.8.0",
         "@google-cloud/vertexai": "^1.7.0",
         "@google/genai": "^1.10.0",
