@@ -352,3 +352,48 @@ This project is licensed under the [MIT License](LICENSE).
 /smɪθ oʊ ɛs/
 
 Ride the llama. Skip the drama.
+
+## Quick Start
+
+To get started with SmythOS SRE locally:
+
+1. Clone your fork of the repository:
+   ```bash
+   git clone https://github.com/<your-username>/sre.git
+   cd sre
+
+2. Install dependencies
+
+npm install
+
+3. Build the project
+
+npm run build
+
+4. Run tests to verify everything works
+
+npm test
+
+5. Start the CLI
+
+npm run cli
+
+
+Contributing
+
+We welcome contributions! 🎉
+
+If this is your first time contributing:
+
+1. Fork the repo and create your own branch:
+
+git checkout -b my-contribution
+
+2. make your changes and commit then:
+
+git add . 
+git commit -m "docs: add quick start instructions"
+
+3. Push your branch and open a Pull Request (PR) to the "main" branch of this repo.
+
+For larger changes, please check the "Issues" tab and discuss before starting.
