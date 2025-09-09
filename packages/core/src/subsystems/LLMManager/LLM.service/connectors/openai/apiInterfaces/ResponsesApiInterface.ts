@@ -551,6 +551,13 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         if (params?.maxTokens !== undefined) {
             body.max_output_tokens = params.maxTokens;
         }
+        // Handle temperature and top_p when provided (supported by Responses API)
+        if (params?.temperature !== undefined) {
+            (body as any).temperature = params.temperature;
+        }
+        if (params?.topP !== undefined) {
+            (body as any).top_p = params.topP;
+        }
         // #region GPT 5 specific fields
 
         const isGPT5ReasoningModels = params.modelEntryName?.includes('gpt-5') && params?.capabilities?.reasoning;
