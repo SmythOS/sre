@@ -1,10 +1,19 @@
 import 'dotenv/config';
 import { Storage } from '@smythos/sdk';
 
+/**
+ * Writes a test blob to Azure Blob Storage, reads it back, and verifies the content matches.
+ *
+ * Validates AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCESS_KEY and AZURE_BLOB_CONTAINER_NAME from environment variables.
+ * If credentials are missing, the function logs an error and returns early.
+ *
+ * @returns A promise that resolves when the example completes.
+ * @throws Error If the read content does not match the written content.
+ */
 async function main() {
-    // Ensure environment variables are loaded
-    if (!process.env.AZURE_STORAGE_ACCOUNT_NAME || !process.env.AZURE_STORAGE_ACCESS_KEY) {
-        console.error("Error: Missing Azure credentials in your .env file.");
+    // Ensure all required environment variables are loaded before proceeding.
+    if (!process.env.AZURE_STORAGE_ACCOUNT_NAME || !process.env.AZURE_STORAGE_ACCESS_KEY || !process.env.AZURE_BLOB_CONTAINER_NAME) {
+        console.error("Error: Missing Azure config in your .env file. Ensure AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCESS_KEY, and AZURE_BLOB_CONTAINER_NAME are set.");
         return;
     }
 
@@ -12,7 +21,7 @@ async function main() {
     const azureStorage = Storage.AzureBlobStorage({
         storageAccountName: process.env.AZURE_STORAGE_ACCOUNT_NAME,
         storageAccountAccessKey: process.env.AZURE_STORAGE_ACCESS_KEY,
-        blobContainerName: process.env.AZURE_BLOB_CONTAINER_NAME!,
+        blobContainerName: process.env.AZURE_BLOB_CONTAINER_NAME,
     });
 
     const resourceId = 'smythos-azure-test.txt';

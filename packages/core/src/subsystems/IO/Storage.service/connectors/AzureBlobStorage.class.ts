@@ -1,10 +1,6 @@
 //==[ SRE: AzureBlobStorage ]======================
 
-import {
-    BlobServiceClient, // manipulate Azure Storage resources and blob containers.
-    ContainerClient,   // manipulate Azure Storage containers and their blobs.
-    StorageSharedKeyCredential
-} from '@azure/storage-blob';
+import { BlobServiceClient, ContainerClient, StorageSharedKeyCredential } from '@azure/storage-blob';
 
 import { Logger } from '@sre/helpers/Log.helper';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
@@ -32,23 +28,18 @@ export class AzureBlobStorage extends StorageConnector {
     constructor(protected _settings: AzureBlobConfig) {
         super(_settings);
 
-        // Validate required configuration.
-        if(!_settings.storageAccountName || _settings.storageAccountName.trim() === '') {
-            console.warn('Missing Configuration: Azure Storage Account Name is required but was not provided.')
-            console.warn('Please check your configuration settings and ensure that "storageAccountName" is set to your Azure Storage account name.');
-            return;
+        // Validate essential configuration settings on instantiation.
+        // This follows the "Fail Fast" principle by throwing an error immediately if required settings are missing or empty.
+        if (!_settings.storageAccountName?.trim()) {
+            throw new Error('Configuration Error: "storageAccountName" is required and cannot be empty.');
         }
 
-        if(!_settings.storageAccountAccessKey || _settings.storageAccountAccessKey.trim() === '') {
-            console.warn('Missing Configuration: Azure Storage Account Access Key is required but was not provided.');
-            console.warn('Please provide a valid "storageAccountAccessKey" in your configuration. This key is used to authenticate with your Azure Storage account.');
-            return;
+        if (!_settings.storageAccountAccessKey?.trim()) {
+            throw new Error('Configuration Error: "storageAccountAccessKey" is required and cannot be empty.');
         }
 
-        if(!_settings.blobContainerName || _settings.blobContainerName.trim() === '') {
-            console.warn('Missing Configuration: Azure Blob Container Name is required but was not provided.');
-            console.warn('Please specify the "blobContainerName" where files will be stored in your Azure Storage account.');
-            return;
+        if (!_settings.blobContainerName?.trim()) {
+            throw new Error('Configuration Error: "blobContainerName" is required and cannot be empty.');
         }
 
         const endpointUrl = `https://${_settings.storageAccountName}.blob.core.windows.net`;
@@ -107,18 +98,19 @@ export class AzureBlobStorage extends StorageConnector {
         try {
             // Directly attempt to download. This avoids a separate `exists()` check,
             // reducing two potential network calls to just one.
-            const buffer = await blockBlobClient.downloadToBuffer();
-            return buffer;
+            return await blockBlobClient.downloadToBuffer();
         } catch (error) {
+            const status = (error as any)?.statusCode;
+
             // A 404 error is an expected outcome if the blob doesn't exist.
             // In this case, we return undefined as per the method's contract.
-            if (error.statusCode === 404) {
+            if (status === 404) {
                 return undefined;
             }
 
             // For any other error (e.g., network failure, credentials issue),
             // log it and re-throw it to be handled by the application's upper layers.
-            console.error(`Failed to read blob "${resourceId}":`, error.message);
+            console.error(`Failed to read blob "${resourceId}":`, (error as any)?.message ?? error);
             throw error;
         }
     }
@@ -323,10 +315,12 @@ export class AzureBlobStorage extends StorageConnector {
                 return undefined;
             }
 
-            // The ACL.from() utility safely constructs an ACL object from the raw metadata.
-            // It will handle cases where the 'azure-acl' key is missing.
-            return ACL.from(azureMetadata['azure-acl'] as IACL);
+            const raw = azureMetadata['azure-acl'] as IACL | undefined;
 
+            if (!raw) return undefined;
+
+            // The ACL.from() utility safely constructs an ACL object from the raw metadata.
+            return ACL.from(raw);
         } catch (error) {
             // Catches any unexpected errors during the process and logs them with context.
             console.error(`Failed to get ACL for blob "${resourceId}":`, error.message);
@@ -502,10 +496,10 @@ export class AzureBlobStorage extends StorageConnector {
             }
         }
 
-        aclHelper.migrated = true;
+        // Record migration status in metadata rather than mutating ACL instance.
+        rest['acl_migrated'] = 'true';
 
-        // Reconstruct the metadata object, combining the remaining properties
-        // with the new, structured 'azure-acl'.
+        // Reconstruct the metadata object, combining the remaining properties with the new, structured 'azure-acl'.
         return {
             ...rest,
             'azure-acl': aclHelper.ACL,
@@ -593,13 +587,14 @@ export class AzureBlobStorage extends StorageConnector {
         try {
             // getProperties() is an efficient HEAD request.
             const properties = await blockBlobClient.getProperties();
+
             const customMetadata = properties.metadata || {};
             const deserialized = this._deserializeAzureMetadata(customMetadata);
             deserialized['ContentType'] = properties.contentType || 'application/octet-stream';
             return deserialized;
         } catch (error) {
-            // Gracefully handle the "not found" case by returning undefined.
-            if (error.statusCode === 404) {
+            const status = (error as any)?.statusCode;
+            if (status === 404) {
                 return undefined;
             }
             // For all other errors, re-throw to be caught by the public-facing method.
