@@ -1,0 +1,15 @@
+# Normalize text files, LF in repo, auto on checkout
+* text=auto
+
+# Scripts always LF
+*.sh text eol=lf
+
+# Windows batch files always CRLF
+*.bat text eol=crlf
+
+# Mark binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.exe binary
+*.dll binary
