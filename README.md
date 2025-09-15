@@ -45,7 +45,6 @@ We made a great tutorial that's really worth watching:
 
 [![Watch Video](https://img.youtube.com/vi/TRETl7AG-Gc/maxresdefault.jpg)](https://www.youtube.com/watch?v=TRETl7AG-Gc)
 
-
 ### Method 1: Using the CLI (Recommended)
 
 Install the [CLI](packages/cli/) globally and create a new project:
@@ -93,7 +92,7 @@ The **SRE** is the core runtime environment that powers SmythOS. Think of it as 
 -   **LLM**: OpenAI, Anthropic, Google AI, AWS Bedrock, Groq, Perplexity
 -   **VectorDB**: Pinecone, Milvus, RAMVec
 -   **Cache**: RAM, Redis
--   **Vault**: JSON File, AWS Secrets Manager, HashiCorp 
+-   **Vault**: JSON File, AWS Secrets Manager, HashiCorp
 
 ### SDK - `packages/sdk`
 
@@ -336,6 +335,12 @@ These components can be invoked programmatically or through the symbolic represe
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Contributors
+
+<a href="https://github.com/SmythOS/sre/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=SmythOS/sre" />
+</a>
 
 ## License
 

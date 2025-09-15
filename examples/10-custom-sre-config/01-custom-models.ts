@@ -1,4 +1,4 @@
-import { SRE } from '@smythos/sre'; //Since we'ill
+import { SRE } from '@smythos/sre'; 
 import { Agent } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';

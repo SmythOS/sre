@@ -2,13 +2,31 @@
 
 Now that you've created a basic agent, it's time to expand its capabilities by adding skills. Skills are the fundamental building blocks for making your agents useful. They are functions that the agent's language model can call upon to perform specific tasks, like retrieving data, interacting with APIs, or performing calculations.
 
-The example scripts in [`examples/01-agent-code-skill`](../../examples/01-agent-code-skill) provide hands-on illustrations of all the concepts covered here.
+The example scripts in [`examples/01-agent-code-skill`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill) provide hands-on illustrations of all the concepts covered here.
 
 ## How Agents Use Skills
 
 When you send a prompt to an agent, its underlying Large Language Model (LLM) analyzes the request. It then looks at the list of available skills and, based on their `name` and `description`, determines which skill (if any) is best suited to fulfill the request. The LLM intelligently extracts the necessary parameters from your prompt and passes them to the skill's `process` function.
 
 This is what makes agents so powerful: you provide the tools (skills), and the agent figures out how and when to use them.
+
+## Agent mode
+
+The agent mode is a way to add specific behavior and capabilities to the agent.
+Currently, there are two modes available:
+
+-   `default`: The agent relies only on the behavior and the skills that you provided. this is the default mode and gives you full control over the agent's behavior.
+-   `planner`: When enabled, The agent gain the ability to split complex jobs into tasks and subtasks, track them, report their status to the user, and perform the tasks one by one. (see [Planner Mode Example](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04.1-chat-planner-coder.ts) for more details)
+
+switching agent mode is very simple.
+when you initialize the agent, you can set the mode by passing the `mode` parameter.
+
+```typescript
+const agent = new Agent({
+    //... other agent settings
+    mode: TAgentMode.PLANNER,
+});
+```
 
 ## Adding Skills
 
