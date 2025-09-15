@@ -125,6 +125,7 @@ function parseObjectString(objStr) {
 function extractJoiConfigSchema(filePath) {
     try {
         const content = fs.readFileSync(filePath, 'utf-8');
+        const fileName = path.basename(filePath);
 
         // Look for protected configSchema = Joi.object({ ... }) pattern
         const configSchemaStartMatch = content.match(/protected\s+configSchema\s*=\s*Joi\.object\s*\(\s*\{/);
@@ -159,38 +160,24 @@ function extractJoiConfigSchema(filePath) {
 function parseJoiSchemaContentForSettings(schemaContent) {
     const settings = {};
 
-    const lines = schemaContent.split('\n');
-    let currentField = '';
-    let inMultilineField = false;
-    let braceCount = 0;
+    // Remove all comments first to simplify parsing
+    const cleanContent = schemaContent.replace(/\/\*.*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-    for (let line of lines) {
-        line = line.trim();
-        if (!line || line.startsWith('//')) continue;
+    // Split on field boundaries: look for pattern "fieldName: Joi." at start of line
+    // This regex captures each complete field definition
+    const fieldMatches = cleanContent.split(/(?=^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*Joi\.)/m);
 
-        braceCount += (line.match(/\{/g) || []).length;
-        braceCount -= (line.match(/\}/g) || []).length;
+    for (const fieldContent of fieldMatches) {
+        const trimmed = fieldContent.trim();
+        if (!trimmed) continue;
 
-        if (inMultilineField) {
-            currentField += ' ' + line;
-            if (braceCount === 0 && (line.endsWith(',') || line.endsWith('}'))) {
-                parseJoiFieldDefinitionForSettings(currentField, settings);
-                currentField = '';
-                inMultilineField = false;
-            }
-        } else {
-            const fieldMatch = line.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*Joi\./);
-            if (fieldMatch) {
-                const fieldName = fieldMatch[1];
-                if (fieldName.startsWith('_')) continue; // Skip internal fields
+        // Check if this looks like a field definition
+        const fieldMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*Joi\./);
+        if (fieldMatch) {
+            const fieldName = fieldMatch[1];
+            if (fieldName.startsWith('_')) continue; // Skip internal fields
 
-                if (braceCount > 0 || (!line.endsWith(',') && !line.endsWith('}'))) {
-                    currentField = line;
-                    inMultilineField = true;
-                } else {
-                    parseJoiFieldDefinitionForSettings(line, settings);
-                }
-            }
+            parseJoiFieldDefinitionForSettings(trimmed, settings);
         }
     }
 
@@ -213,7 +200,8 @@ function parseJoiFieldDefinitionForSettings(fieldDef, settings) {
         const isRequired = fieldDef.includes('.required()');
 
         const labelMatch = fieldDef.match(/\.label\(['"`]([^'"`]+)['"`]\)/);
-        const label = labelMatch ? labelMatch[1] : undefined;
+        const descriptionMatch = fieldDef.match(/\.description\(['"`]([^'"`]+)['"`]\)/);
+        const label = labelMatch ? labelMatch[1] : descriptionMatch ? descriptionMatch[1] : undefined;
 
         const validMatch = fieldDef.match(/\.valid\(['"`]?([^)]+)['"`]?\)/);
         let validValues = null;
