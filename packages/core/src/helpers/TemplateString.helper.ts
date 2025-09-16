@@ -105,7 +105,12 @@ export class TemplateStringHelper {
     public parse(data: Record<string, string>, regex: TemplateStringMatch = Match.default) {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
         this._current = this._current.replace(regex, (match, token) => {
-            const val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
+            let val = data?.[token] ?? match; // Use nullish coalescing to preserve falsy values (0, '', false)
+
+            //if no exact match, try to parse the token as a JSON expression
+            if (!data?.[token]) {
+                val = JSONExpression(data, token);
+            }
 
             return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
         });
@@ -221,6 +226,27 @@ export class TemplateStringHelper {
     //         resolve(this._current);
     //     });
     // }
+}
+
+/**
+ * A helper function that takes an object and a property string and returns the value of the property
+ * @param obj the object to get the property from
+ * @param propertyString the property string to get the value from
+ * @returns the value of the property
+ */
+export function JSONExpression(obj, propertyString) {
+    const properties = propertyString.split(/\.|\[|\]\.|\]\[|\]/).filter(Boolean);
+    let currentProperty = obj;
+
+    for (let property of properties) {
+        if (currentProperty === undefined || currentProperty === null) {
+            return undefined;
+        }
+
+        currentProperty = currentProperty[property];
+    }
+
+    return currentProperty;
 }
 
 /**

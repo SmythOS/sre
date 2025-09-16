@@ -92,6 +92,8 @@ export * from './Components/APICall/parseHeaders';
 export * from './Components/APICall/parseProxy';
 export * from './Components/APICall/parseUrl';
 export * from './Components/Image/imageSettings.config';
+export * from './Components/Triggers/GmailTrigger.class';
+export * from './Components/Triggers/Trigger.class';
 export * from './subsystems/AgentManager/Agent.class';
 export * from './subsystems/AgentManager/Agent.helper';
 export * from './subsystems/AgentManager/AgentLogger.class';

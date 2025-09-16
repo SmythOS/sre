@@ -14,6 +14,7 @@ import { IAgent } from '@sre/types/Agent.types';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { Trigger } from '@sre/Components/Triggers/Trigger.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
@@ -26,10 +27,12 @@ export class Agent implements IAgent {
     public components: any;
     public connections: any;
     public endpoints: any = {};
+    public triggers: any = {};
     public sessionId;
     public sessionTag = '';
     public callerSessionId;
     public apiBasePath = '/api';
+    public triggerBasePath = '/trigger';
     public agentRuntime: AgentRuntime | any;
 
     public usingTestDomain = false;
@@ -89,6 +92,11 @@ export class Agent implements IAgent {
             this.endpoints[`${this.apiBasePath}/${endpoint.data.endpoint}`][method] = endpoint;
         }
 
+        const triggers = this.data.components.filter((c) => typeof c.data?.triggerEndpoint == 'string');
+        for (let trigger of triggers) {
+            this.triggers[`${this.triggerBasePath}/${trigger.data.triggerEndpoint}`] = trigger;
+        }
+
         this.components = {};
         for (let component of this.data.components) {
             //FIXME : this does not persist in debug mode, it breaks key value mem logic
@@ -117,14 +125,17 @@ export class Agent implements IAgent {
             const output = sourceComponent.outputs[sourceIndex];
             output.index = sourceIndex; // legacy ids (numbers)
 
-            const input = targetComponent.inputs[targetIndex];
-            input.index = targetIndex;
-
             if (!output.next) output.next = [];
             output.next.push(targetComponent.id);
 
-            if (!input.prev) input.prev = [];
-            input.prev.push(sourceComponent.id);
+            //when a trigger is connected to an APIEndpoint it does not use the standard inputs
+            //the targetIndex is then -1 and the input does not really exist
+            const input = targetComponent.inputs[targetIndex];
+            if (input) {
+                input.index = targetIndex;
+                if (!input.prev) input.prev = [];
+                input.prev.push(sourceComponent.id);
+            }
         }
 
         this.tagAsyncComponents();
@@ -911,6 +922,13 @@ export class Agent implements IAgent {
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
+                    if (component instanceof Trigger) {
+                        console.log('Trigger', connection);
+                        for (let input of targetComponentData.inputs) {
+                            nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                        }
+                        continue;
+                    }
                     const output = connection.output;
                     const componentData = connection.componentData;
                     const outputEndpoint = componentData.outputs[connection.sourceIndex]; //source
