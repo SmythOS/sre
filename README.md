@@ -39,6 +39,22 @@ This approach makes your AI platform **easy to scale** and incredibly flexible. 
 -   **Production-Ready**: Scalable, observable, and battle-tested
 -   **Enterprise Security**: Built-in access control and secure credential management
 
+## Feature list
+
+- Unified resource abstraction across providers (storage, VectorDB, cache, LLMs) with consistent APIs.
+- SDK Agent supports multiple modes: prompt, stream (evented), and chat (with in-process memory).
+- Extensible Skills/Components system with ready-made components:
+  - APICall, APIOutput, Await, Classifier, ECMASandbox, FTimestamp, GenAILLM, HuggingFace, ImageGenerator, MCPClient, ScrapflyWebScrape, ServerlessCode, TavilyWebSearch.
+- Multiple LLM providers via SRE Core (examples include OpenAI, Anthropic, Groq, Vertex AI, Bedrock, Google Generative AI) with model adaptation.
+- Vector databases: Pinecone, Milvus/Zilliz, and in-memory RAMVec helpers for quick searches.
+- Storage providers: Local and S3 abstractions with the same interface.
+- Built-in security model using Candidate/ACL to authorize access to resources.
+- MCP (Model Context Protocol) client support for tool interoperability.
+- Safe code execution patterns via ECMASandbox and serverless-style functions.
+- Document parsing utilities (PDF, DOCX, Markdown, plaintext) with normalized parsed structure.
+- CLI for scaffolding and developer workflows (@smythos/cli).
+- ESM-first TypeScript monorepo with pnpm workspaces, Vitest test runner, and coverage reporting.
+
 ## Quick Start
 
 We made a great tutorial that's really worth watching:
@@ -138,16 +154,16 @@ Want stream mode ? easy
 <summary><strong>Click to expand:</strong> Stream Mode Example - Real-time response streaming with events</summary>
 
 ```typescript
-    const events = await agent.prompt('Hello, how are you ?').stream();
+    const events = await agent.prompt('Hello, how are you?').stream();
     events.on('content', (text) => {
-        console.log('content');
+        console.log('content', text);
     });
 
-    events.on('end', /*... handle end ... */)
-    events.on('usage', /*... collect agent usage data ... */)
-    events.on('toolCall', /*... ... */)
-    events.on('toolResult', /*... ... */)
-    ...
+    events.on('end', /* handle end */);
+    events.on('usage', /* collect agent usage data */);
+    events.on('toolCall', /* tool called */);
+    events.on('toolResult', /* tool result */);
+    // ...
 
 ```
 
@@ -161,16 +177,15 @@ Want chat mode ? easy
 ```typescript
     const chat = agent.chat();
 
-    //from there you can use the prompt or prompt.stream to handle it
+    // from there you can use prompt or prompt.stream to handle it
 
-    let result = await chat.prompt("Hello, I'm Smyth")
+    let result = await chat.prompt("Hello, I'm Smyth");
     console.log(result);
 
-    result = await chat.prompt('Do you remember my name ?");
+    result = await chat.prompt("Do you remember my name?");
     console.log(result);
 
-
-    //the difference between agent.prompt() and chat.prompt() is that the later remembers the conversation
+    // the difference between agent.prompt() and chat.prompt() is that the latter remembers the conversation
 ```
 
 </details>
@@ -357,3 +372,49 @@ This project is licensed under the [MIT License](LICENSE).
 /smɪθ oʊ ɛs/
 
 Ride the llama. Skip the drama.
+
+
+## How to run this repo locally
+
+These steps assume Windows PowerShell, but the commands are the same on macOS/Linux unless a path is shown.
+
+- Prerequisites
+  - Node.js 18.18+ or Node 20 LTS
+  - pnpm 10.12.1 via Corepack (the repo pins this exact version)
+
+- One‑time setup
+  - corepack enable
+  - corepack prepare pnpm@10.12.1 --activate
+
+- Install dependencies (workspace-aware)
+  - pnpm install
+
+- Build all workspaces (runs each package’s build script, then shows a success banner)
+  - pnpm run build
+
+- Run tests (Vitest)
+  - Headless: pnpm run test:run
+  - Watch/UI: pnpm run test
+  - Coverage: pnpm run test:coverage (outputs ./coverage including HTML report)
+
+- Generate documentation (if applicable for packages that define gen:docs)
+  - pnpm run gen:docs
+
+- Running the examples under ./examples
+  - The examples are TypeScript files that demonstrate SDK usage and are excluded from the test suite.
+  - Easiest way to execute a single example without changing repo deps is to use tsx via pnpm dlx:
+    - pnpm dlx tsx .\examples\01-agent-code-skill\03-chat.ts
+  - Notes:
+    - Examples import @smythos/sdk. If you’re running inside this repo (without publishing/ linking packages), prefer executing examples in a fresh consumer project created by the CLI, or install @smythos/sdk from npm in that project.
+    - Some examples may require provider credentials (e.g., for LLMs). Export the appropriate environment variables before running (for example OPENAI_API_KEY, ANTHROPIC_API_KEY, etc., depending on your model/provider).
+
+- Troubleshooting
+  - pnpm not found: ensure Corepack is enabled and pnpm@10.12.1 is activated as shown above.
+  - Tests not discovered: Vitest only looks under packages/*/tests/**. Files in examples/ are ignored by design.
+  - Windows path tips: When running example paths, use backslashes like .\examples\...
+
+
+
+---
+
+For a summary of what we did in this session and its impact, see docs/what-we-did-impact.md.
