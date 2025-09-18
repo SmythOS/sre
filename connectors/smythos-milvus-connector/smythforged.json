@@ -1,0 +1,9 @@
+{
+        "name": "SmythOS Milvus Connector",
+        "description": "Connector for Milvus vector database",
+        "version": "1.0.0",
+        "entrypoint": "src/index.js",
+        "port": 3000,
+        "type": "connector"
+      }
+      
