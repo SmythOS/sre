@@ -51,7 +51,7 @@ export class MCPClient extends Component {
             }
 
             // TODO [Forhad]: Need to check and validate input prompt token
-            const { client } = await this.connectMCP(mcpUrl);
+            const { client } = await this.connectMCP(mcpUrl, logger);
 
             const toolsData = await client.listTools();
             const conv = new Conversation(
@@ -105,17 +105,17 @@ export class MCPClient extends Component {
             return { _error: `Error on running MCP Client!\n${error?.message || JSON.stringify(error)}`, _debug: logger.output };
         }
     }
-    private async connectMCP(mcpUrl: string) {
+    private async connectMCP(mcpUrl: string, logger: any) {
         const client = new Client({ name: 'auto-client', version: '1.0.0' });
 
         // 1) Try Streamable HTTP first
         try {
             const st = new StreamableHTTPClientTransport(new URL(mcpUrl));
             await client.connect(st);
-            console.debug('Connected to MCP using Streamable HTTP');
+            logger.debug('Connected to MCP using Streamable HTTP');
             return { client, transport: 'streamable' as const };
         } catch (e: any) {
-            console.debug('Failed to connect to MCP using Streamable HTTP, falling back to SSE');
+            logger.debug('Failed to connect to MCP using Streamable HTTP, falling back to SSE');
             // 2) If clearly unsupported, fall back to SSE
             const msg = String(e?.message || e);
             const isUnsupported = /404|405|ENOTFOUND|ECONNREFUSED|CORS/i.test(msg);

@@ -135,7 +135,7 @@ export class VectorDBInstance extends SDKObject {
      * Delete a document from the vector database
      * @param name - The name of the document
      * @returns true if the document was deleted, false otherwise
-     * 
+     *
      * @example
      * ```typescript
      * const pineConeSettings = {/* ... pinecone settings ... *\/}
@@ -174,7 +174,7 @@ export class VectorDBInstance extends SDKObject {
         const results = await this._VectorDBRequest.search(this._namespace, query, { topK: options?.topK || 10, includeMetadata: true });
         return results.map((result) => ({
             embedding: options?.includeEmbeddings ? result.values : undefined,
-            text: result.metadata?.text,
+            text: result?.text,
             metadata: typeof result.metadata === 'string' ? JSON.parse(result.metadata) : result.metadata,
         }));
     }

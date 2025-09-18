@@ -10,11 +10,12 @@ import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 {{outputsType}}
 
 {{componentJSDoc}}export function {{componentName}}(settings?: T{{componentName}}Settings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || '{{componentName}}', 
+        name: /*settings?.name || */'{{componentName}}', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

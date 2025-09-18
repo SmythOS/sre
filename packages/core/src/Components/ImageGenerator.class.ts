@@ -44,12 +44,6 @@ const IMAGE_GEN_COST_MAP = {
     },
 };
 
-// Imagen 4 cost map - fixed cost per image
-const IMAGEN_4_COST_MAP = {
-    'imagen-4': 0.04, // Standard Imagen 4
-    'imagen-4-ultra': 0.06, // Imagen 4 Ultra
-};
-
 export class ImageGenerator extends Component {
     protected configSchema = Joi.object({
         model: Joi.string().max(100).required(),
@@ -344,11 +338,6 @@ const imageGenerator = {
 
             const files: any[] = parseFiles(input, config);
 
-            // Imagen models only support image generation, not image editing
-            if (files.length > 0) {
-                throw new Error('Google AI Image Generation Error: Image editing is not supported. Imagen models only support image generation.');
-            }
-
             let args: GenerateImageConfig & {
                 aspectRatio?: string;
                 numberOfImages?: number;
@@ -360,28 +349,20 @@ const imageGenerator = {
                 personGeneration: config?.data?.personGeneration || 'allow_adult',
             };
 
-            const response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
+            let response;
 
-            // Calculate fixed cost for Imagen 4
-            const modelName = model.replace(BUILT_IN_MODEL_PREFIX, '');
-            const cost = IMAGEN_4_COST_MAP[modelName];
-
-            if (cost && cost > 0) {
-                // Multiply by number of images generated
-                const numberOfImages = args.numberOfImages || 1;
-                const totalCost = cost * numberOfImages;
-
-                // Report fixed cost usage
-                imageGenerator.reportUsage(
-                    { cost: totalCost },
-                    {
-                        modelEntryName: model,
-                        keySource: model.startsWith(BUILT_IN_MODEL_PREFIX) ? APIKeySource.Smyth : APIKeySource.User,
-                        agentId: agent.id,
-                        teamId: agent.teamId,
-                    }
-                );
+            // Check if files are provided for image editing
+            if (files.length > 0) {
+                const validFiles = files.filter((file) => imageGenerator.isValidImageFile('GoogleAI', file.mimetype));
+                if (validFiles.length === 0) {
+                    throw new Error('Supported image file types are: ' + SUPPORTED_MIME_TYPES_MAP.GoogleAI?.image?.join(', '));
+                }
+                response = await llmInference.imageEditRequest({ query: prompt, files: validFiles, params: { ...args, agentId: agent.id } });
+            } else {
+                response = await llmInference.imageGenRequest({ query: prompt, params: { ...args, agentId: agent.id } });
             }
+
+            // Usage reporting is now handled in the GoogleAI connector
 
             let output = response?.data?.[0]?.b64_json;
 

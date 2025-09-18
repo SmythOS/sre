@@ -1,0 +1,40 @@
+{
+  "name": "zoom-rtms-sre-integration",
+  "version": "1.0.0",
+  "description": "Zoom RTMS integration with SmythOS SRE for intelligent meeting analysis",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "ts": "tsx index.ts",
+    "ts:dev": "tsx watch index.ts",
+    "simple": "tsx simple-example.ts",
+    "simple:dev": "tsx watch simple-example.ts"
+  },
+  "dependencies": {
+    "@smythos/sdk": "^1.0.0",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "dotenv": "^16.3.1",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.8",
+    "@types/node": "^20.8.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.2.2"
+  },
+  "keywords": [
+    "zoom",
+    "rtms",
+    "sre",
+    "smythos",
+    "ai",
+    "meeting-analysis",
+    "transcript-processing"
+  ],
+  "author": "SmythOS Team",
+  "license": "MIT"
+}

@@ -27,6 +27,7 @@ import {
     TGoogleAIRequestBody,
     ILLMRequestContext,
     TLLMPreparedParams,
+    LLMInterface,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -59,7 +60,15 @@ const VALID_MIME_TYPES = [
 ];
 
 // will be removed after updating the SDK
-type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount: number };
+type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount?: number; cost?: number };
+
+const IMAGE_GEN_FIXED_PRICING = {
+    'imagen-3.0-generate-001': 0.04, // Fixed cost per image
+    'imagen-4.0-generate-001': 0.04, // Fixed cost per image
+    'imagen-4': 0.04, // Standard Imagen 4
+    'imagen-4-ultra': 0.06, // Imagen 4 Ultra
+    'gemini-2.5-flash-image': 0.039,
+};
 
 export class GoogleAIConnector extends LLMConnector {
     public name = 'LLM:GoogleAI';
@@ -200,31 +209,90 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
     // #region Image Generation, will be moved to a different subsystem/service
+
     protected async imageGenRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
-        try {
-            const apiKey = (context.credentials as BasicCredentials)?.apiKey;
-            if (!apiKey) throw new Error('Please provide an API key for Google AI');
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Google AI');
 
-            const model = body.model || 'imagen-3.0-generate-001';
+        const model = body.model || 'imagen-3.0-generate-001';
+        const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
 
-            // Use Imagen models via GoogleGenAI
-            const ai = new GoogleGenAI({ apiKey });
+        // Use traditional Imagen models
+        const config = {
+            numberOfImages: body.n || 1,
+            aspectRatio: body.aspect_ratio || body.size || '1:1',
+            personGeneration: body.person_generation || 'allow_adult',
+        };
 
-            // Prepare the configuration for image generation
-            const config = {
-                numberOfImages: body.n || 1,
-                aspectRatio: body.aspect_ratio || body.size || '1:1',
-                personGeneration: body.person_generation || 'allow_adult',
+        const ai = new GoogleGenAI({ apiKey });
+
+        // Default to GenerateImages interface if not specified
+        const modelInterface = context.modelInfo?.interface || LLMInterface.GenerateImages;
+
+        let response: any;
+
+        if (modelInterface === LLMInterface.GenerateContent) {
+            // Use Gemini image generation API
+            response = await ai.models.generateContent({
+                model,
+                contents: body.prompt,
+            });
+
+            // Extract image data from Gemini response format
+            const imageData: any[] = [];
+            if (response.candidates?.[0]?.content?.parts) {
+                for (const part of response.candidates[0].content.parts) {
+                    if (part.inlineData?.data) {
+                        imageData.push({
+                            url: `data:image/png;base64,${part.inlineData.data}`,
+                            b64_json: part.inlineData.data,
+                            revised_prompt: body.prompt,
+                        });
+                    }
+                }
+            }
+
+            // Report input tokens and image cost pricing based on the official pricing page:
+            // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
+            const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+
+            this.reportImageUsage({
+                usage: {
+                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
+                    usageMetadata,
+                },
+                context,
+            });
+
+            if (imageData.length === 0) {
+                throw new Error(
+                    'Please enter a valid prompt — for example: "Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme."'
+                );
+            }
+
+            return {
+                created: Math.floor(Date.now() / 1000),
+                data: imageData,
             };
-
-            // Generate images using the SDK
-            const response = await ai.models.generateImages({
+        } else if (modelInterface === LLMInterface.GenerateImages) {
+            response = await ai.models.generateImages({
                 model,
                 prompt: body.prompt,
                 config,
             });
 
-            // Transform the response to match OpenAI format for compatibility
+            // Report input tokens and image cost pricing based on the official pricing page:
+            // https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-image-preview
+            const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+            this.reportImageUsage({
+                usage: {
+                    cost: IMAGE_GEN_FIXED_PRICING[modelName],
+                    usageMetadata,
+                },
+                numberOfImages: config.numberOfImages,
+                context,
+            });
+
             return {
                 created: Math.floor(Date.now() / 1000),
                 data:
@@ -234,13 +302,59 @@ export class GoogleAIConnector extends LLMConnector {
                         revised_prompt: body.prompt,
                     })) || [],
             };
-        } catch (error: any) {
-            throw error;
+        } else {
+            throw new Error(`Unsupported interface: ${modelInterface}`);
         }
     }
 
     protected async imageEditRequest({ body, context }: ILLMRequestFuncParams): Promise<any> {
-        throw new Error('Image editing is not supported for Google AI. Imagen models only support image generation.');
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        if (!apiKey) throw new Error('Please provide an API key for Google AI');
+
+        // A model supports image editing if it implements the `generateContent` interface.
+        const supportsEditing = context.modelInfo?.interface === LLMInterface.GenerateContent;
+        if (!supportsEditing) {
+            throw new Error(`Image editing is not supported for model: ${body.model}. This model only supports image generation.`);
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
+        const modelName = context.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
+
+        // Use the prepared body which already contains processed files and contents
+        const response = await ai.models.generateContent({
+            model: body.model,
+            contents: body.contents,
+        });
+
+        // Extract image data from Gemini response format
+        const imageData: any[] = [];
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData?.data) {
+                    imageData.push({
+                        url: `data:image/png;base64,${part.inlineData.data}`,
+                        b64_json: part.inlineData.data,
+                        revised_prompt: body._metadata?.prompt || body.prompt,
+                    });
+                }
+            }
+        }
+
+        // Report pricing for input tokens and image costs
+        const usageMetadata = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+
+        this.reportImageUsage({
+            usage: {
+                cost: IMAGE_GEN_FIXED_PRICING[modelName],
+                usageMetadata,
+            },
+            context,
+        });
+
+        return {
+            created: Math.floor(Date.now() / 1000),
+            data: imageData,
+        };
     }
 
     protected async reqBodyAdapter(params: TLLMPreparedParams): Promise<TGoogleAIRequestBody> {
@@ -248,7 +362,13 @@ export class GoogleAIConnector extends LLMConnector {
 
         // Check if this is an image generation request based on capabilities
         if (params?.capabilities?.imageGeneration) {
-            return this.prepareBodyForImageGenRequest(params) as any;
+            // Determine if this is image editing (has files) or generation
+            const hasFiles = params?.files?.length > 0;
+            if (hasFiles) {
+                return this.prepareImageEditBody(params) as any;
+            } else {
+                return this.prepareBodyForImageGenRequest(params) as any;
+            }
         }
 
         const messages = await this.prepareMessages(params);
@@ -291,9 +411,9 @@ export class GoogleAIConnector extends LLMConnector {
         usage: UsageMetadataWithThoughtsToken,
         metadata: { modelEntryName: string; keySource: APIKeySource; agentId: string; teamId: string }
     ) {
-        const modelEntryName = metadata.modelEntryName;
+        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
+        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
         let tier = '';
-
         const tierThresholds = {
             'gemini-1.5-pro': 128_000,
             'gemini-2.5-pro': 200_000,
@@ -304,24 +424,21 @@ export class GoogleAIConnector extends LLMConnector {
         const audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
 
         // Find matching model and set tier based on threshold
-        const modelWithTier = Object.keys(tierThresholds).find((model) => modelEntryName.includes(model));
+        const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
         if (modelWithTier) {
             tier = textInputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
 
         // #endregion
 
-        // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
-        const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: textInputTokens,
-            output_tokens: usage.candidatesTokenCount,
+            output_tokens: usage?.candidatesTokenCount || 0,
             input_tokens_audio: audioInputTokens,
-            input_tokens_cache_read: usage.cachedContentTokenCount || 0,
+            input_tokens_cache_read: usage?.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
-            reasoning_tokens: usage.thoughtsTokenCount,
+            reasoning_tokens: usage?.thoughtsTokenCount,
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
@@ -330,6 +447,49 @@ export class GoogleAIConnector extends LLMConnector {
         SystemEvents.emit('USAGE:LLM', usageData);
 
         return usageData;
+    }
+
+    /**
+     * Extract text and image tokens from Google AI usage metadata
+     */
+    private extractTokenCounts(usage: UsageMetadataWithThoughtsToken): { textTokens: number; imageTokens: number } {
+        const textTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || 0;
+        const imageTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'IMAGE')?.tokenCount || 0;
+
+        return { textTokens, imageTokens };
+    }
+
+    protected reportImageUsage({
+        usage,
+        context,
+        numberOfImages = 1,
+    }: {
+        usage: { cost?: number; usageMetadata?: UsageMetadataWithThoughtsToken };
+        context: ILLMRequestContext;
+        numberOfImages?: number;
+    }) {
+        // Extract text and image tokens from rawUsage if available
+        let input_tokens_txt = 0;
+        let input_tokens_img = 0;
+
+        if (usage.usageMetadata) {
+            const { textTokens, imageTokens } = this.extractTokenCounts(usage.usageMetadata);
+            input_tokens_txt = textTokens;
+            input_tokens_img = imageTokens;
+        }
+
+        const imageUsageData = {
+            sourceId: `api:imagegen.smyth`,
+            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+
+            cost: usage.cost * numberOfImages,
+            input_tokens_txt,
+            input_tokens_img,
+
+            agentId: context.agentId,
+            teamId: context.teamId,
+        };
+        SystemEvents.emit('USAGE:API', imageUsageData);
     }
 
     public formatToolsConfig({ toolDefinitions, toolChoice = 'auto' }) {
@@ -637,6 +797,65 @@ export class GoogleAIConnector extends LLMConnector {
             model: params.model,
             aspectRatio: (params as any).aspectRatio,
             personGeneration: (params as any).personGeneration,
+        };
+    }
+
+    private async prepareImageEditBody(params: TLLMPreparedParams): Promise<any> {
+        const model = params.model || 'gemini-2.5-flash-image-preview';
+
+        // Construct edit prompt with image and instructions
+        let editPrompt = params.prompt || 'Edit this image';
+        if ((params as any).instruction) {
+            editPrompt += `. ${(params as any).instruction}`;
+        }
+
+        // For image editing, we need to include the original image in the contents
+        const contents: any[] = [];
+        const files: BinaryInput[] = params?.files || [];
+
+        if (files.length > 0) {
+            // Get only valid image files for editing
+            const validImageFiles = this.getValidFiles(files, 'image');
+
+            if (validImageFiles.length === 0) {
+                throw new Error('No valid image files found for editing. Please provide at least one image file.');
+            }
+
+            // Process each image file
+            for (const file of validImageFiles) {
+                try {
+                    // Read the file data as base64
+                    const bufferData = await file.getBuffer();
+                    const base64Image = Buffer.from(bufferData).toString('base64');
+
+                    contents.push({
+                        inlineData: {
+                            mimeType: file.mimetype,
+                            data: base64Image,
+                        },
+                    });
+                } catch (error) {
+                    throw new Error(`Failed to process image file: ${error.message}`);
+                }
+            }
+        } else {
+            throw new Error('No image provided for editing. Please include an image file.');
+        }
+
+        // Add the edit instruction
+        contents.push({ text: editPrompt });
+
+        // Return the complete request body that can be used directly in imageEditRequest
+        return {
+            model,
+            contents,
+            // Additional metadata for usage reporting
+            _metadata: {
+                prompt: editPrompt,
+                numberOfImages: (params as any).n || 1,
+                aspectRatio: (params as any).aspect_ratio || (params as any).size || '1:1',
+                personGeneration: (params as any).person_generation || 'allow_adult',
+            },
         };
     }
 

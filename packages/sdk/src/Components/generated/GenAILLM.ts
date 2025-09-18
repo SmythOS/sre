@@ -107,11 +107,12 @@ export type TGenAILLMOutputs = {
  * Use this component to generate a responses from an LLM
  */
 export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'GenAILLM', 
+        name: /*settings?.name || */'GenAILLM', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

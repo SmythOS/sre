@@ -39,11 +39,12 @@ export type TTavilyWebSearchOutputs = {
  * Use this component to generate a responses from an LLM
  */
 export function TavilyWebSearch(settings?: TTavilyWebSearchSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'TavilyWebSearch', 
+        name: /*settings?.name || */'TavilyWebSearch', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

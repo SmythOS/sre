@@ -28,11 +28,12 @@ export type THuggingFaceOutputs = {
 };
 
 export function HuggingFace(settings?: THuggingFaceSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'HuggingFace', 
+        name: /*settings?.name || */'HuggingFace', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
