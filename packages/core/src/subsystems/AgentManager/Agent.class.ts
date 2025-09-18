@@ -130,11 +130,21 @@ export class Agent implements IAgent {
 
             //when a trigger is connected to an APIEndpoint it does not use the standard inputs
             //the targetIndex is then -1 and the input does not really exist
-            const input = targetComponent.inputs[targetIndex];
-            if (input) {
-                input.index = targetIndex;
-                if (!input.prev) input.prev = [];
-                input.prev.push(sourceComponent.id);
+            //in that case, we should consider the trigger as an ancestor for all APIEndpoint inputs
+
+            if (targetIndex >= 0) {
+                const input = targetComponent.inputs[targetIndex];
+                if (input) {
+                    input.index = targetIndex;
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
+            } else {
+                //if the targetIndex is -1, we should consider the trigger as an ancestor for all APIEndpoint inputs
+                for (let input of targetComponent.inputs) {
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
             }
         }
 
@@ -434,16 +444,31 @@ export class Agent implements IAgent {
     //     this.agentRuntime.resetComponent(componentId);
     // }
 
+    // private hasLoopAncestor(inputEntry) {
+    //     if (!inputEntry.prev) return false;
+    //     for (let prevId of inputEntry.prev) {
+    //         const prevComponentData = this.components[prevId];
+    //         if (prevComponentData.name == 'ForEach') return true;
+
+    //         for (let inputEntry of prevComponentData.inputs) {
+    //             if (this.hasLoopAncestor(inputEntry)) return true;
+    //         }
+    //     }
+    // }
     private hasLoopAncestor(inputEntry) {
         if (!inputEntry.prev) return false;
         for (let prevId of inputEntry.prev) {
             const prevComponentData = this.components[prevId];
-            if (prevComponentData.name == 'ForEach') return true;
+            const prevRuntimeData = this.agentRuntime.getRuntimeData(prevId);
+
+            // Consider any component with _LoopData as a loop ancestor
+            if (prevRuntimeData?._LoopData) return true;
 
             for (let inputEntry of prevComponentData.inputs) {
                 if (this.hasLoopAncestor(inputEntry)) return true;
             }
         }
+        return false;
     }
 
     private clearChildLoopRuntimeComponentData(componentId) {
@@ -923,9 +948,12 @@ export class Agent implements IAgent {
                 const nextInput = {};
                 for (let connection of connections) {
                     if (component instanceof Trigger) {
+                        //handle trigger connections
                         console.log('Trigger', connection);
                         for (let input of targetComponentData.inputs) {
-                            nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                            if (connection.output?.Payload) {
+                                nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                            }
                         }
                         continue;
                     }

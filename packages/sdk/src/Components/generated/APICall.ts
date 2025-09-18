@@ -35,6 +35,8 @@ export interface TAPICallSettings {
     oauth2CallbackURL?: string;
     /** Callback URL */
     callbackURL?: string;
+    /** Request Token URL */
+    requestTokenURL?: string;
     /** Access Token URL */
     accessTokenURL?: string;
     /** User Authorization URL */

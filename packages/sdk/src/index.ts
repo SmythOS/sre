@@ -40,6 +40,7 @@ export * from './Components/generated/APIOutput';
 export * from './Components/generated/Await';
 export * from './Components/generated/Classifier';
 export * from './Components/generated/ECMASandbox';
+export * from './Components/generated/FTimestamp';
 export * from './Components/generated/GenAILLM';
 export * from './Components/generated/HuggingFace';
 export * from './Components/generated/ImageGenerator';

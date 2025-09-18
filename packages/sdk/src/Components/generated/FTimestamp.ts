@@ -5,36 +5,24 @@ import { createSafeAccessor } from '../utils';
 import { ComponentWrapper } from '../ComponentWrapper.class';
 import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
-export interface TMCPClientSettings {
-    model?: string;
-    openAiModel?: string;
-    /** URL of the MCP */
-    mcpUrl: string;
-    /** Description for Model */
-    descForModel?: string;
-    name: string;
-    /** Description */
-    desc?: string;
-    logoUrl?: string;
-    id?: string;
-    version?: string;
-    domain?: string;
-    /** Prompt */
-    prompt?: string;
+export interface TFTimestampSettings {
+    name?: string;
+    /** Timestamp Format */
+    format?: 'unix' | 'iso' | 'timestamp';
 }
 
-export type TMCPClientInputs = {
+export type TFTimestampInputs = {
     [key: string]: InputSettings;
 };
 
-export type TMCPClientOutputs = {
+export type TFTimestampOutputs = {
     [key: string]: any;
 };
 
-export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {    
+export function FTimestamp(settings?: TFTimestampSettings, agent?: Agent) {    
     //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: /*settings?.name || */'MCPClient', 
+        name: /*settings?.name || */'FTimestamp', 
         settings: {
             //...settingsWithoutName 
             ...settings
@@ -46,7 +34,7 @@ export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
     }
     
-    const _out: TMCPClientOutputs = createSafeAccessor({
+    const _out: TFTimestampOutputs = createSafeAccessor({
         // No outputs defined
     }, component, '');
 
@@ -70,7 +58,7 @@ export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {
          *    - component.in({ Input: source.out.data })
          *    - component.in({ Input: { type: 'string', source:source.out.data } })
          */        
-        in: component.inputs.bind(component) as (inputs: TMCPClientInputs) => void,
+        in: component.inputs.bind(component) as (inputs: TFTimestampInputs) => void,
     };
 
     return wrapper;
