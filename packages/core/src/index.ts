@@ -165,6 +165,7 @@ export * from './subsystems/IO/Storage.service/connectors/S3Storage.class';
 export * from './subsystems/IO/VectorDB.service/connectors/MilvusVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/connectors/RAMVecrtorDB.class';
+export * from './subsystems/IO/VectorDB.service/connectors/WeaviateVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/embed/BaseEmbedding';
 export * from './subsystems/IO/VectorDB.service/embed/GoogleEmbedding';
 export * from './subsystems/IO/VectorDB.service/embed/index';
