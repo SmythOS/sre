@@ -166,7 +166,7 @@ Want chat mode ? easy
     let result = await chat.prompt("Hello, I'm Smyth")
     console.log(result);
 
-    result = await chat.prompt('Do you remember my name ?");
+    result = await chat.prompt('Do you remember my name ?');
     console.log(result);
 
 
