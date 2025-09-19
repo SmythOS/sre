@@ -1,0 +1,42 @@
+{
+    "baselines": [
+        {
+            "componentName": "LLMAssistant",
+            "baseline": {
+                "latency": {
+                    "p50": 1200,
+                    "p95": 2000,
+                    "p99": 3000
+                },
+                "memoryUsage": {
+                    "avg": 10485760,
+                    "peak": 52428800
+                },
+                "successRate": 0.98,
+                "costPerOperation": 0.015
+            },
+            "established": 1695686400000,
+            "sampleSize": 1000,
+            "confidence": 0.95
+        },
+        {
+            "componentName": "DataProcessor",
+            "baseline": {
+                "latency": {
+                    "p50": 700,
+                    "p95": 1200,
+                    "p99": 1800
+                },
+                "memoryUsage": {
+                    "avg": 5242880,
+                    "peak": 31457280
+                },
+                "successRate": 0.99,
+                "costPerOperation": 0
+            },
+            "established": 1695686400000,
+            "sampleSize": 1000,
+            "confidence": 0.95
+        }
+    ]
+}

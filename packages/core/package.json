@@ -23,6 +23,8 @@
         "node": ">=20"
     },
     "scripts": {
+        "test:performance": "vitest run \"./tests/{unit,integration}/performance/**/*.test.ts\"",
+        "test:performance:watch": "vitest watch \"./tests/{unit,integration}/performance/**/*.test.ts\"",
         "gen:barrel": "ctix build",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:jsbundle": "cross-env rollup -c",
