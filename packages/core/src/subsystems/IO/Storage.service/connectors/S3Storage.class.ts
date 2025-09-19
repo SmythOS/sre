@@ -4,13 +4,18 @@
 
 //S3 Methods fail in CommonJS build because they expect a global 'crypto' object with a 'getRandomValues' method
 //getRandomValues is supposed to be for browser environments, but it seems that CommonJS build leaks some browser related code to the packaged AWS-SDK
+
 import crypto from 'crypto';
 
-Object.defineProperty(global, 'crypto', {
-    value: {
-        getRandomValues: (arr: any) => crypto.randomBytes(arr.length),
-    },
-});
+if (!global.crypto || !global.crypto.getRandomValues) {
+    Object.defineProperty(global, 'crypto', {
+        value: {
+            getRandomValues: (arr: any) => crypto.randomBytes(arr.length),
+        },
+        configurable: true,
+        writable: true,
+    });
+}
 //#endregion
 
 import {
@@ -22,24 +27,20 @@ import {
     PutObjectCommand,
     PutObjectTaggingCommand,
     S3Client,
-    S3ClientConfig,
 } from '@aws-sdk/client-s3';
 
 import { Logger } from '@sre/helpers/Log.helper';
-import { IStorageRequest, StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
-import { IAccessCandidate, IACL, TAccessLevel, TAccessResult, TAccessRole } from '@sre/types/ACL.types';
-import { AWSRegionConfig, AWSCredentials } from '@sre/types/AWS.types';
+import { IAccessCandidate, IACL, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { streamToBuffer } from '@sre/utils';
 import type { Readable } from 'stream';
 
 //import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { checkAndInstallLifecycleRules, generateExpiryMetadata, ttlToExpiryDays } from '@sre/helpers/S3Cache.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
+import { SecureConnector } from '@sre/Security/SecureConnector.class';
 
 const console = Logger('S3Storage');
 

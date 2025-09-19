@@ -1,12 +1,13 @@
-import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
 import { GoogleEmbeds } from '@sre/IO/VectorDB.service/embed/GoogleEmbedding';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the Google AI SDK
-vi.mock('@google/generative-ai', () => ({
-    GoogleGenerativeAI: vi.fn(),
+import { GoogleGenAI } from '@google/genai';
+
+// Mock the Google GenAI SDK
+vi.mock('@google/genai', () => ({
+    GoogleGenAI: vi.fn(),
 }));
 
 // Mock the LLM credentials helper
@@ -24,16 +25,14 @@ describe('GoogleEmbeds - Unit Tests', () => {
         // Reset all mocks
         vi.clearAllMocks();
 
-        // Setup mock Google AI client
+        // Setup mock Google GenAI client with models.embedContent
         mockModel = {
             embedContent: vi.fn(),
         };
-
         mockClient = {
-            getGenerativeModel: vi.fn().mockReturnValue(mockModel),
+            models: mockModel,
         };
-
-        (GoogleGenerativeAI as any).mockImplementation(() => mockClient);
+        (GoogleGenAI as any).mockImplementation(() => mockClient);
 
         // Setup mock access candidate
         mockAccessCandidate = {
@@ -86,7 +85,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
         });
 
         it('should have correct available models', () => {
-            expect(GoogleEmbeds.models).toEqual(['gemini-embedding-001']);
+            expect(GoogleEmbeds.models).toEqual(['gemini-embedding-001', 'text-embedding-005', 'text-multilingual-embedding-002']);
         });
     });
 
@@ -103,12 +102,15 @@ describe('GoogleEmbeds - Unit Tests', () => {
 
             const result = await googleEmbeds.embedText('test text', mockAccessCandidate);
 
-            expect(result).toEqual(mockEmbedding);
-            expect(mockModel.embedContent).toHaveBeenCalledWith('test text');
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('test-api-key');
-            expect(mockClient.getGenerativeModel).toHaveBeenCalledWith({
+            // Calculate normalized vector
+            const norm = Math.sqrt(mockEmbedding.reduce((acc, x) => acc + x * x, 0));
+            const normalized = mockEmbedding.map((x) => x / norm);
+            expect(result).toEqual(normalized);
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
                 model: 'gemini-embedding-001',
+                contents: ['test text'],
             });
+            expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
         });
 
         it('should process text by stripping newlines when stripNewLines is true', async () => {
@@ -119,7 +121,10 @@ describe('GoogleEmbeds - Unit Tests', () => {
 
             await googleEmbeds.embedText('test\ntext\nwith\nnewlines', mockAccessCandidate);
 
-            expect(mockModel.embedContent).toHaveBeenCalledWith('test text with newlines');
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: ['test text with newlines'],
+            });
         });
 
         it('should preserve newlines when stripNewLines is false', async () => {
@@ -131,7 +136,10 @@ describe('GoogleEmbeds - Unit Tests', () => {
 
             await googleEmbeds.embedText('test\ntext\nwith\nnewlines', mockAccessCandidate);
 
-            expect(mockModel.embedContent).toHaveBeenCalledWith('test\ntext\nwith\nnewlines');
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: ['test\ntext\nwith\nnewlines'],
+            });
         });
 
         it('should use environment variable when credentials fail', async () => {
@@ -145,8 +153,10 @@ describe('GoogleEmbeds - Unit Tests', () => {
 
             const result = await googleEmbeds.embedText('test text', mockAccessCandidate);
 
-            expect(result).toEqual(mockEmbedding);
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('env-api-key');
+            const norm = Math.sqrt(mockEmbedding.reduce((acc, x) => acc + x * x, 0));
+            const normalized = mockEmbedding.map((x) => x / norm);
+            expect(result).toEqual(normalized);
+            expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: 'env-api-key' });
         });
 
         it('should throw error when no API key is available', async () => {
@@ -197,21 +207,39 @@ describe('GoogleEmbeds - Unit Tests', () => {
             // Mock each call to embedContent. The order depends on batch processing.
             // Since batches are processed with Promise.all, order may vary but we need to ensure
             // the correct embeddings are returned for the correct texts
-            mockModel.embedContent.mockImplementation((text) => {
-                if (text === 'text1') return Promise.resolve({ embedding: { values: mockEmbeddings[0] } });
-                if (text === 'text2') return Promise.resolve({ embedding: { values: mockEmbeddings[1] } });
-                if (text === 'text3') return Promise.resolve({ embedding: { values: mockEmbeddings[2] } });
-                return Promise.reject(new Error('Unexpected text'));
+            mockModel.embedContent.mockImplementation(({ model, contents }) => {
+                // Simulate batch response for chunked texts (chunkSize = 2)
+                if (Array.isArray(contents) && contents.length > 1) {
+                    // For this test, chunkSize is not used, so all texts come in one batch
+                    return Promise.resolve({
+                        embeddings: contents.map((text) => {
+                            if (text === 'text1') return { values: mockEmbeddings[0] };
+                            if (text === 'text2') return { values: mockEmbeddings[1] };
+                            if (text === 'text3') return { values: mockEmbeddings[2] };
+                            return { values: [0.1, 0.2, 0.3] };
+                        }),
+                    });
+                }
+                // Single text response
+                if (contents[0] === 'text1') return Promise.resolve({ embedding: { values: mockEmbeddings[0] } });
+                if (contents[0] === 'text2') return Promise.resolve({ embedding: { values: mockEmbeddings[1] } });
+                if (contents[0] === 'text3') return Promise.resolve({ embedding: { values: mockEmbeddings[2] } });
+                // Always return a valid embedding for any input
+                return Promise.resolve({ embedding: { values: [0.1, 0.2, 0.3] } });
             });
 
             const texts = ['text1', 'text2', 'text3'];
             const result = await googleEmbeds.embedTexts(texts, mockAccessCandidate);
 
-            expect(result).toEqual(mockEmbeddings);
-            expect(mockModel.embedContent).toHaveBeenCalledTimes(3);
-            expect(mockModel.embedContent).toHaveBeenCalledWith('text1');
-            expect(mockModel.embedContent).toHaveBeenCalledWith('text2');
-            expect(mockModel.embedContent).toHaveBeenCalledWith('text3');
+            // Normalize each embedding
+            const normalized = mockEmbeddings.map((arr) => {
+                const norm = Math.sqrt(arr.reduce((acc, x) => acc + x * x, 0));
+                return arr.map((x) => x / norm);
+            });
+            expect(result).toEqual(normalized);
+            expect(mockModel.embedContent).toHaveBeenCalledTimes(2);
+            expect(mockModel.embedContent).toHaveBeenCalledWith({ model: 'gemini-embedding-001', contents: ['text1', 'text2'] });
+            expect(mockModel.embedContent).toHaveBeenCalledWith({ model: 'gemini-embedding-001', contents: ['text3'] });
         });
 
         it('should handle chunking correctly', async () => {
@@ -226,20 +254,39 @@ describe('GoogleEmbeds - Unit Tests', () => {
             ];
 
             // Mock each call based on the input text, regardless of call order
-            mockModel.embedContent.mockImplementation((text) => {
-                if (text === 'text1') return Promise.resolve({ embedding: { values: mockEmbeddings[0] } });
-                if (text === 'text2') return Promise.resolve({ embedding: { values: mockEmbeddings[1] } });
-                if (text === 'text3') return Promise.resolve({ embedding: { values: mockEmbeddings[2] } });
-                if (text === 'text4') return Promise.resolve({ embedding: { values: mockEmbeddings[3] } });
-                if (text === 'text5') return Promise.resolve({ embedding: { values: mockEmbeddings[4] } });
-                return Promise.reject(new Error('Unexpected text'));
+            mockModel.embedContent.mockImplementation(({ model, contents }) => {
+                // Simulate batch response for chunked texts (chunkSize = 2)
+                if (Array.isArray(contents) && contents.length > 1) {
+                    return Promise.resolve({
+                        embeddings: contents.map((text) => {
+                            if (text === 'text1') return { values: mockEmbeddings[0] };
+                            if (text === 'text2') return { values: mockEmbeddings[1] };
+                            if (text === 'text3') return { values: mockEmbeddings[2] };
+                            if (text === 'text4') return { values: mockEmbeddings[3] };
+                            if (text === 'text5') return { values: mockEmbeddings[4] };
+                            return { values: [0.1, 0.2] };
+                        }),
+                    });
+                }
+                // Single text response
+                if (contents[0] === 'text1') return Promise.resolve({ embedding: { values: mockEmbeddings[0] } });
+                if (contents[0] === 'text2') return Promise.resolve({ embedding: { values: mockEmbeddings[1] } });
+                if (contents[0] === 'text3') return Promise.resolve({ embedding: { values: mockEmbeddings[2] } });
+                if (contents[0] === 'text4') return Promise.resolve({ embedding: { values: mockEmbeddings[3] } });
+                if (contents[0] === 'text5') return Promise.resolve({ embedding: { values: mockEmbeddings[4] } });
+                // Always return a valid embedding for any input
+                return Promise.resolve({ embedding: { values: [0.1, 0.2] } });
             });
 
             const texts = ['text1', 'text2', 'text3', 'text4', 'text5'];
             const result = await googleEmbeds.embedTexts(texts, mockAccessCandidate);
 
-            expect(result).toEqual(mockEmbeddings);
-            expect(mockModel.embedContent).toHaveBeenCalledTimes(5);
+            const normalized = mockEmbeddings.map((arr) => {
+                const norm = Math.sqrt(arr.reduce((acc, x) => acc + x * x, 0));
+                return arr.map((x) => x / norm);
+            });
+            expect(result).toEqual(normalized);
+            expect(mockModel.embedContent).toHaveBeenCalledTimes(3);
         });
 
         it('should handle empty texts array', async () => {
@@ -257,7 +304,10 @@ describe('GoogleEmbeds - Unit Tests', () => {
             const texts = ['text\nwith\nnewlines'];
             await googleEmbeds.embedTexts(texts, mockAccessCandidate);
 
-            expect(mockModel.embedContent).toHaveBeenCalledWith('text with newlines');
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: ['text with newlines'],
+            });
         });
     });
 
@@ -283,7 +333,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
                 modelId: 'gemini-embedding-001',
                 credentials: undefined,
             });
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('credentials-api-key');
+            expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: 'credentials-api-key' });
         });
 
         it('should reuse client instance across multiple calls', async () => {
@@ -296,7 +346,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
             await googleEmbeds.embedText('test2', mockAccessCandidate);
 
             // GoogleGenerativeAI constructor should only be called once
-            expect(GoogleGenerativeAI).toHaveBeenCalledTimes(1);
+            expect(GoogleGenAI).toHaveBeenCalledTimes(1);
             expect(mockModel.embedContent).toHaveBeenCalledTimes(2);
         });
 
@@ -355,8 +405,13 @@ describe('GoogleEmbeds - Unit Tests', () => {
             });
 
             const result = await googleEmbeds.embedText('', mockAccessCandidate);
-            expect(result).toEqual(mockEmbedding);
-            expect(mockModel.embedContent).toHaveBeenCalledWith('');
+            const norm = Math.sqrt(mockEmbedding.reduce((acc, x) => acc + x * x, 0));
+            const normalized = mockEmbedding.map((x) => x / norm);
+            expect(result).toEqual(normalized);
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: [''],
+            });
         });
 
         it('should handle strings with only whitespace', async () => {
@@ -367,8 +422,13 @@ describe('GoogleEmbeds - Unit Tests', () => {
             });
 
             const result = await googleEmbeds.embedText('   \t   ', mockAccessCandidate);
-            expect(result).toEqual(mockEmbedding);
-            expect(mockModel.embedContent).toHaveBeenCalledWith('   \t   ');
+            const norm = Math.sqrt(mockEmbedding.reduce((acc, x) => acc + x * x, 0));
+            const normalized = mockEmbedding.map((x) => x / norm);
+            expect(result).toEqual(normalized);
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: ['   \t   '],
+            });
         });
 
         it('should handle very long text inputs', async () => {
@@ -380,11 +440,15 @@ describe('GoogleEmbeds - Unit Tests', () => {
             });
 
             const result = await googleEmbeds.embedText(longText, mockAccessCandidate);
-            expect(result).toEqual(mockEmbedding);
+            const norm = Math.sqrt(mockEmbedding.reduce((acc, x) => acc + x * x, 0));
+            const normalized = mockEmbedding.map((x) => x / norm);
+            expect(result).toEqual(normalized);
             // The text should be processed (newlines stripped if stripNewLines is true)
             // Since stripNewLines is true by default and there are no newlines in this text, it should remain unchanged
-            expect(mockModel.embedContent).toHaveBeenCalledWith(longText);
+            expect(mockModel.embedContent).toHaveBeenCalledWith({
+                model: 'gemini-embedding-001',
+                contents: [longText],
+            });
         });
     });
 });
-
