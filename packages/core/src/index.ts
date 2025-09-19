@@ -170,6 +170,7 @@ export * from './subsystems/IO/VectorDB.service/connectors/MilvusVectorDB.class'
 export * from './subsystems/IO/VectorDB.service/connectors/PineconeVectorDB.class';
 export * from './subsystems/IO/VectorDB.service/connectors/RAMVecrtorDB.class';
 export * from './subsystems/IO/VectorDB.service/embed/BaseEmbedding';
+export * from './subsystems/IO/VectorDB.service/embed/GoogleEmbedding';
 export * from './subsystems/IO/VectorDB.service/embed/index';
 export * from './subsystems/IO/VectorDB.service/embed/OpenAIEmbedding';
 export * from './subsystems/LLMManager/LLM.service/connectors/Anthropic.class';

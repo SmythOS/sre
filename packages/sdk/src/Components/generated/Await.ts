@@ -22,11 +22,12 @@ export type TAwaitOutputs = {
 };
 
 export function Await(settings?: TAwaitSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'Await', 
+        name: /*settings?.name || */'Await', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

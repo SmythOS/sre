@@ -20,11 +20,12 @@ export type TECMASandboxOutputs = {
 };
 
 export function ECMASandbox(settings?: TECMASandboxSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'ECMASandbox', 
+        name: /*settings?.name || */'ECMASandbox', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

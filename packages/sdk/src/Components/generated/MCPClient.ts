@@ -32,11 +32,12 @@ export type TMCPClientOutputs = {
 };
 
 export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'MCPClient', 
+        name: /*settings?.name || */'MCPClient', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

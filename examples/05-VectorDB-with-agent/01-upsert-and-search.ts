@@ -1,4 +1,4 @@
-import { Agent, Doc, Model, Scope } from '@smythos/sdk';
+import { Agent, Doc, Model, Scope, TLLMEvent } from '@smythos/sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +16,7 @@ const pineconeSettings = {
     indexName: 'demo-vec',
     apiKey: process.env.PINECONE_API_KEY,
     embeddings: Model.OpenAI('text-embedding-3-large'),
+    //you can also use Model.GoogleAI('gemini-embedding-001', { dimensions: 1024 })
 };
 
 async function createAgent() {
@@ -83,14 +84,25 @@ async function indexDataForAgent(agent: Agent) {
     await pinecone.insertDoc(parsedDoc.title, parsedDoc, { myEntry: 'My Metadata' });
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function main() {
     const agent = await createAgent();
+    console.log('Indexing data for agent');
     await indexDataForAgent(agent);
 
+    console.log('Waiting for 5 seconds before prompting the agent ... sometimes the index is not ready immediately');
+    await delay(5000);
+
+    console.log('Prompting the agent');
+
     //this will prompt the agent and use the agent's LLM to determine which skill to use
-    const promptResult = await agent.prompt('What is bitcoin Proof-of-Work ?');
+    const promptStream = await agent.prompt('What is bitcoin Proof-of-Work ?').stream();
     //the response comes back in natural language
-    console.log(promptResult);
+    console.log('\n');
+    promptStream.on(TLLMEvent.Content, (content) => {
+        process.stdout.write(content);
+    });
 }
 
 main();

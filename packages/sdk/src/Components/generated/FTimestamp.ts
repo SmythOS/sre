@@ -20,11 +20,12 @@ export type TFTimestampOutputs = {
 };
 
 export function FTimestamp(settings?: TFTimestampSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'FTimestamp', 
+        name: /*settings?.name || */'FTimestamp', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

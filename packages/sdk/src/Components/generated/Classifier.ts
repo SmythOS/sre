@@ -22,11 +22,12 @@ export type TClassifierOutputs = {
 };
 
 export function Classifier(settings?: TClassifierSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'Classifier', 
+        name: /*settings?.name || */'Classifier', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);

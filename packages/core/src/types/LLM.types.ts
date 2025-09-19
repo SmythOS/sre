@@ -228,11 +228,32 @@ export type TLLMModel = {
     params?: TLLMParams;
     /**
      * Specifies the API interface type to use for this model
-     * Examples: 'chat.completions', 'responses'
-     * This determines which OpenAI API endpoint and interface implementation to use
+     * This determines which API endpoint and interface implementation to use
      */
-    interface?: 'chat.completions' | 'responses';
+    interface?: LLMInterface;
+
+    /**
+     * Indicates whether this model supports image editing functionality
+     * Only applicable for image generation models
+     */
+    supportsEditing?: boolean;
 };
+
+// #region [ LLM Interface Types ] ================================================
+/**
+ * Enum for different LLM API interfaces
+ * Each interface represents a different API endpoint or interaction pattern
+ */
+export enum LLMInterface {
+    /** OpenAI-style chat completions API */
+    ChatCompletions = 'chat.completions',
+    /** OpenAI-style responses API */
+    Responses = 'responses',
+    /** Google AI generateContent API (for text and multimodal) */
+    GenerateContent = 'generateContent',
+    /** Google AI generateImages API (for traditional Imagen models) */
+    GenerateImages = 'generateImages',
+}
 
 // #region [ Handle extendable LLM Providers ] ================================================
 export const BuiltinLLMProviders = {

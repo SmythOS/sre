@@ -830,15 +830,22 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
+        //deduplicate tools
+
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
+        this._customToolsDeclarations = this._customToolsDeclarations.filter(
+            (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
+        );
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
-            toolDefinitions: [toolDefinition],
+            toolDefinitions: this._customToolsDeclarations,
             toolChoice: this.toolChoice,
         });
 
-        if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
-        else this._toolsConfig = toolsConfig;
+        //if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
+        //else this._toolsConfig = toolsConfig;
+
+        this._toolsConfig = toolsConfig;
     }
     /**
      * updates LLM model, if spec is available, it will update the tools config
@@ -855,15 +862,19 @@ export class Conversation extends EventEmitter {
                 this._baseUrl = this._spec?.servers?.[0].url;
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
-                functionDeclarations.push(...this._customToolsDeclarations);
+                //functionDeclarations.push(...this._customToolsDeclarations);
+                this._customToolsDeclarations.push(...functionDeclarations);
                 const llmInference: LLMInference = await LLMInference.getInstance(this._model, AccessCandidate.team(this._teamId));
                 if (!llmInference.connector) {
                     this.emit('error', 'No connector found for model: ' + this._model);
                     return;
                 }
+                this._customToolsDeclarations = this._customToolsDeclarations.filter(
+                    (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
+                );
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
-                    toolDefinitions: functionDeclarations,
+                    toolDefinitions: this._customToolsDeclarations,
                     toolChoice: this.toolChoice,
                 });
 

@@ -69,11 +69,12 @@ export type TAPICallOutputs = {
  * Use this component to make an API call
  */
 export function APICall(settings?: TAPICallSettings, agent?: Agent) {    
-    const { name, ...settingsWithoutName } = settings || {};
+    //const { name, ...settingsWithoutName } = settings || {};
     const dataObject: any = { 
-        name: settings?.name || 'APICall', 
+        name: /*settings?.name || */'APICall', 
         settings: {
-            ...settingsWithoutName 
+            //...settingsWithoutName 
+            ...settings
         }
     };
     const component = new ComponentWrapper(dataObject, agent);
