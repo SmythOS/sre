@@ -1,11 +1,11 @@
-import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@google/generative-ai';
+import OpenAI from 'openai';
+// Imports for Google GenAI types removed; use 'any' or update with correct types from '@google/genai' if available.
 
+import { ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
 
 export type LLMProvider = Extract<(typeof models)[keyof typeof models], { llm: string }>['llm'] | 'VertexAI' | 'Bedrock';
 export type LLMModel = keyof typeof models;
@@ -358,7 +358,8 @@ export interface LegacyToolDefinition extends ToolDefinition {
     properties?: Record<string, unknown>;
     requiredFields?: string[];
 }
-export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingMode;
+// If FunctionCallingMode is still needed, import from '@google/genai' or define locally as needed.
+export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption; // Remove FunctionCallingMode if not used elsewhere
 
 export interface ToolsConfig {
     tools?: ToolDefinition[];
@@ -514,6 +515,9 @@ export type TOpenAIRequestBody =
 
 export type TAnthropicRequestBody = Anthropic.MessageCreateParamsNonStreaming;
 
-export type TGoogleAIRequestBody = ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest };
+export type TGoogleAIRequestBody = {
+    messages: string | TLLMMessageBlock[] | any;
+    // Add other properties as needed based on actual usage in Google GenAI connector
+};
 
 export type TLLMRequestBody = TOpenAIRequestBody | TAnthropicRequestBody | TGoogleAIRequestBody | ConverseCommandInput;

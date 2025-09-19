@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
-import { BaseEmbedding, TEmbeddings } from './BaseEmbedding';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
-import { TLLMCredentials, TLLMModel, BasicCredentials } from '@sre/types/LLM.types';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { BasicCredentials, TLLMCredentials, TLLMModel } from '@sre/types/LLM.types';
+import { BaseEmbedding, TEmbeddings } from './BaseEmbedding';
 
 const DEFAULT_MODEL = 'gemini-embedding-001';
 
@@ -82,9 +82,19 @@ export class GoogleEmbeds extends BaseEmbedding {
             });
 
             // The SDK can return either { embedding } for single or { embeddings } for batch
-            const vectors: number[][] = Array.isArray((res as any).embeddings)
-                ? (res as any).embeddings.map((e: any) => e.values as number[])
-                : [((res as any).embedding?.values as number[]) || []];
+            let vectors: number[][] = [];
+            if (Array.isArray((res as any).embeddings)) {
+                vectors = (res as any).embeddings.map((e: any) => {
+                    if (!e || !Array.isArray(e.values)) {
+                        throw new Error('Invalid embedding response from Google AI');
+                    }
+                    return e.values as number[];
+                });
+            } else if ((res as any).embedding && Array.isArray((res as any).embedding.values)) {
+                vectors = [(res as any).embedding.values as number[]];
+            } else {
+                throw new Error('Invalid embedding response from Google AI');
+            }
 
             // Enforce dimensions and normalization when requested or when non-3072
             const targetDim = outputDimensionality;

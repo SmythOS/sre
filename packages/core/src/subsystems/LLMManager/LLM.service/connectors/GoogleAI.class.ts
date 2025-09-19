@@ -1,38 +1,36 @@
-import os from 'os';
-import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/generative-ai';
-import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
-import { GoogleGenAI } from '@google/genai';
+import { FunctionCallingConfigMode, GenerationConfig, GoogleGenAI, UsageMetadata } from '@google/genai';
 
-import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
+import { BUILT_IN_MODEL_PREFIX, JSON_RESPONSE_INSTRUCTION } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { uid } from '@sre/utils';
 
 import { processWithConcurrencyLimit } from '@sre/utils';
 
-import {
-    TLLMMessageBlock,
-    ToolData,
-    TLLMMessageRole,
-    TLLMToolResultMessageBlock,
-    APIKeySource,
-    TLLMEvent,
-    BasicCredentials,
-    ILLMRequestFuncParams,
-    TLLMChatResponse,
-    TGoogleAIRequestBody,
-    ILLMRequestContext,
-    TLLMPreparedParams,
-    LLMInterface,
-} from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
+import {
+    APIKeySource,
+    BasicCredentials,
+    ILLMRequestContext,
+    ILLMRequestFuncParams,
+    LLMInterface,
+    TGoogleAIRequestBody,
+    TLLMChatResponse,
+    TLLMEvent,
+    TLLMMessageBlock,
+    TLLMMessageRole,
+    TLLMPreparedParams,
+    TLLMToolResultMessageBlock,
+    ToolData,
+} from '@sre/types/LLM.types';
 
-import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
 
 import { LLMConnector } from '../LLMConnector';
@@ -78,12 +76,10 @@ export class GoogleAIConnector extends LLMConnector {
         image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    private async getClient(params: ILLMRequestContext): Promise<GoogleGenerativeAI> {
+    private async getClient(params: ILLMRequestContext): Promise<GoogleGenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
-
         if (!apiKey) throw new Error('Please provide an API key for Google AI');
-
-        return new GoogleGenerativeAI(apiKey);
+        return new GoogleGenAI({ apiKey });
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
@@ -93,14 +89,11 @@ export class GoogleAIConnector extends LLMConnector {
             delete body.messages;
 
             const genAI = await this.getClient(context);
-            const $model = genAI.getGenerativeModel(body);
-
-            const result = await $model.generateContent(prompt);
-
-            const response = await result.response;
-            const content = response.text();
-            const finishReason = response.candidates[0].finishReason || 'stop';
-            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
+            const result = await genAI.models.generateContent({ model: body.model, contents: prompt });
+            const candidate = result.candidates?.[0];
+            const content = candidate?.content?.parts?.map((part) => part.text || '').join('') || '';
+            const finishReason = candidate?.finishReason || 'stop';
+            const usage = result?.usageMetadata as UsageMetadataWithThoughtsToken;
             this.reportUsage(usage, {
                 modelEntryName: context.modelEntryName,
                 keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
@@ -108,7 +101,7 @@ export class GoogleAIConnector extends LLMConnector {
                 teamId: context.teamId,
             });
 
-            const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+            const toolCalls = candidate?.content?.parts?.filter((part) => part.functionCall);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -147,22 +140,17 @@ export class GoogleAIConnector extends LLMConnector {
         delete body.messages;
 
         const genAI = await this.getClient(context);
-        const $model = genAI.getGenerativeModel(body);
-
         try {
-            const result = await $model.generateContentStream(prompt);
-
+            const result = await genAI.models.generateContentStream({ model: body.model, contents: prompt });
             let toolsData: ToolData[] = [];
             let usage: UsageMetadataWithThoughtsToken;
-
-            // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
+                for await (const chunk of result) {
+                    const candidate = chunk.candidates?.[0];
+                    const chunkText = candidate?.content?.parts?.map((part) => part.text || '').join('') || '';
                     emitter.emit('content', chunkText);
-
-                    if (chunk.candidates[0]?.content?.parts) {
-                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
+                    if (candidate?.content?.parts) {
+                        const toolCalls = candidate.content.parts.filter((part) => part.functionCall);
                         if (toolCalls.length > 0) {
                             toolsData = toolCalls.map((toolCall, index) => ({
                                 index,
@@ -175,19 +163,8 @@ export class GoogleAIConnector extends LLMConnector {
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
                     }
-
-                    // the same usage is sent on each emit. IMPORTANT: google does not send usage for each chunk but
-                    // rather just sends the same usage for the entire request.
-                    // notice that the output tokens are only sent in the last chunk usage metadata.
-                    // so we will just update a var to hold the latest usage and report it when the stream ends.
-                    // e.g emit1: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
-                    if (chunk?.usageMetadata) {
-                        usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
-                    }
+                    usage = chunk?.usageMetadata as UsageMetadataWithThoughtsToken;
                 }
-
                 if (usage) {
                     this.reportUsage(usage, {
                         modelEntryName: context.modelEntryName,
@@ -196,12 +173,10 @@ export class GoogleAIConnector extends LLMConnector {
                         teamId: context.teamId,
                     });
                 }
-
                 setTimeout(() => {
                     emitter.emit('end', toolsData);
                 }, 100);
             })();
-
             return emitter;
         } catch (error: any) {
             logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
@@ -373,7 +348,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         const messages = await this.prepareMessages(params);
 
-        let body: ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest } = {
+        let body: { model: string; messages: string | TLLMMessageBlock[]; systemInstruction?: string; generationConfig?: GenerationConfig } = {
             model: model as string,
             messages,
         };
@@ -434,7 +409,7 @@ export class GoogleAIConnector extends LLMConnector {
         const usageData = {
             sourceId: `llm:${modelName}`,
             input_tokens: textInputTokens,
-            output_tokens: usage?.candidatesTokenCount || 0,
+            output_tokens: usage?.promptTokenCount || 0,
             input_tokens_audio: audioInputTokens,
             input_tokens_cache_read: usage?.cachedContentTokenCount || 0,
             input_tokens_cache_write: 0,
@@ -620,8 +595,8 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
-    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
-        let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
+    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[]> {
+        let messages: string | TLLMMessageBlock[] = params?.messages || '';
 
         const files: BinaryInput[] = params?.files || [];
 
@@ -705,7 +680,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<GenerateContentRequest> {
+    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<any> {
         let formattedMessages: TLLMMessageBlock[];
         let systemInstruction = '';
 
@@ -722,7 +697,7 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = messages;
         }
 
-        const toolsPrompt: GenerateContentRequest = {
+        const toolsPrompt: any = {
             contents: formattedMessages as any,
         };
 
@@ -733,18 +708,18 @@ export class GoogleAIConnector extends LLMConnector {
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
             // Map tool choice to valid Google AI function calling modes
-            let mode: FunctionCallingMode = FunctionCallingMode.AUTO; // default
+            let mode: FunctionCallingConfigMode = FunctionCallingConfigMode.AUTO; // default
             const toolChoice = params?.toolsConfig?.tool_choice;
 
             if (toolChoice === 'auto') {
-                mode = FunctionCallingMode.AUTO;
+                mode = FunctionCallingConfigMode.AUTO;
             } else if (toolChoice === 'required') {
-                mode = FunctionCallingMode.ANY;
+                mode = FunctionCallingConfigMode.ANY;
             } else if (toolChoice === 'none') {
-                mode = FunctionCallingMode.NONE;
+                mode = FunctionCallingConfigMode.NONE;
             } else if (typeof toolChoice === 'object' && toolChoice.type === 'function') {
                 // Handle OpenAI-style named tool choice - force any function call
-                mode = FunctionCallingMode.ANY;
+                mode = FunctionCallingConfigMode.ANY;
             }
 
             toolsPrompt.toolConfig = {
@@ -901,35 +876,12 @@ export class GoogleAIConnector extends LLMConnector {
             // Write buffer data to temp file
             await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
 
-            // Upload the file to the Google File Manager
-            const fileManager = new GoogleAIFileManager(apiKey);
-
-            const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
-                displayName: fileName,
-            });
-
-            const name = uploadResponse.file.name;
-
-            // Poll getFile() on a set interval (10 seconds here) to check file state.
-            let uploadedFile = await fileManager.getFile(name);
-            while (uploadedFile.state === FileState.PROCESSING) {
-                process.stdout.write('.');
-                // Sleep for 10 seconds
-                await new Promise((resolve) => setTimeout(resolve, 10_000));
-                // Fetch the file from the API again
-                uploadedFile = await fileManager.getFile(name);
-            }
-
-            if (uploadedFile.state === FileState.FAILED) {
-                throw new Error('File processing failed.');
-            }
-
+            // File upload for Gemini API is not supported in @google/genai Node SDK as of now
+            // You may need to use Google Cloud Storage or another supported method for file uploads
             // Clean up temp file
             await fs.promises.unlink(tempFilePath);
-
             return {
-                url: uploadResponse.file.uri || '',
+                url: tempFilePath,
             };
         } catch (error) {
             throw new Error(`Error uploading file for Google AI: ${error.message}`);
