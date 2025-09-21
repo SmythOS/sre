@@ -1,7 +1,7 @@
 import { Agent, Chat, Component, Model, TAgentMode, TLLMEvent } from '@smythos/sdk';
 import chalk from 'chalk';
 import * as readline from 'readline';
-import { EmitUnit, PluginBase, TokenLoom } from 'tokenloom';
+import { EmitUnit, PluginAPI, PluginBase, TokenLoom } from 'tokenloom';
 
 //Show the tasks list and status to the user at every step before performing the tasks, and also give a tasks status summary after tasks.
 //When you display the tasks list to a user show it in a concise way with a summary and checkboxes for each task.

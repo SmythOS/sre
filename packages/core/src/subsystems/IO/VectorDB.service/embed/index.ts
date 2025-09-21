@@ -1,4 +1,5 @@
 import { OpenAIEmbeds } from './OpenAIEmbedding';
+import { GoogleEmbeds } from './GoogleEmbedding';
 import { TEmbeddings } from './BaseEmbedding';
 
 // a factory to get the correct embedding provider based on the provider name
@@ -6,6 +7,10 @@ const supportedProviders = {
     OpenAI: {
         embedder: OpenAIEmbeds,
         models: OpenAIEmbeds.models,
+    },
+    GoogleAI: {
+        embedder: GoogleEmbeds,
+        models: GoogleEmbeds.models,
     },
 } as const;
 
