@@ -49,7 +49,7 @@ export class LocalStorage extends StorageConnector {
     private findStorageFolder(folder) {
         let _storageFolder = folder;
 
-        if (fs.existsSync(_storageFolder)) {
+        if (_storageFolder && fs.existsSync(_storageFolder)) {
             return _storageFolder;
         }
 
