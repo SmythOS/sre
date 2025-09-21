@@ -160,6 +160,7 @@ export * from './subsystems/IO/NKV.service/connectors/NKVRAM.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRedis.class';
 export * from './subsystems/IO/Router.service/connectors/ExpressRouter.class';
 export * from './subsystems/IO/Router.service/connectors/NullRouter.class';
+export * from './subsystems/IO/Storage.service/connectors/GCSStorage.class';
 export * from './subsystems/IO/Storage.service/connectors/LocalStorage.class';
 export * from './subsystems/IO/Storage.service/connectors/S3Storage.class';
 export * from './subsystems/IO/VectorDB.service/connectors/MilvusVectorDB.class';
