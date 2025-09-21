@@ -47,6 +47,11 @@ const testOriginalMetadata = {
 };
 
 describe('Local Storage Tests', () => {
+    it('Initializes with undefined folder without crashing (guard)', () => {
+        expect(() => new LocalStorage()).not.toThrow();
+        expect(() => new LocalStorage({} as any)).not.toThrow();
+        expect(() => new LocalStorage({ folder: undefined } as any)).not.toThrow();
+    });
     it('Get Default Storage instance', async () => {
         const localStorage: StorageConnector = ConnectorService.getStorageConnector();
 
