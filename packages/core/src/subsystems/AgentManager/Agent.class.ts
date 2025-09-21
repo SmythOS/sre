@@ -14,6 +14,7 @@ import { IAgent } from '@sre/types/Agent.types';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { WorkflowValidatorService } from '@sre/AgentManager/WorkflowValidator.service';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
@@ -249,6 +250,42 @@ export class Agent implements IAgent {
             sessionID: this.callerSessionId,
             tags: this.sessionTag,
         });
+
+        // Pre-execution workflow validation
+        try {
+            const validator = new WorkflowValidatorService({ cycleWarningAllowlistNames: ['Async', 'Await'] });
+            const components = Object.values(this.components || {}).map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                inputs: (c.inputs || []).map((i: any) => ({ name: i.name, optional: i.optional, default: i.default })),
+                outputs: (c.outputs || []).map((o: any) => ({ name: o.name })),
+            }));
+            const connections = (this.connections || []).map((con: any) => ({
+                sourceId: con.sourceId,
+                targetId: con.targetId,
+                sourceIndex: con.sourceIndex,
+                targetIndex: con.targetIndex,
+            }));
+            const validation = validator.validate({ components, connections });
+            if (!validation.isValid) {
+                const summary = validation.errors
+                    .map((e) => `- [${e.code}] ${e.message}${e.componentIds?.length ? ` (components: ${e.componentIds.join(', ')})` : ''}`)
+                    .join('\n');
+                throw new Error(`Workflow validation failed with ${validation.errors.length} error(s):\n${summary}`);
+            }
+            if (validation.warnings.length > 0) {
+                const warnSummary = validation.warnings
+                    .map((w) => `- [${w.code}] ${w.message}${w.componentIds?.length ? ` (components: ${w.componentIds.join(', ')})` : ''}`)
+                    .join('\n');
+                console.warn(`Workflow validation warnings (${validation.warnings.length}):\n${warnSummary}`, AccessCandidate.agent(this.id));
+            }
+            if (validation.topologicalOrder) {
+                this.planInfo.topologicalOrder = validation.topologicalOrder;
+            }
+        } catch (e) {
+            // surface validation failures as pre-exec errors
+            throw e;
+        }
 
         const method = this.agentRequest.method.toUpperCase();
         const endpoint = this.endpoints[endpointPath]?.[method];
