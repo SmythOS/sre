@@ -119,11 +119,10 @@ export class StorageInstance extends SDKObject {
      * @param resourceName - The name or smythfs:// uri of the resource to check
      * @returns true if the resource exists, false otherwise
      */
-    async exists(resourceName: string) {
+    async exists(resourceName: string): Promise<boolean> {
         const uri = resourceName.startsWith('smythfs://') ? resourceName : await this.getResourceUri(resourceName);
         try {
-            await this.fs.exists(uri, this._candidate);
-            return uri;
+            return await this.fs.exists(uri, this._candidate);
         } catch (error) {
             console.error(error);
             throw error;
