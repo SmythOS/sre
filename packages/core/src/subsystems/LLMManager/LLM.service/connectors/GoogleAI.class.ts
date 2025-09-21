@@ -3,9 +3,12 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/generative-ai';
-import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
-import { GoogleGenAI } from '@google/genai';
+import {
+    GoogleGenAI,
+    FunctionCallingConfigMode,
+    FileState,
+    type GenerateContentResponseUsageMetadata,
+} from '@google/genai';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -25,6 +28,7 @@ import {
     ILLMRequestFuncParams,
     TLLMChatResponse,
     TGoogleAIRequestBody,
+    TGoogleAIToolPrompt,
     ILLMRequestContext,
     TLLMPreparedParams,
     LLMInterface,
@@ -60,7 +64,7 @@ const VALID_MIME_TYPES = [
 ];
 
 // will be removed after updating the SDK
-type UsageMetadataWithThoughtsToken = UsageMetadata & { thoughtsTokenCount?: number; cost?: number };
+type UsageMetadataWithThoughtsToken = GenerateContentResponseUsageMetadata & { thoughtsTokenCount?: number; cost?: number };
 
 const IMAGE_GEN_FIXED_PRICING = {
     'imagen-3.0-generate-001': 0.04, // Fixed cost per image
@@ -78,37 +82,51 @@ export class GoogleAIConnector extends LLMConnector {
         image: SUPPORTED_MIME_TYPES_MAP.GoogleAI.image,
     };
 
-    private async getClient(params: ILLMRequestContext): Promise<GoogleGenerativeAI> {
+    private async getClient(params: ILLMRequestContext): Promise<GoogleGenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
 
         if (!apiKey) throw new Error('Please provide an API key for Google AI');
 
-        return new GoogleGenerativeAI(apiKey);
+        return new GoogleGenAI({ apiKey });
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
-            const prompt = body.messages;
-            delete body.messages;
 
-            const genAI = await this.getClient(context);
-            const $model = genAI.getGenerativeModel(body);
-
-            const result = await $model.generateContent(prompt);
-
-            const response = await result.response;
-            const content = response.text();
-            const finishReason = response.candidates[0].finishReason || 'stop';
-            const usage = response?.usageMetadata as UsageMetadataWithThoughtsToken;
-            this.reportUsage(usage, {
-                modelEntryName: context.modelEntryName,
-                keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                agentId: context.agentId,
-                teamId: context.teamId,
+            const promptSource = body.messages ?? body.contents ?? '';
+            const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
+            const requestConfig = this.buildRequestConfig({
+                generationConfig: body.generationConfig,
+                systemInstruction: body.systemInstruction,
+                promptConfig,
             });
 
-            const toolCalls = response.candidates[0]?.content?.parts?.filter((part) => part.functionCall);
+            const genAI = await this.getClient(context);
+            const requestPayload: Record<string, any> = {
+                model: body.model,
+                contents: contents ?? '',
+            };
+
+            if (requestConfig) {
+                requestPayload.config = requestConfig;
+            }
+
+            const response = await genAI.models.generateContent(requestPayload as any);
+            const content = response.text ?? '';
+            const finishReason = (response.candidates?.[0]?.finishReason || 'stop').toLowerCase();
+            const usage = response.usageMetadata as UsageMetadataWithThoughtsToken | undefined;
+
+            if (usage) {
+                this.reportUsage(usage, {
+                    modelEntryName: context.modelEntryName,
+                    keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                    agentId: context.agentId,
+                    teamId: context.teamId,
+                });
+            }
+
+            const toolCalls = response.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
 
             let toolsData: ToolData[] = [];
             let useTool = false;
@@ -118,8 +136,11 @@ export class GoogleAIConnector extends LLMConnector {
                     index,
                     id: `tool-${index}`,
                     type: 'function',
-                    name: toolCall.functionCall.name,
-                    arguments: JSON.stringify(toolCall.functionCall.args),
+                    name: toolCall.functionCall?.name,
+                    arguments:
+                        typeof toolCall.functionCall?.args === 'string'
+                            ? toolCall.functionCall?.args
+                            : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
                 }));
                 useTool = true;
@@ -127,7 +148,7 @@ export class GoogleAIConnector extends LLMConnector {
 
             return {
                 content,
-                finishReason: finishReason.toLowerCase(),
+                finishReason,
                 useTool,
                 toolsData,
                 message: { content, role: 'assistant' },
@@ -143,63 +164,71 @@ export class GoogleAIConnector extends LLMConnector {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
 
-        const prompt = body.messages;
-        delete body.messages;
+        const promptSource = body.messages ?? body.contents ?? '';
+        const { contents, config: promptConfig } = this.normalizePrompt(promptSource as any);
+        const requestConfig = this.buildRequestConfig({
+            generationConfig: body.generationConfig,
+            systemInstruction: body.systemInstruction,
+            promptConfig,
+        });
 
         const genAI = await this.getClient(context);
-        const $model = genAI.getGenerativeModel(body);
 
         try {
-            const result = await $model.generateContentStream(prompt);
+            const stream = await genAI.models.generateContentStream({
+                model: body.model,
+                contents: contents ?? '',
+                ...(requestConfig ? { config: requestConfig } : {}),
+            } as any);
 
             let toolsData: ToolData[] = [];
-            let usage: UsageMetadataWithThoughtsToken;
+            let usage: UsageMetadataWithThoughtsToken | undefined;
 
-            // Process stream asynchronously while as we need to return emitter immediately
             (async () => {
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
-                    emitter.emit('content', chunkText);
+                try {
+                    for await (const chunk of stream) {
+                        const chunkText = chunk.text ?? '';
+                        if (chunkText) {
+                            emitter.emit('content', chunkText);
+                        }
 
-                    if (chunk.candidates[0]?.content?.parts) {
-                        const toolCalls = chunk.candidates[0].content.parts.filter((part) => part.functionCall);
-                        if (toolCalls.length > 0) {
+                        const toolCalls = chunk.candidates?.[0]?.content?.parts?.filter((part) => part.functionCall);
+                        if (toolCalls && toolCalls.length > 0) {
                             toolsData = toolCalls.map((toolCall, index) => ({
                                 index,
                                 id: `tool-${index}`,
                                 type: 'function',
-                                name: toolCall.functionCall.name,
-                                arguments: JSON.stringify(toolCall.functionCall.args),
+                                name: toolCall.functionCall?.name,
+                                arguments:
+                                    typeof toolCall.functionCall?.args === 'string'
+                                        ? toolCall.functionCall?.args
+                                        : JSON.stringify(toolCall.functionCall?.args ?? {}),
                                 role: TLLMMessageRole.Assistant,
                             }));
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
+
+                        if (chunk.usageMetadata) {
+                            usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                        }
                     }
 
-                    // the same usage is sent on each emit. IMPORTANT: google does not send usage for each chunk but
-                    // rather just sends the same usage for the entire request.
-                    // notice that the output tokens are only sent in the last chunk usage metadata.
-                    // so we will just update a var to hold the latest usage and report it when the stream ends.
-                    // e.g emit1: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit2: { input_tokens: 500, output_tokens: undefined } -> same input_tokens
-                    // e.g emit3: { input_tokens: 500, output_tokens: 10 } -> same input_tokens, new output_tokens in the last chunk
-                    if (chunk?.usageMetadata) {
-                        usage = chunk.usageMetadata as UsageMetadataWithThoughtsToken;
+                    if (usage) {
+                        this.reportUsage(usage, {
+                            modelEntryName: context.modelEntryName,
+                            keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
+                            agentId: context.agentId,
+                            teamId: context.teamId,
+                        });
                     }
-                }
 
-                if (usage) {
-                    this.reportUsage(usage, {
-                        modelEntryName: context.modelEntryName,
-                        keySource: context.isUserKey ? APIKeySource.User : APIKeySource.Smyth,
-                        agentId: context.agentId,
-                        teamId: context.teamId,
-                    });
+                    setTimeout(() => {
+                        emitter.emit('end', toolsData);
+                    }, 100);
+                } catch (error) {
+                    logger.error(`streamRequest ${this.name}`, error, acRequest.candidate);
+                    emitter.emit('error', error);
                 }
-
-                setTimeout(() => {
-                    emitter.emit('end', toolsData);
-                }, 100);
             })();
 
             return emitter;
@@ -373,7 +402,7 @@ export class GoogleAIConnector extends LLMConnector {
 
         const messages = await this.prepareMessages(params);
 
-        let body: ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest } = {
+        const body: TGoogleAIRequestBody = {
             model: model as string,
             messages,
         };
@@ -390,7 +419,7 @@ export class GoogleAIConnector extends LLMConnector {
             }
         }
 
-        const config: GenerationConfig = {};
+        const config: Record<string, any> = {};
 
         if (params.maxTokens !== undefined) config.maxOutputTokens = params.maxTokens;
         if (params.temperature !== undefined) config.temperature = params.temperature;
@@ -405,6 +434,70 @@ export class GoogleAIConnector extends LLMConnector {
         }
 
         return body;
+    }
+
+    private normalizePrompt(
+        prompt: TGoogleAIRequestBody['messages'] | TGoogleAIRequestBody['contents']
+    ): { contents: any; config?: Record<string, any> } {
+        if (prompt == null) {
+            return { contents: '' };
+        }
+
+        if (typeof prompt === 'string' || Array.isArray(prompt)) {
+            return { contents: prompt };
+        }
+
+        if (typeof prompt === 'object' && 'contents' in (prompt as TGoogleAIToolPrompt)) {
+            const { contents, systemInstruction, tools, toolConfig } = prompt as TGoogleAIToolPrompt;
+            const config: Record<string, any> = {};
+
+            if (systemInstruction) config.systemInstruction = systemInstruction;
+            if (tools) config.tools = tools;
+            if (toolConfig) config.toolConfig = toolConfig;
+
+            return {
+                contents,
+                config: Object.keys(config).length > 0 ? config : undefined,
+            };
+        }
+
+        return { contents: prompt };
+    }
+
+    private buildRequestConfig({
+        generationConfig,
+        systemInstruction,
+        promptConfig,
+    }: {
+        generationConfig?: TGoogleAIRequestBody['generationConfig'];
+        systemInstruction?: TGoogleAIRequestBody['systemInstruction'];
+        promptConfig?: Record<string, any>;
+    }): Record<string, any> | undefined {
+        const config: Record<string, any> = {};
+
+        if (generationConfig) {
+            for (const [key, value] of Object.entries(generationConfig)) {
+                if (value !== undefined) {
+                    config[key] = value;
+                }
+            }
+        }
+
+        if (promptConfig?.tools) {
+            config.tools = promptConfig.tools;
+        }
+
+        if (promptConfig?.toolConfig) {
+            config.toolConfig = promptConfig.toolConfig;
+        }
+
+        if (promptConfig?.systemInstruction) {
+            config.systemInstruction = promptConfig.systemInstruction;
+        } else if (systemInstruction) {
+            config.systemInstruction = systemInstruction;
+        }
+
+        return Object.keys(config).length > 0 ? config : undefined;
     }
 
     protected reportUsage(
@@ -620,8 +713,8 @@ export class GoogleAIConnector extends LLMConnector {
         });
     }
 
-    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | GenerateContentRequest> {
-        let messages: string | TLLMMessageBlock[] | GenerateContentRequest = params?.messages || '';
+    private async prepareMessages(params: TLLMPreparedParams): Promise<string | TLLMMessageBlock[] | TGoogleAIToolPrompt> {
+        let messages: string | TLLMMessageBlock[] | TGoogleAIToolPrompt = (params?.messages as any) || '';
 
         const files: BinaryInput[] = params?.files || [];
 
@@ -705,7 +798,7 @@ export class GoogleAIConnector extends LLMConnector {
         return messages as string;
     }
 
-    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<GenerateContentRequest> {
+    private async prepareMessagesWithTools(params: TLLMPreparedParams): Promise<TGoogleAIToolPrompt> {
         let formattedMessages: TLLMMessageBlock[];
         let systemInstruction = '';
 
@@ -722,7 +815,7 @@ export class GoogleAIConnector extends LLMConnector {
             formattedMessages = messages;
         }
 
-        const toolsPrompt: GenerateContentRequest = {
+        const toolsPrompt: TGoogleAIToolPrompt = {
             contents: formattedMessages as any,
         };
 
@@ -733,23 +826,29 @@ export class GoogleAIConnector extends LLMConnector {
         if (params?.toolsConfig?.tools) toolsPrompt.tools = params?.toolsConfig?.tools as any;
         if (params?.toolsConfig?.tool_choice) {
             // Map tool choice to valid Google AI function calling modes
-            let mode: FunctionCallingMode = FunctionCallingMode.AUTO; // default
+            const toolConfig = toolsPrompt.toolConfig ?? { functionCallingConfig: {} };
+            const functionConfig = toolConfig.functionCallingConfig ?? {};
             const toolChoice = params?.toolsConfig?.tool_choice;
 
             if (toolChoice === 'auto') {
-                mode = FunctionCallingMode.AUTO;
+                functionConfig.mode = FunctionCallingConfigMode.AUTO;
             } else if (toolChoice === 'required') {
-                mode = FunctionCallingMode.ANY;
+                functionConfig.mode = FunctionCallingConfigMode.ANY;
             } else if (toolChoice === 'none') {
-                mode = FunctionCallingMode.NONE;
+                functionConfig.mode = FunctionCallingConfigMode.NONE;
             } else if (typeof toolChoice === 'object' && toolChoice.type === 'function') {
                 // Handle OpenAI-style named tool choice - force any function call
-                mode = FunctionCallingMode.ANY;
+                functionConfig.mode = FunctionCallingConfigMode.ANY;
+                const functionName = this.sanitizeFunctionName(toolChoice.function?.name ?? '');
+                if (functionName) {
+                    functionConfig.allowedFunctionNames = [functionName];
+                }
+            } else {
+                functionConfig.mode = FunctionCallingConfigMode.AUTO;
             }
 
-            toolsPrompt.toolConfig = {
-                functionCallingConfig: { mode },
-            };
+            toolConfig.functionCallingConfig = functionConfig;
+            toolsPrompt.toolConfig = toolConfig;
         }
 
         return toolsPrompt;
@@ -891,47 +990,45 @@ export class GoogleAIConnector extends LLMConnector {
                 throw new Error('Missing required parameters to save file for Google AI!');
             }
 
-            // Create a temporary directory
             const tempDir = os.tmpdir();
             const fileName = uid();
             const tempFilePath = path.join(tempDir, fileName);
 
             const bufferData = await file.readData(AccessCandidate.agent(agentId));
-
-            // Write buffer data to temp file
             await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
 
-            // Upload the file to the Google File Manager
-            const fileManager = new GoogleAIFileManager(apiKey);
+            const ai = new GoogleGenAI({ apiKey });
 
-            const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-                mimeType: file.mimetype,
-                displayName: fileName,
+            const uploadResponse = await ai.files.upload({
+                file: tempFilePath,
+                config: {
+                    mimeType: file.mimetype,
+                    displayName: fileName,
+                },
             });
 
-            const name = uploadResponse.file.name;
+            const name = uploadResponse.name;
+            if (!name) {
+                throw new Error('File upload did not return a file name.');
+            }
 
-            // Poll getFile() on a set interval (10 seconds here) to check file state.
-            let uploadedFile = await fileManager.getFile(name);
+            let uploadedFile = uploadResponse;
             while (uploadedFile.state === FileState.PROCESSING) {
                 process.stdout.write('.');
-                // Sleep for 10 seconds
                 await new Promise((resolve) => setTimeout(resolve, 10_000));
-                // Fetch the file from the API again
-                uploadedFile = await fileManager.getFile(name);
+                uploadedFile = await ai.files.get({ name });
             }
 
             if (uploadedFile.state === FileState.FAILED) {
                 throw new Error('File processing failed.');
             }
 
-            // Clean up temp file
             await fs.promises.unlink(tempFilePath);
 
             return {
-                url: uploadResponse.file.uri || '',
+                url: uploadedFile.uri || '',
             };
-        } catch (error) {
+        } catch (error: any) {
             throw new Error(`Error uploading file for Google AI: ${error.message}`);
         }
     }

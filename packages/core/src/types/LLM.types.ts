@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@google/generative-ai';
+import { FunctionCallingConfigMode } from '@google/genai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';
@@ -358,7 +358,7 @@ export interface LegacyToolDefinition extends ToolDefinition {
     properties?: Record<string, unknown>;
     requiredFields?: string[];
 }
-export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingMode;
+export type ToolChoice = OpenAI.ChatCompletionToolChoiceOption | FunctionCallingConfigMode;
 
 export interface ToolsConfig {
     tools?: ToolDefinition[];
@@ -514,6 +514,33 @@ export type TOpenAIRequestBody =
 
 export type TAnthropicRequestBody = Anthropic.MessageCreateParamsNonStreaming;
 
-export type TGoogleAIRequestBody = ModelParams & { messages: string | TLLMMessageBlock[] | GenerateContentRequest };
+export type TGoogleAIToolPrompt = {
+    contents: any;
+    systemInstruction?: any;
+    tools?: any;
+    toolConfig?: {
+        functionCallingConfig?: {
+            mode?: FunctionCallingConfigMode;
+            allowedFunctionNames?: string[];
+        };
+    };
+};
+
+export interface TGoogleAIRequestBody {
+    model: string;
+    messages?: string | TLLMMessageBlock[] | TGoogleAIToolPrompt;
+    contents?: any;
+    systemInstruction?: any;
+    generationConfig?: {
+        maxOutputTokens?: number;
+        temperature?: number;
+        topP?: number;
+        topK?: number;
+        stopSequences?: string[];
+        responseMimeType?: string;
+    };
+    tools?: any;
+    toolConfig?: any;
+}
 
 export type TLLMRequestBody = TOpenAIRequestBody | TAnthropicRequestBody | TGoogleAIRequestBody | ConverseCommandInput;
