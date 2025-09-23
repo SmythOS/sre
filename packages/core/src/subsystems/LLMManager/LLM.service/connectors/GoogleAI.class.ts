@@ -8,7 +8,7 @@ import {
     FunctionCallingConfigMode,
     FileState,
     type GenerateContentResponseUsageMetadata,
-} from '@google/genai';
+} from '@google/genai/node';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
