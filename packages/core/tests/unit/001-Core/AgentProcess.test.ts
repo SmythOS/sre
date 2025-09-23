@@ -13,7 +13,7 @@ describe('AgentProcess Tests', () => {
         let output;
         try {
             // Use the test data manager to load agent data
-            const data = loadAgentData('sre-echo-LLMPrompt.smyth');
+            const data = loadAgentData('AgentData/sre-echo-LLMPrompt.smyth');
 
             output = await AgentProcess.load(data).run({
                 method: 'POST',
@@ -68,7 +68,7 @@ describe('AgentProcess Tests', () => {
         try {
             const sre = SmythRuntime.Instance;
             // Use the test data manager to load agent data
-            const data = loadAgentData('sre-echo-LLMPrompt.smyth');
+            const data = loadAgentData('AgentData/sre-echo-LLMPrompt.smyth');
 
             const output = await AgentProcess.load(data).post('/api/say', {
                 message: 'Write a poem about flowers, the word "Rose" should be mentioned at least once',

@@ -14,6 +14,7 @@ import chokidar from 'chokidar';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
+import { findSmythPath } from '@sre/helpers/Sysconfig.helper';
 
 const console = Logger('SmythModelsProvider');
 
@@ -52,11 +53,26 @@ export class JSONModelsProvider extends ModelsProviderConnector {
             else this.models = this._settings.models as TLLMModelsList;
             this.started = true;
         } else {
+            const modelsFolder = this.findModelsFolder();
+            if (modelsFolder) {
+                this.initDirWatcher(modelsFolder);
+            }
             this.started = true;
         }
     }
     public async start() {
         super.start();
+    }
+
+    private findModelsFolder() {
+        const _modelsFolder = findSmythPath('models');
+
+        if (fsSync.existsSync(_modelsFolder)) {
+            console.warn('Using default models folder  : ', _modelsFolder);
+            return _modelsFolder;
+        }
+
+        return null;
     }
 
     @SecureConnector.AccessControl

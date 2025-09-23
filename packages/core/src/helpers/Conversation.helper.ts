@@ -132,9 +132,9 @@ export class Conversation extends EventEmitter {
             console.warn('Conversation Error: ', error?.message);
         });
         this._maxContextSize =
-            _settings.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
+            _settings?.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
         this._maxOutputTokens =
-            _settings.maxOutputTokens ||
+            _settings?.maxOutputTokens ||
             (this._model as TLLMModel).completionTokens ||
             (this._model as TLLMModel).keyOptions?.completionTokens ||
             this._maxOutputTokens;
@@ -928,6 +928,7 @@ export class Conversation extends EventEmitter {
             //is this a valid agent data?
             if (typeof specSource?.behavior === 'string' && specSource?.components && specSource?.connections) {
                 this.agentData = specSource; //agent loaded from data directly
+                this._agentId = specSource.id;
                 return await this.loadSpecFromAgent(specSource);
             }
 

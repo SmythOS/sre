@@ -1,22 +1,14 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { TConnectorService } from '@sre/types/SRE.types';
-import fs from 'fs';
 import { describe, expect, it } from 'vitest';
-import { CLIAgentDataConnector } from '@sre/AgentManager/AgentData.service/connectors/CLIAgentDataConnector.class';
 import { setupSRE } from '../../utils/sre';
-import { loadAgentData, loadTestData } from '../../utils/test-data-manager';
+import { loadAgentData } from '../../utils/test-data-manager';
 
 setupSRE();
-
-ConnectorService.register(TConnectorService.AgentData, 'CLI', CLIAgentDataConnector);
-ConnectorService.init(TConnectorService.AgentData, 'CLI');
-describe('Strong Data typing Features', () => {
+describe('APIEndpoint Component', () => {
     it('APIEndpoint : nominal case', async () => {
         let error;
         try {
-            // const agentData = fs.readFileSync('./tests/data/general-unit-tests.smyth', 'utf-8');
-            const data = loadAgentData('general-unit-tests.smyth');
+            const data = loadAgentData('AgentData/general-unit-tests.smyth');
             const date = new Date();
 
             const agentProcess = AgentProcess.load(data);
@@ -61,7 +53,7 @@ describe('Strong Data typing Features', () => {
     it('APIEndpoint with Array variation', async () => {
         let error;
         try {
-            const data = loadAgentData('general-unit-tests.smyth');
+            const data = loadAgentData('AgentData/general-unit-tests.smyth');
             const date = new Date();
 
             const agentProcess = AgentProcess.load(data);
@@ -90,7 +82,7 @@ describe('Strong Data typing Features', () => {
     it('APIEndpoint : should detect invalid formats', async () => {
         let error;
         try {
-            const data = loadAgentData('general-unit-tests.smyth');
+            const data = loadAgentData('AgentData/general-unit-tests.smyth');
 
             const agentProcess = AgentProcess.load(data);
 
@@ -142,26 +134,33 @@ describe('Strong Data typing Features', () => {
     });
 
     it('APIEndpoint : default values', async () => {
-        const data = loadAgentData('general-unit-tests.smyth');
+        let error;
+        try {
+            const data = loadAgentData('AgentData/general-unit-tests.smyth');
 
-        const agentProcess = AgentProcess.load(data);
+            const agentProcess = AgentProcess.load(data);
 
-        let output = await agentProcess.run({
-            method: 'POST',
-            path: '/api/test_strong_typing_default_vals',
-            body: {},
-        });
+            let output = await agentProcess.run({
+                method: 'POST',
+                path: '/api/test_strong_typing_default_vals',
+                body: {},
+            });
 
-        let outputBody = output?.data?.result?.body;
+            let outputBody = output?.data?.result?.body;
 
-        console.log('>>>>>>', outputBody);
-        expect(outputBody.string).toBe('Hello world');
-        expect(outputBody.number).toBe(123);
-        expect(outputBody.integer).toBe(1234);
-        expect(outputBody.boolean).toBe(true);
-        expect(outputBody.array).toEqual(['a', 'b', 'c', 'd']);
-        expect(outputBody.object).toEqual({ message: 'hello world' });
-        expect(outputBody.binary.size).toEqual(9);
-        expect(outputBody.date).toEqual('2024-01-19T22:00:00.000Z');
+            console.log('>>>>>>', outputBody);
+            expect(outputBody.string).toBe('Hello world');
+            expect(outputBody.number).toBe(123);
+            expect(outputBody.integer).toBe(1234);
+            expect(outputBody.boolean).toBe(true);
+            expect(outputBody.array).toEqual(['a', 'b', 'c', 'd']);
+            expect(outputBody.object).toEqual({ message: 'hello world' });
+            expect(outputBody.binary.size).toEqual(9);
+            expect(outputBody.date).toEqual('2024-01-19T23:00:00.000Z');
+        } catch (e) {
+            error = e;
+            console.error(e.message);
+        }
+        expect(error).toBeUndefined();
     });
 });

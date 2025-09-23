@@ -13,6 +13,24 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
 
     const searchDirectories = [];
 
+    if (process.env.SMYTH_PATH) {
+        if (!fs.existsSync(process.env.SMYTH_PATH)) {
+            console.error('CRITICAL : SMYTH_PATH environment variable is not a valid directory');
+            process.exit(1);
+        }
+
+        const envDir = path.resolve(process.env.SMYTH_PATH, _path);
+        //check if the directory exists
+        if (!fs.existsSync(envDir)) {
+            callback?.(envDir, false, null);
+            console.error(`CRITICAL : missing directory (${envDir}) under SMYTH_PATH `);
+            //process.exit(1);
+        } else {
+            callback?.(envDir, true, null);
+        }
+        return envDir;
+    }
+
     // 1. Try to find in local directory (the directory from which the program was run)
     const localDir = path.resolve(process.cwd(), '.smyth', _path);
     searchDirectories.push(localDir);

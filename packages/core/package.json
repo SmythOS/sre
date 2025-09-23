@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sre",
-    "version": "1.5.70",
+    "version": "1.5.72",
     "description": "Smyth Runtime Environment",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -27,6 +27,10 @@
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
         "build:jsbundle": "cross-env rollup -c",
         "build": "pnpm run build:jsbundle && pnpm run build:types",
+        "test:unit": "cd ../.. && vitest run packages/core/tests/unit",
+        "test:unit:watch": "cd ../.. && vitest watch packages/core/tests/unit",
+        "test:integration": "cd ../.. && vitest run packages/core/tests/integration",
+        "test:integration:watch": "cd ../.. && vitest watch packages/core/tests/integration",
         "gen:docs": "typedoc",
         "doc:graphgen": "npx depcruise src --config ./doc/.dep-minimal.json --output-type dot > ./doc/dep-graph.dot && dot -Tpng ./doc/dep-graph.dot -o ./doc/dep-graph.png",
         "knip": "knip"

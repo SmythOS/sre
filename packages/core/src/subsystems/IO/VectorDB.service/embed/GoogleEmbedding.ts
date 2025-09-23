@@ -50,7 +50,7 @@ export class GoogleEmbeds extends BaseEmbedding {
             const modelInfo: TLLMModel = {
                 provider: 'GoogleAI',
                 modelId: this.model,
-                credentials: this.settings?.credentials as unknown as TLLMCredentials,
+                credentials: (this.settings?.credentials as unknown as TLLMCredentials) || [TLLMCredentials.Internal, TLLMCredentials.Vault],
             };
             const credentials = await getLLMCredentials(candidate, modelInfo);
             apiKey = (credentials as BasicCredentials)?.apiKey;

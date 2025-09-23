@@ -38,14 +38,15 @@ export class ECMASandbox extends Component {
                 }
             }
 
-            const inputVarsCode = this.generateInputVarCode(codeInputs);
-            const code = inputVarsCode + '\n' + config.data.code;
+            //const inputVarsCode = this.generateInputVarCode(codeInputs);
+            //const code = inputVarsCode + '\n' + config.data.code;
+            const code = config.data.code;
 
             logger.debug(`Running code: \n${code}\n`);
 
             const ecmaCodeConnector = ConnectorService.getCodeConnector('ECMASandbox');
 
-            const executionResponse: CodeExecutionResult = await ecmaCodeConnector.agent(agent.id).execute(config.id, { code });
+            const executionResponse: CodeExecutionResult = await ecmaCodeConnector.agent(agent.id).execute(config.id, { code, inputs: input });
             if (executionResponse.success) {
                 Output = executionResponse.output;
             } else {

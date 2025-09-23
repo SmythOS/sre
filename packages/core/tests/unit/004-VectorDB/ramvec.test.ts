@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { setupSRE } from '../../../utils/sre';
+import { setupSRE } from '../../utils/sre';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 
@@ -197,8 +197,9 @@ describe('RAMVec - VectorDB connector (in-memory)', () => {
 
         list = await client.listDatasources('workspace');
         expect(list.map((d) => d.id)).not.toContain('dsX');
-        // getDatasource for deleted should throw
-        await expect(client.getDatasource('workspace', 'dsX')).rejects.toThrow('Datasource dsX not found');
+        // getDatasource for deleted should return undefined
+        const deletedDs = await client.getDatasource('workspace', 'dsX');
+        expect(deletedDs).toBeUndefined();
     });
 
     it('should throw when searching non-existing namespace and after deleting namespace', async () => {
@@ -218,5 +219,89 @@ describe('RAMVec - VectorDB connector (in-memory)', () => {
         // listing datasources should be empty (no throw)
         const list = await client.listDatasources('temp');
         expect(list).toEqual([]);
+    });
+
+    it('should get namespace metadata and handle non-existing namespace', async () => {
+        const vdb = ConnectorService.getVectorDBConnector('RAMVec');
+        const user = AccessCandidate.user('test-user');
+
+        // Test getNamespace - this is an internal method, so we access it directly
+        const ramVectorDB = vdb as any;
+
+        // Should throw for non-existing namespace
+        await expect(ramVectorDB.getNamespace(user.readRequest, 'non-existing')).rejects.toThrow('Namespace non-existing not found');
+
+        // Create namespace with metadata
+        await vdb.requester(user).createNamespace('project-alpha', {
+            project: 'alpha',
+            description: 'Test project namespace',
+            version: '1.0.0',
+        });
+
+        // Should return namespace data
+        const nsData = await ramVectorDB.getNamespace(user.readRequest, 'project-alpha');
+        expect(nsData).toBeDefined();
+        expect(nsData.displayName).toBe('project-alpha');
+        expect(nsData.candidateId).toBe('test-user');
+        expect(nsData.candidateRole).toBe('user');
+        expect(nsData.metadata).toBeDefined();
+        expect(nsData.metadata.project).toBe('alpha');
+        expect(nsData.metadata.description).toBe('Test project namespace');
+        expect(nsData.metadata.version).toBe('1.0.0');
+        expect(nsData.metadata.storageType).toBe('RAM');
+        expect(nsData.namespace).toContain('test-user');
+        expect(nsData.namespace).toContain('project-alpha');
+    });
+
+    it('should handle deleteDatasource edge cases', async () => {
+        const vdb = ConnectorService.getVectorDBConnector('RAMVec');
+        const user = AccessCandidate.user('test-user');
+        const client = vdb.requester(user);
+
+        await client.createNamespace('edge-cases');
+
+        // Should return undefined for non-existing datasource (graceful handling)
+        const nonExistingDs = await client.getDatasource('edge-cases', 'non-existing-ds');
+        expect(nonExistingDs).toBeUndefined();
+
+        // Should throw when trying to delete non-existing datasource
+        await expect(client.deleteDatasource('edge-cases', 'non-existing-ds')).rejects.toThrow('Data source not found with id: non-existing-ds');
+
+        // Create a datasource and verify it exists
+        await client.createDatasource('edge-cases', {
+            id: 'test-ds',
+            label: 'Test Datasource',
+            text: 'This is a test datasource with some content for testing deletion',
+            chunkSize: 15,
+            chunkOverlap: 3,
+            metadata: { type: 'test', category: 'edge-case' },
+        });
+
+        // Verify datasource exists
+        const ds = await client.getDatasource('edge-cases', 'test-ds');
+        expect(ds.id).toBe('test-ds');
+        expect(ds.vectorIds.length).toBeGreaterThan(0);
+
+        // Verify vectors exist in search
+        const searchBefore = await client.search('edge-cases', 'test datasource', { topK: 5 });
+        expect(searchBefore.length).toBeGreaterThan(0);
+
+        // Delete the datasource
+        await client.deleteDatasource('edge-cases', 'test-ds');
+
+        // Verify datasource no longer exists
+        const deletedDs = await client.getDatasource('edge-cases', 'test-ds');
+        expect(deletedDs).toBeUndefined();
+
+        // Verify datasource is not in list
+        const list = await client.listDatasources('edge-cases');
+        expect(list.map((d) => d.id)).not.toContain('test-ds');
+
+        // Verify vectors are removed from search (should return fewer or no results)
+        const searchAfter = await client.search('edge-cases', 'test datasource', { topK: 5 });
+        expect(searchAfter.length).toBeLessThan(searchBefore.length);
+
+        // Should throw when trying to delete the same datasource again
+        await expect(client.deleteDatasource('edge-cases', 'test-ds')).rejects.toThrow('Data source not found with id: test-ds');
     });
 });

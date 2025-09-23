@@ -1,7 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { setupSRE } from '../../../utils/sre';
+import { setupSRE } from '../../utils/sre';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import dotenv from 'dotenv';
+import { delay } from '@sre/utils/index';
+dotenv.config();
 
 // Deterministic, offline embedding mock
 vi.mock('@sre/IO/VectorDB.service/embed', async () => {
@@ -46,26 +49,21 @@ function makeVector(text: string, dimensions = 8): number[] {
     return vec;
 }
 
-const MILVUS_ADDRESS = process.env.MILVUS_ADDRESS as string; // e.g. localhost:19530
-const MILVUS_TOKEN = process.env.MILVUS_TOKEN as string | undefined;
-const MILVUS_USER = process.env.MILVUS_USER as string | undefined;
-const MILVUS_PASSWORD = process.env.MILVUS_PASSWORD as string | undefined;
-const MILVUS_DIMENSIONS = Number(process.env.MILVUS_DIMENSIONS || 1024);
+const PINECONE_API_KEY = process.env.PINECONE_API_KEY as string;
+const PINECONE_INDEX_NAME = process.env.PINECONE_INDEX_NAME as string;
+const PINECONE_DIMENSIONS = Number(process.env.PINECONE_DIMENSIONS || 1024);
 
 beforeAll(() => {
-    const credentials = MILVUS_TOKEN
-        ? { address: MILVUS_ADDRESS, token: MILVUS_TOKEN }
-        : { address: MILVUS_ADDRESS, user: MILVUS_USER, password: MILVUS_PASSWORD };
-
     setupSRE({
         VectorDB: {
-            Connector: 'Milvus',
+            Connector: 'Pinecone',
             Settings: {
-                credentials,
+                apiKey: PINECONE_API_KEY,
+                indexName: PINECONE_INDEX_NAME,
                 embeddings: {
                     provider: 'OpenAI',
                     model: 'text-embedding-3-large',
-                    params: { dimensions: MILVUS_DIMENSIONS },
+                    params: { dimensions: PINECONE_DIMENSIONS },
                 },
             },
         },
@@ -77,40 +75,43 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 
-describe('Milvus - VectorDB connector', () => {
+describe('Pinecone - VectorDB connector', () => {
     it('should create namespace, add/list/get/delete datasource, search by string/vector', async () => {
-        const vdb = ConnectorService.getVectorDBConnector('Milvus');
+        const vdb = ConnectorService.getVectorDBConnector('Pinecone');
         const user = AccessCandidate.user('test-user');
         const client = vdb.requester(user);
 
         // Create namespace and verify
         await client.createNamespace('docs', { env: 'test' });
+
+        //cool down : sometimes created namespace is not available immediately
+        await delay(3000);
         await expect(client.namespaceExists('docs')).resolves.toBe(true);
 
         // Create datasource with chunking
         const ds = await client.createDatasource('docs', {
-            id: 'mv-ds1',
-            label: 'MV DS1',
+            id: 'pc-ds1',
+            label: 'PC DS1',
             text: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
             chunkSize: 10,
             chunkOverlap: 2,
-            metadata: { provider: 'milvus' },
+            metadata: { provider: 'pinecone' },
         });
-        expect(ds.id).toBe('mv-ds1');
+        expect(ds.id).toBe('pc-ds1');
         expect(ds.vectorIds.length).toBeGreaterThan(0);
 
-        // get/list datasource metadata
-        const got = await client.getDatasource('docs', 'mv-ds1');
-        expect(got?.id).toBe('mv-ds1');
+        // get/list datasource metadata (stored via NKV)
+        const got = await client.getDatasource('docs', 'pc-ds1');
+        expect(got.id).toBe('pc-ds1');
         const list = await client.listDatasources('docs');
-        expect(list.map((d) => d.id)).toContain('mv-ds1');
+        expect(list.map((d) => d.id)).toContain('pc-ds1');
 
         // Search by string
         const resText = await client.search('docs', 'KLM', { topK: 3, includeMetadata: true });
         expect(resText.length).toBeGreaterThan(0);
 
         // Search by vector
-        const qv = makeVector('KLM', MILVUS_DIMENSIONS);
+        const qv = makeVector('KLM', PINECONE_DIMENSIONS);
         const resVec = await client.search('docs', qv, { topK: 1 });
         expect(resVec.length).toBe(1);
 
@@ -123,9 +124,10 @@ describe('Milvus - VectorDB connector', () => {
         }
 
         // Delete datasource and verify
-        await client.deleteDatasource('docs', 'mv-ds1');
-        const maybeDeleted = await client.getDatasource('docs', 'mv-ds1');
-        expect(maybeDeleted).toBeUndefined();
+        await client.deleteDatasource('docs', 'pc-ds1');
+
+        const datasource = await client.getDatasource('docs', 'pc-ds1');
+        expect(datasource).toBeUndefined();
 
         // Delete namespace
         await client.deleteNamespace('docs');

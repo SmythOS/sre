@@ -127,6 +127,7 @@ export class LLMInference {
         return this.llmConnector.user(AccessCandidate.agent(params.agentId)).imageEditRequest(params);
     }
 
+    //@deprecated
     public async streamRequest(params: any, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
         try {
@@ -149,6 +150,7 @@ export class LLMInference {
         }
     }
 
+    //@deprecated
     public async multimodalStreamRequest(params: any, fileSources, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 
@@ -180,6 +182,7 @@ export class LLMInference {
         }
     }
 
+    //@deprecated
     public async multimodalStreamRequestLegacy(prompt, files: string[], config: any = {}, agent: string | IAgent) {
         const agentId = isAgent(agent) ? (agent as IAgent).id : agent;
 

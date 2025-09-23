@@ -221,7 +221,7 @@ export type TLLMModel = {
         tokens: number;
         completionTokens: number;
     };
-    credentials?: TLLMCredentials;
+    credentials?: TLLMCredentials | TLLMCredentials[];
 
     //models can come with predefined params
     //this can also be used to pass a preconfigured model object
