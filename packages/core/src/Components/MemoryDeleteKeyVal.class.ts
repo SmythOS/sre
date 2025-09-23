@@ -37,7 +37,7 @@ export class MemoryDeleteKeyVal extends Component {
             const scopeStrData = await connectorRequester.get(scopeKeyId);
 
             if (!scopeStrData) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             logger.debug(`Checking Scope for deletion`);
@@ -46,11 +46,11 @@ export class MemoryDeleteKeyVal extends Component {
 
             // Validate scope access like in MemoryReadKeyVal
             if (scopeData.scope === 'session' && scopeKey !== sessionId) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             if (scopeData.scope === 'request' && scopeKey !== workflowId) {
-                return { _error: 'key not found', _debug: logger.output };
+                return { _warning: 'key not found', _debug: logger.output };
             }
 
             logger.debug(`Deleting memory value and scope data`);

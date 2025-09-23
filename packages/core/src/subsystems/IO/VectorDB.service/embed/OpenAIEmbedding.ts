@@ -82,7 +82,7 @@ export class OpenAIEmbeds extends BaseEmbedding {
         const modelInfo: TLLMModel = {
             provider: 'OpenAI',
             modelId: this.model,
-            credentials: this.settings?.credentials as unknown as TLLMCredentials,
+            credentials: (this.settings?.credentials as unknown as TLLMCredentials) || [TLLMCredentials.Internal, TLLMCredentials.Vault],
         };
         const credentials = await getLLMCredentials(candidate, modelInfo);
 

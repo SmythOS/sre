@@ -14,6 +14,7 @@ import chokidar from 'chokidar';
 import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
+import { findSmythPath } from '@sre/helpers/Sysconfig.helper';
 
 const console = Logger('SmythModelsProvider');
 
@@ -46,17 +47,32 @@ export class JSONModelsProvider extends ModelsProviderConnector {
 
         this.models = JSON.parse(JSON.stringify(models));
         if (typeof this._settings.models === 'string') {
-            this.initDirWatcher(this._settings.models);
+            this.initDirWatcher(this._settings.models); //this.started will be set to true when the watcher is ready
         } else if (typeof this._settings.models === 'object') {
             if (this._settings.mode === 'merge') this.models = { ...this.models, ...(this._settings.models as TLLMModelsList) };
             else this.models = this._settings.models as TLLMModelsList;
             this.started = true;
         } else {
-            this.started = true;
+            const modelsFolder = this.findModelsFolder();
+            if (modelsFolder) {
+                this._settings.mode = 'merge'; //Force merge mode if using models from .smyth folder
+                this.initDirWatcher(modelsFolder); //this.started will be set to true when the watcher is ready
+            }
         }
     }
     public async start() {
         super.start();
+    }
+
+    private findModelsFolder() {
+        const _modelsFolder = findSmythPath('models');
+
+        if (fsSync.existsSync(_modelsFolder)) {
+            console.warn('Using default models folder  : ', _modelsFolder);
+            return _modelsFolder;
+        }
+
+        return null;
     }
 
     @SecureConnector.AccessControl
@@ -196,11 +212,14 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                 if (stats.isFile()) {
                     //load the file
                     const fileContent = fsSync.readFileSync(dir, 'utf-8');
-                    const modelData = JSON.parse(fileContent);
+                    try {
+                        const modelData = JSON.parse(fileContent);
 
-                    if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
-                    else this.models = modelData;
-
+                        if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
+                        else this.models = modelData;
+                    } catch (error) {
+                        console.error(`Error parsing model data from file "${dir}":`, error);
+                    }
                     this.started = true;
                     return;
                 }

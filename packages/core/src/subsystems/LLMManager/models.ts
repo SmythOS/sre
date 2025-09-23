@@ -68,11 +68,11 @@ export const models = {
     // keep the gpt-4o-mini as default model for now
     'gpt-4o-mini': {
         llm: 'OpenAI',
-        alias: 'gpt-4o-mini-2024-07-18',
+
         components: ['PromptGenerator', 'LLMAssistant', 'Classifier', 'VisionLLM', 'AgentPlugin', 'Chatbot', 'GPTPlugin', 'GenAILLM'],
 
         label: 'GPT 4o Mini',
-        modelId: 'gpt-4o-mini-2024-07-18',
+        modelId: 'gpt-4o-mini',
         provider: 'OpenAI',
         features: ['text', 'tools', 'image', 'search'],
         tags: ['Personal'],

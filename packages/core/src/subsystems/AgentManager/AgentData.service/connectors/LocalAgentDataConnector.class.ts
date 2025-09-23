@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { AgentDataConnector } from '../AgentDataConnector';
 import { uid } from '@sre/utils/general.utils';
+import { Logger } from '@sre/helpers/Log.helper';
+
+const console = Logger('LocalAgentDataConnector');
 
 export type LocalAgentDataSettings = { devDir: string; prodDir: string };
 

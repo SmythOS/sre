@@ -1,3 +1,4 @@
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -62,6 +63,13 @@ export class TestDataManager {
         return fs.readFileSync(filePath, 'utf-8');
     }
 
+    public readBinaryData(filename: string): Buffer {
+        const filePath = this.getDataPath(filename);
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`Test data file not found: ${filePath}`);
+        }
+        return fs.readFileSync(filePath);
+    }
     /**
      * Read and parse a .smyth agent file
      */

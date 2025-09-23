@@ -1,0 +1,119 @@
+{
+        "version": "1.0.0",
+        "id": "cly3s2wv1023jgmrm8fodo69f",
+        "components": [
+            {
+                "id": "CLZ1I1XCB42T",
+                "name": "DataSourceLookup",
+                "outputs": [
+                    {
+                        "name": "Results",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Query",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "namespace": "clv1cv00t0001alug52hd69j8_test",
+                    "topK": "3",
+                    "model": "gpt-3.5-turbo",
+                    "prompt": "provide brief results",
+                    "includeMetadata": true,
+                    "postprocess": false
+                },
+                "top": "162px",
+                "left": "721px",
+                "width": "",
+                "height": "",
+                "displayName": "Data Lookup",
+                "title": "Data Lookup",
+                "aiTitle": "Results Summary Display",
+                "description": "Lookup data from data pool"
+            },
+            {
+                "id": "CLZ1IE6AMT4L",
+                "name": "DataSourceIndexer",
+                "outputs": [
+                    {
+                        "name": "Success",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [
+                    {
+                        "name": "Source",
+                        "type": "Any",
+                        "color": "#F35063",
+                        "optional": false,
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "data": {
+                    "namespace": "clv1cv00t0001alug52hd69j8_test",
+                    "id": "_random",
+                    "name": "",
+                    "metadata": ""
+                },
+                "top": "544.962px",
+                "left": "757.962px",
+                "width": "",
+                "height": "",
+                "displayName": "Source Indexer",
+                "title": "Source Indexer",
+                "aiTitle": "",
+                "description": "Index data sources to data pool"
+            },
+            {
+                "id": "CLZ1IE8XY94R",
+                "name": "DataSourceCleaner",
+                "outputs": [
+                    {
+                        "name": "Success",
+                        "color": "#3C89F9",
+                        "index": 0,
+                        "default": true
+                    }
+                ],
+                "inputs": [],
+                "data": {
+                    "namespaceId": "clv1cv00t0001alug52hd69j8_dara_with_space",
+                    "id": ""
+                },
+                "top": "273px",
+                "left": "393px",
+                "width": "",
+                "height": "",
+                "displayName": "Source Cleaner",
+                "title": "Source Cleaner",
+                "aiTitle": "",
+                "description": "Delete data sources from data pool"
+            }
+        ],
+        "connections": [],
+        "description": "",
+        "shortDescription": "An efficient agent that looks up data sources, indexes sources, and cleans up data for optimal processing.",
+        "behavior": "",
+        "debugSessionEnabled": true,
+        "ui": {
+            "panzoom": {
+                "currentPan": {
+                    "x": 4,
+                    "y": 50
+                },
+                "currentZoom": 1
+            }
+        }
+    }

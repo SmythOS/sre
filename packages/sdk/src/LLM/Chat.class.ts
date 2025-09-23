@@ -259,6 +259,7 @@ function createConversation(agentData: AgentData, options?: any) {
 }
 
 async function registerProcessSkills(conversation: Conversation, agentData: AgentData) {
+    await conversation.ready;
     const processSkills: any[] = agentData.components.filter((c) => c.process);
     for (const skill of processSkills) {
         await conversation.addTool({

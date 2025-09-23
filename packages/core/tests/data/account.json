@@ -24,7 +24,114 @@
         },
         "settings": {
             "custom-llm": "{\"m192qxzvp6i\":{\"id\":\"m192qxzvp6i\",\"name\":\"SRE - Bedrock with AI21 Labs - Jamba-Instruct\",\"provider\":\"Bedrock\",\"features\":[\"text-completion\"],\"components\":[\"PromptGenerator\",\"LLMAssistant\"],\"tags\":[\"Bedrock\"],\"tokens\":256000,\"completionTokens\":4096,\"settings\":{\"foundationModel\":\"ai21.jamba-instruct-v1:0\",\"customModel\":\"\",\"region\":\"us-east-1\",\"keyIDName\":\"AWS Key ID (m192qxzvp6i)\",\"secretKeyName\":\"AWS Secret Key (m192qxzvp6i)\",\"sessionKeyName\":\"\"}},\"m19sryru23\":{\"id\":\"m19sryru23\",\"name\":\"SRE - Vertex AI with Gemini Flash\",\"provider\":\"VertexAI\",\"features\":[\"text-completion\"],\"components\":[\"PromptGenerator\",\"LLMAssistant\"],\"tags\":[\"VertexAI\"],\"tokens\":1048576,\"completionTokens\":8192,\"settings\":{\"foundationModel\":\"gemini-1.5-flash\",\"customModel\":\"\",\"region\":\"us-central1\",\"projectId\":\"opt-smythos-vertexia-432522\",\"jsonCredentialsName\":\"Google JSON Credentials (m19sryru23)\"}},\"m3e980g1y1\":{\"id\":\"m3e980g1y1\",\"name\":\"SRE - Bedrock does not support System Prompt\",\"provider\":\"Bedrock\",\"features\":[\"text-completion\"],\"tags\":[\"Bedrock\"],\"settings\":{\"foundationModel\":\"mistral.mistral-7b-instruct-v0:2\",\"customModel\":\"\",\"region\":\"us-east-1\",\"keyIDName\":\"AWS Key ID (m3e980g1y1)\",\"secretKeyName\":\"AWS Secret Key (m3e980g1y1)\",\"sessionKeyName\":\"\"}},\"m3iws4lisbh\":{\"id\":\"m3iws4lisbh\",\"name\":\"SRE - Bedrock for Tool Use\",\"provider\":\"Bedrock\",\"features\":[\"text-completion\"],\"tags\":[\"Bedrock\"],\"settings\":{\"foundationModel\":\"us.anthropic.claude-3-5-haiku-20241022-v1:0\",\"customModel\":\"\",\"region\":\"us-east-1\",\"keyIDName\":\"AWS Key ID (m3iws4lisbh)\",\"secretKeyName\":\"AWS Secret Key (m3iws4lisbh)\",\"sessionKeyName\":\"\"}},\"m3x7hrhm9ue\":{\"id\":\"m3x7hrhm9ue\",\"name\":\"Bedrock Plugin\",\"provider\":\"Bedrock\",\"features\":[\"text-completion\",\"tool-use\"],\"tags\":[\"Bedrock\"],\"settings\":{\"foundationModel\":\"ai21.jamba-1-5-mini-v1:0\",\"customModel\":\"\",\"region\":\"us-east-1\",\"keyIDName\":\"AWS Key ID (m3x7hrhm9ue)\",\"secretKeyName\":\"AWS Secret Key (m3x7hrhm9ue)\",\"sessionKeyName\":\"\"}},\"m6c65ou1b8d\":{\"id\":\"m6c65ou1b8d\",\"name\":\"Bedrock LLama\",\"provider\":\"Bedrock\",\"features\":[\"text\"],\"tags\":[\"Bedrock\"],\"settings\":{\"foundationModel\":\"us.meta.llama3-2-1b-instruct-v1:0\",\"customModel\":\"\",\"region\":\"us-east-1\",\"keyIDName\":\"AWS Key ID (m6c65ou1b8d)\",\"secretKeyName\":\"AWS Secret Key (m6c65ou1b8d)\",\"sessionKeyName\":\"\"}}}",
+            "vault": "default-vault-config",
             "setting2": "value2"
+        }
+    },
+    "TeamAPICall": {
+        "agents": {
+            "image-agent": {
+                "settings": {}
+            }
+        }
+    },
+    "Team2": {
+        "users": {
+            "user1": {
+                "settings": {
+                    "setting1": "value1",
+                    "setting2": "value2"
+                }
+            }
+        },
+        "agents": {
+            "agent-123456": {
+                "settings": {
+                    "setting1": "value1",
+                    "setting2": "value2"
+                }
+            },
+            "agent-007": {
+                "settings": {}
+            }
+        }
+    },
+    "development": {
+        "users": {
+            "dev-user1": {
+                "settings": {
+                    "setting1": "dev-value1",
+                    "environment": "development",
+                    "debug": "true"
+                }
+            },
+            "dev-user2": {
+                "settings": {
+                    "setting1": "dev-value1",
+                    "role": "developer",
+                    "access-level": "standard"
+                }
+            }
+        },
+        "agents": {
+            "dev-agent1": {
+                "settings": {
+                    "setting1": "dev-value1",
+                    "mode": "development",
+                    "logging": "verbose"
+                }
+            },
+            "test-agent": {
+                "settings": {
+                    "setting1": "test-value",
+                    "environment": "testing"
+                }
+            }
+        },
+        "settings": {
+            "api-endpoint": "https://dev-api.smythos.com",
+            "vault": "dev-vault-config",
+            "debug-mode": "enabled"
+        }
+    },
+    "production": {
+        "users": {
+            "prod-user1": {
+                "settings": {
+                    "setting1": "prod-value1",
+                    "environment": "production",
+                    "audit-logging": "enabled"
+                }
+            },
+            "admin-user": {
+                "settings": {
+                    "setting1": "admin-value",
+                    "role": "administrator",
+                    "access-level": "full"
+                }
+            }
+        },
+        "agents": {
+            "prod-agent1": {
+                "settings": {
+                    "setting1": "prod-value1",
+                    "mode": "production",
+                    "monitoring": "enabled"
+                }
+            },
+            "critical-agent": {
+                "settings": {
+                    "setting1": "critical-value",
+                    "priority": "high",
+                    "failover": "enabled"
+                }
+            }
+        },
+        "settings": {
+            "api-endpoint": "https://api.smythos.com",
+            "vault": "prod-vault-config",
+            "security-level": "maximum",
+            "backup-interval": "hourly"
         }
     }
 }

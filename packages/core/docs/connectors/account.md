@@ -1,20 +1,17 @@
 # Account Connectors
 
-The Account subsystem provides user authentication, authorization, and account management functionality. It handles user identity, permissions, and access control for the SRE system.
+The Account subsystem in SRE provides team membership checks and settings retrieval for teams, users, and agents. It does not implement authentication flows or user management; instead, connectors expose a consistent API for access control context and key-value settings.
 
 ## Available Connectors
 
 ### DummyAccount
 
-**Role**: Development account connector  
-**Summary**: Provides a simplified account system for development and testing. Always returns a default user without actual authentication, useful for prototyping and local development.
+**Role**: In-memory development connector  
+**Summary**: Minimal, development-only connector that keeps data in memory (seeded from settings). Everyone is a member of the default team. Supports key-value settings lookup for teams, users, and agents. No authentication, permissions, or persistence.
 
-| Setting          | Type    | Required | Default                               | Description                      |
-| ---------------- | ------- | -------- | ------------------------------------- | -------------------------------- |
-| `defaultUser`    | object  | No       | `{id: 'dev-user', name: 'Developer'}` | Default user object              |
-| `permissions`    | array   | No       | `['*']`                               | Default permissions for the user |
-| `allowAnonymous` | boolean | No       | `true`                                | Allow anonymous access           |
-| `logAccess`      | boolean | No       | `true`                                | Log account access attempts      |
+| Setting | Type   | Required | Default | Description                                      |
+| ------- | ------ | -------- | ------- | ------------------------------------------------ |
+| `data`  | object | No       | `{}`    | Initial in-memory dataset. See Data Model below. |
 
 **Example Configuration:**
 
@@ -25,89 +22,28 @@ SRE.init({
     Account: {
         Connector: 'DummyAccount',
         Settings: {
-            defaultUser: {
-                id: 'admin',
-                name: 'Admin User',
-                email: 'admin@example.com',
+            data: {
+                default: {
+                    users: { 'user-1': { settings: { theme: 'dark' } } },
+                    agents: { 'agent-1': { settings: { canCallTools: 'true' } } },
+                    settings: { orgMode: 'test' },
+                },
             },
-            permissions: ['read', 'write', 'admin'],
-            allowAnonymous: false,
-            logAccess: true,
         },
     },
 });
 ```
-
-**Use Cases:**
-
--   Development and testing environments
--   Prototyping applications
--   Local development without authentication overhead
--   Testing access control logic
--   Demo applications
-
----
-
-### AWSAccount
-
-**Role**: AWS IAM-based account connector  
-**Summary**: Provides authentication and authorization using AWS Identity and Access Management (IAM). Integrates with AWS services for enterprise-grade identity management.
-
-| Setting           | Type    | Required | Default | Description                               |
-| ----------------- | ------- | -------- | ------- | ----------------------------------------- |
-| `region`          | string  | Yes      | -       | AWS region for IAM operations             |
-| `accessKeyId`     | string  | No       | -       | AWS access key ID (can use IAM roles)     |
-| `secretAccessKey` | string  | No       | -       | AWS secret access key (can use IAM roles) |
-| `userPoolId`      | string  | No       | -       | Cognito User Pool ID if using Cognito     |
-| `clientId`        | string  | No       | -       | Cognito App Client ID                     |
-| `roleArn`         | string  | No       | -       | IAM role ARN for assume role operations   |
-| `sessionDuration` | number  | No       | `3600`  | Session duration in seconds               |
-| `mfaRequired`     | boolean | No       | `false` | Require multi-factor authentication       |
-
-**Example Configuration:**
-
-```typescript
-import { SRE } from '@smythos/sre';
-
-SRE.init({
-    Account: {
-        Connector: 'AWSAccount',
-        Settings: {
-            region: 'us-east-1',
-            userPoolId: 'us-east-1_XXXXXXXXX',
-            clientId: 'your-cognito-client-id',
-            roleArn: 'arn:aws:iam::123456789012:role/SREUserRole',
-            sessionDuration: 7200,
-            mfaRequired: true,
-        },
-    },
-});
-```
-
-**Use Cases:**
-
--   Production environments using AWS infrastructure
--   Enterprise applications requiring compliance
--   Multi-service AWS deployments
--   Applications with strict security requirements
--   Integration with existing AWS identity systems
 
 ---
 
 ### JSONFileAccount
 
-**Role**: File-based account connector  
-**Summary**: Provides user management using a local JSON file for storing user accounts and permissions. Suitable for small applications with simple user management needs.
+**Role**: JSON file–backed account/settings connector  
+**Summary**: Loads a JSON file from disk and exposes the same membership and settings APIs as `DummyAccount`. Good for reproducible local/dev setups where you want persisted data without a database.
 
-| Setting            | Type    | Required | Default               | Description                         |
-| ------------------ | ------- | -------- | --------------------- | ----------------------------------- |
-| `usersFile`        | string  | No       | `./.smyth/users.json` | Path to users JSON file             |
-| `encryptPasswords` | boolean | No       | `true`                | Encrypt stored passwords            |
-| `hashAlgorithm`    | string  | No       | `bcrypt`              | Password hashing algorithm          |
-| `saltRounds`       | number  | No       | `10`                  | Salt rounds for bcrypt              |
-| `sessionTimeout`   | number  | No       | `3600`                | Session timeout in seconds          |
-| `maxLoginAttempts` | number  | No       | `5`                   | Maximum failed login attempts       |
-| `lockoutDuration`  | number  | No       | `900`                 | Account lockout duration in seconds |
+| Setting | Type   | Required | Default | Description                 |
+| ------- | ------ | -------- | ------- | --------------------------- |
+| `file`  | string | Yes      | -       | Path to the JSON data file. |
 
 **Example Configuration:**
 
@@ -118,85 +54,97 @@ SRE.init({
     Account: {
         Connector: 'JSONFileAccount',
         Settings: {
-            usersFile: './config/users.json',
-            encryptPasswords: true,
-            hashAlgorithm: 'bcrypt',
-            saltRounds: 12,
-            sessionTimeout: 7200,
-            maxLoginAttempts: 3,
-            lockoutDuration: 1800,
+            file: './.smyth/account.json',
         },
     },
 });
 ```
 
-**Use Cases:**
+**Notes:**
 
--   Small to medium applications
--   Internal tools and dashboards
--   Applications with simple user management
--   Situations requiring user persistence without external services
--   Development environments with realistic user data
+-   Everyone is a member of the default team.
+-   `getResourceACL` is not implemented.
 
-## Account Operations
+---
 
-All account connectors support these standard operations:
+### AWSAccount
 
-| Operation                                 | Description                    |
-| ----------------------------------------- | ------------------------------ |
-| `authenticate(credentials)`               | Verify user credentials        |
-| `authorize(user, resource, action)`       | Check user permissions         |
-| `getCurrentUser()`                        | Get current authenticated user |
-| `createUser(userData)`                    | Create new user account        |
-| `updateUser(userId, userData)`            | Update user information        |
-| `deleteUser(userId)`                      | Remove user account            |
-| `getUserPermissions(userId)`              | Get user permissions           |
-| `setUserPermissions(userId, permissions)` | Update user permissions        |
+**Role**: Database-backed example connector (placeholder)  
+**Summary**: Despite the name, the current implementation uses MySQL via `mysql2/promise`. It demonstrates how to fetch team settings from a database table. Several methods are still unimplemented.
 
-## User Object Structure
+| Setting    | Type   | Required | Default | Description             |
+| ---------- | ------ | -------- | ------- | ----------------------- |
+| `host`     | string | Yes      | -       | Database host.          |
+| `password` | string | Yes      | -       | Database user password. |
+| `database` | string | No       | `app`   | Database name.          |
+| `user`     | string | No       | `app`   | Database user.          |
 
-Standard user object format across all connectors:
+**Behavior:**
+
+-   `getAllTeamSettings` reads rows from `TeamSettings` and maps `{ key, value }`.
+-   `getTeamSetting` selects a single key from `TeamSettings`.
+-   `isTeamMember` returns `true` for all inputs (placeholder).
+-   `getCandidateTeam` returns the team ID if the candidate role is Team; otherwise default team.
+-   `getResourceACL`, `getAllUserSettings`, `getUserSetting`, `getAgentSetting` are not implemented.
+
+**Example Configuration:**
 
 ```typescript
-interface User {
-    id: string;
-    name: string;
-    email?: string;
-    permissions: string[];
-    metadata?: Record<string, any>;
-    createdAt?: Date;
-    lastLogin?: Date;
-    active: boolean;
+import { SRE } from '@smythos/sre';
+
+SRE.init({
+    Account: {
+        Connector: 'AWSAccount',
+        Settings: {
+            host: process.env.DB_HOST!,
+            user: process.env.DB_USER || 'app',
+            password: process.env.DB_PASSWORD!,
+            database: process.env.DB_NAME || 'app',
+        },
+    },
+});
+```
+
+## Connector Operations
+
+All account connectors extend a common base and expose these operations:
+
+| Operation                                 | Description                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| `isTeamMember(teamId, candidate)`         | Whether a candidate belongs to a team (default team usually allows all). |
+| `getCandidateTeam(candidate)`             | Resolves the team for a candidate.                                       |
+| `getAllTeamSettings(request, teamId)`     | Returns team settings as a list of `{ key, value }`.                     |
+| `getAllUserSettings(request, accountId)`  | Returns user settings as a list of `{ key, value }`.                     |
+| `getTeamSetting(request, teamId, key)`    | Returns a single team setting value.                                     |
+| `getUserSetting(request, accountId, key)` | Returns a single user setting value.                                     |
+| `getAgentSetting(request, agentId, key)`  | Returns a single agent setting value.                                    |
+| `getResourceACL(resourceId, candidate)`   | Returns an ACL object (not implemented by the current connectors).       |
+
+### Data Model (DummyAccount, JSONFileAccount)
+
+Both connectors use the same simple data model:
+
+```json
+{
+    "<teamId>": {
+        "users": {
+            "<userId>": { "settings": { "key": "value" } }
+        },
+        "agents": {
+            "<agentId>": { "settings": { "key": "value" } }
+        },
+        "settings": { "key": "value" }
+    }
 }
 ```
 
-## Security Best Practices
+The default team ID is used as a catch-all when a candidate is not explicitly associated with another team.
 
-### General Guidelines
+## Security Notes
 
--   Always use HTTPS for authentication endpoints
--   Implement proper session management
--   Use strong password policies
--   Enable account lockout mechanisms
--   Regular audit user accounts and permissions
--   Implement proper logging for security events
-
-### JSONFileAccount Security
-
--   Store user files outside of web-accessible directories
--   Use strong password hashing (bcrypt with high salt rounds)
--   Set restrictive file permissions (600)
--   Regular backup user data
--   Consider encryption for sensitive user data
-
-### AWSAccount Security
-
--   Use IAM roles instead of access keys when possible
--   Implement least-privilege access policies
--   Enable CloudTrail for audit logging
--   Use AWS Cognito for user pool management
--   Implement proper MFA policies
--   Regular review IAM policies and roles
+-   DummyAccount: development-only. Do not use in production.
+-   JSONFileAccount: store files outside web roots; set restrictive file permissions; back up regularly.
+-   AWSAccount (placeholder): store DB credentials securely (e.g., Vault); use least-privilege DB users; add proper membership checks before production use.
 
 ## Integration Examples
 
@@ -207,15 +155,17 @@ import { SRE } from '@smythos/sre';
 
 SRE.init({
     Account: {
-        Connector: process.env.NODE_ENV === 'production' ? 'AWSAccount' : 'DummyAccount',
+        Connector: process.env.NODE_ENV === 'production' ? 'AWSAccount' : 'JSONFileAccount',
         Settings:
             process.env.NODE_ENV === 'production'
                 ? {
-                      region: process.env.AWS_REGION,
-                      userPoolId: process.env.COGNITO_USER_POOL_ID,
+                      host: process.env.DB_HOST!,
+                      user: process.env.DB_USER || 'app',
+                      password: process.env.DB_PASSWORD!,
+                      database: process.env.DB_NAME || 'app',
                   }
                 : {
-                      defaultUser: { id: 'dev', name: 'Developer' },
+                      file: './.smyth/account.json',
                   },
     },
 });
@@ -231,20 +181,20 @@ SRE.init({
     Account: {
         Connector: 'JSONFileAccount',
         Settings: {
-            usersFile: './dev-users.json',
-            sessionTimeout: 86400,
+            file: './dev-account.json',
         },
     },
 });
 
-// Production
+// Production (placeholder)
 SRE.init({
     Account: {
         Connector: 'AWSAccount',
         Settings: {
-            region: 'us-east-1',
-            userPoolId: 'prod-user-pool',
-            mfaRequired: true,
+            host: 'db.internal',
+            user: 'app',
+            password: '***',
+            database: 'app',
         },
     },
 });

@@ -5,7 +5,7 @@ import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
-import { VectorDBConnector } from '../VectorDBConnector';
+import { VectorDBConnector, DeleteTarget } from '../VectorDBConnector';
 import {
     DatasourceDto,
     IStorageVectorDataSource,
@@ -21,6 +21,8 @@ import { OpenAIEmbeds } from '@sre/IO/VectorDB.service/embed/OpenAIEmbedding';
 import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { EmbeddingsFactory } from '../embed';
+import { chunkText } from '@sre/utils/string.utils';
+import { jsonrepair } from 'jsonrepair';
 
 const console = Logger('RAM VectorDB');
 
@@ -66,6 +68,7 @@ export class RAMVectorDB extends VectorDBConnector {
         if (!_settings.embeddings) {
             _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
         }
+        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
         if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
@@ -182,12 +185,26 @@ export class RAMVectorDB extends VectorDBConnector {
 
         for (const vector of namespaceData) {
             const similarity = this.cosineSimilarity(queryVector as number[], vector.values);
+
+            let userMetadata = undefined;
+            if (options.includeMetadata) {
+                if (vector.metadata?.[this.USER_METADATA_KEY]) {
+                    try {
+                        userMetadata = JSON.parse(vector.metadata[this.USER_METADATA_KEY]);
+                    } catch {
+                        userMetadata = vector.metadata[this.USER_METADATA_KEY];
+                    }
+                } else {
+                    userMetadata = {}; // Return empty object when no metadata exists, like Milvus
+                }
+            }
+
             results.push({
                 id: vector.id,
                 score: similarity,
                 values: vector.values,
-                metadata: options.includeMetadata ? vector.metadata : undefined,
-                text: vector.metadata?.text,
+                text: vector.metadata?.text as string | undefined,
+                metadata: options.includeMetadata ? userMetadata : undefined,
             });
         }
 
@@ -207,28 +224,28 @@ export class RAMVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
-        const sources = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
-        const insertedIds: string[] = [];
+        sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
+
+        // make sure that all sources are of the same type (source.source)
+        if (sourceWrapper.some((s) => this.embedder.detectSourceType(s.source) !== this.embedder.detectSourceType(sourceWrapper[0].source))) {
+            throw new Error('All sources must be of the same type');
+        }
+
+        const sourceType = this.embedder.detectSourceType(sourceWrapper[0].source);
+        if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
+
+        const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType, acRequest.candidate as AccessCandidate);
 
         if (!this.vectors[preparedNs]) {
             this.vectors[preparedNs] = [];
         }
 
-        for (const source of sources) {
-            let vector: number[] = [];
+        const insertedIds: string[] = [];
 
-            if (typeof source.source === 'string') {
-                // Text embedding
-
-                vector = await this.embedder.embedText(source.source, acRequest.candidate as AccessCandidate);
-            } else {
-                // Direct vector
-                vector = source.source;
-            }
-
+        for (const source of transformedSource) {
             const vectorData: VectorData = {
                 id: source.id,
-                values: vector,
+                values: source.source as number[],
                 datasource: source.metadata?.datasourceId || 'unknown',
                 metadata: source.metadata,
             };
@@ -248,107 +265,96 @@ export class RAMVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async delete(acRequest: AccessRequest, namespace: string, id: string | string[]): Promise<void> {
+    protected async delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
-        const ids = Array.isArray(id) ? id : [id];
+        const isDeleteByFilter = typeof deleteTarget === 'object' && !Array.isArray(deleteTarget);
 
-        if (this.vectors[preparedNs]) {
-            this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => !ids.includes(vector.id));
+        if (isDeleteByFilter) {
+            // Handle delete by filter (e.g., by datasourceId)
+            if ('datasourceId' in deleteTarget && deleteTarget.datasourceId) {
+                if (this.vectors[preparedNs]) {
+                    this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => vector.datasource !== deleteTarget.datasourceId);
+                }
+            } else {
+                throw new Error('Unsupported delete filter');
+            }
+        } else {
+            // Handle delete by ID(s)
+            const ids = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
+            if (this.vectors[preparedNs]) {
+                this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => !ids.includes(vector.id));
+            }
         }
     }
 
     @SecureConnector.AccessControl
     protected async createDatasource(acRequest: AccessRequest, namespace: string, datasource: DatasourceDto): Promise<IStorageVectorDataSource> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const datasourceId = datasource.id || crypto.randomUUID();
+        const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner);
+        const dsId = datasource.id || crypto.randomUUID();
 
-        // Ensure namespace exists
-        if (!this.namespaces[preparedNs]) {
-            await this.createNamespace(acRequest, namespace);
-        }
-
-        // Process text and create vectors
-        const vectorIds: string[] = [];
-
-        // Split text into chunks if needed
-        const chunkSize = datasource.chunkSize || 1000;
-        const chunkOverlap = datasource.chunkOverlap || 200;
-        const chunks = this.splitTextIntoChunks(datasource.text, chunkSize, chunkOverlap);
-
-        // Initialize namespace vectors if not exists (should already exist if namespace was created properly)
-        if (!this.vectors[preparedNs]) {
-            this.vectors[preparedNs] = [];
-        }
-
-        for (let i = 0; i < chunks.length; i++) {
-            const chunkId = `${datasourceId}_chunk_${i}`;
-            const vector = await this.embedder.embedText(chunks[i], acRequest.candidate as AccessCandidate);
-
-            const vectorData: VectorData = {
-                id: chunkId,
-                values: vector,
-                datasource: datasourceId,
+        const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
+        const chunkedText = chunkText(datasource.text, {
+            chunkSize: datasource.chunkSize,
+            chunkOverlap: datasource.chunkOverlap,
+        });
+        const label = datasource.label || 'Untitled';
+        const ids = Array.from({ length: chunkedText.length }, (_, i) => `${dsId}_${crypto.randomUUID()}`);
+        const source: IVectorDataSourceDto[] = chunkedText.map((doc, i) => {
+            return {
+                id: ids[i],
+                source: doc,
                 metadata: {
-                    ...datasource.metadata,
-                    text: chunks[i],
-                    chunkIndex: i,
-                    totalChunks: chunks.length,
+                    acl: acl.serializedACL,
+                    namespaceId: formattedNs,
+                    datasourceId: dsId,
+                    datasourceLabel: label,
+                    [this.USER_METADATA_KEY]: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
                 },
             };
+        });
 
-            this.vectors[preparedNs].push(vectorData);
-            vectorIds.push(chunkId);
-        }
+        const _vIds = await this.insert(acRequest, namespace, source);
 
-        const storageDataSource: IStorageVectorDataSource = {
-            namespaceId: preparedNs,
+        const dsData: IStorageVectorDataSource = {
+            namespaceId: formattedNs,
             candidateId: acRequest.candidate.id,
             candidateRole: acRequest.candidate.role,
-            name: datasource.label || `Datasource ${datasourceId}`,
-            metadata: JSON.stringify(datasource.metadata || {}),
+            name: datasource.label || 'Untitled',
+            metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds,
-            id: datasourceId,
+            vectorIds: _vIds,
+            id: dsId,
         };
 
         // Store datasource metadata in memory
-        if (!this.datasources[preparedNs]) {
-            this.datasources[preparedNs] = {};
+        if (!this.datasources[formattedNs]) {
+            this.datasources[formattedNs] = {};
         }
-        if (!this.datasources[preparedNs][datasourceId]) {
-            this.datasources[preparedNs][datasourceId] = storageDataSource;
-        } else {
-            this.datasources[preparedNs][datasourceId].vectorIds.push(...vectorIds);
-        }
+        this.datasources[formattedNs][dsId] = dsData;
 
-        return storageDataSource;
+        return dsData;
     }
 
     @SecureConnector.AccessControl
     protected async deleteDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<void> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
+        const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
-        // Ensure namespace exists
-        if (!this.namespaces[preparedNs]) {
-            throw new Error('Namespace does not exist');
+        // Get datasource info to get vector IDs
+        const ds = this.datasources[formattedNs]?.[datasourceId];
+        if (!ds) {
+            throw new Error(`Data source not found with id: ${datasourceId}`);
         }
 
-        // Get datasource info
-        const datasource = this.datasources[preparedNs]?.[datasourceId];
-        if (datasource) {
-            // Delete all vectors belonging to this datasource
-            if (this.vectors[preparedNs]) {
-                this.vectors[preparedNs] = this.vectors[preparedNs].filter((vector) => vector.datasource !== datasourceId);
-            }
-        }
+        // Delete all vectors belonging to this datasource using the delete method
+        await this.delete(acRequest, namespace, ds.vectorIds || []);
 
         // Delete datasource metadata
-        if (this.datasources[preparedNs]) {
-            delete this.datasources[preparedNs][datasourceId];
+        if (this.datasources[formattedNs]) {
+            delete this.datasources[formattedNs][datasourceId];
         }
     }
 
@@ -362,15 +368,12 @@ export class RAMVectorDB extends VectorDBConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource> {
+    protected async getDatasource(acRequest: AccessRequest, namespace: string, datasourceId: string): Promise<IStorageVectorDataSource | undefined> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         const datasource = this.datasources[preparedNs]?.[datasourceId];
-        if (!datasource) {
-            throw new Error(`Datasource ${datasourceId} not found`);
-        }
-        return datasource;
+        return datasource; // Return undefined if not found, like MilvusVectorDB
     }
 
     /**
@@ -399,23 +402,5 @@ export class RAMVectorDB extends VectorDBConnector {
         }
 
         return dotProduct / (normA * normB);
-    }
-
-    /**
-     * Split text into chunks with overlap
-     */
-    private splitTextIntoChunks(text: string, chunkSize: number, overlap: number): string[] {
-        const chunks: string[] = [];
-        let start = 0;
-
-        while (start < text.length) {
-            const end = Math.min(start + chunkSize, text.length);
-            chunks.push(text.slice(start, end));
-
-            if (end === text.length) break;
-            start = end - overlap;
-        }
-
-        return chunks;
     }
 }
