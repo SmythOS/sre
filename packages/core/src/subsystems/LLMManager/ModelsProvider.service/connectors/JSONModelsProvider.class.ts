@@ -55,7 +55,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
         } else {
             const modelsFolder = this.findModelsFolder();
             if (modelsFolder) {
-                this._settings.mode === 'merge'; //Force merge mode if using models from .smyth folder
+                this._settings.mode = 'merge'; //Force merge mode if using models from .smyth folder
                 this.initDirWatcher(modelsFolder); //this.started will be set to true when the watcher is ready
             }
         }
@@ -212,11 +212,14 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                 if (stats.isFile()) {
                     //load the file
                     const fileContent = fsSync.readFileSync(dir, 'utf-8');
-                    const modelData = JSON.parse(fileContent);
+                    try {
+                        const modelData = JSON.parse(fileContent);
 
-                    if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
-                    else this.models = modelData;
-
+                        if (this._settings?.mode === 'merge') this.models = { ...this.models, ...modelData };
+                        else this.models = modelData;
+                    } catch (error) {
+                        console.error(`Error parsing model data from file "${dir}":`, error);
+                    }
                     this.started = true;
                     return;
                 }
