@@ -65,12 +65,38 @@ We love contributions from the community! Here's how to get started:
 
 ---
 
+## 🏗️ Local Development Setup
+
+To get started with SmythOS locally, follow these steps:
+
+1. **Clone your forked repository:**
+2. **Install dependencies:**
+3. **Build the project:**
+4. **Run the project locally:**
+
+````bash
+# 1. Clone your forked repository
+git clone https://github.com/Ark-Alvarenga/sre.git
+cd sre
+
+# 2. Install dependencies
+npm install
+
+# 3. Build the project
+npm run build
+
+# 4. Run the project locally
+npm start
+
+Make sure to check the SDK Documentation for more detailed instructions if needed.
+
+
 ## 📜 Developer Certificate of Origin (DCO)
 
 SmythOS uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/) to ensure that every
 contribution is made with clear provenance and permission.
 
-- **What you do:** add the `-s` flag to each `git commit`  
+- **What you do:** add the `-s` flag to each `git commit`
   ```bash
   git commit -s -m "Fix: correct off-by-one in vector index"
 
@@ -109,5 +135,6 @@ Please report security vulnerabilities **privately** via email to:
 
 ## 🙏 Thank You
 
-Your contributions—big or small—make SmythOS better.  
+Your contributions—big or small—make SmythOS better.
 We appreciate your time, effort, and support in helping the project grow!
+````
