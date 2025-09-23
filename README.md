@@ -70,6 +70,29 @@ Check the [Examples](examples), [documentation](https://smythos.github.io/sre/sd
 
 **Note:** If you face an issue with the CLI or with your code, set environment variable LOG_LEVEL="debug" and run your code again. Then share the logs with us, it will help diagnose the problem.
 
+## Getting Started (Local Development)
+
+If you want to clone and run this repository locally:
+
+1. Clone the repo:
+    ```bash
+    git clone https://github.com/SmythOS/Sre.git
+    cd Sre
+
+    ```
+2. Install dependencies (using npm or yarn):
+   npm install
+   or
+   yarn install
+
+3. Build the packages:
+   npm run build
+
+4. Run the project(example with CLI):
+   npm run dev
+
+The project should now be running locally.
+
 ## Repository Structure
 
 This monorepo contains three main packages:
