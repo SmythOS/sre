@@ -43,6 +43,10 @@ import { MemoryReadKeyVal } from './MemoryReadKeyVal.class';
 import { MemoryDeleteKeyVal } from './MemoryDeleteKeyVal.class';
 import { MemoryWriteObject } from './MemoryWriteObject.class';
 
+import { GCPBucket } from './GCPBucket.class';
+import { GCPBigQuery } from './GCPBigQuery.class';
+
+
 const components = {
     Component: new Component(),
     Note: new Component(), //this is a fake component
@@ -92,6 +96,9 @@ const components = {
     MemoryReadKeyVal: new MemoryReadKeyVal(),
     MemoryDeleteKeyVal: new MemoryDeleteKeyVal(),
     MemoryWriteObject: new MemoryWriteObject(),
+
+    GCPBucket: new GCPBucket(),
+    GCPBigQuery: new GCPBigQuery(),
 };
 
 export const ComponentInstances = components;
