@@ -201,6 +201,10 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private initFileWatcher() {
+        if (!this.vaultFile) {
+            console.warn('Vault file not found, file watcher not initialized');
+            return;
+        }
         this.watcher = chokidar.watch(this.vaultFile, {
             persistent: false, // Don't keep the process running
             ignoreInitial: true,
