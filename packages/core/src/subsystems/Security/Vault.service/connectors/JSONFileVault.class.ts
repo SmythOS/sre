@@ -39,7 +39,9 @@ export class JSONFileVault extends VaultConnector {
         this.shared = _settings.shared || ''; //if config.shared, all keys are accessible to all teams, and they are set under the 'shared' teamId
 
         this.vaultFile = this.findVaultFile(_settings.file);
+        // Safely load vault data only if a valid path is available
         this.fetchVaultData(this.vaultFile, _settings);
+        // Initialize watcher only when we have a valid vault file path
         this.initFileWatcher();
     }
 
@@ -158,6 +160,11 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private fetchVaultData(vaultFile: string, _settings: JSONFileVaultConfig) {
+        if (!vaultFile) {
+            this.vaultData = {};
+            return;
+        }
+
         if (fs.existsSync(vaultFile)) {
             try {
                 if (_settings.fileKey && fs.existsSync(_settings.fileKey)) {
@@ -201,13 +208,18 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private initFileWatcher() {
+        // Do not initialize a watcher if there is no vault file path
+        if (!this.vaultFile) {
+            return;
+        }
+
         this.watcher = chokidar.watch(this.vaultFile, {
             persistent: false, // Don't keep the process running
             ignoreInitial: true,
         });
 
         this.watcher.on('change', () => {
-            this.fetchVaultData(this.vaultFile, this._settings);
+            this.fetchVaultData(this.vaultFile as string, this._settings);
         });
     }
 
