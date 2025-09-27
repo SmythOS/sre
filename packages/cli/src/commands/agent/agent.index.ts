@@ -11,9 +11,8 @@ import runChat from './chat.cmd';
 import runSkill from './skill.cmd';
 import runPrompt from './prompt.cmd';
 import { startMcpServer } from './mcp.cmd';
-import fs from 'fs';
-import path from 'path';
-
+import { validateJSONFile } from '../../utils/validations.utils';
+import { SRE } from '@smythos/sre';
 export default class AgentCmd extends Command {
     static override description = 'Run .smyth agent with various execution modes';
 
@@ -87,7 +86,7 @@ export default class AgentCmd extends Command {
 
     async run(): Promise<void> {
         const { args, flags } = await this.parse(AgentCmd);
-
+        const sreConfigs: any = {};
         // If no arguments and no flags are provided, show help
         if (!args.path && Object.keys(flags).length === 0) {
             this.log('No agent path provided, showing help...');
@@ -156,17 +155,38 @@ export default class AgentCmd extends Command {
                 });
             }
         }
-        let vaultPath;
+
         if (flags.vault) {
             this.log(chalk.cyan(`  • Vault mode: ${flags.vault}`));
-            const formattedVaultPath = validateVaultPath(flags.vault, this);
-            vaultPath = formattedVaultPath;
+            const vaultPathValidation = validateJSONFile(flags.vault);
+            if (vaultPathValidation.error) {
+                this.log(chalk.red(`  • ${vaultPathValidation.error}`));
+            } else {
+                sreConfigs.Vault = {
+                    Connector: 'JSONFileVault',
+                    Settings: {
+                        file: vaultPathValidation.path,
+                    },
+                };
+            }
         }
 
         let modelsPath;
         if (flags.models) {
             this.log(chalk.cyan(`  • Models mode: ${flags.models}`));
-            modelsPath = flags.models;
+            const modelsPathValidation = validateJSONFile(flags.models);
+            if (modelsPathValidation.error) {
+                this.log(chalk.red(`  • ${modelsPathValidation.error}`));
+            } else {
+                modelsPath = modelsPathValidation.path;
+                sreConfigs.ModelsProvider = {
+                    Connector: 'JSONModelsProvider',
+                    Settings: {
+                        models: modelsPath,
+                        mode: 'merge',
+                    },
+                };
+            }
         }
 
         if (!flags.chat && !flags.skill && !flags.endpoint && !flags.prompt) {
@@ -199,10 +219,13 @@ export default class AgentCmd extends Command {
             mcp: flags.mcp ? parseFlagsarams(flags.mcp) : null,
             prompt,
             promptModel,
-            vault: vaultPath || null,
             models: modelsPath || null,
         };
         this.log(chalk.gray(`   Flags: ${JSON.stringify(allFlags, null, 2).replace(/\n/g, '\n          ')}`));
+
+        // Initialize SRE with the configs
+        SRE.init(sreConfigs);
+        await SRE.ready();
 
         if (flags.skill) {
             await runSkill(args, allFlags);
@@ -243,32 +266,3 @@ function parseFlagsarams(flags: string[]) {
     return parsed;
 }
 
-function validateVaultPath(vaultFlag: any, context: any) {
-    // Check if the provided path is relative or absolute
-    let vaultPath;
-    if (path.isAbsolute(vaultFlag)) {
-        vaultPath = vaultFlag;
-    } else {
-        // Convert relative path to absolute path
-        vaultPath = path.resolve(vaultFlag);
-    }
-
-    // Check if the file exists
-    if (!fs.existsSync(vaultPath)) {
-        context.log(chalk.red(`Vault file not found: ${vaultPath}`));
-        return;
-    }
-
-    // Check if it's a valid JSON file
-    try {
-        const vaultContent = fs.readFileSync(vaultPath, 'utf8');
-        JSON.parse(vaultContent); // Validate JSON
-        context.log(chalk.gray(`    Vault path: ${vaultPath}`));
-        context.log(chalk.gray(`    Vault file: Valid JSON`));
-    } catch (error) {
-        context.log(chalk.red(`Invalid JSON in vault file: ${vaultPath}`));
-        return;
-    }
-
-    return vaultPath;
-}
