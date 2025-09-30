@@ -72,7 +72,35 @@ sre agent ./myagent.smyth --skill ask question="who are you"
 -   `--skill <skillname>` - Execute a skill without parameters
 -   `--skill <skillname> key1="value1" key2="value2"` - Execute skill with parameters
 
-#### 4. MCP Server Mode (`--mcp`)
+#### 4. Agent Execution Modes (`--mode`)
+
+Control how the agent executes and displays information:
+
+```bash
+# Default mode - standard execution
+sre agent ./myagent.smyth --chat --mode default
+
+# Planner mode - enhanced execution with task management panel
+sre agent ./myagent.smyth --chat --mode planner
+```
+
+**Available Modes:**
+
+-   `--mode default` - Standard agent execution with regular output
+-   `--mode planner` - Enhanced execution featuring:
+    -   🎯 **Visual Task Panel**: Real-time task tracking on the right side
+    -   📋 **Status Icons**: ✅ completed, ⏳ ongoing, 📝 planned, ❌ failed  
+    -   🔄 **Live Updates**: Tasks update as the agent works
+    -   🎨 **Enhanced Streaming**: Special formatting for thinking/planning/code tags
+
+**Planner Mode Example:**
+```bash
+sre agent ./myagent.smyth --chat --mode planner
+```
+
+This will show a visual task management panel while the agent executes, perfect for complex multi-step operations.
+
+#### 5. MCP Server Mode (`--mcp`)
 
 Start the agent as an MCP (Model Context Protocol) server:
 

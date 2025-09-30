@@ -7,13 +7,14 @@ export function adaptModelParams(
     fallbackProvider?: TLLMProvider,
     defaultSettings?: TLLMModel
 ): TLLMInstanceParams {
-    const { model, provider, inputTokens, outputTokens, interface: interfaceType, features, ...params } = modelSettings;
+    const { model, provider, baseURL, inputTokens, outputTokens, interface: interfaceType, features, ...params } = modelSettings;
     const modelObject: any = {
         provider: provider || fallbackProvider,
         modelId: model as string, // for backward compatibility
         model: model as string, // for backward compatibility
         interface: interfaceType,
         features: features,
+        baseURL: baseURL,
         tags: ['sdk'],
         tokens: inputTokens || defaultSettings?.keyOptions?.tokens || defaultSettings?.tokens,
         completionTokens: outputTokens || defaultSettings?.keyOptions?.completionTokens || defaultSettings?.completionTokens,

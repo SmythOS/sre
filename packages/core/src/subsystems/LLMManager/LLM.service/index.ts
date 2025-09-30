@@ -11,6 +11,7 @@ import { BedrockConnector } from './connectors/Bedrock.class';
 import { VertexAIConnector } from './connectors/VertexAI.class';
 import { PerplexityConnector } from './connectors/Perplexity.class';
 import { xAIConnector } from './connectors/xAI.class';
+import { OllamaConnector } from './connectors/Ollama.class';
 
 export class LLMService extends ConnectorServiceProvider {
     public register() {
@@ -25,6 +26,7 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.register(TConnectorService.LLM, 'VertexAI', VertexAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'xAI', xAIConnector);
         ConnectorService.register(TConnectorService.LLM, 'Perplexity', PerplexityConnector);
+        ConnectorService.register(TConnectorService.LLM, 'Ollama', OllamaConnector);
     }
 
     public init() {
@@ -40,5 +42,6 @@ export class LLMService extends ConnectorServiceProvider {
         ConnectorService.init(TConnectorService.LLM, 'VertexAI');
         ConnectorService.init(TConnectorService.LLM, 'xAI');
         ConnectorService.init(TConnectorService.LLM, 'Perplexity');
+        ConnectorService.init(TConnectorService.LLM, 'Ollama');
     }
 }

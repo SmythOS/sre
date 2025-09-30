@@ -24,6 +24,12 @@ export class VectorDBInstance extends SDKObject {
 
     protected async init() {
         await super.init();
+        if (this.providerId === TVectorDBProvider.default) {
+            let connector = ConnectorService.getVectorDBConnector();
+            this._VectorDBRequest = connector.requester(this._candidate);
+            this._namespace = this.VectorDBSettings.namespace;
+            return;
+        }
 
         let connector = ConnectorService.getVectorDBConnector(this.providerId);
 

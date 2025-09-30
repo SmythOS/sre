@@ -121,6 +121,7 @@ export class Conversation extends EventEmitter {
             toolsStrategy?: (toolsConfig) => any;
             agentId?: string;
             agentVersion?: string;
+            baseUrl?: string;
         }
     ) {
         //TODO: handle loading previous session (messages)
@@ -132,9 +133,9 @@ export class Conversation extends EventEmitter {
             console.warn('Conversation Error: ', error?.message);
         });
         this._maxContextSize =
-            _settings.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
+            _settings?.maxContextSize || (this._model as TLLMModel).tokens || (this._model as TLLMModel).keyOptions?.tokens || this._maxContextSize;
         this._maxOutputTokens =
-            _settings.maxOutputTokens ||
+            _settings?.maxOutputTokens ||
             (this._model as TLLMModel).completionTokens ||
             (this._model as TLLMModel).keyOptions?.completionTokens ||
             this._maxOutputTokens;
@@ -149,6 +150,8 @@ export class Conversation extends EventEmitter {
         if (_settings?.store) {
             this._llmContextStore = _settings.store;
         }
+
+        this._baseUrl = _settings?.baseUrl;
 
         this._agentVersion = _settings?.agentVersion;
 
@@ -281,15 +284,6 @@ export class Conversation extends EventEmitter {
         let _content = '';
         const reqMethods = this._reqMethods;
         const toolsConfig = this._toolsConfig;
-        //deduplicate tools
-        const seenToolNames = new Set();
-        toolsConfig.tools = toolsConfig.tools.filter((tool) => {
-            if (seenToolNames.has(tool.name)) {
-                return false; // Skip duplicates
-            }
-            seenToolNames.add(tool.name);
-            return true; // Keep first occurrence
-        });
         const endpoints = this._endpoints;
         const baseUrl = this._baseUrl;
         const message_id = 'msg_' + randomUUID();
@@ -839,15 +833,22 @@ export class Conversation extends EventEmitter {
         this._customToolsDeclarations.push(toolDefinition);
         this._customToolsHandlers[tool.name] = tool.handler;
 
+        //deduplicate tools
+
         const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
+        this._customToolsDeclarations = this._customToolsDeclarations.filter(
+            (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
+        );
         const toolsConfig: any = llmInference.connector.formatToolsConfig({
             type: 'function',
-            toolDefinitions: [toolDefinition],
+            toolDefinitions: this._customToolsDeclarations,
             toolChoice: this.toolChoice,
         });
 
-        if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
-        else this._toolsConfig = toolsConfig;
+        //if (this._toolsConfig) this._toolsConfig.tools.push(...toolsConfig?.tools);
+        //else this._toolsConfig = toolsConfig;
+
+        this._toolsConfig = toolsConfig;
     }
     /**
      * updates LLM model, if spec is available, it will update the tools config
@@ -864,15 +865,19 @@ export class Conversation extends EventEmitter {
                 this._baseUrl = this._spec?.servers?.[0].url;
 
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
-                functionDeclarations.push(...this._customToolsDeclarations);
+                //functionDeclarations.push(...this._customToolsDeclarations);
+                this._customToolsDeclarations.push(...functionDeclarations);
                 const llmInference: LLMInference = await LLMInference.getInstance(this._model, AccessCandidate.team(this._teamId));
                 if (!llmInference.connector) {
                     this.emit('error', 'No connector found for model: ' + this._model);
                     return;
                 }
+                this._customToolsDeclarations = this._customToolsDeclarations.filter(
+                    (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
+                );
                 this._toolsConfig = llmInference.connector.formatToolsConfig({
                     type: 'function',
-                    toolDefinitions: functionDeclarations,
+                    toolDefinitions: this._customToolsDeclarations,
                     toolChoice: this.toolChoice,
                 });
 
@@ -926,6 +931,7 @@ export class Conversation extends EventEmitter {
             //is this a valid agent data?
             if (typeof specSource?.behavior === 'string' && specSource?.components && specSource?.connections) {
                 this.agentData = specSource; //agent loaded from data directly
+                this._agentId = specSource.id;
                 return await this.loadSpecFromAgent(specSource);
             }
 
@@ -1003,7 +1009,12 @@ export class Conversation extends EventEmitter {
                 return map;
             }, {});
 
-        const spec = await agentDataConnector.getOpenAPIJSON(agentData, 'http://localhost/', this._agentVersion, true).catch((error) => null);
+        let baseUrl = this._baseUrl || 'http://localhost/';
+        if (baseUrl && !baseUrl.endsWith('/')) {
+            baseUrl += '/';
+        }
+
+        const spec = await agentDataConnector.getOpenAPIJSON(agentData, baseUrl, this._agentVersion, true).catch((error) => null);
         return this.patchSpec(spec);
     }
 

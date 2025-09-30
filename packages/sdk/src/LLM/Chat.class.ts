@@ -1,7 +1,7 @@
 import { TLLMModel, Conversation, TLLMEvent, ILLMContextStore, AccessCandidate } from '@smythos/sre';
 import { EventEmitter } from 'events';
 import { uid } from '../utils/general.utils';
-import { AgentData, ChatOptions } from '../types/SDKTypes';
+import { AgentData, ChatOptions, PromptOptions } from '../types/SDKTypes';
 import { SDKObject } from '../Core/SDKObject.class';
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { SDKLog } from '../utils/console.utils';
@@ -43,7 +43,7 @@ class LocalChatStore extends SDKObject implements ILLMContextStore {
 class ChatCommand {
     private _conversation: Conversation;
 
-    constructor(private prompt: string, private chat: Chat) {
+    constructor(private prompt: string, private chat: Chat, private options?: PromptOptions) {
         this._conversation = chat._conversation;
     }
 
@@ -53,7 +53,7 @@ class ChatCommand {
 
     private async run(): Promise<string> {
         await this.chat.ready;
-        const result = await this._conversation.streamPrompt(this.prompt);
+        const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
         return result;
     }
 
@@ -145,7 +145,10 @@ class ChatCommand {
         this._conversation.on(TLLMEvent.Interrupted, interruptedHandler);
         this._conversation.on(TLLMEvent.Data, dataHandler);
 
-        this._conversation.streamPrompt(this.prompt);
+        // Start the streaming process - don't await as we want to return the eventEmitter immediately
+        this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls).catch((error) => {
+            eventEmitter.emit(TLLMEvent.Error, error);
+        });
         return eventEmitter;
     }
 }
@@ -170,9 +173,10 @@ export class Chat extends SDKObject {
     public get agentData() {
         return this._data;
     }
-    constructor(options: ChatOptions & { candidate: AccessCandidate }, _model: string | TLLMModel, _data?: any, private _convOptions: any = {}) {
+    constructor(options: ChatOptions & { candidate: AccessCandidate }, _data?: any, private _convOptions: any = {}) {
         super();
 
+        const _model = options.model || _data?.defaultModel || '';
         this._data = { ...this._data, ..._data, defaultModel: _model };
 
         this._id = options.id || uid();
@@ -236,8 +240,8 @@ export class Chat extends SDKObject {
      * @param prompt - The message or question to send to the chat
      * @returns ChatCommand that can be executed or streamed
      */
-    prompt(prompt: string) {
-        return new ChatCommand(prompt, this);
+    prompt(prompt: string, options?: PromptOptions) {
+        return new ChatCommand(prompt, this, options);
     }
 }
 
@@ -259,6 +263,7 @@ function createConversation(agentData: AgentData, options?: any) {
 }
 
 async function registerProcessSkills(conversation: Conversation, agentData: AgentData) {
+    await conversation.ready;
     const processSkills: any[] = agentData.components.filter((c) => c.process);
     for (const skill of processSkills) {
         await conversation.addTool({

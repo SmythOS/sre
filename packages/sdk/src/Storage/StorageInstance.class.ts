@@ -1,4 +1,13 @@
-import { AccessCandidate, ConnectorService, DEFAULT_TEAM_ID, SmythFS, StorageConnector, StorageData, TAccessRole, TConnectorService } from '@smythos/sre';
+import {
+    AccessCandidate,
+    ConnectorService,
+    DEFAULT_TEAM_ID,
+    SmythFS,
+    StorageConnector,
+    StorageData,
+    TAccessRole,
+    TConnectorService,
+} from '@smythos/sre';
 
 import { SDKObject } from '../Core/SDKObject.class';
 import { TStorageProvider } from '../types/generated/Storage.types';
@@ -17,6 +26,12 @@ export class StorageInstance extends SDKObject {
     constructor(providerId?: TStorageProvider, storageSettings: any = {}, candidate?: AccessCandidate) {
         super();
         this._candidate = candidate || AccessCandidate.team(DEFAULT_TEAM_ID);
+
+        if (providerId === TStorageProvider.default) {
+            this._fs = SmythFS.Instance;
+            return;
+        }
+
         let connector = ConnectorService.getStorageConnector(providerId || '');
 
         if (!connector?.valid) {

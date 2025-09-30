@@ -543,12 +543,14 @@ export class Agent extends SDKObject {
      * When using storage from the agent, the agent id will be used as data owner
      *
      * **Supported providers and calling patterns:**
+     * - `agent.storage.default()` - Default storage provider
      * - `agent.storage.LocalStorage()` - Local storage
      * - `agent.storage.S3()` - S3 storage
      *
      * @example
      * ```typescript
      * // Direct storage access
+     * const defaultStorage = agent.storage.default();
      * const local = agent.storage.LocalStorage();
      * const s3 = agent.storage.S3();
      * ```
@@ -560,6 +562,8 @@ export class Agent extends SDKObject {
             this._storageProviders = {} as TStorageProviderInstances;
             for (const provider of Object.values(TStorageProvider)) {
                 this._storageProviders[provider] = (storageSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = storageSettings || {};
+                    if (!scope) scope = _scope;
                     if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.storage) {
                         this._warningDisplayed.storage = true;
                         console.warn(
@@ -569,7 +573,7 @@ export class Agent extends SDKObject {
                     const candidate =
                         scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
 
-                    return new StorageInstance(provider as TStorageProvider, storageSettings, candidate);
+                    return new StorageInstance(provider as TStorageProvider, connectorSettings, candidate);
                 };
             }
         }
@@ -583,6 +587,7 @@ export class Agent extends SDKObject {
      * When using vectorDB from the agent, the agent id will be used as data owner
      *
      * **Supported providers and calling patterns:**
+     * - `agent.vectorDB.default()` - Default vectorDB provider (RAMVec)
      * - `agent.vectorDB.RAMVec()` - A local RAM vectorDB
      * - `agent.vectorDB.Pinecone()` - Pinecone vectorDB
      */
@@ -592,6 +597,9 @@ export class Agent extends SDKObject {
             this._vectorDBProviders = {} as TVectorDBProviderInstances;
             for (const provider of Object.values(TVectorDBProvider)) {
                 this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = vectorDBSettings || {};
+                    if (!scope) scope = _scope;
+
                     if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.vectorDB) {
                         this._warningDisplayed.vectorDB = true;
                         console.warn(
@@ -600,7 +608,7 @@ export class Agent extends SDKObject {
                     }
                     const candidate =
                         scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
-                    return new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, candidate);
+                    return new VectorDBInstance(provider as TVectorDBProvider, { ...connectorSettings, namespace }, candidate);
                 };
             }
         }
@@ -793,8 +801,12 @@ export class Agent extends SDKObject {
             chatOptions.persist = false;
         }
 
-        return new Chat(chatOptions, this._data.defaultModel, this.data, {
+        if (!chatOptions.model) {
+            chatOptions.model = this._data.defaultModel;
+        }
+        return new Chat(chatOptions, this.data, {
             agentId: this._data.id,
+            baseUrl: chatOptions.baseUrl,
         });
     }
 

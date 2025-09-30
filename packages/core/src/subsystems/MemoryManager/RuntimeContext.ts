@@ -36,6 +36,7 @@ export class RuntimeContext extends EventEmitter {
     private _cacheConnector: CacheConnector;
 
     private _readyPromise: Promise<boolean>;
+    private _lastCtxLength: number = 0;
 
     constructor(private runtime: AgentRuntime) {
         super();
@@ -153,7 +154,13 @@ export class RuntimeContext extends EventEmitter {
         //if (data) fs.writeFileSync(this.ctxFile, JSON.stringify(data, null, 2));
         if (data) {
             let serializedData = JSON.stringify(data);
-            console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+
+            if (serializedData.length != this._lastCtxLength) {
+                //only log if context has changes
+                //We use the length as a weak but fast way to detect changes
+                console.debug('Agent Context Size', this.ctxFile, serializedData.length, AccessCandidate.agent(this.runtime.agent.id));
+                this._lastCtxLength = serializedData.length;
+            }
 
             await this._cacheConnector
                 .requester(AccessCandidate.agent(this.runtime.agent.id))
@@ -184,7 +191,7 @@ export class RuntimeContext extends EventEmitter {
 
     public enqueueSync() {
         if (!this.ctxFile) return;
-        console.log('ENQUEUE SYNC');
+
         this._syncQueue = this._syncQueue
             .then(() => this.sync())
             .catch((err) => {

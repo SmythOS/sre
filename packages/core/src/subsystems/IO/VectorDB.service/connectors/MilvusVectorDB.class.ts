@@ -24,8 +24,15 @@ export type IMilvusCredentials = { address: string; token: string } | { address:
 type IndexParams = Omit<CreateIndexSimpleReq, 'collection_name'>[] | Omit<CreateIndexSimpleReq, 'collection_name'>;
 
 export type MilvusConfig = {
+    /**
+     * The Milvus connection credentials
+     */
     credentials: IMilvusCredentials;
-    embeddings: TEmbeddings;
+
+    /**
+     * The embeddings model to use
+     */
+    embeddings?: TEmbeddings;
 };
 
 // Define schema field names as a type for strong typing
@@ -63,6 +70,10 @@ export class MilvusVectorDB extends VectorDBConnector {
         console.info('Milvus client initialized');
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
+
+        if (!_settings.embeddings) {
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+        }
         if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
         if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 

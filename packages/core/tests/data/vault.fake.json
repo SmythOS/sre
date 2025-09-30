@@ -1,0 +1,22 @@
+{
+    "default": {
+        "echo": "",
+        "openai": "sk-proj-openai",
+        "anthropic": "sk-ant-anthropic",
+        "googleai": "#",
+        "groq": "#",
+        "togetherai": "#",
+        "xai": "#",
+        "deepseek": "#",
+        "my-key": "Hello world",
+        "DIFFBOT_API": "THIS_IS_A_FAKE_DIFFBOT_API_KEY"
+    },
+    "Team2": {
+        "echo": "",
+        "openai": "sk-proj-team2-openai",
+        "anthropic": "sk-ant-team2-anthropic",
+        "team2-secret": "team2-secret-value",
+        "TEAM2_API": "THIS_IS_A_FAKE_TEAM2_API_KEY",
+        "SRE TEST KEY": "sdl7k8lsd93ko4iu39"
+    }
+}

@@ -10,6 +10,9 @@ const VectorDB: TVectorDBProviderInstances = {} as TVectorDBProviderInstances;
 //generate a VectorDB instance entry for every available VectorDB provider
 for (const provider of Object.keys(TVectorDBProvider)) {
     VectorDB[provider] = (namespace: string, VectorDBSettings?: any, scope?: Scope | AccessCandidate) => {
+        const { scope: _scope, ...connectorSettings } = VectorDBSettings || {};
+        if (!scope) scope = _scope;
+
         let candidate: AccessCandidate;
         if (typeof scope === 'string') {
             let message = `You are trying to use an agent scope in a standalone VectorDB instance.`;
@@ -29,7 +32,7 @@ for (const provider of Object.keys(TVectorDBProvider)) {
             candidate = scope as AccessCandidate;
         }
 
-        return new VectorDBInstance(TVectorDBProvider[provider], { ...VectorDBSettings, namespace }, candidate);
+        return new VectorDBInstance(TVectorDBProvider[provider], { ...connectorSettings, namespace }, candidate);
     };
 }
 

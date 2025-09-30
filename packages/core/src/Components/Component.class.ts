@@ -4,19 +4,33 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
 import { hookAsync } from '@sre/Core/HookService';
 
-export type ComponentSchema = {
+export type TComponentSchema = {
     name: string;
     settings?: Record<string, any>;
     inputs?: Record<string, any>;
     outputs?: Record<string, any>;
 };
 
+export enum ComponentInputType {
+    Any = 'Any',
+    Binary = 'Binary',
+    String = 'Text',
+    Text = 'Text',
+    Image = 'Image',
+    Video = 'Video',
+    Number = 'Number',
+    Integer = 'Integer',
+    Boolean = 'Boolean',
+    Date = 'Date',
+    Array = 'Array',
+    Object = 'Object',
+}
 export class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;
     public alwaysActive = false; //for components like readable memories
     public exclusive = false; //for components like writable memories : when exclusive components are active, they are processed in a run cycle bofore other components
-    protected schema: ComponentSchema = {
+    protected schema: TComponentSchema = {
         name: 'Component',
         settings: {},
         inputs: {},

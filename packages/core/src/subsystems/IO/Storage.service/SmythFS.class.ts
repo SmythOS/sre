@@ -69,9 +69,9 @@ export class SmythFS {
 
     private constructor(private storage: StorageConnector, private cache: CacheConnector) {
         //SmythFS cannot be used without SRE
-        if (!ConnectorService.ready) {
-            throw new Error('SRE not available');
-        }
+        // if (!ConnectorService.ready) {
+        //     throw new Error('SRE not available');
+        // }
 
         // Use centralized hash generation method
         this.hash = SmythFS.generateInstanceHash(this.storage.name, this.cache.name);
@@ -112,7 +112,6 @@ export class SmythFS {
 
         return data ? this.toBuffer(data) : null;
     }
-
 
     public async getMetadata(uri: string, candidate?: IAccessCandidate) {
         const smythURI = await this.URIParser(uri);

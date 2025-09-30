@@ -266,6 +266,11 @@ export class LLMInstance extends SDKObject {
             candidate: this._candidate,
         };
 
-        return new Chat(chatOptions, model);
+        if (!chatOptions.model) {
+            chatOptions.model = model;
+        }
+        return new Chat(chatOptions, undefined, {
+            baseUrl: chatOptions.baseUrl,
+        });
     }
 }

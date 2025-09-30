@@ -40,7 +40,7 @@ export type PineconeConfig = {
     /**
      * The embeddings model to use
      */
-    embeddings: TEmbeddings;
+    embeddings?: TEmbeddings;
 };
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
@@ -72,6 +72,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
+        if (!_settings.embeddings) {
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+        }
         if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
         if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
 

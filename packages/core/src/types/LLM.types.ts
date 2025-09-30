@@ -221,7 +221,7 @@ export type TLLMModel = {
         tokens: number;
         completionTokens: number;
     };
-    credentials?: TLLMCredentials;
+    credentials?: TLLMCredentials | TLLMCredentials[];
 
     //models can come with predefined params
     //this can also be used to pass a preconfigured model object
@@ -268,6 +268,7 @@ export const BuiltinLLMProviders = {
     VertexAI: 'VertexAI',
     xAI: 'xAI',
     Perplexity: 'Perplexity',
+    Ollama: 'Ollama',
 } as const;
 // Base provider type
 export type TBuiltinLLMProvider = (typeof BuiltinLLMProviders)[keyof typeof BuiltinLLMProviders];

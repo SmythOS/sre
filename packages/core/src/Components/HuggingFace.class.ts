@@ -150,7 +150,7 @@ export class HuggingFace extends Component {
                             const binaryFile = BinaryInput.from(value, undefined, undefined, AccessCandidate.agent(agentId));
                             // const buffer = await binaryFile.readData(AccessCandidate.agent(agentId));
                             const buffer = await binaryFile.getBuffer();
-                            const blob = new Blob([buffer]);
+                            const blob = new Blob([buffer as any]);
                             inputs[name] = blob;
                         } catch (error: any) {
                             return { _error: error?.message || JSON.stringify(error), _debug: logger.output };

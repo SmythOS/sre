@@ -47,6 +47,22 @@ export type ChatOptions = {
      * The maximum number of tokens to use for the output
      */
     maxOutputTokens?: number;
+
+    /**
+     * The model to use for the chat
+     */
+    model?: string | TLLMModel;
+
+    /**
+     * The base URL to use for tool calls
+     * this is useful if you are trying to call tools from a remote agent
+     */
+    baseUrl?: string;
+};
+
+export type PromptOptions = {
+    headers?: Record<string, string>;
+    concurrentCalls?: number;
 };
 
 export enum Scope {

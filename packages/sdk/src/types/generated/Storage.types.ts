@@ -8,8 +8,9 @@ import { Scope } from '../SDKTypes';
 
 // Define storage provider settings mapping
 export type TStorageProviderSettings = {
-    LocalStorage: LocalStorageConfig
-    S3: S3Config
+    default: {} // Empty config for default provider
+    LocalStorage: LocalStorageConfig & {scope?: Scope | AccessCandidate}
+    S3: S3Config & {scope?: Scope | AccessCandidate}
 };
 
 // #region [ Handle extendable Storage Providers ] ================================================
@@ -23,6 +24,7 @@ export type TStorageProvider = TBuiltinStorageProvider | keyof IStorageProviders
 
 // For backward compatibility, export the built-in providers as enum-like object
 export const TStorageProvider: Record<TBuiltinStorageProvider, TBuiltinStorageProvider> = {
+    default: 'default',
     LocalStorage: 'LocalStorage',
     S3: 'S3',
 } as const;

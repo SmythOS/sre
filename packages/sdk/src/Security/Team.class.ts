@@ -18,14 +18,16 @@ export class Team {
      * When using storage from the agent, the agent id will be used as data owner
      *
      * **Supported providers and calling patterns:**
-     * - `agent.storage.LocalStorage()` - Local storage
-     * - `agent.storage.S3()` - S3 storage
+     * - `team.storage.default()` - Default storage provider
+     * - `team.storage.LocalStorage()` - Local storage
+     * - `team.storage.S3()` - S3 storage
      *
      * @example
      * ```typescript
      * // Direct storage access
-     * const local = agent.storage.LocalStorage();
-     * const s3 = agent.storage.S3();
+     * const defaultStorage = team.storage.default();
+     * const local = team.storage.LocalStorage();
+     * const s3 = team.storage.S3();
      * ```
      */
     private _storageProviders: TStorageProviderInstances;
@@ -46,8 +48,8 @@ export class Team {
         if (!this._vectorDBProviders) {
             this._vectorDBProviders = {} as TVectorDBProviderInstances;
             for (const provider of Object.values(TVectorDBProvider)) {
-                this._vectorDBProviders[provider] = (vectorDBSettings?: any) =>
-                    new VectorDBInstance(provider as TVectorDBProvider, vectorDBSettings, AccessCandidate.team(this.id));
+                this._vectorDBProviders[provider] = (namespace: string, vectorDBSettings?: any) =>
+                    new VectorDBInstance(provider as TVectorDBProvider, { ...vectorDBSettings, namespace }, AccessCandidate.team(this.id));
             }
         }
         return this._vectorDBProviders;

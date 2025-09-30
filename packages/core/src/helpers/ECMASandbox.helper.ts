@@ -1,11 +1,22 @@
 import 'ses';
 
-
-
-
 export function runJs(code: string) {
-    // Call lockdown to secure the environment
-    lockdown();
+    // Ensure SES lockdown happens only once per process
+    // and tolerate environments already locked down elsewhere
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const globalAny: any = globalThis as any;
+    if (globalAny.__SRE_SES_LOCKED_DOWN__ !== true) {
+        try {
+            lockdown();
+        } catch (err) {
+            const msg = String(err || '');
+            if (!(msg.includes('Already locked down') || msg.includes('SES_ALREADY_LOCKED_DOWN'))) {
+                throw err;
+            }
+        } finally {
+            globalAny.__SRE_SES_LOCKED_DOWN__ = true;
+        }
+    }
     try {
         // Endow the compartment with necessary APIs
         const compartment = new Compartment({
@@ -27,7 +38,6 @@ export function runJs(code: string) {
         console.error(error);
         throw error;
     }
-
 }
 
 function getParametersString(parameters: string[], inputs: Record<string, any>) {
@@ -49,6 +59,6 @@ export function generateExecutableCode(code: string, parameters: string[], input
         const result = await main(${getParametersString(parameters, inputs)});
         return result;
     })();
-    `
+    `;
     return executableCode;
 }
