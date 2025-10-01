@@ -94,6 +94,7 @@ export class AWSLambdaCode extends CodeConnector {
     public async execute(acRequest: AccessRequest, codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
         try {
             const agentId = acRequest.candidate.id;
+            console.log('Executing code for agentId: ', agentId)
             const functionName = getLambdaFunctionName(agentId, codeUID);
             let lambdaResponse;
             try {
