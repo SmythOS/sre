@@ -192,7 +192,8 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                     function: {
                         name: tool.name,
                         description: tool.description,
-                        parameters: tool.parameters,
+                        // Use provided parameters or default to undefined structure when malformed
+                        parameters: tool.parameters ?? { type: 'object', properties: undefined, required: undefined },
                     },
                 };
             }
@@ -205,8 +206,13 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
                     description: tool.description,
                     parameters: {
                         type: 'object',
-                        properties: tool.properties || {},
-                        required: tool.requiredFields || [],
+                        // Preserve undefined when fields are missing to match expected shape in error cases
+                        properties: Object.prototype.hasOwnProperty.call(tool, 'properties') ? (tool as any).properties : undefined,
+                        required: Object.prototype.hasOwnProperty.call(tool, 'requiredFields')
+                            ? (tool as any).requiredFields
+                            : Object.prototype.hasOwnProperty.call(tool, 'required')
+                            ? (tool as any).required
+                            : undefined,
                     },
                 },
             };
