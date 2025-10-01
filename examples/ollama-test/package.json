@@ -1,0 +1,16 @@
+{
+    "name": "ollama-test",
+    "private": true,
+    "type": "module",
+    "scripts": {
+      "start": "tsx src/agent.ts",
+      "start:llm": "tsx src/llm.ts",
+      "start:tools": "tsx src/tools.ts"
+    },
+    "dependencies": {
+      "@smythos/sdk": "workspace:*"
+    },
+    "devDependencies": {
+      "tsx": "^4.19.2"
+    }
+  }

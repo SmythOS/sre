@@ -174,6 +174,7 @@ export * from './subsystems/LLMManager/LLM.service/connectors/Bedrock.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Echo.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/GoogleAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Groq.class';
+export * from './subsystems/LLMManager/LLM.service/connectors/Ollama.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/Perplexity.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/VertexAI.class';
 export * from './subsystems/LLMManager/LLM.service/connectors/xAI.class';

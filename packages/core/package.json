@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sre",
-    "version": "1.5.75",
+    "version": "1.6.1",
     "description": "Smyth Runtime Environment",
     "author": "Alaa-eddine KADDOURI",
     "license": "MIT",
@@ -95,6 +95,7 @@
         "mime": "^4.0.3",
         "mysql2": "^3.11.3",
         "oauth-1.0a": "^2.2.6",
+        "ollama": "^0.6.0",
         "openai": "^5.12.2",
         "p-limit": "^6.1.0",
         "qs": "^6.13.0",

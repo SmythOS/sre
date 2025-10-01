@@ -19,6 +19,7 @@ export default class AgentCmd extends Command {
 
     static override examples = [
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat',
+        '<%= config.bin %> <%= command.id %> ./myagent.smyth --chat --mode planner',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --prompt "What is the weather in Tokyo?"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --skill ask question="who are you"',
         '<%= config.bin %> <%= command.id %> ./myagent.smyth --mcp sse',
@@ -75,6 +76,15 @@ export default class AgentCmd extends Command {
             helpValue: '<vault-path>',
             helpLabel: '--vault',
             multiple: false,
+        }),
+
+        mode: Flags.string({
+            char: 'm',
+            description: 'Set the agent execution mode\nExample: sre ./myagent.smyth --chat --mode planner\n\n ',
+            helpValue: '<mode>',
+            helpLabel: '--mode',
+            options: ['default', 'planner'],
+            default: 'default',
         }),
     };
 
@@ -201,6 +211,7 @@ export default class AgentCmd extends Command {
             promptModel,
             vault: vaultPath || null,
             models: modelsPath || null,
+            mode: flags.mode || 'default',
         };
         this.log(chalk.gray(`   Flags: ${JSON.stringify(allFlags, null, 2).replace(/\n/g, '\n          ')}`));
 

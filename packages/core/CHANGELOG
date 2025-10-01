@@ -5,6 +5,22 @@ All notable changes to the SmythOS CORE Runtime Engine will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0]
+
+### Features
+
+-   Add Memory Components
+-   Add Milvus VectorDB Connector
+-   Add support to Google embeddings
+-   Add support to OpenAI responses API
+-   Agent Runtime optimizations : better memory management + stability fixes
+
+### Code and tooling
+
+-   Added multiple unit tests for a better code coveragge
+-   Updated dependencies
+-   Updated .cursor/rules/sre-ai-rules.mdc to enhance the qualty of AI based contributions
+
 ## [v1.5.60]
 
 ### Features
@@ -55,16 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Moved to a monorepo structure
 -   Implemented an SDK that provides an abstracted interface for all SmythOS components
 -   Implemented a CLI to help running agents and scaffolding SDK and SRE projects along
-
-## [v1.4.5]
-
-### Features
-
--   New connectors : JSON Account connector, RAMVec vectordb, localStorage
--   Conversation manager: better handling of agent chats
--   logger becomes a connector
--   Add support for usage reporting
--   LLM : Refactored and simplified LLM Connector interface
 
 ## [v1.4.0]
 

@@ -17,12 +17,24 @@ async function main() {
         //and then pass it to the agent
         //this will tell the agent to use the local model
 
-        //This example was tested with LM Studio and gpt-oss-20b model
-        model: Model.OpenAI('openai/gpt-oss-20', {
-            baseURL: 'http://127.0.0.1:1234/v1',
+        //This example was tested with LM Studio and gpt-oss-20b model usig the following config
+        // model: Model.OpenAI('openai/gpt-oss-20', {
+        //     baseURL: 'http://127.0.0.1:1234/v1',
+        //     inputTokens: 4096,
+        //     outputTokens: 2048,
+        // }),
+
+        //And Ollama
+
+        //If you want to use Ollama provider (Ollama app) uncomment the following config
+        model: Model.Ollama('gpt-oss', {
+            baseURL: 'http://localhost:11434/api/',
             inputTokens: 4096,
             outputTokens: 2048,
         }),
+
+        //If you want to use OpenAI provider (e.g LM Studio)
+        // model: Model.OpenAI('openai/gpt-oss', { baseURL: 'http://127.0.0.1:1234/v1' }),
     });
     agent.addSkill({
         name: 'SearchCoin',

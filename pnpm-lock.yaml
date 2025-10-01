@@ -17,6 +17,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
       vite-tsconfig-paths:
         specifier: ^4.3.2
         version: 4.3.2(typescript@5.8.3)(vite@6.3.5(@types/node@22.15.31)(jiti@2.4.2)(terser@5.41.0)(tsx@4.19.4)(yaml@2.8.0))
@@ -279,6 +282,9 @@ importers:
       oauth-1.0a:
         specifier: ^2.2.6
         version: 2.2.6
+      ollama:
+        specifier: ^0.6.0
+        version: 0.6.0
       openai:
         specifier: ^5.12.2
         version: 5.12.2(ws@8.18.2(bufferutil@4.0.9))(zod@3.25.56)
@@ -3956,6 +3962,9 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  ollama@0.6.0:
+    resolution: {integrity: sha512-FHjdU2Ok5x2HZsxPui/MBJZ5J+HzmxoWYa/p9wk736eT+uAhS8nvIICar5YgwlG5MFNjDR6UA5F3RSKq+JseOA==}
+
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
     engines: {node: '>= 0.8'}
@@ -5069,6 +5078,9 @@ packages:
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
+
+  whatwg-fetch@3.6.20:
+    resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -10031,6 +10043,10 @@ snapshots:
       - aws-crt
       - supports-color
 
+  ollama@0.6.0:
+    dependencies:
+      whatwg-fetch: 3.6.20
+
   on-finished@2.4.1:
     dependencies:
       ee-first: 1.1.1
@@ -11192,6 +11208,8 @@ snapshots:
   web-streams-polyfill@4.0.0-beta.3: {}
 
   webidl-conversions@3.0.1: {}
+
+  whatwg-fetch@3.6.20: {}
 
   whatwg-url@5.0.0:
     dependencies:
