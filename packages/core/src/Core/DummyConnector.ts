@@ -1,10 +1,11 @@
 import { Logger } from '../helpers/Log.helper';
 import { getFormattedStackTrace, printStackTrace } from '../utils';
+import { TConnectorService } from '../types/SRE.types';
 
 /**
  * DummyConnector is a placeholder for unimplemented connectors, it logs a warning when a method is called in order to help developers identify missing connectors
  */
-export const DummyConnector: any = (name: string) => {
+export const DummyConnector: any = (name: TConnectorService) => {
     const logger = Logger(`DummyConnector<${name}>`);
     return new Proxy(
         {},

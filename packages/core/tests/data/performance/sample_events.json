@@ -1,0 +1,62 @@
+{
+    "events": [
+        {
+            "id": "event-1",
+            "timestamp": 1695686400000,
+            "type": "component_start",
+            "source": {
+                "agentId": "test-agent",
+                "componentName": "LLMAssistant",
+                "sessionId": "session-1"
+            },
+            "payload": {},
+            "processing": {
+                "latency": 0,
+                "sequenceNumber": 1
+            }
+        },
+        {
+            "id": "event-2",
+            "timestamp": 1695686401500,
+            "type": "component_end",
+            "source": {
+                "agentId": "test-agent",
+                "componentName": "LLMAssistant",
+                "sessionId": "session-1"
+            },
+            "payload": {
+                "metric": {
+                    "componentName": "LLMAssistant",
+                    "timing": {
+                        "total": 1500
+                    }
+                }
+            },
+            "processing": {
+                "latency": 5,
+                "sequenceNumber": 2
+            }
+        },
+        {
+            "id": "event-3",
+            "timestamp": 1695686402000,
+            "type": "bottleneck_detected",
+            "source": {
+                "agentId": "test-agent",
+                "componentName": "LLMAssistant",
+                "sessionId": "session-1"
+            },
+            "payload": {
+                "bottleneck": {
+                    "type": "llm_overprovisioning",
+                    "severity": "medium",
+                    "description": "High token usage detected"
+                }
+            },
+            "processing": {
+                "latency": 10,
+                "sequenceNumber": 3
+            }
+        }
+    ]
+}
