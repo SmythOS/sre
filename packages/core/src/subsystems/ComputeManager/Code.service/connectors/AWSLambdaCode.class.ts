@@ -8,8 +8,9 @@ import { execSync } from 'child_process';
 import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getCurrentEnvironmentVariables, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, getSortedObjectValues, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { Logger } from '@sre/helpers/Log.helper';
-
+const LAMBDA_ROLE_PROPAGATION_ERROR = 'The role defined for the function cannot be assumed by Lambda.';
 const console = Logger('AWSLambda');
+import { delay } from '@sre/utils';
 
 export class AWSLambdaCode extends CodeConnector {
     public name = 'AWSLambda';
@@ -94,8 +95,33 @@ export class AWSLambdaCode extends CodeConnector {
         try {
             const agentId = acRequest.candidate.id;
             const functionName = getLambdaFunctionName(agentId, codeUID);
-
-            const lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
+            let lambdaResponse;
+            try {
+                lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
+            } catch (error: any) {
+                console.log('Error message: ', error.message)
+                // Special case for role propagation error
+                if (error.message.includes(LAMBDA_ROLE_PROPAGATION_ERROR)) {
+                    let retryCount = 0;
+                    while (retryCount < 3) {
+                        try {
+                            await delay(5000); // wait for 5 seconds before retrying
+                            console.log('Retrying ... ' + retryCount + 1)
+                            lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
+                            break;
+                        } catch (error: any) {
+                            console.log('Error message: ', error.message)
+                            if (error.message.includes(LAMBDA_ROLE_PROPAGATION_ERROR)) {
+                                retryCount++;
+                            } else {
+                                throw error;
+                            }
+                        }
+                    }
+                } else {
+                    throw error;
+                }
+            }
             const executionTime = lambdaResponse.executionTime;
             await updateDeployedCodeTTL(agentId, codeUID, cacheTTL);
             console.debug(
