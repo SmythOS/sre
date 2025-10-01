@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@google/generative-ai';
+import { FunctionCallingMode, ModelParams, GenerateContentRequest } from '@google/genai';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { type models } from '@sre/LLMManager/models';

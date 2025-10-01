@@ -3,8 +3,8 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/generative-ai';
-import { GoogleAIFileManager, FileState } from '@google/generative-ai/server';
+import { GoogleGenerativeAI, ModelParams, GenerationConfig, GenerateContentRequest, UsageMetadata, FunctionCallingMode } from '@google/genai';
+import { GoogleAIFileManager, FileState } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
