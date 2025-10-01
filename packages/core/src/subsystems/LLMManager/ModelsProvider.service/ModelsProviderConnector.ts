@@ -1,4 +1,6 @@
+import { USER_CUSTOM_MODELS_SETTING_KEY, ENTERPRISE_MODELS_SETTING_KEY } from '@sre/constants';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { LocalCache } from '@sre/helpers/LocalCache.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -6,7 +8,6 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TCustomLLMModel, TLLMCredentials, TLLMModel, TLLMModelsList, TLLMProvider } from '@sre/types/LLM.types';
 import { customModels } from '../custom-models';
-import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
@@ -236,17 +237,22 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         return models?.[modelId]?.provider || models?.[model as string]?.provider || models?.[modelId]?.llm || models?.[model as string]?.llm;
     }
     protected async getCustomModels(candidate: IAccessCandidate): Promise<Record<string, any>> {
-        const models = {};
-        const settingsKey = 'custom-llm';
+        const enterpriseModels = await this.getEnterpriseModels(candidate);
+        const userCustomModels = await this.getUserCustomModels(candidate);
 
+        return { ...enterpriseModels, ...userCustomModels };
+    }
+
+    private async getEnterpriseModels(candidate: IAccessCandidate) {
         try {
+            const models = {};
             const accountConnector = ConnectorService.getAccountConnector();
             const team = await accountConnector.requester(candidate as AccessCandidate).getTeam();
 
-            const teamSettings = await accountConnector.team(team).getTeamSetting(settingsKey);
-            const savedCustomModelsData = JSON.parse(teamSettings || '{}') as Record<string, any>;
+            const modelsSetting = await accountConnector.team(team).getTeamSetting(ENTERPRISE_MODELS_SETTING_KEY);
+            const modelEntries = JSON.parse(modelsSetting || '{}') as Record<string, any>;
 
-            for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
+            for (const [entryId, entry] of Object.entries(modelEntries)) {
                 const foundationModel = entry.settings.foundationModel;
                 const customModel = entry.settings.customModel;
                 const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
@@ -296,7 +302,40 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             }
 
             return models;
-        } catch (error) {
+        } catch {
+            return {};
+        }
+    }
+
+    private async getUserCustomModels(candidate: IAccessCandidate) {
+        try {
+            const models = {};
+            const accountConnector = ConnectorService.getAccountConnector();
+            const team = await accountConnector.requester(candidate as AccessCandidate).getTeam();
+
+            const modelsSetting = await accountConnector.team(team).getTeamSetting(USER_CUSTOM_MODELS_SETTING_KEY);
+            const modelEntries = JSON.parse(modelsSetting || '{}') as Record<string, any>;
+
+            for (const [entryId, entry] of Object.entries(modelEntries)) {
+                models[entry.name] = {
+                    label: entry.name,
+                    modelId: entry?.modelId,
+                    provider: entry.provider,
+                    features: entry?.features || [],
+                    tags: Array.isArray(entry?.tags) ? ['Custom', ...entry?.tags] : ['Custom'],
+                    tokens: entry?.contextWindow ?? 4096,
+                    completionTokens: entry?.maxOutputTokens ?? 4096,
+                    enabled: true,
+
+                    id: entryId,
+                    name: entry.name,
+                    isUserCustomLLM: true,
+                    credentials: entry.credentials,
+                };
+            }
+
+            return models;
+        } catch {
             return {};
         }
     }
