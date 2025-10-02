@@ -73,7 +73,6 @@ export class AWSLambdaCode extends CodeConnector {
             const zipFilePath = await zipCode(directory);
             await createOrUpdateLambdaFunction(functionName, zipFilePath, this.awsConfigs, currentEnvVariables);
             await setDeployedCodeHash(agentId, codeUID, codeHash);
-            console.debug('Lambda function updated successfully!');
             return {
                 id: functionName,
                 runtime: config.runtime,
@@ -94,35 +93,8 @@ export class AWSLambdaCode extends CodeConnector {
     public async execute(acRequest: AccessRequest, codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
         try {
             const agentId = acRequest.candidate.id;
-            console.debug('Executing code for agentId: ', agentId)
             const functionName = getLambdaFunctionName(agentId, codeUID);
-            let lambdaResponse;
-            try {
-                lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
-            } catch (error: any) {
-                console.error('Error message: ', error.message)
-                // Special case for role propagation error
-                if (error.message.includes(LAMBDA_ROLE_PROPAGATION_ERROR)) {
-                    let retryCount = 0;
-                    while (retryCount < 3) {
-                        try {
-                            await delay(5000); // wait for 5 seconds before retrying
-                            console.log('Retrying ... ' + retryCount + 1)
-                            lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
-                            break;
-                        } catch (error: any) {
-                            console.log('Error message: ', error.message)
-                            if (error.message.includes(LAMBDA_ROLE_PROPAGATION_ERROR)) {
-                                retryCount++;
-                            } else {
-                                throw error;
-                            }
-                        }
-                    }
-                } else {
-                    throw error;
-                }
-            }
+            const lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
             const executionTime = lambdaResponse.executionTime;
             await updateDeployedCodeTTL(agentId, codeUID, cacheTTL);
             console.debug(
