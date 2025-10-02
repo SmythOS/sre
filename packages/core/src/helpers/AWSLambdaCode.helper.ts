@@ -187,6 +187,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
                     });
                     const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
+                    console.debug('Role created successfully!');
                     await waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                     roleArn = roleResponse.Role.Arn;
                 } else {
@@ -208,7 +209,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                 MemorySize: 256,
                 ...(envVariables && Object.keys(envVariables).length ? { Environment: { Variables: envVariables } } : {}),
             };
-
+            console.debug('Creating function...');
             const functionCreateCommand = new CreateFunctionCommand(functionParams);
             await client.send(functionCreateCommand);
             console.debug('Function created successfully!');
@@ -237,18 +238,36 @@ function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: s
 
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
     return new Promise((resolve, reject) => {
-        try {
-            let interval = setInterval(async () => {
+        let attempts = 0;
+        const maxAttempts = 5; // 5 attempts * 2 seconds = 10 seconds max wait
+
+        const interval = setInterval(async () => {
+            try {
+                attempts++;
                 const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
                 const roleResponse = await client.send(getRoleCommand);
-                if (roleResponse.Role.AssumeRolePolicyDocument) {
+
+                // Check if role exists and has assume role policy document
+                if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
                     clearInterval(interval);
-                    return resolve(true);
+                    // Additional wait to ensure trust policy is fully propagated
+                    setTimeout(() => resolve(true), 2000);
+                    return;
                 }
-            }, 7000);
-        } catch (error) {
-            return false;
-        }
+
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    reject(new Error(`Role ${roleName} did not become available within the expected time`));
+                    return;
+                }
+            } catch (error) {
+                if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    reject(error);
+                    return;
+                }
+            }
+        }, 2000); // Check every 2 seconds
     });
 }
 
