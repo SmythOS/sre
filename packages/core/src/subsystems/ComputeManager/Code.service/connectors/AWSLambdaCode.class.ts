@@ -8,9 +8,7 @@ import { execSync } from 'child_process';
 import { cacheTTL, createOrUpdateLambdaFunction, generateCodeHash, generateLambdaCode, getCurrentEnvironmentVariables, getDeployedCodeHash, getDeployedFunction, getLambdaFunctionName, getSortedObjectValues, invokeLambdaFunction, setDeployedCodeHash, updateDeployedCodeTTL, validateAsyncMainFunction, zipCode } from '@sre/helpers/AWSLambdaCode.helper';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { Logger } from '@sre/helpers/Log.helper';
-const LAMBDA_ROLE_PROPAGATION_ERROR = 'The role defined for the function cannot be assumed by Lambda.';
 const console = Logger('AWSLambda');
-import { delay } from '@sre/utils';
 
 export class AWSLambdaCode extends CodeConnector {
     public name = 'AWSLambda';
@@ -73,6 +71,7 @@ export class AWSLambdaCode extends CodeConnector {
             const zipFilePath = await zipCode(directory);
             await createOrUpdateLambdaFunction(functionName, zipFilePath, this.awsConfigs, currentEnvVariables);
             await setDeployedCodeHash(agentId, codeUID, codeHash);
+            console.debug('Lambda function updated successfully!');
             return {
                 id: functionName,
                 runtime: config.runtime,
@@ -94,6 +93,7 @@ export class AWSLambdaCode extends CodeConnector {
         try {
             const agentId = acRequest.candidate.id;
             const functionName = getLambdaFunctionName(agentId, codeUID);
+            
             const lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
             const executionTime = lambdaResponse.executionTime;
             await updateDeployedCodeTTL(agentId, codeUID, cacheTTL);

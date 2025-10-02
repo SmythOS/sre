@@ -187,7 +187,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
                     });
                     const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
-                    console.debug('Role created successfully!');
+                 
                     await waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                     roleArn = roleResponse.Role.Arn;
                 } else {
@@ -210,7 +210,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                 ...(envVariables && Object.keys(envVariables).length ? { Environment: { Variables: envVariables } } : {}),
             };
             // Retry mechanism for Lambda function creation with exponential backoff
-            await createLambdaFunctionWithRetry(client, functionParams, functionName);
+            await createLambdaFunction(client, functionParams);
             await verifyFunctionDeploymentStatus(functionName, client);
         }
     } catch (error) {
@@ -229,7 +229,7 @@ function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: s
     return client.send(updateFunctionConfigurationCommand);
 }
 
-async function createLambdaFunctionWithRetry(client: LambdaClient, functionParams: any, functionName: string, maxRetries: number = 5): Promise<void> {
+async function createLambdaFunction(client: LambdaClient, functionParams: any, maxRetries: number = 5): Promise<void> {
     let lastError: Error | null = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -261,12 +261,7 @@ async function createLambdaFunctionWithRetry(client: LambdaClient, functionParam
 
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
     return new Promise((resolve, reject) => {
-        let attempts = 0;
-        const maxAttempts = 5; // 5 attempts * 2 seconds = 10 seconds max wait
-
         const interval = setInterval(async () => {
-            try {
-                attempts++;
                 const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
                 const roleResponse = await client.send(getRoleCommand);
 
@@ -276,19 +271,6 @@ export async function waitForRoleDeploymentStatus(roleName, client): Promise<boo
                     setTimeout(() => resolve(true), 2000);
                     return;
                 }
-
-                if (attempts >= maxAttempts) {
-                    clearInterval(interval);
-                    reject(new Error(`Role ${roleName} did not become available within the expected time`));
-                    return;
-                }
-            } catch (error) {
-                if (attempts >= maxAttempts) {
-                    clearInterval(interval);
-                    reject(error);
-                    return;
-                }
-            }
         }, 2000); // Check every 2 seconds
     });
 }
