@@ -211,9 +211,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
             };
             // Retry mechanism for Lambda function creation with exponential backoff
             await createLambdaFunctionWithRetry(client, functionParams, functionName);
-            console.debug('Function created successfully!');
             await verifyFunctionDeploymentStatus(functionName, client);
-            console.debug('Function deployment status verified successfully!');
         }
     } catch (error) {
         throw error;
@@ -236,20 +234,17 @@ async function createLambdaFunctionWithRetry(client: LambdaClient, functionParam
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            console.debug(`Creating Lambda function... (attempt ${attempt}/${maxRetries})`);
             const functionCreateCommand = new CreateFunctionCommand(functionParams);
             await client.send(functionCreateCommand);
             return; // Success, exit the retry loop
         } catch (error) {
             lastError = error;
-            
             // Check if this is a role trust policy error
             if (error?.message?.includes('cannot be assumed by Lambda')) {
                 
                 if (attempt < maxRetries) {
                     // Exponential backoff: 2^attempt seconds (2, 4, 8, 16, 32 seconds)
                     const waitTime = Math.pow(2, attempt) * 1000;
-                    console.debug(`Lambda function creation failed due to role trust policy not ready. Retrying in ${waitTime/1000} seconds... (attempt ${attempt}/${maxRetries})`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                     continue;
                 }
@@ -278,9 +273,7 @@ export async function waitForRoleDeploymentStatus(roleName, client): Promise<boo
                 // Check if role exists and has assume role policy document
                 if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
                     clearInterval(interval);
-                    console.debug(`Role ${roleName} is ready, waiting additional 5 seconds for trust policy propagation...`);
-                    // Additional wait to ensure trust policy is fully propagated
-                    setTimeout(() => resolve(true), 5000);
+                    setTimeout(() => resolve(true), 2000);
                     return;
                 }
 
