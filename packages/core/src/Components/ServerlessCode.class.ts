@@ -34,7 +34,6 @@ export class ServerlessCode extends Component {
         const logger = this.createComponentLogger(agent, config);
         try {
             logger.debug(`=== Serverless Code Log ===`);
-            logger.debug('AWS Lambda Code')
             let Output: any = {};
             let _error = undefined;
             const componentInputs = agent.components[config.id]?.inputs || {};
@@ -78,7 +77,6 @@ export class ServerlessCode extends Component {
                 code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs))
             }
             // Deploy lambda function if it doesn't exist or the code hash is different
-            logger.debug('Deploying Code')
             await codeConnector.agent(agent.id)
                 .deploy(config.id, {
                     code,
@@ -88,7 +86,6 @@ export class ServerlessCode extends Component {
                 });
 
             try {
-                logger.debug('Executing Code')
                 const executionResponse = await codeConnector.agent(agent.id).execute(config.id, codeInputs);
                 const executionTime = executionResponse.executionTime;
                 logger.debug(
