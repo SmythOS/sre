@@ -211,11 +211,13 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
 
             const functionCreateCommand = new CreateFunctionCommand(functionParams);
             await client.send(functionCreateCommand);
+            console.debug('Function created successfully!');
             // console.log('Function ARN:', functionResponse.FunctionArn);
-            await verifyFunctionDeploymentStatus(functionName, client);
             // wait 500 ms to let the function trust policy be applied
             // it will only occur when the function is created for the first time
             await new Promise((resolve) => setTimeout(resolve, 500));
+            await verifyFunctionDeploymentStatus(functionName, client);
+            console.debug('Function deployment status verified successfully!');
         }
     } catch (error) {
         throw error;
