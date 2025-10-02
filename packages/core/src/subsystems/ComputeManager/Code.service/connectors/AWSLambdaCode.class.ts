@@ -94,13 +94,13 @@ export class AWSLambdaCode extends CodeConnector {
     public async execute(acRequest: AccessRequest, codeUID: string, inputs: Record<string, any>, config: CodeConfig): Promise<CodeExecutionResult> {
         try {
             const agentId = acRequest.candidate.id;
-            console.log('Executing code for agentId: ', agentId)
+            console.debug('Executing code for agentId: ', agentId)
             const functionName = getLambdaFunctionName(agentId, codeUID);
             let lambdaResponse;
             try {
                 lambdaResponse = JSON.parse(await invokeLambdaFunction(functionName, inputs, this.awsConfigs));
             } catch (error: any) {
-                console.log('Error message: ', error.message)
+                console.error('Error message: ', error.message)
                 // Special case for role propagation error
                 if (error.message.includes(LAMBDA_ROLE_PROPAGATION_ERROR)) {
                     let retryCount = 0;
