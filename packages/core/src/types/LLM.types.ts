@@ -206,6 +206,7 @@ export enum TLLMCredentials {
 export type TLLMModel = {
     llm?: string;
     isCustomLLM?: boolean;
+    isUserCustomLLM?: boolean;
     modelId?: string;
     tokens?: number;
     completionTokens?: number;
@@ -217,6 +218,7 @@ export type TLLMModel = {
     enabled?: boolean;
     alias?: string;
     baseURL?: string;
+    fallbackLLM?: string;
     keyOptions?: {
         tokens: number;
         completionTokens: number;
