@@ -382,8 +382,8 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                     provider: entry.provider,
                     features: entry?.features || [],
                     tags: Array.isArray(entry?.tags) ? ['Custom', ...entry?.tags] : ['Custom'],
-                    tokens: entry?.contextWindow ?? 4096,
-                    completionTokens: entry?.maxOutputTokens ?? 4096,
+                    tokens: entry?.contextWindow ?? 8192,
+                    completionTokens: entry?.maxOutputTokens ?? 8192,
                     enabled: true,
 
                     id: entryId,
