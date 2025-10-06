@@ -187,6 +187,7 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
                     });
                     const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
+                 
                     await waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                     roleArn = roleResponse.Role.Arn;
                 } else {
@@ -208,14 +209,9 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
                 MemorySize: 256,
                 ...(envVariables && Object.keys(envVariables).length ? { Environment: { Variables: envVariables } } : {}),
             };
-
-            const functionCreateCommand = new CreateFunctionCommand(functionParams);
-            await client.send(functionCreateCommand);
-            // console.log('Function ARN:', functionResponse.FunctionArn);
+            // Retry mechanism for Lambda function creation with exponential backoff
+            await createLambdaFunction(client, functionParams);
             await verifyFunctionDeploymentStatus(functionName, client);
-            // wait 500 ms to let the function trust policy be applied
-            // it will only occur when the function is created for the first time
-            await new Promise((resolve) => setTimeout(resolve, 500));
         }
     } catch (error) {
         throw error;
@@ -233,20 +229,49 @@ function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: s
     return client.send(updateFunctionConfigurationCommand);
 }
 
+async function createLambdaFunction(client: LambdaClient, functionParams: any, maxRetries: number = 5): Promise<void> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const functionCreateCommand = new CreateFunctionCommand(functionParams);
+            await client.send(functionCreateCommand);
+            return; // Success, exit the retry loop
+        } catch (error) {
+            lastError = error;
+            // Check if this is a role trust policy error
+            if (error?.message?.includes('cannot be assumed by Lambda')) {
+                
+                if (attempt < maxRetries) {
+                    // Exponential backoff: 2^attempt seconds (2, 4, 8, 16, 32 seconds)
+                    const waitTime = Math.pow(2, attempt) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    continue;
+                }
+            }
+            
+            // For other errors or if we've exhausted retries, throw immediately
+            throw error;
+        }
+    }
+    
+    // If we get here, all retries failed
+    throw lastError || new Error('Lambda function creation failed after all retry attempts');
+}
+
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
     return new Promise((resolve, reject) => {
-        try {
-            let interval = setInterval(async () => {
+        const interval = setInterval(async () => {
                 const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
                 const roleResponse = await client.send(getRoleCommand);
-                if (roleResponse.Role.AssumeRolePolicyDocument) {
+
+                // Check if role exists and has assume role policy document
+                if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
                     clearInterval(interval);
-                    return resolve(true);
+                    setTimeout(() => resolve(true), 2000);
+                    return;
                 }
-            }, 7000);
-        } catch (error) {
-            return false;
-        }
+        }, 2000); // Check every 2 seconds
     });
 }
 
