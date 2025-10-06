@@ -114,7 +114,7 @@ export class AgentProcess {
             this.agent.setCallback(callback);
         }
 
-        const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/api\/(.+)?)/);
+        const pathMatches = request.path.match(/(^\/v[0-9]+\.[0-9]+?)?(\/(api|trigger)\/(.+)?)/);
         if (!pathMatches || !pathMatches[2]) {
             return { status: 404, data: { error: 'Endpoint not found' } };
         }
@@ -123,46 +123,6 @@ export class AgentProcess {
         const result: any = await this.agent.process(endpointPath, input).catch((error) => ({ error: error.message }));
 
         return { data: result };
-    }
-
-    public async trigger(triggerId: string, triggerData: Record<string, any>) {
-        await this.ready();
-        if (!this.agent) throw new Error('Failed to load agent');
-
-        const endpoints = this.agent.data.components.filter((c) => c.name == 'APIEndpoint' /*&& c.data?.listeners*/);
-
-        console.log('endpoints', endpoints);
-        const promises = [];
-        for (const endpoint of endpoints) {
-            endpoint.data.listeners = 'gmail'; //hardcoded for testing
-            const listeners = typeof endpoint.data.listeners === 'string' ? endpoint.data.listeners.split(',') : endpoint.data.listeners;
-
-            if (listeners.includes(triggerId)) {
-                //map input values
-
-                const agentInput = {};
-                for (let input of endpoint.inputs) {
-                    //agentInput[input.name] = TemplateString(input.triggerData).parse(triggerData).result;
-                    agentInput[input.name] = TemplateString(input.defaultVal).parse(triggerData).result; //testing with defaultVal first
-                }
-
-                const agentProcessParams: TAgentProcessParams = {
-                    method: endpoint.data.method,
-                    path: `/api/${endpoint.data.endpoint}`,
-                    body: endpoint.data.method === 'POST' ? agentInput : undefined,
-                    query: endpoint.data.method === 'GET' ? agentInput : undefined,
-                    headers: {
-                        'X-Trigger-ID': triggerId,
-                    },
-                };
-                //const result: any = await this.agent.process(endpoint.data.path, triggerData);
-                //return { data: result };
-                promises.push(agentProcessParams);
-            }
-        }
-        //const results = await Promise.all(promises);
-        //return { data: results };
-        return promises;
     }
 
     public reset() {

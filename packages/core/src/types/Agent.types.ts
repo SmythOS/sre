@@ -29,6 +29,7 @@ export interface IAgent {
     sessionTag: any;
     callerSessionId: any;
     apiBasePath: any;
+    triggerBasePath: any;
     agentRuntime: AgentRuntime | any;
     usingTestDomain: any;
     domain: any;

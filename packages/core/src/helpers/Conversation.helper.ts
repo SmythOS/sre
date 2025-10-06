@@ -786,19 +786,24 @@ export class Conversation extends EventEmitter {
             const _arguments: any = {};
             for (let arg of openApiArgs) {
                 _arguments[arg.name] = arg.schema;
-                if (tool.inputs && arg.schema.properties) {
-                    const required = [];
-                    for (let prop in arg.schema.properties) {
-                        const input = tool.inputs?.find((i) => i.name === prop);
-                        if (!arg.schema.properties[prop].description) {
-                            arg.schema.properties[prop].description = input?.description;
+                if (tool.inputs) {
+                    if (arg.schema.properties) {
+                        const required = [];
+                        for (let prop in arg.schema.properties) {
+                            const input = tool.inputs?.find((i) => i.name === prop);
+                            if (!arg.schema.properties[prop].description) {
+                                arg.schema.properties[prop].description = input?.description;
+                            }
+                            if (!input?.optional) {
+                                required.push(prop);
+                            }
                         }
-                        if (!input?.optional) {
-                            required.push(prop);
+                        if (required.length) {
+                            arg.schema.required = required;
                         }
-                    }
-                    if (required.length) {
-                        arg.schema.required = required;
+                    } else {
+                        const input = tool.inputs?.find((i) => i.name === arg.name);
+                        arg.schema.description = input?.description;
                     }
                 }
             }

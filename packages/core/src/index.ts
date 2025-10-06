@@ -146,6 +146,8 @@ export * from './subsystems/Security/AccessControl/AccessRequest.class';
 export * from './subsystems/Security/AccessControl/ACL.class';
 export * from './subsystems/Security/Account.service/AccountConnector';
 export * from './subsystems/Security/Account.service/index';
+export * from './subsystems/Security/Credentials/Credentials.class';
+export * from './subsystems/Security/Credentials/ManagedOAuth2Credentials.class';
 export * from './subsystems/Security/ManagedVault.service/index';
 export * from './subsystems/Security/ManagedVault.service/ManagedVaultConnector';
 export * from './subsystems/Security/Vault.service/index';

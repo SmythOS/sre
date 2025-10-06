@@ -204,8 +204,12 @@ export class Agent implements IAgent {
         const sessionTags = this?.agentRequest?.headers['x-session-tag'];
         if (sessionTags) this.sessionTag += this.sessionTag ? `,${sessionTags}` : sessionTags;
 
-        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?${this.apiBasePath}\/(.*)`);
-        if (this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) || this.agentRequest?.path?.match(regex)) {
+        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?(${this.apiBasePath}|${this.triggerBasePath})\/(.*)`);
+        if (
+            this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) ||
+            this.agentRequest?.path?.startsWith(`${this.triggerBasePath}/`) ||
+            this.agentRequest?.path?.match(regex)
+        ) {
             //we only need runtime context for API calls
             this.agentRuntime = new AgentRuntime(this);
             this.callerSessionId =
@@ -272,7 +276,7 @@ export class Agent implements IAgent {
         });
 
         const method = this.agentRequest.method.toUpperCase();
-        const endpoint = this.endpoints[endpointPath]?.[method];
+        const endpoint = this.endpoints[endpointPath]?.[method] || this.triggers[endpointPath];
 
         //first check if this is a debug session, and return debug result if it's the case
         if (this.agentRuntime.debug) {

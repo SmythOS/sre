@@ -1,84 +1,306 @@
-import Joi from 'joi';
-
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { ManagedOAuth2Credentials } from '@sre/Security/Credentials/ManagedOAuth2Credentials.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
+import { findAll, innerText, isTag, removeElement } from 'domutils';
+import { parseDocument } from 'htmlparser2';
 import { Trigger } from './Trigger.class';
-
+export type GmailTriggerAttachment = {
+    filename: string;
+    mimeType: string;
+    size: number;
+    attachmentId: string;
+};
+export type GmailTriggerMessage = {
+    id: string;
+    threadId: string;
+    labelIds: string[];
+    snippet: string;
+    sizeEstimate: number;
+    internalDate: string;
+    headers: {
+        from: string;
+        to: string;
+        cc: string;
+        bcc: string;
+        subject: string;
+        date: string;
+        messageId: string;
+    };
+    body: {
+        text: string;
+        html: string;
+    };
+    attachments: GmailTriggerAttachment[];
+    isUnread: true;
+};
 export class GmailTrigger extends Trigger {
-    init() {}
-    async process(input, config, agent: Agent) {
-        await super.process(input, config, agent);
-        let Payload = {};
-        let Result;
-        let _temp_result;
-        let _error = null;
-        let _in_progress = true;
+    async collectPayload(input, config, agent: Agent) {
+        const credentialsKey = config?.data?.oauth_cred_id;
+        const agentCandidate = AccessCandidate.agent(agent.id);
+        const oauth2Credentials = await ManagedOAuth2Credentials.load(credentialsKey, agentCandidate);
+
+        console.log(
+            oauth2Credentials.accessToken,
+            oauth2Credentials.refreshToken,
+            oauth2Credentials.expiresIn,
+            oauth2Credentials.scope,
+            oauth2Credentials.tokenUrl,
+            oauth2Credentials.service
+        );
+
+        await oauth2Credentials.refreshAccessToken();
+
+        const messages = await getMostRecentUnreadMessage(0, oauth2Credentials, 5);
+        console.log(messages);
 
         let inputArray = [
             {
                 message: {
-                    id: '123',
-                    subject: 'Test 1',
-                    body: 'Test 1',
+                    id: 'msg-123',
+                    subject: '## Test 1',
+                    body: '### Test 1',
                     from: 'test1@test.com',
                     to: 'test1@test.com',
                     date: '2021-01-01',
-                    threadId: '123',
+                    threadId: 'thread-123',
                 },
             },
             {
                 message: {
-                    id: '002',
-                    subject: 'Test 2',
-                    body: 'Test 2',
+                    id: 'msg-cmp002',
+                    subject: '## Test 2',
+                    body: '### Test 2',
                     from: 'test2@test.com',
                     to: 'test2@test.com',
                     date: '2021-01-01',
-                    threadId: '002',
+                    threadId: 'thread-002',
                 },
             },
         ];
+        return inputArray;
+    }
+}
 
-        const logger = this.createComponentLogger(agent, config);
-        logger.debug(`=== GmailTrigger Log ===`);
+/**
+ * Make an authenticated Gmail API request
+ */
+async function gmailApiRequest(endpoint, accessToken) {
+    const url = `https://www.googleapis.com/gmail/v1/users/me${endpoint}`;
 
-        const runtimeData = agent.agentRuntime.getRuntimeData(config.id);
-        const _ForEachData = runtimeData._LoopData || { parentId: config.id, loopIndex: 0, loopLength: inputArray.length };
+    try {
+        const result = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
+        const json = await result.json();
+        console.log(json);
+        return json;
+    } catch (error) {
+        throw new Error(`Gmail API request failed: ${error.message}`);
+    }
+}
 
-        logger.debug(`Loop: ${_ForEachData.loopIndex} / ${_ForEachData.loopLength}`);
-        delete _ForEachData.branches; //reset branches (the number of branches is calculated in CallComponent@Agent.class.ts )
+/**
+ * Get the most recent unread messages
+ */
+async function getMostRecentUnreadMessage(
+    retryCount = 0,
+    oauth2Credentials: ManagedOAuth2Credentials,
+    numMessages: number = 1,
+    excludeMessageId?: string
+) {
+    const MAX_RETRIES = 1; // Only retry once to prevent infinite loops
 
-        if (_ForEachData.result) {
-            _temp_result = _ForEachData.result;
-            logger.debug(`  => Loop Result : ${JSON.stringify(Payload, null, 2)}`);
-            logger.debug(`---------------------------------------------------`);
+    let accessToken = oauth2Credentials.accessToken;
+
+    // If no access token provided, or if requests fail, refresh it
+    if (!accessToken) {
+        accessToken = await oauth2Credentials.refreshAccessToken();
+    }
+
+    try {
+        console.log('Fetching unread messages...');
+
+        const collectedIds: string[] = [];
+        let pageToken: string | undefined = undefined;
+        let reachedBoundary = false;
+
+        while (collectedIds.length < numMessages && !reachedBoundary) {
+            const pageSize = Math.min(Math.max(numMessages, 1), 100);
+            const pageQuery = `/messages?q=is:unread&maxResults=${pageSize}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+            const listResponse = await gmailApiRequest(pageQuery, accessToken);
+
+            const messages = Array.isArray(listResponse.messages) ? listResponse.messages : [];
+            if (messages.length === 0) {
+                break;
+            }
+
+            for (const m of messages) {
+                if (excludeMessageId && m.id === excludeMessageId) {
+                    reachedBoundary = true;
+                    break;
+                }
+                collectedIds.push(m.id);
+                if (collectedIds.length >= numMessages) {
+                    break;
+                }
+            }
+
+            if (collectedIds.length >= numMessages || reachedBoundary || !listResponse.nextPageToken) {
+                break;
+            }
+            pageToken = listResponse.nextPageToken;
         }
 
-        Payload = inputArray[_ForEachData.loopIndex];
-
-        logger.debug(`  => Loop Data : ${JSON.stringify(Payload, null, 2)}`);
-
-        _in_progress = Payload !== undefined;
-        if (_in_progress) {
-            _ForEachData.loopIndex++;
+        if (collectedIds.length === 0) {
+            return [];
         }
-        _ForEachData._in_progress = _in_progress;
 
-        agent.agentRuntime.updateRuntimeData(config.id, { _LoopData: _ForEachData });
+        // Fetch full message details in parallel
+        const details = await Promise.all(collectedIds.map((id) => gmailApiRequest(`/messages/${id}?format=full`, accessToken)));
+        const parsed = details.map((d) => parseMessage(d));
+        return parsed;
+    } catch (error) {
+        // If token expired, try refreshing and retry once
+        if ((error.message.includes('401') || error.message.includes('unauthorized')) && retryCount < MAX_RETRIES) {
+            console.log('Access token expired, refreshing...');
+            try {
+                accessToken = await oauth2Credentials.refreshAccessToken();
+                return await getMostRecentUnreadMessage(retryCount + 1, oauth2Credentials, numMessages, excludeMessageId);
+            } catch (refreshError) {
+                throw new Error(`Authentication failed: ${refreshError.message}`);
+            }
+        }
 
-        // let Payload = {
-        //     message: {
-        //         id: '123',
-        //         subject: 'Test',
-        //         body: 'Test',
-        //         from: 'test@test.com',
-        //         to: 'test@test.com',
-        //         date: '2021-01-01',
-        //         threadId: '123',
-        //     },
-        // };
+        throw error;
+    }
+}
 
-        //return { Payload, _error, _debug: logger.output };
+/**
+ * Parse Gmail message into structured format
+ */
+function parseMessage(message) {
+    const headers: any = {};
+    const payload = message.payload || {};
 
-        return { Payload, Result, _temp_result, _error, _in_progress, _debug: logger.output };
+    // Extract headers
+    if (payload.headers) {
+        payload.headers.forEach((header) => {
+            headers[header.name.toLowerCase()] = header.value;
+        });
+    }
+
+    // Extract body content
+    let textBody = '';
+    let htmlBody = '';
+
+    function extractBody(part) {
+        if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+            textBody = Buffer.from(part.body.data, 'base64').toString('utf-8');
+        } else if (part.mimeType === 'text/html' && part.body && part.body.data) {
+            htmlBody = Buffer.from(part.body.data, 'base64').toString('utf-8');
+        }
+
+        if (part.parts) {
+            part.parts.forEach(extractBody);
+        }
+    }
+
+    if (payload.parts) {
+        payload.parts.forEach(extractBody);
+    } else if (payload.body && payload.body.data) {
+        // Single part message
+        if (payload.mimeType === 'text/plain') {
+            textBody = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        } else if (payload.mimeType === 'text/html') {
+            htmlBody = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        }
+    }
+
+    if (textBody && !htmlBody) {
+        htmlBody = textBody;
+    }
+
+    if (htmlBody && !textBody) {
+        textBody = htmlToPlainText(htmlBody);
+    }
+
+    // Get attachments info
+    const attachments = [];
+    function findAttachments(part) {
+        if (part.filename && part.filename.length > 0) {
+            attachments.push({
+                filename: part.filename,
+                mimeType: part.mimeType,
+                size: part.body ? part.body.size : 0,
+                attachmentId: part.body ? part.body.attachmentId : null,
+            });
+        }
+
+        if (part.parts) {
+            part.parts.forEach(findAttachments);
+        }
+    }
+
+    if (payload.parts) {
+        payload.parts.forEach(findAttachments);
+    }
+
+    return {
+        id: message.id,
+        threadId: message.threadId,
+        labelIds: message.labelIds || [],
+        snippet: message.snippet || '',
+        sizeEstimate: message.sizeEstimate || 0,
+        internalDate: message.internalDate ? new Date(parseInt(message.internalDate)).toISOString() : null,
+        headers: {
+            from: headers.from || '',
+            to: headers.to || '',
+            cc: headers.cc || '',
+            bcc: headers.bcc || '',
+            subject: headers.subject || '',
+            date: headers.date || '',
+            messageId: headers['message-id'] || '',
+        },
+        body: {
+            text: textBody,
+            html: htmlBody,
+        },
+        attachments: attachments,
+        isUnread: message.labelIds ? message.labelIds.includes('UNREAD') : false,
+    };
+}
+
+var populateChar = function (ch, amount) {
+    var result = '';
+    for (var i = 0; i < amount; i += 1) {
+        result += ch;
+    }
+    return result;
+};
+
+function htmlToPlainText(htmlText, _styleConfig?) {
+    try {
+        const document = parseDocument(String(htmlText));
+        const nodesToRemove = findAll((node) => isTag(node) && (node.name === 'script' || node.name === 'style'), document.children);
+        nodesToRemove.forEach((node) => removeElement(node));
+
+        let text = innerText(document);
+
+        text = text.replace(/\u00A0/g, ' ');
+        text = text.replace(/\r\n?/g, '\n');
+        text = text.replace(/\t+/g, ' ');
+        text = text.replace(/[ \t\f]+\n/g, '\n');
+        text = text.replace(/\n{3,}/g, '\n\n');
+        text = text.replace(/[ ]{2,}/g, ' ');
+        text = text.replace(/^\s+|\s+$/g, '');
+
+        if (text.length === 0 || text.lastIndexOf('\n') !== text.length - 1) {
+            text += '\n';
+        }
+        return text;
+    } catch (err) {
+        return String(htmlText);
     }
 }
