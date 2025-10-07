@@ -124,3 +124,6 @@ export const DEFAULT_SMYTHOS_LLM_PROVIDERS_SETTINGS = {
 };
 
 export const BUILT_IN_MODEL_PREFIX = 'smythos/';
+
+export const ENTERPRISE_MODELS_SETTING_KEY = 'custom-llm';
+export const USER_CUSTOM_MODELS_SETTING_KEY = 'user-custom-llm';

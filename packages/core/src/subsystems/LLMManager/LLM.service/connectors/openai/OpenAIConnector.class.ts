@@ -1,35 +1,33 @@
 import EventEmitter from 'events';
-import OpenAI from 'openai';
-import { toFile } from 'openai';
 import { encodeChat } from 'gpt-tokenizer';
+import OpenAI, { toFile } from 'openai';
 
 import { BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
+import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
-import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
 import {
-    TLLMParams,
-    ToolData,
-    TLLMMessageBlock,
-    TLLMToolResultMessageBlock,
-    TLLMMessageRole,
     APIKeySource,
-    ILLMRequestFuncParams,
-    TOpenAIRequestBody,
-    TLLMChatResponse,
-    ILLMRequestContext,
     BasicCredentials,
+    ILLMRequestContext,
+    ILLMRequestFuncParams,
+    TLLMChatResponse,
+    TLLMMessageBlock,
+    TLLMMessageRole,
     TLLMPreparedParams,
+    TLLMToolResultMessageBlock,
+    ToolData,
+    TOpenAIRequestBody,
 } from '@sre/types/LLM.types';
 
-import { LLMConnector } from '../../LLMConnector';
-import { SystemEvents } from '@sre/Core/SystemEvents';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { HandlerDependencies, TToolType } from './types';
-import { OpenAIApiInterfaceFactory, OpenAIApiInterface } from './apiInterfaces';
+import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { LLMConnector } from '../../LLMConnector';
+import { OpenAIApiInterface, OpenAIApiInterfaceFactory } from './apiInterfaces';
+import { HandlerDependencies } from './types';
 
 const logger = Logger('OpenAIConnector');
 
@@ -74,8 +72,6 @@ export class OpenAIConnector extends LLMConnector {
     protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
         const apiKey = (params.credentials as BasicCredentials)?.apiKey;
         const baseURL = params?.modelInfo?.baseURL;
-
-        if (!apiKey) throw new Error('Please provide an API key for OpenAI');
 
         const openai = new OpenAI({ baseURL, apiKey });
 
