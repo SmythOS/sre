@@ -1,18 +1,18 @@
-import _ from 'lodash';
-import { type OpenAI } from 'openai';
+import axios from 'axios';
+import { EventEmitter } from 'events';
 import { encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
+
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { LLMConnector } from './LLM.service/LLMConnector';
-import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageRole, TLLMModel, TLLMChatResponse } from '@sre/types/LLM.types';
-import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { TLLMParams } from '@sre/types/LLM.types';
+import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams } from '@sre/types/LLM.types';
+
+import { LLMConnector } from './LLM.service/LLMConnector';
+import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
 const console = Logger('LLMInference');
 
@@ -27,31 +27,113 @@ export class LLMInference {
     public static async getInstance(model: string | TLLMModel, candidate: AccessCandidate) {
         const modelsProvider: ModelsProviderConnector = ConnectorService.getModelsProviderConnector();
         if (!modelsProvider.valid) {
-            throw new Error(`Model provider Not available, cannot create LLM instance`);
+            throw new Error('Model provider not available, cannot create LLM instance');
         }
+
         const accountConnector = ConnectorService.getAccountConnector();
         const teamId = await accountConnector.requester(candidate).getTeam();
 
         const llmInference = new LLMInference();
         llmInference.teamId = teamId;
-
         llmInference.modelProviderReq = modelsProvider.requester(candidate);
 
-        const llmProvider = await llmInference.modelProviderReq.getProvider(model);
+        /**
+         * For user custom models,
+         * we need to verify the endpoint is reachable before use. If the custom LLM
+         * endpoint is down or unreachable, we fall back to a configured default model
+         * to ensure uninterrupted service.
+         */
+        const isCustomModel = await llmInference.modelProviderReq.isUserCustomLLM(model);
+        const resolvedModel = isCustomModel ? await llmInference.getResolvedModel(model) : model;
+
+        // Get the LLM connector for the resolved model
+        const llmProvider = await llmInference.modelProviderReq.getProvider(resolvedModel);
+
         if (llmProvider) {
             llmInference.llmConnector = ConnectorService.getLLMConnector(llmProvider);
         }
 
         if (!llmInference.llmConnector) {
-            console.error(`Model ${model} unavailable for team ${teamId}`);
+            console.error(`Model ${resolvedModel} unavailable for team ${teamId}`);
         }
 
-        llmInference.model = model;
+        llmInference.model = resolvedModel;
 
         return llmInference;
     }
 
     public static user(candidate: AccessCandidate): any {}
+
+    /**
+     * Resolves which custom LLM model to use by checking if it's reachable.
+     * If the custom LLM is unavailable, returns a fallback model.
+     * Note: This method should only be called for custom LLM models.
+     * @param customModel - The custom model to resolve
+     * @returns The resolved model (either the custom model or a fallback)
+     */
+    private async getResolvedModel(customModel: string | TLLMModel): Promise<string | TLLMModel> {
+        const baseURL = await this.modelProviderReq.getBaseURL(customModel);
+
+        // If no base URL configured, use fallback
+        if (!baseURL) {
+            console.warn(`No base URL configured for custom model ${customModel}, using fallback model`);
+            return await this.getFallbackModel(customModel);
+        }
+
+        // Check if the base URL is reachable
+        const isReachable = await this.isCustomLLMAvailable(baseURL);
+        if (!isReachable) {
+            return await this.getFallbackModel(customModel);
+        }
+
+        // Custom model is available, use it
+        return customModel;
+    }
+
+    /**
+     * Gets the fallback model for a custom model, or returns the custom model if no fallback exists.
+     * @param customModel - The custom model to get a fallback for
+     * @returns The fallback model if configured, otherwise the custom model
+     */
+    private async getFallbackModel(customModel: string | TLLMModel): Promise<string | TLLMModel> {
+        const fallbackModel = await this.modelProviderReq.getFallbackLLM(customModel);
+
+        if (fallbackModel) {
+            console.info(`Using fallback model: ${fallbackModel} instead of ${customModel}`);
+            return fallbackModel as string;
+        }
+
+        console.warn(`No fallback model configured for ${customModel}, using original model despite availability issues`);
+        return customModel;
+    }
+
+    /**
+     * Checks if a custom LLM endpoint is available by sending a HEAD request.
+     * @param baseURL - The base URL of the custom LLM endpoint
+     * @returns True if the endpoint is available, false otherwise
+     */
+    private async isCustomLLMAvailable(baseURL: string): Promise<boolean> {
+        try {
+            const response = await axios.head(baseURL, {
+                timeout: 5000, // 5 second timeout
+                validateStatus: (status: number) => status >= 200 && status < 500, // Don't throw on 4xx/5xx
+            });
+
+            const isSuccessful = response.status >= 200 && response.status < 300;
+
+            if (!isSuccessful) {
+                console.warn(`Custom LLM endpoint returned status ${response.status}, will use fallback model`);
+            }
+
+            return isSuccessful;
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+            console.warn(`Failed to reach custom LLM endpoint: ${errorMessage}, will use fallback model`);
+
+            return false;
+        }
+    }
 
     public get connector(): LLMConnector {
         return this.llmConnector;
@@ -65,7 +147,9 @@ export class LLMInference {
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this.model;
+
         params.messages = messages;
         params.files = files;
 
@@ -98,7 +182,9 @@ export class LLMInference {
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this.model;
+
         params.messages = messages;
         params.files = files;
 

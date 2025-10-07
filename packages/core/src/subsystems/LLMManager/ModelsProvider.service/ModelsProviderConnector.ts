@@ -1,4 +1,6 @@
+import { ENTERPRISE_MODELS_SETTING_KEY, USER_CUSTOM_MODELS_SETTING_KEY } from '@sre/constants';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { LocalCache } from '@sre/helpers/LocalCache.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
@@ -6,7 +8,6 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TCustomLLMModel, TLLMCredentials, TLLMModel, TLLMModelsList, TLLMProvider } from '@sre/types/LLM.types';
 import { customModels } from '../custom-models';
-import { LocalCache } from '@sre/helpers/LocalCache.helper';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
@@ -16,6 +17,9 @@ export interface IModelsProviderRequest {
     getModelInfo(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<TLLMModel>;
     getModelId(model: string | TLLMModel | TCustomLLMModel): Promise<string>;
     getProvider(model: string | TLLMModel | TCustomLLMModel): Promise<string>;
+    getFallbackLLM(model: string | TLLMModel | TCustomLLMModel): Promise<string | undefined>;
+    getBaseURL(model: string | TLLMModel | TCustomLLMModel): Promise<string | undefined>;
+    isUserCustomLLM(model: string | TLLMModel | TCustomLLMModel): Promise<boolean>;
     isStandardLLM(model: string | TLLMModel | TCustomLLMModel): Promise<boolean>;
     adjustMaxCompletionTokens(model: string | TLLMModel | TCustomLLMModel, maxCompletionTokens: number, hasAPIKey?: boolean): Promise<number>;
     getMaxContextTokens(model: string | TLLMModel | TCustomLLMModel, hasAPIKey?: boolean): Promise<number>;
@@ -95,6 +99,18 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             getProvider: async (model: string | TLLMModel | TCustomLLMModel) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
                 return this.getProvider(candidate.readRequest, teamModels, model);
+            },
+            getFallbackLLM: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                return this.getFallbackLLM(candidate.readRequest, teamModels, model);
+            },
+            getBaseURL: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                return this.getBaseURL(candidate.readRequest, teamModels, model);
+            },
+            isUserCustomLLM: async (model: string | TLLMModel | TCustomLLMModel) => {
+                const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
+                return this.isUserCustomLLM(candidate.readRequest, teamModels, model);
             },
             isStandardLLM: async (model: string | TLLMModel | TCustomLLMModel) => {
                 const teamModels = typeof model === 'string' ? await loadTeamModels() : {};
@@ -235,18 +251,67 @@ export abstract class ModelsProviderConnector extends SecureConnector {
 
         return models?.[modelId]?.provider || models?.[model as string]?.provider || models?.[modelId]?.llm || models?.[model as string]?.llm;
     }
-    protected async getCustomModels(candidate: IAccessCandidate): Promise<Record<string, any>> {
-        const models = {};
-        const settingsKey = 'custom-llm';
 
+    protected async getFallbackLLM(
+        acRequest: AccessRequest,
+        models: TLLMModelsList,
+        model: string | TLLMModel | TCustomLLMModel
+    ): Promise<string | undefined> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && 'fallbackLLM' in model) {
+            return model.fallbackLLM;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+        const modelId = await this.getModelId(acRequest, models, model);
+
+        return models?.[modelId]?.fallbackLLM || models?.[model as string]?.fallbackLLM;
+    }
+
+    protected async getBaseURL(
+        acRequest: AccessRequest,
+        models: TLLMModelsList,
+        model: string | TLLMModel | TCustomLLMModel
+    ): Promise<string | undefined> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && 'baseURL' in model) {
+            return model.baseURL;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+        const modelId = await this.getModelId(acRequest, models, model);
+
+        return models?.[modelId]?.baseURL || models?.[model as string]?.baseURL;
+    }
+
+    protected async isUserCustomLLM(acRequest: AccessRequest, models: TLLMModelsList, model: string | TLLMModel | TCustomLLMModel): Promise<boolean> {
+        //model can be passed directly, in which case we do not need to look it up in the models list
+        if (typeof model === 'object' && 'isUserCustomLLM' in model) {
+            return !!model.isUserCustomLLM;
+        }
+
+        //model can be passed as a string, in which case we need to look it up in the models list
+        const modelId = await this.getModelId(acRequest, models, model);
+
+        return !!(models?.[modelId]?.isUserCustomLLM || models?.[model as string]?.isUserCustomLLM);
+    }
+    protected async getCustomModels(candidate: IAccessCandidate): Promise<Record<string, any>> {
+        const enterpriseModels = await this.getEnterpriseModels(candidate);
+        const userCustomModels = await this.getUserCustomModels(candidate);
+
+        return { ...enterpriseModels, ...userCustomModels };
+    }
+
+    private async getEnterpriseModels(candidate: IAccessCandidate) {
         try {
+            const models = {};
             const accountConnector = ConnectorService.getAccountConnector();
             const team = await accountConnector.requester(candidate as AccessCandidate).getTeam();
 
-            const teamSettings = await accountConnector.team(team).getTeamSetting(settingsKey);
-            const savedCustomModelsData = JSON.parse(teamSettings || '{}') as Record<string, any>;
+            const modelsSetting = await accountConnector.team(team).getTeamSetting(ENTERPRISE_MODELS_SETTING_KEY);
+            const modelEntries = JSON.parse(modelsSetting || '{}') as Record<string, any>;
 
-            for (const [entryId, entry] of Object.entries(savedCustomModelsData)) {
+            for (const [entryId, entry] of Object.entries(modelEntries)) {
                 const foundationModel = entry.settings.foundationModel;
                 const customModel = entry.settings.customModel;
                 const supportsSystemPrompt = customModels[foundationModel]?.supportsSystemPrompt || entry.settings.supportsSystemPrompt;
@@ -296,7 +361,47 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             }
 
             return models;
-        } catch (error) {
+        } catch {
+            return {};
+        }
+    }
+
+    private async getUserCustomModels(candidate: IAccessCandidate) {
+        try {
+            const models = {};
+            const accountConnector = ConnectorService.getAccountConnector();
+            const team = await accountConnector.requester(candidate as AccessCandidate).getTeam();
+
+            const modelsSetting = await accountConnector.team(team).getTeamSetting(USER_CUSTOM_MODELS_SETTING_KEY);
+            const modelEntries = JSON.parse(modelsSetting || '{}') as Record<string, any>;
+
+            for (const [entryId, entry] of Object.entries(modelEntries)) {
+                models[entry.name] = {
+                    label: entry.name,
+                    modelId: entry?.modelId,
+                    provider: entry.provider,
+                    features: entry?.features || [],
+                    tags: Array.isArray(entry?.tags) ? ['Custom', ...entry?.tags] : ['Custom'],
+                    tokens: entry?.contextWindow ?? 8192,
+                    completionTokens: entry?.maxOutputTokens ?? 8192,
+                    enabled: true,
+
+                    id: entryId,
+                    name: entry.name,
+                    baseURL: entry.baseURL,
+                    fallbackLLM: entry.fallbackLLM,
+                    isUserCustomLLM: true,
+
+                    // TODO: Credentials will usually look like { apiKey: 'api-key-goes-here' }.
+                    //       However, for fallback models we also need to handle ['vault', 'internal']
+                    //       using the same credentials format, since fallback models can be either
+                    //       personal or built-in.
+                    credentials: entry?.credentials || ['vault', 'internal'],
+                };
+            }
+
+            return models;
+        } catch {
             return {};
         }
     }
