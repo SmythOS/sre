@@ -51,33 +51,7 @@ export class GmailTrigger extends Trigger {
         await oauth2Credentials.refreshAccessToken();
 
         const messages = await getMostRecentUnreadMessage(0, oauth2Credentials, 5);
-        console.log(messages);
-
-        let inputArray = [
-            {
-                message: {
-                    id: 'msg-123',
-                    subject: '## Test 1',
-                    body: '### Test 1',
-                    from: 'test1@test.com',
-                    to: 'test1@test.com',
-                    date: '2021-01-01',
-                    threadId: 'thread-123',
-                },
-            },
-            {
-                message: {
-                    id: 'msg-cmp002',
-                    subject: '## Test 2',
-                    body: '### Test 2',
-                    from: 'test2@test.com',
-                    to: 'test2@test.com',
-                    date: '2021-01-01',
-                    threadId: 'thread-002',
-                },
-            },
-        ];
-        return inputArray;
+        return messages;
     }
 }
 
@@ -248,27 +222,29 @@ function parseMessage(message) {
     }
 
     return {
-        id: message.id,
-        threadId: message.threadId,
-        labelIds: message.labelIds || [],
-        snippet: message.snippet || '',
-        sizeEstimate: message.sizeEstimate || 0,
-        internalDate: message.internalDate ? new Date(parseInt(message.internalDate)).toISOString() : null,
-        headers: {
-            from: headers.from || '',
-            to: headers.to || '',
-            cc: headers.cc || '',
-            bcc: headers.bcc || '',
-            subject: headers.subject || '',
-            date: headers.date || '',
-            messageId: headers['message-id'] || '',
+        email: {
+            id: message.id,
+            threadId: message.threadId,
+            labelIds: message.labelIds || [],
+            snippet: message.snippet || '',
+            sizeEstimate: message.sizeEstimate || 0,
+            internalDate: message.internalDate ? new Date(parseInt(message.internalDate)).toISOString() : null,
+            headers: {
+                from: headers.from || '',
+                to: headers.to || '',
+                cc: headers.cc || '',
+                bcc: headers.bcc || '',
+                subject: headers.subject || '',
+                date: headers.date || '',
+                messageId: headers['message-id'] || '',
+            },
+            body: {
+                text: textBody,
+                html: htmlBody,
+            },
+            attachments: attachments,
+            isUnread: message.labelIds ? message.labelIds.includes('UNREAD') : false,
         },
-        body: {
-            text: textBody,
-            html: htmlBody,
-        },
-        attachments: attachments,
-        isUnread: message.labelIds ? message.labelIds.includes('UNREAD') : false,
     };
 }
 
