@@ -2,14 +2,14 @@ import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
 import { GoogleEmbeds } from '@sre/IO/VectorDB.service/embed/GoogleEmbedding';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { checkIntegrationTestConsent } from '../../../utils/test-data-manager';
 
 checkIntegrationTestConsent();
 
 // Mock the Google AI SDK
-vi.mock('@google/generative-ai', () => ({
-    GoogleGenerativeAI: vi.fn(),
+vi.mock('@google/genai', () => ({
+    GoogleGenAI: vi.fn(),
 }));
 
 // Mock the LLM credentials helper
@@ -36,7 +36,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
             getGenerativeModel: vi.fn().mockReturnValue(mockModel),
         };
 
-        (GoogleGenerativeAI as any).mockImplementation(() => mockClient);
+        (GoogleGenAI as any).mockImplementation(() => mockClient);
 
         // Setup mock access candidate
         mockAccessCandidate = {
@@ -110,7 +110,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
 
             expect(result).toEqual(mockEmbedding);
             expect(mockModel.embedContent).toHaveBeenCalledWith('test text');
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('test-api-key');
+            expect(GoogleGenAI).toHaveBeenCalledWith('test-api-key');
             expect(mockClient.getGenerativeModel).toHaveBeenCalledWith({
                 model: 'gemini-embedding-001',
             });
@@ -151,7 +151,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
             const result = await googleEmbeds.embedText('test text', mockAccessCandidate);
 
             expect(result).toEqual(mockEmbedding);
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('env-api-key');
+            expect(GoogleGenAI).toHaveBeenCalledWith('env-api-key');
         });
 
         it('should throw error when no API key is available', async () => {
@@ -288,7 +288,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
                 modelId: 'gemini-embedding-001',
                 credentials: undefined,
             });
-            expect(GoogleGenerativeAI).toHaveBeenCalledWith('credentials-api-key');
+            expect(GoogleGenAI).toHaveBeenCalledWith('credentials-api-key');
         });
 
         it('should reuse client instance across multiple calls', async () => {
@@ -301,7 +301,7 @@ describe('GoogleEmbeds - Unit Tests', () => {
             await googleEmbeds.embedText('test2', mockAccessCandidate);
 
             // GoogleGenerativeAI constructor should only be called once
-            expect(GoogleGenerativeAI).toHaveBeenCalledTimes(1);
+            expect(GoogleGenAI).toHaveBeenCalledTimes(1);
             expect(mockModel.embedContent).toHaveBeenCalledTimes(2);
         });
 
