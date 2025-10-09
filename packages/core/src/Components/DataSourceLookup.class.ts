@@ -7,6 +7,8 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Component } from './Component.class';
+import { TConnectorService } from '@sre/types/SRE.types';
+import { TVectorDBProvider } from '@sre/IO/VectorDB.service';
 
 // Note: LLMHelper renamed to LLMInference
 class LLMInference {
@@ -50,6 +52,8 @@ export class DataSourceLookup extends Component {
         }
 
         const namespace = config.data.namespace.split('_').slice(1).join('_') || config.data.namespace;
+        const provider = config.data.provider || this.getDefaultVectorDBProvider(); // backward compatibility before adding .provider field
+        const credentialsId = config.data.credentialsId || null;
         const model = config.data?.model || 'gpt-4o-mini';
         const prompt = config.data?.prompt?.trim?.() || '';
         const postprocess = config.data?.postprocess || false;
@@ -62,7 +66,11 @@ export class DataSourceLookup extends Component {
 
         const topK = Math.max(config.data?.topK || 50, 50);
 
-        let vectorDbConnector = ConnectorService.getVectorDBConnector();
+        let vectorDbConnector = ConnectorService.getVectorDBConnector(provider);
+        // TODO: load the credentials of the provider and fallback to the default instance configured in SRE.init()
+        //* we added the provider directly here in case of porting between SaaS and self-hosted so that on self-hosted
+        //* we can use the default instance without getting the credentials (since there is no creds in self-hosted)
+
         let existingNs = await vectorDbConnector.requester(AccessCandidate.team(teamId)).namespaceExists(namespace);
 
         if (!existingNs) {
@@ -139,17 +147,10 @@ export class DataSourceLookup extends Component {
         };
     }
 
-    // private async checkIfTeamOwnsNamespace(teamId: string, namespaceId: string, token: string) {
-    //     try {
-    //         const res = await SmythAPIHelper.fromAuth({ token }).mwSysAPI.get(`/vectors/namespaces/${namespaceId}`);
-    //         if (res.data?.namespace?.teamId !== teamId) {
-    //             throw new Error(`Namespace does not exist`);
-    //         }
-    //         return true;
-    //     } catch (err) {
-    //         throw new Error(`Namespace does not exist`);
-    //     }
-    // }
+    private getDefaultVectorDBProvider() {
+        const smythConnectorExists = ConnectorService.hasInstance(TConnectorService.VectorDB, TVectorDBProvider.SmythManaged);
+        return smythConnectorExists ? TVectorDBProvider.SmythManaged : 'default';
+    }
 
     private parseMetadata(metadata: any) {
         try {
