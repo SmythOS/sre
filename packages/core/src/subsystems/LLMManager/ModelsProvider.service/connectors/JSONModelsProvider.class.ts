@@ -57,6 +57,9 @@ export class JSONModelsProvider extends ModelsProviderConnector {
             if (modelsFolder) {
                 this._settings.mode = 'merge'; //Force merge mode if using models from .smyth folder
                 this.initDirWatcher(modelsFolder); //this.started will be set to true when the watcher is ready
+            } else {
+                console.warn('No models folder found ... falling back to built-in models only');
+                this.started = true;
             }
         }
     }
