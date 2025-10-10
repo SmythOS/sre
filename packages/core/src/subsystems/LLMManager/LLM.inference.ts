@@ -175,8 +175,13 @@ export class LLMInference {
 
         console.info(`Attempting fallback from ${this.model} to ${fallbackModel}`);
         
-        // Update the model to use fallback
+        // Mutate the model and connector to use fallback
         this.model = fallbackModel;
+        
+        const llmProvider = await this.modelProviderReq.getProvider(fallbackModel);
+        if (llmProvider) {
+            this.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        }
         
         // Call the appropriate method with isInFallback=true to prevent further fallbacks
         if (methodName === 'prompt') {
