@@ -203,10 +203,16 @@ export class JSONModelsProvider extends ModelsProviderConnector {
     }
 
     private initDirWatcher(dir) {
+        const stats = fsSync.statSync(dir);
+
+        if (!stats.isDirectory() && !stats.isFile()) {
+            console.warn(`Path "${dir}" is neither a file nor a directory ... skipping models watcher and falling back to built-in models only`);
+            this.started = true;
+            return;
+        }
+
         // Synchronous file system operations for initial setup
         try {
-            const stats = fsSync.statSync(dir);
-
             if (!stats.isDirectory()) {
                 //is it a file?
                 if (stats.isFile()) {
