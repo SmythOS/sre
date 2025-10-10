@@ -22,17 +22,31 @@ async function main() {
 
     const chat = agent.chat();
 
-    const chatResult1 = await chat.prompt('Hi, my name is John Smyth. Give me the current price of Bitcoin and Ethereum ?');
-    console.log('1>', chatResult1);
+    const streamResult = await chat.prompt('Hi, my name is John Smyth. Give me the current price of Bitcoin and Ethereum ?').stream();
 
-    const chatResult2 = await chat.prompt('Do you remember my name ?');
-    console.log('2>', chatResult2);
+    streamResult.on(TLLMEvent.Content, (content) => {
+        process.stdout.write(chalk.white(content));
+    });
 
-    //As you can see the agent remembers your name in the second response.
-    //But in this example the conversation is only persisted during process run time
-    //once the process is finished, the conversation is lost
+    streamResult.on(TLLMEvent.End, () => {
+        console.log('\n\n--- Done ---');
+    });
 
-    //==> in the example #04 we will see how to persist the conversation across process runs
+    streamResult.on(TLLMEvent.Error, (error) => {
+        console.error(chalk.red('❌ Error:', error));
+    });
+
+    streamResult.on(TLLMEvent.ToolCall, (toolCall) => {
+        console.log(
+            chalk.yellow('[Calling Tool]'),
+            toolCall?.tool?.name,
+            chalk.gray(typeof toolCall?.tool?.arguments === 'object' ? JSON.stringify(toolCall?.tool?.arguments) : toolCall?.tool?.arguments)
+        );
+    });
+
+    streamResult.on(TLLMEvent.ToolResult, (toolResult) => {
+        console.log(chalk.green('[Tool Result]'), toolResult?.result);
+    });
 }
 
 main();

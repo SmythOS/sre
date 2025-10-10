@@ -8,6 +8,7 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate } from '@sre/types/ACL.types';
 import { TCustomLLMModel, TLLMCredentials, TLLMModel, TLLMModelsList, TLLMProvider } from '@sre/types/LLM.types';
 import { customModels } from '../custom-models';
+import { hookAsync } from '@sre/Core/HookService';
 
 export interface IModelsProviderRequest {
     getModels(): Promise<any>;
@@ -302,6 +303,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         return { ...enterpriseModels, ...userCustomModels };
     }
 
+    @hookAsync('Connector.ModelsProvider.getEnterpriseModels')
     private async getEnterpriseModels(candidate: IAccessCandidate) {
         try {
             const models = {};
@@ -366,6 +368,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
         }
     }
 
+    @hookAsync('Connector.ModelsProvider.getUserCustomModels')
     private async getUserCustomModels(candidate: IAccessCandidate) {
         try {
             const models = {};
