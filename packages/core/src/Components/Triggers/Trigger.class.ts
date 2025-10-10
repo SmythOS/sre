@@ -1,26 +1,38 @@
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { Component } from '../Component.class';
 import { LogHelper } from '@sre/helpers/Log.helper';
+import express from 'express';
+import { AgentRequest } from '@sre/AgentManager/AgentRequest.class';
 
 export class Trigger extends Component {
     protected logger: LogHelper;
 
-    async process(input, config, agent: Agent) {
-        await super.process(input, config, agent);
-        this.logger = this.createComponentLogger(agent, config);
+    async process(input, settings, agent: Agent) {
+        await super.process(input, settings, agent);
+        this.logger = this.createComponentLogger(agent, settings);
         try {
-            let inputArray = await this.collectPayload(input, config, agent);
-            return await this.processIteration(inputArray, config, agent);
+            const agentRequest: AgentRequest = agent.agentRequest;
+            const processedRequest = await this.requestHandler(input, settings, agent);
+            if (processedRequest) {
+                agent.kill('TRIGGER_REQ_HANDLED'); //should not be handled by the agent
+                return processedRequest;
+            }
+
+            //a trigger should always return an array of payloads
+            //if it's a single object, it should be wrapped in an array
+            let inputArray = await this.collectPayload(input, settings, agent);
+            return await this.processIteration(inputArray, settings, agent);
         } catch (error) {
             this.logger.error(error);
             return { Payload: {}, Result: [], _error: error, _in_progress: false, _debug: this.logger.output };
         }
     }
-    protected async collectPayload(input, config, agent: Agent): Promise<any[]> {
+    protected async collectPayload(input, settings, agent: Agent): Promise<any[]> {
         return [];
     }
+    public async requestHandler(input, settings, agent: Agent): Promise<any> {}
 
-    protected async processIteration(inputArray, config, agent) {
+    protected async processIteration(inputArray, settings, agent) {
         let Payload = {};
         let Result;
         let _temp_result;
@@ -28,8 +40,8 @@ export class Trigger extends Component {
         let _in_progress = true;
         const logger = this.logger;
 
-        const runtimeData = agent.agentRuntime.getRuntimeData(config.id);
-        const _LoopData = runtimeData._LoopData || { parentId: config.id, loopIndex: 0, loopLength: inputArray.length };
+        const runtimeData = agent.agentRuntime.getRuntimeData(settings.id);
+        const _LoopData = runtimeData._LoopData || { parentId: settings.id, loopIndex: 0, loopLength: inputArray.length };
 
         logger.debug(`Loop: ${_LoopData.loopIndex} / ${_LoopData.loopLength}`);
         delete _LoopData.branches; //reset branches (the number of branches is calculated in CallComponent@Agent.class.ts )
@@ -50,7 +62,7 @@ export class Trigger extends Component {
         }
         _LoopData._in_progress = _in_progress;
 
-        agent.agentRuntime.updateRuntimeData(config.id, { _LoopData: _LoopData });
+        agent.agentRuntime.updateRuntimeData(settings.id, { _LoopData: _LoopData });
 
         if (!_in_progress) {
             Result = (_temp_result || []).map((item) => cleanupResult(item.result || item));
@@ -58,10 +70,12 @@ export class Trigger extends Component {
         return { Payload, Result, _temp_result, _error, _in_progress, _debug: logger.output };
     }
 
-    async postProcess(output, config, agent: Agent): Promise<any> {
-        output = await super.postProcess(output, config, agent);
+    async postProcess(output, settings, agent: Agent): Promise<any> {
+        output = await super.postProcess(output, settings, agent);
         return output?.result.Result;
     }
+
+    async register(componentId: string, componentSettings: any, payload: { triggerUrl: string }) {}
 }
 
 function cleanupResult(result) {

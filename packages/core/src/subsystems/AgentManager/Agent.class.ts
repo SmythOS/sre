@@ -43,7 +43,7 @@ export class Agent implements IAgent {
 
     //public baseUrl = '';
     public agentVariables: any = {};
-    private _kill = false;
+    private _killReason = '';
     //public agentRequest: Request | AgentRequest | any;
     public async = false;
     public jobID = '';
@@ -222,11 +222,11 @@ export class Agent implements IAgent {
         this.callback = callback;
     }
 
-    public kill() {
-        this._kill = true;
+    public kill(reason: string = 'kill') {
+        this._killReason = reason;
     }
     public isKilled() {
-        return this._kill;
+        return !!this._killReason;
     }
     private async parseVariables() {
         //parse vault agent variables
@@ -331,9 +331,9 @@ export class Agent implements IAgent {
             const qosLatency = Math.floor(OSResourceMonitor.cpu.load * MAX_LATENCY || 0);
 
             await delay(10 + qosLatency);
-        } while (!step?.finalResult && !this._kill);
+        } while (!step?.finalResult && !this._killReason);
 
-        if (this._kill) {
+        if (this._killReason) {
             const endTime = Date.now();
             const duration = endTime - startTime;
             this.sse.send('agent', {
@@ -349,7 +349,7 @@ export class Agent implements IAgent {
                 error: 'Agent killed',
             });
             console.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
-            return { error: 'Agent killed' };
+            return { error: 'AGENT_KILLED', reason: this._killReason };
         }
         result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
 
@@ -584,7 +584,7 @@ export class Agent implements IAgent {
             input,
         });
 
-        if (this._kill) {
+        if (this._killReason) {
             console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
 
             const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
