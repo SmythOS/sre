@@ -57,6 +57,9 @@ export class JSONModelsProvider extends ModelsProviderConnector {
             if (modelsFolder) {
                 this._settings.mode = 'merge'; //Force merge mode if using models from .smyth folder
                 this.initDirWatcher(modelsFolder); //this.started will be set to true when the watcher is ready
+            } else {
+                console.warn('No models folder found ... falling back to built-in models only');
+                this.started = true;
             }
         }
     }
@@ -203,10 +206,16 @@ export class JSONModelsProvider extends ModelsProviderConnector {
     }
 
     private initDirWatcher(dir) {
+        const stats = fsSync.statSync(dir);
+
+        if (!stats.isDirectory() && !stats.isFile()) {
+            console.warn(`Path "${dir}" is neither a file nor a directory ... skipping models watcher and falling back to built-in models only`);
+            this.started = true;
+            return;
+        }
+
         // Synchronous file system operations for initial setup
         try {
-            const stats = fsSync.statSync(dir);
-
             if (!stats.isDirectory()) {
                 //is it a file?
                 if (stats.isFile()) {
