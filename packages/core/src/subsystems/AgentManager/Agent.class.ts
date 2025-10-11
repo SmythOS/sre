@@ -1,19 +1,19 @@
 import { Component } from '@sre/Components/Component.class';
+import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 import { AgentLogger } from './AgentLogger.class';
 import { AgentRequest } from './AgentRequest.class';
 import { AgentRuntime } from './AgentRuntime.class';
 import { AgentSettings } from './AgentSettings.class';
 import { OSResourceMonitor } from './OSResourceMonitor';
-import config from '@sre/config';
-import { ControlledPromise, delay, getCurrentFormattedDate, uid } from '@sre/utils/index';
 
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { hookAsync } from '@sre/Core/HookService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
-import { AgentSSE } from './AgentSSE.class';
-import { IAgent } from '@sre/types/Agent.types';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { AgentSSE } from './AgentSSE.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;
@@ -216,6 +216,7 @@ export class Agent implements IAgent {
         }
     }
 
+    @hookAsync('Agent.process')
     async process(endpointPath, input) {
         await this.agentRuntime.ready();
 
@@ -378,6 +379,7 @@ export class Agent implements IAgent {
         //tasks count update logic
     }
 
+    @hookAsync('Agent.postProcess')
     public async postProcess(result) {
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
@@ -525,6 +527,7 @@ export class Agent implements IAgent {
         agentRuntime.updateComponent(componentId, { step });
     }
 
+    @hookAsync('Agent.callComponent')
     async callComponent(sourceId, componentId, input?) {
         const startTime = Date.now();
         const agentRuntime = this.agentRuntime;
@@ -847,7 +850,7 @@ export class Agent implements IAgent {
         return currentProperty;
     }
 
-    //
+    @hookAsync('Agent.callNextComponents')
     async callNextComponents(componentId, output) {
         const agentRuntime = this.agentRuntime;
         //agentRuntime.incStep();

@@ -1,18 +1,17 @@
-import _ from 'lodash';
-import { type OpenAI } from 'openai';
+import { EventEmitter } from 'events';
 import { encodeChat } from 'gpt-tokenizer';
 import { ChatMessage } from 'gpt-tokenizer/esm/GptEncoding';
+
+import { isAgent } from '@sre/AgentManager/Agent.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { LLMConnector } from './LLM.service/LLMConnector';
-import { EventEmitter } from 'events';
-import { GenerateImageConfig, TLLMMessageRole, TLLMModel, TLLMChatResponse } from '@sre/types/LLM.types';
-import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 import { Logger } from '@sre/helpers/Log.helper';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { IAgent } from '@sre/types/Agent.types';
-import { isAgent } from '@sre/AgentManager/Agent.helper';
-import { TLLMParams } from '@sre/types/LLM.types';
+import { TLLMChatResponse, TLLMMessageRole, TLLMModel, TLLMParams } from '@sre/types/LLM.types';
+
+import { LLMConnector } from './LLM.service/LLMConnector';
+import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvider.service/ModelsProviderConnector';
 
 const console = Logger('LLMInference');
 
@@ -53,11 +52,12 @@ export class LLMInference {
 
     public static user(candidate: AccessCandidate): any {}
 
+
     public get connector(): LLMConnector {
         return this.llmConnector;
     }
 
-    public async prompt({ query, contextWindow, files, params }: TPromptParams) {
+    public async prompt({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -65,7 +65,9 @@ export class LLMInference {
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this.model;
+
         params.messages = messages;
         params.files = files;
 
@@ -84,13 +86,28 @@ export class LLMInference {
             }
             return result;
         } catch (error: any) {
-            console.error('Error in chatRequest: ', error);
+            // Attempt fallback for custom models (only if not already in fallback)
+            if (!isInFallback) {
+                try {
+                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params });
+                    
+                    // If fallback succeeded, return the result
+                    if (fallbackResult !== null) {
+                        return fallbackResult;
+                    }
+                } catch (fallbackError) {
+                    // If fallback also failed, log it but continue to throw original error
+                    console.warn('Fallback also failed:', fallbackError);
+                }
+            }
 
+            // If fallback was not attempted or failed, throw the original error
+            console.error('Error in chatRequest: ', error);
             throw error;
         }
     }
 
-    public async promptStream({ query, contextWindow, files, params }: TPromptParams) {
+    public async promptStream({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -98,13 +115,31 @@ export class LLMInference {
             messages.push({ role: TLLMMessageRole.User, content });
         }
 
-        if (!params.model) params.model = this.model;
+        // Reset the model, since the fallback model may change — especially when using user custom models.
+        params.model = this.model;
+
         params.messages = messages;
         params.files = files;
 
         try {
             return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
         } catch (error) {
+            // Attempt fallback for custom models (only if not already in fallback)
+            if (!isInFallback) {
+                try {
+                    const fallbackResult = await this.executeFallback('promptStream', { query, contextWindow, files, params });
+                    
+                    // If fallback succeeded, return the result
+                    if (fallbackResult !== null) {
+                        return fallbackResult;
+                    }
+                } catch (fallbackError) {
+                    // If fallback also failed, log it but continue to return error emitter
+                    console.warn('Fallback also failed:', fallbackError);
+                }
+            }
+
+            // If fallback was not attempted or failed, return error emitter
             console.error('Error in streamRequest:', error);
 
             const dummyEmitter = new EventEmitter();
@@ -113,6 +148,46 @@ export class LLMInference {
                 dummyEmitter.emit('end');
             });
             return dummyEmitter;
+        }
+    }
+
+
+    /**
+     * Executes fallback logic for custom models when the primary model fails.
+     * This method checks if a fallback model is configured and invokes the appropriate LLM method.
+     * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
+     * 
+     * @param methodName - The name of the method being called ('prompt' or 'promptStream')
+     * @param args - The original arguments passed to the method
+     * @returns The result from the fallback execution, or null if fallback should not be attempted
+     */
+    private async executeFallback(
+        methodName: 'prompt' | 'promptStream',
+        args: TPromptParams
+    ): Promise<any> {
+        const isCustomModel = await this.modelProviderReq.isUserCustomLLM(this.model);
+        const fallbackModel = await this.modelProviderReq.getFallbackLLM(this.model);
+        
+        // Only execute fallback if it's a custom model with a configured fallback
+        if (!isCustomModel || !fallbackModel) {
+            return null;
+        }
+
+        console.info(`Attempting fallback from ${this.model} to ${fallbackModel}`);
+        
+        // Mutate the model and connector to use fallback
+        this.model = fallbackModel;
+        
+        const llmProvider = await this.modelProviderReq.getProvider(fallbackModel);
+        if (llmProvider) {
+            this.llmConnector = ConnectorService.getLLMConnector(llmProvider);
+        }
+        
+        // Call the appropriate method with isInFallback=true to prevent further fallbacks
+        if (methodName === 'prompt') {
+            return await this.prompt(args, true);
+        } else {
+            return await this.promptStream(args, true);
         }
     }
 

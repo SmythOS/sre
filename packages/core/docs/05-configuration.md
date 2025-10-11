@@ -33,15 +33,15 @@ The `.smyth` folder can be located in two places:
 
 In this section, ".smyth" refers to either the user settings folder or the project settings folder, depending on the discovery order.
 
-#### .smyth/.sre/ Subfolder
+#### .smyth folder
 
-This subfolder contains the actual settings for SRE.
+This folder contains the actual settings for SRE.
 
--   `.smyth/.sre/vault.json`: This file is present if you are using the default vault connector to manage API keys and secrets. It contains LLM API keys, other third-party API keys, and user-specified keys. It can be encrypted to protect the keys. (You can use other vault connectors to manage your secrets, such as AWS Secret Manager. In that case, this file will be ignored.)
+-   `.smyth/vault.json`: This file is present if you are using the default vault connector to manage API keys and secrets. It contains LLM API keys, other third-party API keys, and user-specified keys. It can be encrypted to protect the keys. (You can use other vault connectors to manage your secrets, such as AWS Secret Manager. In that case, this file will be ignored.)
 
--   `.smyth/.sre/config.json`: If present, this file defines the SRE startup configuration.
+-   `.smyth/config.json`: If present, this file defines the SRE startup configuration.
 
-#### Other Subfolders
+#### .smyth/\* Subfolders
 
 SRE can load connectors that need to store data locally. These connectors can be configured to store data in specific locations, but if no location is specified, they fall back to a default location, which is a subfolder of the `.smyth` folder.
 
