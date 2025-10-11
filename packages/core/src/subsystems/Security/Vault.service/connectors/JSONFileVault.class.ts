@@ -46,10 +46,32 @@ export class JSONFileVault extends VaultConnector {
     private findVaultFile(vaultFile) {
         let _vaultFile = vaultFile;
 
-        if (fs.existsSync(_vaultFile)) {
+        if (_vaultFile && fs.existsSync(_vaultFile)) {
             return _vaultFile;
         }
         console.warn('Vault file not found in:', _vaultFile);
+
+        //try to find it in .smyth directory
+        _vaultFile = findSmythPath('vault.json', (dir, success, nextDir) => {
+            if (!success) {
+                console.warn('Vault file not found in:', nextDir);
+            }
+        });
+        if (fs.existsSync(_vaultFile)) {
+            console.warn('Using alternative vault file found in : ', _vaultFile);
+            return _vaultFile;
+        }
+
+        //try to find it in .smyth directory
+        _vaultFile = findSmythPath('vault/vault.json', (dir, success, nextDir) => {
+            if (!success) {
+                console.warn('Vault file not found in:', nextDir);
+            }
+        });
+        if (fs.existsSync(_vaultFile)) {
+            console.warn('Using alternative vault file found in : ', _vaultFile);
+            return _vaultFile;
+        }
 
         //try to find the .smyth directory and check if it contains a valid vault
 
