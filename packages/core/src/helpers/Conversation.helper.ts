@@ -672,17 +672,14 @@ export class Conversation extends EventEmitter {
                  * So the objecive is mainly reducing latency when possible
                  */
                 //TODO : implement a timeout for the tool call
+
+                const canRunLocally = reqConfig.url.includes('localhost') || reqConfig.headers['X-AGENT-ID'];
                 const requiresRemoteCall =
                     reqConfig.headers['X-DEBUG'] !== undefined ||
                     reqConfig.headers['X-MONITOR-ID'] !== undefined ||
                     reqConfig.headers['X-AGENT-REMOTE-CALL'] !== undefined;
-                if (
-                    reqConfig.url.includes('localhost') ||
-                    (reqConfig.headers['X-AGENT-ID'] && !requiresRemoteCall)
-                    //empty string is accepted
 
-                    // || reqConfig.url.includes('localagent') //* commented to allow debugging live sessions as the req needs to reach sre-builder-debugger
-                ) {
+                if (canRunLocally && !requiresRemoteCall) {
                     console.log('RUNNING AGENT LOCALLY');
                     let agentProcess;
                     if (this.agentData === this._specSource) {

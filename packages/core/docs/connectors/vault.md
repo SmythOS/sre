@@ -9,11 +9,10 @@ The Vault subsystem provides secure storage and management of sensitive informat
 **Role**: File-based secure vault connector  
 **Summary**: Provides encrypted local file storage for secrets using JSON format. Suitable for development environments and single-node deployments requiring basic secret management.
 
-| Setting   | Type   | Required | Default               | Description                                   |
-| --------- | ------ | -------- | --------------------- | --------------------------------------------- |
-| `file`    | string | No       | `~/.smyth/vault.json` | Path to the vault file                        |
-| `fileKey` | string | No       | `~/.smyth/vault.key`  | Path to the encryption key file               |
-| `shared`  | string | No       | `""`                  | Shared team name for cross-team secret access |
+| Setting  | Type   | Required | Default               | Description                                   |
+| -------- | ------ | -------- | --------------------- | --------------------------------------------- |
+| `file`   | string | No       | `~/.smyth/vault.json` | Path to the vault file                        |
+| `shared` | string | No       | `"default"`           | Shared team name for cross-team secret access |
 
 **Example Configuration:**
 
@@ -25,12 +24,24 @@ SRE.init({
         Connector: 'JSONFileVault',
         Settings: {
             file: './secrets/vault.json',
-            fileKey: './secrets/vault.key',
             shared: 'production',
         },
     },
 });
 ```
+
+**vault.json research path:**
+The JSONFileVault connector will search for the vault.json file in the following order:
+
+1. The path specified in the `file` setting
+2. The `.smyth/vault.json` file
+3. The `.smyth/vault/vault.json` file
+4. The `.smyth/.sre/vault.json` file
+5. The `~/.smyth/vault.json` file
+6. The `~/.smyth/vault/vault.json` file
+7. The `~/.smyth/.sre/vault.json` file
+
+The search paths and the used path are visible in SRE logs in case you need to debug the vault file search.
 
 **Use Cases:**
 
