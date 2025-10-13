@@ -13,6 +13,8 @@ import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { Trigger } from '@sre/Components/Triggers/Trigger.class';
+import { IAgent } from '@sre/types/Agent.types';
+import { AgentSSE } from './AgentSSE.class';
 
 const console = Logger('Agent');
 const idPromise = (id) => id;

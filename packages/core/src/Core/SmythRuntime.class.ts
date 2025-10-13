@@ -67,6 +67,13 @@ export class SmythRuntime {
         Router: {
             Connector: 'NullRouter',
         },
+        Scheduler: {
+            Connector: 'LocalScheduler',
+            Settings: {
+                autoStart: true,
+                persistExecutionHistory: true,
+            },
+        },
     };
 
     protected constructor() {

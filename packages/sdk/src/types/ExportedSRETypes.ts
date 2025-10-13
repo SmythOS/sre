@@ -1,3 +1,12 @@
-export { TLLMEvent, TLLMProvider, AccessCandidate } from '@smythos/sre';
+export { TLLMEvent, TLLMProvider, AccessCandidate, Schedule, Job } from '@smythos/sre';
 
-export type { AWSRegionConfig, AWSCredentials } from '@smythos/sre';
+export type {
+    AWSRegionConfig,
+    AWSCredentials,
+    IScheduledJob,
+    IJobExecution,
+    IJobConfig,
+    IJobMetadata,
+    ISkillJobConfig,
+    IPromptJobConfig,
+} from '@smythos/sre';

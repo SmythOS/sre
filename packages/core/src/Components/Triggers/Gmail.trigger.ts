@@ -281,9 +281,6 @@ function htmlToPlainText(htmlText, _styleConfig?) {
     }
 }
 
-// dkronClient.js
-import fetch from 'node-fetch';
-
 /**
  * Create or update a Dkron job
  * @param {string} id - Unique job ID

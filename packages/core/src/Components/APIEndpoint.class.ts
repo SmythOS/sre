@@ -57,6 +57,17 @@ export class APIEndpoint extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
+        if (typeof config.process === 'function') {
+            //special case, APIEndpoint has a custom process method.
+            //the inputs are not passed directly to APIEndpoints, we need to read them from the context.
+            const contextData = agent?.agentRuntime?.getComponentData(config.id);
+
+            const inputs = Array.isArray(contextData?.input) ? contextData?.input : [contextData?.input];
+
+            const result = await config.process.apply(null, inputs);
+            return result;
+        }
+
         const req: AgentRequest = agent.agentRequest;
         const logger = this.createComponentLogger(agent, config);
 

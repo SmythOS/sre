@@ -119,6 +119,10 @@ export * from './subsystems/AgentManager/AgentData.service/AgentDataConnector';
 export * from './subsystems/AgentManager/AgentData.service/index';
 export * from './subsystems/AgentManager/Component.service/ComponentConnector';
 export * from './subsystems/AgentManager/Component.service/index';
+export * from './subsystems/AgentManager/Scheduler.service/index';
+export * from './subsystems/AgentManager/Scheduler.service/Job.class';
+export * from './subsystems/AgentManager/Scheduler.service/Schedule.class';
+export * from './subsystems/AgentManager/Scheduler.service/SchedulerConnector';
 export * from './subsystems/ComputeManager/Code.service/CodeConnector';
 export * from './subsystems/ComputeManager/Code.service/index';
 export * from './subsystems/IO/CLI.service/CLIConnector';
@@ -158,6 +162,7 @@ export * from './subsystems/AgentManager/AgentData.service/connectors/CLIAgentDa
 export * from './subsystems/AgentManager/AgentData.service/connectors/LocalAgentDataConnector.class';
 export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentData.class';
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
+export * from './subsystems/AgentManager/Scheduler.service/connectors/LocalScheduler.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
 export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVLocalStorage.class';

@@ -20,6 +20,8 @@ import { DummyAccountHelper } from '../Security/DummyAccount.helper';
 
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
+import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/generated/Scheduler.types';
+import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
 import { isFile, uid } from '../utils/general.utils';
 import { SDKObject } from '../Core/SDKObject.class';
 import fs from 'fs';
@@ -282,6 +284,7 @@ export class Agent extends SDKObject {
     private _warningDisplayed = {
         storage: false,
         vectorDB: false,
+        scheduler: false,
     };
     private _data: AgentData & { version: string } = {
         version: '1.0.0', //schema version
@@ -616,6 +619,54 @@ export class Agent extends SDKObject {
         return this._vectorDBProviders;
     }
 
+    /**
+     * Access to scheduler instances from the agent for direct scheduler interactions.
+     *
+     * When using scheduler from the agent, the agent id will be used as job owner
+     *
+     * **Supported providers and calling patterns:**
+     * - `agent.scheduler.default()` - Default scheduler provider (LocalScheduler)
+     * - `agent.scheduler.LocalScheduler()` - Local scheduler
+     *
+     * @example
+     * ```typescript
+     * // Direct scheduler access
+     * const scheduler = agent.scheduler.default();
+     *
+     * // Add a scheduled job
+     * await scheduler.add('health-check',
+     *   Schedule.every('5m'),
+     *   new Job(async () => {
+     *     console.log('Checking health...');
+     *   }, { name: 'Health Check' })
+     * );
+     * ```
+     */
+    private _schedulerProviders: TSchedulerProviderInstances;
+    public get scheduler() {
+        if (!this._schedulerProviders) {
+            this._schedulerProviders = {} as TSchedulerProviderInstances;
+            for (const provider of Object.values(TSchedulerProvider)) {
+                this._schedulerProviders[provider] = (schedulerSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = schedulerSettings || {};
+                    if (!scope) scope = _scope;
+
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.scheduler) {
+                        this._warningDisplayed.scheduler = true;
+                        console.warn(
+                            `You are performing scheduler operations with an unidentified agent.\nThe jobs will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the jobs with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate =
+                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+                    return new SchedulerInstance(provider as TSchedulerProvider, connectorSettings, candidate);
+                };
+            }
+        }
+
+        return this._schedulerProviders;
+    }
+
     private _vault: VaultInstance;
 
     /**
@@ -680,21 +731,27 @@ export class Agent extends SDKObject {
         try {
             const _agentData = this.data;
             const skill = _agentData.components.find((c) => c.data.endpoint === skillName);
-            if (skill?.process) {
-                const processSkill: ComponentWrapper = this.structure.components.find(
-                    (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
-                );
 
-                const handler = processSkill?.internalData?.process || (() => null);
+            // if (skill?.process) {
+            //     const processSkill: ComponentWrapper = this.structure.components.find(
+            //         (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
+            //     );
 
-                const result = await handler(...args);
+            //     const handler = processSkill?.internalData?.process || (() => null);
 
-                return result;
-            }
+            //     const result = await handler(...args);
+
+            //     return result;
+            // }
+
+            // const filteredAgentData = {
+            //     ..._agentData,
+            //     components: _agentData.components.filter((c) => !c.process),
+            // };
 
             const filteredAgentData = {
                 ..._agentData,
-                components: _agentData.components.filter((c) => !c.process),
+                components: _agentData.components,
             };
 
             const method = skill.data.method.toUpperCase();
