@@ -99,7 +99,7 @@ export default class AgentCmd extends Command {
         const { args, flags } = await this.parse(AgentCmd);
 
         // If no arguments and no flags are provided, show help
-        if (!args.path && Object.keys(flags).length === 0) {
+        if (!args.path) {
             this.log('No agent path provided, showing help...');
             const help = new Help(this.config);
             await help.showHelp(['agent']);

@@ -4,6 +4,7 @@ import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
 import { typescriptPaths } from 'rollup-plugin-typescript-paths';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
@@ -78,47 +79,96 @@ const zeroDepConfig = {
         //     }
         // },
     },
-    // Only keep essential Node.js built-ins external
-    external: [
-        'fs',
-        'fs/promises',
-        'path',
-        'path/posix',
-        'path/win32',
-        'os',
-        'util',
-        'crypto',
-        'events',
-        'stream',
-        'url',
-        'querystring',
-        'http',
-        'https',
-        'net',
-        'tls',
-        'zlib',
-        'buffer',
-        'child_process',
-        'cluster',
-        'dgram',
-        'dns',
-        'domain',
-        'module',
-        'readline',
-        'repl',
-        'string_decoder',
-        'timers',
-        'tty',
-        'vm',
-        'worker_threads',
-        'perf_hooks',
-        'async_hooks',
-        'inspector',
-        'v8',
-        'constants',
-        'assert',
-        'process',
-    ],
+    // External function to exclude Node.js built-ins and dev-only packages
+    external: (id) => {
+        const builtins = [
+            'fs',
+            'fs/promises',
+            'path',
+            'path/posix',
+            'path/win32',
+            'os',
+            'util',
+            'crypto',
+            'events',
+            'stream',
+            'url',
+            'querystring',
+            'http',
+            'https',
+            'net',
+            'tls',
+            'zlib',
+            'buffer',
+            'child_process',
+            'cluster',
+            'dgram',
+            'dns',
+            'domain',
+            'module',
+            'readline',
+            'repl',
+            'string_decoder',
+            'timers',
+            'tty',
+            'vm',
+            'worker_threads',
+            'perf_hooks',
+            'async_hooks',
+            'inspector',
+            'v8',
+            'constants',
+            'assert',
+            'process',
+        ];
+
+        // Common dev-only packages that should never be bundled
+        const devOnlyPackages = [
+            'typescript',
+            'esbuild',
+            'rollup',
+            'webpack',
+            'vite',
+            'vitest',
+            'jest',
+            '@types/',
+            'eslint',
+            'prettier',
+            'ts-node',
+            'nodemon',
+            '@rollup/',
+            '@vitejs/',
+            '@jest/',
+            'babel',
+            'typedoc',
+            'tslint',
+            'mocha',
+            'nyc',
+            'husky',
+            'lint-staged',
+            'commitlint',
+        ];
+
+        // Exclude Node.js built-ins
+        if (builtins.includes(id)) return true;
+
+        // Exclude dev-only packages (match package name boundaries)
+        const normalizedId = id.replace(/\\/g, '/'); // Normalize Windows paths
+        for (const pkg of devOnlyPackages) {
+            // Match at package name boundaries to avoid false positives
+            // e.g., "chai" shouldn't match "chain" in a path
+            if (
+                normalizedId.includes(`node_modules/${pkg}`) ||
+                normalizedId.includes(`/${pkg}/`) ||
+                normalizedId.endsWith(`/${pkg}`) ||
+                normalizedId === pkg
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    },
     plugins: [
         deleteFolder('dist'),
         colorfulLogs('CLI Zero-Dep Builder'),
@@ -154,6 +204,15 @@ const zeroDepConfig = {
                 global: 'globalThis',
             },
             keepNames: true, // Keep all names
+        }),
+        // Bundle size visualization
+        visualizer({
+            filename: './bundle-stats.html',
+            open: true, // automatically opens in browser
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap', // treemap, sunburst, or network
+            title: 'CLI Bundle Size Report',
         }),
         // No terser plugin - no compression at all
     ],

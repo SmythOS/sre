@@ -1,20 +1,15 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { findValidResourcePath } from '@sre/helpers/Sysconfig.helper';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
-import { EncryptionSettings } from '@sre/types/Security.types';
-import { IVaultRequest, VaultConnector } from '../VaultConnector';
-import os from 'os';
+import * as chokidar from 'chokidar';
 import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
-import path from 'path';
-import * as chokidar from 'chokidar';
-import { findSmythPath } from '../../../../helpers/Sysconfig.helper';
+import { VaultConnector } from '../VaultConnector';
 
 const console = Logger('JSONFileVault');
 
@@ -51,39 +46,18 @@ export class JSONFileVault extends VaultConnector {
         }
         console.warn('Vault file not found in:', _vaultFile);
 
-        //try to find it in .smyth directory
-        _vaultFile = findSmythPath('vault.json', (dir, success, nextDir) => {
-            if (!success) {
-                console.warn('Vault file not found in:', nextDir);
-            }
-        });
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
-        }
+        let found = '';
 
-        //try to find it in .smyth directory
-        _vaultFile = findSmythPath('vault/vault.json', (dir, success, nextDir) => {
-            if (!success) {
-                console.warn('Vault file not found in:', nextDir);
-            }
-        });
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
-        }
-
-        //try to find the .smyth directory and check if it contains a valid vault
-
-        _vaultFile = findSmythPath('.sre/vault.json', (dir, success, nextDir) => {
+        const relativeSearchLocations = ['vault.json', 'vault/vault.json', '.sre/vault.json'];
+        found = findValidResourcePath(relativeSearchLocations, (dir, success, nextDir) => {
             if (!success) {
                 console.warn('Vault file not found in:', nextDir);
             }
         });
 
-        if (fs.existsSync(_vaultFile)) {
-            console.warn('Using alternative vault file found in : ', _vaultFile);
-            return _vaultFile;
+        if (found) {
+            console.warn('Using alternative vault file found in : ', found);
+            return found;
         }
 
         console.warn('!!! All attempts to find the vault file failed !!!');
