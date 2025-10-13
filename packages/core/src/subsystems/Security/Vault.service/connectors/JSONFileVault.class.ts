@@ -11,7 +11,7 @@ import fs from 'fs';
 import * as readlineSync from 'readline-sync';
 import { VaultConnector } from '../VaultConnector';
 
-const console = Logger('JSONFileVault');
+const logger = Logger('JSONFileVault');
 
 export type JSONFileVaultConfig = {
     file?: string;
@@ -44,19 +44,19 @@ export class JSONFileVault extends VaultConnector {
         if (_vaultFile && fs.existsSync(_vaultFile)) {
             return _vaultFile;
         }
-        console.warn('Vault file not found in:', _vaultFile);
+        logger.warn('Vault file not found in:', _vaultFile);
 
         let found = '';
 
         const relativeSearchLocations = ['vault.json', 'vault/vault.json', '.sre/vault.json'];
         found = findValidResourcePath(relativeSearchLocations, (dir, success, nextDir) => {
             if (!success) {
-                console.warn('Vault file not found in:', nextDir);
+                logger.warn('Vault file not found in:', nextDir);
             }
         });
 
         if (found) {
-            console.warn('Using alternative vault file found in : ', found);
+            logger.warn('Using alternative vault file found in : ', found);
             return found;
         }
 
@@ -75,7 +75,7 @@ export class JSONFileVault extends VaultConnector {
             hideEchoBack: true,
             mask: '*',
         });
-        console.info('Master key entered');
+        logger.info('Master key entered');
         return masterKey;
     }
 
@@ -96,7 +96,7 @@ export class JSONFileVault extends VaultConnector {
         return value.replace(envVarPattern, (match, envVarName) => {
             const envValue = process.env[envVarName];
             if (envValue === undefined) {
-                console.warn(`Environment variable ${envVarName} not found, keeping original value: ${match}`);
+                logger.warn(`Environment variable ${envVarName} not found, keeping original value: ${match}`);
                 return match;
             }
             return envValue;
@@ -175,8 +175,8 @@ export class JSONFileVault extends VaultConnector {
                     this.vaultData = JSON.parse(fs.readFileSync(vaultFile).toString());
                 }
             } catch (e) {
-                console.error('Error parsing vault file:', e);
-                console.error('!!! Vault features might not work properly !!!');
+                logger.error('Error parsing vault file:', e);
+                logger.error('!!! Vault features might not work properly !!!');
                 this.vaultData = {};
             }
 
@@ -197,6 +197,7 @@ export class JSONFileVault extends VaultConnector {
     }
 
     private initFileWatcher() {
+        if (!this.vaultFile || !fs.existsSync(this.vaultFile)) return;
         this.watcher = chokidar.watch(this.vaultFile, {
             persistent: false, // Don't keep the process running
             ignoreInitial: true,

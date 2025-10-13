@@ -83,12 +83,13 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
 export function findValidResourcePath(listOfLocations: string[], callback?: (dir: string, success?: boolean, nextDir?: string) => void) {
     let found = '';
     for (let location of listOfLocations) {
-        found = findSmythPath(location, (dir, success, nextDir) => {
+        findSmythPath(location, (dir, success, nextDir) => {
             callback?.(dir, success, nextDir);
             if (success) {
                 found = dir;
             }
         });
+        if (found) return found;
     }
     return found;
 }

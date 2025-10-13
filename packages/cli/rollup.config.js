@@ -206,14 +206,14 @@ const zeroDepConfig = {
             keepNames: true, // Keep all names
         }),
         // Bundle size visualization
-        visualizer({
-            filename: './bundle-stats.html',
-            open: true, // automatically opens in browser
-            gzipSize: true,
-            brotliSize: true,
-            template: 'treemap', // treemap, sunburst, or network
-            title: 'CLI Bundle Size Report',
-        }),
+        // visualizer({
+        //     filename: './bundle-stats.html',
+        //     open: true, // automatically opens in browser
+        //     gzipSize: true,
+        //     brotliSize: true,
+        //     template: 'treemap', // treemap, sunburst, or network
+        //     title: 'CLI Bundle Size Report',
+        // }),
         // No terser plugin - no compression at all
     ],
 };

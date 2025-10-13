@@ -227,6 +227,26 @@ export class TemplateStringHelper {
     //     });
     // }
 }
+/**
+ * A helper function that takes an object and a property string and returns the value of the property
+ * @param obj the object to get the property from
+ * @param propertyString the property string to get the value from
+ * @returns the value of the property
+ */
+export function JSONExpression(obj, propertyString) {
+    const properties = propertyString.split(/\.|\[|\]\.|\]\[|\]/).filter(Boolean);
+    let currentProperty = obj;
+
+    for (let property of properties) {
+        if (currentProperty === undefined || currentProperty === null) {
+            return undefined;
+        }
+
+        currentProperty = currentProperty[property];
+    }
+
+    return currentProperty;
+}
 
 /**
  * a helper function that takes a string and escape it
