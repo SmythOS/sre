@@ -4,7 +4,7 @@ import esbuild from 'rollup-plugin-esbuild';
 import sourcemaps from 'rollup-plugin-sourcemaps';
 import { terser } from 'rollup-plugin-terser';
 import { typescriptPaths } from 'rollup-plugin-typescript-paths';
-import { visualizer } from 'rollup-plugin-visualizer';
+//import { visualizer } from 'rollup-plugin-visualizer';
 
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
