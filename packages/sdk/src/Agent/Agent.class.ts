@@ -249,6 +249,7 @@ export type TAgentSettings = {
     behavior?: string;
     /** The mode of the agent */
     mode?: TAgentMode;
+
     [key: string]: any;
 };
 
@@ -399,6 +400,10 @@ export class Agent extends SDKObject {
         if (mode) {
             this.addMode(mode);
         }
+
+        if (rest.imported) {
+            ConnectorService.getAgentDataConnector().setEphemeralAgentData(this._data.id, this._data);
+        }
     }
 
     protected async init() {
@@ -483,6 +488,7 @@ export class Agent extends SDKObject {
         const _data = {
             ...(data as TAgentSettings),
             ...(overrides as TAgentSettings),
+            imported: true,
         };
         const agent = new Agent(_data);
         return agent;

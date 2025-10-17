@@ -1,9 +1,12 @@
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { SystemEvents } from './SystemEvents';
-import { Logger as createLogger } from '../helpers/Log.helper';
+import { Logger } from '../helpers/Log.helper';
+import { ConnectorService } from './ConnectorsService';
+import { Connector } from './Connector.class';
+import { TConnectorService } from '@sre/types/SRE.types';
 
-const Logger = createLogger('ExternalEventsReceiver');
+const logger = Logger('ExternalEventsReceiver');
 
 export interface ExternalEventsReceiverConfig {
     port: number;
@@ -28,7 +31,7 @@ export class ExternalEventsReceiver {
         };
 
         if (!this.config.authTokens || this.config.authTokens.length === 0) {
-            Logger.warn('At least one authentication token must be provided');
+            logger.warn('At least one authentication token must be provided');
             throw new Error('At least one authentication token must be provided');
         }
     }
@@ -38,7 +41,7 @@ export class ExternalEventsReceiver {
      */
     public async start(): Promise<void> {
         if (this.isRunning) {
-            Logger.warn('Server is already running');
+            logger.warn('Server is already running');
             return;
         }
 
@@ -60,7 +63,7 @@ export class ExternalEventsReceiver {
         return new Promise((resolve, reject) => {
             this.server!.listen(this.config.port, () => {
                 this.isRunning = true;
-                Logger.info(
+                logger.debug(
                     `Server started on port ${this.config.port}` +
                         (this.config.enableHttp ? ' [HTTP]' : '') +
                         (this.config.enableWebSocket ? ` [WebSocket: ${this.config.path}]` : '')
@@ -69,7 +72,7 @@ export class ExternalEventsReceiver {
             });
 
             this.server!.on('error', (error) => {
-                Logger.error('Server error', error);
+                logger.error('Server error', error);
                 reject(error);
             });
         });
@@ -88,7 +91,7 @@ export class ExternalEventsReceiver {
             if (this.wss) {
                 this.wss.close((err) => {
                     if (err) {
-                        Logger.error('Error closing WebSocket server', err);
+                        logger.error('Error closing WebSocket server', err);
                     }
                 });
             }
@@ -97,11 +100,11 @@ export class ExternalEventsReceiver {
             if (this.server) {
                 this.server.close((err) => {
                     if (err) {
-                        Logger.error('Error closing HTTP server', err);
+                        logger.error('Error closing HTTP server', err);
                         reject(err);
                     } else {
                         this.isRunning = false;
-                        Logger.info('Server stopped');
+                        logger.debug('Server stopped');
                         resolve();
                     }
                 });
@@ -158,7 +161,7 @@ export class ExternalEventsReceiver {
                     message: `Event EXT:${connectorName} emitted successfully`,
                 });
             } catch (error) {
-                Logger.error('Error processing HTTP request', error);
+                logger.error('Error processing HTTP request', error);
                 this.sendResponse(res, 400, {
                     error: 'Invalid JSON payload',
                 });
@@ -166,7 +169,7 @@ export class ExternalEventsReceiver {
         });
 
         req.on('error', (error) => {
-            Logger.error('HTTP request error', error);
+            logger.error('HTTP request error', error);
             this.sendResponse(res, 500, { error: 'Internal server error' });
         });
     }
@@ -175,7 +178,7 @@ export class ExternalEventsReceiver {
      * Handle WebSocket connections
      */
     private handleWebSocketConnection(ws: WebSocket, req: IncomingMessage): void {
-        Logger.info('New WebSocket connection');
+        logger.debug('New WebSocket connection');
 
         // Validate authentication from headers
         const authResult = this.validateAuth(req.headers);
@@ -216,7 +219,7 @@ export class ExternalEventsReceiver {
                     })
                 );
             } catch (error) {
-                Logger.error('Error processing WebSocket message', error);
+                logger.error('Error processing WebSocket message', error);
                 ws.send(
                     JSON.stringify({
                         error: 'Invalid JSON message',
@@ -226,11 +229,11 @@ export class ExternalEventsReceiver {
         });
 
         ws.on('error', (error) => {
-            Logger.error('WebSocket error', error);
+            logger.error('WebSocket error', error);
         });
 
         ws.on('close', () => {
-            Logger.info('WebSocket connection closed');
+            logger.debug('WebSocket connection closed');
         });
     }
 
@@ -271,8 +274,10 @@ export class ExternalEventsReceiver {
      */
     private emitExternalEvent(connectorName: string, data: any): void {
         const eventName = `EXT:${connectorName}` as const;
-        Logger.info(`Emitting event ${eventName}`);
-        SystemEvents.emit(eventName, data);
+        const connector = ConnectorService.getInstance<Connector>(TConnectorService[connectorName]);
+        if (connector) {
+            connector.handleEvent(eventName, data);
+        }
     }
 
     /**

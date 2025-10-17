@@ -167,7 +167,7 @@ export class Job {
 
         // Get agent data
         const agentDataConnector = ConnectorService.getAgentDataConnector();
-        const agentData = await agentDataConnector.getAgentData(config.agentId);
+        const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
 
         if (!agentData) {
             throw new Error(`Agent ${config.agentId} not found in AgentDataConnector. Make sure the agent is properly registered.`);
@@ -224,7 +224,7 @@ export class Job {
 
         // Get agent data
         const agentDataConnector = ConnectorService.getAgentDataConnector();
-        const agentData = await agentDataConnector.getAgentData(config.agentId);
+        const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
 
         if (!agentData) {
             throw new Error(`Agent ${config.agentId} not found`);

@@ -54,6 +54,7 @@ export * from './Core/boot';
 export * from './Core/Connector.class';
 export * from './Core/ConnectorsService';
 export * from './Core/DummyConnector';
+export * from './Core/ExternalEventsReceiver';
 export * from './Core/HookService';
 export * from './Core/SmythRuntime.class';
 export * from './Core/SystemEvents';
