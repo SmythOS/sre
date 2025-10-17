@@ -44,6 +44,7 @@
         "@types/express": "^4.17.23",
         "@types/lodash": "^4.17.10",
         "@types/node": "^20.19.0",
+        "@types/ws": "^8.18.1",
         "cross-env": "^7.0.3",
         "ctix": "^2.7.1",
         "dependency-cruiser": "^16.3.3",
@@ -105,6 +106,7 @@
         "socks-proxy-agent": "^8.0.4",
         "winston": "^3.13.0",
         "winston-transport": "^4.7.0",
+        "ws": "^8.18.3",
         "xxhashjs": "^0.2.2",
         "zip-lib": "^1.1.2"
     },
