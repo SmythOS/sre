@@ -223,4 +223,13 @@ export default class PlannerMode {
         //     },
         // });
     }
+
+    static remove(agent: Agent) {
+        agent.removeSkill('_sre_AddTasks');
+        agent.removeSkill('_sre_AddSubTasks');
+        agent.removeSkill('_sre_UpdateTasks');
+        agent.removeSkill('_sre_TasksCompleted');
+        agent.removeSkill('_sre_clearTasks');
+        agent.behavior = agent.behavior.replace(_planner_prompt, '');
+    }
 }
