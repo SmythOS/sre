@@ -51,12 +51,12 @@ export class JSONFileVault extends VaultConnector {
         const relativeSearchLocations = ['vault.json', 'vault/vault.json', '.sre/vault.json'];
         found = findValidResourcePath(relativeSearchLocations, (dir, success, nextDir) => {
             if (!success) {
-                logger.warn('Vault file not found in:', nextDir);
+                logger.warn('Vault file not found in:', dir);
             }
         });
 
         if (found) {
-            logger.warn('Using alternative vault file found in : ', found);
+            logger.warn('Found a Vault file in : ', found, ' I will use this one.');
             return found;
         }
 

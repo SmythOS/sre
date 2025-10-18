@@ -31,8 +31,23 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
         return envDir;
     }
 
+    const isElectron = !!process.versions.electron;
+    let execPath = '';
+    if (isElectron) {
+        // In packaged Electron apps, use resourcesPath if available
+        if ((process as any).resourcesPath) {
+            // process.resourcesPath points to the 'resources' folder in packaged app
+            // Go up one level to get the app directory
+            execPath = path.dirname((process as any).resourcesPath);
+        } else {
+            // Development mode or fallback
+            execPath = path.dirname(process.execPath);
+        }
+    } else {
+        execPath = process.cwd();
+    }
     // 1. Try to find in local directory (the directory from which the program was run)
-    const localDir = path.resolve(process.cwd(), '.smyth', _path);
+    const localDir = path.resolve(execPath, '.smyth', _path);
     searchDirectories.push(localDir);
 
     // 2. Try to find from main script's directory (entry point)
@@ -61,10 +76,11 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
     const homeDir = path.resolve(os.homedir(), '.smyth', _path);
     searchDirectories.push(homeDir);
 
+    const deduplicatedSearchDirectories = Array.from(new Set(searchDirectories));
     //check if any of the directories exist
-    for (let i = 0; i < searchDirectories.length; i++) {
-        const dir = searchDirectories[i];
-        const nextDir = searchDirectories[i + 1];
+    for (let i = 0; i < deduplicatedSearchDirectories.length; i++) {
+        const dir = deduplicatedSearchDirectories[i];
+        const nextDir = deduplicatedSearchDirectories[i + 1];
         if (!fs.existsSync(dir)) {
             callback?.(dir, false, nextDir);
             continue;
@@ -82,7 +98,8 @@ export function findSmythPath(_path: string = '', callback?: (smythDir: string, 
 
 export function findValidResourcePath(listOfLocations: string[], callback?: (dir: string, success?: boolean, nextDir?: string) => void) {
     let found = '';
-    for (let location of listOfLocations) {
+    const deduplicatedLocations = Array.from(new Set(listOfLocations));
+    for (let location of deduplicatedLocations) {
         findSmythPath(location, (dir, success, nextDir) => {
             callback?.(dir, success, nextDir);
             if (success) {
@@ -93,16 +110,35 @@ export function findValidResourcePath(listOfLocations: string[], callback?: (dir
     }
     return found;
 }
-function findPackageRoot(startDir = process.cwd()) {
-    let currentDir = startDir;
-
-    while (currentDir !== path.dirname(currentDir)) {
-        const packageJsonPath = path.resolve(currentDir, 'package.json');
-        if (fs.existsSync(packageJsonPath)) {
-            return currentDir;
+function findPackageRoot(startDir?) {
+    try {
+        if (!startDir) {
+            const isElectron = !!process.versions.electron;
+            let execPath = '';
+            if (isElectron) {
+                // In packaged Electron apps, use resourcesPath if available
+                if ((process as any).resourcesPath) {
+                    // process.resourcesPath points to the 'resources' folder in packaged app
+                    // Go up one level to get the app directory
+                    execPath = path.dirname((process as any).resourcesPath);
+                } else {
+                    // Development mode or fallback
+                    execPath = path.dirname(process.execPath);
+                }
+            } else {
+                execPath = process.cwd();
+            }
+            startDir = execPath;
         }
-        currentDir = path.dirname(currentDir);
-    }
+        let currentDir = startDir;
 
+        while (currentDir !== path.dirname(currentDir)) {
+            const packageJsonPath = path.resolve(currentDir, 'package.json');
+            if (fs.existsSync(packageJsonPath)) {
+                return currentDir;
+            }
+            currentDir = path.dirname(currentDir);
+        }
+    } catch (error) {}
     return null;
 }
