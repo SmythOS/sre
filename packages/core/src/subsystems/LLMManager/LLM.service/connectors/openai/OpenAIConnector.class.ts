@@ -70,12 +70,18 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
-        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
+        // If apiKey is undefined, it tries to use OPENAI_API_KEY and causes an error, so set it to an empty string to prevent SRE errors
+        const apiKey = (params.credentials as BasicCredentials)?.apiKey || '';
         const baseURL = params?.modelInfo?.baseURL;
 
-        const openai = new OpenAI({ baseURL, apiKey });
+        try {
+            const openai = new OpenAI({ baseURL, apiKey });
 
-        return openai;
+            return openai;
+        } catch (error) {
+            console.error('Error: on OpenAI client initialization', error);
+            throw error;
+        }
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
