@@ -250,6 +250,9 @@ export type TAgentSettings = {
     /** The mode of the agent */
     mode?: TAgentMode;
 
+    /** Explicitly specifies the agent teamId */
+    teamId?: string;
+
     [key: string]: any;
 };
 
@@ -470,9 +473,9 @@ export class Agent extends SDKObject {
      * });
      * ```
      */
-    static import(data: TAgentSettings): Agent;
-    static import(data: string, overrides?: any): Agent;
-    static import(data: string | TAgentSettings, overrides?: TAgentSettings) {
+    static import(data: TAgentSettings): Agent | Promise<Agent>;
+    static import(data: string, overrides?: any): Agent | Promise<Agent>;
+    static import(data: string | TAgentSettings, overrides?: TAgentSettings): Agent | Promise<Agent> {
         if (typeof data === 'string') {
             if (!fs.existsSync(data)) {
                 throw new Error(`File ${data} does not exist`);
@@ -481,8 +484,8 @@ export class Agent extends SDKObject {
             data = JSON.parse(fs.readFileSync(data, 'utf8')) as TAgentSettings;
 
             //when importing a .smyth file we need to override the id and teamId
-            delete data.id;
-            delete data.teamId;
+            //delete data.id;
+            //delete data.teamId;
         }
 
         const _data = {
