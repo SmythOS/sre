@@ -294,12 +294,18 @@ export class Agent extends SDKObject {
         connections: [],
     };
 
+    private _modes: TAgentMode[] = [];
+
     public get behavior() {
         return this._data.behavior;
     }
 
     public set behavior(behavior: string) {
         this._data.behavior = behavior;
+    }
+
+    public get modes() {
+        return this._modes;
     }
 
     /**
@@ -394,7 +400,7 @@ export class Agent extends SDKObject {
         DummyAccountHelper.addAgentToTeam(this._data.id, this._data.teamId);
 
         if (mode) {
-            this.addMode(mode);
+            this.setMode(mode);
         }
     }
 
@@ -676,6 +682,25 @@ export class Agent extends SDKObject {
         return component;
     }
 
+    /**
+     * Remove a skill from the agent.
+     *
+     * @param skillName - The name of the skill to remove
+     * @returns The removed skill
+     *
+     * @example
+     * ```typescript
+     * agent.removeSkill('fetch_weather');
+     * ```
+     */
+    removeSkill(skillName: string) {
+        const component = this.structure.components.find((c) => c.data.endpoint === skillName);
+        if (component) {
+            this.structure.components = this.structure.components.filter((c) => c.data.endpoint !== skillName);
+            this.data.components = this.data.components.filter((c) => c.data.endpoint !== skillName);
+        }
+    }
+
     async call(skillName: string, ...args: (Record<string, any> | any)[]) {
         try {
             const _agentData = this.data;
@@ -804,7 +829,7 @@ export class Agent extends SDKObject {
         if (!chatOptions.model) {
             chatOptions.model = this._data.defaultModel;
         }
-        return new Chat(chatOptions, this.data, {
+        return new Chat(chatOptions, this, {
             agentId: this._data.id,
             baseUrl: chatOptions.baseUrl,
         });
@@ -845,15 +870,33 @@ export class Agent extends SDKObject {
      * @example
      * ```typescript
      * agent.setMode(TAgentMode.PLANNER);
-     * //or
-     * agent.addMode('planner');
      * ```
      *
      * @param mode - The mode to apply, currently only "planner" is supported
      */
-    public addMode(mode: TAgentMode) {
+    public setMode(mode: TAgentMode) {
         if (typeof AgentMode?.[mode]?.apply === 'function') {
             AgentMode[mode].apply(this);
+            this._modes.push(mode);
+        } else {
+            console.warn(`Mode ${mode} is not a valid mode, skipping...`);
+        }
+    }
+
+    /**
+     * Remove the operational mode of the agent.
+     *
+     * @example
+     * ```typescript
+     * agent.unsetMode(TAgentMode.PLANNER);
+     * ```
+     *
+     * @param mode - The mode to remove
+     */
+    public unsetMode(mode: TAgentMode) {
+        if (typeof AgentMode?.[mode]?.remove === 'function') {
+            AgentMode[mode].remove(this);
+            this._modes = this._modes.filter((m) => m !== mode);
         } else {
             console.warn(`Mode ${mode} is not a valid mode, skipping...`);
         }
