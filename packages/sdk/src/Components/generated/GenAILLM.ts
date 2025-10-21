@@ -119,6 +119,7 @@ export function GenAILLM(settings?: TGenAILLMSettings, agent?: Agent) {
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TGenAILLMOutputs = createSafeAccessor({

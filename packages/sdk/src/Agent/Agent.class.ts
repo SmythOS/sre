@@ -1,5 +1,6 @@
 import {
     AccessCandidate,
+    AgentDataConnector,
     AgentProcess,
     BinaryInput,
     ConnectorService,
@@ -285,6 +286,8 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
+    #isEphemeral: boolean = true;
+    #agentDataConnector: AgentDataConnector;
     private _warningDisplayed = {
         storage: false,
         vectorDB: false,
@@ -309,14 +312,22 @@ export class Agent extends SDKObject {
         this._data.behavior = behavior;
     }
 
+    private _structure: any = {
+        components: [],
+        connections: [],
+    };
     /**
      * The agent internal structure
      * used for by internal operations to generate the agent data
      */
-    public structure = {
-        components: [],
-        connections: [],
-    };
+    public get structure() {
+        return this._structure;
+    }
+    public set structure(structure: any) {
+        this._structure = structure;
+
+        this.sync();
+    }
 
     private _team: Team;
     public get team() {
@@ -404,9 +415,7 @@ export class Agent extends SDKObject {
             this.addMode(mode);
         }
 
-        if (rest.imported) {
-            ConnectorService.getAgentDataConnector().setEphemeralAgentData(this._data.id, this._data);
-        }
+        this.sync();
     }
 
     protected async init() {
@@ -436,6 +445,16 @@ export class Agent extends SDKObject {
         this._readyPromise.resolve(true);
     }
 
+    public sync() {
+        if (!this.#agentDataConnector) {
+            this.#agentDataConnector = ConnectorService.getAgentDataConnector();
+        }
+
+        if (this.#agentDataConnector && this.#isEphemeral) {
+            //SDK agents loaded by data or implemented programmatically are ephemeral
+            this.#agentDataConnector.setEphemeralAgentData(this._data.id, this.data);
+        }
+    }
     private _validateId(id: string) {
         //only accept alphanumeric, hyphens and underscores
         return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
@@ -473,9 +492,9 @@ export class Agent extends SDKObject {
      * });
      * ```
      */
-    static import(data: TAgentSettings): Agent | Promise<Agent>;
-    static import(data: string, overrides?: any): Agent | Promise<Agent>;
-    static import(data: string | TAgentSettings, overrides?: TAgentSettings): Agent | Promise<Agent> {
+    static import(data: TAgentSettings): Agent;
+    static import(data: string, overrides?: any): Agent;
+    static import(data: string | TAgentSettings, overrides?: TAgentSettings): Agent {
         if (typeof data === 'string') {
             if (!fs.existsSync(data)) {
                 throw new Error(`File ${data} does not exist`);
@@ -491,7 +510,6 @@ export class Agent extends SDKObject {
         const _data = {
             ...(data as TAgentSettings),
             ...(overrides as TAgentSettings),
-            imported: true,
         };
         const agent = new Agent(_data);
         return agent;

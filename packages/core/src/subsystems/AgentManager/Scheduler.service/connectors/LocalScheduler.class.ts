@@ -12,7 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { findSmythPath } from '../../../..';
 
-const console = Logger('LocalScheduler');
+const logger = Logger('LocalScheduler');
 
 export type LocalSchedulerConfig = {
     /**
@@ -44,7 +44,6 @@ export type LocalSchedulerConfig = {
  * Runtime job data structure
  */
 interface ScheduledJobRuntime extends IScheduledJob {
-    timerId?: NodeJS.Timeout; // Timer reference for cleanup
     candidateRole: string; // Owner's role (not serialized, implicit from folder)
     candidateId: string; // Owner's ID (not serialized, implicit from folder)
 }
@@ -55,6 +54,10 @@ interface ScheduledJobRuntime extends IScheduledJob {
  * Stores jobs in JSON files under ~/.smyth/scheduler/ (or configured folder).
  * Loads and schedules jobs on initialization.
  * Provides full ACL-based access control and candidate isolation.
+ *
+ * **Multi-Instance Safety**: Uses static storage to prevent race conditions when
+ * multiple scheduler instances are running. Job timers are shared across all instances,
+ * ensuring each job runs only once even if scheduled by multiple instances.
  *
  * @example
  * ```typescript
@@ -74,10 +77,15 @@ export class LocalScheduler extends SchedulerConnector {
     public name = 'LocalScheduler';
     public id = 'local';
 
+    // ===[ Static shared storage across all instances ]===
+    // This prevents race conditions when multiple scheduler instances are running
+    private static jobs: Map<string, ScheduledJobRuntime> = new Map();
+    private static timers: Map<string, NodeJS.Timeout> = new Map();
+
+    // ===[ Instance-specific properties ]===
     private folder: string;
     private jobsPrefix = 'jobs'; // Job configurations
     private runtimePrefix = '.jobs.runtime'; // Execution history and runtime data
-    private jobs: Map<string, ScheduledJobRuntime> = new Map();
     private isInitialized = false;
     private config: Required<LocalSchedulerConfig>;
 
@@ -95,7 +103,7 @@ export class LocalScheduler extends SchedulerConnector {
         this.initialize();
 
         if (!fs.existsSync(this.folder)) {
-            console.error(`Invalid folder provided: ${this.folder}`);
+            logger.warn(`Invalid folder provided: ${this.folder}`);
         }
     }
 
@@ -112,12 +120,12 @@ export class LocalScheduler extends SchedulerConnector {
         _schedulerFolder = findSmythPath('scheduler');
 
         if (fs.existsSync(_schedulerFolder)) {
-            console.warn('Using alternative scheduler folder found in : ', _schedulerFolder);
+            logger.warn('Using alternative scheduler folder found in : ', _schedulerFolder);
             return _schedulerFolder;
         }
 
-        console.warn('!!! All attempts to find an existing scheduler folder failed !!!');
-        console.warn('!!! I will use this folder: ', _schedulerFolder);
+        logger.warn('!!! All attempts to find an existing scheduler folder failed !!!');
+        logger.warn('!!! I will use this folder: ', _schedulerFolder);
         return _schedulerFolder;
     }
 
@@ -151,7 +159,7 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         this.isInitialized = true;
-        console.info('LocalScheduler initialized');
+        logger.info('LocalScheduler initialized');
     }
 
     /**
@@ -218,7 +226,7 @@ export class LocalScheduler extends SchedulerConnector {
                 // Parse candidate info from folder name: "username.user" -> {id: "username", role: "user"}
                 const lastDotIndex = candidateFolder.lastIndexOf('.');
                 if (lastDotIndex === -1) {
-                    console.warn(`Invalid candidate folder format: ${candidateFolder}`);
+                    logger.warn(`Invalid candidate folder format: ${candidateFolder}`);
                     continue;
                 }
 
@@ -253,23 +261,23 @@ export class LocalScheduler extends SchedulerConnector {
                         // Construct job key based on candidate and job id
                         const jobKey = this.constructJobKey(candidate, jobData.id);
 
-                        // Store in memory
-                        this.jobs.set(jobKey, jobData);
+                        // Store in static shared memory (thread-safe across instances)
+                        LocalScheduler.jobs.set(jobKey, jobData);
 
                         // Schedule active jobs for execution
                         if (jobData.status === 'active') {
-                            console.info(`Job ${jobData.id} loaded from ${candidateFolder} and scheduled for execution`);
+                            logger.info(`Job ${jobData.id} loaded from ${candidateFolder} and scheduled for execution`);
                             await this.scheduleJob(jobData);
                         }
                     } catch (error) {
-                        console.error(`Error loading job file ${file} from ${candidateFolder}:`, error);
+                        logger.warn(`Error loading job file ${file} from ${candidateFolder}:`, error);
                     }
                 }
             }
 
-            console.info(`Loaded ${this.jobs.size} jobs from disk`);
+            logger.info(`Loaded ${LocalScheduler.jobs.size} jobs from disk`);
         } catch (error) {
-            console.error('Error loading jobs from disk', error);
+            logger.warn('Error loading jobs from disk', error);
         }
     }
 
@@ -280,13 +288,14 @@ export class LocalScheduler extends SchedulerConnector {
         try {
             const filePath = this.getJobFilePath(candidate, jobData.id, true);
 
-            // Don't serialize: timer, execution history, candidate info (implicit from folder), createdBy (deprecated)
-            const { timerId, executionHistory, lastRun, nextRun, candidateRole, candidateId, createdBy, ...configData } = jobData;
+            // Don't serialize: execution history, candidate info (implicit from folder), createdBy (deprecated)
+            const { executionHistory, lastRun, nextRun, candidateRole, candidateId, createdBy, ...configData } = jobData;
 
             fs.writeFileSync(filePath, JSON.stringify(configData, null, 2), 'utf-8');
         } catch (error) {
-            console.error(`Error saving job ${jobData.id} to disk`, error);
-            throw error;
+            logger.warn(`Error saving job ${jobData.id} to disk`, error);
+            //throw error;
+            return;
         }
     }
 
@@ -305,8 +314,9 @@ export class LocalScheduler extends SchedulerConnector {
 
             fs.writeFileSync(filePath, JSON.stringify(runtimeData, null, 2), 'utf-8');
         } catch (error) {
-            console.error(`Error saving runtime data for job ${jobData.id}`, error);
-            throw error;
+            logger.warn(`Error saving runtime data for job ${jobData.id}`, error);
+            //throw error;
+            return;
         }
     }
 
@@ -323,7 +333,7 @@ export class LocalScheduler extends SchedulerConnector {
             const data = fs.readFileSync(filePath, 'utf-8');
             return JSON.parse(data);
         } catch (error) {
-            console.error(`Error loading runtime data for job ${jobId}`, error);
+            logger.warn(`Error loading runtime data for job ${jobId}`, error);
             return {};
         }
     }
@@ -345,14 +355,18 @@ export class LocalScheduler extends SchedulerConnector {
                 fs.unlinkSync(runtimeFilePath);
             }
         } catch (error) {
-            console.error(`Error deleting job ${jobId} from disk`, error);
-            throw error;
+            logger.warn(`Error deleting job ${jobId} from disk`, error);
+            return;
         }
     }
 
     /**
      * Schedule a job for execution
      * Jobs are fully serializable and can be executed after restart
+     *
+     * **Multi-Instance Safety**: Before scheduling, checks if a timer already exists
+     * for this job (from another scheduler instance) and clears it. This ensures
+     * each job has exactly one active timer across all instances.
      */
     private async scheduleJob(jobData: ScheduledJobRuntime): Promise<void> {
         // Only schedule if job is active
@@ -365,8 +379,21 @@ export class LocalScheduler extends SchedulerConnector {
         // Validate schedule
         const validation = schedule.validate();
         if (!validation.valid) {
-            console.error(`Invalid schedule for job ${jobData.id}: ${validation.error}`);
+            logger.warn(`Invalid schedule for job ${jobData.id}: ${validation.error}`);
             return;
+        }
+
+        // Construct job key for timer lookup
+        const jobKey = this.constructJobKey({ role: jobData.candidateRole, id: jobData.candidateId } as IAccessCandidate, jobData.id);
+
+        // ===[ CRITICAL: Clear existing timer if present ]===
+        // This handles the case where multiple scheduler instances try to schedule the same job
+        // The job key is unique, so we can safely overwrite any existing timer
+        const existingTimer = LocalScheduler.timers.get(jobKey);
+        if (existingTimer) {
+            logger.info(`Clearing existing timer for job ${jobData.id} (overwriting duplicate schedule)`);
+            clearInterval(existingTimer);
+            LocalScheduler.timers.delete(jobKey);
         }
 
         // For interval-based scheduling
@@ -378,8 +405,8 @@ export class LocalScheduler extends SchedulerConnector {
                 await this.executeJob(jobData);
             }, intervalMs);
 
-            // Store timer reference
-            jobData.timerId = timer;
+            // Store timer reference in static shared storage
+            LocalScheduler.timers.set(jobKey, timer);
 
             // Execute immediately if no last run
             if (!jobData.lastRun) {
@@ -389,18 +416,19 @@ export class LocalScheduler extends SchedulerConnector {
 
         // For cron-based scheduling (would require node-cron)
         if (jobData.schedule.cron) {
-            console.warn(`Cron scheduling not yet implemented for job ${jobData.id}`);
+            logger.warn(`Cron scheduling not yet implemented for job ${jobData.id}`);
         }
     }
 
     /**
      * Unschedule a job
+     * Uses the job key (not just jobId) to access the static timer storage
      */
-    private async unscheduleJob(jobId: string): Promise<void> {
-        const jobData = this.jobs.get(jobId);
-        if (jobData && jobData.timerId) {
-            clearInterval(jobData.timerId);
-            jobData.timerId = undefined;
+    private async unscheduleJob(jobKey: string): Promise<void> {
+        const timer = LocalScheduler.timers.get(jobKey);
+        if (timer) {
+            clearInterval(timer);
+            LocalScheduler.timers.delete(jobKey);
         }
     }
 
@@ -409,7 +437,7 @@ export class LocalScheduler extends SchedulerConnector {
      */
     private async executeJob(jobData: ScheduledJobRuntime): Promise<void> {
         if (!jobData.jobConfig) {
-            console.warn(`Skipping execution of job ${jobData.id}: job configuration not available.`);
+            logger.warn(`Skipping execution of job ${jobData.id}: job configuration not available.`);
             return;
         }
 
@@ -417,13 +445,13 @@ export class LocalScheduler extends SchedulerConnector {
 
         // Check if job should run (date range validation)
         if (!schedule.shouldRun()) {
-            console.info(`Job ${jobData.id} skipped - outside schedule window`);
+            logger.info(`Job ${jobData.id} skipped - outside schedule window`);
             return;
         }
 
         const job = Job.fromJSON(jobData.jobConfig);
 
-        console.info(`Executing job ${jobData.id} (${jobData.jobConfig.metadata.name})`);
+        logger.info(`Executing job ${jobData.id} (${jobData.jobConfig.metadata.name})`);
 
         const result = await job.executeWithRetry();
 
@@ -433,7 +461,7 @@ export class LocalScheduler extends SchedulerConnector {
         jobData.nextRun = nextRun ? nextRun.toISOString() : undefined;
 
         if (!result.success) {
-            console.error(`Job ${jobData.id} failed:`, result.error?.message);
+            logger.warn(`Job ${jobData.id} failed:`, result.error?.message);
             jobData.status = 'failed';
         }
 
@@ -481,7 +509,7 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         const jobKey = this.constructJobKey(candidate, resourceId);
-        const jobData = this.jobs.get(jobKey);
+        const jobData = LocalScheduler.jobs.get(jobKey);
 
         if (!jobData) {
             // Resource doesn't exist, grant Owner access to allow creation
@@ -500,10 +528,10 @@ export class LocalScheduler extends SchedulerConnector {
         const result: IScheduledJob[] = [];
 
         // Filter jobs by candidate (using candidateRole and candidateId from folder structure)
-        for (const [key, jobData] of this.jobs) {
+        for (const [key, jobData] of LocalScheduler.jobs) {
             if (jobData.candidateRole === acRequest.candidate.role && jobData.candidateId === acRequest.candidate.id) {
-                // Don't include timerId or internal candidate fields in the result
-                const { timerId, candidateRole, candidateId, ...serializableData } = jobData;
+                // Don't include internal candidate fields in the result
+                const { candidateRole, candidateId, ...serializableData } = jobData;
                 result.push(serializableData);
             }
         }
@@ -520,11 +548,12 @@ export class LocalScheduler extends SchedulerConnector {
         // Validate schedule
         const validation = schedule.validate();
         if (!validation.valid) {
-            throw new Error(`Invalid schedule: ${validation.error}`);
+            logger.warn(`Invalid schedule: ${validation.error}`);
+            return;
         }
 
         const jobKey = this.constructJobKey(acRequest.candidate, jobId);
-        const existingJob = this.jobs.get(jobKey);
+        const existingJob = LocalScheduler.jobs.get(jobKey);
 
         // Create ACL
         let acl: ACL;
@@ -555,21 +584,21 @@ export class LocalScheduler extends SchedulerConnector {
             executionHistory: existingJob?.executionHistory || [],
         };
 
-        // Unschedule existing job if updating
+        // Unschedule existing job if updating (this also clears any duplicate timers from other instances)
         if (existingJob) {
             await this.unscheduleJob(jobKey);
         }
 
-        // Store in memory
-        this.jobs.set(jobKey, jobData);
+        // Store in static shared memory
+        LocalScheduler.jobs.set(jobKey, jobData);
 
         // Save to disk
         await this.saveJobToDisk(acRequest.candidate, jobData);
 
-        // Schedule for execution
+        // Schedule for execution (will clear any duplicate timers)
         await this.scheduleJob(jobData);
 
-        console.info(`Job ${jobId} added successfully`);
+        logger.info(`Job ${jobId} added successfully`);
     }
 
     @SecureConnector.AccessControl
@@ -579,22 +608,24 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         const jobKey = this.constructJobKey(acRequest.candidate, jobId);
-        const jobData = this.jobs.get(jobKey);
+        const jobData = LocalScheduler.jobs.get(jobKey);
 
         if (!jobData) {
-            throw new Error(`Job ${jobId} not found`);
+            //throw new Error(`Job ${jobId} not found`);
+            logger.warn(`Job ${jobId} not found`);
+            return;
         }
 
-        // Unschedule
+        // Unschedule (clears timer from static storage)
         await this.unscheduleJob(jobKey);
 
-        // Remove from memory
-        this.jobs.delete(jobKey);
+        // Remove from static shared memory
+        LocalScheduler.jobs.delete(jobKey);
 
         // Delete from disk
         await this.deleteJobFromDisk(acRequest.candidate, jobId);
 
-        console.info(`Job ${jobId} deleted successfully`);
+        logger.info(`Job ${jobId} deleted successfully`);
     }
 
     @SecureConnector.AccessControl
@@ -604,14 +635,14 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         const jobKey = this.constructJobKey(acRequest.candidate, jobId);
-        const jobData = this.jobs.get(jobKey);
+        const jobData = LocalScheduler.jobs.get(jobKey);
 
         if (!jobData) {
             return undefined;
         }
 
-        // Don't include timerId or internal candidate fields in the result
-        const { timerId, candidateRole, candidateId, ...serializableData } = jobData;
+        // Don't include internal candidate fields in the result
+        const { candidateRole, candidateId, ...serializableData } = jobData;
         return serializableData;
     }
 
@@ -622,17 +653,19 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         const jobKey = this.constructJobKey(acRequest.candidate, jobId);
-        const jobData = this.jobs.get(jobKey);
+        const jobData = LocalScheduler.jobs.get(jobKey);
 
         if (!jobData) {
-            throw new Error(`Job ${jobId} not found`);
+            //throw new Error(`Job ${jobId} not found`);
+            logger.warn(`Job ${jobId} not found`);
+            return;
         }
 
         if (jobData.status === 'paused') {
             return; // Already paused
         }
 
-        // Unschedule
+        // Unschedule (clears timer from static storage)
         await this.unscheduleJob(jobKey);
 
         // Update status
@@ -641,7 +674,7 @@ export class LocalScheduler extends SchedulerConnector {
         // Save to disk
         await this.saveJobToDisk(acRequest.candidate, jobData);
 
-        console.info(`Job ${jobId} paused`);
+        logger.info(`Job ${jobId} paused`);
     }
 
     @SecureConnector.AccessControl
@@ -651,10 +684,12 @@ export class LocalScheduler extends SchedulerConnector {
         }
 
         const jobKey = this.constructJobKey(acRequest.candidate, jobId);
-        const jobData = this.jobs.get(jobKey);
+        const jobData = LocalScheduler.jobs.get(jobKey);
 
         if (!jobData) {
-            throw new Error(`Job ${jobId} not found`);
+            //throw new Error(`Job ${jobId} not found`);
+            logger.warn(`Job ${jobId} not found`);
+            return;
         }
 
         if (jobData.status !== 'paused') {
@@ -667,24 +702,29 @@ export class LocalScheduler extends SchedulerConnector {
         // Save to disk
         await this.saveJobToDisk(acRequest.candidate, jobData);
 
-        // Schedule for execution
+        // Schedule for execution (will clear any duplicate timers)
         await this.scheduleJob(jobData);
 
-        console.info(`Job ${jobId} resumed`);
+        logger.info(`Job ${jobId} resumed`);
     }
 
     /**
      * Cleanup - stop all scheduled jobs
+     *
+     * Note: This clears ALL timers in the static storage, affecting all instances.
+     * Use with caution in multi-instance environments.
      */
     public async shutdown(): Promise<void> {
-        console.info('Shutting down LocalScheduler...');
+        logger.info('Shutting down LocalScheduler...');
 
-        for (const [jobId, jobData] of this.jobs) {
-            if (jobData.timerId) {
-                await this.unscheduleJob(jobId);
-            }
+        const timerCount = LocalScheduler.timers.size;
+
+        // Clear all timers from static storage
+        for (const [jobKey, timer] of LocalScheduler.timers) {
+            clearInterval(timer);
         }
+        LocalScheduler.timers.clear();
 
-        console.info('LocalScheduler shutdown complete');
+        logger.info(`LocalScheduler shutdown complete (cleared ${timerCount} timers)`);
     }
 }

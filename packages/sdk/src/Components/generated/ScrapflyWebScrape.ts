@@ -47,6 +47,7 @@ export function ScrapflyWebScrape(settings?: TScrapflyWebScrapeSettings, agent?:
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TScrapflyWebScrapeOutputs = createSafeAccessor({

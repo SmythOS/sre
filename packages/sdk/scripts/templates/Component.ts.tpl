@@ -22,6 +22,7 @@ import { InputSettings, ComponentInput } from '../../types/SDKTypes';
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: T{{componentName}}Outputs = createSafeAccessor({
