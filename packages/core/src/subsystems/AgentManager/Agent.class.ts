@@ -954,16 +954,16 @@ export class Agent implements IAgent {
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
-                    if (component instanceof Trigger) {
-                        //handle trigger connections
-                        console.log('Trigger', connection);
-                        for (let input of targetComponentData.inputs) {
-                            if (connection.output?.Payload) {
-                                nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
-                            }
-                        }
-                        continue;
-                    }
+                    // if (component instanceof Trigger) {
+                    //     //handle trigger connections
+                    //     console.log('Trigger', connection);
+                    //     for (let input of targetComponentData.inputs) {
+                    //         if (connection.output?.Payload) {
+                    //             nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                    //         }
+                    //     }
+                    //     continue;
+                    // }
                     const output = connection.output;
                     const componentData = connection.componentData;
                     const outputEndpoint = componentData.outputs[connection.sourceIndex]; //source

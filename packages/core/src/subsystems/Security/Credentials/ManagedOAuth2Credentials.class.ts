@@ -48,7 +48,7 @@ export class ManagedOAuth2Credentials extends Credentials {
         //SRE v1.0 format
 
         //SRE v1.5.0+ format
-        if (!data.auth_data || !data.auth_settings) throw new Error('Invalid data format');
+        if (!data.auth_data || !data.auth_settings) throw new Error('oAuth2Manager:Invalid data format');
 
         this.#accessToken = data.auth_data.primary;
         this.#refreshToken = data.auth_data.secondary;

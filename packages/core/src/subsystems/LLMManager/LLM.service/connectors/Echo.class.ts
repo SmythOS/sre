@@ -3,6 +3,7 @@ import { LLMConnector } from '../LLMConnector';
 import EventEmitter from 'events';
 import { APIKeySource, ILLMRequestFuncParams, TLLMChatResponse, TLLMPreparedParams } from '@sre/types/LLM.types';
 import { Logger } from '@sre/helpers/Log.helper';
+import { delay } from '@sre/utils/index';
 
 const logger = Logger('EchoConnector');
 
@@ -45,7 +46,7 @@ export class EchoConnector extends LLMConnector {
 
                 for (let i = 0; i < chunks.length; i++) {
                     // Simulate network delay
-                    await new Promise((resolve) => setTimeout(resolve, 50));
+                    await delay(10);
 
                     const isLastChunk = i === chunks.length - 1;
                     // Add space between chunks except for the last one to avoid trailing space in file URLs
