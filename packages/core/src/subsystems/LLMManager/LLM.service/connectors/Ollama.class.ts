@@ -53,14 +53,16 @@ export class OllamaConnector extends LLMConnector {
             host = baseURL.replace(/\/api\/?$/, '');
         }
 
-        const config: { host: string; Authorization?: string } = { host };
+        const config: { host: string; headers?: { Authorization?: string } } = { host };
 
         if (apiKey) {
-            config.Authorization = `Bearer ${apiKey}`;
+            config.headers = {
+                Authorization: `Bearer ${apiKey}`,
+            };
         }
 
         // No API key validation required for Ollama (local by default)
-        return new Ollama({ host });
+        return new Ollama(config);
     }
 
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
