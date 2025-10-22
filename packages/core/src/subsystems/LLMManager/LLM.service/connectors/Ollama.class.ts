@@ -1,4 +1,4 @@
-import { Ollama, ChatResponse } from 'ollama';
+import { Ollama, ChatResponse, type ChatRequest } from 'ollama';
 import EventEmitter from 'events';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
@@ -14,6 +14,7 @@ import {
     TLLMPreparedParams,
     TLLMToolResultMessageBlock,
     TLLMRequestBody,
+    BasicCredentials,
 } from '@sre/types/LLM.types';
 import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 
@@ -44,18 +45,18 @@ export class OllamaConnector extends LLMConnector {
         // Extract baseURL and sanitize it for Ollama SDK
         let host = 'http://localhost:11434';
 
-        if (context.modelInfo.baseURL) {
-            // Handle baseURL that might include /api/ suffix
-            const baseURL = context.modelInfo.baseURL;
-            if (baseURL.endsWith('/api/')) {
-                // Remove /api/ suffix to get the root host
-                host = baseURL.replace(/\/api\/$/, '');
-            } else if (baseURL.endsWith('/api')) {
-                // Remove /api suffix
-                host = baseURL.replace(/\/api$/, '');
-            } else {
-                host = baseURL;
-            }
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        const baseURL = context?.modelInfo?.baseURL;
+
+        if (baseURL) {
+            // Remove /api or /api/ suffix if present
+            host = baseURL.replace(/\/api\/?$/, '');
+        }
+
+        const config: { host: string; Authorization?: string } = { host };
+
+        if (apiKey) {
+            config.Authorization = `Bearer ${apiKey}`;
         }
 
         // No API key validation required for Ollama (local by default)
@@ -67,10 +68,10 @@ export class OllamaConnector extends LLMConnector {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const ollama = this.getClient(context);
 
-            const result = await ollama.chat({
+            const result = (await ollama.chat({
                 ...body,
                 stream: false,
-            }) as unknown as ChatResponse;
+            })) as unknown as ChatResponse;
 
             const message = result.message;
             const finishReason = result.done_reason || 'stop';
@@ -124,10 +125,10 @@ export class OllamaConnector extends LLMConnector {
             const usage_data = [];
 
             const ollama = this.getClient(context);
-            const stream = await ollama.chat({
+            const stream = (await ollama.chat({
                 ...body,
                 stream: true,
-            }) as AsyncIterable<ChatResponse>;
+            })) as AsyncIterable<ChatResponse>;
 
             let toolsData: ToolData[] = [];
             let fullContent = '';
@@ -159,7 +160,7 @@ export class OllamaConnector extends LLMConnector {
                                     toolsData[index].arguments += toolCall.function.arguments;
                                 } else {
                                     // For object arguments, merge them properly
-                                    toolsData[index].arguments = { ...toolsData[index].arguments as any, ...toolCall.function?.arguments };
+                                    toolsData[index].arguments = { ...(toolsData[index].arguments as any), ...toolCall.function?.arguments };
                                 }
                             }
                         });
@@ -237,7 +238,7 @@ export class OllamaConnector extends LLMConnector {
 
         // Handle tools
         if (params.toolsConfig?.tools) {
-            body.tools = params.toolsConfig.tools.map(tool => ({
+            body.tools = params.toolsConfig.tools.map((tool) => ({
                 type: 'function',
                 function: {
                     name: tool.function.name,
