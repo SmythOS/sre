@@ -380,51 +380,137 @@ export class VertexAIConnector extends LLMConnector {
     }): TLLMToolResultMessageBlock[] {
         const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
-        if (messageBlock) {
-            const parts = [];
+        const parseFunctionArgs = (args: unknown) => {
+            if (typeof args === 'string') {
+                try {
+                    return JSON.parse(args);
+                } catch {
+                    return args;
+                }
+            }
+            return args ?? {};
+        };
 
-            if (typeof messageBlock.content === 'string') {
-                parts.push({ text: messageBlock.content });
-            } else if (Array.isArray(messageBlock.content)) {
-                parts.push(...messageBlock.content);
+        const parseFunctionResponse = (response: unknown): any => {
+            if (typeof response === 'string') {
+                try {
+                    const parsed = JSON.parse(response);
+                    if (typeof parsed === 'string' && parsed !== response) {
+                        return parseFunctionResponse(parsed);
+                    }
+                    return parsed;
+                } catch {
+                    return response;
+                }
+            }
+            return response ?? {};
+        };
+
+        if (messageBlock) {
+
+            const parts: any[] = [];
+
+            if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {
+                for (const part of messageBlock.parts) {
+                    if (!part) continue;
+
+                    if (typeof part.text === 'string' && part.text.trim()) {
+                        parts.push({ text: part.text.trim() });
+                        continue;
+                    }
+
+                    if (part.functionCall) {
+                        parts.push({
+                            functionCall: {
+                                name: part.functionCall.name,
+                                args: parseFunctionArgs(part.functionCall.args),
+                            },
+                        });
+                        continue;
+                    }
+
+                    if (part.functionResponse) {
+                        parts.push({
+                            functionResponse: {
+                                name: part.functionResponse.name,
+                                response: parseFunctionResponse(part.functionResponse.response),
+                            },
+                        });
+                        continue;
+                    }
+
+                    if ((part as any).inlineData) {
+                        parts.push({ inlineData: (part as any).inlineData });
+                    }
+                }
+            } else {
+                if (typeof messageBlock.content === 'string' && messageBlock.content.trim()) {
+                    parts.push({ text: messageBlock.content.trim() });
+                } else if (Array.isArray(messageBlock.content) && messageBlock.content.length > 0) {
+                    parts.push(...messageBlock.content);
+                }
             }
 
-            if (messageBlock.tool_calls) {
-                const functionCalls = messageBlock.tool_calls.map((toolCall: any) => ({
-                    functionCall: {
-                        name: toolCall?.function?.name,
-                        args:
-                            typeof toolCall?.function?.arguments === 'string'
-                                ? JSON.parse(toolCall.function.arguments)
-                                : toolCall?.function?.arguments || {},
-                    },
-                }));
+            if (Array.isArray(messageBlock.tool_calls) && messageBlock.tool_calls.length > 0) {
+                const functionCalls = messageBlock.tool_calls
+                    .map((toolCall: any) => {
+                        if (!toolCall?.function?.name) return undefined;
+                        return {
+                            functionCall: {
+                                name: toolCall.function.name,
+                                args: parseFunctionArgs(toolCall.function.arguments),
+                            },
+                        };
+                    })
+                    .filter(Boolean);
+
                 parts.push(...functionCalls);
             }
 
-            messageBlocks.push({
-                role: messageBlock.role,
-                parts,
-            });
+            const hasFunctionCall = parts.some((part) => part.functionCall);
+            if (!hasFunctionCall && toolsData.length > 0) {
+                toolsData.forEach((toolCall) => {
+                    parts.push({
+                        functionCall: {
+                            name: toolCall.name,
+                            args: parseFunctionArgs(toolCall.arguments),
+                        },
+                    });
+                });
+            }
+
+            if (parts.length > 0) {
+                let role = messageBlock.role;
+                if (role === TLLMMessageRole.Assistant) {
+                    role = TLLMMessageRole.Model;
+                } else if (role === TLLMMessageRole.Tool) {
+                    role = TLLMMessageRole.Function;
+                }
+
+                messageBlocks.push({
+                    role,
+                    parts,
+                });
+            }
         }
 
         // Transform tool results
-        const toolResults = toolsData.map((toolData) => ({
-            role: TLLMMessageRole.User,
-            parts: [
-                {
-                    functionResponse: {
-                        name: toolData.name,
-                        response: {
-                            name: toolData.name,
-                            content: toolData.result,
-                        },
-                    },
+        const functionResponseParts = toolsData
+            .filter((toolData) => toolData.result !== undefined)
+            .map((toolData) => ({
+                functionResponse: {
+                    name: toolData.name,
+                    response: parseFunctionResponse(toolData.result),
                 },
-            ],
-        }));
+            }));
 
-        messageBlocks.push(...toolResults);
+        if (functionResponseParts.length > 0) {
+            messageBlocks.push({
+                role: TLLMMessageRole.Function,
+                parts: functionResponseParts,
+            });
+        }
+
         return messageBlocks;
     }
 }

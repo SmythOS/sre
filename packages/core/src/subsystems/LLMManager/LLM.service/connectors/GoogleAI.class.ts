@@ -627,87 +627,283 @@ export class GoogleAIConnector extends LLMConnector {
     }): TLLMToolResultMessageBlock[] {
         const messageBlocks: TLLMToolResultMessageBlock[] = [];
 
-        if (messageBlock) {
-            const content = [];
-            if (typeof messageBlock.content === 'string') {
-                content.push({ text: messageBlock.content });
-            } else if (Array.isArray(messageBlock.content)) {
-                content.push(...messageBlock.content);
+        const parseFunctionArgs = (args: unknown) => {
+            if (typeof args === 'string') {
+                try {
+                    return JSON.parse(args);
+                } catch {
+                    return args;
+                }
             }
+            return args ?? {};
+        };
 
-            if (messageBlock.parts) {
-                const functionCalls = messageBlock.parts.filter((part) => part.functionCall);
-                if (functionCalls.length > 0) {
-                    content.push(
-                        ...functionCalls.map((call) => ({
+        const parseFunctionResponse = (response: unknown): any => {
+            if (typeof response === 'string') {
+                try {
+                    const parsed = JSON.parse(response);
+                    if (typeof parsed === 'string' && parsed !== response) {
+                        return parseFunctionResponse(parsed);
+                    }
+                    return parsed;
+                } catch {
+                    return response;
+                }
+            }
+            return response ?? {};
+        };
+
+        if (messageBlock) {
+            const content: any[] = [];
+
+            if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {
+                for (const part of messageBlock.parts) {
+                    if (!part) continue;
+
+                    if (typeof part.text === 'string' && part.text.trim()) {
+                        content.push({ text: part.text.trim() });
+                        continue;
+                    }
+
+                    if (part.functionCall) {
+                        content.push({
                             functionCall: {
-                                name: call.functionCall.name,
-                                args: JSON.parse(call.functionCall.args),
+                                name: part.functionCall.name,
+                                args: parseFunctionArgs(part.functionCall.args),
                             },
-                        }))
-                    );
+                        });
+                        continue;
+                    }
+
+                    if (part.functionResponse) {
+                        content.push({
+                            functionResponse: {
+                                name: part.functionResponse.name,
+                                response: parseFunctionResponse(part.functionResponse.response),
+                            },
+                        });
+                        continue;
+                    }
+
+                    if ((part as any).inlineData) {
+                        content.push({ inlineData: (part as any).inlineData });
+                    }
+                }
+            } else {
+                if (typeof messageBlock.content === 'string' && messageBlock.content.trim()) {
+                    content.push({ text: messageBlock.content.trim() });
+                } else if (Array.isArray(messageBlock.content) && messageBlock.content.length > 0) {
+                    content.push(...messageBlock.content);
                 }
             }
 
+            const hasFunctionCall = content.some((part) => part.functionCall);
+            if (!hasFunctionCall && toolsData.length > 0) {
+                toolsData.forEach((toolCall) => {
+                    content.push({
+                        functionCall: {
+                            name: toolCall.name,
+                            args: parseFunctionArgs(toolCall.arguments),
+                        },
+                    });
+                });
+            }
+
+            if (content.length > 0) {
+                let role = messageBlock.role;
+                if (role === TLLMMessageRole.Assistant) {
+                    role = TLLMMessageRole.Model;
+                }
+
+                messageBlocks.push({
+                    role,
+                    parts: content,
+                });
+            }
+        }
+
+        const functionResponseParts = toolsData
+            .filter((toolData) => toolData.result !== undefined)
+            .map((toolData) => ({
+                functionResponse: {
+                    name: toolData.name,
+                    response: parseFunctionResponse(toolData.result),
+                },
+            }));
+
+        if (functionResponseParts.length > 0) {
             messageBlocks.push({
-                role: messageBlock.role,
-                parts: content,
+                role: TLLMMessageRole.Function,
+                parts: functionResponseParts,
             });
         }
 
-        const transformedToolsData = toolsData.map(
-            (toolData): TLLMToolResultMessageBlock => ({
-                role: TLLMMessageRole.User,
-                parts: [
-                    {
-                        functionResponse: {
-                            name: toolData.name,
-                            response: {
-                                name: toolData.name,
-                                content: typeof toolData.result === 'string' ? toolData.result : JSON.stringify(toolData.result),
-                            },
-                        },
-                    },
-                ],
-            })
-        );
-
-        return [...messageBlocks, ...transformedToolsData];
+        return messageBlocks;
     }
 
     public getConsistentMessages(messages: TLLMMessageBlock[]): TLLMMessageBlock[] {
         const _messages = LLMHelper.removeDuplicateUserMessages(messages);
 
         return _messages.map((message) => {
-            const _message = { ...message };
-            let textContent = '';
+            const _message: TLLMMessageBlock = { ...message };
+
+            const parseFunctionArgs = (args: unknown) => {
+                if (typeof args === 'string') {
+                    try {
+                        return JSON.parse(args);
+                    } catch {
+                        return args;
+                    }
+                }
+
+                return args ?? {};
+            };
+
+            const parseFunctionResponse = (response: unknown) => {
+                if (typeof response === 'string') {
+                    try {
+                        return JSON.parse(response);
+                    } catch {
+                        return response;
+                    }
+                }
+
+                return response;
+            };
+
+            const pushTextPart = (parts: any[], text?: string) => {
+                const value = typeof text === 'string' && text.trim() ? text : undefined;
+                if (value) {
+                    parts.push({ text: value });
+                }
+            };
+
+            const normalizedParts: any[] = [];
 
             // Map roles to valid Google AI roles
             switch (_message.role) {
                 case TLLMMessageRole.Assistant:
                 case TLLMMessageRole.System:
+                case TLLMMessageRole.Model:
                     _message.role = TLLMMessageRole.Model;
                     break;
+                case TLLMMessageRole.Function:
+                case TLLMMessageRole.Tool:
+                    _message.role = TLLMMessageRole.Function;
+                    break;
                 case TLLMMessageRole.User:
-                    // User role is already valid
                     break;
                 default:
-                    _message.role = TLLMMessageRole.User; // Default to user for unknown roles
+                    _message.role = TLLMMessageRole.User;
             }
 
-            // * empty text causes error that's why we added '...'
+            if (Array.isArray(message?.parts)) {
+                for (const part of message.parts) {
+                    if (!part) continue;
 
-            if (_message?.parts) {
-                textContent = _message.parts.map((textBlock) => textBlock?.text || '...').join(' ');
-            } else if (Array.isArray(_message?.content)) {
-                textContent = _message.content.map((textBlock) => textBlock?.text || '...').join(' ');
-            } else if (_message?.content) {
-                textContent = (_message.content as string) || '...';
+                    const normalizedPart: any = { ...part };
+
+                    if (typeof normalizedPart.text === 'string') {
+                        normalizedPart.text = normalizedPart.text.trim() || '...';
+                    }
+
+                    if (part.functionCall) {
+                        normalizedPart.functionCall = {
+                            name: part.functionCall.name,
+                            args: parseFunctionArgs(part.functionCall.args),
+                        };
+                    }
+
+                    if (part.functionResponse) {
+                        normalizedPart.functionResponse = {
+                            name: part.functionResponse.name,
+                            response: parseFunctionResponse(part.functionResponse.response),
+                        };
+                    }
+
+                    const hasMeaningfulContent = Object.values(normalizedPart).some(
+                        (value) => value !== undefined && value !== null && value !== ''
+                    );
+
+                    if (hasMeaningfulContent) {
+                        normalizedParts.push(normalizedPart);
+                    }
+                }
             }
 
-            _message.parts = [{ text: textContent || '...' }];
+            if (!normalizedParts.length && Array.isArray(message?.content)) {
+                for (const contentPart of message.content) {
+                    if (!contentPart) continue;
+
+                    if (typeof contentPart === 'string') {
+                        pushTextPart(normalizedParts, contentPart);
+                    } else if (typeof contentPart === 'object') {
+                        if ('text' in contentPart && typeof contentPart.text === 'string') {
+                            pushTextPart(normalizedParts, contentPart.text);
+                        } else if ('functionCall' in contentPart && (contentPart as any).functionCall) {
+                            const functionCallPart = (contentPart as any).functionCall;
+                            normalizedParts.push({
+                                functionCall: {
+                                    name: functionCallPart.name,
+                                    args: parseFunctionArgs(functionCallPart.args),
+                                },
+                            });
+                        } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
+                            const functionResponsePart = (contentPart as any).functionResponse;
+                            normalizedParts.push({
+                                functionResponse: {
+                                    name: functionResponsePart.name,
+                                    response: parseFunctionResponse(functionResponsePart.response),
+                                },
+                            });
+                        } else {
+                            const fallbackText =
+                                typeof (contentPart as any)?.toString === 'function' ? (contentPart as any).toString() : '';
+                            if (fallbackText && fallbackText !== '[object Object]') {
+                                pushTextPart(normalizedParts, fallbackText);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!normalizedParts.length) {
+                if (typeof message?.content === 'string') {
+                    pushTextPart(normalizedParts, message.content);
+                } else if (message?.content && typeof message.content === 'object') {
+                    if ('text' in (message.content as any)) {
+                        pushTextPart(normalizedParts, (message.content as any).text);
+                    } else {
+                        const fallbackText =
+                            typeof (message.content as any)?.toString === 'function' ? (message.content as any).toString() : '';
+                        if (fallbackText && fallbackText !== '[object Object]') {
+                            pushTextPart(normalizedParts, fallbackText);
+                        }
+                    }
+                }
+            }
+
+            if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+                for (const toolCall of message.tool_calls) {
+                    if (!toolCall?.function?.name) continue;
+
+                    normalizedParts.push({
+                        functionCall: {
+                            name: toolCall.function.name,
+                            args: parseFunctionArgs(toolCall.function.arguments),
+                        },
+                    });
+                }
+            }
+
+            if (!normalizedParts.length) {
+                normalizedParts.push({ text: '...' });
+            }
+
+            _message.parts = normalizedParts as any;
 
             delete _message.content; // Remove content to avoid error
+            delete (_message as any).tool_calls;
 
             return _message;
         });
