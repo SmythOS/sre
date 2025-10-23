@@ -294,8 +294,7 @@ export class LocalScheduler extends SchedulerConnector {
             fs.writeFileSync(filePath, JSON.stringify(configData, null, 2), 'utf-8');
         } catch (error) {
             logger.warn(`Error saving job ${jobData.id} to disk`, error);
-            //throw error;
-            return;
+            throw error;
         }
     }
 
@@ -380,7 +379,7 @@ export class LocalScheduler extends SchedulerConnector {
         const validation = schedule.validate();
         if (!validation.valid) {
             logger.warn(`Invalid schedule for job ${jobData.id}: ${validation.error}`);
-            return;
+            throw new Error(`Invalid schedule for job ${jobData.id}: ${validation.error}`);
         }
 
         // Construct job key for timer lookup
@@ -409,14 +408,15 @@ export class LocalScheduler extends SchedulerConnector {
             LocalScheduler.timers.set(jobKey, timer);
 
             // Execute immediately if no last run
-            if (!jobData.lastRun) {
-                await this.executeJob(jobData);
-            }
+            // if (!jobData.lastRun) {
+            //     await this.executeJob(jobData);
+            // }
         }
 
         // For cron-based scheduling (would require node-cron)
         if (jobData.schedule.cron) {
             logger.warn(`Cron scheduling not yet implemented for job ${jobData.id}`);
+            throw new Error(`Cron scheduling not yet implemented for job ${jobData.id}`);
         }
     }
 
@@ -451,7 +451,7 @@ export class LocalScheduler extends SchedulerConnector {
 
         const job = Job.fromJSON(jobData.jobConfig);
 
-        logger.info(`Executing job ${jobData.id} (${jobData.jobConfig.metadata.name})`);
+        logger.debug(`Executing job ${jobData.id} with metadata:`, JSON.stringify(jobData.jobConfig.metadata));
 
         const result = await job.executeWithRetry();
 

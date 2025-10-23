@@ -1,9 +1,10 @@
 /**
  * Job - Wrapper for agent-based scheduled tasks
  *
- * Jobs can execute in two ways:
+ * Jobs can execute in three ways:
  * 1. **Skill Execution**: Call a specific agent skill with arguments
- * 2. **Prompt Execution**: Send a prompt to an agent for processing
+ * 2. **Trigger Execution**: Invoke an agent trigger (no arguments)
+ * 3. **Prompt Execution**: Send a prompt to an agent for processing
  *
  * All job data is fully serializable, allowing jobs to persist and resume after restart.
  *
@@ -23,6 +24,17 @@
  *     }
  * });
  *
+ * // Trigger execution job
+ * const triggerJob = new Job({
+ *     type: 'trigger',
+ *     agentId: 'my-agent',
+ *     triggerName: 'daily_sync',
+ *     metadata: {
+ *         name: 'Daily Sync',
+ *         description: 'Sync data every day at midnight'
+ *     }
+ * });
+ *
  * // Prompt execution job
  * const promptJob = new Job({
  *     type: 'prompt',
@@ -39,9 +51,10 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { hookAsync, HookService } from '@sre/Core/HookService';
 
 export interface IJobMetadata {
-    name: string;
+    name?: string;
     description?: string;
     tags?: string[];
     retryOnFailure?: boolean;
@@ -58,7 +71,14 @@ export interface ISkillJobConfig {
     agentId: string;
     skillName: string;
     args?: Record<string, any> | any[];
-    metadata: IJobMetadata;
+    metadata?: IJobMetadata;
+}
+
+export interface ITriggerJobConfig {
+    type: 'trigger';
+    agentId: string;
+    triggerName: string;
+    metadata?: IJobMetadata;
 }
 
 /**
@@ -68,18 +88,18 @@ export interface IPromptJobConfig {
     type: 'prompt';
     agentId: string;
     prompt: string;
-    metadata: IJobMetadata;
+    metadata?: IJobMetadata;
 }
 
-export type IJobConfig = ISkillJobConfig | IPromptJobConfig;
+export type IJobConfig = ISkillJobConfig | IPromptJobConfig | ITriggerJobConfig;
 
 export class Job {
     private config: IJobConfig;
 
     constructor(config: IJobConfig) {
         // Validate configuration
-        if (!config.type || (config.type !== 'skill' && config.type !== 'prompt')) {
-            throw new Error('Job type must be either "skill" or "prompt"');
+        if (!config.type || (config.type !== 'skill' && config.type !== 'prompt' && config.type !== 'trigger')) {
+            throw new Error('Job type must be either "skill", "prompt", or "trigger"');
         }
         if (!config.agentId) {
             throw new Error('Job must have an agentId');
@@ -90,8 +110,8 @@ export class Job {
         if (config.type === 'prompt' && !(config as IPromptJobConfig).prompt) {
             throw new Error('Prompt job must have a prompt');
         }
-        if (!config.metadata || !config.metadata.name) {
-            throw new Error('Job metadata must include a name');
+        if (config.type === 'trigger' && !(config as ITriggerJobConfig).triggerName) {
+            throw new Error('Trigger job must have a triggerName');
         }
 
         this.config = {
@@ -123,6 +143,7 @@ export class Job {
      * Execute the job with error handling and timeout support
      * @returns Execution result
      */
+    @hookAsync('Scheduler/Job.execute')
     public async execute(): Promise<{ success: boolean; error?: Error; executionTime: number; result?: any }> {
         const startTime = Date.now();
 
@@ -154,6 +175,8 @@ export class Job {
     private async executeInternal(): Promise<any> {
         if (this.config.type === 'skill') {
             return await this.executeSkill();
+        } else if (this.config.type === 'trigger') {
+            return await this.executeTrigger();
         } else {
             return await this.executePrompt();
         }
@@ -213,6 +236,58 @@ export class Job {
         await agent.ready();
 
         const result = await agent.run({ method, path, body, query, headers });
+        return result.data;
+    }
+
+    /**
+     * Execute a trigger-based job
+     */
+    private async executeTrigger(): Promise<any> {
+        const config = this.config as ITriggerJobConfig;
+
+        // Get agent data
+        const agentDataConnector = ConnectorService.getAgentDataConnector();
+        const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
+
+        if (!agentData) {
+            throw new Error(`Agent ${config.agentId} not found in AgentDataConnector. Make sure the agent is properly registered.`);
+        }
+
+        // Handle different agent data structures
+        const actualData = agentData.data || agentData;
+        const components = actualData.components;
+
+        if (!components || !Array.isArray(components)) {
+            console.error('Agent data structure:', JSON.stringify(agentData, null, 2));
+            throw new Error(
+                `Invalid agent data structure for agent ${config.agentId}. ` +
+                    `Expected 'components' array but got: ${typeof components}. ` +
+                    `Agent data keys: ${Object.keys(actualData || {}).join(', ')}`
+            );
+        }
+
+        // Find the trigger in agent data (triggers have triggerEndpoint property)
+        const trigger = components.find((c: any) => {
+            const triggerEndpoint = c.data?.triggerEndpoint || c.triggerEndpoint;
+            return triggerEndpoint === config.triggerName;
+        });
+
+        if (!trigger) {
+            throw new Error(`Trigger ${config.triggerName} not found in agent ${config.agentId}`);
+        }
+
+        // Prepare request for trigger
+        // Triggers don't use HTTP methods like skills, they're just invoked via path
+        const path = `/trigger/${config.triggerName}`;
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        // Load agent and execute trigger (triggers don't take arguments)
+        const agent = AgentProcess.load(agentData);
+        await agent.ready();
+
+        const result = await agent.run({ method: 'POST', path, body: {}, query: {}, headers });
         return result.data;
     }
 

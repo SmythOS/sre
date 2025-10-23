@@ -5,6 +5,7 @@ import { Logger } from '../helpers/Log.helper';
 import { ConnectorService } from './ConnectorsService';
 import { Connector } from './Connector.class';
 import { TConnectorService } from '@sre/types/SRE.types';
+import { validateServiceKey } from '@sre/helpers/Crypto.helper';
 
 const logger = Logger('ExternalEventsReceiver');
 
@@ -61,7 +62,7 @@ export class ExternalEventsReceiver {
         }
 
         return new Promise((resolve, reject) => {
-            this.server!.listen(this.config.port, () => {
+            this.server!.listen(this.config.port, '127.0.0.1', () => {
                 this.isRunning = true;
                 logger.debug(
                     `Server started on port ${this.config.port}` +
@@ -240,25 +241,39 @@ export class ExternalEventsReceiver {
     /**
      * Validate authentication token
      */
-    private validateAuth(headers: IncomingMessage['headers']): { valid: boolean; error?: string } {
+    private validateAuth(headers: IncomingMessage['headers']): {
+        valid: boolean;
+        serviceName?: string;
+        error?: string;
+    } {
         const authHeader = headers['authorization'] || headers['Authorization'];
+        const serviceName = headers['x-service-name'] || headers['X-Service-Name'];
 
         if (!authHeader) {
+            logger.warn('Missing Authorization header');
             return { valid: false, error: 'Missing Authorization header' };
         }
 
-        // Support both "Bearer <token>" and "<token>" formats
-        const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '') : authHeader[0]?.replace(/^Bearer\s+/i, '');
+        if (!serviceName || typeof serviceName !== 'string') {
+            logger.warn('Missing or invalid X-Service-Name header');
+            return { valid: false, error: 'Missing X-Service-Name header' };
+        }
+
+        // Extract token
+        const token = (authHeader as string).replace(/^Bearer\s+/i, '');
 
         if (!token) {
             return { valid: false, error: 'Invalid Authorization header format' };
         }
 
-        if (!this.config.authTokens.includes(token)) {
-            return { valid: false, error: 'Invalid authentication token' };
+        // Validate using service key derivation
+        if (!validateServiceKey(serviceName, token)) {
+            logger.warn(`Invalid key for service: ${serviceName}`);
+            return { valid: false, error: 'Invalid authentication' };
         }
 
-        return { valid: true };
+        logger.debug(`Authenticated service: ${serviceName}`);
+        return { valid: true, serviceName };
     }
 
     /**

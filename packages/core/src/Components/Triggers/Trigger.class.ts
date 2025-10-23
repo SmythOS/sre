@@ -3,6 +3,7 @@ import { Component } from '../Component.class';
 import { LogHelper } from '@sre/helpers/Log.helper';
 import express from 'express';
 import { AgentRequest } from '@sre/AgentManager/AgentRequest.class';
+import { IAgent } from '@sre/types/Agent.types';
 
 export class Trigger extends Component {
     protected logger: LogHelper;
@@ -75,7 +76,16 @@ export class Trigger extends Component {
         return output?.result.Result;
     }
 
-    async register(componentId: string, componentSettings: any, payload: { triggerUrl: string }) {}
+    /**
+     * This function is used to register a trigger,
+     * It can be called by a visual builder when saving a trigger component.
+     * it performs the necessary actions to register the trigger with the external service or with the internal scheduler.
+     * @param componentId - The id of the component to register
+     * @param componentSettings - The settings of the component to register
+     * @param payload - The payload to register the trigger with
+     * @returns A promise that resolves to the result of the registration
+     */
+    async register(componentId: string, componentSettings: any, payload: { agentData: IAgent; triggerUrl: string }) {}
 }
 
 function cleanupResult(result) {

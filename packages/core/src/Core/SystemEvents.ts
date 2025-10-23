@@ -18,8 +18,9 @@ export type SystemEventMap = {
 
 const SystemEvents = new EventEmitter<SystemEventMap>();
 
+// /!\ incomplete implementation, do not enable yet
 // if (process.env?.SRE_SECRET?.trim()) {
-//     const secretHash = createHash('md5').update(process.env.SRE_SECRET).digest('hex');
+//     const secretHash = createHash('sha256').update(process.env.SRE_SECRET).digest('hex');
 //     // Create server instance
 //     new ExternalEventsReceiver({
 //         port: process.env.SRE_PORT ? parseInt(process.env.SRE_PORT) : 55555,

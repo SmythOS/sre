@@ -85,8 +85,10 @@ jobs.forEach((job) => {
     console.log(`    Type: ${job.jobConfig.type}`);
     if (job.jobConfig.type === 'skill') {
         console.log(`    Skill: ${job.jobConfig.skillName}`);
-    } else {
+    } else if (job.jobConfig.type === 'prompt') {
         console.log(`    Prompt: ${job.jobConfig.prompt.substring(0, 40)}...`);
+    } else if (job.jobConfig.type === 'trigger') {
+        console.log(`    Trigger: ${job.jobConfig.triggerName}`);
     }
     console.log(`    Schedule: ${job.schedule.interval || job.schedule.cron}`);
     console.log(`    Next run: ${job.nextRun || 'Calculating...'}`);
