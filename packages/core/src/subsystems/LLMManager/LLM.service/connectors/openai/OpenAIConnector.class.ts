@@ -69,10 +69,9 @@ export class OpenAIConnector extends LLMConnector {
         return responseInterface;
     }
 
-    protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
-        // If apiKey is undefined, it tries to use OPENAI_API_KEY and causes an error, so set it to an empty string to prevent SRE errors
-        const apiKey = (params.credentials as BasicCredentials)?.apiKey || '';
-        const baseURL = params?.modelInfo?.baseURL;
+    protected async getClient(context: ILLMRequestContext): Promise<OpenAI> {
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey || '';
+        const baseURL = context?.modelInfo?.baseURL;
 
         try {
             const openai = new OpenAI({ baseURL, apiKey });
