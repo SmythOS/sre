@@ -70,7 +70,7 @@ export class OpenAIConnector extends LLMConnector {
     }
 
     protected async getClient(context: ILLMRequestContext): Promise<OpenAI> {
-        const apiKey = (context.credentials as BasicCredentials)?.apiKey;
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey || '';
         const baseURL = context?.modelInfo?.baseURL;
 
         try {
