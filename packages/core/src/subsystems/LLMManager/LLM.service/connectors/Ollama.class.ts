@@ -49,8 +49,9 @@ export class OllamaConnector extends LLMConnector {
         const baseURL = context?.modelInfo?.baseURL;
 
         if (baseURL) {
-            // Remove /api or /api/ suffix if present
-            host = baseURL.replace(/\/api\/?$/, '');
+            // Extract base URL (origin) using URL class
+            const url = new URL(baseURL);
+            host = url.origin;
         }
 
         const config: { host: string; headers?: { Authorization?: string } } = { host };
