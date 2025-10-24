@@ -118,14 +118,24 @@ export function hook(hookName: string) {
  * Decorator function that executes registered hooks asynchronously before and after the decorated method
  * @param hookName The name of the hook to trigger
  */
-export function hookAsync(hookName: string) {
+export function hookAsync(hookName: string, customContext?: Record<string, any> | ((instance: any) => Record<string, any>)) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
 
         descriptor.value = async function (...args: any[]) {
+            // Get additional context if contextFn is provided
+            let _context;
+            if (typeof customContext === 'function') {
+                _context = await customContext(this);
+            } else if (typeof customContext === 'object') {
+                _context = customContext;
+            } else {
+                _context = {};
+            }
+
             // Execute non-blocking pre-hooks first (fire and forget)
             if (nonBlockingHooks[hookName]) {
-                void Promise.allSettled(nonBlockingHooks[hookName].map((callback) => Promise.resolve().then(() => callback.apply(this, args))));
+                void Promise.allSettled(nonBlockingHooks[hookName].map((callback) => Promise.resolve().then(() => callback.apply(_context, args))));
             }
 
             let result: any;
@@ -134,7 +144,7 @@ export function hookAsync(hookName: string) {
             try {
                 // Execute blocking pre-hooks and wait for them
                 if (blockingHooks[hookName]) {
-                    await Promise.all(blockingHooks[hookName].map((callback) => Promise.resolve(callback.apply(this, args))));
+                    await Promise.all(blockingHooks[hookName].map((callback) => Promise.resolve(callback.apply(_context, args))));
                 }
 
                 // Call the original method
@@ -148,13 +158,17 @@ export function hookAsync(hookName: string) {
                 // Execute non-blocking after-hooks first (fire and forget)
                 if (nonBlockingAfterHooks[hookName]) {
                     void Promise.allSettled(
-                        nonBlockingAfterHooks[hookName].map((callback) => Promise.resolve().then(() => callback({ result, args, error })))
+                        nonBlockingAfterHooks[hookName].map((callback) =>
+                            Promise.resolve().then(() => callback.apply(_context, [{ result, args, error }]))
+                        )
                     );
                 }
 
                 // Execute blocking after-hooks and wait for them
                 if (blockingAfterHooks[hookName]) {
-                    await Promise.all(blockingAfterHooks[hookName].map((callback) => Promise.resolve(callback({ result, args, error }))));
+                    await Promise.all(
+                        blockingAfterHooks[hookName].map((callback) => Promise.resolve(callback.apply(_context, [{ result, args, error }])))
+                    );
                 }
             } catch (afterHookError) {
                 // Log after-hook errors but don't let them override the original error
