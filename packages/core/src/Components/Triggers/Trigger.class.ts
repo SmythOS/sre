@@ -22,6 +22,9 @@ export class Trigger extends Component {
             //a trigger should always return an array of payloads
             //if it's a single object, it should be wrapped in an array
             let inputArray = await this.collectPayload(input, settings, agent);
+            if (inputArray.length < 2) {
+                return { Payload: inputArray?.[0], _error: null, _in_progress: false, _debug: this.logger.output };
+            }
             return await this.processIteration(inputArray, settings, agent);
         } catch (error) {
             this.logger.error(error);
