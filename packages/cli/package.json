@@ -1,6 +1,6 @@
 {
     "name": "@smythos/cli",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "description": "SmythOS SRE Command Line Interface",
     "keywords": [
         "smythos",

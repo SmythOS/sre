@@ -200,6 +200,7 @@ async function RunProject(projectNameArg?: string) {
                     name: 'Interactive chat with agent selection',
                     value: 'interactive-chat-agent-select',
                 },
+                { name: 'Desktop App (Electron)', value: 'smythos-electron-starter-project' },
             ],
         },
     ]);

@@ -387,8 +387,8 @@ export type TLLMMessageBlock = {
         | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam>;
     parts?: {
         text?: string;
-        functionCall?: { name: string; args: string };
-        functionResponse?: { name: string; response: { name: string; content: string } };
+        functionCall?: { name: string; args: string | Record<string, any> };
+        functionResponse?: { name: string; response: any };
     }[]; // for Google Vertex AI
     tool_calls?: ToolData[];
 };
