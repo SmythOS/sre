@@ -55,7 +55,10 @@
             "@sre/Security": ["subsystems/Security/index"],
 
             "@sre/Components/*": ["Components/*"],
-            "@sre/Components": ["Components/index"]
+            "@sre/Components": ["Components/index"],
+
+            "@sre/PerformanceManager/*": ["subsystems/PerformanceManager/*"],
+            "@sre/PerformanceManager": ["subsystems/PerformanceManager/index"]
         },
         //"types": ["node"],
         "allowSyntheticDefaultImports": true,

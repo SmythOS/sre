@@ -1,0 +1,83 @@
+{
+    "metrics": [
+        {
+            "componentName": "LLMAssistant",
+            "agentId": "test-agent",
+            "timing": {
+                "total": 1500,
+                "inputProcessing": 100,
+                "coreProcessing": 1300,
+                "outputProcessing": 100,
+                "queueTime": 50
+            },
+            "memory": {
+                "peak": 52428800,
+                "delta": 10485760,
+                "pressure": 0.5
+            },
+            "dataFlow": {
+                "inputSize": 1000,
+                "outputSize": 500,
+                "transformationRatio": 0.5,
+                "complexityScore": 0.7
+            },
+            "llm": {
+                "model": "gpt-4",
+                "tokens": {
+                    "prompt": 500,
+                    "completion": 200,
+                    "total": 700
+                },
+                "estimatedCost": 0.02,
+                "contextUtilization": 0.6,
+                "qualityScore": 0.8
+            },
+            "execution": {
+                "timestamp": 1695686400000,
+                "success": true,
+                "retryCount": 0,
+                "configHash": "abc123"
+            },
+            "impact": {
+                "cpuUsage": 30,
+                "ioOperations": 5,
+                "networkRequests": 2,
+                "cacheStatus": "miss"
+            }
+        },
+        {
+            "componentName": "DataProcessor",
+            "agentId": "test-agent",
+            "timing": {
+                "total": 800,
+                "inputProcessing": 50,
+                "coreProcessing": 700,
+                "outputProcessing": 50,
+                "queueTime": 20
+            },
+            "memory": {
+                "peak": 31457280,
+                "delta": 5242880,
+                "pressure": 0.3
+            },
+            "dataFlow": {
+                "inputSize": 2000,
+                "outputSize": 1500,
+                "transformationRatio": 0.75,
+                "complexityScore": 0.4
+            },
+            "execution": {
+                "timestamp": 1695686500000,
+                "success": true,
+                "retryCount": 0,
+                "configHash": "def456"
+            },
+            "impact": {
+                "cpuUsage": 20,
+                "ioOperations": 3,
+                "networkRequests": 0,
+                "cacheStatus": "hit"
+            }
+        }
+    ]
+}
