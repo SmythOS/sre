@@ -60,119 +60,119 @@ importers:
                 specifier: ^3.2.2
                 version: 3.2.2
 
-    packages/cli:
-        devDependencies:
-            '@modelcontextprotocol/sdk':
-                specifier: ^1.14.0
-                version: 1.14.0
-            '@oclif/core':
-                specifier: ^4.3.3
-                version: 4.3.3
-            '@oclif/plugin-help':
-                specifier: ^6.2.21
-                version: 6.2.29
-            '@oclif/test':
-                specifier: ^3.1.9
-                version: 3.2.15
-            '@rollup/plugin-commonjs':
-                specifier: ^28.0.3
-                version: 28.0.3(rollup@4.42.0)
-            '@rollup/plugin-json':
-                specifier: ^6.1.0
-                version: 6.1.0(rollup@4.42.0)
-            '@rollup/plugin-node-resolve':
-                specifier: ^15.3.1
-                version: 15.3.1(rollup@4.42.0)
-            '@rollup/pluginutils':
-                specifier: ^5.1.0
-                version: 5.1.4(rollup@4.42.0)
-            '@smythos/sdk':
-                specifier: workspace:*
-                version: link:../sdk
-            '@smythos/sre':
-                specifier: workspace:*
-                version: link:../core
-            '@types/extract-zip':
-                specifier: ^2.0.3
-                version: 2.0.3
-            '@types/inquirer':
-                specifier: ^9.0.7
-                version: 9.0.8
-            '@types/node':
-                specifier: ^20.19.0
-                version: 20.19.0
-            '@types/update-notifier':
-                specifier: ^6.0.8
-                version: 6.0.8
-            boxen:
-                specifier: ^7.1.1
-                version: 7.1.1
-            chalk:
-                specifier: ^5.3.0
-                version: 5.4.1
-            cross-env:
-                specifier: ^7.0.3
-                version: 7.0.3
-            dotenv:
-                specifier: ^16.5.0
-                version: 16.5.0
-            esbuild:
-                specifier: ^0.25.0
-                version: 0.25.5
-            express:
-                specifier: ^4.21.2
-                version: 4.21.2
-            extract-zip:
-                specifier: ^2.0.1
-                version: 2.0.1
-            glob:
-                specifier: ^11.0.3
-                version: 11.0.3
-            inquirer:
-                specifier: ^9.2.15
-                version: 9.3.7
-            knip:
-                specifier: ^5.61.1
-                version: 5.61.1(@types/node@20.19.0)(typescript@5.8.3)
-            log-update:
-                specifier: ^6.1.0
-                version: 6.1.0
-            oclif:
-                specifier: ^4.19.0
-                version: 4.19.0(@types/node@20.19.0)
-            ora:
-                specifier: ^8.2.0
-                version: 8.2.0
-            rollup-plugin-esbuild:
-                specifier: ^6.1.1
-                version: 6.2.1(esbuild@0.25.5)(rollup@4.42.0)
-            rollup-plugin-sourcemaps:
-                specifier: ^0.6.3
-                version: 0.6.3(@types/node@20.19.0)(rollup@4.42.0)
-            rollup-plugin-terser:
-                specifier: ^7.0.2
-                version: 7.0.2(rollup@4.42.0)
-            rollup-plugin-typescript-paths:
-                specifier: ^1.5.0
-                version: 1.5.0(typescript@5.8.3)
-            rollup-plugin-visualizer:
-                specifier: ^6.0.4
-                version: 6.0.4(rollup@4.42.0)
-            tokenloom:
-                specifier: ^1.0.7
-                version: 1.0.7
-            ts-node:
-                specifier: ^10.9.2
-                version: 10.9.2(@types/node@20.19.0)(typescript@5.8.3)
-            typedoc:
-                specifier: ^0.28.5
-                version: 0.28.5(typescript@5.8.3)
-            typescript:
-                specifier: ^5.4.5
-                version: 5.8.3
-            update-notifier:
-                specifier: ^7.0.0
-                version: 7.3.1
+  packages/cli:
+    devDependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.14.0
+        version: 1.14.0
+      '@oclif/core':
+        specifier: ^4.3.3
+        version: 4.3.3
+      '@oclif/plugin-help':
+        specifier: ^6.2.21
+        version: 6.2.29
+      '@oclif/test':
+        specifier: ^3.1.9
+        version: 3.2.15
+      '@rollup/plugin-commonjs':
+        specifier: ^28.0.3
+        version: 28.0.3(rollup@4.42.0)
+      '@rollup/plugin-json':
+        specifier: ^6.1.0
+        version: 6.1.0(rollup@4.42.0)
+      '@rollup/plugin-node-resolve':
+        specifier: ^15.3.1
+        version: 15.3.1(rollup@4.42.0)
+      '@rollup/pluginutils':
+        specifier: ^5.1.0
+        version: 5.1.4(rollup@4.42.0)
+      '@smythos/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@smythos/sre':
+        specifier: workspace:*
+        version: link:../core
+      '@types/extract-zip':
+        specifier: ^2.0.3
+        version: 2.0.3
+      '@types/inquirer':
+        specifier: ^9.0.7
+        version: 9.0.8
+      '@types/node':
+        specifier: ^20.19.0
+        version: 20.19.0
+      '@types/update-notifier':
+        specifier: ^6.0.8
+        version: 6.0.8
+      boxen:
+        specifier: ^7.1.1
+        version: 7.1.1
+      chalk:
+        specifier: ^5.3.0
+        version: 5.4.1
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
+      dotenv:
+        specifier: ^16.5.0
+        version: 16.5.0
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.5
+      express:
+        specifier: ^4.21.2
+        version: 4.21.2
+      extract-zip:
+        specifier: ^2.0.1
+        version: 2.0.1
+      glob:
+        specifier: ^11.0.3
+        version: 11.0.3
+      inquirer:
+        specifier: ^9.2.15
+        version: 9.3.7
+      knip:
+        specifier: ^5.61.1
+        version: 5.61.1(@types/node@20.19.0)(typescript@5.8.3)
+      log-update:
+        specifier: ^6.1.0
+        version: 6.1.0
+      oclif:
+        specifier: ^4.19.0
+        version: 4.19.0(@types/node@20.19.0)
+      ora:
+        specifier: ^8.2.0
+        version: 8.2.0
+      rollup-plugin-esbuild:
+        specifier: ^6.1.1
+        version: 6.2.1(esbuild@0.25.5)(rollup@4.42.0)
+      rollup-plugin-sourcemaps:
+        specifier: ^0.6.3
+        version: 0.6.3(@types/node@20.19.0)(rollup@4.42.0)
+      rollup-plugin-terser:
+        specifier: ^7.0.2
+        version: 7.0.2(rollup@4.42.0)
+      rollup-plugin-typescript-paths:
+        specifier: ^1.5.0
+        version: 1.5.0(typescript@5.8.3)
+      rollup-plugin-visualizer:
+        specifier: ^6.0.4
+        version: 6.0.5(rollup@4.42.0)
+      tokenloom:
+        specifier: ^1.0.7
+        version: 1.0.7
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@20.19.0)(typescript@5.8.3)
+      typedoc:
+        specifier: ^0.28.5
+        version: 0.28.5(typescript@5.8.3)
+      typescript:
+        specifier: ^5.4.5
+        version: 5.8.3
+      update-notifier:
+        specifier: ^7.0.0
+        version: 7.3.1
 
     packages/core:
         dependencies:
@@ -2657,9 +2657,13 @@ packages:
         resolution: { integrity: sha512-Ds09qNh8yw3khSjiJjiUInaGX9xlqZDY7JVryGxdxV7NPeuqQfplOpQ66yJFZut3jLa5zOwkXw1g9EI2uKh4Og== }
         engines: { node: '>=8' }
 
-    delayed-stream@1.0.0:
-        resolution: { integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ== }
-        engines: { node: '>=0.4.0' }
+  define-lazy-prop@2.0.0:
+    resolution: {integrity: sha512-Ds09qNh8yw3khSjiJjiUInaGX9xlqZDY7JVryGxdxV7NPeuqQfplOpQ66yJFZut3jLa5zOwkXw1g9EI2uKh4Og==}
+    engines: {node: '>=8'}
+
+  delayed-stream@1.0.0:
+    resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
+    engines: {node: '>=0.4.0'}
 
     denque@2.1.0:
         resolution: { integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw== }
@@ -4023,17 +4027,21 @@ packages:
         resolution: { integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ== }
         engines: { node: '>=12' }
 
-    openai@5.12.2:
-        resolution: { integrity: sha512-xqzHHQch5Tws5PcKR2xsZGX9xtch+JQFz5zb14dGqlshmmDAFBFEWmeIpf7wVqWV+w7Emj7jRgkNJakyKE0tYQ== }
-        hasBin: true
-        peerDependencies:
-            ws: ^8.18.0
-            zod: ^3.23.8
-        peerDependenciesMeta:
-            ws:
-                optional: true
-            zod:
-                optional: true
+  open@8.4.2:
+    resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
+    engines: {node: '>=12'}
+
+  openai@5.12.2:
+    resolution: {integrity: sha512-xqzHHQch5Tws5PcKR2xsZGX9xtch+JQFz5zb14dGqlshmmDAFBFEWmeIpf7wVqWV+w7Emj7jRgkNJakyKE0tYQ==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
     option@0.2.4:
         resolution: { integrity: sha512-pkEqbDyl8ou5cpq+VsnQbe/WlEy5qS7xPzMS1U55OCG9KPvwFD46zDbxQIj3egJSFc3D+XhYOPUzz49zQAVy7A== }
@@ -4435,23 +4443,23 @@ packages:
         peerDependencies:
             typescript: '>=3.4'
 
-    rollup-plugin-visualizer@6.0.4:
-        resolution: { integrity: sha512-q8Q7J/6YofkmaGW1sH/fPRAz37x/+pd7VBuaUU7lwvOS/YikuiiEU9jeb9PH8XHiq50XFrUsBbOxeAMYQ7KZkg== }
-        engines: { node: '>=18' }
-        hasBin: true
-        peerDependencies:
-            rolldown: 1.x || ^1.0.0-beta
-            rollup: 2.x || 3.x || 4.x
-        peerDependenciesMeta:
-            rolldown:
-                optional: true
-            rollup:
-                optional: true
+  rollup-plugin-visualizer@6.0.5:
+    resolution: {integrity: sha512-9+HlNgKCVbJDs8tVtjQ43US12eqaiHyyiLMdBwQ7vSZPiHMysGNo2E88TAp1si5wx8NAoYriI2A5kuKfIakmJg==}
+    engines: {node: '>=18'}
+    hasBin: true
+    peerDependencies:
+      rolldown: 1.x || ^1.0.0-beta
+      rollup: 2.x || 3.x || 4.x
+    peerDependenciesMeta:
+      rolldown:
+        optional: true
+      rollup:
+        optional: true
 
-    rollup@4.42.0:
-        resolution: { integrity: sha512-LW+Vse3BJPyGJGAJt1j8pWDKPd73QM8cRXYK1IxOBgL2AGLu7Xd2YOW0M2sLUBCkF5MshXXtMApyEAEzMVMsnw== }
-        engines: { node: '>=18.0.0', npm: '>=8.0.0' }
-        hasBin: true
+  rollup@4.42.0:
+    resolution: {integrity: sha512-LW+Vse3BJPyGJGAJt1j8pWDKPd73QM8cRXYK1IxOBgL2AGLu7Xd2YOW0M2sLUBCkF5MshXXtMApyEAEzMVMsnw==}
+    engines: {node: '>=18.0.0', npm: '>=8.0.0'}
+    hasBin: true
 
     router@2.2.0:
         resolution: { integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ== }
@@ -4636,9 +4644,13 @@ packages:
         resolution: { integrity: sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ== }
         engines: { node: '>= 12' }
 
-    spawn-wrap@2.0.0:
-        resolution: { integrity: sha512-EeajNjfN9zMnULLwhZZQU3GWBoFNkbngTUPfaawT4RkMiviTxcX0qfhVbGey39mfctfDHkWtuecgQ8NJcyQWHg== }
-        engines: { node: '>=8' }
+  source-map@0.7.6:
+    resolution: {integrity: sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ==}
+    engines: {node: '>= 12'}
+
+  spawn-wrap@2.0.0:
+    resolution: {integrity: sha512-EeajNjfN9zMnULLwhZZQU3GWBoFNkbngTUPfaawT4RkMiviTxcX0qfhVbGey39mfctfDHkWtuecgQ8NJcyQWHg==}
+    engines: {node: '>=8'}
 
     spdx-correct@3.2.0:
         resolution: { integrity: sha512-kN9dJbvnySHULIluDHy32WHRUu3Og7B9sbY7tsFLctQkIqnMh3hErYgdMjTYuqmcXX+lK5T1lnUt3G7zNswmZA== }
@@ -8600,9 +8612,9 @@ snapshots:
         dependencies:
             clone: 1.0.4
 
-    defer-to-connect@2.0.1: {}
+  defer-to-connect@2.0.1: {}
 
-    define-lazy-prop@2.0.0: {}
+  define-lazy-prop@2.0.0: {}
 
     delayed-stream@1.0.0: {}
 
@@ -10154,16 +10166,16 @@ snapshots:
         dependencies:
             mimic-function: 5.0.1
 
-    open@8.4.2:
-        dependencies:
-            define-lazy-prop: 2.0.0
-            is-docker: 2.2.1
-            is-wsl: 2.2.0
+  open@8.4.2:
+    dependencies:
+      define-lazy-prop: 2.0.0
+      is-docker: 2.2.1
+      is-wsl: 2.2.0
 
-    openai@5.12.2(ws@8.18.2(bufferutil@4.0.9))(zod@3.25.56):
-        optionalDependencies:
-            ws: 8.18.3(bufferutil@4.0.9)
-            zod: 3.25.56
+  openai@5.12.2(ws@8.18.2(bufferutil@4.0.9))(zod@3.25.56):
+    optionalDependencies:
+      ws: 8.18.2(bufferutil@4.0.9)
+      zod: 3.25.56
 
     option@0.2.4: {}
 
@@ -10575,40 +10587,40 @@ snapshots:
         dependencies:
             typescript: 5.8.3
 
-    rollup-plugin-visualizer@6.0.4(rollup@4.42.0):
-        dependencies:
-            open: 8.4.2
-            picomatch: 4.0.2
-            source-map: 0.7.6
-            yargs: 17.7.2
-        optionalDependencies:
-            rollup: 4.42.0
+  rollup-plugin-visualizer@6.0.5(rollup@4.42.0):
+    dependencies:
+      open: 8.4.2
+      picomatch: 4.0.2
+      source-map: 0.7.6
+      yargs: 17.7.2
+    optionalDependencies:
+      rollup: 4.42.0
 
-    rollup@4.42.0:
-        dependencies:
-            '@types/estree': 1.0.7
-        optionalDependencies:
-            '@rollup/rollup-android-arm-eabi': 4.42.0
-            '@rollup/rollup-android-arm64': 4.42.0
-            '@rollup/rollup-darwin-arm64': 4.42.0
-            '@rollup/rollup-darwin-x64': 4.42.0
-            '@rollup/rollup-freebsd-arm64': 4.42.0
-            '@rollup/rollup-freebsd-x64': 4.42.0
-            '@rollup/rollup-linux-arm-gnueabihf': 4.42.0
-            '@rollup/rollup-linux-arm-musleabihf': 4.42.0
-            '@rollup/rollup-linux-arm64-gnu': 4.42.0
-            '@rollup/rollup-linux-arm64-musl': 4.42.0
-            '@rollup/rollup-linux-loongarch64-gnu': 4.42.0
-            '@rollup/rollup-linux-powerpc64le-gnu': 4.42.0
-            '@rollup/rollup-linux-riscv64-gnu': 4.42.0
-            '@rollup/rollup-linux-riscv64-musl': 4.42.0
-            '@rollup/rollup-linux-s390x-gnu': 4.42.0
-            '@rollup/rollup-linux-x64-gnu': 4.42.0
-            '@rollup/rollup-linux-x64-musl': 4.42.0
-            '@rollup/rollup-win32-arm64-msvc': 4.42.0
-            '@rollup/rollup-win32-ia32-msvc': 4.42.0
-            '@rollup/rollup-win32-x64-msvc': 4.42.0
-            fsevents: 2.3.3
+  rollup@4.42.0:
+    dependencies:
+      '@types/estree': 1.0.7
+    optionalDependencies:
+      '@rollup/rollup-android-arm-eabi': 4.42.0
+      '@rollup/rollup-android-arm64': 4.42.0
+      '@rollup/rollup-darwin-arm64': 4.42.0
+      '@rollup/rollup-darwin-x64': 4.42.0
+      '@rollup/rollup-freebsd-arm64': 4.42.0
+      '@rollup/rollup-freebsd-x64': 4.42.0
+      '@rollup/rollup-linux-arm-gnueabihf': 4.42.0
+      '@rollup/rollup-linux-arm-musleabihf': 4.42.0
+      '@rollup/rollup-linux-arm64-gnu': 4.42.0
+      '@rollup/rollup-linux-arm64-musl': 4.42.0
+      '@rollup/rollup-linux-loongarch64-gnu': 4.42.0
+      '@rollup/rollup-linux-powerpc64le-gnu': 4.42.0
+      '@rollup/rollup-linux-riscv64-gnu': 4.42.0
+      '@rollup/rollup-linux-riscv64-musl': 4.42.0
+      '@rollup/rollup-linux-s390x-gnu': 4.42.0
+      '@rollup/rollup-linux-x64-gnu': 4.42.0
+      '@rollup/rollup-linux-x64-musl': 4.42.0
+      '@rollup/rollup-win32-arm64-msvc': 4.42.0
+      '@rollup/rollup-win32-ia32-msvc': 4.42.0
+      '@rollup/rollup-win32-x64-msvc': 4.42.0
+      fsevents: 2.3.3
 
     router@2.2.0:
         dependencies:
@@ -10841,9 +10853,9 @@ snapshots:
             buffer-from: 1.1.2
             source-map: 0.6.1
 
-    source-map@0.6.1: {}
+  source-map@0.6.1: {}
 
-    source-map@0.7.6: {}
+  source-map@0.7.6: {}
 
     spawn-wrap@2.0.0:
         dependencies:

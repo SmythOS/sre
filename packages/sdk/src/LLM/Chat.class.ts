@@ -5,7 +5,7 @@ import { AgentData, ChatOptions, PromptOptions } from '../types/SDKTypes';
 import { SDKObject } from '../Core/SDKObject.class';
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { SDKLog } from '../utils/console.utils';
-
+import type { Agent, TAgentMode } from '../Agent/Agent.class';
 const console = SDKLog;
 
 class LocalChatStore extends SDKObject implements ILLMContextStore {
@@ -156,12 +156,13 @@ class ChatCommand {
 export class Chat extends SDKObject {
     private _id: string;
     public _conversation: Conversation;
+    private _curAgentModes: string = '';
 
     public get id() {
         return this._id;
     }
 
-    private _data: any = {
+    private _emptyData: any = {
         version: '1.0.0',
         name: 'Agent',
         behavior: '',
@@ -170,14 +171,17 @@ export class Chat extends SDKObject {
         defaultModel: '',
         id: uid(),
     };
+    private _data: any = {};
     public get agentData() {
         return this._data;
     }
-    constructor(options: ChatOptions & { candidate: AccessCandidate }, _data?: any, private _convOptions: any = {}) {
+    constructor(options: ChatOptions & { candidate: AccessCandidate }, private source?: Agent | Record<string, any>, private _convOptions: any = {}) {
         super();
 
+        const _data = source?.data || source || {};
+
         const _model = options.model || _data?.defaultModel || '';
-        this._data = { ...this._data, ..._data, defaultModel: _model };
+        this._data = { ...this._emptyData, ..._data, defaultModel: _model };
 
         this._id = options.id || uid();
         if (options.persist) {
@@ -203,6 +207,9 @@ export class Chat extends SDKObject {
             this._convOptions.maxOutputTokens = options.maxOutputTokens;
         }
 
+        if ((this.source as Agent)?.modes) {
+            this._curAgentModes = (this.source as Agent).modes.join('|');
+        }
         this._conversation = createConversation(this._data, this._convOptions);
     }
 
@@ -241,6 +248,18 @@ export class Chat extends SDKObject {
      * @returns ChatCommand that can be executed or streamed
      */
     prompt(prompt: string, options?: PromptOptions) {
+        if ((this.source as Agent)?.modes) {
+            const modes = (this.source as Agent).modes.join('|');
+            if (modes !== this._curAgentModes) {
+                //agent mode changed we need to recreate the conversation object
+                const _data = this.source.data || this.source;
+                const _model = this._data?.defaultModel || '';
+                this._data = { ...this._emptyData, ..._data, defaultModel: _model };
+
+                this._conversation = createConversation(this._data, this._convOptions);
+                this._curAgentModes = modes;
+            }
+        }
         return new ChatCommand(prompt, this, options);
     }
 }

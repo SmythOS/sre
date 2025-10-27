@@ -7,8 +7,9 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { Logger } from '@sre/helpers/Log.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import { Match, TemplateString } from '@sre/helpers/TemplateString.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
+import { cloneDeep } from 'lodash';
 
 const console = Logger('OAuth.helper');
 let managedVault: any;
@@ -49,11 +50,9 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
 
     // Headers might be an object or array of objects
     if (Array.isArray(headers)) {
-        const contentTypeHeader = headers.find(h =>
-            Object.keys(h).some(k => k.toLowerCase() === 'content-type')
-        );
+        const contentTypeHeader = headers.find((h) => Object.keys(h).some((k) => k.toLowerCase() === 'content-type'));
         if (contentTypeHeader) {
-            const key = Object.keys(contentTypeHeader).find(k => k.toLowerCase() === 'content-type');
+            const key = Object.keys(contentTypeHeader).find((k) => k.toLowerCase() === 'content-type');
             contentType = contentTypeHeader[key];
         }
     } else {
@@ -83,9 +82,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
             console.debug('OAuth1: Including form parameters in signature:', Object.keys(formParams));
             additionalParams = { ...additionalParams, ...formParams };
         }
-    } else if (contentType.includes(REQUEST_CONTENT_TYPES.json) ||
-        contentType.includes('application/') ||
-        contentType.includes('text/')) {
+    } else if (contentType.includes(REQUEST_CONTENT_TYPES.json) || contentType.includes('application/') || contentType.includes('text/')) {
         // For JSON and other non-form data, use oauth_body_hash
         if (reqConfig.data && method !== 'GET' && method !== 'HEAD') {
             let bodyString = '';
@@ -110,8 +107,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
                 // Only include string values, exclude Files/Blobs
                 if (typeof value === 'string') {
                     additionalParams[key] = value;
-                } else if (typeof value === 'object' && value !== null &&
-                    ('size' in value || 'type' in value)) {
+                } else if (typeof value === 'object' && value !== null && ('size' in value || 'type' in value)) {
                     // Skip binary data (Files, Blobs, etc.)
                     continue;
                 } else {
@@ -123,8 +119,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
     } else if (!contentType && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
         // No content type specified but has data
         if (reqConfig.data) {
-            const bodyString = typeof reqConfig.data === 'string' ?
-                reqConfig.data : JSON.stringify(reqConfig.data);
+            const bodyString = typeof reqConfig.data === 'string' ? reqConfig.data : JSON.stringify(reqConfig.data);
             const hash = crypto.createHash('sha1').update(bodyString).digest('base64');
             additionalParams['oauth_body_hash'] = hash;
         }
@@ -165,9 +160,10 @@ export const buildOAuth1Header = (url, method, oauth1Credentials, additionalPara
         data: additionalParams, // Parameters should be in data field for oauth-1.0a library
     };
 
-    const token = oauth1Credentials.token && oauth1Credentials.token !== '' ?
-        { key: oauth1Credentials.token, secret: oauth1Credentials.tokenSecret || '' } :
-        null;
+    const token =
+        oauth1Credentials.token && oauth1Credentials.token !== ''
+            ? { key: oauth1Credentials.token, secret: oauth1Credentials.tokenSecret || '' }
+            : null;
 
     const signedRequest = oauth.authorize(requestData, token);
     return oauth.toHeader(signedRequest);
@@ -190,24 +186,25 @@ export const retrieveOAuthTokens = async (agent, config) => {
             // Check if it's new structure (has auth_data and auth_settings) or old structure
             const isNewStructure = tokensData.auth_data !== undefined && tokensData.auth_settings !== undefined;
 
+            //* Resolve vault keys inside auth_data
+            if (isNewStructure) {
+                await Promise.all(
+                    Object.keys(tokensData.auth_settings).map(async (key) => {
+                        if (typeof tokensData.auth_settings[key] !== 'string') return;
+                        tokensData.auth_settings[key] = await TemplateString(tokensData.auth_settings[key]).parseTeamKeysAsync(agent.teamId)
+                            .asyncResult;
+                    })
+                );
+            }
+
             // Extract tokens based on structure
-            const primaryToken = isNewStructure
-                ? tokensData.auth_data?.primary
-                : tokensData.primary;
-            const secondaryToken = isNewStructure
-                ? tokensData.auth_data?.secondary
-                : tokensData.secondary;
-            const expiresIn = isNewStructure
-                ? tokensData.auth_data?.expires_in
-                : tokensData.expires_in;
+            const primaryToken = isNewStructure ? tokensData.auth_data?.primary : tokensData.primary;
+            const secondaryToken = isNewStructure ? tokensData.auth_data?.secondary : tokensData.secondary;
+            const expiresIn = isNewStructure ? tokensData.auth_data?.expires_in : tokensData.expires_in;
 
             // Extract settings based on structure
-            const type = isNewStructure
-                ? tokensData.auth_settings?.type
-                : (tokensData.type || tokensData.oauth_info?.type);
-            const service = isNewStructure
-                ? tokensData.auth_settings?.service
-                : tokensData.oauth_info?.service;
+            const type = isNewStructure ? tokensData.auth_settings?.type : tokensData.type || tokensData.oauth_info?.type;
+            const service = isNewStructure ? tokensData.auth_settings?.service : tokensData.oauth_info?.service;
 
             // Add warning logs for OAuth2
             if (type === 'oauth2' && service !== 'oauth2_client_credentials') {
@@ -353,8 +350,6 @@ const getKeyIdsFromTemplateVars = (str: string): string[] => {
 };
 
 async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, config, agent, isNewStructure = false) {
-
-
     const logAndThrowError = (message) => {
         logger.debug(message);
         throw new Error(message);
@@ -399,7 +394,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                     auth_data: {
                         ...(tokensData?.auth_data || {}),
                         primary: newAccessToken,
-                        expires_in: expirationTimestamp.toString()
+                        expires_in: expirationTimestamp.toString(),
                     },
                     auth_settings: {
                         ...(tokensData?.auth_settings || {}),
@@ -416,7 +411,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                 updatedData = {
                     ...tokensData,
                     primary: newAccessToken,
-                    expires_in: expirationTimestamp.toString()
+                    expires_in: expirationTimestamp.toString(),
                 };
                 // Ensure required fields are present for old structure
                 if (!updatedData.type) updatedData.type = 'oauth2';
@@ -428,7 +423,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                         service: 'oauth2_client_credentials',
                         tokenURL,
                         clientID,
-                        clientSecret
+                        clientSecret,
                     };
                 }
             }

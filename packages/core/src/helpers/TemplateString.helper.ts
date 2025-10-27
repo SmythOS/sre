@@ -109,7 +109,7 @@ export class TemplateStringHelper {
 
             //if no exact match, try to parse the token as a JSON expression
             if (!data?.[token]) {
-                val = JSONExpression(data, token);
+                val = JSONExpression(data, token) || `{{${token}}}`; //if no match, use the token as is
             }
 
             return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
@@ -227,7 +227,6 @@ export class TemplateStringHelper {
     //     });
     // }
 }
-
 /**
  * A helper function that takes an object and a property string and returns the value of the property
  * @param obj the object to get the property from
