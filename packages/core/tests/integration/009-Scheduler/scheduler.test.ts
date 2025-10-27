@@ -38,7 +38,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should persist jobs to disk', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const candidate = AccessCandidate.user('persist-test');
@@ -87,7 +87,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             // Create scheduler (should load the job)
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: true,
+                runJobs: true,
             });
 
             const candidate = AccessCandidate.user('load-test');
@@ -104,7 +104,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should update existing job on disk', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const candidate = AccessCandidate.user('update-test');
@@ -132,7 +132,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should delete job from disk', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const candidate = AccessCandidate.user('delete-test');
@@ -165,7 +165,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                 });
 
                 const candidate = AccessCandidate.user('exec-test');
@@ -197,7 +197,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                 });
 
                 const candidate = AccessCandidate.user('pause-test');
@@ -237,7 +237,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                 });
 
                 const candidate = AccessCandidate.user('resume-test');
@@ -274,7 +274,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                     persistExecutionHistory: true,
                 });
 
@@ -310,7 +310,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                     persistExecutionHistory: true,
                 });
 
@@ -346,7 +346,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should enforce candidate isolation', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const user1 = AccessCandidate.user('user1');
@@ -378,7 +378,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should preserve ACL ownership on updates', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const owner = AccessCandidate.user('owner');
@@ -403,7 +403,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should grant access to non-existent jobs for creation', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const user = AccessCandidate.user('new-user');
@@ -421,7 +421,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should reject invalid schedules', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const candidate = AccessCandidate.user('validation-test');
@@ -440,7 +440,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
             async () => {
                 const scheduler = new LocalScheduler({
                     folder: TEST_FOLDER,
-                    autoStart: true,
+                    runJobs: true,
                 });
 
                 const candidate = AccessCandidate.user('range-test');
@@ -476,7 +476,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should shutdown gracefully', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: true,
+                runJobs: true,
             });
 
             const candidate = AccessCandidate.user('shutdown-test');
@@ -494,7 +494,7 @@ describe('LocalScheduler - Integration tests with real file system', () => {
         it('should handle multiple concurrent operations', async () => {
             const scheduler = new LocalScheduler({
                 folder: TEST_FOLDER,
-                autoStart: false,
+                runJobs: false,
             });
 
             const candidate = AccessCandidate.user('concurrent-test');

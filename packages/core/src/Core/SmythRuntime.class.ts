@@ -70,7 +70,7 @@ export class SmythRuntime {
         Scheduler: {
             Connector: 'LocalScheduler',
             Settings: {
-                autoStart: true,
+                runJobs: true,
                 persistExecutionHistory: true,
             },
         },

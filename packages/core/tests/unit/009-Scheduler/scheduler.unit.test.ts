@@ -242,7 +242,7 @@ describe('Job - Unit tests for Job wrapper with new API', () => {
 
 describe('LocalScheduler - Unit tests for scheduler internals', () => {
     it('should construct job keys with candidate scope', () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('user123');
 
         const key = (scheduler as any).constructJobKey(candidate, 'myJob');
@@ -251,7 +251,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should grant Owner ACL before job creation', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
 
         const acl = await scheduler.getResourceACL('newJob', candidate);
@@ -260,7 +260,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should add job with proper ACL', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
         const requester = scheduler.requester(candidate);
 
@@ -281,7 +281,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should isolate jobs between candidates', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
 
         const user1 = AccessCandidate.user('user1');
         const user2 = AccessCandidate.user('user2');
@@ -307,7 +307,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should delete job correctly', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
         const requester = scheduler.requester(candidate);
 
@@ -327,7 +327,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should pause and resume jobs', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
         const requester = scheduler.requester(candidate);
 
@@ -354,7 +354,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should validate schedule before adding', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
         const requester = scheduler.requester(candidate);
 
@@ -370,7 +370,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should preserve ACL ownership on updates', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const owner = AccessCandidate.user('owner');
         const requester = scheduler.requester(owner);
 
@@ -404,7 +404,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
     });
 
     it('should store jobConfig in scheduled jobs', async () => {
-        const scheduler = new LocalScheduler({ autoStart: false });
+        const scheduler = new LocalScheduler({ runJobs: false });
         const candidate = AccessCandidate.user('test-user');
         const requester = scheduler.requester(candidate);
 

@@ -22,10 +22,12 @@ export type LocalSchedulerConfig = {
     folder?: string;
 
     /**
-     * Auto-start scheduler on initialization
+     * Enable job execution
+     * If true: loads jobs at start and executes them on schedule
+     * If false: allows job management but skips all execution (for multi-instance setups)
      * Defaults to true
      */
-    autoStart?: boolean;
+    runJobs?: boolean;
 
     /**
      * Keep execution history
@@ -59,9 +61,18 @@ interface ScheduledJobRuntime extends IScheduledJob {
  * multiple scheduler instances are running. Job timers are shared across all instances,
  * ensuring each job runs only once even if scheduled by multiple instances.
  *
+ * **Multi-Instance Setup**: Use the `runJobs` config to control execution:
+ * - Set `runJobs: true` on ONE instance to execute jobs
+ * - Set `runJobs: false` on other instances to only manage jobs (add/delete/pause/resume)
+ *
  * @example
  * ```typescript
- * const scheduler = new LocalScheduler({ folder: '~/.smyth/scheduler' });
+ * // Execution instance (runs jobs)
+ * const scheduler = new LocalScheduler({ folder: '~/.smyth/scheduler', runJobs: true });
+ *
+ * // Management-only instance (no execution)
+ * const managerScheduler = new LocalScheduler({ folder: '~/.smyth/scheduler', runJobs: false });
+ *
  * const candidate = new AccessCandidate(TAccessRole.User, 'user123');
  * const requester = scheduler.requester(candidate);
  *
@@ -94,7 +105,7 @@ export class LocalScheduler extends SchedulerConnector {
 
         this.config = {
             folder: _settings?.folder || '',
-            autoStart: _settings?.autoStart !== false,
+            runJobs: _settings?.runJobs !== false,
             persistExecutionHistory: _settings?.persistExecutionHistory !== false,
             maxHistoryEntries: _settings?.maxHistoryEntries || 100,
         };
@@ -153,13 +164,13 @@ export class LocalScheduler extends SchedulerConnector {
             );
         }
 
-        // Load existing jobs if autoStart is enabled
-        if (this.config.autoStart) {
+        // Load existing jobs if runJobs is enabled
+        if (this.config.runJobs) {
             await this.loadJobsFromDisk();
         }
 
         this.isInitialized = true;
-        logger.info('LocalScheduler initialized');
+        logger.info(`LocalScheduler initialized (runJobs: ${this.config.runJobs})`);
     }
 
     /**
@@ -595,8 +606,10 @@ export class LocalScheduler extends SchedulerConnector {
         // Save to disk
         await this.saveJobToDisk(acRequest.candidate, jobData);
 
-        // Schedule for execution (will clear any duplicate timers)
-        await this.scheduleJob(jobData);
+        // Schedule for execution only if runJobs is enabled (will clear any duplicate timers)
+        if (this.config.runJobs) {
+            await this.scheduleJob(jobData);
+        }
 
         logger.info(`Job ${jobId} added successfully`);
     }
@@ -702,8 +715,10 @@ export class LocalScheduler extends SchedulerConnector {
         // Save to disk
         await this.saveJobToDisk(acRequest.candidate, jobData);
 
-        // Schedule for execution (will clear any duplicate timers)
-        await this.scheduleJob(jobData);
+        // Schedule for execution only if runJobs is enabled (will clear any duplicate timers)
+        if (this.config.runJobs) {
+            await this.scheduleJob(jobData);
+        }
 
         logger.info(`Job ${jobId} resumed`);
     }
