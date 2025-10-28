@@ -49,6 +49,7 @@ export function ImageGenerator(settings?: TImageGeneratorSettings, agent?: Agent
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TImageGeneratorOutputs = createSafeAccessor({

@@ -42,6 +42,9 @@ import { MemoryWriteKeyVal } from './MemoryWriteKeyVal.class';
 import { MemoryReadKeyVal } from './MemoryReadKeyVal.class';
 import { MemoryDeleteKeyVal } from './MemoryDeleteKeyVal.class';
 import { MemoryWriteObject } from './MemoryWriteObject.class';
+import { GmailTrigger } from './Triggers/Gmail.trigger';
+import { WhatsAppTrigger } from './Triggers/WhatsApp.trigger';
+import { JobSchedulerTrigger } from './Triggers/JobScheduler.trigger';
 
 const components = {
     Component: new Component(),
@@ -92,6 +95,11 @@ const components = {
     MemoryReadKeyVal: new MemoryReadKeyVal(),
     MemoryDeleteKeyVal: new MemoryDeleteKeyVal(),
     MemoryWriteObject: new MemoryWriteObject(),
+
+    // Triggers
+    GmailTrigger: new GmailTrigger(),
+    WhatsAppTrigger: new WhatsAppTrigger(),
+    JobSchedulerTrigger: new JobSchedulerTrigger(),
 };
 
 export const ComponentInstances = components;

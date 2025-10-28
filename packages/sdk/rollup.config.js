@@ -13,44 +13,74 @@ const isExternal = (id, ...overArgs) => {
     return _isExternal;
 };
 
-const config = {
-    input: 'src/index.ts',
-    output: {
-        file: 'dist/index.js',
-        format: 'es',
-        sourcemap: true,
+const config = [
+    // Core re-export bundle (SRE pass-through)
+    {
+        input: 'src/core.ts',
+        output: {
+            file: 'dist/core.js',
+            format: 'es',
+            sourcemap: true,
+        },
+        external: isExternal,
+        plugins: [
+            json(),
+            typescriptPaths({
+                tsconfig: './tsconfig.json',
+                preserveExtensions: true,
+                nonRelative: false,
+            }),
+            sourcemaps(),
+            esbuild({
+                sourceMap: true,
+                minifyWhitespace: true,
+                minifySyntax: true,
+                minifyIdentifiers: false,
+                treeShaking: true,
+                sourcesContent: true,
+            }),
+        ],
     },
-    external: isExternal,
-    plugins: [
-        colorfulLogs('SDK Builder'),
-        ctixPlugin(),
-        json(),
-        typescriptPaths({
-            tsconfig: './tsconfig.json',
-            preserveExtensions: true,
-            nonRelative: false,
-        }),
-        // typescript({
-        //     tsconfig: 'tsconfig.json',
-        //     clean: true,
-        //     sourceMap: true,
-        //     // sourcemapPathTransform: (relativeSourcePath, sourcemapPath) => {
-        //     //     // Convert relative paths to absolute paths for better debugging
-        //     //     return path.resolve(path.dirname(sourcemapPath), relativeSourcePath);
-        //     // },
-        // }),
-        sourcemaps(),
-        esbuild({
-            sourceMap: true,
-            minifyWhitespace: true,
-            minifySyntax: true,
-            minifyIdentifiers: false,
-            treeShaking: true,
-            sourcesContent: true,
-        }),
-        //terser(),
-    ],
-};
+    // Main SDK bundle
+    {
+        input: 'src/index.ts',
+        output: {
+            file: 'dist/index.js',
+            format: 'es',
+            sourcemap: true,
+        },
+        external: isExternal,
+        plugins: [
+            colorfulLogs('SDK Builder'),
+            ctixPlugin(),
+            json(),
+            typescriptPaths({
+                tsconfig: './tsconfig.json',
+                preserveExtensions: true,
+                nonRelative: false,
+            }),
+            // typescript({
+            //     tsconfig: 'tsconfig.json',
+            //     clean: true,
+            //     sourceMap: true,
+            //     // sourcemapPathTransform: (relativeSourcePath, sourcemapPath) => {
+            //     //     // Convert relative paths to absolute paths for better debugging
+            //     //     return path.resolve(path.dirname(sourcemapPath), relativeSourcePath);
+            //     // },
+            // }),
+            sourcemaps(),
+            esbuild({
+                sourceMap: true,
+                minifyWhitespace: true,
+                minifySyntax: true,
+                minifyIdentifiers: false,
+                treeShaking: true,
+                sourcesContent: true,
+            }),
+            //terser(),
+        ],
+    },
+];
 
 export default config;
 

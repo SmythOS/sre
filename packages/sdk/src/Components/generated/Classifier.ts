@@ -34,6 +34,7 @@ export function Classifier(settings?: TClassifierSettings, agent?: Agent) {
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TClassifierOutputs = createSafeAccessor({

@@ -92,11 +92,11 @@ export class RuntimeContext extends EventEmitter {
     private initRuntimeContext() {
         if (this._runtimeFileReady) return;
 
-        const endpointDBGCall = this.runtime.xDebugId?.startsWith('dbg-'); //weak check for debug session, we need to improve this
+        //const endpointDBGCall = this.runtime.xDebugId?.startsWith('dbg-'); //weak check for debug session, we need to improve this
         console.debug('Init Agent Context', this.ctxFile, AccessCandidate.agent(this.runtime.agent.id));
         const agent = this.runtime.agent;
-        let method = (agent.agentRequest.method || 'POST').toUpperCase();
-        const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
+        //let method = (agent.agentRequest.method || 'POST').toUpperCase();
+        //const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
 
         let ctxData: any = {};
 
@@ -115,12 +115,13 @@ export class RuntimeContext extends EventEmitter {
                             ctx: { active: false, name: ctxData.components[cptId].name },
                         };
 
-                        const cpt = ctxData.components[cptId];
-                        //if this debug session was initiated from an endpoint, we mark the endpoint component as active
-                        if (endpoint && endpoint.id != undefined && cpt.id == endpoint.id && endpointDBGCall) {
-                            //cpt.dbg.active = true;
-                            cpt.ctx.active = true;
-                        }
+                        // //TODO : the endpoint initialization logic should be moved to the AgentRuntime class
+                        // const cpt = ctxData.components[cptId];
+                        // //if this debug session was initiated from an endpoint, we mark the endpoint component as active
+                        // if (endpoint && endpoint.id != undefined && cpt.id == endpoint.id && endpointDBGCall) {
+                        //     //cpt.dbg.active = true;
+                        //     cpt.ctx.active = true;
+                        // }
                     }
 
                     await this._cacheConnector
