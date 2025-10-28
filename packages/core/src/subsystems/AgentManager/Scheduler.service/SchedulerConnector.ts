@@ -5,6 +5,8 @@ import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL, TAccessRole } from '@sre/types/ACL.types';
 import { Schedule, IScheduleData } from './Schedule.class';
 import { Job, IJobConfig } from './Job.class';
+import EventEmitter from 'events';
+import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 /**
  * Scheduled job data structure
@@ -45,6 +47,8 @@ export interface ISchedulerRequest {
     get(jobId: string): Promise<IScheduledJob | undefined>;
     pause(jobId: string): Promise<void>;
     resume(jobId: string): Promise<void>;
+    on(event: string, listener: (...args: any[]) => void);
+    off(event: string, listener: (...args: any[]) => void);
 }
 
 /**
@@ -74,6 +78,12 @@ export interface ISchedulerRequest {
 export abstract class SchedulerConnector extends SecureConnector<ISchedulerRequest> {
     public abstract id: string;
     public abstract name: string;
+    protected _eventEmitter: EventEmitter;
+
+    constructor(settings?: any) {
+        super(settings);
+        this._eventEmitter = new EventEmitter();
+    }
 
     /**
      * Get ACL for a specific job resource
@@ -92,6 +102,13 @@ export abstract class SchedulerConnector extends SecureConnector<ISchedulerReque
                 return await this.list(candidate.readRequest);
             },
             add: async (jobId: string, job: Job, schedule: Schedule) => {
+                //check if the candidate it attempting to schedule a job for an agent that is not in the same team as the candidate
+                const accountConnector = ConnectorService.getAccountConnector();
+                const agentTeam = await accountConnector.getCandidateTeam(AccessCandidate.agent(job.agentId));
+                const candidateTeam = await accountConnector.getCandidateTeam(candidate);
+                if (agentTeam !== candidateTeam) {
+                    throw new Error(`Candidate ${candidate.id} is not authorized to schedule a job for agent ${job.agentId}`);
+                }
                 await this.add(candidate.writeRequest, jobId, job, schedule);
             },
             delete: async (jobId: string) => {
@@ -105,6 +122,12 @@ export abstract class SchedulerConnector extends SecureConnector<ISchedulerReque
             },
             resume: async (jobId: string) => {
                 await this.resume(candidate.writeRequest, jobId);
+            },
+            on: (event: string, listener: (...args: any[]) => void) => {
+                this.on(event, listener);
+            },
+            off: (event: string, listener: (...args: any[]) => void) => {
+                this.off(event, listener);
             },
         };
     }
@@ -159,5 +182,19 @@ export abstract class SchedulerConnector extends SecureConnector<ISchedulerReque
      */
     protected constructJobKey(candidate: IAccessCandidate, jobId: string): string {
         return `${candidate.role}_${candidate.id}_${jobId}`;
+    }
+
+    protected emit(event: string, ...args: any[]): boolean {
+        return this._eventEmitter.emit(event, ...args);
+    }
+
+    public on(event: string, listener: (...args: any[]) => void) {
+        this._eventEmitter.on(event, listener);
+        return this;
+    }
+
+    public off(event: string, listener: (...args: any[]) => void) {
+        this._eventEmitter.off(event, listener);
+        return this;
     }
 }

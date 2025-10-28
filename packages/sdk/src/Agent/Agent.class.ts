@@ -286,6 +286,9 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
+    public get hasExplicitId(): boolean {
+        return this._hasExplicitId;
+    }
     #isEphemeral: boolean = true;
     #agentDataConnector: AgentDataConnector;
     private _warningDisplayed = {
@@ -306,6 +309,10 @@ export class Agent extends SDKObject {
 
     private _modes: TAgentMode[] = [];
 
+    public get id(): string {
+        return this._data.id;
+    }
+
     public get behavior() {
         return this._data.behavior;
     }
@@ -317,7 +324,6 @@ export class Agent extends SDKObject {
     public get modes() {
         return this._modes;
     }
-
 
     private _structure: any = {
         components: [],
@@ -691,8 +697,7 @@ export class Agent extends SDKObject {
                             `You are performing scheduler operations with an unidentified agent.\nThe jobs will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the jobs with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
                         );
                     }
-                    const candidate =
-                        scope !== Scope.TEAM && this._hasExplicitId ? AccessCandidate.agent(this._data.id) : AccessCandidate.team(this._data.teamId);
+                    const candidate = scope !== Scope.TEAM && this._hasExplicitId ? this : AccessCandidate.team(this._data.teamId);
                     return new SchedulerInstance(provider as TSchedulerProvider, connectorSettings, candidate);
                 };
             }

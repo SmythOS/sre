@@ -469,7 +469,14 @@ export class LocalScheduler extends SchedulerConnector {
 
         logger.debug(`Executing job ${jobData.id} with metadata:`, JSON.stringify(jobData.jobConfig.metadata));
 
+        // Emit 'executing' event before running the job
+        const owner = jobData.createdBy;
+        this.emit('executing', { id: jobData.id, job, owner });
+
         const result = await job.executeWithRetry();
+
+        // Emit 'executed' event after job completes with results
+        this.emit('executed', { id: jobData.id, job, owner, result });
 
         // Update execution metadata (not job status - status is user-controlled only)
         jobData.lastRun = new Date().toISOString();

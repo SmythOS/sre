@@ -96,6 +96,9 @@ export type IJobConfig = ISkillJobConfig | IPromptJobConfig | ITriggerJobConfig;
 
 export class Job {
     private config: IJobConfig;
+    public get agentId(): string {
+        return this.config.agentId;
+    }
 
     constructor(config: IJobConfig) {
         // Validate configuration
