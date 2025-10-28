@@ -205,7 +205,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         }
 
         const result = await this.client.search({
-            vector: _vector as number[],
+            data: _vector as number[],
             collection_name: preparedNs,
             output_fields: ['id', 'text', this.USER_METADATA_KEY, 'namespaceId', 'datasourceId', 'datasourceLabel', 'vector'],
             limit: options.topK || 10,
