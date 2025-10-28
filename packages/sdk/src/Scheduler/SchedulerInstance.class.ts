@@ -74,9 +74,9 @@ export class SchedulerInstance extends SDKObject {
      * );
      * ```
      */
-    async add(jobId: string, schedule: Schedule, job: Job): Promise<void> {
+    async add(jobId: string, job: Job, schedule: Schedule): Promise<void> {
         try {
-            await this._schedulerRequest.add(jobId, schedule, job);
+            await this._schedulerRequest.add(jobId, job, schedule);
         } catch (error) {
             console.error(`Error adding job ${jobId}:`, error);
             throw error;

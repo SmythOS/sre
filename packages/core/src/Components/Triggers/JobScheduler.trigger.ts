@@ -35,7 +35,7 @@ export class JobSchedulerTrigger extends Trigger {
 
             const schedulerRequester: ISchedulerRequest = schedulerConnector.agent(agent.id);
             const jobId = `job-${agent.id}-${triggerName}`;
-            await schedulerRequester.add(jobId, Schedule.every('10s'), new Job({ agentId: agent.id, type: 'trigger', triggerName }));
+            await schedulerRequester.add(jobId, new Job({ agentId: agent.id, type: 'trigger', triggerName }), Schedule.every('10s'));
         } catch (error) {
             throw new Error('Failed to schedule job');
         }

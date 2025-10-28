@@ -52,7 +52,8 @@ import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import { Conversation } from '@sre/helpers/Conversation.helper';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { hookAsync, HookService } from '@sre/Core/HookService';
-
+import { Logger } from '@sre/helpers/Log.helper';
+const console = Logger('Scheduler/Job');
 export interface IJobMetadata {
     name?: string;
     description?: string;
@@ -193,7 +194,8 @@ export class Job {
         const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
 
         if (!agentData) {
-            throw new Error(`Agent ${config.agentId} not found in AgentDataConnector. Make sure the agent is properly registered.`);
+            console.debug('Job  execusion skiped, agent not found: ', config.agentId);
+            throw new Error(`Job execution skipped, agent not found: ${config.agentId}`);
         }
 
         // Handle different agent data structures
@@ -202,12 +204,9 @@ export class Job {
         const components = actualData.components;
 
         if (!components || !Array.isArray(components)) {
-            console.error('Agent data structure:', JSON.stringify(agentData, null, 2));
-            throw new Error(
-                `Invalid agent data structure for agent ${config.agentId}. ` +
-                    `Expected 'components' array but got: ${typeof components}. ` +
-                    `Agent data keys: ${Object.keys(actualData || {}).join(', ')}`
-            );
+            console.debug('Job execusion skiped, agent not found: ', config.agentId);
+
+            throw new Error(`Job execution skipped, agent not found: ${config.agentId}`);
         }
 
         // Find the skill in agent data
@@ -250,7 +249,8 @@ export class Job {
         const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
 
         if (!agentData) {
-            throw new Error(`Agent ${config.agentId} not found in AgentDataConnector. Make sure the agent is properly registered.`);
+            console.debug('Job execusion skiped, agent not found: ', config.agentId);
+            throw new Error(`Job execution skipped, agent not found: ${config.agentId}`);
         }
 
         // Handle different agent data structures
@@ -258,12 +258,8 @@ export class Job {
         const components = actualData.components;
 
         if (!components || !Array.isArray(components)) {
-            console.error('Agent data structure:', JSON.stringify(agentData, null, 2));
-            throw new Error(
-                `Invalid agent data structure for agent ${config.agentId}. ` +
-                    `Expected 'components' array but got: ${typeof components}. ` +
-                    `Agent data keys: ${Object.keys(actualData || {}).join(', ')}`
-            );
+            console.debug('Job execusion skiped, agent not found: ', config.agentId);
+            throw new Error(`Job execution skipped, agent not found: ${config.agentId}`);
         }
 
         // Find the trigger in agent data (triggers have triggerEndpoint property)
@@ -302,7 +298,8 @@ export class Job {
         const agentData = (await agentDataConnector.getEphemeralAgentData(config.agentId)) || (await agentDataConnector.getAgentData(config.agentId));
 
         if (!agentData) {
-            throw new Error(`Agent ${config.agentId} not found`);
+            console.debug('Job execusion skiped, agent not found: ', config.agentId);
+            throw new Error(`Job execution skipped, agent not found: ${config.agentId}`);
         }
 
         // Handle different agent data structures

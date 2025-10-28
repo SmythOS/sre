@@ -222,13 +222,14 @@ interface IScheduledJob {
     schedule: IScheduleData;
     metadata: IJobMetadata;
     acl: IACL;
-    status: 'active' | 'paused' | 'completed' | 'failed';
+    status: 'active' | 'paused'; // User-controlled state only (not execution results)
     lastRun?: Date;
     nextRun?: Date;
     createdBy: {
         role: TAccessRole;
         id: string;
     };
+    executionHistory?: IJobExecution[]; // Execution results stored here
 }
 ```
 

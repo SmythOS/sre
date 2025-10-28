@@ -10,8 +10,9 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import fs from 'fs';
 import path from 'path';
-import { findSmythPath } from '../../../..';
-
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { findSmythPath } from '@sre/helpers/Sysconfig.helper';
+import { AccessCandidate } from '../../../Security/AccessControl/AccessCandidate.class';
 const logger = Logger('LocalScheduler');
 
 export type LocalSchedulerConfig = {
@@ -144,6 +145,8 @@ export class LocalScheduler extends SchedulerConnector {
      * Initialize the scheduler
      */
     private async initialize() {
+        //TODO : watch the folder with chokidar and reload jobs data
+
         // Create jobs folder if not exists
         const jobsFolderPath = path.join(this.folder, this.jobsPrefix);
         if (!fs.existsSync(jobsFolderPath)) {
@@ -183,11 +186,12 @@ export class LocalScheduler extends SchedulerConnector {
 
     /**
      * Get the job configuration file path
-     * Format: scheduler/jobs/<username>.user/<jobId>.json
+     * Format: scheduler/jobs/<username>.user/<role_id_jobId>.json
      */
     private getJobFilePath(candidate: IAccessCandidate, jobId: string, createFoldersIfNotExists: boolean = false): string {
         const candidateFolder = this.getCandidateFolderName(candidate);
-        const fullPath = path.join(this.folder, this.jobsPrefix, candidateFolder, `${jobId}.json`);
+        const jobFilename = jobId;
+        const fullPath = path.join(this.folder, this.jobsPrefix, candidateFolder, `${jobFilename}.json`);
 
         if (createFoldersIfNotExists) {
             const folder = path.dirname(fullPath);
@@ -201,11 +205,12 @@ export class LocalScheduler extends SchedulerConnector {
 
     /**
      * Get the runtime data file path
-     * Format: scheduler/.jobs.runtime/<username>.user/<jobId>.json
+     * Format: scheduler/.jobs.runtime/<username>.user/<role_id_jobId>.json
      */
     private getRuntimeFilePath(candidate: IAccessCandidate, jobId: string, createFoldersIfNotExists: boolean = false): string {
         const candidateFolder = this.getCandidateFolderName(candidate);
-        const fullPath = path.join(this.folder, this.runtimePrefix, candidateFolder, `${jobId}.json`);
+        const jobFilename = jobId;
+        const fullPath = path.join(this.folder, this.runtimePrefix, candidateFolder, `${jobFilename}.json`);
 
         if (createFoldersIfNotExists) {
             const folder = path.dirname(fullPath);
@@ -466,14 +471,14 @@ export class LocalScheduler extends SchedulerConnector {
 
         const result = await job.executeWithRetry();
 
-        // Update job data
+        // Update execution metadata (not job status - status is user-controlled only)
         jobData.lastRun = new Date().toISOString();
         const nextRun = schedule.calculateNextRun(new Date(jobData.lastRun));
         jobData.nextRun = nextRun ? nextRun.toISOString() : undefined;
 
         if (!result.success) {
             logger.warn(`Job ${jobData.id} failed:`, result.error?.message);
-            jobData.status = 'failed';
+            // Note: We do NOT change status here - execution results are stored in history only
         }
 
         // Add to execution history
@@ -519,8 +524,17 @@ export class LocalScheduler extends SchedulerConnector {
             await this.initialize();
         }
 
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(candidate);
         const jobKey = this.constructJobKey(candidate, resourceId);
         const jobData = LocalScheduler.jobs.get(jobKey);
+        const jobAgentTeamId = jobData?.jobConfig?.agentId
+            ? await accountConnector.getCandidateTeam(AccessCandidate.agent(jobData?.jobConfig?.agentId))
+            : null;
+
+        if (jobAgentTeamId && teamId !== jobAgentTeamId) {
+            return new ACL(); //deny access
+        }
 
         if (!jobData) {
             // Resource doesn't exist, grant Owner access to allow creation
@@ -551,7 +565,7 @@ export class LocalScheduler extends SchedulerConnector {
     }
 
     @SecureConnector.AccessControl
-    protected async add(acRequest: AccessRequest, jobId: string, schedule: Schedule, job: Job): Promise<void> {
+    protected async add(acRequest: AccessRequest, jobId: string, job: Job, schedule: Schedule): Promise<void> {
         if (!this.isInitialized) {
             await this.initialize();
         }

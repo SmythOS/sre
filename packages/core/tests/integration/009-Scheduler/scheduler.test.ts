@@ -332,7 +332,9 @@ describe('LocalScheduler - Integration tests with real file system', () => {
 
                 const jobData = await requester.get('error-job');
 
-                expect(jobData?.status).toBe('failed');
+                // Status should remain 'active' - execution failures don't change job status
+                expect(jobData?.status).toBe('active');
+                // Failure is recorded in execution history
                 expect(jobData?.executionHistory?.[0]?.success).toBe(false);
                 expect(jobData?.executionHistory?.[0]?.error).toContain('Intentional error');
 

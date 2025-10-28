@@ -1,11 +1,7 @@
-import { Scheduler, Schedule, Job, Agent } from '@smythos/sdk';
+import { Scheduler, Schedule, Job, Agent, AccessCandidate } from '@smythos/sdk';
 
 /**
  * This example demonstrates basic scheduler usage with the new Job API.
- *
- * Jobs can execute in two ways:
- * 1. Skill-based: Call a specific agent skill with arguments
- * 2. Prompt-based: Send a prompt to an agent
  *
  * All jobs are fully serializable and work after restart!
  */
@@ -38,14 +34,13 @@ agent.addSkill({
 await agent.ready;
 
 // Get the default scheduler
-const scheduler = Scheduler.default();
+const scheduler = agent.scheduler.default(); //Scheduler.default();
 
 console.log('🕐 Adding scheduled jobs...\n');
 
 // Job 1: Skill-based job - calls the agent's skill
 await scheduler.add(
     'report-job',
-    Schedule.every('5s'),
     new Job({
         type: 'skill',
         agentId: agent.data.id,
@@ -55,7 +50,8 @@ await scheduler.add(
             name: 'Daily Report Generator',
             description: 'Generates daily reports every 30 seconds',
         },
-    })
+    }),
+    Schedule.every('5s')
 );
 
 console.log('✅ Skill-based job added: Daily Report Generator');
@@ -63,7 +59,6 @@ console.log('✅ Skill-based job added: Daily Report Generator');
 // Job 2: Prompt-based job - sends a prompt to the agent
 await scheduler.add(
     'insight-job',
-    Schedule.every('10s'),
     new Job({
         type: 'prompt',
         agentId: agent.data.id,
@@ -72,7 +67,8 @@ await scheduler.add(
             name: 'System Insights',
             description: 'AI-generated insights every 45 seconds',
         },
-    })
+    }),
+    Schedule.every('10s')
 );
 
 console.log('✅ Prompt-based job added: System Insights\n');

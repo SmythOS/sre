@@ -14,7 +14,7 @@ export interface IScheduledJob {
     schedule: IScheduleData;
     jobConfig: IJobConfig; // Full job configuration (type, agentId, skillName/prompt, args, metadata)
     acl: IACL;
-    status: 'active' | 'paused' | 'completed' | 'failed';
+    status: 'active' | 'paused'; // User-controlled state only (not execution results)
     lastRun?: string; // ISO 8601 date string
     nextRun?: string; // ISO 8601 date string
     createdBy: {
@@ -40,7 +40,7 @@ export interface IJobExecution {
  */
 export interface ISchedulerRequest {
     list(): Promise<IScheduledJob[]>;
-    add(jobId: string, schedule: Schedule, job: Job): Promise<void>;
+    add(jobId: string, job: Job, schedule: Schedule): Promise<void>;
     delete(jobId: string): Promise<void>;
     get(jobId: string): Promise<IScheduledJob | undefined>;
     pause(jobId: string): Promise<void>;
@@ -91,8 +91,8 @@ export abstract class SchedulerConnector extends SecureConnector<ISchedulerReque
             list: async () => {
                 return await this.list(candidate.readRequest);
             },
-            add: async (jobId: string, schedule: Schedule, job: Job) => {
-                await this.add(candidate.writeRequest, jobId, schedule, job);
+            add: async (jobId: string, job: Job, schedule: Schedule) => {
+                await this.add(candidate.writeRequest, jobId, job, schedule);
             },
             delete: async (jobId: string) => {
                 await this.delete(candidate.writeRequest, jobId);
@@ -122,7 +122,7 @@ export abstract class SchedulerConnector extends SecureConnector<ISchedulerReque
      * @param schedule - Schedule definition
      * @param job - Job to execute
      */
-    protected abstract add(acRequest: AccessRequest, jobId: string, schedule: Schedule, job: Job): Promise<void>;
+    protected abstract add(acRequest: AccessRequest, jobId: string, job: Job, schedule: Schedule): Promise<void>;
 
     /**
      * Delete a scheduled job
