@@ -140,6 +140,11 @@ export class AgentRuntime {
 
         this.agentContext = new RuntimeContext(this);
         this.agentContext.on('ready', () => {
+            let method = (agent.agentRequest.method || 'POST').toUpperCase();
+            const endpoint = agent.endpoints?.[agent.agentRequest.path]?.[method];
+            const trigger = agent.triggers?.[agent.agentRequest.path];
+            const endpointDBGCall = this.xDebugId?.startsWith('dbg-');
+
             this.alwaysActiveComponents = {};
             this.exclusiveComponents = {};
             for (let component of this.agent.data.components) {
@@ -147,6 +152,15 @@ export class AgentRuntime {
                 if (!cpt) {
                     console.warn(`Component ${component.name} Exists in agent but has no implementation`, AccessCandidate.agent(this.agent.id));
                     continue;
+                }
+
+                if (trigger && trigger.id != undefined && component.id == trigger.id && this.xDebugId?.startsWith('dbg-')) {
+                    this.updateComponent(component.id, { active: true });
+                }
+
+                //if this debug session was initiated from an endpoint, we mark the endpoint component as active
+                if (endpoint && endpoint.id != undefined && component.id == endpoint.id && endpointDBGCall) {
+                    this.updateComponent(component.id, { active: true });
                 }
 
                 if (cpt.alwaysActive) {
@@ -380,7 +394,20 @@ export class AgentRuntime {
                 ctxData.sessionResult = true;
             }
 
-            //capture results
+            //capture triggers results
+
+            const triggers = Object.values(agent.triggers);
+            let triggersResults = dbgResults.flat().filter(
+                (e) =>
+                    e.id &&
+                    e.result &&
+                    !e.result._missing_inputs &&
+                    !e.result._in_progress &&
+                    //check if the current result is a trigger
+                    triggers.find((t: any) => t.id == e.id)
+            );
+
+            //capture workflow results
             let sessionResults = dbgResults.flat().filter(
                 (e) =>
                     e.id &&
@@ -389,6 +416,8 @@ export class AgentRuntime {
                     //check if this is the last component in the chain
                     !agent.connections.find((c) => c.sourceId == e.id)
             );
+
+            sessionResults = sessionResults.concat(triggersResults);
 
             let errorResults = dbgResults.flat().filter((e) => e.id && (e.error || e.result?._error));
 
@@ -452,13 +481,13 @@ export class AgentRuntime {
             const circularLimitData = this.circularLimitReached;
             result = { error: `Circular Calls Limit Reached on ${circularLimitData}. Current circular limit is ${this.agent.circularLimit}` };
         } else {
-            let state = [sessionResults, errorResults].flat(Infinity);
-            if (!state || state.length == 0) state = errorResults.flat(Infinity);
+            let _state = [sessionResults, errorResults].flat(Infinity);
+            if (!_state || _state.length == 0) _state = errorResults.flat(Infinity);
 
             //post process run cycle results
             //deduplicating redundant entries
 
-            const data = state
+            const _data = _state
                 .reduce(
                     (acc, current) => {
                         if (!acc.seen[current.id]) {
@@ -473,7 +502,7 @@ export class AgentRuntime {
 
             //data.forEach((d: any) => delete d?.result?._debug);
 
-            result = data;
+            result = _data;
             /////////////
         }
 

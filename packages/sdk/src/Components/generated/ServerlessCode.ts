@@ -52,6 +52,7 @@ export function ServerlessCode(settings?: TServerlessCodeSettings, agent?: Agent
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TServerlessCodeOutputs = createSafeAccessor({

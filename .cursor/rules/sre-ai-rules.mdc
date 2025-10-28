@@ -79,6 +79,45 @@ This is the **SmythOS SRE (Smyth Runtime Environment)** monorepo - an advanced a
 3. **Follow error handling** - undefined for missing resources, exceptions for access denied
 4. **Update tests** - both unit and integration if behavior changes
 
+### When Creating New Connectors Subsystems or Services
+
+⚠️ **MANDATORY: Read `packages/core/src/subsystems/Agents.md` FIRST**
+
+Before implementing any new connector or service:
+
+1. **Read the Agents.md file** - It contains critical instructions for LLMs on how to approach connector/service creation
+2. **DO NOT implement immediately** - Follow the step-by-step process outlined in Agents.md
+3. **Gather all requirements** - Ask questions if information is incomplete
+4. **Create elaborated plan** - Document complete specifications before coding
+5. **Get user approval** - Wait for confirmation before starting implementation
+
+The Agents.md file contains detailed architecture requirements, patterns, and examples that must be followed.
+
+## Running Tests
+
+### Test Structure
+
+The monorepo uses **Vitest** with configuration at the root level (`vitest.config.ts`). All test commands must be run from the **monorepo root directory**.
+
+⚠️ **Always run tests from monorepo root, not from `packages/*core*`**
+
+```bash
+# From monorepo root (CORRECT)
+pnpm vitest run packages/core/tests/path/to/testfile.unit.test.ts
+
+# Run all unit tests
+pnpm test:unit
+
+# Run all integration tests
+pnpm test:integration
+
+# Watch mode for unit tests
+pnpm test:unit:watch
+
+# Run specific test file pattern
+pnpm vitest run packages/core/tests/unit/**/*scheduler*
+```
+
 ## Critical Reminders
 
 ⚠️ **ALWAYS USE PNPM** - This is a pnpm workspace. Never suggest npm or yarn commands.

@@ -12,6 +12,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { IModelsProviderRequest, ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { Trigger } from '@sre/Components/Triggers/Trigger.class';
 import { IAgent } from '@sre/types/Agent.types';
 import { AgentSSE } from './AgentSSE.class';
 
@@ -26,10 +27,12 @@ export class Agent implements IAgent {
     public components: any;
     public connections: any;
     public endpoints: any = {};
+    public triggers: any = {};
     public sessionId;
     public sessionTag = '';
     public callerSessionId;
     public apiBasePath = '/api';
+    public triggerBasePath = '/trigger';
     public agentRuntime: AgentRuntime | any;
 
     public usingTestDomain = false;
@@ -40,7 +43,7 @@ export class Agent implements IAgent {
 
     //public baseUrl = '';
     public agentVariables: any = {};
-    private _kill = false;
+    private _killReason = '';
     //public agentRequest: Request | AgentRequest | any;
     public async = false;
     public jobID = '';
@@ -89,6 +92,11 @@ export class Agent implements IAgent {
             this.endpoints[`${this.apiBasePath}/${endpoint.data.endpoint}`][method] = endpoint;
         }
 
+        const triggers = this.data.components.filter((c) => typeof c.data?.triggerEndpoint == 'string');
+        for (let trigger of triggers) {
+            this.triggers[`${this.triggerBasePath}/${trigger.data.triggerEndpoint}`] = trigger;
+        }
+
         this.components = {};
         for (let component of this.data.components) {
             //FIXME : this does not persist in debug mode, it breaks key value mem logic
@@ -117,14 +125,27 @@ export class Agent implements IAgent {
             const output = sourceComponent.outputs[sourceIndex];
             output.index = sourceIndex; // legacy ids (numbers)
 
-            const input = targetComponent.inputs[targetIndex];
-            input.index = targetIndex;
-
             if (!output.next) output.next = [];
             output.next.push(targetComponent.id);
 
-            if (!input.prev) input.prev = [];
-            input.prev.push(sourceComponent.id);
+            //when a trigger is connected to an APIEndpoint it does not use the standard inputs
+            //the targetIndex is then -1 and the input does not really exist
+            //in that case, we should consider the trigger as an ancestor for all APIEndpoint inputs
+
+            if (targetIndex >= 0) {
+                const input = targetComponent.inputs[targetIndex];
+                if (input) {
+                    input.index = targetIndex;
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
+            } else {
+                //if the targetIndex is -1, we should consider the trigger as an ancestor for all APIEndpoint inputs
+                for (let input of targetComponent.inputs) {
+                    if (!input.prev) input.prev = [];
+                    input.prev.push(sourceComponent.id);
+                }
+            }
         }
 
         this.tagAsyncComponents();
@@ -183,8 +204,12 @@ export class Agent implements IAgent {
         const sessionTags = this?.agentRequest?.headers['x-session-tag'];
         if (sessionTags) this.sessionTag += this.sessionTag ? `,${sessionTags}` : sessionTags;
 
-        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?${this.apiBasePath}\/(.*)`);
-        if (this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) || this.agentRequest?.path?.match(regex)) {
+        var regex = new RegExp(`^\/v[0-9]+(\.[0-9]+)?(${this.apiBasePath}|${this.triggerBasePath})\/(.*)`);
+        if (
+            this.agentRequest?.path?.startsWith(`${this.apiBasePath}/`) ||
+            this.agentRequest?.path?.startsWith(`${this.triggerBasePath}/`) ||
+            this.agentRequest?.path?.match(regex)
+        ) {
             //we only need runtime context for API calls
             this.agentRuntime = new AgentRuntime(this);
             this.callerSessionId =
@@ -197,11 +222,11 @@ export class Agent implements IAgent {
         this.callback = callback;
     }
 
-    public kill() {
-        this._kill = true;
+    public kill(reason: string = 'kill') {
+        this._killReason = reason;
     }
     public isKilled() {
-        return this._kill;
+        return !!this._killReason;
     }
     private async parseVariables() {
         //parse vault agent variables
@@ -252,7 +277,7 @@ export class Agent implements IAgent {
         });
 
         const method = this.agentRequest.method.toUpperCase();
-        const endpoint = this.endpoints[endpointPath]?.[method];
+        const endpoint = this.endpoints[endpointPath]?.[method] || this.triggers[endpointPath];
 
         //first check if this is a debug session, and return debug result if it's the case
         if (this.agentRuntime.debug) {
@@ -307,9 +332,9 @@ export class Agent implements IAgent {
             const qosLatency = Math.floor(OSResourceMonitor.cpu.load * MAX_LATENCY || 0);
 
             await delay(10 + qosLatency);
-        } while (!step?.finalResult && !this._kill);
+        } while (!step?.finalResult && !this._killReason);
 
-        if (this._kill) {
+        if (this._killReason) {
             const endTime = Date.now();
             const duration = endTime - startTime;
             this.sse.send('agent', {
@@ -325,7 +350,7 @@ export class Agent implements IAgent {
                 error: 'Agent killed',
             });
             console.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
-            return { error: 'Agent killed' };
+            return { error: 'AGENT_KILLED', reason: this._killReason };
         }
         result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
 
@@ -425,16 +450,31 @@ export class Agent implements IAgent {
     //     this.agentRuntime.resetComponent(componentId);
     // }
 
+    // private hasLoopAncestor(inputEntry) {
+    //     if (!inputEntry.prev) return false;
+    //     for (let prevId of inputEntry.prev) {
+    //         const prevComponentData = this.components[prevId];
+    //         if (prevComponentData.name == 'ForEach') return true;
+
+    //         for (let inputEntry of prevComponentData.inputs) {
+    //             if (this.hasLoopAncestor(inputEntry)) return true;
+    //         }
+    //     }
+    // }
     private hasLoopAncestor(inputEntry) {
         if (!inputEntry.prev) return false;
         for (let prevId of inputEntry.prev) {
             const prevComponentData = this.components[prevId];
-            if (prevComponentData.name == 'ForEach') return true;
+            const prevRuntimeData = this.agentRuntime.getRuntimeData(prevId);
+
+            // Consider any component with _LoopData as a loop ancestor
+            if (prevRuntimeData?._LoopData) return true;
 
             for (let inputEntry of prevComponentData.inputs) {
                 if (this.hasLoopAncestor(inputEntry)) return true;
             }
         }
+        return false;
     }
 
     private clearChildLoopRuntimeComponentData(componentId) {
@@ -547,7 +587,7 @@ export class Agent implements IAgent {
             input,
         });
 
-        if (this._kill) {
+        if (this._killReason) {
             console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
 
             const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
@@ -914,6 +954,16 @@ export class Agent implements IAgent {
             if (Array.isArray(connections) && connections.length > 0) {
                 const nextInput = {};
                 for (let connection of connections) {
+                    // if (component instanceof Trigger) {
+                    //     //handle trigger connections
+                    //     console.log('Trigger', connection);
+                    //     for (let input of targetComponentData.inputs) {
+                    //         if (connection.output?.Payload) {
+                    //             nextInput[input.name] = TemplateString(input.defaultVal).parse(connection.output?.Payload).clean().result;
+                    //         }
+                    //     }
+                    //     continue;
+                    // }
                     const output = connection.output;
                     const componentData = connection.componentData;
                     const outputEndpoint = componentData.outputs[connection.sourceIndex]; //source

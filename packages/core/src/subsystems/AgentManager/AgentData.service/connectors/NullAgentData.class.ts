@@ -12,11 +12,11 @@ export class NullAgentData extends AgentDataConnector {
     }
 
     public getAgentConfig(agentId: string): Partial<TArgs> {
-        return {};
+        return null; //{};
     }
 
     public async getAgentData(agentId: string, version?: string) {
-        return { data: {}, version: '1.0' };
+        return null; // { data: {}, version: '1.0' };
     }
 
     public getAgentIdByDomain(domain: string): Promise<string> {

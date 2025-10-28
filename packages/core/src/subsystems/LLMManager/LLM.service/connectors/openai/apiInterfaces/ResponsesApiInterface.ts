@@ -34,6 +34,7 @@ const EVENT_TYPES = {
     FUNCTION_CALL_ARGUMENTS_DELTA: 'response.function_call_arguments.delta',
     FUNCTION_CALL_ARGUMENTS_DONE: 'response.function_call_arguments.done',
     OUTPUT_ITEM_DONE: 'response.output_item.done',
+    INCOMPLETE: 'response.incomplete',
 } as const;
 
 // Type definitions for web search events (augmenting SDK types locally)
@@ -179,6 +180,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                             }
                             break;
                         }
+
+                        case EVENT_TYPES.INCOMPLETE:
+                            finishReason = 'incomplete';
+                            const responseData = (part as any)?.response;
+                            if (responseData?.usage) {
+                                usageData.push(responseData.usage);
+                            }
+                            break;
 
                         default: {
                             const eventType = String(part.type);

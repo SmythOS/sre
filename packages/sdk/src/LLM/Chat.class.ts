@@ -267,7 +267,7 @@ export class Chat extends SDKObject {
 function createConversation(agentData: AgentData, options?: any) {
     const filteredAgentData = {
         ...agentData,
-        components: agentData.components.filter((c) => !c.process),
+        components: agentData.components, //agentData.components.filter((c) => !c.process),
     };
     const conversation = new Conversation(agentData.defaultModel, filteredAgentData, {
         agentId: agentData.id,
@@ -282,17 +282,17 @@ function createConversation(agentData: AgentData, options?: any) {
 }
 
 async function registerProcessSkills(conversation: Conversation, agentData: AgentData) {
-    await conversation.ready;
-    const processSkills: any[] = agentData.components.filter((c) => c.process);
-    for (const skill of processSkills) {
-        await conversation.addTool({
-            name: skill.data.endpoint,
-            description: skill.data.description,
-            //arguments: _arguments,
-            handler: skill.process,
-            inputs: skill.inputs,
-        });
-    }
+    // await conversation.ready;
+    // const processSkills: any[] = agentData.components.filter((c) => c.process);
+    // for (const skill of processSkills) {
+    //     await conversation.addTool({
+    //         name: skill.data.endpoint,
+    //         description: skill.data.description,
+    //         //arguments: _arguments,
+    //         handler: skill.process,
+    //         inputs: skill.inputs,
+    //     });
+    // }
 }
 
 export async function prepareConversation(agentData: AgentData, options?: any) {

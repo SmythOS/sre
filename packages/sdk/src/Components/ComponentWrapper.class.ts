@@ -34,21 +34,24 @@ export class ComponentWrapper {
             process: typeof this._internalData.process === 'function' ? this._internalData.process : undefined,
             left: '0px',
             top: '0px',
-            inputs: [...processInputs, ...Object.keys(this._inputs).map((key) => ({
+            inputs: [
+                ...processInputs,
+                ...Object.keys(this._inputs || {}).map((key) => ({
+                    name: key,
+                    type: this._inputs[key].type || 'Any',
+                    description: this._inputs[key].description || undefined,
+                    optional: this._inputs[key].optional || false,
+                    default: this._inputs[key].default || undefined,
+                    //value: this._inputs[key],
+                })),
+            ],
+            outputs: Object.keys(this._outputs || {}).map((key) => ({
                 name: key,
-                type: this._inputs[key].type || 'Any',
-                description: this._inputs[key].description || undefined,
-                optional: this._inputs[key].optional || false,
-                default: this._inputs[key].default || undefined,
-                //value: this._inputs[key],
-            }))],
-            outputs: Object.keys(this._outputs).map((key) => ({
-                name: key,
-                ...(this._outputs[key]?.['__props__'] || {}),
+                ...(this._outputs?.[key]?.['__props__'] || {}),
             })),
         };
 
-        //merge inputs having the same name 
+        //merge inputs having the same name
         const inputs = data.inputs.reduce((acc, input) => {
             if (acc[input.name]) {
                 acc[input.name] = { ...acc[input.name], ...input };
@@ -169,27 +172,33 @@ export class ComponentWrapper {
         let counter = 0;
         function handleParam(param) {
             if (param.type === 'Identifier') {
-                return [{
-                    name: param.name,
-                    type: 'Any',
-                    description: '',
-                }];
+                return [
+                    {
+                        name: param.name,
+                        type: 'Any',
+                        description: '',
+                    },
+                ];
             }
 
             if (param.type === 'AssignmentPattern' && param.left.type === 'Identifier') {
-                return [{
-                    name: param.left.name,
-                    type: 'Any',
-                    description: '',
-                }];
+                return [
+                    {
+                        name: param.left.name,
+                        type: 'Any',
+                        description: '',
+                    },
+                ];
             }
 
             if (param.type === 'RestElement' && param.argument.type === 'Identifier') {
-                return [{
-                    name: param.argument.name,
-                    type: 'Any',
-                    description: '',
-                }];
+                return [
+                    {
+                        name: param.argument.name,
+                        type: 'Any',
+                        description: '',
+                    },
+                ];
             }
 
             if (param.type === 'ObjectPattern') {
@@ -205,8 +214,6 @@ export class ComponentWrapper {
                     };
                 });
                 return properties;
-
-
             }
 
             const name = `unknown_${counter++}`;
@@ -218,5 +225,5 @@ export class ComponentWrapper {
         }
 
         return params.map(handleParam).flat();
-    }    
+    }
 }
