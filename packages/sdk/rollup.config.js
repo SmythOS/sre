@@ -14,6 +14,33 @@ const isExternal = (id, ...overArgs) => {
 };
 
 const config = [
+    // Core re-export bundle (SRE pass-through)
+    {
+        input: 'src/core.ts',
+        output: {
+            file: 'dist/core.js',
+            format: 'es',
+            sourcemap: true,
+        },
+        external: isExternal,
+        plugins: [
+            json(),
+            typescriptPaths({
+                tsconfig: './tsconfig.json',
+                preserveExtensions: true,
+                nonRelative: false,
+            }),
+            sourcemaps(),
+            esbuild({
+                sourceMap: true,
+                minifyWhitespace: true,
+                minifySyntax: true,
+                minifyIdentifiers: false,
+                treeShaking: true,
+                sourcesContent: true,
+            }),
+        ],
+    },
     // Main SDK bundle
     {
         input: 'src/index.ts',
@@ -51,34 +78,6 @@ const config = [
                 sourcesContent: true,
             }),
             //terser(),
-        ],
-    },
-    // Core re-export bundle (SRE pass-through)
-    {
-        input: 'src/core.ts',
-        output: {
-            file: 'dist/core.js',
-            format: 'es',
-            sourcemap: true,
-        },
-        external: isExternal,
-        plugins: [
-            colorfulLogs('SDK Core Re-export'),
-            json(),
-            typescriptPaths({
-                tsconfig: './tsconfig.json',
-                preserveExtensions: true,
-                nonRelative: false,
-            }),
-            sourcemaps(),
-            esbuild({
-                sourceMap: true,
-                minifyWhitespace: true,
-                minifySyntax: true,
-                minifyIdentifiers: false,
-                treeShaking: true,
-                sourcesContent: true,
-            }),
         ],
     },
 ];

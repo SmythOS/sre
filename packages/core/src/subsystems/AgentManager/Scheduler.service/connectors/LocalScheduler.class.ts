@@ -419,6 +419,7 @@ export class LocalScheduler extends SchedulerConnector {
             const timer = setInterval(async () => {
                 await this.executeJob(jobData);
             }, intervalMs);
+            timer.unref();
 
             // Store timer reference in static shared storage
             LocalScheduler.timers.set(jobKey, timer);

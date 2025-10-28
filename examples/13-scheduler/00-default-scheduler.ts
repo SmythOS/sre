@@ -130,3 +130,7 @@ process.on('SIGINT', async () => {
     console.log('\n\n👋 Shutting down gracefully...');
     process.exit(0);
 });
+
+//Block the process with a fake interval to keep it running
+
+setInterval(() => {}, 1000);
