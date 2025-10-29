@@ -44,25 +44,30 @@
 <td>Path to the vault file</td>
 </tr>
 <tr>
-<td><code>fileKey</code></td>
-<td>string</td>
-<td>No</td>
-<td><code>~/.smyth/vault.key</code></td>
-<td>Path to the encryption key file</td>
-</tr>
-<tr>
 <td><code>shared</code></td>
 <td>string</td>
 <td>No</td>
-<td><code>&quot;&quot;</code></td>
+<td><code>&quot;default&quot;</code></td>
 <td>Shared team name for cross-team secret access</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Example Configuration:</strong></p>
-<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Vault:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;JSONFileVault&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">file:</span><span class="hl-1"> </span><span class="hl-3">&#39;./secrets/vault.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">fileKey:</span><span class="hl-1"> </span><span class="hl-3">&#39;./secrets/vault.key&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">shared:</span><span class="hl-1"> </span><span class="hl-3">&#39;production&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sre&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">SRE</span><span class="hl-1">.</span><span class="hl-7">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Vault:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;JSONFileVault&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">file:</span><span class="hl-1"> </span><span class="hl-3">&#39;./secrets/vault.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-2">shared:</span><span class="hl-1"> </span><span class="hl-3">&#39;production&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
 </code><button type="button">Copy</button></pre>
 
+<p><strong>vault.json research path:</strong>
+The JSONFileVault connector will search for the vault.json file in the following order:</p>
+<ol>
+<li>The path specified in the <code>file</code> setting</li>
+<li>The <code>.smyth/vault.json</code> file</li>
+<li>The <code>.smyth/vault/vault.json</code> file</li>
+<li>The <code>.smyth/.sre/vault.json</code> file</li>
+<li>The <code>~/.smyth/vault.json</code> file</li>
+<li>The <code>~/.smyth/vault/vault.json</code> file</li>
+<li>The <code>~/.smyth/.sre/vault.json</code> file</li>
+</ol>
+<p>The search paths and the used path are visible in SRE logs in case you need to debug the vault file search.</p>
 <p><strong>Use Cases:</strong></p>
 <ul>
 <li>Development and testing environments</li>
