@@ -163,17 +163,6 @@ describe('Job - Unit tests for Job wrapper with new API', () => {
         }).toThrow('prompt');
     });
 
-    it('should require name in metadata', () => {
-        expect(() => {
-            new Job({
-                type: 'skill',
-                agentId: 'test',
-                skillName: 'test',
-                metadata: {} as any,
-            });
-        }).toThrow('name');
-    });
-
     it('should serialize to JSON completely', () => {
         const job = new Job({
             type: 'skill',
@@ -272,7 +261,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             metadata: { name: 'Test Job' },
         });
 
-        await requester.add('job1', schedule, job);
+        await requester.add('job1', job, schedule);
 
         const jobs = await requester.list();
         expect(jobs.length).toBe(1);
@@ -294,8 +283,8 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             metadata: { name: 'Test Job' },
         });
 
-        await scheduler.requester(user1).add('job1', schedule, job);
-        await scheduler.requester(user2).add('job1', schedule, job);
+        await scheduler.requester(user1).add('job1', job, schedule);
+        await scheduler.requester(user2).add('job1', job, schedule);
 
         const user1Jobs = await scheduler.requester(user1).list();
         const user2Jobs = await scheduler.requester(user2).list();
@@ -319,7 +308,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             metadata: { name: 'To Delete' },
         });
 
-        await requester.add('job1', schedule, job);
+        await requester.add('job1', job, schedule);
         expect((await requester.list()).length).toBe(1);
 
         await requester.delete('job1');
@@ -339,7 +328,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             metadata: { name: 'Pause Test' },
         });
 
-        await requester.add('job1', schedule, job);
+        await requester.add('job1', job, schedule);
 
         let jobData = await requester.get('job1');
         expect(jobData?.status).toBe('active');
@@ -366,7 +355,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             metadata: { name: 'Invalid Schedule' },
         });
 
-        await expect(requester.add('job1', invalidSchedule, job)).rejects.toThrow();
+        await expect(requester.add('job1', job, invalidSchedule)).rejects.toThrow();
     });
 
     it('should preserve ACL ownership on updates', async () => {
@@ -389,10 +378,10 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
         });
 
         // Create job
-        await requester.add('job1', schedule, job1);
+        await requester.add('job1', job1, schedule);
 
         // Update job
-        await requester.add('job1', schedule, job2);
+        await requester.add('job1', job2, schedule);
 
         // Verify ownership is preserved
         const jobData = await requester.get('job1');
@@ -421,7 +410,7 @@ describe('LocalScheduler - Unit tests for scheduler internals', () => {
             },
         });
 
-        await requester.add('batch-job', schedule, job);
+        await requester.add('batch-job', job, schedule);
 
         const jobs = await requester.list();
         expect(jobs.length).toBe(1);

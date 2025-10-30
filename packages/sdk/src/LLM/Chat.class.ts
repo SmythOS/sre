@@ -53,6 +53,7 @@ class ChatCommand {
 
     private async run(): Promise<string> {
         await this.chat.ready;
+        await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
         const result = await this._conversation.streamPrompt(this.prompt, this.options?.headers, this.options?.concurrentCalls);
         return result;
     }
@@ -79,6 +80,7 @@ class ChatCommand {
      */
     async stream(): Promise<EventEmitter> {
         await this.chat.ready;
+        await this._conversation.ready; //when we switch agent mode at runtime, we need to wait for the conversation to be ready
 
         const eventEmitter = new EventEmitter();
 
@@ -256,7 +258,8 @@ export class Chat extends SDKObject {
                 const _model = this._data?.defaultModel || '';
                 this._data = { ...this._emptyData, ..._data, defaultModel: _model };
 
-                this._conversation = createConversation(this._data, this._convOptions);
+                //this._conversation = createConversation(this._data, this._convOptions);
+                this._conversation.spec = this._data;
                 this._curAgentModes = modes;
             }
         }

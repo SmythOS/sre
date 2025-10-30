@@ -241,7 +241,7 @@ export class Agent implements IAgent {
         }
     }
 
-    @hookAsync('Agent.process')
+    @hookAsync('SREAgent.process')
     async process(endpointPath, input) {
         await this.agentRuntime.ready();
 
@@ -404,7 +404,7 @@ export class Agent implements IAgent {
         //tasks count update logic
     }
 
-    @hookAsync('Agent.postProcess')
+    @hookAsync('SREAgent.postProcess')
     public async postProcess(result) {
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
@@ -567,7 +567,7 @@ export class Agent implements IAgent {
         agentRuntime.updateComponent(componentId, { step });
     }
 
-    @hookAsync('Agent.callComponent')
+    @hookAsync('SREAgent.callComponent')
     async callComponent(sourceId, componentId, input?) {
         const startTime = Date.now();
         const agentRuntime = this.agentRuntime;
@@ -890,7 +890,7 @@ export class Agent implements IAgent {
         return currentProperty;
     }
 
-    @hookAsync('Agent.callNextComponents')
+    @hookAsync('SREAgent.callNextComponents')
     async callNextComponents(componentId, output) {
         const agentRuntime = this.agentRuntime;
         //agentRuntime.incStep();

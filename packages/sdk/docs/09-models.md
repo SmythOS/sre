@@ -251,7 +251,23 @@ model: Model.Perplexity('llama-3.1-sonar-large-128k-online', {
 
 ## Common Model Parameters
 
-Most providers support these common parameters:
+Most providers support these common parameters. Here's a quick reference table:
+
+| Parameter           | Type     | Range/Format     | Description                                                                             | Supported By                 |
+| ------------------- | -------- | ---------------- | --------------------------------------------------------------------------------------- | ---------------------------- |
+| `temperature`       | number   | 0.0 - 2.0        | Controls randomness in responses. Lower = more deterministic, higher = more creative    | All providers                |
+| `maxTokens`         | number   | 1 - model limit  | Maximum number of tokens in the response                                                | All providers                |
+| `topP`              | number   | 0.0 - 1.0        | Nucleus sampling parameter. Controls diversity via cumulative probability               | Most providers               |
+| `topK`              | number   | 0 - ∞            | Limits token selection to top K most likely tokens. 0 = disabled                        | Ollama, some providers       |
+| `frequencyPenalty`  | number   | 0.0 - 2.0        | Reduces repetition of token sequences                                                   | OpenAI, compatible providers |
+| `presencePenalty`   | number   | 0.0 - 2.0        | Encourages talking about new topics                                                     | OpenAI, compatible providers |
+| `stopSequences`     | string[] | Array of strings | Sequences where the model will stop generating                                          | Most providers               |
+| `inputTokens`       | number   | 1 - model limit  | Maximum context window size (input tokens). Should be ≤ model's official context window | All providers                |
+| `maxThinkingTokens` | number   | 1 - model limit  | Maximum tokens for reasoning/thinking (reasoning models only)                           | OpenAI o1, compatible models |
+| `baseURL`           | string   | Valid URL        | Custom API endpoint URL for model inference                                             | Most providers               |
+| `numCtx`            | number   | 1 - model limit  | Context window size (Ollama-specific parameter)                                         | Ollama only                  |
+
+### Detailed Parameter Descriptions
 
 ### temperature
 

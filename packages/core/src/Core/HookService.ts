@@ -130,12 +130,14 @@ export function hookAsync(hookName: string, customContext?: Record<string, any> 
             } else if (typeof customContext === 'object') {
                 _context = customContext;
             } else {
-                _context = {};
+                _context = this;
             }
 
             // Execute non-blocking pre-hooks first (fire and forget)
             if (nonBlockingHooks[hookName]) {
-                void Promise.allSettled(nonBlockingHooks[hookName].map((callback) => Promise.resolve().then(() => callback.apply(_context, args))));
+                void Promise.allSettled(nonBlockingHooks[hookName].map((callback) => Promise.resolve(callback.apply(_context, args)))).catch((err) =>
+                    console.error(`Non-blocking hook ${hookName} error:`, err)
+                );
             }
 
             let result: any;
@@ -158,10 +160,8 @@ export function hookAsync(hookName: string, customContext?: Record<string, any> 
                 // Execute non-blocking after-hooks first (fire and forget)
                 if (nonBlockingAfterHooks[hookName]) {
                     void Promise.allSettled(
-                        nonBlockingAfterHooks[hookName].map((callback) =>
-                            Promise.resolve().then(() => callback.apply(_context, [{ result, args, error }]))
-                        )
-                    );
+                        nonBlockingAfterHooks[hookName].map((callback) => Promise.resolve(callback.apply(_context, [{ result, args, error }])))
+                    ).catch((err) => console.error(`Non-blocking after-hook ${hookName} error:`, err));
                 }
 
                 // Execute blocking after-hooks and wait for them

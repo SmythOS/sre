@@ -24,6 +24,7 @@ import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.cla
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('VertexAIConnector');
 
@@ -49,6 +50,7 @@ export class VertexAIConnector extends LLMConnector {
         });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -110,6 +112,7 @@ export class VertexAIConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 
@@ -407,7 +410,6 @@ export class VertexAIConnector extends LLMConnector {
         };
 
         if (messageBlock) {
-
             const parts: any[] = [];
 
             if (Array.isArray(messageBlock.parts) && messageBlock.parts.length > 0) {

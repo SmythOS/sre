@@ -39,7 +39,7 @@ function parseKey(str: string = '', teamId: string): string {
 export class APIEndpoint extends Component {
     protected configSchema = Joi.object({
         endpoint: Joi.string()
-            .pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/)
+            .pattern(/^[a-zA-Z0-9_]+([-_][a-zA-Z0-9_]+)*$/)
             .max(50)
             .required(),
         method: Joi.string().valid('POST', 'GET').allow(''), //we're accepting empty value because we consider it POST by default.
@@ -242,5 +242,12 @@ export class APIEndpoint extends Component {
         }
 
         return { headers, body, query, params, _authInfo, _debug: logger.output };
+    }
+
+    async postProcess(output, config, agent: Agent): Promise<any> {
+        if (typeof config.process === 'function') {
+            return output?.result;
+        }
+        return output;
     }
 }

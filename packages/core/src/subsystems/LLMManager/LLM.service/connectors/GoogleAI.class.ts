@@ -3,12 +3,7 @@ import path from 'path';
 import EventEmitter from 'events';
 import fs from 'fs';
 
-import {
-    GoogleGenAI,
-    FunctionCallingConfigMode,
-    FileState,
-    type GenerateContentResponseUsageMetadata,
-} from '@google/genai/node';
+import { GoogleGenAI, FunctionCallingConfigMode, FileState, type GenerateContentResponseUsageMetadata } from '@google/genai/node';
 
 import { JSON_RESPONSE_INSTRUCTION, BUILT_IN_MODEL_PREFIX } from '@sre/constants';
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
@@ -40,6 +35,7 @@ import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
 
 import { LLMConnector } from '../LLMConnector';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('GoogleAIConnector');
 
@@ -90,6 +86,7 @@ export class GoogleAIConnector extends LLMConnector {
         return new GoogleGenAI({ apiKey });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -160,6 +157,7 @@ export class GoogleAIConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
         const emitter = new EventEmitter();
@@ -436,9 +434,10 @@ export class GoogleAIConnector extends LLMConnector {
         return body;
     }
 
-    private normalizePrompt(
-        prompt: TGoogleAIRequestBody['messages'] | TGoogleAIRequestBody['contents']
-    ): { contents: any; config?: Record<string, any> } {
+    private normalizePrompt(prompt: TGoogleAIRequestBody['messages'] | TGoogleAIRequestBody['contents']): {
+        contents: any;
+        config?: Record<string, any>;
+    } {
         if (prompt == null) {
             return { contents: '' };
         }
@@ -821,9 +820,7 @@ export class GoogleAIConnector extends LLMConnector {
                         };
                     }
 
-                    const hasMeaningfulContent = Object.values(normalizedPart).some(
-                        (value) => value !== undefined && value !== null && value !== ''
-                    );
+                    const hasMeaningfulContent = Object.values(normalizedPart).some((value) => value !== undefined && value !== null && value !== '');
 
                     if (hasMeaningfulContent) {
                         normalizedParts.push(normalizedPart);
@@ -857,8 +854,7 @@ export class GoogleAIConnector extends LLMConnector {
                                 },
                             });
                         } else {
-                            const fallbackText =
-                                typeof (contentPart as any)?.toString === 'function' ? (contentPart as any).toString() : '';
+                            const fallbackText = typeof (contentPart as any)?.toString === 'function' ? (contentPart as any).toString() : '';
                             if (fallbackText && fallbackText !== '[object Object]') {
                                 pushTextPart(normalizedParts, fallbackText);
                             }
@@ -874,8 +870,7 @@ export class GoogleAIConnector extends LLMConnector {
                     if ('text' in (message.content as any)) {
                         pushTextPart(normalizedParts, (message.content as any).text);
                     } else {
-                        const fallbackText =
-                            typeof (message.content as any)?.toString === 'function' ? (message.content as any).toString() : '';
+                        const fallbackText = typeof (message.content as any)?.toString === 'function' ? (message.content as any).toString() : '';
                         if (fallbackText && fallbackText !== '[object Object]') {
                             pushTextPart(normalizedParts, fallbackText);
                         }
