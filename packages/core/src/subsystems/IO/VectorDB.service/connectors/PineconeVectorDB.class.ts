@@ -189,11 +189,14 @@ export class PineconeVectorDB extends VectorDBConnector {
                 match.metadata[this.USER_METADATA_KEY] = JSONContentHelper.create(match.metadata[this.USER_METADATA_KEY].toString()).tryParse();
             }
 
+            const text = match.metadata?.text as string | undefined;
+            delete match.metadata?.text; // delete the text metadata to avoid duplication in case we returned the default raw metadata
+
             matches.push({
                 id: match.id,
                 values: match.values,
-                text: match.metadata?.text as string | undefined,
-                metadata: match.metadata?.[this.USER_METADATA_KEY] as Record<string, any> | undefined,
+                text: text,
+                metadata: match.metadata?.[this.USER_METADATA_KEY] || match.metadata, // fallback to the default metadata if the user metadata is not present, this is for backward compatibility
                 score: match.score,
             });
         }
