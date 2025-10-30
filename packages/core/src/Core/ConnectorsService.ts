@@ -19,6 +19,7 @@ import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
 import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
 import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
+import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
 const console = Logger('ConnectorService');
 
 let ServiceRegistry: TServiceRegistry = {};
@@ -185,6 +186,10 @@ export class ConnectorService {
 
     static getCodeConnector(name?: string): CodeConnector {
         return ConnectorService.getInstance<CodeConnector>(TConnectorService.Code, name);
+    }
+
+    static getSchedulerConnector(name?: string): SchedulerConnector {
+        return ConnectorService.getInstance<SchedulerConnector>(TConnectorService.Scheduler, name);
     }
 }
 

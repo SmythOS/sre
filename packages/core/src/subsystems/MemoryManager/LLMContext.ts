@@ -25,7 +25,7 @@ export class LLMContext {
     public contextLength: number;
 
     private _messages: any[] = [];
-    public get messages() {        
+    public get messages() {
         return this._messages;
     }
 
@@ -36,16 +36,11 @@ export class LLMContext {
      *
      * @param source a messages[] object, or smyth file system uri (smythfs://...)
      */
-    constructor(
-        private llmInference,
-        _systemPrompt: string = '',
-        llmContextStore?: ILLMContextStore,
-    ) {
+    constructor(private llmInference, _systemPrompt: string = '', llmContextStore?: ILLMContextStore) {
         this._llmCache = new LLMCache(AccessCandidate.team(this.llmInference.teamId));
         //this._systemPrompt = _systemPrompt;
         this.systemPrompt = _systemPrompt;
 
-        
         if (llmContextStore) {
             this._llmContextStore = llmContextStore;
             this._llmContextStore.load().then((messages) => {
@@ -57,7 +52,7 @@ export class LLMContext {
 
     private push(...message: any[]) {
         this._messages.push(...message);
-        
+
         if (this._llmContextStore) {
             this._llmContextStore.save(this._messages);
         }

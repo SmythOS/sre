@@ -26,6 +26,7 @@ import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('AnthropicConnector');
 
@@ -50,6 +51,7 @@ export class AnthropicConnector extends LLMConnector {
         return new Anthropic({ apiKey });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -113,6 +115,7 @@ export class AnthropicConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);

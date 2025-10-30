@@ -144,4 +144,15 @@ export class Component {
     hasOutput(id, config, agent: Agent): any {
         return false;
     }
+
+    /**
+     * A generic registration function that can be overridden by child classes to register the trigger with providers
+     * this function is usually called outside of a workflow in order to register the trigger with providers
+     * @param componentId the id of the component to register (in SRE a single trigger instance handles all the triggers of the same type)
+     * @param agent the agent instance
+     * @param payload any additional payload to pass to the trigger
+     */
+    async register(componentId: string, componentSettings: any, payload?: any) {}
+
+    async unregister(componentId: string, componentSettings: any, payload?: any) {}
 }

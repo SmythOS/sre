@@ -1,5 +1,6 @@
 import {
     AccessCandidate,
+    AgentDataConnector,
     AgentProcess,
     BinaryInput,
     ConnectorService,
@@ -20,6 +21,8 @@ import { DummyAccountHelper } from '../Security/DummyAccount.helper';
 
 import { StorageInstance } from '../Storage/StorageInstance.class';
 import { TStorageProvider, TStorageProviderInstances } from '../types/generated/Storage.types';
+import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/generated/Scheduler.types';
+import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
 import { isFile, uid } from '../utils/general.utils';
 import { SDKObject } from '../Core/SDKObject.class';
 import fs from 'fs';
@@ -247,6 +250,10 @@ export type TAgentSettings = {
     behavior?: string;
     /** The mode of the agent */
     mode?: TAgentMode;
+
+    /** Explicitly specifies the agent teamId */
+    teamId?: string;
+
     [key: string]: any;
 };
 
@@ -279,9 +286,15 @@ export type TAgentSettings = {
  */
 export class Agent extends SDKObject {
     private _hasExplicitId: boolean = false;
+    public get hasExplicitId(): boolean {
+        return this._hasExplicitId;
+    }
+    #isEphemeral: boolean = true;
+    #agentDataConnector: AgentDataConnector;
     private _warningDisplayed = {
         storage: false,
         vectorDB: false,
+        scheduler: false,
     };
     private _data: AgentData & { version: string } = {
         version: '1.0.0', //schema version
@@ -296,6 +309,10 @@ export class Agent extends SDKObject {
 
     private _modes: TAgentMode[] = [];
 
+    public get id(): string {
+        return this._data.id;
+    }
+
     public get behavior() {
         return this._data.behavior;
     }
@@ -308,14 +325,22 @@ export class Agent extends SDKObject {
         return this._modes;
     }
 
+    private _structure: any = {
+        components: [],
+        connections: [],
+    };
     /**
      * The agent internal structure
      * used for by internal operations to generate the agent data
      */
-    public structure = {
-        components: [],
-        connections: [],
-    };
+    public get structure() {
+        return this._structure;
+    }
+    public set structure(structure: any) {
+        this._structure = structure;
+
+        this.sync();
+    }
 
     private _team: Team;
     public get team() {
@@ -402,6 +427,8 @@ export class Agent extends SDKObject {
         if (mode) {
             this.setMode(mode);
         }
+
+        this.sync();
     }
 
     protected async init() {
@@ -431,6 +458,16 @@ export class Agent extends SDKObject {
         this._readyPromise.resolve(true);
     }
 
+    public sync() {
+        if (!this.#agentDataConnector) {
+            this.#agentDataConnector = ConnectorService.getAgentDataConnector();
+        }
+
+        if (this.#agentDataConnector && this.#isEphemeral) {
+            //SDK agents loaded by data or implemented programmatically are ephemeral
+            this.#agentDataConnector.setEphemeralAgentData(this._data.id, this.data);
+        }
+    }
     private _validateId(id: string) {
         //only accept alphanumeric, hyphens and underscores
         return id.length > 0 && id.length <= 64 && /^[a-zA-Z0-9_-]+$/.test(id);
@@ -470,7 +507,7 @@ export class Agent extends SDKObject {
      */
     static import(data: TAgentSettings): Agent;
     static import(data: string, overrides?: any): Agent;
-    static import(data: string | TAgentSettings, overrides?: TAgentSettings) {
+    static import(data: string | TAgentSettings, overrides?: TAgentSettings): Agent {
         if (typeof data === 'string') {
             if (!fs.existsSync(data)) {
                 throw new Error(`File ${data} does not exist`);
@@ -479,8 +516,8 @@ export class Agent extends SDKObject {
             data = JSON.parse(fs.readFileSync(data, 'utf8')) as TAgentSettings;
 
             //when importing a .smyth file we need to override the id and teamId
-            delete data.id;
-            delete data.teamId;
+            //delete data.id;
+            //delete data.teamId;
         }
 
         const _data = {
@@ -622,6 +659,53 @@ export class Agent extends SDKObject {
         return this._vectorDBProviders;
     }
 
+    /**
+     * Access to scheduler instances from the agent for direct scheduler interactions.
+     *
+     * When using scheduler from the agent, the agent id will be used as job owner
+     *
+     * **Supported providers and calling patterns:**
+     * - `agent.scheduler.default()` - Default scheduler provider (LocalScheduler)
+     * - `agent.scheduler.LocalScheduler()` - Local scheduler
+     *
+     * @example
+     * ```typescript
+     * // Direct scheduler access
+     * const scheduler = agent.scheduler.default();
+     *
+     * // Add a scheduled job
+     * await scheduler.add('health-check',
+     *   Schedule.every('5m'),
+     *   new Job(async () => {
+     *     console.log('Checking health...');
+     *   }, { name: 'Health Check' })
+     * );
+     * ```
+     */
+    private _schedulerProviders: TSchedulerProviderInstances;
+    public get scheduler() {
+        if (!this._schedulerProviders) {
+            this._schedulerProviders = {} as TSchedulerProviderInstances;
+            for (const provider of Object.values(TSchedulerProvider)) {
+                this._schedulerProviders[provider] = (schedulerSettings?: any, scope?: Scope | AccessCandidate) => {
+                    const { scope: _scope, ...connectorSettings } = schedulerSettings || {};
+                    if (!scope) scope = _scope;
+
+                    if (scope !== Scope.TEAM && !this._hasExplicitId && !this._warningDisplayed.scheduler) {
+                        this._warningDisplayed.scheduler = true;
+                        console.warn(
+                            `You are performing scheduler operations with an unidentified agent.\nThe jobs will be associated with the agent's team (Team ID: "${this._data.teamId}"). If you want to associate the jobs with the agent, please set an explicit agent ID.\n${HELP.SDK.AGENT_STORAGE_ACCESS}`
+                        );
+                    }
+                    const candidate = scope !== Scope.TEAM && this._hasExplicitId ? this : AccessCandidate.team(this._data.teamId);
+                    return new SchedulerInstance(provider as TSchedulerProvider, connectorSettings, candidate);
+                };
+            }
+        }
+
+        return this._schedulerProviders;
+    }
+
     private _vault: VaultInstance;
 
     /**
@@ -694,32 +778,42 @@ export class Agent extends SDKObject {
      * ```
      */
     removeSkill(skillName: string) {
-        const component = this.structure.components.find((c) => c.data.endpoint === skillName);
+        const component = this.structure.components.find((c) => c.data.data.endpoint === skillName);
         if (component) {
-            this.structure.components = this.structure.components.filter((c) => c.data.endpoint !== skillName);
-            this.data.components = this.data.components.filter((c) => c.data.endpoint !== skillName);
+            this._structure.components = this._structure.components.filter((c) => c.data.data.endpoint !== skillName);
+            this._data.components = this._data.components.filter((c) => c.data.endpoint !== skillName);
         }
+    }
+
+    public get skillNames() {
+        return this._data.components.map((c) => c.data.endpoint);
     }
 
     async call(skillName: string, ...args: (Record<string, any> | any)[]) {
         try {
             const _agentData = this.data;
             const skill = _agentData.components.find((c) => c.data.endpoint === skillName);
-            if (skill?.process) {
-                const processSkill: ComponentWrapper = this.structure.components.find(
-                    (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
-                );
 
-                const handler = processSkill?.internalData?.process || (() => null);
+            // if (skill?.process) {
+            //     const processSkill: ComponentWrapper = this.structure.components.find(
+            //         (c: ComponentWrapper) => c?.internalData?.process && c?.data?.data?.endpoint === skillName
+            //     );
 
-                const result = await handler(...args);
+            //     const handler = processSkill?.internalData?.process || (() => null);
 
-                return result;
-            }
+            //     const result = await handler(...args);
+
+            //     return result;
+            // }
+
+            // const filteredAgentData = {
+            //     ..._agentData,
+            //     components: _agentData.components.filter((c) => !c.process),
+            // };
 
             const filteredAgentData = {
                 ..._agentData,
-                components: _agentData.components.filter((c) => !c.process),
+                components: _agentData.components,
             };
 
             const method = skill.data.method.toUpperCase();

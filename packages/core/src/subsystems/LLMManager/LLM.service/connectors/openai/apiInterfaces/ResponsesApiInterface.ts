@@ -1,6 +1,9 @@
 import EventEmitter from 'events';
 import OpenAI from 'openai';
 import type { Stream } from 'openai/streaming';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 
 import { BinaryInput } from '@sre/helpers/BinaryInput.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
@@ -10,6 +13,7 @@ import { HandlerDependencies, TToolType } from '../types';
 import { SUPPORTED_MIME_TYPES_MAP } from '@sre/constants';
 import { SEARCH_TOOL_COSTS } from './constants';
 import { isValidOpenAIReasoningEffort } from './utils';
+import { uid } from '@sre/utils';
 
 // File size limits in bytes
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -30,6 +34,7 @@ const EVENT_TYPES = {
     FUNCTION_CALL_ARGUMENTS_DELTA: 'response.function_call_arguments.delta',
     FUNCTION_CALL_ARGUMENTS_DONE: 'response.function_call_arguments.done',
     OUTPUT_ITEM_DONE: 'response.output_item.done',
+    INCOMPLETE: 'response.incomplete',
 } as const;
 
 // Type definitions for web search events (augmenting SDK types locally)
@@ -175,6 +180,14 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
                             }
                             break;
                         }
+
+                        case EVENT_TYPES.INCOMPLETE:
+                            finishReason = 'incomplete';
+                            const responseData = (part as any)?.response;
+                            if (responseData?.usage) {
+                                usageData.push(responseData.usage);
+                            }
+                            break;
 
                         default: {
                             const eventType = String(part.type);
@@ -791,7 +804,61 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
     }
 
     /**
+     * Upload file to OpenAI Files API
+     * Similar to GoogleAI's uploadFile implementation
+     */
+    private async uploadFile({
+        file,
+        agentId,
+        purpose = 'user_data',
+    }: {
+        file: BinaryInput;
+        agentId: string;
+        purpose?: 'user_data' | 'assistants' | 'batch' | 'fine-tune' | 'vision';
+    }): Promise<{ fileId: string; filename: string }> {
+        try {
+            if (!file?.mimetype) {
+                throw new Error('Missing required parameters to upload file to OpenAI!');
+            }
+
+            const tempDir = os.tmpdir();
+            const fileName = await file.getName();
+            const tempFilePath = path.join(tempDir, `${uid()}_${fileName}`);
+
+            // Write file to temporary location
+            const bufferData = await file.readData(AccessCandidate.agent(agentId));
+            await fs.promises.writeFile(tempFilePath, new Uint8Array(bufferData));
+
+            const openai = await this.deps.getClient(this.context);
+
+            // Upload file to OpenAI Files API
+            const uploadResponse = await openai.files.create({
+                file: fs.createReadStream(tempFilePath),
+                purpose: purpose,
+            });
+
+            const fileId = uploadResponse.id;
+            if (!fileId) {
+                throw new Error('File upload did not return a file ID.');
+            }
+
+            // Clean up temporary file
+            await fs.promises.unlink(tempFilePath).catch(() => {
+                // Ignore cleanup errors
+            });
+
+            return {
+                fileId,
+                filename: fileName,
+            };
+        } catch (error: any) {
+            throw new Error(`Error uploading file to OpenAI: ${error.message}`);
+        }
+    }
+
+    /**
      * Process image files with Responses API specific formatting
+     * Uses OpenAI Files API for uploading images
      */
     private async processImageData(files: BinaryInput[], agentId: string): Promise<any[]> {
         if (files.length === 0) return [];
@@ -800,14 +867,30 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         for (const file of files) {
             await this.validateFileSize(file, MAX_IMAGE_SIZE, 'Image');
 
-            const bufferData = await file.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const url = `data:${file.mimetype};base64,${base64Data}`;
+            try {
+                // Upload file to OpenAI Files API with 'vision' purpose
+                const { fileId } = await this.uploadFile({
+                    file,
+                    agentId,
+                    purpose: 'vision',
+                });
 
-            imageData.push({
-                type: 'input_image',
-                image_url: url,
-            });
+                imageData.push({
+                    type: 'input_image',
+                    file_id: fileId,
+                });
+            } catch (error) {
+                // If Files API upload fails, fall back to base64 inline data
+                console.warn('Failed to upload image via Files API, falling back to base64:', error);
+                const bufferData = await file.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const url = `data:${file.mimetype};base64,${base64Data}`;
+
+                imageData.push({
+                    type: 'input_image',
+                    image_url: url,
+                });
+            }
         }
 
         return imageData;
@@ -815,6 +898,7 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
     /**
      * Process document files with Responses API specific formatting
+     * Uses OpenAI Files API for uploading documents
      */
     private async processDocumentData(files: BinaryInput[], agentId: string): Promise<any[]> {
         if (files.length === 0) return [];
@@ -823,18 +907,31 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
         for (const file of files) {
             await this.validateFileSize(file, MAX_DOCUMENT_SIZE, 'Document');
 
-            const bufferData = await file.readData(AccessCandidate.agent(agentId));
-            const base64Data = bufferData.toString('base64');
-            const fileData = `data:${file.mimetype};base64,${base64Data}`;
-            const filename = await file.getName();
+            try {
+                // Upload file to OpenAI Files API with 'user_data' purpose
+                const { fileId, filename } = await this.uploadFile({
+                    file,
+                    agentId,
+                    purpose: 'user_data',
+                });
 
-            documentData.push({
-                type: 'input_file',
-                file: {
-                    file_data: fileData,
+                documentData.push({
+                    type: 'input_file',
+                    file_id: fileId,
+                });
+            } catch (error) {
+                // If Files API upload fails, fall back to base64 inline data
+                console.warn('Failed to upload document via Files API, falling back to base64:', error);
+                const bufferData = await file.readData(AccessCandidate.agent(agentId));
+                const base64Data = bufferData.toString('base64');
+                const filename = await file.getName();
+
+                documentData.push({
+                    type: 'input_file',
                     filename,
-                },
-            });
+                    file_data: `data:${file.mimetype};base64,${base64Data}`,
+                });
+            }
         }
 
         return documentData;

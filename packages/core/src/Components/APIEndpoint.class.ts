@@ -39,7 +39,7 @@ function parseKey(str: string = '', teamId: string): string {
 export class APIEndpoint extends Component {
     protected configSchema = Joi.object({
         endpoint: Joi.string()
-            .pattern(/^[a-zA-Z0-9]+([-_][a-zA-Z0-9]+)*$/)
+            .pattern(/^[a-zA-Z0-9_]+([-_][a-zA-Z0-9_]+)*$/)
             .max(50)
             .required(),
         method: Joi.string().valid('POST', 'GET').allow(''), //we're accepting empty value because we consider it POST by default.
@@ -57,13 +57,25 @@ export class APIEndpoint extends Component {
     async process(input, config, agent: Agent) {
         await super.process(input, config, agent);
 
+        if (typeof config.process === 'function') {
+            //special case, APIEndpoint has a custom process method.
+            //the inputs are not passed directly to APIEndpoints, we need to read them from the context.
+            const contextData = agent?.agentRuntime?.getComponentData(config.id);
+
+            const inputs = Array.isArray(contextData?.input) ? contextData?.input : [contextData?.input];
+
+            const result = await config.process.apply(null, inputs);
+            return result;
+        }
+
         const req: AgentRequest = agent.agentRequest;
         const logger = this.createComponentLogger(agent, config);
 
+        const isTrigger = req.path.startsWith(agent.triggerBasePath);
         const headers = req ? req.headers : {};
-        let body = req ? req.body : input; //handle debugger injection
-        const params = req ? req.params : {};
-        let query = req ? req.query : {};
+        let body = req && !isTrigger ? req.body : input; //handle debugger injection
+        const params = req && !isTrigger ? req.params : {};
+        let query = req && !isTrigger ? req.query : {};
         const _authInfo = req ? req._agent_authinfo : undefined;
 
         // parse template variables
@@ -87,7 +99,7 @@ export class APIEndpoint extends Component {
 
         // set default value and agent variables
         const inputsWithDefaultValue = config.inputs.filter(
-            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null,
+            (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null
         );
 
         const bodyInputNames: string[] = [];
@@ -218,7 +230,7 @@ export class APIEndpoint extends Component {
                         return await binaryInput.getJsonData(AccessCandidate.agent(agent.id));
                     }
                     return null;
-                }),
+                })
             );
 
             // Filter out null values and handle single/multiple results
@@ -230,5 +242,12 @@ export class APIEndpoint extends Component {
         }
 
         return { headers, body, query, params, _authInfo, _debug: logger.output };
+    }
+
+    async postProcess(output, config, agent: Agent): Promise<any> {
+        if (typeof config.process === 'function') {
+            return output?.result;
+        }
+        return output;
     }
 }

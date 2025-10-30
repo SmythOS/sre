@@ -394,12 +394,7 @@ export abstract class ModelsProviderConnector extends SecureConnector {
                     baseURL: entry.baseURL,
                     fallbackLLM: entry.fallbackLLM,
                     isUserCustomLLM: true,
-
-                    // TODO: Credentials will usually look like { apiKey: 'api-key-goes-here' }.
-                    //       However, for fallback models we also need to handle ['vault', 'internal']
-                    //       using the same credentials format, since fallback models can be either
-                    //       personal or built-in.
-                    credentials: entry?.credentials || ['vault', 'internal'],
+                    credentials: entry?.credentials || {},
                 };
             }
 

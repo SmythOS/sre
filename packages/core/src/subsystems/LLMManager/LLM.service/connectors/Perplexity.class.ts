@@ -20,6 +20,7 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('PerplexityConnector');
 
@@ -58,6 +59,7 @@ export class PerplexityConnector extends LLMConnector {
         });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -89,6 +91,7 @@ export class PerplexityConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         //throw new Error('Multimodal request is not supported for Perplexity.');
         //fallback to chatRequest

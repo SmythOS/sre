@@ -51,6 +51,7 @@ export function TavilyWebSearch(settings?: TTavilyWebSearchSettings, agent?: Age
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TTavilyWebSearchOutputs = createSafeAccessor({

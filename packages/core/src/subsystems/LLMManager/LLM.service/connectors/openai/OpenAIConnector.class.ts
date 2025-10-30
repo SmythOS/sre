@@ -28,6 +28,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMConnector } from '../../LLMConnector';
 import { OpenAIApiInterface, OpenAIApiInterfaceFactory } from './apiInterfaces';
 import { HandlerDependencies } from './types';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('OpenAIConnector');
 
@@ -69,31 +70,38 @@ export class OpenAIConnector extends LLMConnector {
         return responseInterface;
     }
 
-    protected async getClient(params: ILLMRequestContext): Promise<OpenAI> {
-        const apiKey = (params.credentials as BasicCredentials)?.apiKey;
-        const baseURL = params?.modelInfo?.baseURL;
+    protected async getClient(context: ILLMRequestContext): Promise<OpenAI> {
+        const apiKey = (context.credentials as BasicCredentials)?.apiKey || '';
+        const baseURL = context?.modelInfo?.baseURL;
 
-        const openai = new OpenAI({ baseURL, apiKey });
+        try {
+            const openai = new OpenAI({ baseURL, apiKey });
 
-        return openai;
+            return openai;
+        } catch (error) {
+            console.error('Error: on OpenAI client initialization', error);
+            throw error;
+        }
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
             const _body = body as OpenAI.ChatCompletionCreateParams;
 
-            // #region Validate token limit
-            const messages = _body?.messages || [];
-            const lastMessage = messages[messages.length - 1];
-            const promptTokens = await this.computePromptTokens(messages, context);
+            // #region Validate the token limit only if it's a legacy model.
+            if (context?.modelEntryName?.startsWith('legacy/')) {
+                const messages = _body?.messages || [];
+                const promptTokens = await this.computePromptTokens(messages, context);
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: _body.max_completion_tokens,
-            });
+                await this.validateTokenLimit({
+                    acRequest,
+                    promptTokens,
+                    context,
+                    maxTokens: _body.max_completion_tokens,
+                });
+            }
             // #endregion Validate token limit
 
             const responseInterface = this.getInterfaceType(context);
@@ -143,20 +151,23 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);
-            // #region Validate token limit
-            const messages = body?.messages || body?.input || [];
-            const lastMessage = messages[messages.length - 1];
-            const promptTokens = await this.computePromptTokens(messages, context);
 
-            await this.validateTokenLimit({
-                acRequest,
-                promptTokens,
-                context,
-                maxTokens: body.max_completion_tokens,
-            });
+            // #region Validate the token limit only if it's a legacy model.
+            if (context?.modelEntryName?.startsWith('legacy/')) {
+                const messages = body?.messages || body?.input || [];
+                const promptTokens = await this.computePromptTokens(messages, context);
+
+                await this.validateTokenLimit({
+                    acRequest,
+                    promptTokens,
+                    context,
+                    maxTokens: body.max_completion_tokens,
+                });
+            }
             // #endregion Validate token limit
 
             const responseInterface = this.getInterfaceType(context);

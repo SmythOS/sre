@@ -20,6 +20,7 @@ import { LLMHelper } from '@sre/LLMManager/LLM.helper';
 import { LLMConnector } from '../LLMConnector';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('GroqConnector');
 
@@ -50,6 +51,7 @@ export class GroqConnector extends LLMConnector {
         return new Groq({ apiKey });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -95,6 +97,7 @@ export class GroqConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);

@@ -39,6 +39,7 @@ export function Skill(settings?: TSkillSettings, agent?: Agent) {
 
     if (agent) {
         agent.structure.components.push(component);
+        agent.sync();
     }
 
     const _out: { headers: any; body: any; query: any; [key: string]: any } = createSafeAccessor(

@@ -1,6 +1,6 @@
 {
     "name": "@smythos/sdk",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "description": "SRE SDK",
     "keywords": [
         "smythos",
@@ -28,6 +28,10 @@
         ".": {
             "import": "./dist/index.js",
             "types": "./dist/types/index.d.ts"
+        },
+        "./core": {
+            "import": "./dist/core.js",
+            "types": "./dist/types/core.d.ts"
         }
     },
     "files": [
