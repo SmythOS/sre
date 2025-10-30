@@ -1,10 +1,11 @@
 import { AgentProcess } from '@sre/Core/AgentProcess.helper';
 import config from '@sre/config';
-import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from '@sre/index';
+import { CLIAgentDataConnector, ConnectorService, SmythRuntime } from 'index';
 import { TConnectorService } from '@sre/types/SRE.types';
 import fs from 'fs';
 
 import { describe, expect, it } from 'vitest';
+import { loadAgentData } from '../../utils/test-data-manager';
 
 const sre = SmythRuntime.Instance.init({
     Storage: {
@@ -38,8 +39,7 @@ describe('GPTPlugin Component', () => {
     it('runs a simple OpenAPI Plugin request', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
+            const data = loadAgentData('AgentData/sre-llm.smyth');
 
             const agentProcess = AgentProcess.load(data);
 
@@ -65,9 +65,7 @@ describe('GPTPlugin Component', () => {
     it('should handle missing prompt', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
-
+            const data = loadAgentData('AgentData/sre-llm.smyth');
             const agentProcess = AgentProcess.load(data);
 
             let output = await agentProcess.run({
@@ -89,8 +87,7 @@ describe('GPTPlugin Component', () => {
     it('should use template string for descForModel', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
+            const data = loadAgentData('AgentData/sre-llm.smyth');
             data.components[0].data.descForModel = 'Description for {{Query}}';
 
             const agentProcess = AgentProcess.load(data);
@@ -115,8 +112,7 @@ describe('GPTPlugin Component', () => {
     it('should handle different input types', async () => {
         let error;
         try {
-            const agentData = fs.readFileSync('./tests/data/sre-llm.smyth', 'utf-8');
-            const data = JSON.parse(agentData);
+            const data = loadAgentData('AgentData/sre-llm.smyth');
 
             const agentProcess = AgentProcess.load(data);
 
