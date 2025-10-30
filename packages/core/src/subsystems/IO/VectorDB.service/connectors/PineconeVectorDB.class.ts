@@ -5,15 +5,7 @@ import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { VectorDBConnector, DeleteTarget } from '../VectorDBConnector';
-import {
-    DatasourceDto,
-    IStorageVectorDataSource,
-    IStorageVectorNamespace,
-    IVectorDataSourceDto,
-    QueryOptions,
-    VectorsResultData,
-} from '@sre/types/VectorDB.types';
-import { Pinecone } from '@pinecone-database/pinecone';
+import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
@@ -22,9 +14,12 @@ import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
-import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
+import { EmbeddingsFactory } from '../embed';
 import { chunkText } from '@sre/utils/string.utils';
 import { jsonrepair } from 'jsonrepair';
+import { PineconeConnectionManager } from './pinecone/connection-manager';
+import { PineconeAuthConfig, PineconeHealthConfig, PineconeRequestTimeouts, PineconeRetryConfig } from './pinecone/types';
+import { withSafeRetry } from './pinecone/retry-utils';
 
 const console = Logger('Pinecone VectorDB');
 
@@ -32,7 +27,7 @@ export type PineconeConfig = {
     /**
      * The Pinecone API key
      */
-    apiKey: string;
+    apiKey?: string;
     /**
      * The Pinecone index name
      */
@@ -41,11 +36,18 @@ export type PineconeConfig = {
      * The embeddings model to use
      */
     embeddings?: TEmbeddings;
+    /**
+     * Auth configuration for vault-based credentials
+     */
+    auth?: PineconeAuthConfig;
+    requestTimeouts?: PineconeRequestTimeouts;
+    retry?: PineconeRetryConfig;
+    health?: PineconeHealthConfig;
 };
 export class PineconeVectorDB extends VectorDBConnector {
     public name = 'PineconeVectorDB';
     public id = 'pinecone';
-    private client: Pinecone;
+    private connection: PineconeConnectionManager;
     private indexName: string;
     private cache: CacheConnector;
     private accountConnector: AccountConnector;
@@ -54,20 +56,15 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: PineconeConfig) {
         super(_settings);
-        if (!_settings.apiKey) {
-            console.warn('Missing Pinecone API key : returning empty Pinecone connector');
-            return;
-        }
         if (!_settings.indexName) {
             console.warn('Missing Pinecone index name : returning empty Pinecone connector');
             return;
         }
 
-        this.client = new Pinecone({
-            apiKey: _settings.apiKey,
-        });
-        console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', _settings.indexName);
+        if (!_settings.apiKey && !_settings.auth?.vaultKey) {
+            console.warn('Pinecone connector configured without apiKey or auth.vaultKey; operations will fail until credentials are provided at runtime');
+        }
+
         this.indexName = _settings.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
@@ -77,8 +74,16 @@ export class PineconeVectorDB extends VectorDBConnector {
         }
         if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
         if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
-
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
+
+        this.connection = new PineconeConnectionManager({
+            indexName: this.indexName,
+            embeddings: _settings.embeddings,
+            auth: _settings.auth ?? (_settings.apiKey ? { apiKey: _settings.apiKey } : undefined),
+            requestTimeouts: _settings.requestTimeouts,
+            retry: _settings.retry,
+            health: _settings.health,
+        });
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL> {
@@ -109,19 +114,27 @@ export class PineconeVectorDB extends VectorDBConnector {
             displayName: namespace,
             ...metadata,
         };
-        await this.client
-            .Index(this.indexName)
-            .namespace(preparedNs)
-            .upsert([
-                {
-                    id: `_reserved_${preparedNs}`,
-                    values: this.embedder.dummyVector,
-                    metadata: {
-                        isSkeletonVector: true,
-                        ...nsData,
-                    },
-                },
-            ]);
+        const client = await this.connection.getClient(acRequest);
+        await withSafeRetry(
+            'createNamespace',
+            async () => {
+                await client
+                    .Index(this.indexName)
+                    .namespace(preparedNs)
+                    .upsert([
+                        {
+                            id: `_reserved_${preparedNs}`,
+                            values: this.embedder.dummyVector,
+                            metadata: {
+                                isSkeletonVector: true,
+                                ...nsData,
+                            },
+                        },
+                    ]);
+            },
+            this.settings.retry,
+            this.settings.requestTimeouts
+        );
 
         await this.setACL(acRequest, preparedNs, acl.ACL);
 
@@ -131,27 +144,37 @@ export class PineconeVectorDB extends VectorDBConnector {
     @SecureConnector.AccessControl
     protected async namespaceExists(acRequest: AccessRequest, namespace: string): Promise<boolean> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        const stats = await this.client.Index(this.indexName).describeIndexStats();
+        const client = await this.connection.getClient(acRequest);
+        const stats = await withSafeRetry(
+            'describeIndexStats',
+            async () => client.Index(this.indexName).describeIndexStats(),
+            this.settings.retry,
+            this.settings.requestTimeouts
+        );
         return Object.keys(stats.namespaces).includes(this.constructNsName(acRequest.candidate as AccessCandidate, namespace));
     }
 
     @SecureConnector.AccessControl
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
-        //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
-        //const candidate = AccessCandidate.team(teamId);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-
-        await this.client
-            .Index(this.indexName)
-            .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-            .deleteAll()
-            .catch((e) => {
-                if (e?.name == 'PineconeNotFoundError') {
-                    console.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
-                    return;
-                }
-                throw e;
-            });
+        const client = await this.connection.getClient(acRequest);
+        await withSafeRetry(
+            'deleteNamespace',
+            async () =>
+                client
+                    .Index(this.indexName)
+                    .namespace(preparedNs)
+                    .deleteAll()
+                    .catch((e) => {
+                        if (e?.name == 'PineconeNotFoundError') {
+                            console.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
+                            return;
+                        }
+                        throw e;
+                    }),
+            this.settings.retry,
+            this.settings.requestTimeouts
+        );
 
         await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
     }
@@ -165,7 +188,8 @@ export class PineconeVectorDB extends VectorDBConnector {
     ): Promise<VectorsResultData> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
 
-        const pineconeIndex = this.client.Index(this.indexName).namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace));
+        const client = await this.connection.getClient(acRequest);
+        const pineconeIndex = client.Index(this.indexName).namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace));
         let _vector = query;
         if (typeof query === 'string') {
             _vector = await this.embedder.embedText(query, acRequest.candidate as AccessCandidate);
@@ -173,12 +197,18 @@ export class PineconeVectorDB extends VectorDBConnector {
 
         const topK = (options.topK || 10) + 1; //* we increment one in case it included the skeleton vector
 
-        const results = await pineconeIndex.query({
-            topK,
-            vector: _vector as number[],
-            includeMetadata: true,
-            includeValues: true,
-        });
+        const results = await withSafeRetry(
+            'query',
+            async () =>
+                pineconeIndex.query({
+                    topK,
+                    vector: _vector as number[],
+                    includeMetadata: true,
+                    includeValues: true,
+                }),
+            this.settings.retry,
+            this.settings.requestTimeouts
+        );
 
         let matches = [];
 
@@ -226,10 +256,17 @@ export class PineconeVectorDB extends VectorDBConnector {
         }));
 
         // await pineconeStore.addDocuments(chunks, ids);
-        await this.client
-            .Index(this.indexName)
-            .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-            .upsert(preparedSource);
+        const client = await this.connection.getClient(acRequest);
+        await withSafeRetry(
+            'upsert',
+            async () =>
+                client
+                    .Index(this.indexName)
+                    .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+                    .upsert(preparedSource),
+            this.settings.retry,
+            this.settings.requestTimeouts
+        );
 
         const accessCandidate = acRequest.candidate;
 
@@ -251,10 +288,17 @@ export class PineconeVectorDB extends VectorDBConnector {
         } else {
             const _ids = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
 
-            const res = await this.client
-                .Index(this.indexName)
-                .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-                .deleteMany(_ids);
+            const client = await this.connection.getClient(acRequest);
+            await withSafeRetry(
+                'deleteMany',
+                async () =>
+                    client
+                        .Index(this.indexName)
+                        .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+                        .deleteMany(_ids),
+                this.settings.retry,
+                this.settings.requestTimeouts
+            );
         }
     }
 
