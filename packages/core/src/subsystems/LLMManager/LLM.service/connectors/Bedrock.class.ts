@@ -31,6 +31,7 @@ import { LLMConnector } from '../LLMConnector';
 import { JSONContent } from '@sre/helpers/JsonContent.helper';
 import { SystemEvents } from '@sre/Core/SystemEvents';
 import { Logger } from '@sre/helpers/Log.helper';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('BedrockConnector');
 
@@ -51,6 +52,7 @@ export class BedrockConnector extends LLMConnector {
         });
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -99,7 +101,7 @@ export class BedrockConnector extends LLMConnector {
             throw error?.error || error;
         }
     }
-
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         const emitter = new EventEmitter();
 

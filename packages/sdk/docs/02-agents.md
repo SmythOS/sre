@@ -102,6 +102,13 @@ const agent = new Agent({
         temperature: 0.7, // Control randomness (0-2)
         maxTokens: 2000, // Maximum response length
         topP: 0.9, // Nucleus sampling
+        inputTokens: 200000, // context window size, this is the maximum number of tokens that the model can process in one go. it should be smaller or equal to the model official context window size.
+        frequencyPenalty: 0.0, // reduce repetition of token sequences (0.0 - 2.0)
+        maxThinkingTokens: 1024, // the maximum number of tokens to think (only valid for reasoning models)
+        presencePenalty: 0.0, // encourages talking about new topics (0.0 - 2.0)
+        stopSequences: ['\n\n'], // the stop sequences of the model
+        baseURL: 'https://api.openai.com/v1', // the base URL of the model, it can be used to call custom models
+        topK: 0, // the top K of the model
     }),
 });
 ```

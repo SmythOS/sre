@@ -29,7 +29,7 @@ async function main() {
         When the user asks about a framework or a library that you do not know, make sure to perform a web search to get the information you need.
         NEVER make up information, if you don't know the answer.
         `,
-        model: 'claude-4-sonnet',
+        model: Model.Anthropic('claude-haiku-4-5'),
         // model: Model.OpenAI('gpt-5', {
         //     inputTokens: 300000,
         //     outputTokens: 100000,
@@ -115,7 +115,7 @@ async function main() {
     //#endregion
 
     //we call the chat explicitly with persistance enabled
-    const chat = agent.chat({ id: 'my-chat-0001', persist: false });
+    const chat = agent.chat({ id: 'my-chat-' + Date.now(), persist: false });
 
     // Create readline interface for user input
     const rl = readline.createInterface({

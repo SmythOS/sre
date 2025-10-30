@@ -778,11 +778,15 @@ export class Agent extends SDKObject {
      * ```
      */
     removeSkill(skillName: string) {
-        const component = this.structure.components.find((c) => c.data.endpoint === skillName);
+        const component = this.structure.components.find((c) => c.data.data.endpoint === skillName);
         if (component) {
-            this.structure.components = this.structure.components.filter((c) => c.data.endpoint !== skillName);
-            this.data.components = this.data.components.filter((c) => c.data.endpoint !== skillName);
+            this._structure.components = this._structure.components.filter((c) => c.data.data.endpoint !== skillName);
+            this._data.components = this._data.components.filter((c) => c.data.endpoint !== skillName);
         }
+    }
+
+    public get skillNames() {
+        return this._data.components.map((c) => c.data.endpoint);
     }
 
     async call(skillName: string, ...args: (Record<string, any> | any)[]) {
