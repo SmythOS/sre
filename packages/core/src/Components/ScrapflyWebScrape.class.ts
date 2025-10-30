@@ -53,7 +53,14 @@ export class ScrapflyWebScrape extends Component {
             logger.debug(`=== Web Scrape Log ===`);
             let Output: any = {};
             let _error = undefined;
-            const scrapeUrls = this.extractUrls(input);
+
+            // Filter inputs to include only the fields defined in the component's configuration.
+            // This prevents URLs from global variables from being scraped.
+            const componentInputNames = new Set(config.inputs.map((input) => input.name));
+            const filteredInput = Object.fromEntries(Object.entries(input).filter(([key]) => componentInputNames.has(key)));
+
+            const scrapeUrls = this.extractUrls(filteredInput);
+
             logger.debug('Payload:', JSON.stringify(config.data));
             logger.debug(`Vaild URLs: ${JSON.stringify(scrapeUrls)}`);
             const teamId = agent.teamId;
