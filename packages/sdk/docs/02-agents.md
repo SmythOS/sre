@@ -1,32 +1,180 @@
-# Building Agents with Skills
+# Building Agents
 
-Now that you've created a basic agent, it's time to expand its capabilities by adding skills. Skills are the fundamental building blocks for making your agents useful. They are functions that the agent's language model can call upon to perform specific tasks, like retrieving data, interacting with APIs, or performing calculations.
+The SmythOS SDK offers flexible ways to create and configure agents. This guide covers everything from basic agent creation to advanced model configuration and workflow-based agents.
 
-The example scripts in [`examples/01-agent-code-skill`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill) provide hands-on illustrations of all the concepts covered here.
+The example scripts in [`examples/01-agent-code-skill`](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill), [`examples/02-agent-smyth-file`](https://github.com/SmythOS/sre/blob/main/examples/02-agent-smyth-file), and [`examples/03-agent-workflow-components`](https://github.com/SmythOS/sre/blob/main/examples/03-agent-workflow-components) provide hands-on illustrations of all the concepts covered here.
+
+## Creating Agents
+
+There are two primary ways to create agents in SmythOS:
+
+### 1. Code-Based Agent Creation
+
+You can define agents programmatically by instantiating the `Agent` class with configuration options:
+
+```typescript
+import { Agent } from '@smythos/sdk';
+
+const agent = new Agent({
+    id: 'crypto-assistant', // Optional: unique identifier
+    name: 'CryptoMarket Assistant',
+    behavior: 'You are a crypto price tracker...',
+    model: 'gpt-4o', // The language model to use
+});
+```
+
+**Configuration Options:**
+
+-   `id` (optional): A unique identifier for the agent. Useful for persistence and tracking.
+-   `name`: A descriptive name for the agent.
+-   `behavior`: Instructions that define the agent's persona and role.
+-   `model`: The language model to use (see [Model Configuration](#model-configuration) below).
+-   `mode` (optional): Agent execution mode (see [Agent Modes](#agent-modes) below).
+
+### 2. Importing from .smyth Files
+
+For complex agents with visual workflows created in the [SmythOS Builder](https://app.smythos.com/), you can import pre-configured `.smyth` files:
+
+```typescript
+import { Agent, Model } from '@smythos/sdk';
+import path from 'path';
+
+const agentPath = path.resolve(__dirname, './my-agent.smyth');
+
+const agent = Agent.import(agentPath, {
+    model: 'gpt-4o', // Override the model
+    teamId: 'team-123', // Optional: specify team context
+});
+```
+
+The `.smyth` file format allows you to define complex workflows with multiple components, skills, and integrations visually, then import them into your code with full programmatic control.
+
+## Model Configuration
+
+SmythOS provides multiple ways to configure language models, from simple to advanced:
+
+### Simple Model Configuration
+
+The easiest way is to specify a model by name. The SDK keeps an up-to-date list of popular models:
+
+```typescript
+const agent = new Agent({
+    name: 'My Agent',
+    behavior: 'You are a helpful assistant',
+    model: 'gpt-4o', // Simple string notation
+});
+```
+
+**Supported model names include:**
+
+-   OpenAI: `'gpt-4o'`, `'gpt-4-turbo'`, `'gpt-3.5-turbo'`, etc.
+-   Anthropic: `'claude-4-sonnet'`, `'claude-3.5-sonnet'`, `'claude-3-opus'`, etc.
+-   Google: `'gemini-pro'`, `'gemini-1.5-pro'`, etc.
+-   And many more...
+
+### Provider-Specific Configuration
+
+For more control over model parameters, use the `Model` factory with provider-specific methods:
+
+#### Simple Provider Notation
+
+```typescript
+import { Model } from '@smythos/sdk';
+
+const agent = new Agent({
+    name: 'My Agent',
+    behavior: 'You are a helpful assistant',
+    model: Model.OpenAI('gpt-4o'),
+});
+```
+
+#### Advanced Provider Notation
+
+Pass custom parameters for fine-tuned control:
+
+```typescript
+import { Model } from '@smythos/sdk';
+
+const agent = new Agent({
+    name: 'My Agent',
+    behavior: 'You are a helpful assistant',
+    model: Model.OpenAI('gpt-4o', {
+        temperature: 0.7, // Control randomness (0-2)
+        maxTokens: 2000, // Maximum response length
+        topP: 0.9, // Nucleus sampling
+        inputTokens: 200000, // context window size, this is the maximum number of tokens that the model can process in one go. it should be smaller or equal to the model official context window size.
+        frequencyPenalty: 0.0, // reduce repetition of token sequences (0.0 - 2.0)
+        maxThinkingTokens: 1024, // the maximum number of tokens to think (only valid for reasoning models)
+        presencePenalty: 0.0, // encourages talking about new topics (0.0 - 2.0)
+        stopSequences: ['\n\n'], // the stop sequences of the model
+        baseURL: 'https://api.openai.com/v1', // the base URL of the model, it can be used to call custom models
+        topK: 0, // the top K of the model
+    }),
+});
+```
+
+**Available Providers:**
+
+-   `Model.OpenAI(...)` - OpenAI models (GPT-4, GPT-3.5, etc.)
+-   `Model.Anthropic(...)` - Claude models
+-   `Model.GoogleAI(...)` - Gemini models
+-   `Model.Groq(...)` - Groq inference engine
+-   `Model.DeepSeek(...)` - DeepSeek models
+-   `Model.TogetherAI(...)` - TogetherAI models
+-   `Model.Ollama(...)` - Local models via Ollama
+-   `Model.xAI(...)` - xAI models (Grok)
+-   `Model.Perplexity(...)` - Perplexity models
+
+For a complete guide on model configuration, available parameters, and best practices, see the dedicated [Models Documentation](09-models.md).
+
+## Agent Modes
+
+Agent modes define how the agent processes and executes tasks:
+
+### Default Mode
+
+The default mode gives you full control over the agent's behavior. The agent relies only on the skills and behavior you provide:
+
+```typescript
+const agent = new Agent({
+    name: 'My Agent',
+    behavior: 'You are a helpful assistant',
+    model: 'gpt-4o',
+    // mode: TAgentMode.DEFAULT  // This is the default, no need to specify
+});
+```
+
+### Planner Mode
+
+When enabled, the agent gains advanced planning capabilities. It can split complex jobs into tasks and subtasks, track progress, report status to the user, and execute tasks systematically:
+
+```typescript
+import { Agent, TAgentMode } from '@smythos/sdk';
+
+const agent = new Agent({
+    name: 'Code Assistant',
+    behavior: 'You are a code assistant...',
+    model: 'gpt-4o',
+    mode: TAgentMode.PLANNER, // Enable planner mode
+});
+
+// Listen to planning events
+agent.on('TasksAdded', (tasksList, tasks) => {
+    console.log('New tasks:', tasks);
+});
+
+agent.on('TasksUpdated', (taskId, status, tasks) => {
+    console.log(`Task ${taskId} updated:`, status);
+});
+```
+
+The planner mode is particularly useful for complex, multi-step operations. See the [Planner Mode Example](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04.1-chat-planner-coder.ts) for a complete implementation.
 
 ## How Agents Use Skills
 
 When you send a prompt to an agent, its underlying Large Language Model (LLM) analyzes the request. It then looks at the list of available skills and, based on their `name` and `description`, determines which skill (if any) is best suited to fulfill the request. The LLM intelligently extracts the necessary parameters from your prompt and passes them to the skill's `process` function.
 
 This is what makes agents so powerful: you provide the tools (skills), and the agent figures out how and when to use them.
-
-## Agent mode
-
-The agent mode is a way to add specific behavior and capabilities to the agent.
-Currently, there are two modes available:
-
--   `default`: The agent relies only on the behavior and the skills that you provided. this is the default mode and gives you full control over the agent's behavior.
--   `planner`: When enabled, The agent gain the ability to split complex jobs into tasks and subtasks, track them, report their status to the user, and perform the tasks one by one. (see [Planner Mode Example](https://github.com/SmythOS/sre/blob/main/examples/01-agent-code-skill/04.1-chat-planner-coder.ts) for more details)
-
-switching agent mode is very simple.
-when you initialize the agent, you can set the mode by passing the `mode` parameter.
-
-```typescript
-const agent = new Agent({
-    //... other agent settings
-    mode: TAgentMode.PLANNER,
-});
-```
 
 ## Adding Skills
 

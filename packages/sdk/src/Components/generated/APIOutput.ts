@@ -34,6 +34,7 @@ export function APIOutput(settings?: TAPIOutputSettings, agent?: Agent) {
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TAPIOutputOutputs = createSafeAccessor({

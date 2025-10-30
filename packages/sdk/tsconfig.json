@@ -3,7 +3,7 @@
         "outDir": "./dist",
         "module": "ESNext",
         "target": "ESNext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         //"noImplicitAny": true,
         "strict": false,
         "sourceMap": true,

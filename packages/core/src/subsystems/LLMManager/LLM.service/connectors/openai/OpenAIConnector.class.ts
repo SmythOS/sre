@@ -28,6 +28,7 @@ import { Logger } from '@sre/helpers/Log.helper';
 import { LLMConnector } from '../../LLMConnector';
 import { OpenAIApiInterface, OpenAIApiInterfaceFactory } from './apiInterfaces';
 import { HandlerDependencies } from './types';
+import { hookAsync } from '@sre/Core/HookService';
 
 const logger = Logger('OpenAIConnector');
 
@@ -83,6 +84,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.request')
     protected async request({ acRequest, body, context }: ILLMRequestFuncParams): Promise<TLLMChatResponse> {
         try {
             logger.debug(`request ${this.name}`, acRequest.candidate);
@@ -149,6 +151,7 @@ export class OpenAIConnector extends LLMConnector {
         }
     }
 
+    @hookAsync('LLMConnector.streamRequest')
     protected async streamRequest({ acRequest, body, context }: ILLMRequestFuncParams): Promise<EventEmitter> {
         try {
             logger.debug(`streamRequest ${this.name}`, acRequest.candidate);

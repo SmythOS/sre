@@ -4,6 +4,8 @@ import { StorageInstance } from '../Storage/StorageInstance.class';
 import { AccessCandidate } from '@smythos/sre';
 import { TVectorDBProvider, TVectorDBProviderInstances } from '../types/generated/VectorDB.types';
 import { VectorDBInstance } from '../VectorDB/VectorDBInstance.class';
+import { TSchedulerProvider, TSchedulerProviderInstances } from '../types/generated/Scheduler.types';
+import { SchedulerInstance } from '../Scheduler/SchedulerInstance.class';
 
 export class Team {
     constructor(public id: string) {}
@@ -53,5 +55,40 @@ export class Team {
             }
         }
         return this._vectorDBProviders;
+    }
+
+    /**
+     * Access to scheduler instances from the team for team-scoped scheduler interactions.
+     *
+     * When using scheduler from the team, the team id will be used as job owner (shared across team)
+     *
+     * **Supported providers and calling patterns:**
+     * - `team.scheduler.default()` - Default scheduler provider
+     * - `team.scheduler.LocalScheduler()` - Local scheduler
+     *
+     * @example
+     * ```typescript
+     * // Direct scheduler access
+     * const teamScheduler = team.scheduler.default();
+     *
+     * // Add a team-wide scheduled job
+     * await teamScheduler.add('team-backup',
+     *   Schedule.every('6h'),
+     *   new Job(async () => {
+     *     console.log('Team backup running...');
+     *   }, { name: 'Team Backup' })
+     * );
+     * ```
+     */
+    private _schedulerProviders: TSchedulerProviderInstances;
+    public get scheduler() {
+        if (!this._schedulerProviders) {
+            this._schedulerProviders = {} as TSchedulerProviderInstances;
+            for (const provider of Object.values(TSchedulerProvider)) {
+                this._schedulerProviders[provider] = (schedulerSettings?: any) =>
+                    new SchedulerInstance(provider as TSchedulerProvider, schedulerSettings, AccessCandidate.team(this.id));
+            }
+        }
+        return this._schedulerProviders;
     }
 }

@@ -52,7 +52,13 @@ const openapiEndpointTemplate = JSON.stringify({
         },
     },
 });
+
+//TODO: use SecureConnector instead of Connector to harden agent data security
+//When implemented, the getEphemeralAgentData becomes part of the default requester
 export abstract class AgentDataConnector extends Connector implements IAgentDataConnector {
+    //Ephemeral agent data is used to store data that is not persistent and is only available for the current session
+    //this is usually the case of programmatic agents implemented with the SDK
+    static ephemeralAgentData: Map<string, any> = new Map();
     public name = 'AgentDataConnector';
     public abstract getAgentData(agentId: string, version?: string): Promise<any>;
     public abstract getAgentIdByDomain(domain: string): Promise<string>;
@@ -107,7 +113,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
                         summary: summary?.replace(/"/g, '\\"'),
                         operationId: component?.data?.endpoint,
                     })
-                    .clean().result,
+                    .clean().result
             ).tryParse();
 
             if (typeof openAPIEntry !== 'object') {
@@ -187,6 +193,23 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
         }
 
         return openAPIObj;
+    }
+
+    /**
+     * Sets ephemeral agent data for the given agent ID
+     * @param agentId
+     * @param data
+     */
+    public async setEphemeralAgentData(agentId: string, data: any) {
+        AgentDataConnector.ephemeralAgentData.set(agentId, data);
+    }
+    /**
+     * Gets ephemeral agent data for the given agent ID
+     * @param agentId
+     * @returns
+     */
+    public async getEphemeralAgentData(agentId: string) {
+        return AgentDataConnector.ephemeralAgentData.get(agentId);
     }
 }
 

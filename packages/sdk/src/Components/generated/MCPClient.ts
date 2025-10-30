@@ -44,6 +44,7 @@ export function MCPClient(settings?: TMCPClientSettings, agent?: Agent) {
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TMCPClientOutputs = createSafeAccessor({

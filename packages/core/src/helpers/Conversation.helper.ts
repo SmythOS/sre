@@ -80,6 +80,7 @@ export class Conversation extends EventEmitter {
     public set spec(specSource) {
         this.ready.then(() => {
             this._status = '';
+            this._currentWaitPromise = undefined;
             this.loadSpecFromSource(specSource).then(async (spec) => {
                 if (!spec) {
                     this._status = 'error';
@@ -783,19 +784,24 @@ export class Conversation extends EventEmitter {
             const _arguments: any = {};
             for (let arg of openApiArgs) {
                 _arguments[arg.name] = arg.schema;
-                if (tool.inputs && arg.schema.properties) {
-                    const required = [];
-                    for (let prop in arg.schema.properties) {
-                        const input = tool.inputs?.find((i) => i.name === prop);
-                        if (!arg.schema.properties[prop].description) {
-                            arg.schema.properties[prop].description = input?.description;
+                if (tool.inputs) {
+                    if (arg.schema.properties) {
+                        const required = [];
+                        for (let prop in arg.schema.properties) {
+                            const input = tool.inputs?.find((i) => i.name === prop);
+                            if (!arg.schema.properties[prop].description) {
+                                arg.schema.properties[prop].description = input?.description;
+                            }
+                            if (!input?.optional) {
+                                required.push(prop);
+                            }
                         }
-                        if (!input?.optional) {
-                            required.push(prop);
+                        if (required.length) {
+                            arg.schema.required = required;
                         }
-                    }
-                    if (required.length) {
-                        arg.schema.required = required;
+                    } else {
+                        const input = tool.inputs?.find((i) => i.name === arg.name);
+                        arg.schema.description = input?.description;
                     }
                 }
             }
@@ -846,6 +852,23 @@ export class Conversation extends EventEmitter {
         //else this._toolsConfig = toolsConfig;
 
         this._toolsConfig = toolsConfig;
+    }
+
+    async removeTool(toolName: string) {
+        this._customToolsDeclarations = this._customToolsDeclarations.filter((tool) => tool.name !== toolName);
+        delete this._customToolsHandlers[toolName];
+        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
+
+        const toolsConfig: any = llmInference.connector.formatToolsConfig({
+            type: 'function',
+            toolDefinitions: this._customToolsDeclarations,
+            toolChoice: this.toolChoice,
+        });
+        this._toolsConfig = toolsConfig;
+    }
+
+    public get toolNames() {
+        return this._customToolsDeclarations.map((tool) => tool.name);
     }
     /**
      * updates LLM model, if spec is available, it will update the tools config
@@ -928,6 +951,7 @@ export class Conversation extends EventEmitter {
             //is this a valid agent data?
             if (typeof specSource?.behavior === 'string' && specSource?.components && specSource?.connections) {
                 this.agentData = specSource; //agent loaded from data directly
+                this._specSource = specSource;
                 this._agentId = specSource.id;
                 return await this.loadSpecFromAgent(specSource);
             }

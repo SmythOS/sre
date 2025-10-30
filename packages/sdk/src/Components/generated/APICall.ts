@@ -81,6 +81,7 @@ export function APICall(settings?: TAPICallSettings, agent?: Agent) {
 
     if (agent) {
         (agent.structure.components as ComponentWrapper[]).push(component);
+        agent.sync();
     }
     
     const _out: TAPICallOutputs = createSafeAccessor({
