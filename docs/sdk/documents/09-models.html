@@ -1,0 +1,356 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>09-models | SmythOS SDK</title><meta name="description" content="Documentation for SmythOS SDK"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><link rel="stylesheet" href="../assets/custom.css"/><script defer src="../assets/main.js"></script><script defer src="../assets/custom.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body>
+        <script>
+          // Function to force the theme to light.
+          const forceLightTheme = () => {
+            if (document.documentElement.dataset.theme !== 'light') {
+              document.documentElement.dataset.theme = 'light';
+            }
+          };
+
+          // Set the theme immediately to prevent a flash of the wrong theme.
+          forceLightTheme();
+
+          // Create an observer to watch for changes to the data-theme attribute.
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+              if (mutation.attributeName === 'data-theme') {
+                forceLightTheme();
+              }
+            });
+          });
+
+          // Start observing the document element for attribute changes.
+          observer.observe(document.documentElement, { attributes: true });
+        </script>
+      <script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><a href="../index.html" class="title">SmythOS SDK</a><div id="tsd-toolbar-links"><a href="https://discord.gg/smythos">Discord</a><a href="https://smythos.github.io/sre/core/">Core</a><a href="https://smythos.github.io/sre/sdk/">SDK</a><a href="https://smythos.github.io/sre/cli/">CLI</a><a href="https://github.com/smythos/sre">GitHub</a></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/><ul role="listbox" id="tsd-search-results"></ul><div id="tsd-search-status" aria-live="polite" aria-atomic="true"><div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb" aria-label="Breadcrumb"><li><a href="" aria-current="page">09-models</a></li></ul></div><div class="tsd-panel tsd-typography"><h1 id="language-models-in-smythos" class="tsd-anchor-link">Language Models in SmythOS<a href="#language-models-in-smythos" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This guide provides comprehensive information about configuring and using language models (LLMs) in the SmythOS SDK.</p>
+<h2 id="overview" class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>SmythOS supports a wide range of language model providers, from cloud-based services like OpenAI and Anthropic to locally-hosted models via Ollama. The SDK provides flexible configuration options to suit different use cases, from simple model selection to fine-grained parameter control.</p>
+<h2 id="model-configuration-patterns" class="tsd-anchor-link">Model Configuration Patterns<a href="#model-configuration-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>There are three main ways to configure models in SmythOS:</p>
+<h3 id="1-simple-string-notation" class="tsd-anchor-link">1. Simple String Notation<a href="#1-simple-string-notation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The quickest way to get started. Just specify the model name as a string:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;My Agent&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a helpful assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, </span><span class="hl-4">// Simple and straightforward</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Minimal configuration</li>
+<li>SDK keeps an up-to-date list of popular models</li>
+<li>Automatic provider detection</li>
+</ul>
+<p><strong>Common Model Names:</strong></p>
+<ul>
+<li>OpenAI: <code>'gpt-4o'</code>, <code>'gpt-4-turbo'</code>, <code>'gpt-4'</code>, <code>'gpt-3.5-turbo'</code></li>
+<li>Anthropic: <code>'claude-4-sonnet'</code>, <code>'claude-3.5-sonnet'</code>, <code>'claude-3-opus'</code>, <code>'claude-3-sonnet'</code>, <code>'claude-3-haiku'</code></li>
+<li>Google: <code>'gemini-pro'</code>, <code>'gemini-1.5-pro'</code>, <code>'gemini-1.5-flash'</code></li>
+<li>DeepSeek: <code>'deepseek-chat'</code>, <code>'deepseek-coder'</code></li>
+<li>And many more...</li>
+</ul>
+<h3 id="2-provider-specific-simple-notation" class="tsd-anchor-link">2. Provider-Specific Simple Notation<a href="#2-provider-specific-simple-notation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When you need to specify a provider explicitly or use a model not in the default list:</p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Model</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;My Agent&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a helpful assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Explicit provider selection</li>
+<li>Works with custom or new models</li>
+<li>Type-safe provider interface</li>
+</ul>
+<h3 id="3-advanced-configuration" class="tsd-anchor-link">3. Advanced Configuration<a href="#3-advanced-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For full control over model behavior and parameters:</p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Model</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;My Agent&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a helpful assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">, </span><span class="hl-4">// Control randomness (0.0 - 2.0)</span><br/><span class="hl-1">        </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1">, </span><span class="hl-4">// Maximum response length</span><br/><span class="hl-1">        </span><span class="hl-2">topP:</span><span class="hl-1"> </span><span class="hl-8">0.9</span><span class="hl-1">, </span><span class="hl-4">// Nucleus sampling parameter</span><br/><span class="hl-1">        </span><span class="hl-2">frequencyPenalty:</span><span class="hl-1"> </span><span class="hl-8">0.0</span><span class="hl-1">, </span><span class="hl-4">// Reduce repetition (0.0 - 2.0)</span><br/><span class="hl-1">        </span><span class="hl-2">presencePenalty:</span><span class="hl-1"> </span><span class="hl-8">0.0</span><span class="hl-1">, </span><span class="hl-4">// Encourage topic diversity (0.0 - 2.0)</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Fine-tuned control over model behavior</li>
+<li>Performance optimization</li>
+<li>Cost management via token limits</li>
+</ul>
+<h2 id="available-providers" class="tsd-anchor-link">Available Providers<a href="#available-providers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>SmythOS supports the following LLM providers:</p>
+<h3 id="openai" class="tsd-anchor-link">OpenAI<a href="#openai" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Access GPT-4, GPT-3.5, and other OpenAI models:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">4000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">topP:</span><span class="hl-1"> </span><span class="hl-8">1.0</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">frequencyPenalty:</span><span class="hl-1"> </span><span class="hl-8">0.0</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">presencePenalty:</span><span class="hl-1"> </span><span class="hl-8">0.0</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>gpt-4o</code> - Latest optimized GPT-4 (multimodal)</li>
+<li><code>gpt-4-turbo</code> - Fast GPT-4 variant</li>
+<li><code>gpt-4</code> - Standard GPT-4</li>
+<li><code>gpt-3.5-turbo</code> - Fast and cost-effective</li>
+</ul>
+<p><strong>API Key:</strong> Store in vault as <code>&quot;openai&quot;: &quot;sk-...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h3 id="anthropic-claude" class="tsd-anchor-link">Anthropic (Claude)<a href="#anthropic-claude" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Access Claude models from Anthropic:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Anthropic</span><span class="hl-1">(</span><span class="hl-3">&#39;claude-4-sonnet&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">1.0</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">8192</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">topP:</span><span class="hl-1"> </span><span class="hl-8">0.9</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>claude-4-sonnet</code> - Latest Claude model</li>
+<li><code>claude-3.5-sonnet</code> - Balanced performance</li>
+<li><code>claude-3-opus</code> - Most capable model</li>
+<li><code>claude-3-sonnet</code> - Fast and balanced</li>
+<li><code>claude-3-haiku</code> - Fastest, most cost-effective</li>
+</ul>
+<p><strong>API Key:</strong> Store in vault as <code>&quot;anthropic&quot;: &quot;sk-ant-...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h3 id="googleai-gemini" class="tsd-anchor-link">GoogleAI (Gemini)<a href="#googleai-gemini" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Access Google's Gemini models:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">GoogleAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gemini-1.5-pro&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.8</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2048</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">topP:</span><span class="hl-1"> </span><span class="hl-8">0.95</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>gemini-1.5-pro</code> - Advanced reasoning and long context</li>
+<li><code>gemini-1.5-flash</code> - Fast and efficient</li>
+<li><code>gemini-pro</code> - Standard model</li>
+</ul>
+<p><strong>API Key:</strong> Store in vault as <code>&quot;googleai&quot;: &quot;...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h3 id="groq" class="tsd-anchor-link">Groq<a href="#groq" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Ultra-fast inference with Groq's LPU™ technology:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Groq</span><span class="hl-1">(</span><span class="hl-3">&#39;llama-3.1-70b-versatile&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">1024</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>llama-3.1-70b-versatile</code> - Meta's Llama 3.1 (70B)</li>
+<li><code>llama-3.1-8b-instant</code> - Smaller, faster Llama 3.1</li>
+<li><code>mixtral-8x7b-32768</code> - Mixtral MoE model</li>
+</ul>
+<p><strong>API Key:</strong> Store in vault as <code>&quot;groq&quot;: &quot;gsk_...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h3 id="ollama-local-models" class="tsd-anchor-link">Ollama (Local Models)<a href="#ollama-local-models" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Run models locally with Ollama:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Ollama</span><span class="hl-1">(</span><span class="hl-3">&#39;llama3.2&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">numCtx:</span><span class="hl-1"> </span><span class="hl-8">4096</span><span class="hl-1">, </span><span class="hl-4">// Context window size</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Setup:</strong></p>
+<ol>
+<li>Install Ollama from <a href="https://ollama.ai">ollama.ai</a></li>
+<li>Pull models: <code>ollama pull llama3.2</code></li>
+<li>Start Ollama server (usually runs automatically)</li>
+</ol>
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>llama3.2</code> - Latest Llama model</li>
+<li><code>mistral</code> - Mistral 7B</li>
+<li><code>codellama</code> - Code-specialized Llama</li>
+<li><code>phi3</code> - Microsoft's Phi-3</li>
+</ul>
+<p><strong>Configuration:</strong> No API key needed for local Ollama. Configure host URL in SRE config if not using default <code>http://localhost:11434</code></p>
+<h3 id="deepseek" class="tsd-anchor-link">DeepSeek<a href="#deepseek" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Access DeepSeek models:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">DeepSeek</span><span class="hl-1">(</span><span class="hl-3">&#39;deepseek-chat&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Popular Models:</strong></p>
+<ul>
+<li><code>deepseek-chat</code> - General conversation model</li>
+<li><code>deepseek-coder</code> - Specialized for coding tasks</li>
+</ul>
+<p><strong>API Key:</strong> Store in vault as <code>&quot;deepseek&quot;: &quot;...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h3 id="togetherai" class="tsd-anchor-link">TogetherAI<a href="#togetherai" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Access various open-source models via TogetherAI:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">TogetherAI</span><span class="hl-1">(</span><span class="hl-3">&#39;meta-llama/Llama-3-70b-chat-hf&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>API Key:</strong> Store in vault as <code>&quot;togetherai&quot;: &quot;...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h4 id="xai-grok" class="tsd-anchor-link">xAI (Grok)<a href="#xai-grok" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">xAI</span><span class="hl-1">(</span><span class="hl-3">&#39;grok-beta&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>API Key:</strong> Store in vault as <code>&quot;xai&quot;: &quot;...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h4 id="perplexity" class="tsd-anchor-link">Perplexity<a href="#perplexity" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Perplexity</span><span class="hl-1">(</span><span class="hl-3">&#39;llama-3.1-sonar-large-128k-online&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>API Key:</strong> Store in vault as <code>&quot;perplexity&quot;: &quot;...&quot;</code> (see <a href="#api-key-management">API Key Management</a> below).</p>
+<h2 id="common-model-parameters" class="tsd-anchor-link">Common Model Parameters<a href="#common-model-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Most providers support these common parameters. Here's a quick reference table:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Range/Format</th>
+<th>Description</th>
+<th>Supported By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>temperature</code></td>
+<td>number</td>
+<td>0.0 - 2.0</td>
+<td>Controls randomness in responses. Lower = more deterministic, higher = more creative</td>
+<td>All providers</td>
+</tr>
+<tr>
+<td><code>maxTokens</code></td>
+<td>number</td>
+<td>1 - model limit</td>
+<td>Maximum number of tokens in the response</td>
+<td>All providers</td>
+</tr>
+<tr>
+<td><code>topP</code></td>
+<td>number</td>
+<td>0.0 - 1.0</td>
+<td>Nucleus sampling parameter. Controls diversity via cumulative probability</td>
+<td>Most providers</td>
+</tr>
+<tr>
+<td><code>topK</code></td>
+<td>number</td>
+<td>0 - ∞</td>
+<td>Limits token selection to top K most likely tokens. 0 = disabled</td>
+<td>Ollama, some providers</td>
+</tr>
+<tr>
+<td><code>frequencyPenalty</code></td>
+<td>number</td>
+<td>0.0 - 2.0</td>
+<td>Reduces repetition of token sequences</td>
+<td>OpenAI, compatible providers</td>
+</tr>
+<tr>
+<td><code>presencePenalty</code></td>
+<td>number</td>
+<td>0.0 - 2.0</td>
+<td>Encourages talking about new topics</td>
+<td>OpenAI, compatible providers</td>
+</tr>
+<tr>
+<td><code>stopSequences</code></td>
+<td>string[]</td>
+<td>Array of strings</td>
+<td>Sequences where the model will stop generating</td>
+<td>Most providers</td>
+</tr>
+<tr>
+<td><code>inputTokens</code></td>
+<td>number</td>
+<td>1 - model limit</td>
+<td>Maximum context window size (input tokens). Should be ≤ model's official context window</td>
+<td>All providers</td>
+</tr>
+<tr>
+<td><code>maxThinkingTokens</code></td>
+<td>number</td>
+<td>1 - model limit</td>
+<td>Maximum tokens for reasoning/thinking (reasoning models only)</td>
+<td>OpenAI o1, compatible models</td>
+</tr>
+<tr>
+<td><code>baseURL</code></td>
+<td>string</td>
+<td>Valid URL</td>
+<td>Custom API endpoint URL for model inference</td>
+<td>Most providers</td>
+</tr>
+<tr>
+<td><code>numCtx</code></td>
+<td>number</td>
+<td>1 - model limit</td>
+<td>Context window size (Ollama-specific parameter)</td>
+<td>Ollama only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="detailed-parameter-descriptions" class="tsd-anchor-link">Detailed Parameter Descriptions<a href="#detailed-parameter-descriptions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><h3 id="temperature" class="tsd-anchor-link">temperature<a href="#temperature" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Controls randomness in responses (typically 0.0 - 2.0):</p>
+<ul>
+<li><code>0.0</code> - Deterministic, focused responses</li>
+<li><code>0.5</code> - Balanced creativity and consistency</li>
+<li><code>1.0</code> - More creative and varied</li>
+<li><code>2.0</code> - Highly random and creative</li>
+</ul>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, { </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="maxtokens" class="tsd-anchor-link">maxTokens<a href="#maxtokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Maximum number of tokens in the response:</p>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, { </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">2000</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Note:</strong> Tokens are not the same as words. Roughly 1 token ≈ 0.75 words.</p>
+<h3 id="topp" class="tsd-anchor-link">topP<a href="#topp" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Nucleus sampling parameter (0.0 - 1.0):</p>
+<ul>
+<li>Controls diversity via cumulative probability</li>
+<li>Lower values = more focused, higher values = more diverse</li>
+</ul>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Anthropic</span><span class="hl-1">(</span><span class="hl-3">&#39;claude-3-sonnet&#39;</span><span class="hl-1">, { </span><span class="hl-2">topP:</span><span class="hl-1"> </span><span class="hl-8">0.9</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="frequencypenalty" class="tsd-anchor-link">frequencyPenalty<a href="#frequencypenalty" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Reduces repetition of token sequences (0.0 - 2.0):</p>
+<ul>
+<li>Higher values discourage repeating the same phrases</li>
+</ul>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, { </span><span class="hl-2">frequencyPenalty:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="presencepenalty" class="tsd-anchor-link">presencePenalty<a href="#presencepenalty" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Encourages talking about new topics (0.0 - 2.0):</p>
+<ul>
+<li>Higher values encourage introducing new topics</li>
+</ul>
+<pre><code class="typescript"><span class="hl-13">model</span><span class="hl-1">: </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-4o&#39;</span><span class="hl-1">, { </span><span class="hl-2">presencePenalty:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="api-key-management" class="tsd-anchor-link">API Key Management<a href="#api-key-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>SmythOS stores API keys securely in a <strong>Vault</strong> system. By default, the SDK uses a JSON file-based vault located at <code>.smyth/vault.json</code>.</p>
+<h3 id="default-vault-json-file" class="tsd-anchor-link">Default Vault (JSON File)<a href="#default-vault-json-file" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The SDK automatically initializes with a JSON vault at <code>.smyth/vault.json</code>. This file stores API keys for different providers:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-11">&quot;default&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;openai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;anthropic&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-ant-...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;googleai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;groq&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;gsk_...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;deepseek&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;togetherai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;xai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;perplexity&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;...&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Location Options:</strong></p>
+<ul>
+<li><strong>Project-level</strong>: <code>.smyth/vault.json</code> in your project directory (recommended)</li>
+<li><strong>User-level</strong>: <code>~/.smyth/vault.json</code> in your home directory (applies to all projects)</li>
+</ul>
+<h3 id="environment-variables-optional" class="tsd-anchor-link">Environment Variables (Optional)<a href="#environment-variables-optional" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>You can reference environment variables within the vault file using the <code>$env()</code> syntax:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-11">&quot;default&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;openai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;$env(OPENAI_API_KEY)&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;anthropic&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;$env(ANTHROPIC_API_KEY)&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;googleai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;$env(GOOGLE_API_KEY)&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Then set your environment variables:</p>
+<pre><code class="bash"><span class="hl-6">export</span><span class="hl-1"> </span><span class="hl-2">OPENAI_API_KEY</span><span class="hl-1">=</span><span class="hl-3">&quot;sk-...&quot;</span><br/><span class="hl-6">export</span><span class="hl-1"> </span><span class="hl-2">ANTHROPIC_API_KEY</span><span class="hl-1">=</span><span class="hl-3">&quot;sk-ant-...&quot;</span><br/><span class="hl-6">export</span><span class="hl-1"> </span><span class="hl-2">GOOGLE_API_KEY</span><span class="hl-1">=</span><span class="hl-3">&quot;...&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="custom-vault-configuration" class="tsd-anchor-link">Custom Vault Configuration<a href="#custom-vault-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For advanced use cases, you can configure a different vault system:</p>
+<pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">SRE</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk/core&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">SRE</span><span class="hl-1">.</span><span class="hl-5">init</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">Vault:</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-2">Connector:</span><span class="hl-1"> </span><span class="hl-3">&#39;JSONFileVault&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">Settings:</span><span class="hl-1"> {</span><br/><span class="hl-1">            </span><span class="hl-2">file:</span><span class="hl-1"> </span><span class="hl-3">&#39;./custom-vault.json&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Or use cloud-based secret management systems like AWS Secrets Manager for production environments.</p>
+<h3 id="team-based-api-keys" class="tsd-anchor-link">Team-Based API Keys<a href="#team-based-api-keys" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The vault supports multiple teams with isolated API keys:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-11">&quot;default&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;openai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-default-key...&quot;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-11">&quot;team-production&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;openai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-prod-key...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;anthropic&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-ant-prod-...&quot;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-11">&quot;team-development&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-11">&quot;openai&quot;</span><span class="hl-1">: </span><span class="hl-3">&quot;sk-dev-key...&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Agents automatically use keys from their assigned team's vault section.</p>
+<h2 id="best-practices" class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="1-choose-the-right-model-for-your-use-case" class="tsd-anchor-link">1. Choose the Right Model for Your Use Case<a href="#1-choose-the-right-model-for-your-use-case" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Complex reasoning</strong>: GPT-4, Claude Opus, Gemini Pro</li>
+<li><strong>Fast responses</strong>: GPT-3.5 Turbo, Claude Haiku, Gemini Flash</li>
+<li><strong>Cost-effective</strong>: GPT-3.5 Turbo, Groq models, Claude Haiku</li>
+<li><strong>Privacy-sensitive</strong>: Ollama (local models)</li>
+<li><strong>Long context</strong>: Claude models (100k+ tokens), Gemini 1.5 Pro</li>
+</ul>
+<h3 id="2-tune-temperature-based-on-task" class="tsd-anchor-link">2. Tune Temperature Based on Task<a href="#2-tune-temperature-based-on-task" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Factual tasks</strong> (data extraction, analysis): <code>temperature: 0.0 - 0.3</code></li>
+<li><strong>Balanced tasks</strong> (chatbots, assistants): <code>temperature: 0.5 - 0.7</code></li>
+<li><strong>Creative tasks</strong> (writing, brainstorming): <code>temperature: 0.8 - 1.2</code></li>
+</ul>
+<h3 id="3-set-appropriate-token-limits" class="tsd-anchor-link">3. Set Appropriate Token Limits<a href="#3-set-appropriate-token-limits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Set <code>maxTokens</code> to prevent unexpectedly long (and costly) responses</li>
+<li>Consider the model's context window when setting limits</li>
+<li>Remember: input + output tokens count toward the limit</li>
+</ul>
+<h3 id="4-test-with-different-providers" class="tsd-anchor-link">4. Test with Different Providers<a href="#4-test-with-different-providers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Different providers excel at different tasks. Test multiple options to find the best fit for your specific use case.</p>
+<h3 id="5-monitor-costs" class="tsd-anchor-link">5. Monitor Costs<a href="#5-monitor-costs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Use cheaper models for development/testing</li>
+<li>Set conservative <code>maxTokens</code> limits</li>
+<li>Consider caching responses for repeated queries</li>
+<li>Use streaming to provide partial responses quickly</li>
+</ul>
+<h2 id="examples" class="tsd-anchor-link">Examples<a href="#examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><h3 id="example-1-cost-optimized-configuration" class="tsd-anchor-link">Example 1: Cost-Optimized Configuration<a href="#example-1-cost-optimized-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1">, </span><span class="hl-2">Model</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Budget Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a helpful assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">// Use GPT-3.5 for cost efficiency</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">OpenAI</span><span class="hl-1">(</span><span class="hl-3">&#39;gpt-3.5-turbo&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">500</span><span class="hl-1">, </span><span class="hl-4">// Keep responses concise</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="example-2-high-quality-reasoning" class="tsd-anchor-link">Example 2: High-Quality Reasoning<a href="#example-2-high-quality-reasoning" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Research Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are an expert researcher&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">// Use Claude Opus for complex reasoning</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Anthropic</span><span class="hl-1">(</span><span class="hl-3">&#39;claude-3-opus&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.3</span><span class="hl-1">, </span><span class="hl-4">// More focused</span><br/><span class="hl-1">        </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">4096</span><span class="hl-1">, </span><span class="hl-4">// Allow detailed responses</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="example-3-local-development" class="tsd-anchor-link">Example 3: Local Development<a href="#example-3-local-development" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Dev Assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You are a coding assistant&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">// Use Ollama for local development</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Ollama</span><span class="hl-1">(</span><span class="hl-3">&#39;llama3.2&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.7</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">numCtx:</span><span class="hl-1"> </span><span class="hl-8">4096</span><span class="hl-1">,</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="example-4-fast-responses-with-groq" class="tsd-anchor-link">Example 4: Fast Responses with Groq<a href="#example-4-fast-responses-with-groq" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-5">Agent</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-2">name:</span><span class="hl-1"> </span><span class="hl-3">&#39;Quick Responder&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">behavior:</span><span class="hl-1"> </span><span class="hl-3">&#39;You provide quick answers&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">// Use Groq for ultra-fast inference</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Groq</span><span class="hl-1">(</span><span class="hl-3">&#39;llama-3.1-70b-versatile&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-2">maxTokens:</span><span class="hl-1"> </span><span class="hl-8">1024</span><span class="hl-1">,</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h3 id="example-5-model-override-in-smyth-import" class="tsd-anchor-link">Example 5: Model Override in .smyth Import<a href="#example-5-model-override-in-smyth-import" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">import</span><span class="hl-1"> { </span><span class="hl-2">Agent</span><span class="hl-1">, </span><span class="hl-2">Model</span><span class="hl-1"> } </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;@smythos/sdk&#39;</span><span class="hl-1">;</span><br/><span class="hl-0">import</span><span class="hl-1"> </span><span class="hl-2">path</span><span class="hl-1"> </span><span class="hl-0">from</span><span class="hl-1"> </span><span class="hl-3">&#39;path&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agentPath</span><span class="hl-1"> = </span><span class="hl-2">path</span><span class="hl-1">.</span><span class="hl-5">resolve</span><span class="hl-1">(</span><span class="hl-2">__dirname</span><span class="hl-1">, </span><span class="hl-3">&#39;./workflow-agent.smyth&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">// Import workflow but override the model</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">agent</span><span class="hl-1"> = </span><span class="hl-2">Agent</span><span class="hl-1">.</span><span class="hl-5">import</span><span class="hl-1">(</span><span class="hl-2">agentPath</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-2">model:</span><span class="hl-1"> </span><span class="hl-2">Model</span><span class="hl-1">.</span><span class="hl-5">Anthropic</span><span class="hl-1">(</span><span class="hl-3">&#39;claude-3.5-sonnet&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-2">temperature:</span><span class="hl-1"> </span><span class="hl-8">0.8</span><span class="hl-1">,</span><br/><span class="hl-1">    }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<h2 id="next-steps" class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Now that you understand model configuration, explore:</p>
+<ul>
+<li><a href="02-agents.html">Building Agents with Skills</a> - Learn how to add capabilities to your agents</li>
+<li><a href="03-streaming.html">Streaming Responses</a> - Handle real-time model outputs</li>
+<li><a href="08-advanced-topics.html">Advanced Topics</a> - Deep dive into advanced features</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg><h3>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#language-models-in-smythos"><span>Language <wbr/>Models in <wbr/>Smyth<wbr/>OS</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#model-configuration-patterns"><span>Model <wbr/>Configuration <wbr/>Patterns</span></a></li><li><ul><li><a href="#1-simple-string-notation"><span>1. <wbr/>Simple <wbr/>String <wbr/>Notation</span></a></li><li><a href="#2-provider-specific-simple-notation"><span>2. <wbr/>Provider-<wbr/>Specific <wbr/>Simple <wbr/>Notation</span></a></li><li><a href="#3-advanced-configuration"><span>3. <wbr/>Advanced <wbr/>Configuration</span></a></li></ul></li><li><a href="#available-providers"><span>Available <wbr/>Providers</span></a></li><li><ul><li><a href="#openai"><span>Open<wbr/>AI</span></a></li><li><a href="#anthropic-claude"><span>Anthropic (<wbr/>Claude)</span></a></li><li><a href="#googleai-gemini"><span>Google<wbr/>AI (<wbr/>Gemini)</span></a></li><li><a href="#groq"><span>Groq</span></a></li><li><a href="#ollama-local-models"><span>Ollama (<wbr/>Local <wbr/>Models)</span></a></li><li><a href="#deepseek"><span>Deep<wbr/>Seek</span></a></li><li><a href="#togetherai"><span>Together<wbr/>AI</span></a></li><li><ul><li><a href="#xai-grok"><span>x<wbr/>AI (<wbr/>Grok)</span></a></li><li><a href="#perplexity"><span>Perplexity</span></a></li></ul></li></ul></li><li><a href="#common-model-parameters"><span>Common <wbr/>Model <wbr/>Parameters</span></a></li><li><ul><li><a href="#detailed-parameter-descriptions"><span>Detailed <wbr/>Parameter <wbr/>Descriptions</span></a></li><li><a href="#temperature"><span>temperature</span></a></li><li><a href="#maxtokens"><span>max<wbr/>Tokens</span></a></li><li><a href="#topp"><span>top<wbr/>P</span></a></li><li><a href="#frequencypenalty"><span>frequency<wbr/>Penalty</span></a></li><li><a href="#presencepenalty"><span>presence<wbr/>Penalty</span></a></li></ul></li><li><a href="#api-key-management"><span>API <wbr/>Key <wbr/>Management</span></a></li><li><ul><li><a href="#default-vault-json-file"><span>Default <wbr/>Vault (<wbr/>JSON <wbr/>File)</span></a></li><li><a href="#environment-variables-optional"><span>Environment <wbr/>Variables (<wbr/>Optional)</span></a></li><li><a href="#custom-vault-configuration"><span>Custom <wbr/>Vault <wbr/>Configuration</span></a></li><li><a href="#team-based-api-keys"><span>Team-<wbr/>Based <wbr/>API <wbr/>Keys</span></a></li></ul></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#1-choose-the-right-model-for-your-use-case"><span>1. <wbr/>Choose the <wbr/>Right <wbr/>Model for <wbr/>Your <wbr/>Use <wbr/>Case</span></a></li><li><a href="#2-tune-temperature-based-on-task"><span>2. <wbr/>Tune <wbr/>Temperature <wbr/>Based on <wbr/>Task</span></a></li><li><a href="#3-set-appropriate-token-limits"><span>3. <wbr/>Set <wbr/>Appropriate <wbr/>Token <wbr/>Limits</span></a></li><li><a href="#4-test-with-different-providers"><span>4. <wbr/>Test with <wbr/>Different <wbr/>Providers</span></a></li><li><a href="#5-monitor-costs"><span>5. <wbr/>Monitor <wbr/>Costs</span></a></li></ul></li><li><a href="#examples"><span>Examples</span></a></li><li><ul><li><a href="#example-1-cost-optimized-configuration"><span>Example 1: <wbr/>Cost-<wbr/>Optimized <wbr/>Configuration</span></a></li><li><a href="#example-2-high-quality-reasoning"><span>Example 2: <wbr/>High-<wbr/>Quality <wbr/>Reasoning</span></a></li><li><a href="#example-3-local-development"><span>Example 3: <wbr/>Local <wbr/>Development</span></a></li><li><a href="#example-4-fast-responses-with-groq"><span>Example 4: <wbr/>Fast <wbr/>Responses with <wbr/>Groq</span></a></li><li><a href="#example-5-model-override-in-smyth-import"><span>Example 5: <wbr/>Model <wbr/>Override in .smyth <wbr/>Import</span></a></li></ul></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav id="tsd-sidebar-links" class="tsd-navigation"><a href="https://discord.gg/smythos" class="tsd-nav-link">Discord</a><a href="https://smythos.github.io/sre/core/" class="tsd-nav-link">Core</a><a href="https://smythos.github.io/sre/sdk/" class="tsd-nav-link">SDK</a><a href="https://smythos.github.io/sre/cli/" class="tsd-nav-link">CLI</a><a href="https://github.com/smythos/sre" class="tsd-nav-link">GitHub</a></nav><nav class="tsd-navigation"><a href="../modules.html">SmythOS SDK</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
