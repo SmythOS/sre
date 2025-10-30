@@ -524,7 +524,7 @@ export class GenAILLM extends Component {
             response = await contentPromise.catch((error) => {
                 return { error: error.message || error };
             });
-            // // If the model stopped before completing the response, this is usually due to output token limit reached.
+            // If the model stopped before completing the response, this is usually due to output token limit reached.
             if (finishReason !== 'stop') {
                 return {
                     Reply: response,
