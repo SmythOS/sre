@@ -389,9 +389,10 @@ export class ChatCompletionsApiInterface extends OpenAIApiInterface {
      * Upload files to storage
      */
     private async uploadFiles(files: BinaryInput[], agentId: string): Promise<BinaryInput[]> {
+        const candidate = AccessCandidate.agent(agentId);
         const promises = files.map((file) => {
-            const binaryInput = BinaryInput.from(file);
-            return binaryInput.upload(AccessCandidate.agent(agentId)).then(() => binaryInput);
+            const binaryInput = BinaryInput.from(file, null, null, candidate);
+            return binaryInput.upload(candidate).then(() => binaryInput);
         });
 
         return Promise.all(promises);
