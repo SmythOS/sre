@@ -193,7 +193,11 @@ export abstract class ModelsProviderConnector extends SecureConnector {
             modelInfo = models?.[model as string];
         }
 
-        return { ...modelInfo, ...aliasModelInfo, modelId };
+        // TODO: We will clean up `keyOptions` in the future but keep it for legacy users.
+        const aliasKeyOptions = aliasModelInfo && hasAPIKey ? aliasModelInfo?.keyOptions : null;
+        const modelKeyOptions = modelInfo?.keyOptions || aliasKeyOptions;
+
+        return { ...modelInfo, ...aliasModelInfo, ...aliasKeyOptions, ...modelKeyOptions, modelId };
     }
 
     protected async getModelId(acRequest: AccessRequest, models: TLLMModelsList, model: string | TLLMModel | TCustomLLMModel): Promise<string> {
