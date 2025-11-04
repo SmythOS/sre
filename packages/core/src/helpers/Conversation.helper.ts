@@ -402,6 +402,11 @@ export class Conversation extends EventEmitter {
                     llmMessage.thinkingBlocks = thinkingBlocks;
                 }
 
+                //add tool status for every tool entry
+                toolsData.forEach((tool) => {
+                    tool.status = tool.name ? this._toolStatusMap?.[tool.name] : undefined;
+                });
+
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
                         id: tool.id,
@@ -678,7 +683,10 @@ export class Conversation extends EventEmitter {
                 const requiresRemoteCall =
                     reqConfig.headers['X-DEBUG'] !== undefined ||
                     reqConfig.headers['X-MONITOR-ID'] !== undefined ||
-                    reqConfig.headers['X-AGENT-REMOTE-CALL'] !== undefined;
+                    //This is used for cases that requre to inject a default attachment handler
+                    //TODO : this need to be removed from the conversation helper in the future since default attachment handler is a specific server feature
+                    //reqConfig.headers['X-AGENT-HAS-ATTACHMENTS'] !== undefined;
+                    reqConfig.headers['x-conversation-id'] !== undefined;
 
                 if (canRunLocally && !requiresRemoteCall) {
                     console.log('RUNNING AGENT LOCALLY');
