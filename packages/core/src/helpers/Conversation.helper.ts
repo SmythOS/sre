@@ -224,6 +224,7 @@ export class Conversation extends EventEmitter {
             teamId: instance._teamId,
             agentId: instance._agentId,
             model: instance._model,
+            agentData: instance.agentData,
         };
     })
     public async prompt(message?: string | any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {
@@ -250,6 +251,7 @@ export class Conversation extends EventEmitter {
             teamId: instance._teamId,
             agentId: instance._agentId,
             model: instance._model,
+            agentData: instance.agentData,
         };
     })
     public async streamPrompt(message?: string | any, toolHeaders = {}, concurrentToolCalls = 4, abortSignal?: AbortSignal) {

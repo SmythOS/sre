@@ -3,6 +3,13 @@ interface CacheItem<T> {
     expiry: number;
 }
 
+/**
+ * A local cache helper used to cache data, functions or object instances
+ * This is useful when you need to cache an object and refresh the cache if the object is accessed within a certain time period
+ *
+ * @template K - The type of the key
+ * @template V - The type of the value
+ */
 export class LocalCache<K, V> {
     private cache: Map<K, V>;
     private expiryMap: Map<K, number>;
@@ -48,6 +55,12 @@ export class LocalCache<K, V> {
         timeout.unref(); //unblock the event loop
     }
 
+    /**
+     * Get the value from the cache, and update the TTL if provided
+     * @param key - The key to get the value from the cache
+     * @param ttlMs - The TTL in milliseconds
+     * @returns The value from the cache
+     */
     get(key: K, ttlMs?: number): V | undefined {
         if (!this.has(key)) {
             return undefined;
@@ -60,6 +73,11 @@ export class LocalCache<K, V> {
         return value;
     }
 
+    /**
+     * Check if the key exists in the cache
+     * @param key - The key to check if it exists in the cache
+     * @returns True if the key exists in the cache, false otherwise
+     */
     has(key: K): boolean {
         if (!this.cache.has(key)) {
             return false;

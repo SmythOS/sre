@@ -82,13 +82,14 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
 
         const apiBasePath = version && version != 'latest' ? `/v${version}/api` : '/api';
 
-        const agentData: any = typeof source === 'object' ? source : await this.getAgentData(source, version);
+        let agentData: any = typeof source === 'object' ? source : await this.getAgentData(source, version);
+        if (agentData.data) agentData = agentData.data;
         const name = agentData.name;
 
-        let description = aiOnly ? agentData.data.behavior : agentData.data.shortDescription;
-        if (!description) description = agentData.data.description; //data.description is deprecated, we just use it as a fallback for now
+        let description = aiOnly ? agentData.behavior : agentData.shortDescription;
+        if (!description) description = agentData.description; //data.description is deprecated, we just use it as a fallback for now
 
-        const _version = agentData.data.version || '1.0.0';
+        const _version = agentData.version || '1.0.0';
 
         const openAPITpl = TemplateString(openapiTemplate)
             .parse({
@@ -100,7 +101,7 @@ export abstract class AgentDataConnector extends Connector implements IAgentData
             .clean().result;
         const openAPIObj = JSON.parse(openAPITpl);
 
-        const components = agentData.data.components.filter((component: any) => component.name === 'APIEndpoint');
+        const components = agentData.components.filter((component: any) => component.name === 'APIEndpoint');
         for (let component of components) {
             const ai_exposed = component.data.ai_exposed || typeof component.data.ai_exposed === 'undefined';
             if (aiOnly && !ai_exposed) continue;
