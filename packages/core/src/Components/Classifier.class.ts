@@ -115,7 +115,13 @@ ${JSON.stringify(categories, null, 2)}`;
 
         try {
             let response = await llmInference
-                .prompt({ query: prompt, params: { ...config, agentId: agent.id } })
+                .prompt({
+                    query: prompt,
+                    params: { ...config, agentId: agent.id },
+                    onFallback: (data) => {
+                        logger.debug(`\n ↩️ Using Fallback Model: ${data.model}`);
+                    },
+                })
                 .catch((error) => ({ error: error }));
 
             if (response?.error) {
@@ -146,7 +152,7 @@ ${JSON.stringify(categories, null, 2)}`;
                 delete parsed.error;
             }
 
-            logger.log(' Classifier result\n', parsed);
+            logger.debug('\n Classifier result\n', parsed);
 
             parsed['_debug'] = logger.output;
 

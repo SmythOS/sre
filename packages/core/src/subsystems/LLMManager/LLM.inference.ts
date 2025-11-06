@@ -15,7 +15,7 @@ import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvide
 
 const console = Logger('LLMInference');
 
-type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams };
+type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams; onFallback?: (data: any) => void };
 
 export class LLMInference {
     private model: string | TLLMModel;
@@ -52,12 +52,11 @@ export class LLMInference {
 
     public static user(candidate: AccessCandidate): any {}
 
-
     public get connector(): LLMConnector {
         return this.llmConnector;
     }
 
-    public async prompt({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
+    public async prompt({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -70,6 +69,11 @@ export class LLMInference {
 
         params.messages = messages;
         params.files = files;
+
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this.model });
+        }
 
         try {
             let response: TLLMChatResponse = await this.llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
@@ -89,8 +93,9 @@ export class LLMInference {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params });
-                    
+                    const fallbackParams = await this.getSafeFallbackParams(params);
+                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
+
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
                         return fallbackResult;
@@ -107,7 +112,7 @@ export class LLMInference {
         }
     }
 
-    public async promptStream({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
+    public async promptStream({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -121,14 +126,26 @@ export class LLMInference {
         params.messages = messages;
         params.files = files;
 
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this.model });
+        }
+
         try {
             return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
         } catch (error) {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('promptStream', { query, contextWindow, files, params });
-                    
+                    const fallbackParams = await this.getSafeFallbackParams(params);
+                    const fallbackResult = await this.executeFallback('promptStream', {
+                        query,
+                        contextWindow,
+                        files,
+                        params: fallbackParams,
+                        onFallback,
+                    });
+
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
                         return fallbackResult;
@@ -151,38 +168,80 @@ export class LLMInference {
         }
     }
 
+    /**
+     * Creates a safe, minimal set of parameters when switching to a fallback LLM provider.
+     *
+     * **Why this exists:**
+     * Model settings persist in the component's configuration data, even when you switch models.
+     * This can cause issues when fallback models run with settings the user can't see or track.
+     *
+     * **Real-world scenario:**
+     * 1. User configures a GPT-5 model and sets `reasoning_effort: "high"`
+     * 2. This setting gets saved to the component's configuration
+     * 3. User switches to a custom model (e.g., for cost savings)
+     * 4. The UI now shows custom model options - GPT-5 options are hidden
+     * 5. **BUT**: `reasoning_effort: "high"` is STILL in the config data!
+     * 6. Custom model has GPT-5 as its fallback
+     * 7. Primary custom model fails → automatically switches to GPT-5 fallback
+     * 8. GPT-5 fallback runs with the hidden `reasoning_effort: "high"` setting
+     * 9. `reasoning_effort: "high"` requires a high `max_tokens` value
+     * 10. If `max_tokens` is too low → the request fails
+     *
+     * **The impact:**
+     * Users can't track response quality properly because they don't know what configuration
+     * the fallback model is using. The UI doesn't show fallback model settings, so users have
+     * no visibility into how responses are being generated.
+     *
+     * **What this function does:**
+     * Strips out provider-specific settings when falling back, using only universal parameters.
+     * This ensures predictable behavior. (Note: A more robust solution would be showing fallback
+     * configuration in the UI, but for now this handles it at the parameter level.)
+     *
+     * @param params - The full set of LLM parameters from the original request
+     * @returns A filtered parameter object with only provider-agnostic, safe parameters
+     */
+    private async getSafeFallbackParams(params: TLLMParams): Promise<TLLMParams> {
+        const fallbackParams = {
+            agentId: params.agentId,
+            model: params.model,
+            maxContextWindowLength: params.maxContextWindowLength,
+            maxTokens: params.maxTokens,
+            messages: params.messages,
+            passthrough: params.passthrough,
+            useContextWindow: params.useContextWindow,
+        };
+
+        return fallbackParams;
+    }
 
     /**
      * Executes fallback logic for custom models when the primary model fails.
      * This method checks if a fallback model is configured and invokes the appropriate LLM method.
      * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
-     * 
+     *
      * @param methodName - The name of the method being called ('prompt' or 'promptStream')
      * @param args - The original arguments passed to the method
      * @returns The result from the fallback execution, or null if fallback should not be attempted
      */
-    private async executeFallback(
-        methodName: 'prompt' | 'promptStream',
-        args: TPromptParams
-    ): Promise<any> {
+    private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
         const isCustomModel = await this.modelProviderReq.isUserCustomLLM(this.model);
         const fallbackModel = await this.modelProviderReq.getFallbackLLM(this.model);
-        
+
         // Only execute fallback if it's a custom model with a configured fallback
         if (!isCustomModel || !fallbackModel) {
             return null;
         }
 
         console.info(`Attempting fallback from ${this.model} to ${fallbackModel}`);
-        
+
         // Mutate the model and connector to use fallback
         this.model = fallbackModel;
-        
+
         const llmProvider = await this.modelProviderReq.getProvider(fallbackModel);
         if (llmProvider) {
             this.llmConnector = ConnectorService.getLLMConnector(llmProvider);
         }
-        
+
         // Call the appropriate method with isInFallback=true to prevent further fallbacks
         if (methodName === 'prompt') {
             return await this.prompt(args, true);

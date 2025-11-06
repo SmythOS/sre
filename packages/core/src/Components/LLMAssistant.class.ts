@@ -113,7 +113,7 @@ export class LLMAssistant extends Component {
             const conversationId = input.ConversationId;
 
             let behavior = TemplateString(config.data.behavior).parse(input).result;
-            logger.debug(`[Parsed Behavior] \n${behavior}\n\n`);
+            logger.debug(`[Parsed Behavior] \n${behavior}`);
 
             //#region get max tokens
             let maxTokens = 2048;
@@ -154,6 +154,9 @@ export class LLMAssistant extends Component {
                         .promptStream({
                             contextWindow: messages,
                             params: { ...config, model, agentId: agent.id },
+                            onFallback: (fallbackInfo) => {
+                                logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);
+                            },
                         })
                         .catch((error) => {
                             console.error('Error on promptStream: ', error);
@@ -180,7 +183,13 @@ export class LLMAssistant extends Component {
                 response = await contentPromise;
             } else {
                 response = await llmInference
-                    .prompt({ contextWindow: messages, params: { ...config, agentId: agent.id } })
+                    .prompt({
+                        contextWindow: messages,
+                        params: { ...config, agentId: agent.id },
+                        onFallback: (fallbackInfo) => {
+                            logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);
+                        },
+                    })
                     .catch((error) => ({ error: error }));
             }
 
@@ -199,7 +208,7 @@ export class LLMAssistant extends Component {
             messages.push({ role: 'assistant', content: response });
             saveMessagesToSession(agent.id, userId, conversationId, messages, ttl);
 
-            logger.debug(' Response \n', response);
+            logger.debug('\n Response \n', response);
 
             const result = { Response: response };
 
