@@ -93,7 +93,8 @@ export class LLMInference {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params, onFallback });
+                    const fallbackParams = await this.getSafeFallbackParams(params);
+                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params: fallbackParams, onFallback });
 
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
@@ -136,7 +137,14 @@ export class LLMInference {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('promptStream', { query, contextWindow, files, params, onFallback });
+                    const fallbackParams = await this.getSafeFallbackParams(params);
+                    const fallbackResult = await this.executeFallback('promptStream', {
+                        query,
+                        contextWindow,
+                        files,
+                        params: fallbackParams,
+                        onFallback,
+                    });
 
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
@@ -158,6 +166,52 @@ export class LLMInference {
             });
             return dummyEmitter;
         }
+    }
+
+    /**
+     * Creates a safe, minimal set of parameters when switching to a fallback LLM provider.
+     *
+     * **Why this exists:**
+     * Model settings persist in the component's configuration data, even when you switch models.
+     * This can cause issues when fallback models run with settings the user can't see or track.
+     *
+     * **Real-world scenario:**
+     * 1. User configures a GPT-5 model and sets `reasoning_effort: "high"`
+     * 2. This setting gets saved to the component's configuration
+     * 3. User switches to a custom model (e.g., for cost savings)
+     * 4. The UI now shows custom model options - GPT-5 options are hidden
+     * 5. **BUT**: `reasoning_effort: "high"` is STILL in the config data!
+     * 6. Custom model has GPT-5 as its fallback
+     * 7. Primary custom model fails → automatically switches to GPT-5 fallback
+     * 8. GPT-5 fallback runs with the hidden `reasoning_effort: "high"` setting
+     * 9. `reasoning_effort: "high"` requires a high `max_tokens` value
+     * 10. If `max_tokens` is too low → the request fails
+     *
+     * **The impact:**
+     * Users can't track response quality properly because they don't know what configuration
+     * the fallback model is using. The UI doesn't show fallback model settings, so users have
+     * no visibility into how responses are being generated.
+     *
+     * **What this function does:**
+     * Strips out provider-specific settings when falling back, using only universal parameters.
+     * This ensures predictable behavior. (Note: A more robust solution would be showing fallback
+     * configuration in the UI, but for now this handles it at the parameter level.)
+     *
+     * @param params - The full set of LLM parameters from the original request
+     * @returns A filtered parameter object with only provider-agnostic, safe parameters
+     */
+    private async getSafeFallbackParams(params: TLLMParams): Promise<TLLMParams> {
+        const fallbackParams = {
+            agentId: params.agentId,
+            model: params.model,
+            maxContextWindowLength: params.maxContextWindowLength,
+            maxTokens: params.maxTokens,
+            messages: params.messages,
+            passthrough: params.passthrough,
+            useContextWindow: params.useContextWindow,
+        };
+
+        return fallbackParams;
     }
 
     /**

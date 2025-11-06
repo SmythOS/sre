@@ -89,7 +89,6 @@ export type TSearchContextSize = 'low' | 'medium' | 'high';
 
 export type TLLMParams = {
     model: TLLMModel | string;
-
     prompt?: string;
     messages?: any[]; // TODO [Forhad]: apply proper typing
     temperature?: number;
@@ -161,6 +160,10 @@ export type TLLMParams = {
     max_output_tokens?: number;
     verbosity?: OpenAI.Responses.ResponseCreateParams['text']['verbosity'];
     abortSignal?: AbortSignal;
+
+    maxContextWindowLength?: number;
+    useContextWindow?: boolean;
+    passthrough?: boolean;
 };
 
 export type TLLMPreparedParams = TLLMParams & {
