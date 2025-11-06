@@ -15,7 +15,7 @@ import { IModelsProviderRequest, ModelsProviderConnector } from './ModelsProvide
 
 const console = Logger('LLMInference');
 
-type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams };
+type TPromptParams = { query?: string; contextWindow?: any[]; files?: any[]; params: TLLMParams; onFallback?: (data: any) => void };
 
 export class LLMInference {
     private model: string | TLLMModel;
@@ -52,12 +52,11 @@ export class LLMInference {
 
     public static user(candidate: AccessCandidate): any {}
 
-
     public get connector(): LLMConnector {
         return this.llmConnector;
     }
 
-    public async prompt({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
+    public async prompt({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -70,6 +69,11 @@ export class LLMInference {
 
         params.messages = messages;
         params.files = files;
+
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this.model });
+        }
 
         try {
             let response: TLLMChatResponse = await this.llmConnector.requester(AccessCandidate.agent(params.agentId)).request(params);
@@ -89,8 +93,8 @@ export class LLMInference {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params });
-                    
+                    const fallbackResult = await this.executeFallback('prompt', { query, contextWindow, files, params, onFallback });
+
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
                         return fallbackResult;
@@ -107,7 +111,7 @@ export class LLMInference {
         }
     }
 
-    public async promptStream({ query, contextWindow, files, params }: TPromptParams, isInFallback: boolean = false) {
+    public async promptStream({ query, contextWindow, files, params, onFallback = () => {} }: TPromptParams, isInFallback: boolean = false) {
         let messages = contextWindow || [];
 
         if (query) {
@@ -121,14 +125,19 @@ export class LLMInference {
         params.messages = messages;
         params.files = files;
 
+        // If a fallback model is used, trigger the onFallback callback to notify the caller.
+        if (isInFallback && typeof onFallback === 'function') {
+            onFallback({ model: this.model });
+        }
+
         try {
             return await this.llmConnector.user(AccessCandidate.agent(params.agentId)).streamRequest(params);
         } catch (error) {
             // Attempt fallback for custom models (only if not already in fallback)
             if (!isInFallback) {
                 try {
-                    const fallbackResult = await this.executeFallback('promptStream', { query, contextWindow, files, params });
-                    
+                    const fallbackResult = await this.executeFallback('promptStream', { query, contextWindow, files, params, onFallback });
+
                     // If fallback succeeded, return the result
                     if (fallbackResult !== null) {
                         return fallbackResult;
@@ -151,38 +160,34 @@ export class LLMInference {
         }
     }
 
-
     /**
      * Executes fallback logic for custom models when the primary model fails.
      * This method checks if a fallback model is configured and invokes the appropriate LLM method.
      * Prevents infinite loops by passing a flag to indicate we're in a fallback attempt.
-     * 
+     *
      * @param methodName - The name of the method being called ('prompt' or 'promptStream')
      * @param args - The original arguments passed to the method
      * @returns The result from the fallback execution, or null if fallback should not be attempted
      */
-    private async executeFallback(
-        methodName: 'prompt' | 'promptStream',
-        args: TPromptParams
-    ): Promise<any> {
+    private async executeFallback(methodName: 'prompt' | 'promptStream', args: TPromptParams): Promise<any> {
         const isCustomModel = await this.modelProviderReq.isUserCustomLLM(this.model);
         const fallbackModel = await this.modelProviderReq.getFallbackLLM(this.model);
-        
+
         // Only execute fallback if it's a custom model with a configured fallback
         if (!isCustomModel || !fallbackModel) {
             return null;
         }
 
         console.info(`Attempting fallback from ${this.model} to ${fallbackModel}`);
-        
+
         // Mutate the model and connector to use fallback
         this.model = fallbackModel;
-        
+
         const llmProvider = await this.modelProviderReq.getProvider(fallbackModel);
         if (llmProvider) {
             this.llmConnector = ConnectorService.getLLMConnector(llmProvider);
         }
-        
+
         // Call the appropriate method with isInFallback=true to prevent further fallbacks
         if (methodName === 'prompt') {
             return await this.prompt(args, true);

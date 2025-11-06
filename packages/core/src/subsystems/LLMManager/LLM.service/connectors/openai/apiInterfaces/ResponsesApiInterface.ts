@@ -270,12 +270,12 @@ export class ResponsesApiInterface extends OpenAIApiInterface {
 
         // Emit interrupted event if finishReason is not 'stop'
         if (finishReason !== 'stop') {
-            emitter.emit('interrupted', finishReason);
+            emitter.emit(TLLMEvent.Interrupted, finishReason);
         }
 
         // Emit end event with setImmediate to ensure proper event ordering
         setImmediate(() => {
-            emitter.emit('end', toolsData, reportedUsage, finishReason);
+            emitter.emit(TLLMEvent.End, toolsData, reportedUsage, finishReason);
         });
     }
 
