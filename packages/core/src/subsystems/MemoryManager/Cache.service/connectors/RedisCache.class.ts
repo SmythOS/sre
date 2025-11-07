@@ -111,6 +111,18 @@ export class RedisCache extends CacheConnector {
 
     @SecureConnector.AccessControl
     public async setMetadata(acRequest: AccessRequest, key: string, metadata: CacheMetadata): Promise<void> {
+        if (metadata.acl) {
+            //preserve the ownership of the metadata
+            const newACL = ACL.from(metadata.acl).addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner).ACL;
+            metadata.acl = newACL;
+        }
+
+        //no ACL present ==> preserve the existing ACL
+        if (!metadata.acl) {
+            const curACL = await this.getACL(acRequest, key);
+            metadata.acl = curACL;
+        }
+
         await this.setMetadataWithTTL(acRequest, key, metadata);
     }
     private async setMetadataWithTTL(acRequest: AccessRequest, key: string, metadata: CacheMetadata, ttl?: number): Promise<void> {
