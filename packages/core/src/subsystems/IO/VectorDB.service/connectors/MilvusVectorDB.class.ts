@@ -10,7 +10,6 @@ import { AccountConnector } from '@sre/Security/Account.service/AccountConnector
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
 import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
-import { chunkText } from '@sre/utils/string.utils';
 import { CreateIndexSimpleReq, DataType, ErrorCode, FieldType, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import crypto from 'crypto';
 import { jsonrepair } from 'jsonrepair';
@@ -74,8 +73,8 @@ export class MilvusVectorDB extends VectorDBConnector {
         if (!_settings.embeddings) {
             _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
         }
-        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
-        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
+
+        if (!_settings.embeddings.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
 
@@ -306,7 +305,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         const dsId = datasource.id || crypto.randomUUID();
 
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const chunkedText = chunkText(datasource.text, {
+        const chunkedText = this.embedder.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });

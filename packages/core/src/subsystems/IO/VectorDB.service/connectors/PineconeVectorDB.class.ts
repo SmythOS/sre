@@ -23,7 +23,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector'
 import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
-import { chunkText } from '@sre/utils/string.utils';
+
 import { jsonrepair } from 'jsonrepair';
 
 const console = Logger('Pinecone VectorDB');
@@ -75,8 +75,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         if (!_settings.embeddings) {
             _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
         }
-        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
-        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
+        if (!_settings.embeddings.dimensions) _settings.embeddings.params.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
@@ -268,7 +267,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         const dsId = datasource.id || crypto.randomUUID();
 
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const chunkedText = chunkText(datasource.text, {
+        const chunkedText = this.embedder.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });

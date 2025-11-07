@@ -5,11 +5,20 @@ import { SDKObject } from '../Core/SDKObject.class';
 import { TParsedDocument } from '../DocParser/DocParser.class';
 import { Scope } from '../types/SDKTypes';
 import { HELP } from '../utils/help';
+import { SDKLog } from '../utils/console.utils';
+
+const console = SDKLog;
 //import { TVectorDBProviderInstances } from './types/generated/VectorDB.types';
 
 export type TVectorDBSearchOptions = {
     topK?: number;
     includeEmbeddings?: boolean;
+};
+
+export type TInsertDocOptions = {
+    chunkSize?: number;
+    chunkOverlap?: number;
+    metadata?: Record<string, any>;
 };
 export class VectorDBInstance extends SDKObject {
     private _candidate: AccessCandidate;
@@ -80,15 +89,31 @@ export class VectorDBInstance extends SDKObject {
      * const id = await pinecone.insertDoc('test', 'Hello, world!', { myEntry: 'My Metadata' });
      * ```
      */
-    public async insertDoc(name: string, data: string | TParsedDocument, metadata?: Record<string, string>) {
+    public async insertDoc(name: string, data: string | TParsedDocument, options?: TInsertDocOptions) {
         await this.ready;
         await this.ensureNamespaceExists();
+
+        const metadata = options?.metadata || {};
+        const chunkSize = options?.chunkSize;
+        const chunkOverlap = options?.chunkOverlap;
+        const optionsKeys = Object.keys(options || {});
+        const invalidKeys = optionsKeys.filter((key) => key !== 'metadata' && key !== 'chunkSize' && key !== 'chunkOverlap');
+
+        if (invalidKeys.length > 0) {
+            console.warn(
+                `Invalid options for insertDoc() call : { ${invalidKeys.join(', ')} }` +
+                    `\nDid you mean to use metadata? e.g. { metadata: { ${invalidKeys.join(', ')} } }`
+            );
+        }
+
         if (typeof data === 'string') {
             return await this._VectorDBRequest.createDatasource(this._namespace, {
                 text: data,
                 id: this._normalizeName(name),
                 label: name,
                 metadata,
+                chunkSize,
+                chunkOverlap,
             });
         } else {
             const doc = data as TParsedDocument;
@@ -106,6 +131,8 @@ export class VectorDBInstance extends SDKObject {
                         id: this._normalizeName(name),
                         label: name,
                         metadata: { ...metadata, pageNumber: page.metadata?.pageNumber, docTitle: doc.title, author: doc.metadata?.author },
+                        chunkSize,
+                        chunkOverlap,
                     })
                 );
             }
