@@ -62,14 +62,18 @@ const googleEmbeddings = Model.GoogleAI('gemini-embedding-001');
 const pinecone = VectorDB.Pinecone('my_namespace', {
     indexName: 'demo-vec',
     apiKey: process.env.PINECONE_API_KEY!,
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: {
+        model: Model.OpenAI('text-embedding-3-large'),
+        chunkSize: 1000, //default chunksize for all data insersions
+        chunkOverlap: 100, //default chunkoverlap for all data insersions
+    },
 });
 
 // Destructive: clears all vectors in the namespace
 await pinecone.purge();
 
 // Insert raw text
-await pinecone.insertDoc('hello', 'Hello, world!', { topic: 'greeting' });
+await pinecone.insertDoc('hello', 'Hello, world!', { metadata: { topic: 'greeting' }, chunkSize: 500, chunkOverlap: 50 }); //chunkSize and chunkOverlap can be overridden for this insert, if not provided, the default values will be used
 
 // Search
 const results = await pinecone.search('Hello', { topK: 5 });
@@ -86,7 +90,9 @@ const milvus = VectorDB.Milvus('my_namespace', {
         password: process.env.MILVUS_PASSWORD,
         token: process.env.MILVUS_TOKEN,
     },
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: {
+        model: Model.OpenAI('text-embedding-3-large'),
+    },
 });
 
 await milvus.purge();
@@ -116,7 +122,7 @@ const __dirname = path.dirname(__filename);
 const filePath = path.join(__dirname, './files/bitcoin.pdf');
 
 const parsed = await Doc.pdf.parse(filePath);
-await pinecone.insertDoc(parsed.title, parsed, { source: 'whitepaper' });
+await pinecone.insertDoc(parsed.title, parsed, { metadata: { source: 'whitepaper' } });
 
 // Now search by semantics
 const hits = await pinecone.search('Proof-of-Work', { topK: 5 });
@@ -173,7 +179,9 @@ const namespace = 'crypto-ns';
 const pineconeSettings = {
     indexName: 'demo-vec',
     apiKey: process.env.PINECONE_API_KEY!,
-    embeddings: Model.GoogleAI('gemini-embedding-001'),
+    embeddings: {
+        model: Model.GoogleAI('gemini-embedding-001'),
+    },
 };
 
 // Default: agent scope (isolated)
@@ -191,7 +199,7 @@ const parsed = await Doc.md.parse('./files/bitcoin.md', {
     tags: ['bitcoin', 'crypto', 'blockchain'],
 });
 
-await pinecone.insertDoc(parsed.title, parsed, { source: 'kb' });
+await pinecone.insertDoc(parsed.title, parsed, { metadata: { source: 'kb' } });
 
 // Query from inside a skill
 agent
@@ -254,12 +262,12 @@ type TEmbeddings = {
     provider: 'OpenAI' | 'GoogleAI';
     model: 'text-embedding-3-large' | 'text-embedding-ada-002' | 'gemini-embedding-001';
     credentials?: { apiKey: string }; // optional; see notes below
-    params?: {
-        dimensions?: number; // default 1024 for OpenAI, 3072 for Google AI (ada-002 ignores this)
-        timeout?: number;
-        chunkSize?: number; // batching for bulk embed
-        stripNewLines?: boolean; // default true
-    };
+
+    dimensions?: number; // default 1024 for OpenAI, 3072 for Google AI (ada-002 ignores this)
+    timeout?: number;
+    chunkSize?: number; // batching for bulk embed
+    chunkOverlap?: number; // batching for bulk embed
+    stripNewLines?: boolean; // default true
 };
 ```
 
