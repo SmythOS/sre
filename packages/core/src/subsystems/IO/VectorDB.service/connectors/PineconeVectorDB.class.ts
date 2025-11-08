@@ -11,6 +11,7 @@ import {
     IStorageVectorNamespace,
     IVectorDataSourceDto,
     QueryOptions,
+    VectorDBResult,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -73,9 +74,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
         if (!_settings.embeddings) {
-            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 1024 };
         }
-        if (!_settings.embeddings.dimensions) _settings.embeddings.params.dimensions = 1024;
+        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
@@ -209,7 +210,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
-    ): Promise<string[]> {
+    ): Promise<VectorDBResult[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
 
@@ -241,7 +242,18 @@ export class PineconeVectorDB extends VectorDBConnector {
             await this.setACL(acRequest, namespace, acl);
         }
 
-        return preparedSource.map((s) => s.id);
+        return preparedSource.map((s) => {
+            const { text, acl, user_metadata, ...restMetadata } = s.metadata || {};
+            return {
+                id: s.id,
+                values: s.values as number[],
+                text: text as string,
+                metadata: {
+                    ...restMetadata,
+                    ...((typeof user_metadata === 'string' ? JSON.parse(user_metadata) : user_metadata) as Record<string, any>),
+                },
+            };
+        });
     }
 
     @SecureConnector.AccessControl
@@ -296,9 +308,12 @@ export class PineconeVectorDB extends VectorDBConnector {
             name: datasource.label || 'Untitled',
             metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds: _vIds.map((v) => v.id),
             id: dsId,
         };
+        if (datasource.returnFullVectorInfo) {
+            dsData.vectorInfo = _vIds;
+        }
         // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
         // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
         await this.nkvConnector

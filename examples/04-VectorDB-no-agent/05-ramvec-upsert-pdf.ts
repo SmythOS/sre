@@ -30,7 +30,12 @@ async function main() {
 
     const parsedDoc = await Doc.text.parse(filePath);
 
-    const result = await ramVec.insertDoc('test', parsedDoc, { metadata: { myEntry: 'My Metadata' }, chunkSize: 500, chunkOverlap: 50 });
+    const result = await ramVec.insertDoc('test', parsedDoc, {
+        metadata: { myEntry: 'My Metadata' },
+        chunkSize: 500,
+        chunkOverlap: 50,
+        returnFullVectorInfo: true,
+    });
     console.log(result);
     const searchResult = await ramVec.search('Proof-of-Work', { topK: 5 });
     console.log(searchResult);

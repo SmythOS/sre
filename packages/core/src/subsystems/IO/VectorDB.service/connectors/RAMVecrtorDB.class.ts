@@ -12,6 +12,7 @@ import {
     IStorageVectorNamespace,
     IVectorDataSourceDto,
     QueryOptions,
+    VectorDBResult,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { ConnectorService } from '@sre/Core/ConnectorsService';
@@ -71,10 +72,10 @@ export class RAMVectorDB extends VectorDBConnector {
         this.accountConnector = ConnectorService.getAccountConnector();
 
         if (!_settings.embeddings) {
-            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 1024 };
         }
 
-        if (!_settings.embeddings.dimensions) _settings.embeddings.params.dimensions = 1024;
+        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 1024;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
@@ -225,7 +226,7 @@ export class RAMVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
-    ): Promise<string[]> {
+    ): Promise<VectorDBResult[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
@@ -245,7 +246,7 @@ export class RAMVectorDB extends VectorDBConnector {
             RAMVectorDB.vectors[preparedNs] = [];
         }
 
-        const insertedIds: string[] = [];
+        const insertedIds: VectorDBResult[] = [];
 
         for (const source of transformedSource) {
             const vectorData: VectorData = {
@@ -263,7 +264,18 @@ export class RAMVectorDB extends VectorDBConnector {
                 RAMVectorDB.vectors[preparedNs].push(vectorData);
             }
 
-            insertedIds.push(source.id);
+            const { text, acl, user_metadata, ...restMetadata } = source.metadata || {};
+
+            (insertedIds as VectorDBResult[]).push({
+                id: source.id,
+                values: source.source as number[],
+                text: text as string,
+                metadata: {
+                    ...restMetadata,
+                    ...((typeof user_metadata === 'string' ? JSON.parse(user_metadata) : user_metadata) as Record<string, any>),
+                },
+            });
+            //insertedIds.push(source.id);
         }
 
         return insertedIds;
@@ -332,9 +344,13 @@ export class RAMVectorDB extends VectorDBConnector {
             name: datasource.label || 'Untitled',
             metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds: _vIds.map((v) => v.id),
             id: dsId,
         };
+
+        if (datasource.returnFullVectorInfo) {
+            dsData.vectorInfo = _vIds;
+        }
 
         // Store datasource metadata in memory
         if (!RAMVectorDB.datasources[formattedNs]) {

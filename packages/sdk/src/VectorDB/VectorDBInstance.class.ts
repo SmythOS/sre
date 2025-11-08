@@ -16,9 +16,22 @@ export type TVectorDBSearchOptions = {
 };
 
 export type TInsertDocOptions = {
+    /**
+     * The chunk size to use for the document, this will override the default embedding chunk size
+     */
     chunkSize?: number;
+    /**
+     * The chunk overlap to use for the document, this will override the default embedding chunk overlap
+     */
     chunkOverlap?: number;
+    /**
+     * The metadata to insert, can be any key/value pair
+     */
     metadata?: Record<string, any>;
+    /**
+     * If set, the returned data will include the full vector information for each document
+     */
+    returnFullVectorInfo?: boolean;
 };
 export class VectorDBInstance extends SDKObject {
     private _candidate: AccessCandidate;
@@ -114,6 +127,7 @@ export class VectorDBInstance extends SDKObject {
                 metadata,
                 chunkSize,
                 chunkOverlap,
+                returnFullVectorInfo: options?.returnFullVectorInfo,
             });
         } else {
             const doc = data as TParsedDocument;
@@ -133,6 +147,7 @@ export class VectorDBInstance extends SDKObject {
                         metadata: { ...metadata, pageNumber: page.metadata?.pageNumber, docTitle: doc.title, author: doc.metadata?.author },
                         chunkSize,
                         chunkOverlap,
+                        returnFullVectorInfo: options?.returnFullVectorInfo,
                     })
                 );
             }

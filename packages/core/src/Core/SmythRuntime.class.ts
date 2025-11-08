@@ -9,6 +9,8 @@ import pkg from '../../package.json';
 
 const logger = Logger('SRE');
 
+const SRE_GLOBAL_KEY = Symbol.for('SRE@singleton');
+
 export class SmythRuntime {
     public started = false;
 
@@ -84,10 +86,19 @@ export class SmythRuntime {
     }
 
     protected static instance?: SmythRuntime;
+    // public static get Instance(): SmythRuntime {
+    //     if (!SmythRuntime.instance) {
+    //         SmythRuntime.instance = new SmythRuntime();
+    //     }
+    //     return SmythRuntime.instance;
+    // }
+
     public static get Instance(): SmythRuntime {
-        if (!SmythRuntime.instance) {
-            SmythRuntime.instance = new SmythRuntime();
+        if (global[SRE_GLOBAL_KEY]) {
+            return global[SRE_GLOBAL_KEY];
         }
+        SmythRuntime.instance = new SmythRuntime();
+        global[SRE_GLOBAL_KEY] = SmythRuntime.instance;
         return SmythRuntime.instance;
     }
 
