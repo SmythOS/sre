@@ -21,7 +21,7 @@ import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/
 import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
 import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
 const console = Logger('ConnectorService');
-
+const SRE_CONNECTORS_GLOBAL_KEY = Symbol.for('SRE:ConnectorInstances');
 let ServiceRegistry: TServiceRegistry = {};
 let _ready = false;
 SystemEvents.on('SRE:Booted', (services) => {
@@ -31,7 +31,17 @@ SystemEvents.on('SRE:Booted', (services) => {
 export class ConnectorService {
     public static Connectors = {};
 
-    public static ConnectorInstances: any = {};
+    protected static _instances: any = {};
+
+    public static get ConnectorInstances() {
+        if (global[SRE_CONNECTORS_GLOBAL_KEY]) {
+            return global[SRE_CONNECTORS_GLOBAL_KEY];
+        }
+        ConnectorService._instances = {};
+        global[SRE_CONNECTORS_GLOBAL_KEY] = ConnectorService._instances;
+        return ConnectorService._instances;
+    }
+    //public static ConnectorInstances: any = {};
     public static get ready() {
         return _ready;
     }
