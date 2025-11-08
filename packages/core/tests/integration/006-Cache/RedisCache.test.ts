@@ -9,7 +9,6 @@ import { TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 // Note: This test requires a Redis instance running on localhost:6379
 // You can skip this test if Redis is not available by setting SKIP_REDIS_TESTS=true
 
-const REDIS_HOST = process.env.REDIS_HOST || 'localhost:6379';
 const SKIP_REDIS_TESTS = process.env.SKIP_REDIS_TESTS === 'true';
 
 beforeAll(() => {
@@ -22,7 +21,8 @@ beforeAll(() => {
         Cache: {
             Connector: 'Redis',
             Settings: {
-                hosts: REDIS_HOST,
+                hosts: process.env.REDIS_SENTINEL_HOSTS,
+                name: process.env.REDIS_MASTER_NAME,
                 password: process.env.REDIS_PASSWORD,
             },
         },
@@ -85,8 +85,8 @@ describe('RedisCache - integration (actual connector)', () => {
         const user = AccessCandidate.user('redis-meta-user');
         const client = cache.requester(user);
 
-        const key = 'k:redis:meta';
-        await client.set(key, 'redis-v');
+        const key = 'k:redis:meta-01';
+        await client.set(key, 'redis-v', undefined, undefined, 300); // 5 minutes
 
         await client.setMetadata(key, { redisField: 1 });
         const md1 = await client.getMetadata(key);

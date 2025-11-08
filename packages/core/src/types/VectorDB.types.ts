@@ -3,17 +3,19 @@ export type VectorDBMetadata = {
     datasourceId: string;
     datasourceLabel: string;
     acl: string;
-    user_metadata?: string;
+    user_metadata?: string | Record<string, any>;
     text?: string;
 };
 
-export type VectorsResultData = {
+export type VectorDBResult = {
     id: string;
     score?: number;
     values: number[];
     text: string;
     metadata?: Record<string, any>;
-}[];
+};
+
+export type VectorsResultData = VectorDBResult[];
 
 export interface NsKnownMetadata {
     isOnCustomStorage?: boolean;
@@ -58,6 +60,7 @@ export interface IStorageVectorDataSource {
     metadata: string;
     text?: string;
     vectorIds: string[];
+    vectorInfo?: VectorDBResult[];
     id: string;
     candidateId: string;
     candidateRole: string;
@@ -83,4 +86,5 @@ export interface DatasourceDto {
     chunkOverlap?: number;
     label?: string;
     id?: string;
+    returnFullVectorInfo?: boolean;
 }
