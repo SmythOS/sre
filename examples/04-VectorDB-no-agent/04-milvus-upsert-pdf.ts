@@ -20,7 +20,11 @@ async function main() {
             token: process.env.MILVUS_TOKEN,
         },
 
-        embeddings: Model.OpenAI('text-embedding-3-large'),
+        embeddings: {
+            model: Model.OpenAI('text-embedding-3-large'),
+            chunkSize: 1000,
+            chunkOverlap: 100,
+        },
     });
 
     // This will wipe all the data in 'test' namespace
@@ -28,7 +32,7 @@ async function main() {
 
     const parsedDoc = await Doc.pdf.parse(filePath);
 
-    const result = await milvus.insertDoc('test', parsedDoc, { myEntry: 'My Metadata' });
+    const result = await milvus.insertDoc('test', parsedDoc, { metadata: { myEntry: 'My Metadata' } });
     console.log(result);
     const searchResult = await milvus.search('Proof-of-Work', { topK: 5 });
     console.log(searchResult);

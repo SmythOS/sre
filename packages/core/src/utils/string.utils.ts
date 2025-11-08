@@ -19,7 +19,7 @@ export async function asyncReplace(str, regex, asyncFn) {
         matches.map(async (match) => {
             // Call the async function with all match groups
             return asyncFn(...match);
-        }),
+        })
     );
 
     // Reassemble the string with replacements
@@ -222,193 +222,195 @@ export const identifyMimetypeFromString = (input: string) => {
     return 'text/plain';
 };
 
-export function chunkText(
-    text: string,
-    {
-        chunkSize = 4000,
-        chunkOverlap = 500,
-    }: {
-        chunkSize?: number;
-        chunkOverlap?: number;
-    } = {},
-): string[] {
-    const textSplitter = new RecursiveTextSplitter({
-        chunkSize,
-        chunkOverlap,
-    });
-    let output = textSplitter.splitText(text);
+// export function chunkText(
+//     text: string,
+//     {
+//         chunkSize,
+//         chunkOverlap,
+//     }: {
+//         chunkSize: number;
+//         chunkOverlap: number;
+//     }
+// ): string[] {
+//     const textSplitter = new TextSplitter({
+//         chunkSize,
+//         chunkOverlap,
+//         separators: ['\n\n', '\n', ' ', ''],
+//         keepSeparator: true,
+//     });
+//     let output = textSplitter.splitText(text);
 
-    return output;
-}
-class TextSplitter {
-    private chunkSize: number;
-    private chunkOverlap: number;
-    private separators: string[] = ['\n\n', '\n', ' ', ''];
-    private keepSeparator: boolean = true;
+//     return output;
+// }
+// class TextSplitter {
+//     private chunkSize: number;
+//     private chunkOverlap: number;
+//     private separators: string[] = ['\n\n', '\n', ' ', ''];
+//     private keepSeparator: boolean = true;
 
-    constructor({
-        chunkSize = 1000,
-        chunkOverlap = 200,
-        separators,
-        keepSeparator,
-    }: {
-        chunkSize?: number;
-        chunkOverlap?: number;
-        separators?: string[];
-        keepSeparator?: boolean;
-    } = {}) {
-        this.chunkSize = chunkSize;
-        this.chunkOverlap = chunkOverlap;
+//     constructor({
+//         chunkSize = 1000,
+//         chunkOverlap = 200,
+//         separators,
+//         keepSeparator,
+//     }: {
+//         chunkSize?: number;
+//         chunkOverlap?: number;
+//         separators?: string[];
+//         keepSeparator?: boolean;
+//     } = {}) {
+//         this.chunkSize = chunkSize;
+//         this.chunkOverlap = chunkOverlap;
 
-        if (separators) {
-            this.separators = separators;
-        }
+//         if (separators) {
+//             this.separators = separators;
+//         }
 
-        if (keepSeparator !== undefined) {
-            this.keepSeparator = keepSeparator;
-        }
+//         if (keepSeparator !== undefined) {
+//             this.keepSeparator = keepSeparator;
+//         }
 
-        if (this.chunkOverlap >= this.chunkSize) {
-            throw new Error('Cannot have chunkOverlap >= chunkSize');
-        }
-    }
+//         if (this.chunkOverlap >= this.chunkSize) {
+//             throw new Error('Cannot have chunkOverlap >= chunkSize');
+//         }
+//     }
 
-    public splitText(text: string): string[] {
-        return this._splitText(text, this.separators);
-    }
+//     public splitText(text: string): string[] {
+//         return this._splitText(text, this.separators);
+//     }
 
-    private _splitText(text: string, separators: string[]): string[] {
-        const finalChunks: string[] = [];
+//     private _splitText(text: string, separators: string[]): string[] {
+//         const finalChunks: string[] = [];
 
-        // Get appropriate separator to use
-        let separator: string = separators[separators.length - 1];
-        let newSeparators: string[] | undefined;
+//         // Get appropriate separator to use
+//         let separator: string = separators[separators.length - 1];
+//         let newSeparators: string[] | undefined;
 
-        for (let i = 0; i < separators.length; i += 1) {
-            const s = separators[i];
-            if (s === '') {
-                separator = s;
-                break;
-            }
-            if (text.includes(s)) {
-                separator = s;
-                newSeparators = separators.slice(i + 1);
-                break;
-            }
-        }
+//         for (let i = 0; i < separators.length; i += 1) {
+//             const s = separators[i];
+//             if (s === '') {
+//                 separator = s;
+//                 break;
+//             }
+//             if (text.includes(s)) {
+//                 separator = s;
+//                 newSeparators = separators.slice(i + 1);
+//                 break;
+//             }
+//         }
 
-        // Split the text using the identified separator
-        const splits = this.splitOnSeparator(text, separator);
+//         // Split the text using the identified separator
+//         const splits = this.splitOnSeparator(text, separator);
 
-        // Process splits, recursively splitting longer texts
-        let goodSplits: string[] = [];
-        const _separator = this.keepSeparator ? '' : separator;
+//         // Process splits, recursively splitting longer texts
+//         let goodSplits: string[] = [];
+//         const _separator = this.keepSeparator ? '' : separator;
 
-        for (const s of splits) {
-            if (this.lengthFunction(s) < this.chunkSize) {
-                goodSplits.push(s);
-            } else {
-                if (goodSplits.length) {
-                    const mergedText = this.mergeSplits(goodSplits, _separator);
-                    finalChunks.push(...mergedText);
-                    goodSplits = [];
-                }
+//         for (const s of splits) {
+//             if (this.lengthFunction(s) < this.chunkSize) {
+//                 goodSplits.push(s);
+//             } else {
+//                 if (goodSplits.length) {
+//                     const mergedText = this.mergeSplits(goodSplits, _separator);
+//                     finalChunks.push(...mergedText);
+//                     goodSplits = [];
+//                 }
 
-                if (!newSeparators) {
-                    finalChunks.push(s);
-                } else {
-                    const otherInfo = this._splitText(s, newSeparators);
-                    finalChunks.push(...otherInfo);
-                }
-            }
-        }
+//                 if (!newSeparators) {
+//                     finalChunks.push(s);
+//                 } else {
+//                     const otherInfo = this._splitText(s, newSeparators);
+//                     finalChunks.push(...otherInfo);
+//                 }
+//             }
+//         }
 
-        if (goodSplits.length) {
-            const mergedText = this.mergeSplits(goodSplits, _separator);
-            finalChunks.push(...mergedText);
-        }
+//         if (goodSplits.length) {
+//             const mergedText = this.mergeSplits(goodSplits, _separator);
+//             finalChunks.push(...mergedText);
+//         }
 
-        return finalChunks;
-    }
+//         return finalChunks;
+//     }
 
-    private splitOnSeparator(text: string, separator: string): string[] {
-        let splits: string[];
+//     private splitOnSeparator(text: string, separator: string): string[] {
+//         let splits: string[];
 
-        if (separator) {
-            if (this.keepSeparator) {
-                const regexEscapedSeparator = separator.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
-                splits = text.split(new RegExp(`(?=${regexEscapedSeparator})`));
-            } else {
-                splits = text.split(separator);
-            }
-        } else {
-            splits = text.split('');
-        }
+//         if (separator) {
+//             if (this.keepSeparator) {
+//                 const regexEscapedSeparator = separator.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+//                 splits = text.split(new RegExp(`(?=${regexEscapedSeparator})`));
+//             } else {
+//                 splits = text.split(separator);
+//             }
+//         } else {
+//             splits = text.split('');
+//         }
 
-        return splits.filter((s) => s !== '');
-    }
+//         return splits.filter((s) => s !== '');
+//     }
 
-    private lengthFunction(text: string): number {
-        return text.length;
-    }
+//     private lengthFunction(text: string): number {
+//         return text.length;
+//     }
 
-    private joinDocs(docs: string[], separator: string): string | null {
-        const text = docs.join(separator).trim();
-        return text === '' ? null : text;
-    }
+//     private joinDocs(docs: string[], separator: string): string | null {
+//         const text = docs.join(separator).trim();
+//         return text === '' ? null : text;
+//     }
 
-    private mergeSplits(splits: string[], separator: string): string[] {
-        const docs: string[] = [];
-        const currentDoc: string[] = [];
-        let total = 0;
+//     private mergeSplits(splits: string[], separator: string): string[] {
+//         const docs: string[] = [];
+//         const currentDoc: string[] = [];
+//         let total = 0;
 
-        for (const d of splits) {
-            const _len = this.lengthFunction(d);
+//         for (const d of splits) {
+//             const _len = this.lengthFunction(d);
 
-            if (total + _len + currentDoc.length * separator.length > this.chunkSize) {
-                if (total > this.chunkSize) {
-                    console.warn(`Created a chunk of size ${total}, which is longer than the specified ${this.chunkSize}`);
-                }
+//             if (total + _len + currentDoc.length * separator.length > this.chunkSize) {
+//                 if (total > this.chunkSize) {
+//                     console.warn(`Created a chunk of size ${total}, which is longer than the specified ${this.chunkSize}`);
+//                 }
 
-                if (currentDoc.length > 0) {
-                    const doc = this.joinDocs(currentDoc, separator);
-                    if (doc !== null) {
-                        docs.push(doc);
-                    }
+//                 if (currentDoc.length > 0) {
+//                     const doc = this.joinDocs(currentDoc, separator);
+//                     if (doc !== null) {
+//                         docs.push(doc);
+//                     }
 
-                    // Keep popping if conditions are met
-                    while (total > this.chunkOverlap || (total + _len + currentDoc.length * separator.length > this.chunkSize && total > 0)) {
-                        total -= this.lengthFunction(currentDoc[0]);
-                        currentDoc.shift();
-                    }
-                }
-            }
+//                     // Keep popping if conditions are met
+//                     while (total > this.chunkOverlap || (total + _len + currentDoc.length * separator.length > this.chunkSize && total > 0)) {
+//                         total -= this.lengthFunction(currentDoc[0]);
+//                         currentDoc.shift();
+//                     }
+//                 }
+//             }
 
-            currentDoc.push(d);
-            total += _len;
-        }
+//             currentDoc.push(d);
+//             total += _len;
+//         }
 
-        const doc = this.joinDocs(currentDoc, separator);
-        if (doc !== null) {
-            docs.push(doc);
-        }
+//         const doc = this.joinDocs(currentDoc, separator);
+//         if (doc !== null) {
+//             docs.push(doc);
+//         }
 
-        return docs;
-    }
-}
+//         return docs;
+//     }
+// }
 
-class RecursiveTextSplitter extends TextSplitter {
-    constructor({
-        chunkSize = 1000,
-        chunkOverlap = 200,
-        separators = ['\n\n', '\n', ' ', ''],
-        keepSeparator = true,
-    }: {
-        chunkSize?: number;
-        chunkOverlap?: number;
-        separators?: string[];
-        keepSeparator?: boolean;
-    } = {}) {
-        super({ chunkSize, chunkOverlap, separators, keepSeparator });
-    }
-}
+// class RecursiveTextSplitter extends TextSplitter {
+//     constructor({
+//         chunkSize = 1000,
+//         chunkOverlap = 200,
+//         separators = ['\n\n', '\n', ' ', ''],
+//         keepSeparator = true,
+//     }: {
+//         chunkSize?: number;
+//         chunkOverlap?: number;
+//         separators?: string[];
+//         keepSeparator?: boolean;
+//     } = {}) {
+//         super({ chunkSize, chunkOverlap, separators, keepSeparator });
+//     }
+// }
