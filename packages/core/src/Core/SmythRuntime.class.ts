@@ -9,7 +9,7 @@ import pkg from '../../package.json';
 
 const logger = Logger('SRE');
 
-const SRE_GLOBAL_KEY = Symbol.for('SRE@singleton');
+const SRE_GLOBAL_KEY = Symbol.for('SRE:Instance');
 
 export class SmythRuntime {
     public started = false;
@@ -150,6 +150,8 @@ export class SmythRuntime {
         this._initialized = true;
         SystemEvents.emit('SRE:Initialized', SmythRuntime.Instance);
 
+        this.setupShutdownHandlers();
+
         return SmythRuntime.Instance as SmythRuntime;
     }
 
@@ -219,6 +221,23 @@ export class SmythRuntime {
         SmythRuntime.instance = undefined;
         this.started = false;
     }
+
+    private setupShutdownHandlers() {
+        ['SIGINT', 'SIGTERM'].forEach((signal) => {
+            process.on(signal, async () => {
+                await shutdown(signal);
+                process.exit(0); // Required after async
+            });
+        });
+
+        process.on('beforeExit', (code) => {
+            shutdown('beforeExit');
+        });
+
+        process.on('exit', (code) => {
+            logger.info(`Goodbye!`);
+        });
+    }
 }
 
 export const SRE = SmythRuntime.Instance;
@@ -238,21 +257,6 @@ async function shutdown(reason) {
         }
     }
 }
-
-['SIGINT', 'SIGTERM'].forEach((signal) => {
-    process.on(signal, async () => {
-        await shutdown(signal);
-        process.exit(0); // Required after async
-    });
-});
-
-process.on('beforeExit', (code) => {
-    shutdown('beforeExit');
-});
-
-process.on('exit', (code) => {
-    logger.info(`Goodbye!`);
-});
 
 // process.on('uncaughtException', (err) => {
 
