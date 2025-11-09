@@ -173,10 +173,10 @@ export class VectorDBInstance extends SDKObject {
      * const id = await pinecone.updateDoc('test', 'Hello, world!', { myEntry: 'My Metadata' });
      * ```
      */
-    public async updateDoc(name: string, data: string | TParsedDocument, metadata?: Record<string, string>) {
+    public async updateDoc(name: string, data: string | TParsedDocument, options?: TInsertDocOptions) {
         await this.ready;
         await this.ensureNamespaceExists();
-        return await this.insertDoc(name, data, metadata);
+        return await this.insertDoc(name, data, options);
     }
 
     /**

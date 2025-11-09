@@ -1,27 +1,29 @@
-import { SREConnectorConfig, TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
-import { DummyConnector } from './DummyConnector';
-import { Logger } from '../helpers/Log.helper';
-import { Connector } from './Connector.class';
-import { getFormattedStackTrace, isSubclassOf, printStackTrace } from '@sre/utils';
-import { SystemEvents } from './SystemEvents';
-import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
-import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
-import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
-import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { AgentDataConnector } from '@sre/AgentManager/AgentData.service/AgentDataConnector';
-import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
+import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
+import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
+import { LogConnector } from '@sre/IO/Log.service/LogConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
-import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
-import { LogConnector } from '@sre/IO/Log.service/LogConnector';
-import { ComponentConnector } from '@sre/AgentManager/Component.service/ComponentConnector';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
+import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { LLMConnector } from '@sre/LLMManager/LLM.service/LLMConnector';
 import { ModelsProviderConnector } from '@sre/LLMManager/ModelsProvider.service/ModelsProviderConnector';
-import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
-import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
+import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
+import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
+import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
+import { isSubclassOf, printStackTrace } from '@sre/utils';
+import { Logger } from '../helpers/Log.helper';
+import { Connector } from './Connector.class';
+import { DummyConnector } from './DummyConnector';
+import { SystemEvents } from './SystemEvents';
 const console = Logger('ConnectorService');
-const SRE_CONNECTORS_GLOBAL_KEY = Symbol.for('SRE:ConnectorInstances');
+const SRE_CONNECTORS_INSTANCE_SYMBOL = Symbol.for('SRE:ConnectorInstances');
+const SRE_CONNECTORS_SYMBOL = Symbol.for('SRE:Connector');
+
 let ServiceRegistry: TServiceRegistry = {};
 let _ready = false;
 SystemEvents.on('SRE:Booted', (services) => {
@@ -29,19 +31,23 @@ SystemEvents.on('SRE:Booted', (services) => {
     _ready = true;
 });
 export class ConnectorService {
-    public static Connectors = {};
-
-    protected static _instances: any = {};
+    //public static Connectors = {};
+    public static get Connectors() {
+        if (!global[SRE_CONNECTORS_SYMBOL]) {
+            global[SRE_CONNECTORS_SYMBOL] = {};
+        }
+        return global[SRE_CONNECTORS_SYMBOL];
+    }
 
     public static get ConnectorInstances() {
-        if (global[SRE_CONNECTORS_GLOBAL_KEY]) {
-            return global[SRE_CONNECTORS_GLOBAL_KEY];
+        if (!global[SRE_CONNECTORS_INSTANCE_SYMBOL]) {
+            global[SRE_CONNECTORS_INSTANCE_SYMBOL] = {};
         }
-        ConnectorService._instances = {};
-        global[SRE_CONNECTORS_GLOBAL_KEY] = ConnectorService._instances;
-        return ConnectorService._instances;
+
+        return global[SRE_CONNECTORS_INSTANCE_SYMBOL];
     }
     //public static ConnectorInstances: any = {};
+
     public static get ready() {
         return _ready;
     }
@@ -64,6 +70,10 @@ export class ConnectorService {
         if (!ConnectorService.Connectors[connectorType]) {
             ConnectorService.Connectors[connectorType] = {};
         }
+        if (ConnectorService.Connectors[connectorType][connectorName]) {
+            console.warn(`Connector ${connectorType}:${connectorName} already registered ... skipping`);
+            return;
+        }
         ConnectorService.Connectors[connectorType][connectorName] = connectorConstructor;
     }
 
@@ -80,7 +90,10 @@ export class ConnectorService {
      */
     static init(connectorType: TConnectorService, connectorName: string, connectorId?: string, settings: any = {}, isDefault = false) {
         if (ConnectorService.ConnectorInstances[connectorType]?.[connectorName]) {
-            throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
+            //throw new Error(`Connector ${connectorType}:${connectorName} already initialized`);
+            console.warn(`Connector ${connectorType}:${connectorName} already initialized ... skipping`);
+
+            return ConnectorService.ConnectorInstances[connectorType]?.[connectorName];
         }
 
         const entry = ConnectorService.Connectors[connectorType];
@@ -114,6 +127,8 @@ export class ConnectorService {
                 connector.stop();
             }
         }
+        delete global[SRE_CONNECTORS_INSTANCE_SYMBOL];
+        delete global[SRE_CONNECTORS_SYMBOL];
     }
     static getInstance<T>(connectorType: TConnectorService, connectorName: string = 'default'): T {
         const instance = ConnectorService.ConnectorInstances[connectorType]?.[connectorName || 'default'] as T;
@@ -123,10 +138,14 @@ export class ConnectorService {
             //     //return the first instance
             //     return ConnectorService.ConnectorInstances[connectorType][Object.keys(ConnectorService.ConnectorInstances[connectorType])[0]] as T;
             // }
-            console.warn(`Connector ${connectorType} not initialized returning DummyConnector`);
+            console.warn(
+                `Connector ${connectorType}:${
+                    typeof connectorName === 'string' ? connectorName : JSON.stringify(connectorName)
+                } not initialized returning DummyConnector`
+            );
             //print stack trace
 
-            printStackTrace(console, 5);
+            printStackTrace(console, 10);
 
             return DummyConnector(connectorType) as T;
         }

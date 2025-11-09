@@ -18,9 +18,12 @@ export default defineConfig({
         pool: 'forks',
         poolOptions: {
             forks: {
-                singleFork: true,
+                singleFork: false, // Each test file gets its own process for isolation
             },
         },
+        // sequence: {
+        //     concurrent: false, // run test files sequentially
+        // },
     },
     build: {
         sourcemap: 'inline',
