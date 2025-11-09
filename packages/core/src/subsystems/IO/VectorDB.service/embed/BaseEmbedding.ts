@@ -66,8 +66,8 @@ export abstract class BaseEmbedding {
 
     public chunkText(text: string, { chunkSize, chunkOverlap }: { chunkSize?: number; chunkOverlap?: number }): string[] {
         const textSplitter = new TextSplitter({
-            chunkSize: chunkSize || this.chunkSize,
-            chunkOverlap: chunkOverlap || this.chunkOverlap,
+            chunkSize: chunkSize ?? this.chunkSize,
+            chunkOverlap: chunkOverlap ?? this.chunkOverlap,
         });
         return textSplitter.splitText(text);
     }

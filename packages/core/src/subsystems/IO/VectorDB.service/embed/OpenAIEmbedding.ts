@@ -18,7 +18,7 @@ const createOpenAIError = (statusCode: number, error: any) => {
     );
 };
 
-const DEFAULT_MODEL = 'text-embedding-ada-002';
+const DEFAULT_MODEL = 'text-embedding-3-large';
 
 export class OpenAIEmbeds extends BaseEmbedding {
     protected client: OpenAIClient;
