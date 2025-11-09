@@ -5,6 +5,12 @@ All notable changes to the SmythOS SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.9] 2025-11-10
+
+-   Added support for custom chunkSize and chunkOverlap for VectorDB embeddings
+-   Added new Scheduler Connector
+-   APIEndpoint now supports custom code process (harmonizing SDK and SRE)
+
 ## [1.1.0] - 2025-04-09
 
 ### Added
