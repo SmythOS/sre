@@ -110,7 +110,9 @@ export class VectorDBInstance extends SDKObject {
         const chunkSize = options?.chunkSize;
         const chunkOverlap = options?.chunkOverlap;
         const optionsKeys = Object.keys(options || {});
-        const invalidKeys = optionsKeys.filter((key) => key !== 'metadata' && key !== 'chunkSize' && key !== 'chunkOverlap');
+
+        const validKeys = ['metadata', 'chunkSize', 'chunkOverlap', 'returnFullVectorInfo'];
+        const invalidKeys = optionsKeys.filter((key) => !validKeys.includes(key));
 
         if (invalidKeys.length > 0) {
             console.warn(
