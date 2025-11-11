@@ -3,7 +3,7 @@ import { ComponentConnector } from '@sre/AgentManager/Component.service/Componen
 import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
 import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
-import { LogConnector } from 'subsystems/ObservabilityManager/Log.service/LogConnector';
+import { LogConnector } from '@sre/ObservabilityManager/Log.service/LogConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
