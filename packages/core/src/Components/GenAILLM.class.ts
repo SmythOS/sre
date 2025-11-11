@@ -7,6 +7,7 @@ import { getMimeType } from '@sre/utils/data.utils';
 import { Component } from './Component.class';
 import { formatDataForDebug } from '@sre/utils/data.utils';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TLLMEvent } from '@sre/types/LLM.types';
 
 //TODO : better handling of context window exceeding max length
 
@@ -480,13 +481,16 @@ export class GenAILLM extends Component {
                             ...config.data,
                             agentId: agent.id,
                         },
+                        onFallback: (fallbackInfo) => {
+                            logger.debug(`\n ↩️ Using fallback model: ${fallbackInfo.model}`);
+                        },
                     })
                     .catch((error) => {
                         console.error('Error on promptStream: ', error);
                         reject(error);
                     });
 
-                eventEmitter.on('content', (content) => {
+                eventEmitter.on(TLLMEvent.Content, (content) => {
                     if (passThrough) {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ content });
@@ -496,7 +500,7 @@ export class GenAILLM extends Component {
                     _content += content;
                 });
 
-                eventEmitter.on('thinking', (thinking) => {
+                eventEmitter.on(TLLMEvent.Thinking, (thinking) => {
                     if (passThrough) {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ thinking });
@@ -504,7 +508,7 @@ export class GenAILLM extends Component {
                         agent.sse.send('llm/passthrough/thinking', thinking.replace(/\n/g, '\\n'));
                     }
                 });
-                eventEmitter.on('end', () => {
+                eventEmitter.on(TLLMEvent.End, () => {
                     if (passThrough) {
                         if (typeof agent.callback === 'function') {
                             agent.callback({ content: '\n' });
@@ -513,18 +517,18 @@ export class GenAILLM extends Component {
                     }
                     resolve(_content);
                 });
-                eventEmitter.on('interrupted', (reason) => {
+                eventEmitter.on(TLLMEvent.Interrupted, (reason) => {
                     finishReason = reason || 'stop';
                 });
 
-                eventEmitter.on('error', (error) => {
+                eventEmitter.on(TLLMEvent.Error, (error) => {
                     reject(error);
                 });
             });
             response = await contentPromise.catch((error) => {
                 return { error: error.message || error };
             });
-            // // If the model stopped before completing the response, this is usually due to output token limit reached.
+            // If the model stopped before completing the response, this is usually due to output token limit reached.
             if (finishReason !== 'stop') {
                 return {
                     Reply: response,
@@ -551,7 +555,7 @@ export class GenAILLM extends Component {
                 return { _error: Reply.error, _debug: logger.output };
             }
 
-            logger.debug(' Reply \n', Reply);
+            logger.debug('\n Reply \n', Reply);
 
             const result = { Reply };
 

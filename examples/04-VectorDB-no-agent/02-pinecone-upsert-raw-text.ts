@@ -16,7 +16,9 @@ async function main() {
         indexName: 'demo-vec',
 
         apiKey: process.env.PINECONE_API_KEY,
-        embeddings: Model.OpenAI('text-embedding-3-large'),
+        embeddings: {
+            model: Model.OpenAI('text-embedding-3-large'),
+        },
     });
 
     // This will wipe all the data in 'test' namespace

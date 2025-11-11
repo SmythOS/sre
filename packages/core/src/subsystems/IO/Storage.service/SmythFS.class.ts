@@ -1,17 +1,15 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
+import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { DEFAULT_TEAM_ID, IAccessCandidate, TAccessLevel, TAccessRole } from '@sre/types/ACL.types';
 import { StorageData, StorageMetadata } from '@sre/types/Storage.types';
 import { getMimeType } from '@sre/utils';
+import crypto from 'crypto';
 import mime from 'mime';
 import { Readable } from 'stream';
-import { StorageConnector } from './StorageConnector';
-import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector';
-import crypto from 'crypto';
-import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
-import { SystemEvents } from '@sre/Core/SystemEvents';
+import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
 
 export type TSmythFSURI = {
     hash: string;
@@ -46,6 +44,7 @@ export class SmythFS {
     // Multiton pattern - get instance based on storage and cache provider combination
     public static getInstance(storageProvider: string | StorageConnector = '', cacheProvider: string | CacheConnector = ''): SmythFS {
         // First get the actual connector names to calculate the correct hash
+
         const storage = storageProvider instanceof StorageConnector ? storageProvider : ConnectorService.getStorageConnector(storageProvider);
         const cache = cacheProvider instanceof CacheConnector ? cacheProvider : ConnectorService.getCacheConnector(cacheProvider);
         const hash = SmythFS.generateInstanceHash(storage.name, cache.name);
