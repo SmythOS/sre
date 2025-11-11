@@ -9,7 +9,7 @@ import { AccountService } from '@sre/Security/Account.service';
 import { VaultService } from '@sre/Security/Vault.service';
 import { RouterService } from '@sre/IO/Router.service';
 import { ManagedVaultService } from '@sre/Security/ManagedVault.service';
-import { LogService } from '@sre/IO/Log.service';
+import { LogService } from 'subsystems/ObservabilityManager/Log.service';
 import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 import { CodeService } from '@sre/ComputeManager/Code.service';

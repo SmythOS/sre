@@ -126,11 +126,11 @@ export function hookAsync(hookName: string, customContext?: Record<string, any> 
             // Get additional context if contextFn is provided
             let _context;
             if (typeof customContext === 'function') {
-                _context = await customContext(this);
+                _context = { instance: this, args: args, context: await customContext(this) };
             } else if (typeof customContext === 'object') {
-                _context = customContext;
+                _context = { instance: this, args: args, context: customContext };
             } else {
-                _context = this;
+                _context = { instance: this, args: args, context: {} };
             }
 
             // Execute non-blocking pre-hooks first (fire and forget)

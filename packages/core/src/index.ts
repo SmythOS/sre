@@ -130,8 +130,6 @@ export * from './subsystems/ComputeManager/Code.service/CodeConnector';
 export * from './subsystems/ComputeManager/Code.service/index';
 export * from './subsystems/IO/CLI.service/CLIConnector';
 export * from './subsystems/IO/CLI.service/index';
-export * from './subsystems/IO/Log.service/index';
-export * from './subsystems/IO/Log.service/LogConnector';
 export * from './subsystems/IO/NKV.service/index';
 export * from './subsystems/IO/NKV.service/NKVConnector';
 export * from './subsystems/IO/Router.service/index';
@@ -149,6 +147,8 @@ export * from './subsystems/LLMManager/ModelsProvider.service/ModelsProviderConn
 export * from './subsystems/MemoryManager/Cache.service/CacheConnector';
 export * from './subsystems/MemoryManager/Cache.service/index';
 export * from './subsystems/MemoryManager/LLMMemory.service/LLMMemoryConnector';
+export * from './subsystems/ObservabilityManager/Log.service/index';
+export * from './subsystems/ObservabilityManager/Log.service/LogConnector';
 export * from './subsystems/Security/AccessControl/AccessCandidate.class';
 export * from './subsystems/Security/AccessControl/AccessRequest.class';
 export * from './subsystems/Security/AccessControl/ACL.class';
@@ -167,7 +167,6 @@ export * from './subsystems/AgentManager/AgentData.service/connectors/NullAgentD
 export * from './subsystems/AgentManager/Component.service/connectors/LocalComponentConnector.class';
 export * from './subsystems/AgentManager/Scheduler.service/connectors/LocalScheduler.class';
 export * from './subsystems/ComputeManager/Code.service/connectors/AWSLambdaCode.class';
-export * from './subsystems/IO/Log.service/connectors/ConsoleLog.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVLocalStorage.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRAM.class';
 export * from './subsystems/IO/NKV.service/connectors/NKVRedis.class';
@@ -196,6 +195,7 @@ export * from './subsystems/MemoryManager/Cache.service/connectors/LocalStorageC
 export * from './subsystems/MemoryManager/Cache.service/connectors/RAMCache.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/RedisCache.class';
 export * from './subsystems/MemoryManager/Cache.service/connectors/S3Cache.class';
+export * from './subsystems/ObservabilityManager/Log.service/connectors/ConsoleLog.class';
 export * from './subsystems/Security/Account.service/connectors/DummyAccount.class';
 export * from './subsystems/Security/Account.service/connectors/JSONFileAccount.class';
 export * from './subsystems/Security/Account.service/connectors/MySQLAccount.class';
