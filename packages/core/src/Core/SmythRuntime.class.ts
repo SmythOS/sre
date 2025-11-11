@@ -9,6 +9,8 @@ import pkg from '../../package.json';
 
 const logger = Logger('SRE');
 
+const SRE_INSTANCE_SYMBOL = Symbol.for('SRE:Instance');
+
 export class SmythRuntime {
     public started = false;
 
@@ -76,6 +78,8 @@ export class SmythRuntime {
         },
     };
 
+    public connectors: any = {};
+    public connectorInstances: any = {};
     protected constructor() {
         this.started = true;
         this._readyPromise = new Promise((resolve) => {
@@ -91,6 +95,15 @@ export class SmythRuntime {
         return SmythRuntime.instance;
     }
 
+    // public static get Instance(): SmythRuntime {
+    //     if (global[SRE_INSTANCE_SYMBOL]) {
+    //         return global[SRE_INSTANCE_SYMBOL];
+    //     }
+    //     global[SRE_INSTANCE_SYMBOL] = new SmythRuntime();
+    //     //global[SRE_GLOBAL_KEY] = SmythRuntime.instance;
+    //     return global[SRE_INSTANCE_SYMBOL];
+    // }
+
     private _initializing = false;
 
     public get initializing() {
@@ -101,18 +114,20 @@ export class SmythRuntime {
 
     public init(_config?: SREConfig): SmythRuntime {
         logger.info(`SRE v${this.version} initializing...`);
+        if (this._initialized) {
+            console.warn('SRE already initialized ... skipping');
+            return SmythRuntime.Instance;
+        }
+
+        if (this._initializing) {
+            console.warn('You tried to initialize SRE while it is already initializing ... skipping');
+            return SmythRuntime.Instance;
+        }
         if (!_config || JSON.stringify(_config) === '{}') {
             this._smythDir = findSmythPath();
             logger.info('.smyth directory found in:', this._smythDir);
         }
 
-        if (this._initializing) {
-            console.warn('You tried to initialize SRE while it is already initializing ... skipping');
-            return;
-        }
-        if (this._initialized) {
-            throw new Error('SRE already initialized');
-        }
         this._initializing = true;
         SystemEvents.on('SRE:Booted', () => {
             this._readyResolve(true);
@@ -138,6 +153,8 @@ export class SmythRuntime {
 
         this._initialized = true;
         SystemEvents.emit('SRE:Initialized', SmythRuntime.Instance);
+
+        this.setupShutdownHandlers();
 
         return SmythRuntime.Instance as SmythRuntime;
     }
@@ -205,8 +222,25 @@ export class SmythRuntime {
         this._stopping = true;
         logger.info('Sending Shutdown Signals To All Subsystems...');
         await ConnectorService._stop();
-        SmythRuntime.instance = undefined;
+        //delete global[SRE_INSTANCE_SYMBOL];
         this.started = false;
+    }
+
+    private setupShutdownHandlers() {
+        ['SIGINT', 'SIGTERM'].forEach((signal) => {
+            process.on(signal, async () => {
+                await shutdown(signal);
+                process.exit(0); // Required after async
+            });
+        });
+
+        process.on('beforeExit', (code) => {
+            shutdown('beforeExit');
+        });
+
+        process.on('exit', (code) => {
+            logger.info(`Goodbye!`);
+        });
     }
 }
 
@@ -227,21 +261,6 @@ async function shutdown(reason) {
         }
     }
 }
-
-['SIGINT', 'SIGTERM'].forEach((signal) => {
-    process.on(signal, async () => {
-        await shutdown(signal);
-        process.exit(0); // Required after async
-    });
-});
-
-process.on('beforeExit', (code) => {
-    shutdown('beforeExit');
-});
-
-process.on('exit', (code) => {
-    logger.info(`Goodbye!`);
-});
 
 // process.on('uncaughtException', (err) => {
 

@@ -107,6 +107,7 @@ export class TemplateStringHelper {
         if (typeof this._current !== 'string' || typeof data !== 'object') return this;
 
         // Keep parsing until no more template variables are resolved or max depth is reached
+        // this is useful for chained template variables : e.g {{defaultVar}} => "text {{nestedVar}} more text" ==> "text value of nestedVar more text"
         for (let i = 0; i < maxDepth; i++) {
             const previous = this._current;
 
@@ -121,7 +122,7 @@ export class TemplateStringHelper {
                 return typeof val === 'object' ? JSON.stringify(val) : escapeJsonField(val);
             });
 
-            // Break early if no changes were made
+            // Break early if no changes were made : we parsed all the template variables
             if (previous === this._current) break;
         }
 

@@ -5,6 +5,28 @@ All notable changes to the SmythOS CORE Runtime Engine will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.9] 2025-11-09
+
+-   Fixed edge cases issues with SRE core initialization
+-   Add support for custom chunkSize and chunkOverlap for VectorDB embeddings
+-   normalized the embeddings parameters for VectorDB connectors
+-   JSONVaultConnector now detects missing vault and prompts the user to create it
+
+## [1.7.1] 2025-10-30
+
+-   Core structures for triggers
+-   Added Scheduler Connector
+-   Added Advanced SRE hooks (Aspect Oriented Programming pattern to monitor and interact with internal SRE calls from outside)
+-   SRE core is now accessible from the sdk package though @smythos/sdk/core
+-   Implemented OAuth2 credentials manager for SRE (this will become the standard wrapper to handle all oAuth2 credentials)
+-   APIEndpoint now supports custom code process (harmonizing SDK and SRE)
+-   Multiple fixes for conversation manager
+-   Fix for Gemini LLM infinite loop tool calls
+-   Support local LLM credentials
+-   add a killReason message when an SRE agent is killed
+-   AgentDataConnector handles ephemeral agents data (for SDK agents)
+-   Update Milvus data format to match the latest Milvus sdk release
+
 ## [1.6.0]
 
 ### Features

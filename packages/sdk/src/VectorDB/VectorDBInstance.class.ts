@@ -5,11 +5,33 @@ import { SDKObject } from '../Core/SDKObject.class';
 import { TParsedDocument } from '../DocParser/DocParser.class';
 import { Scope } from '../types/SDKTypes';
 import { HELP } from '../utils/help';
+import { SDKLog } from '../utils/console.utils';
+
+const console = SDKLog;
 //import { TVectorDBProviderInstances } from './types/generated/VectorDB.types';
 
 export type TVectorDBSearchOptions = {
     topK?: number;
     includeEmbeddings?: boolean;
+};
+
+export type TInsertDocOptions = {
+    /**
+     * The chunk size to use for the document, this will override the default embedding chunk size
+     */
+    chunkSize?: number;
+    /**
+     * The chunk overlap to use for the document, this will override the default embedding chunk overlap
+     */
+    chunkOverlap?: number;
+    /**
+     * The metadata to insert, can be any key/value pair
+     */
+    metadata?: Record<string, any>;
+    /**
+     * If set, the returned data will include the full vector information for each document
+     */
+    returnFullVectorInfo?: boolean;
 };
 export class VectorDBInstance extends SDKObject {
     private _candidate: AccessCandidate;
@@ -80,15 +102,32 @@ export class VectorDBInstance extends SDKObject {
      * const id = await pinecone.insertDoc('test', 'Hello, world!', { myEntry: 'My Metadata' });
      * ```
      */
-    public async insertDoc(name: string, data: string | TParsedDocument, metadata?: Record<string, string>) {
+    public async insertDoc(name: string, data: string | TParsedDocument, options?: TInsertDocOptions) {
         await this.ready;
         await this.ensureNamespaceExists();
+
+        const metadata = options?.metadata || {};
+        const chunkSize = options?.chunkSize;
+        const chunkOverlap = options?.chunkOverlap;
+        const optionsKeys = Object.keys(options || {});
+        const invalidKeys = optionsKeys.filter((key) => key !== 'metadata' && key !== 'chunkSize' && key !== 'chunkOverlap');
+
+        if (invalidKeys.length > 0) {
+            console.warn(
+                `Invalid options for insertDoc() call : { ${invalidKeys.join(', ')} }` +
+                    `\nDid you mean to use metadata? e.g. { metadata: { ${invalidKeys.join(', ')} } }`
+            );
+        }
+
         if (typeof data === 'string') {
             return await this._VectorDBRequest.createDatasource(this._namespace, {
                 text: data,
                 id: this._normalizeName(name),
                 label: name,
                 metadata,
+                chunkSize,
+                chunkOverlap,
+                returnFullVectorInfo: options?.returnFullVectorInfo,
             });
         } else {
             const doc = data as TParsedDocument;
@@ -106,6 +145,9 @@ export class VectorDBInstance extends SDKObject {
                         id: this._normalizeName(name),
                         label: name,
                         metadata: { ...metadata, pageNumber: page.metadata?.pageNumber, docTitle: doc.title, author: doc.metadata?.author },
+                        chunkSize,
+                        chunkOverlap,
+                        returnFullVectorInfo: options?.returnFullVectorInfo,
                     })
                 );
             }
@@ -131,10 +173,10 @@ export class VectorDBInstance extends SDKObject {
      * const id = await pinecone.updateDoc('test', 'Hello, world!', { myEntry: 'My Metadata' });
      * ```
      */
-    public async updateDoc(name: string, data: string | TParsedDocument, metadata?: Record<string, string>) {
+    public async updateDoc(name: string, data: string | TParsedDocument, options?: TInsertDocOptions) {
         await this.ready;
         await this.ensureNamespaceExists();
-        return await this.insertDoc(name, data, metadata);
+        return await this.insertDoc(name, data, options);
     }
 
     /**

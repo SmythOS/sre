@@ -417,6 +417,8 @@ export class Agent implements IAgent {
             if (!_result) continue;
             if (_result._debug) delete _result._debug;
             if (_result._debug_time) delete _result._debug_time;
+            if (_result.result?._debug) delete _result.result._debug;
+            if (_result.result?._debug_time) delete _result.result._debug_time;
             const _componentData = this.components[_result.id];
             if (!_componentData) continue;
             const _component: Component = this._componentInstance[_componentData.name];

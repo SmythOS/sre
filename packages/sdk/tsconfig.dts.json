@@ -6,7 +6,7 @@
         "outDir": "./dist/types",
         "module": "ESNext",
         "target": "ESNext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "sourceMap": true,
         "preserveSymlinks": true,
         "baseUrl": "./src",
