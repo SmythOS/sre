@@ -5,9 +5,9 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { AWSCredentials, AWSRegionConfig } from '@sre/types/AWS.types';
 import { calculateExecutionCost, generateCodeFromLegacyComponent, getLambdaCredentials, reportUsage } from '@sre/helpers/AWSLambdaCode.helper';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
 
 export class ServerlessCode extends Component {
-
     protected configSchema = Joi.object({
         code_imports: Joi.string().max(1000).allow('').label('Imports'),
         code_body: Joi.string().max(500000).allow('').label('Code'),
@@ -26,10 +26,10 @@ export class ServerlessCode extends Component {
     constructor() {
         super();
     }
-    init() { }
+    init() {}
 
     async process(input, config, agent: Agent) {
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise((resolve) => setTimeout(resolve, 10000));
         await super.process(input, config, agent);
         const logger = this.createComponentLogger(agent, config);
         try {
@@ -39,22 +39,29 @@ export class ServerlessCode extends Component {
             const componentInputs = agent.components[config.id]?.inputs || {};
 
             let codeInputs = {};
+
             for (let field of componentInputs) {
-                const _type = typeof input[field.name];
+                // Parse using input values first, then agent variables.
+                // This correctly resolves cases where input values reference agent variables with the same name.
+                // Example: agent variables { user_id: "123" }, input { user_id: "{{user_id}}" }.
+                const inputValue = TemplateString(input[field.name]).parse(input).parse(agent.agentVariables).result;
+
+                const _type = typeof inputValue;
+
                 switch (_type) {
                     case 'string':
                         try {
-                            codeInputs[field.name] = JSON.parse(input[field.name].replace(/\\"/g, '"'));
+                            codeInputs[field.name] = JSON.parse(inputValue.replace(/\\"/g, '"'));
                         } catch (error) {
-                            codeInputs[field.name] = `${input[field.name]}`;
+                            codeInputs[field.name] = `${inputValue}`;
                         }
                         break;
                     case 'number':
                     case 'boolean':
-                        codeInputs[field.name] = input[field.name];
+                        codeInputs[field.name] = inputValue;
                         break;
                     default:
-                        codeInputs[field.name] = input[field.name];
+                        codeInputs[field.name] = inputValue;
                         break;
                 }
             }
@@ -62,35 +69,38 @@ export class ServerlessCode extends Component {
             logger.debug(`\nInput Variables: \n${JSON.stringify(codeInputs, null, 2)}\n`);
 
             let codeConnector = ConnectorService.getCodeConnector();
-            let codeCredentials: AWSCredentials & AWSRegionConfig & { isUserProvidedKeys: boolean } =
-                await getLambdaCredentials(agent, config);
+            let codeCredentials: AWSCredentials & AWSRegionConfig & { isUserProvidedKeys: boolean } = await getLambdaCredentials(agent, config);
 
             if (codeCredentials.isUserProvidedKeys) {
                 codeConnector = codeConnector.instance({
                     region: codeCredentials.region,
                     accessKeyId: codeCredentials.accessKeyId,
                     secretAccessKey: codeCredentials.secretAccessKey,
-                })
+                });
             }
             let code = config?.data?.code;
             if (!code) {
-                code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs))
+                code = generateCodeFromLegacyComponent(config.data.code_body, config.data.code_imports, Object.keys(codeInputs));
             }
             // Deploy lambda function if it doesn't exist or the code hash is different
-            await codeConnector.agent(agent.id)
-                .deploy(config.id, {
+            await codeConnector.agent(agent.id).deploy(
+                config.id,
+                {
                     code,
                     inputs: codeInputs,
-                }, {
+                },
+                {
                     runtime: 'nodejs',
-                });
+                }
+            );
 
             try {
                 const executionResponse = await codeConnector.agent(agent.id).execute(config.id, codeInputs);
                 const executionTime = executionResponse.executionTime;
                 logger.debug(
-                    `Code result:\n ${typeof executionResponse.output === 'object' ? JSON.stringify(executionResponse.output, null, 2) : executionResponse.output
-                    }\n`,
+                    `Code result:\n ${
+                        typeof executionResponse.output === 'object' ? JSON.stringify(executionResponse.output, null, 2) : executionResponse.output
+                    }\n`
                 );
                 logger.debug(`Execution time: ${executionTime}ms\n`);
 
