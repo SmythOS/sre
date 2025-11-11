@@ -2,14 +2,18 @@ import { IVectorDataSourceDto, Source } from '@sre/types/VectorDB.types';
 import { isUrl } from '@sre/utils/index';
 import { SupportedProviders, SupportedModels } from './index';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { TLLMCredentials } from '@sre/types/LLM.types';
 
 export type TEmbeddings = {
     provider?: SupportedProviders;
     model?: SupportedModels[SupportedProviders];
 
-    credentials?: {
-        apiKey: string;
-    };
+    credentials?:
+        | TLLMCredentials
+        | TLLMCredentials[]
+        | {
+              apiKey: string;
+          };
 
     dimensions?: number;
     timeout?: number;

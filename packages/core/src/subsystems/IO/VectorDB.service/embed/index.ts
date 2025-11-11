@@ -28,6 +28,7 @@ export class EmbeddingsFactory {
         //if the model is a TLLMModel, we need to convert it to a SupportedModels[SupportedProviders]
         if (config.model && typeof config.model === 'object') {
             provider = (config.model as TLLMModel).provider as SupportedProviders;
+            config.credentials = (config.model as TLLMModel).credentials;
             config.model = (config.model as TLLMModel).modelId;
         }
 
