@@ -13,10 +13,12 @@ dotenv.config();
 
 async function main() {
     const pinecone = VectorDB.Pinecone('test', {
-        indexName: 'demo_vec',
+        indexName: 'demo-vec',
 
         apiKey: process.env.PINECONE_API_KEY,
-        embeddings: Model.OpenAI('text-embedding-3-large'),
+        embeddings: {
+            model: Model.OpenAI('text-embedding-3-large'),
+        },
     });
 
     // This will wipe all the data in 'test' namespace
@@ -24,7 +26,7 @@ async function main() {
 
     const parsedDoc = await Doc.pdf.parse(filePath);
 
-    const result = await pinecone.insertDoc('test', parsedDoc, { myEntry: 'My Metadata' });
+    const result = await pinecone.insertDoc('test', parsedDoc, { metadata: { myEntry: 'My Metadata' }, returnFullVectorInfo: true });
     console.log(result);
     const searchResult = await pinecone.search('Proof-of-Work', { topK: 5 });
     console.log(searchResult);

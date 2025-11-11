@@ -9,8 +9,14 @@ import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
 import { IAccessCandidate, IACL, TAccessLevel } from '@sre/types/ACL.types';
-import { DatasourceDto, IStorageVectorDataSource, IVectorDataSourceDto, QueryOptions, VectorsResultData } from '@sre/types/VectorDB.types';
-import { chunkText } from '@sre/utils/string.utils';
+import {
+    DatasourceDto,
+    IStorageVectorDataSource,
+    IVectorDataSourceDto,
+    QueryOptions,
+    VectorDBResult,
+    VectorsResultData,
+} from '@sre/types/VectorDB.types';
 import { CreateIndexSimpleReq, DataType, ErrorCode, FieldType, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import crypto from 'crypto';
 import { jsonrepair } from 'jsonrepair';
@@ -72,10 +78,10 @@ export class MilvusVectorDB extends VectorDBConnector {
         this.cache = ConnectorService.getCacheConnector();
 
         if (!_settings.embeddings) {
-            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 3072 };
         }
-        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
-        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
+
+        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 3072;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
 
@@ -231,7 +237,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
-    ): Promise<string[]> {
+    ): Promise<VectorDBResult[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
@@ -264,7 +270,18 @@ export class MilvusVectorDB extends VectorDBConnector {
             throw new Error(`Error inserting data: ${res?.status?.error_code}`);
         }
 
-        return preparedSource.map((s) => s.id);
+        return preparedSource.map((s) => {
+            const { text, acl, user_metadata, ...restMetadata } = s || {};
+            return {
+                id: s.id,
+                values: s.vector as number[],
+                text: text as string,
+                metadata: {
+                    ...restMetadata,
+                    ...((typeof user_metadata === 'string' ? JSON.parse(user_metadata) : user_metadata) as Record<string, any>),
+                },
+            };
+        });
     }
 
     @SecureConnector.AccessControl
@@ -306,7 +323,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         const dsId = datasource.id || crypto.randomUUID();
 
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const chunkedText = chunkText(datasource.text, {
+        const chunkedText = this.embedder.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });
@@ -328,16 +345,20 @@ export class MilvusVectorDB extends VectorDBConnector {
 
         const _vIds = await this.insert(acRequest, namespace, source);
 
-        return {
+        const dsData: IStorageVectorDataSource = {
             namespaceId: formattedNs,
             candidateId: acRequest.candidate.id,
             candidateRole: acRequest.candidate.role,
             name: label,
             metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds: _vIds.map((v) => v.id),
             id: dsId,
         };
+        if (datasource.returnFullVectorInfo) {
+            dsData.vectorInfo = _vIds;
+        }
+        return dsData;
     }
 
     @SecureConnector.AccessControl

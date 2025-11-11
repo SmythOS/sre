@@ -15,7 +15,11 @@ const pineconeNamespace = 'crypto-ns';
 const pineconeSettings = {
     indexName: 'demo-vec',
     apiKey: process.env.PINECONE_API_KEY,
-    embeddings: Model.OpenAI('text-embedding-3-large'),
+    embeddings: {
+        model: Model.OpenAI('text-embedding-3-large'),
+        chunkSize: 1000,
+        chunkOverlap: 100,
+    },
     //you can also use Model.GoogleAI('gemini-embedding-001', { dimensions: 1024 })
 };
 
@@ -81,7 +85,7 @@ async function indexDataForAgent(agent: Agent) {
         tags: ['bitcoin', 'crypto', 'blockchain'],
     });
 
-    await pinecone.insertDoc(parsedDoc.title, parsedDoc, { myEntry: 'My Metadata' });
+    await pinecone.insertDoc(parsedDoc.title, parsedDoc, { metadata: { myEntry: 'My Metadata' } });
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

@@ -21,7 +21,7 @@ describe('VectorDB - Standalone RAMVec', () => {
         await ram.purge();
 
         // insert
-        const id = await ram.insertDoc('hello', 'Hello, world!', { label: 'greeting' });
+        const id = await ram.insertDoc('hello', 'Hello, world!', { metadata: { label: 'greeting' } });
         expect(id).toBeTruthy();
 
         // search

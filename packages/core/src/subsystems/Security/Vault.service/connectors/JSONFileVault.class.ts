@@ -10,6 +10,9 @@ import crypto from 'crypto';
 import fs from 'fs';
 import * as readlineSync from 'readline-sync';
 import { VaultConnector } from '../VaultConnector';
+import { askForValues, colors } from '@sre/utils/index';
+import os from 'os';
+import path from 'path';
 
 const logger = Logger('JSONFileVault');
 
@@ -26,6 +29,8 @@ export class JSONFileVault extends VaultConnector {
     private shared: string;
     private vaultFile: string;
     private watcher: chokidar.FSWatcher | null = null;
+
+    private _interactiveVaultCreation: boolean = false;
 
     constructor(protected _settings: JSONFileVaultConfig) {
         super(_settings);
@@ -61,8 +66,15 @@ export class JSONFileVault extends VaultConnector {
         }
 
         console.warn('!!! All attempts to find the vault file failed !!!');
-        console.warn('!!! Will continue without vault !!!');
-        console.warn('!!! Many features might not work !!!');
+        if (!this._interactiveVaultCreation) {
+            this.createDefaultVaultInteractive();
+            this._interactiveVaultCreation = true;
+            return this.findVaultFile(this.vaultFile);
+        } else {
+            process.stdout.write(colors.red + '[ERR] Could not find or create a valid vault file.\n' + colors.reset);
+            console.warn('!!! SRE Will continue without vault !!!');
+            console.warn('!!! Many features might not work !!!');
+        }
 
         return null;
     }
@@ -77,6 +89,52 @@ export class JSONFileVault extends VaultConnector {
         });
         logger.info('Master key entered');
         return masterKey;
+    }
+
+    private createDefaultVaultInteractive(): boolean {
+        const userVaultDir = path.resolve(os.homedir(), '.smyth');
+
+        const userVaultPath = path.resolve(userVaultDir, 'vault.json');
+
+        process.stdout.write(colors.red + '\n\n\n\n SRE Initialization was interrupted because no valid vault file was found.\n' + colors.reset);
+        process.stdout.write(
+            colors.red + 'I will help you create a default vault file here : ' + path.relative(process.cwd(), userVaultPath) + '\n' + colors.reset
+        );
+        process.stdout.write(colors.red + '\nUse Ctrl+C to cancel.\n' + colors.reset);
+        process.stdout.write(colors.bright + '===[ SRE : JSON Vault Creation ]=========================' + colors.reset + '\n');
+
+        const apiKeys = askForValues('Please enter the API keys for your LLM providers (Press Enter to skip any key):', {
+            openai: 'OpenAI : ',
+            anthropic: 'Anthropic : ',
+            googleai: 'Google AI : ',
+            xai: 'xAI : ',
+            groq: 'Groq : ',
+        });
+
+        const defaultVault = {
+            default: {
+                echo: '',
+                openai: '',
+                anthropic: '',
+                googleai: '',
+                groq: '',
+                togetherai: '',
+                xai: '',
+                deepseek: '',
+                tavily: '',
+                scrapfly: '',
+                ...apiKeys,
+            },
+        };
+        fs.mkdirSync(userVaultDir, { recursive: true });
+        fs.writeFileSync(userVaultPath, JSON.stringify(defaultVault, null, 2));
+
+        process.stdout.write(colors.bright + colors.green + '\nThe vault file is now created at : ' + userVaultPath + colors.reset);
+        process.stdout.write(colors.bright + '\nYou can edit it later if you want to add/update keys.' + colors.reset);
+
+        process.stdout.write(colors.bright + '\n================================================\n\n\n' + colors.reset);
+
+        return true;
     }
 
     /**

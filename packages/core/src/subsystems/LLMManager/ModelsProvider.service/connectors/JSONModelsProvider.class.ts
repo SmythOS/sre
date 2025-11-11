@@ -170,11 +170,13 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                 }
             } else if (typeof modelData === 'object' && !Array.isArray(modelData)) {
                 // Object of models case
+                let models = '';
                 for (const [modelId, model] of Object.entries(modelData)) {
                     try {
                         if (this.isValidSingleModel(model)) {
                             validModels[modelId] = model as TLLMModel;
-                            console.debug(`Loaded model: ${modelId}`);
+                            //console.debug(`Loaded model: ${modelId}`);
+                            models += `${modelId} `;
                         } else {
                             console.warn(`Invalid model format for model "${modelId}"`);
                         }
@@ -183,6 +185,7 @@ export class JSONModelsProvider extends ModelsProviderConnector {
                         // Continue processing other models instead of failing the whole file
                     }
                 }
+                console.debug(`Loaded models: ${models}`);
             } else {
                 console.warn(`Invalid format (not a model or object of models)`);
             }
