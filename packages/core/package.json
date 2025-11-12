@@ -25,7 +25,7 @@
     "scripts": {
         "gen:barrel": "ctix build",
         "build:types": "tsc --emitDeclarationOnly --declaration --outDir dist/types -p tsconfig.dts.json",
-        "build:jsbundle": "cross-env rollup -c",
+        "build:jsbundle": "cross-env NODE_OPTIONS='--max-old-space-size=8192' rollup -c",
         "build": "pnpm run build:jsbundle && pnpm run build:types",
         "test:unit": "cd ../.. && vitest run packages/core/tests/unit",
         "test:unit:watch": "cd ../.. && vitest watch packages/core/tests/unit",

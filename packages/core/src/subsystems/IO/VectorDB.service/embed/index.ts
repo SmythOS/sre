@@ -23,4 +23,20 @@ export class EmbeddingsFactory {
     public static create(provider: SupportedProviders, config: TEmbeddings) {
         return new supportedProviders[provider].embedder(config);
     }
+
+    public static getProviderByModel(model: SupportedModels): SupportedProviders {
+        return Object.keys(supportedProviders).find((provider) => supportedProviders[provider].models.includes(model)) as SupportedProviders;
+    }
+
+    public static getModels() {
+        return Object.keys(supportedProviders).reduce((acc, provider) => {
+            acc.push(
+                ...supportedProviders[provider].models.map((model) => ({
+                    provider,
+                    model,
+                }))
+            );
+            return acc;
+        }, [] as { provider: SupportedProviders; model: SupportedModels[SupportedProviders] }[]);
+    }
 }

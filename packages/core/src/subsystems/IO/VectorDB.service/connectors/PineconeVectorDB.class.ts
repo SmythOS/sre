@@ -30,13 +30,21 @@ const console = Logger('Pinecone VectorDB');
 
 export type PineconeConfig = {
     /**
-     * The Pinecone API key
+     * The Pinecone API key [LEGACY]
      */
     apiKey: string;
     /**
-     * The Pinecone index name
+     * The Pinecone index name [LEGACY]
      */
     indexName: string;
+
+    /**
+     * The Pinecone credentials [New unified format]
+     */
+    credentials: {
+        apiKey: string;
+        indexName: string;
+    };
     /**
      * The embeddings model to use
      */
@@ -54,21 +62,21 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: PineconeConfig) {
         super(_settings);
-        if (!_settings.apiKey) {
+        if (!_settings.apiKey && !_settings.credentials?.apiKey) {
             console.warn('Missing Pinecone API key : returning empty Pinecone connector');
             return;
         }
-        if (!_settings.indexName) {
+        if (!_settings.indexName && !_settings.credentials?.indexName) {
             console.warn('Missing Pinecone index name : returning empty Pinecone connector');
             return;
         }
 
         this.client = new Pinecone({
-            apiKey: _settings.apiKey,
+            apiKey: _settings.apiKey || _settings.credentials?.apiKey,
         });
         console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', _settings.indexName);
-        this.indexName = _settings.indexName;
+        console.info('Pinecone index name:', _settings.indexName || _settings.credentials?.indexName);
+        this.indexName = _settings.indexName || _settings.credentials?.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
