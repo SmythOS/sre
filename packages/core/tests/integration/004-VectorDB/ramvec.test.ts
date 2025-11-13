@@ -101,9 +101,12 @@ describe('RAMVec - VectorDB connector (in-memory)', () => {
         });
 
         it('should create datasource with chunking and search by string and vector', async () => {
-            const vdb = ConnectorService.getVectorDBConnector('RAMVec');
+            const vdb = ConnectorService.getVectorDBConnector('RAMVec') as RAMVectorDB;
             const user = AccessCandidate.user('test-user');
             const client = vdb.requester(user);
+
+            // Get the configured dimension from the embedder
+            const expectedDimension = vdb.embedder.dimensions;
 
             // Prepare namespace and datasource
             await client.createNamespace('docs');
@@ -134,10 +137,10 @@ describe('RAMVec - VectorDB connector (in-memory)', () => {
             expect(byString.length).toBeGreaterThan(0);
             expect(byString[0].text.includes('KLM')).toBe(true);
             expect(byString[0].metadata).toBeDefined();
-            expect(byString[0].values.length).toBe(8); // our mocked dimension
+            expect(byString[0].values.length).toBe(expectedDimension); // use configured dimension
 
             // Search by vector using the same deterministic embedding
-            const queryVec = makeVector('KLM', 8);
+            const queryVec = makeVector('KLM', expectedDimension);
             const byVector = await client.search('docs', queryVec, { topK: 1, includeMetadata: false });
             expect(byVector.length).toBe(1);
             expect(byVector[0].text.includes('KLM')).toBe(true);
