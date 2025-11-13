@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { IAgent as Agent } from '@sre/types/Agent.types';
 import { Logger } from '@sre/helpers/Log.helper';
 import { performTypeInference } from '@sre/helpers/TypeChecker.helper';
-import { hookAsync } from '@sre/Core/HookService';
+import { hookableClass, hookAsync } from '@sre/Core/HookService';
 
 export type TComponentSchema = {
     name: string;
@@ -25,6 +25,8 @@ export enum ComponentInputType {
     Array = 'Array',
     Object = 'Object',
 }
+
+@hookableClass
 export class Component {
     public hasReadOutput = false;
     public hasPostProcess = true;

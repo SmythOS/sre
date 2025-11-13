@@ -49,7 +49,7 @@ export class EchoConnector extends LLMConnector {
 
                 for (let i = 0; i < chunks.length; i++) {
                     // Simulate network delay
-                    await delay(10);
+                    await delay(3);
 
                     const isLastChunk = i === chunks.length - 1;
                     // Add space between chunks except for the last one to avoid trailing space in file URLs

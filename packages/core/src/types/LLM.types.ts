@@ -499,6 +499,8 @@ export enum TLLMEvent {
     Interrupted = 'interrupted',
     /** Fallback : emitted when the response is using a fallback model */
     Fallback = 'fallback',
+    /** Requested : emitted when a request is sent to the LLM */
+    Requested = 'requested',
 }
 
 export interface ILLMRequestContext {
