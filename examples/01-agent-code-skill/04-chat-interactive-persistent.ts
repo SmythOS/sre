@@ -8,7 +8,6 @@ async function main() {
         //IMPORTANT !! : in order to persist chat, you need to set an id for your agent
         //in fact, due to SRE data isolaton we need to identify the owner of persisted data, in this case the agent
         id: 'crypto-market-assistant',
-        teamId: 'crypto-market-team',
         name: 'CryptoMarket Assistant',
         behavior: 'You are a crypto price tracker. You are given a coin id and you need to get the price of the coin in USD',
         model: 'gpt-4o',
