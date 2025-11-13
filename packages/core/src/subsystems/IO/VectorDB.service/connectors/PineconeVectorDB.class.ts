@@ -147,6 +147,7 @@ export class PineconeVectorDB extends VectorDBConnector {
     protected async deleteNamespace(acRequest: AccessRequest, namespace: string): Promise<void> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         //const candidate = AccessCandidate.team(teamId);
+
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
         await this.client
@@ -154,12 +155,18 @@ export class PineconeVectorDB extends VectorDBConnector {
             .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
             .deleteAll()
             .catch((e) => {
+                console.error(`Error deleting namespace ${namespace}: ${e}`);
                 if (e?.name == 'PineconeNotFoundError') {
                     console.warn(`Namespace ${namespace} does not exist and was requested to be deleted`);
                     return;
                 }
                 throw e;
             });
+
+        // delete the linked datasources from nkv
+        await this.nkvConnector
+            .requester(acRequest.candidate as AccessCandidate)
+            .deleteAll(`vectorDB:${this.id}:namespaces:${preparedNs}:datasources`);
 
         await this.deleteACL(AccessCandidate.clone(acRequest.candidate), namespace);
     }
@@ -252,7 +259,7 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     @SecureConnector.AccessControl
     protected async delete(acRequest: AccessRequest, namespace: string, deleteTarget: DeleteTarget): Promise<void> {
-        const isDeleteByFilter = typeof deleteTarget === 'object';
+        const isDeleteByFilter = typeof deleteTarget === 'object' && !Array.isArray(deleteTarget);
 
         if (isDeleteByFilter) {
             // TODO: handle delete by filter logic
