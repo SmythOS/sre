@@ -285,7 +285,7 @@ function createConversation(agentData: AgentData, options?: any) {
     });
 
     conversation.on(TLLMEvent.Error, (error) => {
-        console.error('An error occurred while running the agent: ', error.message);
+        console.error('An error occurred while running the agent: ', error.message, error.stack);
     });
 
     return conversation;

@@ -1,5 +1,5 @@
 import { Agent, MCPTransport, Model, Scope, TLLMEvent } from '@smythos/sdk';
-import { Component, HookService, THook, SRE, Agent as SREAgent } from '@smythos/sdk/core';
+import { Component, HookService, THook, SRE, Agent as SREAgent, LLMConnector } from '@smythos/sdk/core';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -37,7 +37,7 @@ async function setupHooks() {
     HookService.register(
         'Component.process', //runs before the component execution
         async function (input, settings, agent) {
-            const component: Component = this as Component;
+            const component: Component = this.instance as Component;
             console.log('>> Component.process', component.constructor.name, input);
         },
         THook.NonBlocking //make it non-blocking to avoid degrading performances
@@ -46,7 +46,7 @@ async function setupHooks() {
     HookService.registerAfter(
         'Component.process', //runs after the component execution
         async function ({ result, args, error }) {
-            const component: Component = this as Component;
+            const component: Component = this.instance as Component;
             console.log('<< Component.process', component.constructor.name, result);
         },
         THook.NonBlocking
@@ -55,7 +55,7 @@ async function setupHooks() {
     HookService.register(
         'SREAgent.process', //runs before the agent execution
         async function (endpointPath, input) {
-            const agent: SREAgent = this as SREAgent;
+            const agent: SREAgent = this.instance as SREAgent;
 
             console.log('>> SREAgent.process', {
                 name: agent.name,
@@ -81,7 +81,8 @@ async function setupHooks() {
     HookService.register(
         'LLMConnector.streamRequest', //runs before the LLM connector request
         async function ({ body }) {
-            const llmName = this.name;
+            const instance = this.instance as LLMConnector;
+            const llmName = instance.name;
             console.log('>> LLMConnector.request', llmName);
         },
         THook.NonBlocking
@@ -89,11 +90,12 @@ async function setupHooks() {
     HookService.registerAfter(
         'LLMConnector.streamRequest', //runs after the LLM connector request
         async function ({ result, args, error }) {
-            const llmName = this.name;
+            const instance = this.instance as LLMConnector;
+            const llmName = instance.name;
             console.log('<< LLMConnector.request', llmName);
 
             //for the LLMs, the resurned result is an event emitter that emits LLMs events (the same ones used by the SDK)
-            result.on(TLLMEvent.Data, (content) => {
+            result.on(TLLMEvent.Data, (content, reqInfo) => {
                 console.log('LLM data', content);
             });
         },

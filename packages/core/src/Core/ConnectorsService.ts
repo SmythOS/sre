@@ -3,7 +3,7 @@ import { ComponentConnector } from '@sre/AgentManager/Component.service/Componen
 import { SchedulerConnector } from '@sre/AgentManager/Scheduler.service/SchedulerConnector';
 import { CodeConnector } from '@sre/ComputeManager/Code.service/CodeConnector';
 import { CLIConnector } from '@sre/IO/CLI.service/CLIConnector';
-import { LogConnector } from '@sre/IO/Log.service/LogConnector';
+import { LogConnector } from '@sre/ObservabilityManager/Log.service/LogConnector';
 import { NKVConnector } from '@sre/IO/NKV.service/NKVConnector';
 import { RouterConnector } from '@sre/IO/Router.service/RouterConnector';
 import { StorageConnector } from '@sre/IO/Storage.service/StorageConnector';
@@ -14,6 +14,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector'
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { TelemetryConnector } from '@sre/ObservabilityManager/Telemetry.service/TelemetryConnector';
 import { TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { isSubclassOf, printStackTrace } from '@sre/utils';
 import { Logger } from '../helpers/Log.helper';
@@ -219,6 +220,9 @@ export class ConnectorService {
 
     static getSchedulerConnector(name?: string): SchedulerConnector {
         return ConnectorService.getInstance<SchedulerConnector>(TConnectorService.Scheduler, name);
+    }
+    static getTelemetryConnector(name?: string): TelemetryConnector {
+        return ConnectorService.getInstance<TelemetryConnector>(TConnectorService.Telemetry, name);
     }
 }
 

@@ -125,7 +125,7 @@ class AgentCommand {
         const result = await conversation
             .streamPrompt({ message: this.prompt + attachmentsPrompt, files: hasBinarySkill ? undefined : files })
             .catch((error) => {
-                console.error('Error on streamPrompt: ', error);
+                console.error('Error on streamPrompt: ', error?.message, error?.stack);
                 return JSON.stringify({ error });
             });
 
