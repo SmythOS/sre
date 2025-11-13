@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 import { SRE } from '@smythos/sdk/core';
 
 SRE.init({
-    //configure
+    //Telemetry Service configuration
     Telemetry: {
-        Connector: 'OTel',
+        Connector: 'OTel', //we use OTel (OpenTelemetry) connector
         Settings: {
             endpoint: 'http://localhost:4318',
 
@@ -23,10 +23,6 @@ SRE.init({
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function main() {
-    //In this example we are importing a .smyth file that describes the agent workflow
-    // the .smyth file was created with SmythOS builder (https://app.smythos.com/)
-    // This agent uses Coingecko API to get crypto market data
-
     //.smyth file path
     const agentPath = path.resolve(__dirname, '../agents-data', 'crypto-info-agent.smyth');
 
