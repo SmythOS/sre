@@ -14,6 +14,7 @@ import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 import { CodeService } from '@sre/ComputeManager/Code.service';
 import { SchedulerService } from '@sre/AgentManager/Scheduler.service';
+import { TelemetryService } from '@sre/ObservabilityManager/Telemetry.service';
 
 export type TServiceRegistry = {
     Storage?: StorageService;
@@ -32,6 +33,7 @@ export type TServiceRegistry = {
     ModelsProvider?: ModelsProviderService;
     Code?: CodeService;
     Scheduler?: SchedulerService;
+    Telemetry?: TelemetryService;
 };
 
 export enum TConnectorService {
@@ -51,6 +53,7 @@ export enum TConnectorService {
     ModelsProvider = 'ModelsProvider',
     Code = 'Code',
     Scheduler = 'Scheduler',
+    Telemetry = 'Telemetry',
 }
 
 export type SREConnectorConfig = {

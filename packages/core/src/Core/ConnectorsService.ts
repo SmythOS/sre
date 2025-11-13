@@ -14,6 +14,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector'
 import { AccountConnector } from '@sre/Security/Account.service/AccountConnector';
 import { ManagedVaultConnector } from '@sre/Security/ManagedVault.service/ManagedVaultConnector';
 import { VaultConnector } from '@sre/Security/Vault.service/VaultConnector';
+import { TelemetryConnector } from '@sre/ObservabilityManager/Telemetry.service/TelemetryConnector';
 import { TConnectorService, TServiceRegistry } from '@sre/types/SRE.types';
 import { isSubclassOf, printStackTrace } from '@sre/utils';
 import { Logger } from '../helpers/Log.helper';
@@ -219,6 +220,9 @@ export class ConnectorService {
 
     static getSchedulerConnector(name?: string): SchedulerConnector {
         return ConnectorService.getInstance<SchedulerConnector>(TConnectorService.Scheduler, name);
+    }
+    static getTelemetryConnector(name?: string): TelemetryConnector {
+        return ConnectorService.getInstance<TelemetryConnector>(TConnectorService.Telemetry, name);
     }
 }
 

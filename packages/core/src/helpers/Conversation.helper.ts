@@ -38,6 +38,9 @@ type ToolParams = {
 //TODO: handle authentication
 export class Conversation extends EventEmitter {
     private _agentId: string = '';
+    public get agentId() {
+        return this._agentId;
+    }
     private _systemPrompt;
     private userDefinedSystemPrompt: string = '';
     public toolChoice: string = 'auto';
@@ -67,6 +70,11 @@ export class Conversation extends EventEmitter {
     private _teamId: string = undefined;
     private _agentVersion: string = undefined;
     public agentData: any;
+
+    private _id: string = '';
+    public get id() {
+        return this._id;
+    }
 
     public get context() {
         return this._context;
@@ -128,6 +136,7 @@ export class Conversation extends EventEmitter {
         //TODO: handle loading previous session (messages)
         super();
 
+        this._id = 'conv_' + randomUUID();
         //this event listener avoids unhandled errors that can cause crashes
         this.on('error', (error) => {
             this._lastError = error;
@@ -310,6 +319,9 @@ export class Conversation extends EventEmitter {
             maxTokens = this.model.params.maxTokens;
         }
 
+        const llmReqUid = randomUUID();
+        this.emit(TLLMEvent.Requested, { model: this.model, contextWindow, files, maxTokens, agentId: this._agentId, requestId: llmReqUid });
+
         const eventEmitter: any = await llmInference
             .promptStream({
                 contextWindow,
@@ -325,7 +337,7 @@ export class Conversation extends EventEmitter {
             })
             .catch((error) => {
                 console.error('Error on promptStream: ', error);
-                this.emit(TLLMEvent.Error, error);
+                this.emit(TLLMEvent.Error, error, { requestId: llmReqUid });
             });
 
         // remove listeners from llm event emitter to stop receiving stream data
@@ -338,20 +350,20 @@ export class Conversation extends EventEmitter {
             throw new Error('[LLM Request Error]');
         }
 
-        if (message) this.emit('start');
-        eventEmitter.on('data', (data) => {
-            if (this.stop) return;
-            this.emit('data', data);
-        });
+        if (message) this.emit('start', { requestId: llmReqUid });
+        // eventEmitter.on(TLLMEvent.Data, (data) => {
+        //     if (this.stop) return;
+        //     this.emit('data', data);
+        // });
 
         eventEmitter.on(TLLMEvent.Thinking, (thinking) => {
             if (this.stop) return;
-            this.emit(TLLMEvent.Thinking, thinking);
+            this.emit(TLLMEvent.Thinking, thinking, { requestId: llmReqUid });
         });
 
         eventEmitter.on(TLLMEvent.Data, (data) => {
             if (this.stop) return;
-            this.emit(TLLMEvent.Data, data);
+            this.emit(TLLMEvent.Data, data, { requestId: llmReqUid });
         });
 
         eventEmitter.on(TLLMEvent.Content, (content) => {
@@ -368,7 +380,7 @@ export class Conversation extends EventEmitter {
             //     let s = true;
             // }
             _content += content;
-            this.emit(TLLMEvent.Content, content);
+            this.emit(TLLMEvent.Content, content, { requestId: llmReqUid });
         });
 
         let finishReason = 'stop';
@@ -408,6 +420,8 @@ export class Conversation extends EventEmitter {
                 toolsData.forEach((tool) => {
                     tool.status = tool.name ? this._toolStatusMap?.[tool.name] : undefined;
                 });
+                toolsData.content = _content;
+                toolsData.requestId = llmReqUid;
 
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {
@@ -473,7 +487,7 @@ export class Conversation extends EventEmitter {
                         this.emit('beforeToolCall', { tool, args }, llmMessage); //deprecated
 
                         const status = tool.name ? this._toolStatusMap?.[tool.name] : undefined;
-                        this.emit(TLLMEvent.ToolCall, { tool, status, _llmRequest: llmMessage });
+                        this.emit(TLLMEvent.ToolCall, { tool, status, _llmRequest: llmMessage, requestId: llmReqUid });
 
                         const toolArgs = {
                             type: tool?.type,
@@ -500,7 +514,7 @@ export class Conversation extends EventEmitter {
 
                         //await afterFunctionCall(functionResponse, toolsData[tool.index]);
                         this.emit('afterToolCall', { tool, args }, functionResponse); // Deprecated
-                        this.emit(TLLMEvent.ToolResult, { tool, result });
+                        this.emit(TLLMEvent.ToolResult, { tool, result, requestId: llmReqUid });
 
                         return { ...tool, result: functionResponse };
                     }
@@ -542,7 +556,7 @@ export class Conversation extends EventEmitter {
                 if (_finishReason) finishReason = _finishReason;
                 if (usage_data) {
                     //FIXME : normalize the usage data format
-                    this.emit(TLLMEvent.Usage, usage_data);
+                    this.emit(TLLMEvent.Usage, usage_data, { requestId: llmReqUid });
                 }
                 if (hasError) return;
 
@@ -563,7 +577,7 @@ export class Conversation extends EventEmitter {
         const toolsContent = await toolsPromise.catch((error) => {
             console.error('Error in toolsPromise: ', error);
             //this.emit('error', error);
-            this.emit(TLLMEvent.Error, error);
+            this.emit(TLLMEvent.Error, error, { requestId: llmReqUid });
             return '';
         });
         _content += toolsContent;
@@ -588,9 +602,9 @@ export class Conversation extends EventEmitter {
             //this._context.push({ role: 'assistant', content: content });
 
             if (finishReason !== 'stop') {
-                this.emit(TLLMEvent.Interrupted, finishReason);
+                this.emit(TLLMEvent.Interrupted, finishReason, { requestId: llmReqUid });
             }
-            this.emit(TLLMEvent.End);
+            this.emit(TLLMEvent.End, { requestId: llmReqUid });
         } else {
             //console.log('tool content', content);
         }
@@ -671,6 +685,7 @@ export class Conversation extends EventEmitter {
 
                 reqConfig.headers['X-CACHE-ID'] = this._context?.llmCache?.id;
 
+                reqConfig.headers['X-REQUEST-TAG'] = this.id;
                 /*
                  * Objective for the following conditions:
                  * - In case it is not a debug call and there is no monitor id, then we need to run the agent locally to reduce latency

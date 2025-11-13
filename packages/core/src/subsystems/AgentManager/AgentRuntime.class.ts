@@ -320,9 +320,6 @@ export class AgentRuntime {
             `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`,
             AccessCandidate.agent(this.agent.id)
         );
-        console.log(
-            `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`
-        );
         //this.checkRuntimeContext();
 
         const runtime = this;

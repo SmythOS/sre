@@ -17,6 +17,7 @@ import { ComponentService } from '@sre/AgentManager/Component.service';
 import { ModelsProviderService } from '@sre/LLMManager/ModelsProvider.service';
 import { CodeService } from '@sre/ComputeManager/Code.service';
 import { SchedulerService } from '@sre/AgentManager/Scheduler.service';
+import { TelemetryService } from '@sre/ObservabilityManager/Telemetry.service';
 const console = Logger('Boot');
 let _booted = false;
 export function boot() {
@@ -44,6 +45,7 @@ export function boot() {
     service.Component = new ComponentService();
     service.Code = new CodeService();
     service.Scheduler = new SchedulerService();
+    service.Telemetry = new TelemetryService();
 
     SystemEvents.on('SRE:Initialized', () => {
         console.debug('SRE Initialized');
