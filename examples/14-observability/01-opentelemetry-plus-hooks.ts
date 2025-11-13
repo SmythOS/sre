@@ -106,5 +106,5 @@ async function setupHooks() {
         THook.NonBlocking
     );
 }
-
+setupHooks();
 main();
