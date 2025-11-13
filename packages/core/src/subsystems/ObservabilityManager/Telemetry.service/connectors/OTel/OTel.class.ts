@@ -210,9 +210,30 @@ export class OTel extends TelemetryConnector {
             return function (toolInfo: any) {
                 if (!hookContext.curLLMGenSpan || !hookContext.convSpan) return;
 
+                const modelId = toolInfo.model;
+                const contextWindow = toolInfo.contextWindow;
+                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
+
                 const toolNames = toolInfo.map((tool) => tool.name + '(' + tool.arguments + ')');
                 hookContext.curLLMGenSpan.addEvent('llm.gen.tool.calls', {
                     'tool.calls': toolNames.join(', '),
+                    'llm.model': modelId || 'unknown',
+                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                });
+
+                const spanContext = trace.setSpan(context.active(), hookContext.curLLMGenSpan);
+                context.with(spanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: `LLM tool calls: ${toolNames.join(', ')}`,
+                        attributes: {
+                            'agent.id': hookContext.agentId,
+                            'conv.id': hookContext.processId,
+                            'llm.model': modelId || 'unknown',
+                            'context.preview': JSON.stringify(lastContext).substring(0, 5000),
+                        },
+                    });
                 });
 
                 hookContext.curLLMGenSpan.end();
@@ -225,6 +246,10 @@ export class OTel extends TelemetryConnector {
                 if (!hookContext.convSpan) return;
                 if (hookContext.curLLMGenSpan) return;
 
+                const modelId = reqInfo.model;
+                const contextWindow = reqInfo.contextWindow;
+
+                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
                 // End TTFB span when first data arrives
                 if (hookContext?.latencySpans?.[reqInfo.requestId]) {
                     const ttfbSpan = hookContext.latencySpans[reqInfo.requestId];
@@ -233,6 +258,7 @@ export class OTel extends TelemetryConnector {
                     ttfbSpan.addEvent('llm.first.byte.received', {
                         'request.id': reqInfo.requestId,
                         'data.size': JSON.stringify(data || {}).length,
+                        'llm.model': modelId || 'unknown',
                     });
 
                     ttfbSpan.setStatus({ code: SpanStatusCode.OK });
@@ -247,11 +273,17 @@ export class OTel extends TelemetryConnector {
                         attributes: {
                             'agent.id': hookContext.agentId,
                             'conv.id': hookContext.processId,
+                            'llm.model': modelId || 'unknown',
                         },
                     },
                     trace.setSpan(context.active(), hookContext.convSpan)
                 );
-                llmGenSpan.addEvent('llm.gen.started');
+                llmGenSpan.addEvent('llm.gen.started', {
+                    'request.id': reqInfo.requestId,
+                    timestamp: Date.now(),
+                    'llm.model': modelId || 'unknown',
+                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
+                });
                 hookContext.curLLMGenSpan = llmGenSpan;
             };
         };
@@ -261,8 +293,11 @@ export class OTel extends TelemetryConnector {
                 if (!hookContext.convSpan) return;
 
                 if (!hookContext.latencySpans) hookContext.latencySpans = {};
+                const contextWindow = reqInfo.contextWindow;
 
-                const modelId = typeof reqInfo.model === 'string' ? reqInfo.model : reqInfo.model.modelId;
+                const lastContext = contextWindow.filter((context) => context.role === 'user').slice(-2);
+
+                const modelId = reqInfo.model;
                 const llmGenLatencySpan = tracer.startSpan(
                     'Conv.GenAI.TTFB',
                     {
@@ -279,6 +314,7 @@ export class OTel extends TelemetryConnector {
                 llmGenLatencySpan.addEvent('llm.requested', {
                     'request.id': reqInfo.requestId,
                     timestamp: Date.now(),
+                    'context.preview': JSON.stringify(lastContext).substring(0, 200),
                 });
                 hookContext.latencySpans[reqInfo.requestId] = llmGenLatencySpan;
             };
@@ -292,13 +328,18 @@ export class OTel extends TelemetryConnector {
                 const message = args?.message || null;
                 const hookContext: any = this.context;
                 if (message == null) {
+                    //this is a conversation step, will be handled by createRequestedHandler
+
                     return;
                 }
+
+                const modelId = typeof conversation?.model === 'string' ? conversation?.model : conversation?.model?.modelId;
 
                 const convSpan = tracer.startSpan('Agent.Conv', {
                     attributes: {
                         'agent.id': agentId,
                         'conv.id': processId,
+                        'llm.model': modelId || 'unknown',
                     },
                 });
                 hookContext.convSpan = convSpan;
@@ -318,30 +359,31 @@ export class OTel extends TelemetryConnector {
                 convSpan.addEvent('skill.process.started', {
                     'input.size': JSON.stringify(message || {}).length,
                     'input.preview': message.substring(0, 200),
+                    'llm.model': modelId || 'unknown',
                 });
 
                 OTelContextRegistry.startProcess(agentId, processId, convSpan);
 
-                // const spanCtx = convSpan.spanContext();
-                // const spanContext = trace.setSpan(context.active(), convSpan);
-                // context.with(spanContext, () => {
-                //     logger.emit({
-                //         severityNumber: SeverityNumber.INFO,
-                //         severityText: 'INFO',
-                //         body: `Conversation.streamPrompt started: ${processId}`,
-                //         attributes: {
-                //             // Explicit trace correlation (some backends need these)
-                //             trace_id: spanCtx.traceId,
-                //             span_id: spanCtx.spanId,
-                //             trace_flags: spanCtx.traceFlags,
+                const spanCtx = convSpan.spanContext();
+                const spanContext = trace.setSpan(context.active(), convSpan);
+                context.with(spanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: `Conversation.streamPrompt started: ${processId}`,
+                        attributes: {
+                            // Explicit trace correlation (some backends need these)
+                            trace_id: spanCtx.traceId,
+                            span_id: spanCtx.spanId,
+                            trace_flags: spanCtx.traceFlags,
 
-                //             'agent.id': agentId,
-                //             'conv.id': processId,
-                //             'input.size': JSON.stringify(message || {}).length,
-                //             'input.preview': message.substring(0, 2000),
-                //         },
-                //     });
-                // });
+                            'agent.id': agentId,
+                            'conv.id': processId,
+                            'input.size': JSON.stringify(message || {}).length,
+                            'input.preview': message.substring(0, 2000),
+                        },
+                    });
+                });
             },
             THook.NonBlocking
         );
@@ -375,21 +417,21 @@ export class OTel extends TelemetryConnector {
 
                 const { rootSpan: convSpan } = ctx;
 
-                // const spanCtx = convSpan.spanContext();
-                // const spanContext = trace.setSpan(context.active(), convSpan);
-                // context.with(spanContext, () => {
-                //     logger.emit({
-                //         severityNumber: SeverityNumber.INFO,
-                //         severityText: 'INFO',
-                //         body: `Conversation.streamPrompt completed: ${processId}`,
-                //         attributes: {
-                //             'agent.id': agentId,
-                //             'conv.id': processId,
-                //             'output.size': JSON.stringify(result || {}).length,
-                //             'output.preview': result.substring(0, 2000),
-                //         },
-                //     });
-                // });
+                const spanCtx = convSpan.spanContext();
+                const spanContext = trace.setSpan(context.active(), convSpan);
+                context.with(spanContext, () => {
+                    logger.emit({
+                        severityNumber: SeverityNumber.INFO,
+                        severityText: 'INFO',
+                        body: `Conversation.streamPrompt completed: ${processId}`,
+                        attributes: {
+                            'agent.id': agentId,
+                            'conv.id': processId,
+                            'output.size': JSON.stringify(result || {}).length,
+                            'output.preview': result.substring(0, 2000),
+                        },
+                    });
+                });
 
                 convSpan.end();
 

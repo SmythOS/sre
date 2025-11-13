@@ -320,7 +320,14 @@ export class Conversation extends EventEmitter {
         }
 
         const llmReqUid = randomUUID();
-        this.emit(TLLMEvent.Requested, { model: this.model, contextWindow, files, maxTokens, agentId: this._agentId, requestId: llmReqUid });
+        this.emit(TLLMEvent.Requested, {
+            model: typeof this.model === 'string' ? this.model : this.model?.modelId,
+            contextWindow,
+            files,
+            maxTokens,
+            agentId: this._agentId,
+            requestId: llmReqUid,
+        });
 
         const eventEmitter: any = await llmInference
             .promptStream({
@@ -363,7 +370,11 @@ export class Conversation extends EventEmitter {
 
         eventEmitter.on(TLLMEvent.Data, (data) => {
             if (this.stop) return;
-            this.emit(TLLMEvent.Data, data, { requestId: llmReqUid });
+            this.emit(TLLMEvent.Data, data, {
+                contextWindow,
+                requestId: llmReqUid,
+                model: typeof this.model === 'string' ? this.model : this.model?.modelId,
+            });
         });
 
         eventEmitter.on(TLLMEvent.Content, (content) => {
@@ -422,6 +433,7 @@ export class Conversation extends EventEmitter {
                 });
                 toolsData.content = _content;
                 toolsData.requestId = llmReqUid;
+                toolsData.contextWindow = contextWindow;
 
                 llmMessage.tool_calls = toolsData.map((tool) => {
                     return {

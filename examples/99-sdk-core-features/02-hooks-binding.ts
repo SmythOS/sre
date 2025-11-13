@@ -1,5 +1,5 @@
 import { Agent, MCPTransport, Model, Scope, TLLMEvent } from '@smythos/sdk';
-import { Component, HookService, THook, SRE, Agent as SREAgent } from '@smythos/sdk/core';
+import { Component, HookService, THook, SRE, Agent as SREAgent, LLMConnector } from '@smythos/sdk/core';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -52,53 +52,55 @@ async function setupHooks() {
         THook.NonBlocking
     );
 
-    // HookService.register(
-    //     'SREAgent.process', //runs before the agent execution
-    //     async function (endpointPath, input) {
-    //         const agent: SREAgent = this.instance as SREAgent;
+    HookService.register(
+        'SREAgent.process', //runs before the agent execution
+        async function (endpointPath, input) {
+            const agent: SREAgent = this.instance as SREAgent;
 
-    //         console.log('>> SREAgent.process', {
-    //             name: agent.name,
-    //             id: agent.id,
-    //             teamId: agent.teamId,
-    //             endpointPath,
-    //             method: agent.agentRequest.method,
-    //             body: agent.agentRequest.body,
-    //             query: agent.agentRequest.query,
-    //             input,
-    //         });
-    //     },
-    //     THook.NonBlocking
-    // );
-    // HookService.registerAfter(
-    //     'SREAgent.process', //runs after the agent execution
-    //     async function ({ result, args, error }) {
-    //         console.log('<< SREAgent.process', result);
-    //     },
-    //     THook.NonBlocking
-    // );
+            console.log('>> SREAgent.process', {
+                name: agent.name,
+                id: agent.id,
+                teamId: agent.teamId,
+                endpointPath,
+                method: agent.agentRequest.method,
+                body: agent.agentRequest.body,
+                query: agent.agentRequest.query,
+                input,
+            });
+        },
+        THook.NonBlocking
+    );
+    HookService.registerAfter(
+        'SREAgent.process', //runs after the agent execution
+        async function ({ result, args, error }) {
+            console.log('<< SREAgent.process', result);
+        },
+        THook.NonBlocking
+    );
 
-    // HookService.register(
-    //     'LLMConnector.streamRequest', //runs before the LLM connector request
-    //     async function ({ body }) {
-    //         const llmName = this.name;
-    //         console.log('>> LLMConnector.request', llmName);
-    //     },
-    //     THook.NonBlocking
-    // );
-    // HookService.registerAfter(
-    //     'LLMConnector.streamRequest', //runs after the LLM connector request
-    //     async function ({ result, args, error }) {
-    //         const llmName = this.name;
-    //         console.log('<< LLMConnector.request', llmName);
+    HookService.register(
+        'LLMConnector.streamRequest', //runs before the LLM connector request
+        async function ({ body }) {
+            const instance = this.instance as LLMConnector;
+            const llmName = instance.name;
+            console.log('>> LLMConnector.request', llmName);
+        },
+        THook.NonBlocking
+    );
+    HookService.registerAfter(
+        'LLMConnector.streamRequest', //runs after the LLM connector request
+        async function ({ result, args, error }) {
+            const instance = this.instance as LLMConnector;
+            const llmName = instance.name;
+            console.log('<< LLMConnector.request', llmName);
 
-    //         //for the LLMs, the resurned result is an event emitter that emits LLMs events (the same ones used by the SDK)
-    //         result.on(TLLMEvent.Data, (content) => {
-    //             console.log('LLM data', content);
-    //         });
-    //     },
-    //     THook.NonBlocking
-    // );
+            //for the LLMs, the resurned result is an event emitter that emits LLMs events (the same ones used by the SDK)
+            result.on(TLLMEvent.Data, (content, reqInfo) => {
+                console.log('LLM data', content);
+            });
+        },
+        THook.NonBlocking
+    );
 }
 
 setupHooks();
