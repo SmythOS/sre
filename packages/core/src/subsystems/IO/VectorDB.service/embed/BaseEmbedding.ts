@@ -14,6 +14,7 @@ export type TEmbeddings = {
         dimensions?: number;
         timeout?: number;
         chunkSize?: number;
+        chunkOverlap?: number;
         stripNewLines?: boolean;
     };
 };
