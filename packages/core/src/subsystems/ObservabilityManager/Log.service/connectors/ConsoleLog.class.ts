@@ -25,7 +25,4 @@ export class ConsoleLog extends LogConnector {
 
         return Promise.resolve();
     }
-    protected setupHooks(): Promise<void> {
-        return Promise.resolve();
-    }
 }
