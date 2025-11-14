@@ -33,5 +33,4 @@ export abstract class LogConnector extends SecureConnector {
     public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     protected abstract log(acRequest: AccessRequest, logData: AgentCallLog, callId?: string): Promise<any>;
     protected abstract logTask(acRequest: AccessRequest, tasks: number, isUsingTestDomain: boolean): Promise<void>;
-    protected abstract setupHooks(): Promise<void>;
 }

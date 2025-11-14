@@ -325,7 +325,7 @@ export class OTel extends TelemetryConnector {
                 const conversation: Conversation = this.instance;
                 const processId = conversation.id;
                 const agentId = conversation.agentId;
-                const message = args?.message || null;
+                const message = typeof args === 'object' ? args?.message : args || null;
                 const hookContext: any = this.context;
                 if (message == null) {
                     //this is a conversation step, will be handled by createRequestedHandler
@@ -394,7 +394,7 @@ export class OTel extends TelemetryConnector {
                 const conversation: Conversation = this.instance;
                 const processId = conversation.id;
                 const agentId = conversation.agentId;
-                const message = args?.[0] || null;
+                const message = typeof args?.[0] === 'object' ? args?.[0]?.message : args?.[0] || null;
                 const hookContext: any = this.context;
                 if (message == null) {
                     return;
