@@ -405,7 +405,8 @@ export class Agent implements IAgent {
     }
 
     @hookAsync('SREAgent.postProcess')
-    public async postProcess(result) {
+    public async postProcess(_result) {
+        let result = JSON.parse(JSON.stringify(_result)); //deep clone the result to avoid modifying the original object
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
 
