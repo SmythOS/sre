@@ -78,25 +78,6 @@ export class APIEndpoint extends Component {
         let query = req && !isTrigger ? req.query : {};
         const _authInfo = req ? req._agent_authinfo : undefined;
 
-        // parse template variables
-        for (const [key, value] of Object.entries(body)) {
-            if (isKeyTemplateVar(value as string)) {
-                body[key] = await parseKey(value as string, agent?.teamId);
-            } else if (isTemplateVar(value as string)) {
-                //body[key] = parseTemplate(value as string, input, { escapeString: false });
-                body[key] = TemplateString(value as string).parse(input).result;
-            }
-        }
-
-        for (const [key, value] of Object.entries(query)) {
-            if (isKeyTemplateVar(value as string)) {
-                query[key] = await parseKey(value as string, agent?.teamId);
-            } else if (isTemplateVar(value as string)) {
-                //query[key] = parseTemplate(value as string, input, { escapeString: false });
-                query[key] = TemplateString(value as string).parse(input).result;
-            }
-        }
-
         // set default value and agent variables
         const inputsWithDefaultValue = config.inputs.filter(
             (input) => input.defaultVal !== undefined && input.defaultVal !== '' && input.defaultVal !== null
@@ -158,15 +139,23 @@ export class APIEndpoint extends Component {
             //body = input;
         }
 
-        // ensure strong data type
+        // #region parse all template variables (after debugger injection and defaults are set)
+        body = await resolveTemplateVariables(body, input, agent);
+        query = await resolveTemplateVariables(query, input, agent);
+        // #endregion parse all template variables
+
+        // #region ensure strong data type
         body = await performTypeInference(body, config.inputs, agent);
         query = await performTypeInference(query, config.inputs, agent);
+        // #endregion ensure strong data type
 
+        // #region log inputs
         logger.debug('Parsing inputs');
         logger.debug(' Headers', headers);
         logger.debug(' Body', body);
         logger.debug(' Params', params);
         logger.debug(' Query', query);
+        // #endregion log inputs
 
         //Handle JSON Data
         //FIXME : this is a workaround that parses any json string in the body, we should only parse the json string in the body if the data type is explicitely set to JSON
@@ -250,4 +239,21 @@ export class APIEndpoint extends Component {
         }
         return output;
     }
+}
+
+async function resolveTemplateVariables(data: any, input: any, agent: Agent): Promise<any> {
+    for (const [key, value] of Object.entries(data)) {
+        if (isKeyTemplateVar(value as string)) {
+            data[key] = await parseKey(value as string, agent.teamId);
+        } else if (isTemplateVar(value as string)) {
+            // Parse using input values first, then agent variables.
+            // This correctly resolves cases where input values reference agent variables with the same name.
+            // Example: agent variables { user_id: "123" }, input { user_id: "{{user_id}}" }.
+            data[key] = TemplateString(value as string)
+                .parse(input)
+                .parse(agent.agentVariables).result;
+        }
+    }
+
+    return data;
 }
