@@ -1,5 +1,5 @@
 # SmythOS - The Linux of AI Agents
-Reliable Agent Engineering starts with great, open source infrastructure. This repository contains the Smyth Runtime Environment (Kernel), the Software Development Kit (SDK) and Command Line Interface (CLI) for running agents and creating them with code. Great community, support, tutorials. Start in minutes!
+Reliable Agent Engineering starts with great, open source infrastructure. This repository contains the **Smyth Runtime Environment** Kernel (SRE), the **Software Development Kit** (SDK) and **Command Line Interface** (CLI) for running agents and creating them with code. If you prefer visual drag & drop agent interfaces instead, check out our open source [SmythOS Visual Agent Studio](https://github.com/SmythOS/smythos-studio)! Great community, support, tutorials. Start in minutes!
 
 ![SRE Banner](./docs/images/sre-banner.png)
 
@@ -26,11 +26,6 @@ The operating system layer AI agents have been missing.
 <br>
 
 Inspired by the architecture of operating system kernels, SmythOS provides a robust and scalable foundation for agent orchestration and lifecycle management, giving every builder the tools to act, not just imagine.
-
-<br>
-
-If you are an agent engineer that loves code, this is the right repository for you. If you prefer visual drag & drop agent interfaces, check out our open source [SmythOS Visual Agent Studio](https://github.com/SmythOS/smythos-studio)!
-
 
 </div>
 
