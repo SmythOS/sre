@@ -1,5 +1,5 @@
-# SmythOS - The Operating System for Agentic AI
-Open-source, cloud-native runtime for agentic AI — secure, modular, and built for developers.
+# SmythOS - The Linux of AI Agents
+Reliable Agent Engineering starts with great, open source infrastructure. This repository contains the Smyth Runtime Environment (Kernel), the Software Development Kit (SDK) and Command Line Interface (CLI) for running agents and creating them with code. Great community, support, tutorials. Start in minutes!
 
 ![SRE Banner](./docs/images/sre-banner.png)
 
@@ -8,9 +8,8 @@ Open-source, cloud-native runtime for agentic AI — secure, modular, and built 
 <div align="center">
 
 [![Homepage](https://img.shields.io/badge/_www-SmythOS-2ea44f?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJHSURBVHgBfVNNqBJRFL7jT1IYCeUqcRG+AsGVFLhIJIIHLVq93MRsSgpTWgRudaELBRctBDeB2qpdohsVdSOKok+eBC4UAiNSKX9440PtzYydM9yJqV4eOPfOvff8fd85Q8jFosElHo8fJhIJN71TgTJkj+CjWj6sVqu2KIo7VBCuUCg8VNj9E0iLSyQSuQmOx7VaLS4IAjqKsJ/jx3K5PKlUKg88Ho/p74ok58lkkkXDTCbziuO4rz9BMDvP898Ain04HL7fUVksFp+SyeS93+mn02kODKXHer3OYmbQTalUeoLveI8VbTabNQ36o1wuH0nOdrtdiw4iBTsYDALtdjuhwCsR2mw22e12e1YsFo/+gGC1WvW0MilALpd7Tg3UCo4kY4vFooOEV5SEq/r9/gqSD8GXASVQ6mXqJCgCiIjE7/e7Op3OWa/Xe03fNRhZo1arb7darRcMwxCDwXCN/EeAAw53m832FpJ+xyCIj8dKHA7HOygv7XQ6ryogCAoI4nq9FiViGKl7N7xer03uJe47t9t9KxwO97vdrlyiigYSG43GS7PZfJcG3OGi0+lOpVM0GrVB74+RRGB6Kw+Rz+e7HovF7sDVBC+CwSC2GNsogH4mcou0Wq0KymP0ej25BDKfz09SqdSzUCj00Wg03gfjc8xqMplwJ3D+wrLsgewvYySBQOAAhufxaDT6QIcHp0sEB348Hldms1k5m80eUh8NuUAkdqrV6iP8gRAKHbBTl8ulUfC196+UiSPpdPppPp9/sy/jL4yPfDIO4aFTAAAAAElFTkSuQmCC&logoWidth=14)](https://smythos.com)&nbsp;
-[![SmythOS Runtime Environment](https://img.shields.io/badge/repo-Smyth_Runtime-006b5f?style=flat-square&logo=github&logoColor=white)](https://github.com/SmythOS/sre)&nbsp;
-[![SmythOS Studio](https://img.shields.io/badge/repo-Smyth_Studio-006b5f?style=flat-square&logo=github&logoColor=white)](https://github.com/SmythOS/smythos-studio)&nbsp;
-[![Discord](https://img.shields.io/badge/Discord-Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)&nbsp;
+[![SmythOS Visual Agent Studio](https://img.shields.io/badge/repo-Smyth_Studio-006b5f?style=flat-square&logo=github&logoColor=white)](https://github.com/SmythOS/smythos-studio)&nbsp;
+[![Community Support](https://img.shields.io/badge/Discord-Chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/smythos)&nbsp;
 [![](https://img.shields.io/badge/📄_License-MIT-ad0808?style=flat-square)](https://github.com/SmythOS/sre/blob/main/LICENSE)
 
 </div>
@@ -30,7 +29,8 @@ Inspired by the architecture of operating system kernels, SmythOS provides a rob
 
 <br>
 
-In this repo, you’ll find everything you need to get started .
+If you are an agent engineer that loves code, this is the right repository for you. If you prefer visual drag & drop agent interfaces, check out our open source [SmythOS Visual Agent Studio](https://github.com/SmythOS/smythos-studio)!
+
 
 </div>
 
@@ -46,7 +46,6 @@ In this repo, you’ll find everything you need to get started .
 
 <div align="center">
 
-Looking for [SmythOS Studio](https://github.com/SmythOS/smythos-studio) Visual Agent builder ? [Click Here](https://github.com/SmythOS/smythos-studio)
 
 </div>
     
@@ -64,7 +63,7 @@ Looking for [SmythOS Studio](https://github.com/SmythOS/smythos-studio) Visual A
 
 SmythOS provides a complete **Operating System for Agentic AI**. Just as traditional operating systems manage resources and provide APIs for applications, SmythOS manages AI resources and provides a unified SDK that works from development to production.
 
-![SRE Diagram](./docs/images/sre-diagram.png)
+![SRE Diagram](./docs/images/Smyth-Runtime-Environment-SRE-Nov-2025.png)
 
 ### Unified Resource Abstraction
 
