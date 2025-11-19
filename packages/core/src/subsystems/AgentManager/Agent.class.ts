@@ -24,6 +24,8 @@ export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
+    //if the agent was triggered from a conversation, this will be the conversation id
+    public conversationId: string;
     public components: any;
     public connections: any;
     public endpoints: any = {};

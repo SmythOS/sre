@@ -289,7 +289,7 @@ export class MilvusVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const preparedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
 
-        const isDeleteByFilter = typeof deleteTarget === 'object';
+        const isDeleteByFilter = typeof deleteTarget === 'object' && !Array.isArray(deleteTarget);
         if (isDeleteByFilter) {
             const supportedFields: SchemaFieldNames[] = ['datasourceId'];
             if (!supportedFields.some((field) => field in deleteTarget)) {

@@ -90,6 +90,7 @@ export class AgentRuntime {
             this.xDebugRead = undefined;
         }
 
+        this.agent.conversationId = agent.agentRequest.header('X-CONVERSATION-ID');
         this.xDebugId = this.xDebugStop || this.xDebugRun || this.xDebugRead;
 
         //if (req.body) {

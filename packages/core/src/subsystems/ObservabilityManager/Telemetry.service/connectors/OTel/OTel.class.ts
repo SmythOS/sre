@@ -447,6 +447,7 @@ export class OTel extends TelemetryConnector {
                 // nested process has a subID that needs to be removed
                 // a process can be nested if it was called by a parent process : e.g conversation => agent  , agent => sub-agent, agent => forked process ....etc
                 const agentProcessId = agent.agentRuntime.processID;
+                const conversationId = agent.conversationId || agent.agentRequest?.header('X-CONVERSATION-ID');
                 const processId = agentProcessId.split(':').shift();
 
                 const agentId = agent.id;
@@ -462,7 +463,7 @@ export class OTel extends TelemetryConnector {
                 const input = { body, query, headers, processInput: agentInput };
 
                 let convSpan;
-                const ctx = OTelContextRegistry.get(agentId, processId);
+                const ctx = OTelContextRegistry.get(agentId, processId) || OTelContextRegistry.get(agentId, conversationId);
 
                 if (ctx) {
                     convSpan = ctx.rootSpan;
