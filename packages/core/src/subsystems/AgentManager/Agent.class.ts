@@ -24,6 +24,8 @@ export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
+    //if the agent was triggered from a conversation, this will be the conversation id
+    public conversationId: string;
     public components: any;
     public connections: any;
     public endpoints: any = {};
@@ -406,7 +408,8 @@ export class Agent implements IAgent {
     }
 
     @hookAsync('SREAgent.postProcess')
-    public async postProcess(result) {
+    public async postProcess(_result) {
+        let result = JSON.parse(JSON.stringify(_result)); //deep clone the result to avoid modifying the original object
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
 

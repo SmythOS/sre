@@ -15,6 +15,8 @@ export type TAgentProcessParams = {
 
 //TODO : refactor & document this interface
 export interface IAgent {
+    //if the agent was triggered from a conversation, this will be the conversation id
+    conversationId: string;
     id: any;
     jobID: any; //forkedAgent
     async: boolean; //forkedAgent
