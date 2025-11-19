@@ -8,24 +8,36 @@ import { TEmbeddings } from '@sre/IO/VectorDB.service/embed/BaseEmbedding';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
 
+export type NsRecord = {
+    credentialId: string;
+    embeddings: { dimensions: string; modelId: string };
+    label: string;
+    createdAt: string;
+};
 export class DataSourceComponent extends Component {
     constructor() {
         super();
     }
 
-    protected async resolveVectorDbConnector(namespaceId: string, teamId: string): Promise<VectorDBConnector> {
+    public async resolveVectorDbConnector(namespace: string | NsRecord, teamId: string): Promise<VectorDBConnector> {
         // resolve the ns record, if not exist, throw an error (new in v2)
         // then we also need to resolve the credentials
-        const nkvConnector = ConnectorService.getNKVConnector();
-        const nkvClient = nkvConnector.requester(AccessCandidate.team(teamId));
-        const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespaceId);
+        let namespaceRecord = namespace as NsRecord;
 
-        if (!rawNsRecord) {
-            throw new Error(`Namespace ${namespaceId} does not exist`);
+        if (typeof namespace === 'string') {
+            // if it's a string, we need to get the namespace record from the NKV
+            const nkvConnector = ConnectorService.getNKVConnector();
+            const nkvClient = nkvConnector.requester(AccessCandidate.team(teamId));
+            const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespace);
+
+            if (!rawNsRecord) {
+                throw new Error(`Namespace ${namespace} does not exist`);
+            }
+
+            // const { credentialId, embeddings: embeddingsOptions } = JSON.parse(rawNsRecord.toString());
+            namespaceRecord = JSON.parse(rawNsRecord.toString()) as NsRecord;
         }
 
-        // const { credentialId, embeddings: embeddingsOptions } = JSON.parse(rawNsRecord.toString());
-        const namespaceRecord = JSON.parse(rawNsRecord.toString());
         const accountConnector = ConnectorService.getAccountConnector();
         const accountClient = accountConnector.requester(AccessCandidate.team(teamId));
         const rawCredRecord = await accountClient.getTeamSetting(namespaceRecord.credentialId, 'vector_db_creds');
@@ -48,7 +60,7 @@ export class DataSourceComponent extends Component {
         return vecDbConnector;
     }
 
-    protected async buildEmbeddingConfig(embedding: { dimensions: string; modelId: string }, teamId: string): Promise<TEmbeddings> {
+    public async buildEmbeddingConfig(embedding: { dimensions: string; modelId: string }, teamId: string): Promise<TEmbeddings> {
         // we need to take this and return a proper TEmbeddings object
 
         const provider = EmbeddingsFactory.getProviderByModel(embedding.modelId as any);

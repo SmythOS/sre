@@ -19,7 +19,7 @@ export async function asyncReplace(str, regex, asyncFn) {
         matches.map(async (match) => {
             // Call the async function with all match groups
             return asyncFn(...match);
-        }),
+        })
     );
 
     // Reassemble the string with replacements
@@ -230,7 +230,7 @@ export function chunkText(
     }: {
         chunkSize?: number;
         chunkOverlap?: number;
-    } = {},
+    } = {}
 ): string[] {
     const textSplitter = new RecursiveTextSplitter({
         chunkSize,
@@ -411,4 +411,8 @@ class RecursiveTextSplitter extends TextSplitter {
     } = {}) {
         super({ chunkSize, chunkOverlap, separators, keepSeparator });
     }
+}
+
+export function calcSizeMb(text: string): number {
+    return Buffer.byteLength(text, 'utf-8') / 1024 / 1024;
 }
