@@ -139,6 +139,7 @@ export class GoogleAIConnector extends LLMConnector {
                             ? toolCall.functionCall?.args
                             : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
+                    thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
                 }));
                 useTool = true;
             }
@@ -202,6 +203,7 @@ export class GoogleAIConnector extends LLMConnector {
                                         ? toolCall.functionCall?.args
                                         : JSON.stringify(toolCall.functionCall?.args ?? {}),
                                 role: TLLMMessageRole.Assistant,
+                                thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
                             }));
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
@@ -426,6 +428,13 @@ export class GoogleAIConnector extends LLMConnector {
         if (params.stopSequences?.length) config.stopSequences = params.stopSequences;
         if (responseMimeType) config.responseMimeType = responseMimeType;
 
+        // #region Gemini 3 specific fields
+        const isGemini3Model = params.modelEntryName?.includes('gemini-3');
+
+        if (isGemini3Model) {
+            if (params?.reasoningEffort) config.thinkingConfig = { thinkingLevel: params.reasoningEffort };
+        }
+
         if (systemInstruction) body.systemInstruction = systemInstruction;
         if (Object.keys(config).length > 0) {
             body.generationConfig = config;
@@ -505,36 +514,76 @@ export class GoogleAIConnector extends LLMConnector {
     ) {
         // SmythOS (built-in) models have a prefix, so we need to remove it to get the model name
         const modelName = metadata.modelEntryName.replace(BUILT_IN_MODEL_PREFIX, '');
-        let tier = '';
+
+        // Initially, all input tokens – such as text, audio, image, video, document, etc. – were included in promptTokenCount.
+        let inputTokens = usage?.promptTokenCount || 0;
+
+        // The pricing is the same for output and thinking tokens, so we can add them together.
+        const outputTokens = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
+
+        // If cached input tokens are available, we need to subtract them from the input tokens.
+        let cachedInputTokens = usage?.cachedContentTokenCount || 0;
+
+        if (cachedInputTokens) {
+            inputTokens = inputTokens - cachedInputTokens;
+        }
+
+        // #region Find matching model and set tier based on threshold
         const tierThresholds = {
             'gemini-1.5-pro': 128_000,
             'gemini-2.5-pro': 200_000,
+            'gemini-3-pro': 200_000,
         };
 
-        const textInputTokens =
-            usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'TEXT')?.tokenCount || usage?.promptTokenCount || 0;
-        const audioInputTokens = usage?.['promptTokensDetails']?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+        let inTier = '';
+        let outTier = '';
+        let crTier = '';
 
-        // Find matching model and set tier based on threshold
         const modelWithTier = Object.keys(tierThresholds).find((model) => modelName.includes(model));
         if (modelWithTier) {
-            tier = textInputTokens < tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            inTier = inputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            outTier = outputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
+            crTier = cachedInputTokens <= tierThresholds[modelWithTier] ? 'tier1' : 'tier2';
         }
+        // #endregion
 
+        // #region Calculate audio input tokens
+        // Since Gemini 2.5 Flash has a different pricing model for audio input tokens, we need to report audio input tokens separately.
+        let audioInputTokens = 0;
+        let cachedAudioInputTokens = 0;
+        const isFlashModel = ['gemini-2.5-flash'].includes(modelName);
+
+        if (isFlashModel) {
+            // There is no concept of different pricing for Flash models based on token tiers (e.g., less than or greater than 200k),
+            // so we don't need to provide tier information for audio input tokens.
+            audioInputTokens = usage?.promptTokensDetails?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+
+            // subtract the audio cached input tokens from the audio input tokens and total cached input tokens.
+            cachedAudioInputTokens = usage?.cacheTokensDetails?.find((detail) => detail.modality === 'AUDIO')?.tokenCount || 0;
+            if (cachedAudioInputTokens) {
+                audioInputTokens = audioInputTokens - cachedAudioInputTokens;
+                cachedInputTokens = cachedInputTokens - cachedAudioInputTokens;
+            }
+
+            inputTokens = inputTokens - audioInputTokens;
+        }
         // #endregion
 
         const usageData = {
             sourceId: `llm:${modelName}`,
-            input_tokens: textInputTokens,
-            output_tokens: usage?.candidatesTokenCount || 0,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
             input_tokens_audio: audioInputTokens,
-            input_tokens_cache_read: usage?.cachedContentTokenCount || 0,
+            input_tokens_cache_read: cachedInputTokens,
+            input_tokens_cache_read_audio: cachedAudioInputTokens,
             input_tokens_cache_write: 0,
-            reasoning_tokens: usage?.thoughtsTokenCount,
+            // reasoning_tokens: usage?.thoughtsTokenCount, // * reasoning tokens are included in the output tokens.
             keySource: metadata.keySource,
             agentId: metadata.agentId,
             teamId: metadata.teamId,
-            tier,
+            inTier,
+            outTier,
+            crTier,
         };
         SystemEvents.emit('USAGE:LLM', usageData);
 
@@ -665,12 +714,17 @@ export class GoogleAIConnector extends LLMConnector {
                     }
 
                     if (part.functionCall) {
-                        content.push({
+                        const functionCallPart: any = {
                             functionCall: {
                                 name: part.functionCall.name,
                                 args: parseFunctionArgs(part.functionCall.args),
                             },
-                        });
+                        };
+                        // Preserve thoughtSignature if present for Google AI reasoning context
+                        if ((part as any).thoughtSignature) {
+                            functionCallPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
+                        content.push(functionCallPart);
                         continue;
                     }
 
@@ -699,12 +753,17 @@ export class GoogleAIConnector extends LLMConnector {
             const hasFunctionCall = content.some((part) => part.functionCall);
             if (!hasFunctionCall && toolsData.length > 0) {
                 toolsData.forEach((toolCall) => {
-                    content.push({
+                    const functionCallPart: any = {
                         functionCall: {
                             name: toolCall.name,
                             args: parseFunctionArgs(toolCall.arguments),
                         },
-                    });
+                    };
+                    // Preserve thoughtSignature if present for Google AI reasoning context
+                    if (toolCall.thoughtSignature) {
+                        functionCallPart.thoughtSignature = toolCall.thoughtSignature;
+                    }
+                    content.push(functionCallPart);
                 });
             }
 
@@ -811,6 +870,10 @@ export class GoogleAIConnector extends LLMConnector {
                             name: part.functionCall.name,
                             args: parseFunctionArgs(part.functionCall.args),
                         };
+                        // Preserve thoughtSignature if present for Google AI reasoning context
+                        if ((part as any).thoughtSignature) {
+                            normalizedPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
                     }
 
                     if (part.functionResponse) {
@@ -839,12 +902,17 @@ export class GoogleAIConnector extends LLMConnector {
                             pushTextPart(normalizedParts, contentPart.text);
                         } else if ('functionCall' in contentPart && (contentPart as any).functionCall) {
                             const functionCallPart = (contentPart as any).functionCall;
-                            normalizedParts.push({
+                            const normalizedFunctionCall: any = {
                                 functionCall: {
                                     name: functionCallPart.name,
                                     args: parseFunctionArgs(functionCallPart.args),
                                 },
-                            });
+                            };
+                            // Preserve thoughtSignature if present for Google AI reasoning context
+                            if ((contentPart as any).thoughtSignature) {
+                                normalizedFunctionCall.thoughtSignature = (contentPart as any).thoughtSignature;
+                            }
+                            normalizedParts.push(normalizedFunctionCall);
                         } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
                             const functionResponsePart = (contentPart as any).functionResponse;
                             normalizedParts.push({
@@ -882,12 +950,17 @@ export class GoogleAIConnector extends LLMConnector {
                 for (const toolCall of message.tool_calls) {
                     if (!toolCall?.function?.name) continue;
 
-                    normalizedParts.push({
+                    const normalizedFunctionCall: any = {
                         functionCall: {
                             name: toolCall.function.name,
                             args: parseFunctionArgs(toolCall.function.arguments),
                         },
-                    });
+                    };
+                    // Preserve thoughtSignature if present for Google AI reasoning context
+                    if ((toolCall as any).thoughtSignature) {
+                        normalizedFunctionCall.thoughtSignature = (toolCall as any).thoughtSignature;
+                    }
+                    normalizedParts.push(normalizedFunctionCall);
                 }
             }
 
