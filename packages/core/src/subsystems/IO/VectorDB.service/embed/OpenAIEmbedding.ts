@@ -24,7 +24,7 @@ export class OpenAIEmbeds extends BaseEmbedding {
     protected client: OpenAIClient;
     protected clientConfig: ClientOptions;
 
-    public static models = ['text-embedding-ada-002', 'text-embedding-3-large'];
+    public static models = ['text-embedding-3-large', 'text-embedding-ada-002'];
     public canSpecifyDimensions = true;
 
     constructor(private settings?: Partial<TEmbeddings>) {
