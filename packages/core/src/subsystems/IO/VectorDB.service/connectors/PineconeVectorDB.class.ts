@@ -34,16 +34,16 @@ export type PineconeConfig = {
     /**
      * The Pinecone API key [LEGACY]
      */
-    apiKey: string;
+    apiKey?: string;
     /**
      * The Pinecone index name [LEGACY]
      */
-    indexName: string;
+    indexName?: string;
 
     /**
      * The Pinecone credentials [New unified format]
      */
-    credentials: {
+    credentials?: {
         apiKey: string;
         indexName: string;
     };
@@ -64,11 +64,11 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: PineconeConfig) {
         super(_settings);
-        if (!_settings.apiKey && !_settings.credentials?.apiKey) {
+        if (!_settings.apiKey && !_settings?.credentials?.apiKey) {
             console.warn('Missing Pinecone API key : returning empty Pinecone connector');
             return;
         }
-        if (!_settings.indexName && !_settings.credentials?.indexName) {
+        if (!_settings.indexName && !_settings?.credentials?.indexName) {
             console.warn('Missing Pinecone index name : returning empty Pinecone connector');
             return;
         }
