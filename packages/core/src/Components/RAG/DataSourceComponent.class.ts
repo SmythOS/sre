@@ -91,7 +91,7 @@ export class DataSourceComponent extends Component {
         const llmCreds = await getLLMCredentials(AccessCandidate.team(teamId), {
             provider,
             modelId: embedding.modelId,
-            credentials: [TLLMCredentials.Vault],
+            credentials: [TLLMCredentials.Vault, TLLMCredentials.Internal],
         });
 
         return {
