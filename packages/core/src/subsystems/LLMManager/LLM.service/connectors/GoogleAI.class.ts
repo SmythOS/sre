@@ -428,6 +428,13 @@ export class GoogleAIConnector extends LLMConnector {
         if (params.stopSequences?.length) config.stopSequences = params.stopSequences;
         if (responseMimeType) config.responseMimeType = responseMimeType;
 
+        // #region Gemini 3 specific fields
+        const isGemini3Model = params.modelEntryName?.includes('gemini-3');
+
+        if (isGemini3Model) {
+            if (params?.reasoningEffort) config.thinkingConfig = { thinkingLevel: params.reasoningEffort };
+        }
+
         if (systemInstruction) body.systemInstruction = systemInstruction;
         if (Object.keys(config).length > 0) {
             body.generationConfig = config;

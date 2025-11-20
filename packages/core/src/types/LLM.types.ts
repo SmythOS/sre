@@ -80,6 +80,7 @@ export type TxAIToolsInfo = {
     };
 };
 
+// #region TLLMParams
 export type TToolsInfo = {
     openai: TOpenAIToolsInfo;
     xai: TxAIToolsInfo;
@@ -188,6 +189,8 @@ type TLLMImageGenConfig = {
 };
 
 export type TLLMParams = TLLMTextGenConfig & TLLMSearchConfig & TLLMImageGenConfig & TLLMMiscConfig & TLLMRuntimeContext;
+
+// #endregion TLLMParams
 
 export type TLLMPreparedParams = TLLMParams & {
     body: any;
