@@ -11,6 +11,7 @@ import {
     IStorageVectorNamespace,
     IVectorDataSourceDto,
     QueryOptions,
+    VectorDBResult,
     VectorsResultData,
 } from '@sre/types/VectorDB.types';
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -23,7 +24,7 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector'
 import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
-import { calcSizeMb, chunkText } from '@sre/utils/string.utils';
+import { calcSizeMb } from '@sre/utils/string.utils';
 import { jsonrepair } from 'jsonrepair';
 import { chunkArr } from '@sre/utils/array.utils';
 
@@ -82,10 +83,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
         if (!_settings.embeddings) {
-            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', params: { dimensions: 1024 } };
+            _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 3072 };
         }
-        if (!_settings.embeddings.params) _settings.embeddings.params = { dimensions: 1024 };
-        if (!_settings.embeddings.params?.dimensions) _settings.embeddings.params.dimensions = 1024;
+        if (!_settings.embeddings?.dimensions) _settings.embeddings.dimensions = 3072;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
@@ -205,11 +205,14 @@ export class PineconeVectorDB extends VectorDBConnector {
                 match.metadata[this.USER_METADATA_KEY] = JSONContentHelper.create(match.metadata[this.USER_METADATA_KEY].toString()).tryParse();
             }
 
+            const text = match.metadata?.text as string | undefined;
+            delete match.metadata?.text; // delete the text metadata to avoid duplication in case we returned the default raw metadata
+
             matches.push({
                 id: match.id,
                 values: match.values,
-                text: match.metadata?.text as string | undefined,
-                metadata: match.metadata?.[this.USER_METADATA_KEY] as Record<string, any> | undefined,
+                text: text,
+                metadata: match.metadata?.[this.USER_METADATA_KEY] || match.metadata, // fallback to the default metadata if the user metadata is not present, this is for backward compatibility
                 score: match.score,
             });
         }
@@ -223,7 +226,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         acRequest: AccessRequest,
         namespace: string,
         sourceWrapper: IVectorDataSourceDto | IVectorDataSourceDto[]
-    ): Promise<string[]> {
+    ): Promise<VectorDBResult[]> {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         sourceWrapper = Array.isArray(sourceWrapper) ? sourceWrapper : [sourceWrapper];
 
@@ -266,7 +269,18 @@ export class PineconeVectorDB extends VectorDBConnector {
             await this.setACL(acRequest, namespace, acl);
         }
 
-        return preparedSources.map((s) => s.id);
+        return preparedSources.map((s) => {
+            const { text, acl, user_metadata, ...restMetadata } = s.metadata || {};
+            return {
+                id: s.id,
+                values: s.values as number[],
+                text: text as string,
+                metadata: {
+                    ...restMetadata,
+                    ...((typeof user_metadata === 'string' ? JSON.parse(user_metadata) : user_metadata) as Record<string, any>),
+                },
+            };
+        });
     }
 
     @SecureConnector.AccessControl
@@ -301,7 +315,7 @@ export class PineconeVectorDB extends VectorDBConnector {
         if (!datasource.chunkOverlap) datasource.chunkOverlap = 200;
 
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
-        const chunkedText = chunkText(datasource.text, {
+        const chunkedText = this.embedder.chunkText(datasource.text, {
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
         });
@@ -331,13 +345,16 @@ export class PineconeVectorDB extends VectorDBConnector {
             name: datasource.label || 'Untitled',
             metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
             text: datasource.text,
-            vectorIds: _vIds,
+            vectorIds: _vIds.map((v) => v.id),
             id: dsId,
             datasourceSizeMb: calcSizeMb(datasource.text),
             chunkSize: datasource.chunkSize,
             chunkOverlap: datasource.chunkOverlap,
             createdAt: new Date(),
         };
+        if (datasource.returnFullVectorInfo) {
+            dsData.vectorInfo = _vIds;
+        }
         // const url = `smythfs://${teamId}.team/_datasources/${dsId}.json`;
         // await SmythFS.Instance.write(url, JSON.stringify(dsData), AccessCandidate.team(teamId));
         await this.nkvConnector

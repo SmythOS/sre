@@ -98,8 +98,9 @@ export class DataSourceComponent extends Component {
             provider,
             model: embedding.modelId,
             credentials: llmCreds,
+            dimensions: parseInt(embedding.dimensions), // pass both for backwards compatibility
             params: {
-                dimensions: parseInt(embedding.dimensions),
+                dimensions: parseInt(embedding.dimensions), // pass both for backwards compatibility
             },
         };
     }

@@ -16,7 +16,7 @@ import { Trigger } from '@sre/Components/Triggers/Trigger.class';
 import { IAgent } from '@sre/types/Agent.types';
 import { AgentSSE } from './AgentSSE.class';
 
-const console = Logger('Agent');
+const logger = Logger('Agent');
 const idPromise = (id) => id;
 const MAX_LATENCY = 50;
 
@@ -24,6 +24,8 @@ export class Agent implements IAgent {
     public name: any;
     public data: any;
     public teamId: any;
+    //if the agent was triggered from a conversation, this will be the conversation id
+    public conversationId: string;
     public components: any;
     public connections: any;
     public endpoints: any = {};
@@ -169,7 +171,7 @@ export class Agent implements IAgent {
                     this._componentInstancesLoader.resolve(true);
                 });
         } catch (error) {
-            console.warn('Could not load custom components', AccessCandidate.agent(this.id));
+            logger.warn('Could not load custom components', AccessCandidate.agent(this.id));
             this._componentInstancesLoader.reject('Could not load custom components');
         }
 
@@ -329,9 +331,10 @@ export class Agent implements IAgent {
             step = await this.agentRuntime.runCycle();
 
             //adjust latency based on cpu load
-            const qosLatency = Math.floor(OSResourceMonitor.cpu.load * MAX_LATENCY || 0);
+            const qosLatency = Math.floor((OSResourceMonitor.cpu.load / 100) * MAX_LATENCY || 0);
 
-            await delay(10 + qosLatency);
+            await delay(qosLatency);
+            await new Promise((resolve) => setImmediate(resolve)); // yield to the event loop to prevent blocking other operations
         } while (!step?.finalResult && !this._killReason);
 
         if (this._killReason) {
@@ -349,7 +352,7 @@ export class Agent implements IAgent {
                 input,
                 error: 'Agent killed',
             });
-            console.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
+            logger.warn(`Agent ${this.id} was killed`, AccessCandidate.agent(this.id));
             return { error: 'AGENT_KILLED', reason: this._killReason };
         }
         result = await this.postProcess(step?.finalResult).catch((error) => ({ error }));
@@ -405,7 +408,8 @@ export class Agent implements IAgent {
     }
 
     @hookAsync('SREAgent.postProcess')
-    public async postProcess(result) {
+    public async postProcess(_result) {
+        let result = JSON.parse(JSON.stringify(_result)); //deep clone the result to avoid modifying the original object
         if (Array.isArray(result)) result = result.flat(Infinity);
         if (!Array.isArray(result)) result = [result];
 
@@ -417,6 +421,8 @@ export class Agent implements IAgent {
             if (!_result) continue;
             if (_result._debug) delete _result._debug;
             if (_result._debug_time) delete _result._debug_time;
+            if (_result.result?._debug) delete _result.result._debug;
+            if (_result.result?._debug_time) delete _result.result._debug_time;
             const _componentData = this.components[_result.id];
             if (!_componentData) continue;
             const _component: Component = this._componentInstance[_componentData.name];
@@ -588,7 +594,7 @@ export class Agent implements IAgent {
         });
 
         if (this._killReason) {
-            console.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
+            logger.warn(`Agent ${this.id} was killed, skipping component ${componentData.name}`, AccessCandidate.agent(this.id));
 
             const output = { id: componentData.id, name: componentData.displayName, result: null, error: 'Agent killed' };
 
@@ -712,10 +718,10 @@ export class Agent implements IAgent {
                         await this.parseVariables(); //make sure that any vault variable is loaded before processing the component
                         //TODO: apply type inference here instead of in the component .process method
                         output = await component.process({ ...this.agentVariables, ..._input }, { ...componentData, eventId }, this);
-                        console.debug(output, AccessCandidate.agent(this.id));
+                        logger.debug(output, AccessCandidate.agent(this.id));
                     } catch (error: any) {
                         //this are fatal errors requiring to cancel the execution of this component.
-                        console.error(
+                        logger.error(
                             'Error on component process: ',
                             { componentId, name: componentData.name, input: _input },
                             error,

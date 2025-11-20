@@ -13,22 +13,24 @@ export function adaptModelParams(
         modelId: model as string, // for backward compatibility
         model: model as string, // for backward compatibility
         interface: interfaceType,
-        features: features,
+        features: [...(features || []), ...(defaultSettings?.features || [])],
         baseURL: baseURL,
-        tags: ['sdk'],
+        tags: ['sdk', ...(defaultSettings?.tags || [])],
         tokens: inputTokens || defaultSettings?.keyOptions?.tokens || defaultSettings?.tokens,
         completionTokens: outputTokens || defaultSettings?.keyOptions?.completionTokens || defaultSettings?.completionTokens,
+        credentials: modelSettings?.credentials || defaultSettings?.credentials,
     };
 
     modelObject.params = params;
 
+    //TODO : (future update) Deprecate apiKey in params, use credentials entry instead
     if (typeof modelObject?.params?.apiKey === 'string') {
         //all keys are handled in credentials object internally
         modelObject.credentials = { apiKey: modelObject?.params?.apiKey } as any;
         delete modelObject?.params?.apiKey;
     }
 
-    if (!modelObject.credentials) {
+    if (!modelObject.credentials || modelObject?.credentials?.length === 0) {
         modelObject.credentials = ['vault'] as any;
     }
 

@@ -261,7 +261,7 @@ export class AgentLogger {
     public static log(agent, trId, logData: AgentCallLog) {
         const logConnector = ConnectorService.getLogConnector();
         if (!logConnector.valid) return;
-        if (agent.agentRuntime.debug) logData.tags = 'DEBUG ';
+        if (agent?.agentRuntime?.debug || agent?.debugSessionEnabled) logData.tags = 'DEBUG ';
         if (!trId) trId = 'log-' + uid();
         if (!this.transactions[trId]) {
             this.transactions[trId] = new LogTransaction(agent, trId);

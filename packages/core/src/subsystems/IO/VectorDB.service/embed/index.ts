@@ -1,6 +1,7 @@
 import { OpenAIEmbeds } from './OpenAIEmbedding';
 import { GoogleEmbeds } from './GoogleEmbedding';
 import { TEmbeddings } from './BaseEmbedding';
+import { TLLMModel } from '@sre/types/LLM.types';
 
 // a factory to get the correct embedding provider based on the provider name
 const supportedProviders = {
@@ -20,8 +21,18 @@ export type SupportedModels = {
 };
 
 export class EmbeddingsFactory {
-    public static create(provider: SupportedProviders, config: TEmbeddings) {
-        return new supportedProviders[provider].embedder(config);
+    public static create(provider?: SupportedProviders, config?: TEmbeddings & { model?: SupportedModels[SupportedProviders] | TLLMModel }) {
+        if (!provider) provider = 'OpenAI';
+        if (!config) config = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 1024 };
+
+        //if the model is a TLLMModel, we need to convert it to a SupportedModels[SupportedProviders]
+        if (config.model && typeof config.model === 'object') {
+            provider = (config.model as TLLMModel).provider as SupportedProviders;
+            config.credentials = (config.model as TLLMModel).credentials;
+            config.model = (config.model as TLLMModel).modelId;
+        }
+
+        return new supportedProviders[provider as SupportedProviders].embedder(config);
     }
 
     public static getProviderByModel(model: SupportedModels): SupportedProviders {

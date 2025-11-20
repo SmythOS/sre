@@ -263,9 +263,9 @@ Most providers support these common parameters. Here's a quick reference table:
 | `presencePenalty`   | number   | 0.0 - 2.0        | Encourages talking about new topics                                                     | OpenAI, compatible providers |
 | `stopSequences`     | string[] | Array of strings | Sequences where the model will stop generating                                          | Most providers               |
 | `inputTokens`       | number   | 1 - model limit  | Maximum context window size (input tokens). Should be ≤ model's official context window | All providers                |
+| `outputTokens`      | number   | 1 - model limit  | The maximum tokens that the model can generate in a single response                     | All providers                |
 | `maxThinkingTokens` | number   | 1 - model limit  | Maximum tokens for reasoning/thinking (reasoning models only)                           | OpenAI o1, compatible models |
 | `baseURL`           | string   | Valid URL        | Custom API endpoint URL for model inference                                             | Most providers               |
-| `numCtx`            | number   | 1 - model limit  | Context window size (Ollama-specific parameter)                                         | Ollama only                  |
 
 ### Detailed Parameter Descriptions
 

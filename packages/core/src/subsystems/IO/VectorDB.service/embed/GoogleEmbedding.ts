@@ -19,7 +19,7 @@ export class GoogleEmbeds extends BaseEmbedding {
 
     async embedTexts(texts: string[], candidate: AccessCandidate): Promise<number[][]> {
         // we split into batches to avoid provider limits
-        const batches = this.chunkArr(this.processTexts(texts), this.chunkSize);
+        const batches = this.chunkArr(this.processTexts(texts), this.batchSize);
 
         const batchRequests = batches.map((batch) => {
             return this.embed(batch, candidate);

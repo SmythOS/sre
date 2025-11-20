@@ -46,7 +46,7 @@ async function main() {
     });
 
     //we call the chat explicitly with persistance enabled
-    const chat = agent.chat({ id: 'my-chat-0001', persist: true });
+    const chat = agent.chat({ id: 'my-chat-' + Date.now(), persist: true });
     //we can also use a short syntax
     //const chat = agent.chat('my-chat-0001');
     //if you supply an id as a string and as a single argument, we will implicitly try to enable persistance

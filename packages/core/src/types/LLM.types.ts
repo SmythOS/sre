@@ -87,9 +87,39 @@ export type TToolsInfo = {
 
 export type TSearchContextSize = 'low' | 'medium' | 'high';
 
-export type TLLMParams = {
-    model: TLLMModel | string;
+type TLLMToolConfig = {
+    toolsConfig?: {
+        tools?: OpenAI.ChatCompletionTool[] | OpenAI.Responses.Tool[] | OpenAI.Responses.WebSearchTool[];
+        tool_choice?: TLLMToolChoice;
+    };
+};
 
+type TLLMThinkingConfig = {
+    thinking?: {
+        // for Anthropic
+        type: 'enabled' | 'disabled';
+        budget_tokens: number;
+    };
+    maxThinkingTokens?: number;
+};
+
+type TLLMReasoningConfig = {
+    useReasoning?: boolean;
+
+    /**
+     * Controls the level of effort the model will put into reasoning
+     * For GPT-OSS models (20B, 120B): "low" | "medium" | "high"
+     * For Qwen 3 32B: "none" | "default"
+     */
+    reasoningEffort?: 'none' | 'default' | OpenAIReasoningEffort;
+
+    max_output_tokens?: number;
+    verbosity?: OpenAI.Responses.ResponseCreateParams['text']['verbosity'];
+    abortSignal?: AbortSignal;
+};
+
+type TLLMTextGenConfig = {
+    model: TLLMModel | string;
     prompt?: string;
     messages?: any[]; // TODO [Forhad]: apply proper typing
     temperature?: number;
@@ -100,39 +130,22 @@ export type TLLMParams = {
     frequencyPenalty?: number;
     presencePenalty?: number;
     responseFormat?: any; // TODO [Forhad]: apply proper typing
-    modelInfo?: TCustomLLMModel;
-    files?: BinaryInput[];
-    toolsConfig?: {
-        tools?: OpenAI.ChatCompletionTool[] | OpenAI.Responses.Tool[] | OpenAI.Responses.WebSearchTool[];
-        tool_choice?: TLLMToolChoice;
-    };
-    baseURL?: string;
+} & TLLMToolConfig &
+    TLLMThinkingConfig &
+    TLLMReasoningConfig;
 
-    size?: OpenAI.Images.ImageGenerateParams['size'] | OpenAI.Images.ImageEditParams['size']; // for image generation and image editing
-    quality?: 'standard' | 'hd'; // for image generation
-    n?: number; // for image generation
-    style?: 'vivid' | 'natural'; // for image generation
-
-    cache?: boolean;
-    agentId?: string;
-    teamId?: string;
-    thinking?: {
-        // for Anthropic
-        type: 'enabled' | 'disabled';
-        budget_tokens: number;
-    };
-    maxThinkingTokens?: number;
-
-    // #region Search
-    // Web search parameters (will be organized into toolsInfo.webSearch internally)
+// OpenAI specific web search parameters
+type TLLMWebSearchConfig = {
     useWebSearch?: boolean;
     webSearchContextSize?: TSearchContextSize;
     webSearchCity?: string;
     webSearchCountry?: string;
     webSearchRegion?: string;
     webSearchTimezone?: string;
+};
 
-    // xAI specific search parameters (consider moving to toolsInfo.xaiSearch)
+// xAI specific search parameters
+type TLLMSearchConfig = {
     useSearch?: boolean;
     searchMode?: 'auto' | 'on' | 'off';
     returnCitations?: boolean;
@@ -149,19 +162,32 @@ export type TLLMParams = {
     safeSearch?: boolean;
     fromDate?: string;
     toDate?: string;
-    // #endregion
+} & TLLMWebSearchConfig;
 
-    useReasoning?: boolean;
-    /**
-     * Controls the level of effort the model will put into reasoning
-     * For GPT-OSS models (20B, 120B): "low" | "medium" | "high"
-     * For Qwen 3 32B: "none" | "default"
-     */
-    reasoningEffort?: 'none' | 'default' | OpenAIReasoningEffort;
-    max_output_tokens?: number;
-    verbosity?: OpenAI.Responses.ResponseCreateParams['text']['verbosity'];
-    abortSignal?: AbortSignal;
+type TLLMMiscConfig = {
+    maxContextWindowLength?: number;
+    useContextWindow?: boolean;
+    passthrough?: boolean;
 };
+
+type TLLMRuntimeContext = {
+    modelInfo?: TCustomLLMModel;
+    files?: BinaryInput[];
+    baseURL?: string;
+
+    cache?: boolean;
+    agentId?: string;
+    teamId?: string;
+};
+
+type TLLMImageGenConfig = {
+    size?: OpenAI.Images.ImageGenerateParams['size'] | OpenAI.Images.ImageEditParams['size']; // for image generation and image editing
+    quality?: 'standard' | 'hd'; // for image generation
+    n?: number; // for image generation
+    style?: 'vivid' | 'natural'; // for image generation
+};
+
+export type TLLMParams = TLLMTextGenConfig & TLLMSearchConfig & TLLMImageGenConfig & TLLMMiscConfig & TLLMRuntimeContext;
 
 export type TLLMPreparedParams = TLLMParams & {
     body: any;
@@ -471,6 +497,10 @@ export enum TLLMEvent {
     Usage = 'usage',
     /** Interrupted : emitted when the response is interrupted before completion */
     Interrupted = 'interrupted',
+    /** Fallback : emitted when the response is using a fallback model */
+    Fallback = 'fallback',
+    /** Requested : emitted when a request is sent to the LLM */
+    Requested = 'requested',
 }
 
 export interface ILLMRequestContext {

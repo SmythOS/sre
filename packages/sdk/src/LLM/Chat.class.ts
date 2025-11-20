@@ -158,6 +158,13 @@ class ChatCommand {
 export class Chat extends SDKObject {
     private _id: string;
     public _conversation: Conversation;
+    /**
+     * The SRE Conversation Manager instance that is used to handle the current chat conversation.
+     */
+    public get conversation() {
+        return this._conversation;
+    }
+
     private _curAgentModes: string = '';
 
     public get id() {
@@ -278,7 +285,7 @@ function createConversation(agentData: AgentData, options?: any) {
     });
 
     conversation.on(TLLMEvent.Error, (error) => {
-        console.error('An error occurred while running the agent: ', error.message);
+        console.error('An error occurred while running the agent: ', error.message, error.stack);
     });
 
     return conversation;
