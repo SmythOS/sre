@@ -344,6 +344,7 @@ export type ToolData = {
     function?: any;
     error?: string; // for Bedrock
     callId?: string; // for OpenAI Responses API call ID mapping
+    thoughtSignature?: string; // for Google AI - required to maintain reasoning context
 };
 
 /**
@@ -571,6 +572,7 @@ export interface TGoogleAIRequestBody {
         topK?: number;
         stopSequences?: string[];
         responseMimeType?: string;
+        media_resolution?: 'low' | 'medium' | 'high';
     };
     tools?: any;
     toolConfig?: any;

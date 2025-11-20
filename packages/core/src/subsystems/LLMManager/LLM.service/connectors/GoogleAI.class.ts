@@ -139,6 +139,7 @@ export class GoogleAIConnector extends LLMConnector {
                             ? toolCall.functionCall?.args
                             : JSON.stringify(toolCall.functionCall?.args ?? {}),
                     role: TLLMMessageRole.Assistant,
+                    thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
                 }));
                 useTool = true;
             }
@@ -202,6 +203,7 @@ export class GoogleAIConnector extends LLMConnector {
                                         ? toolCall.functionCall?.args
                                         : JSON.stringify(toolCall.functionCall?.args ?? {}),
                                 role: TLLMMessageRole.Assistant,
+                                thoughtSignature: (toolCall as any).thoughtSignature, // Preserve Google AI's reasoning context
                             }));
                             emitter.emit(TLLMEvent.ToolInfo, toolsData);
                         }
@@ -705,12 +707,17 @@ export class GoogleAIConnector extends LLMConnector {
                     }
 
                     if (part.functionCall) {
-                        content.push({
+                        const functionCallPart: any = {
                             functionCall: {
                                 name: part.functionCall.name,
                                 args: parseFunctionArgs(part.functionCall.args),
                             },
-                        });
+                        };
+                        // Preserve thoughtSignature if present for Google AI reasoning context
+                        if ((part as any).thoughtSignature) {
+                            functionCallPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
+                        content.push(functionCallPart);
                         continue;
                     }
 
@@ -739,12 +746,17 @@ export class GoogleAIConnector extends LLMConnector {
             const hasFunctionCall = content.some((part) => part.functionCall);
             if (!hasFunctionCall && toolsData.length > 0) {
                 toolsData.forEach((toolCall) => {
-                    content.push({
+                    const functionCallPart: any = {
                         functionCall: {
                             name: toolCall.name,
                             args: parseFunctionArgs(toolCall.arguments),
                         },
-                    });
+                    };
+                    // Preserve thoughtSignature if present for Google AI reasoning context
+                    if (toolCall.thoughtSignature) {
+                        functionCallPart.thoughtSignature = toolCall.thoughtSignature;
+                    }
+                    content.push(functionCallPart);
                 });
             }
 
@@ -851,6 +863,10 @@ export class GoogleAIConnector extends LLMConnector {
                             name: part.functionCall.name,
                             args: parseFunctionArgs(part.functionCall.args),
                         };
+                        // Preserve thoughtSignature if present for Google AI reasoning context
+                        if ((part as any).thoughtSignature) {
+                            normalizedPart.thoughtSignature = (part as any).thoughtSignature;
+                        }
                     }
 
                     if (part.functionResponse) {
@@ -879,12 +895,17 @@ export class GoogleAIConnector extends LLMConnector {
                             pushTextPart(normalizedParts, contentPart.text);
                         } else if ('functionCall' in contentPart && (contentPart as any).functionCall) {
                             const functionCallPart = (contentPart as any).functionCall;
-                            normalizedParts.push({
+                            const normalizedFunctionCall: any = {
                                 functionCall: {
                                     name: functionCallPart.name,
                                     args: parseFunctionArgs(functionCallPart.args),
                                 },
-                            });
+                            };
+                            // Preserve thoughtSignature if present for Google AI reasoning context
+                            if ((contentPart as any).thoughtSignature) {
+                                normalizedFunctionCall.thoughtSignature = (contentPart as any).thoughtSignature;
+                            }
+                            normalizedParts.push(normalizedFunctionCall);
                         } else if ('functionResponse' in contentPart && (contentPart as any).functionResponse) {
                             const functionResponsePart = (contentPart as any).functionResponse;
                             normalizedParts.push({
@@ -922,12 +943,17 @@ export class GoogleAIConnector extends LLMConnector {
                 for (const toolCall of message.tool_calls) {
                     if (!toolCall?.function?.name) continue;
 
-                    normalizedParts.push({
+                    const normalizedFunctionCall: any = {
                         functionCall: {
                             name: toolCall.function.name,
                             args: parseFunctionArgs(toolCall.function.arguments),
                         },
-                    });
+                    };
+                    // Preserve thoughtSignature if present for Google AI reasoning context
+                    if ((toolCall as any).thoughtSignature) {
+                        normalizedFunctionCall.thoughtSignature = (toolCall as any).thoughtSignature;
+                    }
+                    normalizedParts.push(normalizedFunctionCall);
                 }
             }
 
