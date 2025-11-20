@@ -7,7 +7,7 @@ import { RuntimeContext } from '@sre/MemoryManager/RuntimeContext';
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { uid } from '@sre/utils';
 
-const console = Logger('AgentRuntime');
+const logger = Logger('AgentRuntime');
 const AgentRuntimeUnavailable = new Proxy(
     {},
     {
@@ -18,7 +18,7 @@ const AgentRuntimeUnavailable = new Proxy(
             } else {
                 // Return a function that logs "unavailable"
                 return function () {
-                    console.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
+                    logger.warn(`AgentRuntime Unavailable tried to call : ${prop.toString()}`);
                 };
             }
         },
@@ -90,6 +90,7 @@ export class AgentRuntime {
             this.xDebugRead = undefined;
         }
 
+        this.agent.conversationId = agent.agentRequest.header('X-CONVERSATION-ID');
         this.xDebugId = this.xDebugStop || this.xDebugRun || this.xDebugRead;
 
         //if (req.body) {
@@ -150,7 +151,7 @@ export class AgentRuntime {
             for (let component of this.agent.data.components) {
                 const cpt: Component = this.agent.ComponentInstances[component.name];
                 if (!cpt) {
-                    console.warn(`Component ${component.name} Exists in agent but has no implementation`, AccessCandidate.agent(this.agent.id));
+                    logger.warn(`Component ${component.name} Exists in agent but has no implementation`, AccessCandidate.agent(this.agent.id));
                     continue;
                 }
 
@@ -316,7 +317,7 @@ export class AgentRuntime {
      * @returns
      */
     public async runCycle() {
-        console.debug(
+        logger.debug(
             `runCycle agentId=${this.agent.id} wfReqId=${this.workflowReqId}  reqTag=${this.reqTag} session=${this.xDebugRun} cycleId=${this.processID}`,
             AccessCandidate.agent(this.agent.id)
         );

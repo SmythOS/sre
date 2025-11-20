@@ -12,7 +12,10 @@ export interface ILogRequest {
 
 export abstract class LogConnector extends SecureConnector {
     public abstract id: string;
-    public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
+
+    constructor() {
+        super();
+    }
 
     public requester(candidate: AccessCandidate): ILogRequest {
         if (candidate.role !== 'agent') throw new Error('Only agents can use Log connector');
@@ -27,6 +30,7 @@ export abstract class LogConnector extends SecureConnector {
         };
     }
 
+    public abstract getResourceACL(resourceId: string, candidate: IAccessCandidate): Promise<ACL>;
     protected abstract log(acRequest: AccessRequest, logData: AgentCallLog, callId?: string): Promise<any>;
     protected abstract logTask(acRequest: AccessRequest, tasks: number, isUsingTestDomain: boolean): Promise<void>;
 }

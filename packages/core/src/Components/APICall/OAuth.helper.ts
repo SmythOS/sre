@@ -1,24 +1,23 @@
 // helper.ts
+import { ConnectorService } from '@sre/Core/ConnectorsService';
+import { SystemEvents } from '@sre/Core/SystemEvents';
+import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
+import { REQUEST_CONTENT_TYPES } from '@sre/constants';
+import { Logger } from '@sre/helpers/Log.helper';
+import { TemplateString } from '@sre/helpers/TemplateString.helper';
+import axios, { AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
 import OAuth from 'oauth-1.0a';
 import AccessTokenManager from './AccessTokenManager';
-import { REQUEST_CONTENT_TYPES } from '@sre/constants';
-import axios, { AxiosRequestConfig } from 'axios';
-import { Logger } from '@sre/helpers/Log.helper';
-import { ConnectorService } from '@sre/Core/ConnectorsService';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
-import { Match, TemplateString } from '@sre/helpers/TemplateString.helper';
-import { SystemEvents } from '@sre/Core/SystemEvents';
-import { cloneDeep } from 'lodash';
 
-const console = Logger('OAuth.helper');
+const logger = Logger('OAuth.helper');
 let managedVault: any;
 
 SystemEvents.on('SRE:Booted', () => {
     try {
         managedVault = ConnectorService.getManagedVaultConnector();
     } catch (error) {
-        console.warn('Could not find a compatible ManagedVault connector, OAuth APICalls will not work');
+        logger.warn('Could not find a compatible ManagedVault connector, OAuth APICalls will not work');
     }
 });
 
@@ -27,7 +26,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
 
     // Validate URL doesn't contain unresolved template variables
     if (reqConfig.url && (reqConfig.url.includes('{{') || reqConfig.url.includes('${{'))) {
-        console.warn('Warning: URL contains unresolved template variables for OAuth1 signature:', reqConfig.url);
+        logger.warn('Warning: URL contains unresolved template variables for OAuth1 signature:', reqConfig.url);
     }
 
     // Parse URL parameters
@@ -38,10 +37,10 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
 
         // Log if we have query parameters for debugging
         if (searchParams.toString()) {
-            console.debug('OAuth1: Found query parameters:', Object.keys(additionalParams));
+            logger.debug('OAuth1: Found query parameters:', Object.keys(additionalParams));
         }
     } catch (error) {
-        console.warn('Failed to parse URL for OAuth1 parameters:', error);
+        logger.warn('Failed to parse URL for OAuth1 parameters:', error);
     }
 
     // Get the content type, handling different header formats
@@ -69,7 +68,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
             if (typeof reqConfig.data === 'string') {
                 // Check for unresolved template variables in form data
                 if (reqConfig.data.includes('{{') || reqConfig.data.includes('${{')) {
-                    console.warn('Warning: Form data contains unresolved template variables for OAuth1 signature');
+                    logger.warn('Warning: Form data contains unresolved template variables for OAuth1 signature');
                 }
                 const formData = new URLSearchParams(reqConfig.data);
                 formParams = Object.fromEntries(formData.entries());
@@ -79,7 +78,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
                 // Handle plain object
                 formParams = reqConfig.data;
             }
-            console.debug('OAuth1: Including form parameters in signature:', Object.keys(formParams));
+            logger.debug('OAuth1: Including form parameters in signature:', Object.keys(formParams));
             additionalParams = { ...additionalParams, ...formParams };
         }
     } else if (contentType.includes(REQUEST_CONTENT_TYPES.json) || contentType.includes('application/') || contentType.includes('text/')) {
@@ -93,11 +92,11 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
             }
             // Check for unresolved template variables
             if (bodyString.includes('{{') || bodyString.includes('${{')) {
-                console.warn('Warning: Request body contains unresolved template variables for OAuth1 signature');
+                logger.warn('Warning: Request body contains unresolved template variables for OAuth1 signature');
             }
             const hash = crypto.createHash('sha1').update(bodyString).digest('base64');
             additionalParams['oauth_body_hash'] = hash;
-            console.debug('OAuth1: Added oauth_body_hash for', contentType);
+            logger.debug('OAuth1: Added oauth_body_hash for', contentType);
         }
     } else if (contentType.includes(REQUEST_CONTENT_TYPES.multipartFormData)) {
         // For multipart form data, only include text fields
@@ -125,7 +124,7 @@ export function extractAdditionalParamsForOAuth1(reqConfig: AxiosRequestConfig =
         }
     }
 
-    console.debug('OAuth1: Total parameters for signature:', Object.keys(additionalParams).length);
+    logger.debug('OAuth1: Total parameters for signature:', Object.keys(additionalParams).length);
     return additionalParams;
 }
 
@@ -148,9 +147,9 @@ export const buildOAuth1Header = (url, method, oauth1Credentials, additionalPara
         const urlObj = new URL(url);
         // Remove query parameters from URL for signature base
         baseUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
-        console.debug('OAuth1: Base URL for signature:', baseUrl);
+        logger.debug('OAuth1: Base URL for signature:', baseUrl);
     } catch (error) {
-        console.warn('Failed to parse URL for OAuth1 signature:', error);
+        logger.warn('Failed to parse URL for OAuth1 signature:', error);
     }
 
     // Include additional parameters in the request data
@@ -209,10 +208,10 @@ export const retrieveOAuthTokens = async (agent, config) => {
             // Add warning logs for OAuth2
             if (type === 'oauth2' && service !== 'oauth2_client_credentials') {
                 if (!secondaryToken) {
-                    console.warn('Warning: refresh_token is missing for OAuth2');
+                    logger.warn('Warning: refresh_token is missing for OAuth2');
                 }
                 if (!expiresIn) {
-                    console.warn('Warning: expires_in is missing for OAuth2.');
+                    logger.warn('Warning: expires_in is missing for OAuth2.');
                 }
             }
 
@@ -262,7 +261,7 @@ export const retrieveOAuthTokens = async (agent, config) => {
             throw new Error(`Failed to parse retrieved tokens: ${error}`);
         }
     } catch (error) {
-        console.error('Error retrieving OAuth tokens:', error);
+        logger.error('Error retrieving OAuth tokens:', error);
         throw error; // rethrow for potential handling by the calling code
     }
 };
@@ -375,7 +374,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             });
 
-            console.log('Access token refreshed successfully.');
+            logger.log('Access token refreshed successfully.');
             logger.debug('Access token refreshed successfully.');
 
             const newAccessToken = response.data.access_token;
@@ -432,7 +431,7 @@ async function getClientCredentialToken(tokensData, logger, keyId, oauthTokens, 
 
             return newAccessToken;
         } else {
-            console.log('Access token value is still valid.');
+            logger.log('Access token value is still valid.');
             logger.debug('Access token value is still valid.');
             return oauthTokens.primaryToken;
         }
