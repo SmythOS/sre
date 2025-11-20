@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { DataSourceLookup } from '@sre/Components/DataSourceLookup.class';
+import { DataSourceLookup } from '@sre/Components/RAG/DataSourceLookup.class';
 // import { VectorsHelper } from '@sre/IO/VectorDB.service/Vectors.helper';
 import { Agent } from '@sre/AgentManager/Agent.class';
 import { AgentSettings } from '@sre/AgentManager/AgentSettings.class';

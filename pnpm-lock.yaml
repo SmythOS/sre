@@ -244,8 +244,8 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
       '@zilliz/milvus2-sdk-node':
-        specifier: ^2.6.2
-        version: 2.6.2
+        specifier: ^2.6.4
+        version: 2.6.4
       acorn:
         specifier: ^8.14.1
         version: 8.14.1
@@ -443,7 +443,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
       pdfjs-dist:
-        specifier: ^4.0.379
+        specifier: ^4.10.38
         version: 4.10.38
     devDependencies:
       '@rollup/plugin-json':
@@ -2198,8 +2198,8 @@ packages:
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
 
-  '@zilliz/milvus2-sdk-node@2.6.2':
-    resolution: {integrity: sha512-4NNnyx/OHaWElccV2HHf8PIELlYPtayNDkCKMRfgF0iA61eTMXRbuasMuKJbsrIXfOma8hk7QkhjeoSr33Nmpg==}
+  '@zilliz/milvus2-sdk-node@2.6.4':
+    resolution: {integrity: sha512-KXKumy7BiRm6czWgbkB2/+3m7P7MdFYuDj3JcfJX4/5nf5Ury/Y5JxWNo6jsw6Gkur2dy9f/rhG9+p5CTtL7dQ==}
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -8178,7 +8178,7 @@ snapshots:
 
   '@xmldom/xmldom@0.8.10': {}
 
-  '@zilliz/milvus2-sdk-node@2.6.2':
+  '@zilliz/milvus2-sdk-node@2.6.4':
     dependencies:
       '@grpc/grpc-js': 1.7.3
       '@grpc/proto-loader': 0.7.15
