@@ -9,9 +9,8 @@ import { ConnectorService } from '@sre/Core/ConnectorsService';
 
 import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { TEmbeddings } from '@sre/IO/VectorDB.service/embed/BaseEmbedding';
-import { EmbeddingsFactory, SupportedModels } from '@sre/IO/VectorDB.service/embed';
-import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.helper';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { JSONContentHelper } from '@sre/helpers/JsonContent.helper';
 
 export class DataSourceIndexer extends DataSourceComponent {
     private MAX_ALLOWED_URLS_PER_INPUT = 20;
@@ -199,7 +198,7 @@ export class DataSourceIndexer extends DataSourceComponent {
 
             const response = await vecDbClient.createDatasource(namespaceLabel, {
                 text: inputSchema.value.Source,
-                metadata: _config.metadata || null,
+                metadata: JSONContentHelper.create(_config.metadata).tryParse() || null,
                 id: dsId,
                 label: _config.name || 'Untitled',
                 chunkSize: _config.chunkSize ? parseInt(_config.chunkSize) : undefined,

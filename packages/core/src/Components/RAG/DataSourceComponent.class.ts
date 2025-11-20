@@ -7,6 +7,7 @@ import { getLLMCredentials } from '@sre/LLMManager/LLM.service/LLMCredentials.he
 import { TEmbeddings } from '@sre/IO/VectorDB.service/embed/BaseEmbedding';
 import { TemplateString } from '@sre/helpers/TemplateString.helper';
 import { VectorDBConnector } from '@sre/IO/VectorDB.service/VectorDBConnector';
+import { TLLMCredentials } from '@sre/types/LLM.types';
 
 export type NsRecord = {
     credentialId: string;
@@ -14,6 +15,20 @@ export type NsRecord = {
     label: string;
     createdAt: string;
 };
+
+export enum TDataSourceCompErrorCodes {
+    NAMESPACE_NOT_FOUND = 1,
+    CREDENTIAL_NOT_FOUND = 2,
+    EMBEDDING_CONFIG_ERROR = 3,
+}
+export class DataSourceCompError extends Error {
+    public code: TDataSourceCompErrorCodes;
+    constructor(message: string, code: TDataSourceCompErrorCodes) {
+        super(message);
+        this.name = 'DataSourceCompError';
+        this.code = code;
+    }
+}
 export class DataSourceComponent extends Component {
     constructor() {
         super();
@@ -31,7 +46,7 @@ export class DataSourceComponent extends Component {
             const rawNsRecord = await nkvClient.get(`vectorDB:namespaces`, namespace);
 
             if (!rawNsRecord) {
-                throw new Error(`Namespace ${namespace} does not exist`);
+                throw new DataSourceCompError(`Namespace ${namespace} does not exist`, TDataSourceCompErrorCodes.NAMESPACE_NOT_FOUND);
             }
 
             // const { credentialId, embeddings: embeddingsOptions } = JSON.parse(rawNsRecord.toString());
@@ -42,7 +57,10 @@ export class DataSourceComponent extends Component {
         const accountClient = accountConnector.requester(AccessCandidate.team(teamId));
         const rawCredRecord = await accountClient.getTeamSetting(namespaceRecord.credentialId, 'vector_db_creds');
         if (!rawCredRecord) {
-            throw new Error(`Credential ${namespaceRecord.credentialId} does not exist`);
+            throw new DataSourceCompError(
+                `Credential ${namespaceRecord.credentialId} does not exist`,
+                TDataSourceCompErrorCodes.CREDENTIAL_NOT_FOUND
+            );
         }
         const credRecord = JSON.parse(rawCredRecord);
         await Promise.all(
@@ -68,9 +86,13 @@ export class DataSourceComponent extends Component {
         // based on the provider, we should be able to retreive the correct credentials
         const modelsProvider = ConnectorService.getModelsProviderConnector();
         const modelProviderCandidate = modelsProvider.requester(AccessCandidate.team(teamId));
-        const modelInfo = await modelProviderCandidate.getModelInfo(embedding.modelId);
+        // const modelInfo = await modelProviderCandidate.getModelInfo(embedding.modelId);
 
-        const llmCreds = await getLLMCredentials(AccessCandidate.team(teamId), modelInfo);
+        const llmCreds = await getLLMCredentials(AccessCandidate.team(teamId), {
+            provider,
+            modelId: embedding.modelId,
+            credentials: [TLLMCredentials.Vault],
+        });
 
         return {
             provider,
