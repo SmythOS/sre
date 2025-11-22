@@ -134,13 +134,7 @@ export async function zipCode(directory: string) {
 }
 
 export async function createOrUpdateLambdaFunction(functionName, zipFilePath, awsConfigs, envVariables: Record<string, string>) {
-    const client = new LambdaClient({
-        region: awsConfigs.region,
-        credentials: {
-            accessKeyId: awsConfigs.accessKeyId,
-            secretAccessKey: awsConfigs.secretAccessKey,
-        },
-    });
+    const client = getAWSLambdaClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey)
     const functionContent = fs.readFileSync(zipFilePath);
 
     try {
@@ -168,26 +162,19 @@ export async function createOrUpdateLambdaFunction(functionName, zipFilePath, aw
             let roleArn = '';
             // check if the role exists
             try {
-                const iamClient = new IAMClient({
-                    region: awsConfigs.region,
-                    credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
-                });
+                const iamClient = getAWSIAMClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey);
                 const getRoleCommand = new GetRoleCommand({ RoleName: `smyth-${functionName}-role` });
                 const roleResponse: GetRoleCommandOutput = await iamClient.send(getRoleCommand);
                 roleArn = roleResponse.Role.Arn;
             } catch (error) {
                 if (error.name === 'NoSuchEntityException') {
                     // create role
-                    const iamClient = new IAMClient({
-                        region: awsConfigs.region,
-                        credentials: { accessKeyId: awsConfigs.accessKeyId, secretAccessKey: awsConfigs.secretAccessKey },
-                    });
+                    const iamClient = getAWSIAMClient(awsConfigs.region, awsConfigs.accessKeyId, awsConfigs.secretAccessKey);
                     const createRoleCommand = new CreateRoleCommand({
                         RoleName: `smyth-${functionName}-role`,
                         AssumeRolePolicyDocument: getLambdaRolePolicy(),
                     });
                     const roleResponse: CreateRoleCommandOutput = await iamClient.send(createRoleCommand);
-                 
                     await waitForRoleDeploymentStatus(`smyth-${functionName}-role`, iamClient);
                     roleArn = roleResponse.Role.Arn;
                 } else {
@@ -231,7 +218,7 @@ function updateLambdaFunctionConfiguration(client: LambdaClient, functionName: s
 
 async function createLambdaFunction(client: LambdaClient, functionParams: any, maxRetries: number = 5): Promise<void> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const functionCreateCommand = new CreateFunctionCommand(functionParams);
@@ -241,7 +228,6 @@ async function createLambdaFunction(client: LambdaClient, functionParams: any, m
             lastError = error;
             // Check if this is a role trust policy error
             if (error?.message?.includes('cannot be assumed by Lambda')) {
-                
                 if (attempt < maxRetries) {
                     // Exponential backoff: 2^attempt seconds (2, 4, 8, 16, 32 seconds)
                     const waitTime = Math.pow(2, attempt) * 1000;
@@ -249,12 +235,11 @@ async function createLambdaFunction(client: LambdaClient, functionParams: any, m
                     continue;
                 }
             }
-            
             // For other errors or if we've exhausted retries, throw immediately
             throw error;
         }
     }
-    
+
     // If we get here, all retries failed
     throw lastError || new Error('Lambda function creation failed after all retry attempts');
 }
@@ -262,15 +247,15 @@ async function createLambdaFunction(client: LambdaClient, functionParams: any, m
 export async function waitForRoleDeploymentStatus(roleName, client): Promise<boolean> {
     return new Promise((resolve, reject) => {
         const interval = setInterval(async () => {
-                const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
-                const roleResponse = await client.send(getRoleCommand);
+            const getRoleCommand = new GetRoleCommand({ RoleName: roleName });
+            const roleResponse = await client.send(getRoleCommand);
 
-                // Check if role exists and has assume role policy document
-                if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
-                    clearInterval(interval);
-                    setTimeout(() => resolve(true), 2000);
-                    return;
-                }
+            // Check if role exists and has assume role policy document
+            if (roleResponse.Role && roleResponse.Role.AssumeRolePolicyDocument) {
+                clearInterval(interval);
+                setTimeout(() => resolve(true), 2000);
+                return;
+            }
         }, 2000); // Check every 2 seconds
     });
 }
@@ -319,15 +304,7 @@ export async function invokeLambdaFunction(
     awsCredentials: AWSCredentials & AWSRegionConfig
 ): Promise<any> {
     try {
-        const client = new LambdaClient({
-            region: awsCredentials.region as string,
-            ...(awsCredentials.accessKeyId && {
-                credentials: {
-                    accessKeyId: awsCredentials.accessKeyId as string,
-                    secretAccessKey: awsCredentials.secretAccessKey as string,
-                },
-            }),
-        });
+        const client = getAWSLambdaClient(awsCredentials.region, awsCredentials.accessKeyId, awsCredentials.secretAccessKey);
 
         const invokeCommand = new InvokeCommand({
             FunctionName: functionName,
@@ -347,13 +324,7 @@ export async function invokeLambdaFunction(
 
 export async function getDeployedFunction(functionName: string, awsConfigs: AWSCredentials & AWSRegionConfig) {
     try {
-        const client = new LambdaClient({
-            region: awsConfigs.region as string,
-            credentials: {
-                accessKeyId: awsConfigs.accessKeyId as string,
-                secretAccessKey: awsConfigs.secretAccessKey as string,
-            },
-        });
+        const client = getAWSLambdaClient(awsConfigs.region as string, awsConfigs.accessKeyId as string, awsConfigs.secretAccessKey as string);
         const getFunctionCommand = new GetFunctionCommand({ FunctionName: functionName });
         const lambdaResponse: GetFunctionCommandOutput = await client.send(getFunctionCommand);
         return {
@@ -390,6 +361,30 @@ export async function getLambdaCredentials(agent: IAgent, config: any): Promise<
         isUserProvidedKeys: userProvidedKeys,
     };
     return awsCredentials;
+}
+
+function getAWSLambdaClient(region: string, accessKeyId?: string, secretAccessKey?: string) {
+    return new LambdaClient({
+        region,
+        ...(accessKeyId && secretAccessKey && {
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+        }),
+    });
+}
+
+function getAWSIAMClient(region: string, accessKeyId?: string, secretAccessKey?: string) {
+    return new IAMClient({
+        region,
+        ...(accessKeyId && secretAccessKey && {
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+        }),
+    });
 }
 
 export function calculateExecutionCost(executionTime: number) {
