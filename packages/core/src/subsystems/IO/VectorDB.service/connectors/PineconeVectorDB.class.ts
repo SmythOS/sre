@@ -24,20 +24,29 @@ import { CacheConnector } from '@sre/MemoryManager/Cache.service/CacheConnector'
 import crypto from 'crypto';
 import { BaseEmbedding, TEmbeddings } from '../embed/BaseEmbedding';
 import { EmbeddingsFactory, SupportedProviders, SupportedModels } from '../embed';
-
+import { calcSizeMb } from '@sre/utils/string.utils';
 import { jsonrepair } from 'jsonrepair';
+import { chunkArr } from '@sre/utils/array.utils';
 
 const console = Logger('Pinecone VectorDB');
 
 export type PineconeConfig = {
     /**
-     * The Pinecone API key
+     * The Pinecone API key [LEGACY]
      */
-    apiKey: string;
+    apiKey?: string;
     /**
-     * The Pinecone index name
+     * The Pinecone index name [LEGACY]
      */
-    indexName: string;
+    indexName?: string;
+
+    /**
+     * The Pinecone credentials [New unified format]
+     */
+    credentials?: {
+        apiKey: string;
+        indexName: string;
+    };
     /**
      * The embeddings model to use
      */
@@ -55,28 +64,28 @@ export class PineconeVectorDB extends VectorDBConnector {
 
     constructor(protected _settings: PineconeConfig) {
         super(_settings);
-        if (!_settings.apiKey) {
+        if (!_settings.apiKey && !_settings?.credentials?.apiKey) {
             console.warn('Missing Pinecone API key : returning empty Pinecone connector');
             return;
         }
-        if (!_settings.indexName) {
+        if (!_settings.indexName && !_settings?.credentials?.indexName) {
             console.warn('Missing Pinecone index name : returning empty Pinecone connector');
             return;
         }
 
         this.client = new Pinecone({
-            apiKey: _settings.apiKey,
+            apiKey: _settings.apiKey || _settings.credentials?.apiKey,
         });
         console.info('Pinecone client initialized');
-        console.info('Pinecone index name:', _settings.indexName);
-        this.indexName = _settings.indexName;
+        console.info('Pinecone index name:', _settings.indexName || _settings.credentials?.indexName);
+        this.indexName = _settings.indexName || _settings.credentials?.indexName;
         this.accountConnector = ConnectorService.getAccountConnector();
         this.cache = ConnectorService.getCacheConnector();
         this.nkvConnector = ConnectorService.getNKVConnector();
         if (!_settings.embeddings) {
             _settings.embeddings = { provider: 'OpenAI', model: 'text-embedding-3-large', dimensions: 3072 };
         }
-        if (!_settings.embeddings.dimensions) _settings.embeddings.dimensions = 3072;
+        if (!_settings.embeddings?.dimensions) _settings.embeddings.dimensions = 3072;
 
         this.embedder = EmbeddingsFactory.create(_settings.embeddings.provider, _settings.embeddings);
     }
@@ -229,17 +238,28 @@ export class PineconeVectorDB extends VectorDBConnector {
         const sourceType = this.embedder.detectSourceType(sourceWrapper[0].source);
         if (sourceType === 'unknown' || sourceType === 'url') throw new Error('Invalid source type');
         const transformedSource = await this.embedder.transformSource(sourceWrapper, sourceType, acRequest.candidate as AccessCandidate);
-        const preparedSource = transformedSource.map((s) => ({
+        const preparedSources = transformedSource.map((s) => ({
             id: s.id,
             values: s.source as number[],
             metadata: s.metadata,
         }));
 
-        // await pineconeStore.addDocuments(chunks, ids);
-        await this.client
-            .Index(this.indexName)
-            .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-            .upsert(preparedSource);
+        // pinecone advices to use batches of 100 at a time
+        const batchSize = 100;
+        const chunkedVectors = chunkArr(preparedSources, batchSize);
+
+        // await this.client
+        //     .Index(this.indexName)
+        //     .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+        //     .upsert(preparedSources);
+
+        const promises = chunkedVectors.map(async (chunk) => {
+            await this.client
+                .Index(this.indexName)
+                .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+                .upsert(chunk);
+        });
+        await Promise.all(promises);
 
         const accessCandidate = acRequest.candidate;
 
@@ -249,7 +269,7 @@ export class PineconeVectorDB extends VectorDBConnector {
             await this.setACL(acRequest, namespace, acl);
         }
 
-        return preparedSource.map((s) => {
+        return preparedSources.map((s) => {
             const { text, acl, user_metadata, ...restMetadata } = s.metadata || {};
             return {
                 id: s.id,
@@ -272,10 +292,16 @@ export class PineconeVectorDB extends VectorDBConnector {
         } else {
             const _ids = Array.isArray(deleteTarget) ? deleteTarget : [deleteTarget];
 
-            const res = await this.client
-                .Index(this.indexName)
-                .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
-                .deleteMany(_ids);
+            const batchSize = 800;
+            const chunkedIds = chunkArr(_ids, batchSize);
+
+            const promises = chunkedIds.map(async (chunk) => {
+                await this.client
+                    .Index(this.indexName)
+                    .namespace(this.constructNsName(acRequest.candidate as AccessCandidate, namespace))
+                    .deleteMany(chunk);
+            });
+            await Promise.all(promises);
         }
     }
 
@@ -284,6 +310,9 @@ export class PineconeVectorDB extends VectorDBConnector {
         //const teamId = await this.accountConnector.getCandidateTeam(acRequest.candidate);
         const acl = new ACL().addAccess(acRequest.candidate.role, acRequest.candidate.id, TAccessLevel.Owner);
         const dsId = datasource.id || crypto.randomUUID();
+
+        if (!datasource.chunkSize) datasource.chunkSize = 2000;
+        if (!datasource.chunkOverlap) datasource.chunkOverlap = 200;
 
         const formattedNs = this.constructNsName(acRequest.candidate as AccessCandidate, namespace);
         const chunkedText = this.embedder.chunkText(datasource.text, {
@@ -301,6 +330,7 @@ export class PineconeVectorDB extends VectorDBConnector {
                     namespaceId: formattedNs,
                     datasourceId: dsId,
                     datasourceLabel: label,
+                    chunkIndex: i,
                     user_metadata: datasource.metadata ? jsonrepair(JSON.stringify(datasource.metadata)) : undefined,
                 },
             };
@@ -317,6 +347,10 @@ export class PineconeVectorDB extends VectorDBConnector {
             text: datasource.text,
             vectorIds: _vIds.map((v) => v.id),
             id: dsId,
+            datasourceSizeMb: calcSizeMb(datasource.text),
+            chunkSize: datasource.chunkSize,
+            chunkOverlap: datasource.chunkOverlap,
+            createdAt: new Date(),
         };
         if (datasource.returnFullVectorInfo) {
             dsData.vectorInfo = _vIds;
