@@ -697,7 +697,7 @@ export class Conversation extends EventEmitter {
 
                 reqConfig.headers['X-CACHE-ID'] = this._context?.llmCache?.id;
 
-                reqConfig.headers['X-REQUEST-TAG'] = this.id;
+                //reqConfig.headers['X-REQUEST-TAG'] = this.id;
                 /*
                  * Objective for the following conditions:
                  * - In case it is not a debug call and there is no monitor id, then we need to run the agent locally to reduce latency
@@ -717,6 +717,10 @@ export class Conversation extends EventEmitter {
                     //reqConfig.headers['X-AGENT-HAS-ATTACHMENTS'] !== undefined;
                     reqConfig.headers['x-conversation-id'] !== undefined;
 
+                //we force the conversationId header after checking that it was not remotely set
+                if (!reqConfig.headers['x-conversation-id']) {
+                    reqConfig.headers['x-conversation-id'] = this.id;
+                }
                 if (canRunLocally && !requiresRemoteCall) {
                     console.log('RUNNING AGENT LOCALLY');
                     let agentProcess;
@@ -754,7 +758,7 @@ export class Conversation extends EventEmitter {
                             });
                         };
 
-                        const eventSource = new EventSource(monitUrl, {
+                        eventSource = new EventSource(monitUrl, {
                             fetch: customFetch,
                         });
                         let monitorId = '';
