@@ -337,6 +337,12 @@ export class OTel extends TelemetryConnector {
 
                 const convSpan = tracer.startSpan('Agent.Conv', {
                     attributes: {
+                        // OTel standard attributes
+                        'gen_ai.operation.name': 'chat',
+                        'gen_ai.provider.name': conversation?.llmInference?.llmProviderName || 'unknown',
+                        'gen_ai.conversation.id': processId,
+                        'gen_ai.request.model': modelId || 'unknown',
+                        ////////////////////////////////
                         'agent.id': agentId,
                         'conv.id': processId,
                         'llm.model': modelId || 'unknown',

@@ -117,6 +117,11 @@ export class Conversation extends EventEmitter {
         return this._model;
     }
 
+    private _llmInference: LLMInference;
+    public get llmInference() {
+        return this._llmInference;
+    }
+
     constructor(
         private _model: string | TLLMModel,
         private _specSource?: string | Record<string, any>,
@@ -308,7 +313,6 @@ export class Conversation extends EventEmitter {
         //     toolsConfig,
         // });
         /* ==================== STEP ENTRY ==================== */
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
 
         if (message) this._context.addUserMessage(message, message_id);
 
@@ -329,7 +333,7 @@ export class Conversation extends EventEmitter {
             requestId: llmReqUid,
         });
 
-        const eventEmitter: any = await llmInference
+        const eventEmitter: any = await this.llmInference
             .promptStream({
                 contextWindow,
                 files,
@@ -818,6 +822,7 @@ export class Conversation extends EventEmitter {
         handler: (args: Record<string, any>) => Promise<any>;
         inputs?: any[];
     }) {
+        await this.ready;
         if (!tool.arguments) {
             //if no arguments are provided, we need to extract them from the function
             const toolFunction = tool.handler as Function;
@@ -879,11 +884,10 @@ export class Conversation extends EventEmitter {
 
         //deduplicate tools
 
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
         this._customToolsDeclarations = this._customToolsDeclarations.filter(
             (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
         );
-        const toolsConfig: any = llmInference.connector.formatToolsConfig({
+        const toolsConfig: any = this.llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: this._customToolsDeclarations,
             toolChoice: this.toolChoice,
@@ -896,11 +900,11 @@ export class Conversation extends EventEmitter {
     }
 
     async removeTool(toolName: string) {
+        await this.ready;
         this._customToolsDeclarations = this._customToolsDeclarations.filter((tool) => tool.name !== toolName);
         delete this._customToolsHandlers[toolName];
-        const llmInference: LLMInference = await LLMInference.getInstance(this.model, AccessCandidate.team(this._teamId));
 
-        const toolsConfig: any = llmInference.connector.formatToolsConfig({
+        const toolsConfig: any = this.llmInference.connector.formatToolsConfig({
             type: 'function',
             toolDefinitions: this._customToolsDeclarations,
             toolChoice: this.toolChoice,
@@ -928,15 +932,15 @@ export class Conversation extends EventEmitter {
                 const functionDeclarations = this.getFunctionDeclarations(this._spec);
                 //functionDeclarations.push(...this._customToolsDeclarations);
                 this._customToolsDeclarations.push(...functionDeclarations);
-                const llmInference: LLMInference = await LLMInference.getInstance(this._model, AccessCandidate.team(this._teamId));
-                if (!llmInference.connector) {
+                this._llmInference = await LLMInference.getInstance(this._model, AccessCandidate.team(this._teamId));
+                if (!this._llmInference.connector) {
                     this.emit('error', 'No connector found for model: ' + this._model);
                     return;
                 }
                 this._customToolsDeclarations = this._customToolsDeclarations.filter(
                     (tool, index, self) => self.findIndex((t) => t.name === tool.name) === index
                 );
-                this._toolsConfig = llmInference.connector.formatToolsConfig({
+                this._toolsConfig = this.llmInference.connector.formatToolsConfig({
                     type: 'function',
                     toolDefinitions: this._customToolsDeclarations,
                     toolChoice: this.toolChoice,
@@ -945,7 +949,7 @@ export class Conversation extends EventEmitter {
                 let messages = [];
                 if (this._context) messages = this._context.messages; // preserve messages
 
-                this._context = new LLMContext(llmInference, this.systemPrompt, this._llmContextStore);
+                this._context = new LLMContext(this.llmInference, this.systemPrompt, this._llmContextStore);
             } else {
                 this._toolsConfig = null;
                 this._reqMethods = null;
