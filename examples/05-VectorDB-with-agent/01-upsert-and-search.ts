@@ -19,6 +19,7 @@ const pineconeSettings = {
         model: Model.OpenAI('text-embedding-3-large'),
         chunkSize: 1000,
         chunkOverlap: 100,
+        dimensions: 1024,
     },
     //you can also use Model.GoogleAI('gemini-embedding-001', { dimensions: 1024 })
 };

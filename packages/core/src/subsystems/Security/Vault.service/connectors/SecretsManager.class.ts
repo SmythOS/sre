@@ -1,7 +1,5 @@
 import { ConnectorService } from '@sre/Core/ConnectorsService';
 import { Logger } from '@sre/helpers/Log.helper';
-//import { SmythRuntime } from '@sre/Core/SmythRuntime.class';
-import { AccessCandidate } from '@sre/Security/AccessControl/AccessCandidate.class';
 import { AccessRequest } from '@sre/Security/AccessControl/AccessRequest.class';
 import { ACL } from '@sre/Security/AccessControl/ACL.class';
 import { SecureConnector } from '@sre/Security/SecureConnector.class';
@@ -21,22 +19,24 @@ export type SecretsManagerConfig = {
     region: string;
     awsAccessKeyId?: string;
     awsSecretAccessKey?: string;
+    prefix?: string;
 };
 export class SecretsManager extends VaultConnector {
     public name: string = 'SecretsManager';
     private secretsManager: SecretsManagerClient;
+    private prefix: string;
 
     constructor(protected _settings: SecretsManagerConfig) {
         super(_settings);
         //if (!SmythRuntime.Instance) throw new Error('SRE not initialized');
-
+        this.prefix = _settings.prefix || '';
         this.secretsManager = new SecretsManagerClient({
             region: _settings.region,
             ...(_settings.awsAccessKeyId && _settings.awsSecretAccessKey
                 ? {
-                      accessKeyId: _settings.awsAccessKeyId,
-                      secretAccessKey: _settings.awsSecretAccessKey,
-                  }
+                    accessKeyId: _settings.awsAccessKeyId,
+                    secretAccessKey: _settings.awsSecretAccessKey,
+                }
                 : {}),
         });
     }
@@ -44,8 +44,14 @@ export class SecretsManager extends VaultConnector {
     @SecureConnector.AccessControl
     protected async get(acRequest: AccessRequest, secretName: string) {
         try {
-            const secret = await this.getSecretByName(secretName);
-            return secret?.SecretString;
+            const accountConnector = ConnectorService.getAccountConnector();
+            const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+            // try fetchting by Id, if not found, try fetching by name
+            let secret = await this.getSecretById(teamId, secretName);
+            if (!secret) {
+                secret = await this.getSecretByName(acRequest, secretName);
+            }
+            return secret;
         } catch (error) {
             console.error(error);
             throw error;
@@ -60,8 +66,58 @@ export class SecretsManager extends VaultConnector {
 
     @SecureConnector.AccessControl
     protected async listKeys(acRequest: AccessRequest) {
-        console.warn('SecretsManager.listKeys is not implemented');
-        return [];
+        const accountConnector = ConnectorService.getAccountConnector();
+        const teamId = await accountConnector.getCandidateTeam(acRequest.candidate);
+        const secrets = [];
+        let nextToken: string | undefined;
+
+        do {
+            const listResponse: ListSecretsCommandOutput = await this.secretsManager.send(
+                new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }, { Key: 'name', Values: [this.getVaultKey(teamId, '')] }] })
+            );
+            if (listResponse.SecretList) {
+                for (const secret of listResponse.SecretList) {
+                    if (secret.Name) {
+                        secrets.push({
+                            ARN: secret.ARN,
+                            Name: secret.Name,
+                            CreatedDate: secret.CreatedDate,
+                        });
+                    }
+                }
+            }
+            nextToken = listResponse.NextToken;
+        } while (nextToken);
+
+      const $promises = [];
+        for (const secret of secrets) {
+            $promises.push(getSpecificSecret(secret, this.secretsManager));
+        }
+        const formattedSecrets = await Promise.all($promises);
+        return formattedSecrets;
+
+        async function getSpecificSecret(secret, secretsManager: SecretsManagerClient) {
+            const data: GetSecretValueCommandOutput = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
+            let secretString = data.SecretString;
+    
+            if (secretString) {
+              try {
+                let parsedSecret = JSON.parse(secretString);
+                const secretId = secret.Name?.split('/').pop();
+                const key = parsedSecret.key;
+                const value = parsedSecret.value;
+                const metadata = parsedSecret.metadata;
+                return {
+                  id: secretId,
+                  key,
+                  value,
+                  metadata,
+                };
+              } catch (error) {
+              }
+            }
+            return null;
+        }
     }
 
     public async getResourceACL(resourceId: string, candidate: IAccessCandidate) {
@@ -77,64 +133,38 @@ export class SecretsManager extends VaultConnector {
         return acl;
     }
 
-    private async getSecretByName(secretName: string) {
+    private async getSecretByName(acRequest: AccessRequest, secretName: string) {
         try {
-            const secrets = [];
-            let nextToken: string | undefined;
-            do {
-                const listResponse: ListSecretsCommandOutput = await this.secretsManager.send(
-                    new ListSecretsCommand({ NextToken: nextToken, Filters: [{ Key: 'tag-key', Values: ['smyth-vault'] }] })
-                );
-                if (listResponse.SecretList) {
-                    for (const secret of listResponse.SecretList) {
-                        if (secret.Name) {
-                            secrets.push({
-                                ARN: secret.ARN,
-                                Name: secret.Name,
-                                CreatedDate: secret.CreatedDate,
-                            });
-                        }
-                    }
-                }
-                nextToken = listResponse.NextToken;
-            } while (nextToken);
-
-            const formattedSecrets = [];
-            const $promises = [];
-            for (const secret of secrets) {
-                $promises.push(getSpecificSecret(secret, this.secretsManager));
-            }
-            const results = await Promise.all($promises);
-            for (const result of results) {
-                formattedSecrets.push(result);
-            }
-            const secret = formattedSecrets.find((s) => s.Name === secretName);
-            return secret;
+            const secrets = await this.listKeys(acRequest);
+            const secret = secrets.find((s) => s.key === secretName);
+            return secret?.value;
         } catch (error) {
             console.error(error);
-        }
+            return null;
+        }      
+    }
 
-        async function getSpecificSecret(secret, secretsManager: SecretsManagerClient) {
-            const data: GetSecretValueCommandOutput = await secretsManager.send(new GetSecretValueCommand({ SecretId: secret.ARN }));
-            let secretString = data.SecretString;
-            let secretName = secret.Name;
+    private getVaultKey(teamId: string, secretName: string) {
+        return `${this.prefix.length ? `${this.prefix}/` : ''}${teamId}/${secretName}`;
+    }
 
-            if (secretString) {
-                try {
-                    let parsedSecret = JSON.parse(secretString);
-                    if (Object.keys(parsedSecret).length === 1) {
-                        secretName = Object.keys(parsedSecret)[0];
-                        secretString = parsedSecret[secretName];
-                    }
-                } catch (error) {}
-            }
-            return {
-                Name: secretName,
-                ARN: secret.ARN,
-                CreatedDate: secret.CreatedDate,
-                SecretId: secret.Name,
-                SecretString: secretString,
-            };
+    private async getSecretById(teamId: string, secretId: string) {
+        try {
+            const secret: GetSecretValueCommandOutput = await this.secretsManager.send(new GetSecretValueCommand({ SecretId: this.getVaultKey(teamId, secretId) }));
+            return this.getSecretValue(secret);
+        } catch (error) {
+            console.error(error);
+            return null;
         }
+    }
+
+    private getSecretValue(secret: GetSecretValueCommandOutput) {
+        try {
+            const parsedSecret = typeof secret.SecretString === 'string' ? JSON.parse(secret.SecretString) : secret.SecretString;
+            return parsedSecret.value;
+        } catch (error) {
+            return null;
+        }
+    
     }
 }
