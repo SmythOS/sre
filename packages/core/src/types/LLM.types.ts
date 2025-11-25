@@ -80,6 +80,7 @@ export type TxAIToolsInfo = {
     };
 };
 
+// #region TLLMParams
 export type TToolsInfo = {
     openai: TOpenAIToolsInfo;
     xai: TxAIToolsInfo;
@@ -188,6 +189,8 @@ type TLLMImageGenConfig = {
 };
 
 export type TLLMParams = TLLMTextGenConfig & TLLMSearchConfig & TLLMImageGenConfig & TLLMMiscConfig & TLLMRuntimeContext;
+
+// #endregion TLLMParams
 
 export type TLLMPreparedParams = TLLMParams & {
     body: any;
@@ -344,6 +347,7 @@ export type ToolData = {
     function?: any;
     error?: string; // for Bedrock
     callId?: string; // for OpenAI Responses API call ID mapping
+    thoughtSignature?: string; // for Google AI - required to maintain reasoning context
 };
 
 /**
@@ -571,6 +575,7 @@ export interface TGoogleAIRequestBody {
         topK?: number;
         stopSequences?: string[];
         responseMimeType?: string;
+        media_resolution?: 'low' | 'medium' | 'high';
     };
     tools?: any;
     toolConfig?: any;
